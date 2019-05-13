@@ -1,0 +1,23 @@
+cd SpalartAllmarasFv3
+cp Make/files_Incompressible Make/files
+cp Make/options_Incompressible Make/options
+wmake libso
+wclean
+cp Make/files_Compressible Make/files
+cp Make/options_Compressible Make/options
+wmake libso
+
+cd ../dummyTurbulenceModel
+cp Make/files_Incompressible Make/files
+cp Make/options_Incompressible Make/options
+wmake libso
+wclean
+cp Make/files_Compressible Make/files
+cp Make/options_Compressible Make/options
+wmake libso
+
+cd ../tractionDisplacement
+wmake libso
+
+cd ../buoyantPressure
+wmake libso

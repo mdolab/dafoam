@@ -1,0 +1,32 @@
+include ${PETSC_DIR}/lib/petsc/conf/variables 
+
+EXE_INC = \
+    -std=c++11 \
+    -Wno-old-style-cast \
+    -Wno-conversion-null \
+    -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude \
+    -I$(LIB_SRC)/TurbulenceModels/incompressible/lnInclude \
+    -I$(LIB_SRC)/transportModels/incompressible/lnInclude \
+    -I$(LIB_SRC)/transportModels \
+    -I$(LIB_SRC)/transportModels/incompressible/singlePhaseTransportModel \
+    -I$(LIB_SRC)/thermophysicalModels/radiation/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/fvOptions/lnInclude\
+    -I$(LIB_SRC)/OpenFOAM/lnInclude \
+    -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include
+    
+
+LIB_LIBS = \
+    -lturbulenceModels \
+    -lOpenFOAM \
+    -lincompressibleTurbulenceModels \
+    -lincompressibleTransportModels \
+    -lradiationModels \
+    -lfluidThermophysicalModels \
+    -lfiniteVolume \
+    -lmeshTools \
+    -lfvOptions \
+    -L$(FOAM_USER_LIBBIN) -ltractionDisplacementFvPatchVectorField \
+    -L$(PETSC_LIB) -lpetsc

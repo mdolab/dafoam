@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Clean pyOptFoam solvers
+
+rm *.pyc
+rm python/*.pyc
+rm python/scripts/*.pyc
+rm python/reg_tests/*.pyc
+rm python/reg_tests/tests/*.pyc
+rm python/reg_tests/dafoam*reg*
+
+if [ -z "$DF_CleanDoc" ]; then
+    export DF_CleanDoc=True
+fi
+if [ "$DF_CleanDoc" = "True" ]; then
+  rm -rf doc/Doxygen/html
+  rm -rf doc/Doxygen/DTAGS
+  rm -rf doc/_build
+  rm -rf doc/DAFoamDoc.html
+fi
+
+cd src/myLibs
+./Allwclean
+cd ../
+
+cd src
+wclean
+rm Make/options Make/files
+
+cd ../applications/coloringSolverIncompressible
+wclean
+rm Make/options
+
+cd ../simpleDAFoam
+wclean
+rm Make/options
+
+cd ../simpleTDAFoam
+wclean
+rm Make/options
+
+cd ../coloringSolverCompressible
+wclean
+rm Make/options
+
+cd ../rhoSimpleDAFoam
+wclean
+rm Make/options
+
+cd ../rhoSimpleCDAFoam
+wclean
+rm Make/options

@@ -1,28 +1,22 @@
 DAFoam
 ======
 
-DAFoam contains multiple discrete adjoint solvers for OpenFOAM. These adjoint solvers run as standalone executives to compute derivatives. DAFoam also has a python interface that allows the adjoint solvers to interact with external modules for design optimization. DAFoam has the following features:
+DAFoam contains a suite of discrete adjoint solvers for OpenFOAM. These adjoint solvers run as standalone executives to compute derivatives. DAFoam also has a Python interface that allows the adjoint solvers to interact with external modules for high-fidelity design optimization. DAFoam has the following features:
 
-- It allows rapid discrete adjoint development with adding only O(100) lines of codes.
-- It supports design optimization for a wide range of disciplines (aerodynamics, heat transfer, structures, hydrodynamics, radiations, etc.).
-- It implements an efficient discrete adjoint approach that has competitive speed, scalability, accuracy, and compatibility.
-
-Installation
-------------
-
-See **doc/install.rst**
+- It implements an efficient discrete adjoint approach with competitive speed, scalability, accuracy, and compatibility.
+- It allows rapid discrete adjoint development for any steady-state OpenFOAM solvers with modifying only O(100) lines of source codes.
+- It supports design optimizations for a wide range of disciplines such as aerodynamics, heat transfer, structures, hydrodynamics, and radiation.
 
 Documentation
 -------------
 
-To build the documentation, go to the **doc** folder and run::
+Refer to `Installation <doc/Installation.rst>`_ and `Tutorials <doc/Tutorials.rst>`_.
+
+To build the full documentation, go to the **doc** folder and run::
 
   ./Allwmake
 
-The built documentation is located at doc/DAFoamDoc.html
-
-Citation
---------
+The built documentation is located at **doc/DAFoamDoc.html**
 
 License
 -------

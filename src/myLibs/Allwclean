@@ -1,0 +1,10 @@
+cd SpalartAllmarasFv3
+wclean
+rm Make/options Make/files
+cd ../dummyTurbulenceModel
+wclean
+rm Make/options Make/files
+cd ../tractionDisplacement
+wclean
+cd ../buoyantPressure
+wclean

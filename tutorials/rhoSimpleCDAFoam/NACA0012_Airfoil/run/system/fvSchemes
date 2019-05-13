@@ -1,0 +1,80 @@
+/*--------------------------------*- C++ -*---------------------------------*\ 
+| ========                 |                                                 | 
+| \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           | 
+|  \    /   O peration     | Version:  v1812                                 | 
+|   \  /    A nd           | Web:      www.OpenFOAM.com                      | 
+|    \/     M anipulation  |                                                 | 
+\*--------------------------------------------------------------------------*/ 
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+d2dt2Schemes 
+{
+    default                                             steadyState;
+}
+
+ddtSchemes 
+{
+    default                                             steadyState;
+}
+
+gradSchemes
+{
+    default                                             Gauss linear;
+}
+
+divSchemes
+{
+    default                                             none;
+    div(phi,omega)                                      Gauss upwind;
+    div((p*(U-URel)))                                   Gauss linear;
+    div(phi,h)                                          Gauss upwind;
+    div(phi,k)                                          Gauss upwind;
+    div(phi,epsilon)                                    Gauss upwind;
+    div(phid,p)                                         Gauss limitedLinear 1;
+    div(((rho*nuEff)*dev2(T(grad(U)))))                 Gauss linear;
+    div(phi,Ekp)                                        Gauss upwind;
+    div(phi,e)                                          Gauss upwind;
+    div((-devRhoReff.T()&U))                            Gauss linear;
+    div(phi,K)                                          Gauss upwind;
+    div(phi,U)                                          Gauss linearUpwindV grad(U);
+    div(pc)                                             Gauss upwind;
+    div(phi,nuTilda)                                    Gauss upwind;
+}
+
+interpolationSchemes
+{
+    default                                             linear;
+}
+
+laplacianSchemes
+{
+    default                                             Gauss linear corrected;
+}
+
+snGradSchemes
+{
+    default                                             corrected;
+}
+
+fluxRequired
+{
+    default                                             no;
+    p;
+    p_rgh;
+    Phi;
+}
+
+wallDist
+{
+    method                                              meshWave;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

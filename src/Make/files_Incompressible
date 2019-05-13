@@ -1,0 +1,25 @@
+AdjointIO/AdjointIO.C
+
+AdjointSolverRegistry/AdjointSolverRegistry.C
+AdjointSolverRegistry/AdjointSolverRegistrySimpleFoam.C
+AdjointSolverRegistry/AdjointSolverRegistrySimpleTFoam.C
+
+AdjointRASModel/AdjointRASModel.C
+AdjointRASModel/AdjointSpalartAllmaras.C
+AdjointRASModel/AdjointSpalartAllmarasFv3.C
+
+AdjointIndexing/AdjointIndexing.C
+
+AdjointJacobianConnectivity/AdjointJacobianConnectivity.C
+AdjointJacobianConnectivity/AdjointJacobianConnectivitySimpleFoam.C
+AdjointJacobianConnectivity/AdjointJacobianConnectivitySimpleTFoam.C
+
+AdjointObjectiveFunction/AdjointObjectiveFunction.C
+
+AdjointDerivative/AdjointDerivative.C
+AdjointDerivative/AdjointDerivativeSimpleFoam.C
+AdjointDerivative/AdjointDerivativeSimpleTFoam.C
+
+AdjointNewtonKrylov/AdjointNewtonKrylov.C
+
+LIB = $(FOAM_USER_LIBBIN)/libAdjointDerivativeIncompressible
