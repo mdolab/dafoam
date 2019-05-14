@@ -5,8 +5,14 @@ AdjointSolverRegistry/AdjointSolverRegistryRhoSimpleFoam.C
 AdjointSolverRegistry/AdjointSolverRegistryRhoSimpleCFoam.C
 
 AdjointRASModel/AdjointRASModel.C
+AdjointRASModel/AdjointDummyTurbulenceModel.C
 AdjointRASModel/AdjointSpalartAllmaras.C
 AdjointRASModel/AdjointSpalartAllmarasFv3.C
+AdjointRASModel/AdjointkOmega.C
+AdjointRASModel/AdjointkOmegaSST.C
+AdjointRASModel/AdjointkOmegaSSTLM.C
+AdjointRASModel/AdjointkEpsilon.C
+AdjointRASModel/AdjointLaunderSharmaKE.C
 
 AdjointIndexing/AdjointIndexing.C
 

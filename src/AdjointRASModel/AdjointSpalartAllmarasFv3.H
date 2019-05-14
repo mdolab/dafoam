@@ -7,8 +7,9 @@
     Child class for the SpalartAllmarasFv3 model
 
     NOTE:
-    It is called SpalartAllmarasFv3 because it uses the OpenFOAM-2.4.x implementation with the Fv3 term.
-    Overall, this old implementation has a better convergence than the new one
+    It is called SpalartAllmarasFv3 because it uses the OpenFOAM-2.4.x 
+    implementation with the Fv3 term. Overall, this old implementation has a 
+    better convergence than the new one
 
 \*---------------------------------------------------------------------------*/
 
