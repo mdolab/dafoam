@@ -24,6 +24,7 @@ static char help[] = "Solves a linear system in parallel with KSP in OpenFOAM.\n
 #include "AdjointJacobianConnectivity.H"
 #include "AdjointObjectiveFunction.H"
 #include "AdjointDerivative.H"
+#include "AdjointNewtonKrylov.H"
 #include "nearWallDist.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -81,7 +82,25 @@ int main(int argc, char *argv[])
     (
         AdjointDerivative::New(mesh,adjIO,adjReg(),adjRAS(),adjIdx,adjCon(),adjObj,thermo)
     );
+
     adjDev->calcFlowResidualStatistics("print");
+
+    if(adjIO.useNKSolver and !adjIO.solveAdjoint)
+    {
+
+        AdjointNewtonKrylov adjNK(mesh,adjIO,adjReg,adjRAS(),adjObj,adjDev());
+        adjNK.solve();
+
+        adjDev->calcFlowResidualStatistics("print");
+
+        adjDev->writeStates();
+        adjRAS->writeTurbStates();
+
+        Info<< "NK Finished!\n" << endl;
+        
+        return 0;
+    }
+
     if (adjIO.solveAdjoint)
     {
         adjDev->solve();

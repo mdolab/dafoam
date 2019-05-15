@@ -97,8 +97,7 @@ int main(int argc, char *argv[])
         adjDev->writeStates();
         adjRAS->writeTurbStates();
 
-        PetscFinalize();
-        Info<<"Petsc Finalized"<<endl;
+        Info<< "NK Finished!\n" << endl;
         
         return 0;
     }

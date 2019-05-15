@@ -148,9 +148,6 @@ int main(int argc, char *argv[])
         adjDev->solve();
     }
 
-    PetscFinalize();
-    Info<<"Petsc Finalized"<<endl;
-
     return 0;
 }
 

@@ -103,11 +103,15 @@ void AdjointDerivativeRhoSimpleFoam::calcResiduals
 
     UEqn.relax();
 
+    // set fvMatrix for fast PC construction in NK solver
+    setFvMatrix("U",UEqn);
+
     if (!updatePhi)
     {
         if(isRef) UResRef_  = (UEqn&U_) + fvc::grad(p_);
         else URes_  = (UEqn&U_) + fvc::grad(p_);
         normalizeResiduals(URes);
+        scaleResiduals(URes);
     }
 
     // ******** e Residuals **********
@@ -127,11 +131,16 @@ void AdjointDerivativeRhoSimpleFoam::calcResiduals
 
     EEqn.relax();
 
+    // set fvMatrix for fast PC construction in NK solver
+    // here the stateName is T and the matrix name is EEqn instead of TEqn
+    setFvMatrix("T",EEqn);
+
     if (!updatePhi)
     {
         if(isRef) TResRef_  = EEqn&he_;
         else TRes_  = EEqn&he_;
         normalizeResiduals(TRes);
+        scaleResiduals(TRes);
     }
 
 
@@ -177,12 +186,16 @@ void AdjointDerivativeRhoSimpleFoam::calcResiduals
     
         pEqn.setReference(pressureControl_.refCell(),pressureControl_.refValue());
 
+        // set fvMatrix for fast PC construction in NK solver
+        setFvMatrix("p",pEqn);
+
         // normalize pRes
         if (!updatePhi)
         {
             if(isRef) pResRef_  = pEqn&p_;
             else pRes_  = pEqn&p_;
             normalizeResiduals(pRes);
+            scaleResiduals(pRes);
         }
     
         if(updatePhi) phi_=phiHbyA + pEqn.flux();
@@ -194,6 +207,7 @@ void AdjointDerivativeRhoSimpleFoam::calcResiduals
     
         // need to normalize phiRes
         normalizePhiResiduals(phiRes);
+        scalePhiResiduals(phiRes);
     }
     else
     {
@@ -206,6 +220,9 @@ void AdjointDerivativeRhoSimpleFoam::calcResiduals
         );
     
         pEqn.setReference(pressureControl_.refCell(),pressureControl_.refValue());
+
+        // set fvMatrix for fast PC construction in NK solver
+        setFvMatrix("p",pEqn);
     
         // normalize pRes
         if (!updatePhi)
@@ -213,6 +230,7 @@ void AdjointDerivativeRhoSimpleFoam::calcResiduals
             if(isRef) pResRef_  = pEqn&p_;
             else pRes_  = pEqn&p_;
             normalizeResiduals(pRes);
+            scaleResiduals(pRes);
         }
     
         if(updatePhi) phi_=phiHbyA + pEqn.flux();
@@ -224,6 +242,7 @@ void AdjointDerivativeRhoSimpleFoam::calcResiduals
     
         // need to normalize phiRes
         normalizePhiResiduals(phiRes);
+        scalePhiResiduals(phiRes);  
     }
     
     return;

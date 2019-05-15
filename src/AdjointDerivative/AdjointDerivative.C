@@ -4146,7 +4146,8 @@ void AdjointDerivative::clearVars()
 
 void AdjointDerivative::writeStates()
 {
-
+    Info<<"Writting state variables"<<endl;
+    
     forAll(adjReg_.volVectorStates,idxI)                                           
     {        
         // create state and stateRef

@@ -115,6 +115,36 @@ if(adjIO_.isInList<word>(#resName"Scaling",adjIO_.residualScaling.toc()))       
     }                                                                           \
 }
 
+#define scalePhiResiduals(resName)                                         \
+if(adjIO_.isInList<word>(#resName"Scaling",adjIO_.residualScaling.toc()))  \
+{                                                                          \
+    forAll(resName##Ref_,faceI)                                            \
+    {                                                                      \
+        if(isRef)                                                          \
+        {                                                                  \
+            resName##Ref_[faceI] /= adjIO_.residualScaling[#resName"Scaling"];  \
+        }                                                                  \
+        else                                                               \
+        {                                                                  \
+            resName##_[faceI] /= adjIO_.residualScaling[#resName"Scaling"];  \
+        }                                                                  \
+    }                                                                      \
+    forAll(resName##Ref_.boundaryField(),patchI)                           \
+    {                                                                      \
+        forAll(resName##Ref_.boundaryField()[patchI],faceI)                \
+        {                                                                  \
+            if(isRef)                                                      \
+            {                                                              \
+                resName##Ref_.boundaryFieldRef()[patchI][faceI] /= adjIO_.residualScaling[#resName"Scaling"];  \
+            }                                                              \
+            else                                                           \
+            {                                                              \
+                resName##_.boundaryFieldRef()[patchI][faceI] /= adjIO_.residualScaling[#resName"Scaling"];  \
+            }                                                              \
+        }                                                                  \
+    }                                                                      \
+}
+
 #define normalizePhiResiduals(resName)                                     \
 if(adjIO_.isInList<word>(#resName,adjIO_.normalizeResiduals))              \
 {                                                                          \
@@ -320,3 +350,15 @@ stateName##ResPartDeriv_                                                        
     ),                                                                            \
     db_.lookupObject<surfaceScalarField>(#stateName)                              \
 )
+
+#define setFvMatrix(stateName,fvMatrix)    \
+if( fvMatrixName==stateName"Eqn" )         \
+{                                          \
+    fvMatrixDiag.clear();                  \
+    fvMatrixLower.clear();                 \
+    fvMatrixUpper.clear();                 \
+    fvMatrixDiag  = fvMatrix.diag();       \
+    fvMatrixLower = fvMatrix.lower();      \
+    fvMatrixUpper = fvMatrix.upper();      \
+}                                          \
+

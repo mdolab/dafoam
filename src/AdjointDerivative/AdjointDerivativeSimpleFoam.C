@@ -66,21 +66,15 @@ void AdjointDerivativeSimpleFoam::calcResiduals
 
     //UEqn.relax();
 
-    if(fvMatrixName=="UEqn") 
-    {
-        fvMatrixDiag.clear();
-        fvMatrixLower.clear();
-        fvMatrixUpper.clear();
-        fvMatrixDiag = UEqn.diag();
-        fvMatrixLower = UEqn.lower();
-        fvMatrixUpper = UEqn.upper();
-    }
+    // set fvMatrix for fast PC construction in NK solver
+    setFvMatrix("U",UEqn);
 
     if (!updatePhi)
     {
         if(isRef) UResRef_  = (UEqn&U_) + fvc::grad(p_);
         else URes_  = (UEqn&U_) + fvc::grad(p_);
         normalizeResiduals(URes);
+        scaleResiduals(URes);
     }
 
     // ******** p Residuals **********
@@ -121,21 +115,15 @@ void AdjointDerivativeSimpleFoam::calcResiduals
     );
     pEqn.setReference(pRefCell, pRefValue);
 
-    if(fvMatrixName=="pEqn") 
-    {
-        fvMatrixDiag.clear();
-        fvMatrixLower.clear();
-        fvMatrixUpper.clear();
-        fvMatrixDiag = pEqn.diag();
-        fvMatrixLower = pEqn.lower();
-        fvMatrixUpper = pEqn.upper();
-    }
+    // set fvMatrix for fast PC construction in NK solver
+    setFvMatrix("p",pEqn);
 
     if (!updatePhi)
     {
         if(isRef) pResRef_  = pEqn&p_;
         else pRes_  = pEqn&p_;
         normalizeResiduals(pRes);
+        scaleResiduals(pRes);
     }
 
     if(updatePhi) phi_=phiHbyA - pEqn.flux();
@@ -146,6 +134,7 @@ void AdjointDerivativeSimpleFoam::calcResiduals
     else phiRes_ = phiHbyA - pEqn.flux() - phi_;
     // need to normalize phiRes
     normalizePhiResiduals(phiRes);
+    scalePhiResiduals(phiRes);   
     
     return;
 
