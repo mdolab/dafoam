@@ -78,6 +78,18 @@ makeIncompressible
 cd ../simpleTDAFoam
 makeIncompressible
 
+cd ../buoyantBoussinesqSimpleDAFoam
+makeIncompressible
+
+cd ../laplacianDAFoam
+makeIncompressible
+
+cd ../scalarTransportDAFoam
+makeIncompressible
+
+cd ../solidDisplacementDAFoam
+makeIncompressible
+
 cd ../../
 
 export DF_CleanDoc=False
@@ -96,4 +108,10 @@ cd ../rhoSimpleDAFoam
 makeCompressible
 
 cd ../rhoSimpleCDAFoam
+makeCompressible
+
+cd ../turboDAFoam
+makeCompressible
+
+cd ../buoyantSimpleDAFoam
 makeCompressible

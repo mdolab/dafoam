@@ -38,6 +38,22 @@ cd ../simpleTDAFoam
 wclean
 rm Make/options
 
+cd ../buoyantBoussinesqSimpleDAFoam
+wclean
+rm Make/options
+
+cd ../laplacianDAFoam
+wclean
+rm Make/options
+
+cd ../scalarTransportDAFoam
+wclean
+rm Make/options
+
+cd ../solidDisplacementDAFoam
+wclean
+rm Make/options
+
 cd ../coloringSolverCompressible
 wclean
 rm Make/options
@@ -49,3 +65,12 @@ rm Make/options
 cd ../rhoSimpleCDAFoam
 wclean
 rm Make/options
+
+cd ../buoyantSimpleDAFoam
+wclean
+rm Make/options
+
+cd ../turboDAFoam
+wclean
+rm Make/options
+
