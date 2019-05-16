@@ -307,6 +307,21 @@ AdjointIO::AdjointIO
     );
     Info<<"fvSchemes"<<fvSchemesDict<<endl;
 
+    // read fvSolution
+    IOdictionary fvSolutionDict
+    (
+        IOobject
+        (
+            "fvSolution",
+            mesh_.time().system(),
+            mesh_,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false
+        )
+    );
+    Info<<"fvSolution"<<fvSolutionDict<<endl;
+
 }
 
 AdjointIO::~AdjointIO()

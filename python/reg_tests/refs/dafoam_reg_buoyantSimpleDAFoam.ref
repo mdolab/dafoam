@@ -1,0 +1,69 @@
++------------------------------------------------------------------------------+
+| Test Name: buoyantSimpleDAFoam SAFv3                                         |
++------------------------------------------------------------------------------+
+Eval Functions:
+Dictionary Key: CD
+@value  0.01800582074781928 1e-10 1e-10
+Dictionary Key: CL
+@value   0.5978206761690583 1e-10 1e-10
+Dictionary Key: CMX
+@value -0.02990185431046136 1e-10 1e-10
+Dictionary Key: CMY
+@value -0.0004043944236482716 1e-10 1e-10
+Dictionary Key: CMZ
+@value   0.2260794360514466 1e-10 1e-10
+Dictionary Key: NUS
+@value    15424.02970458716 1e-10 1e-10
+Dictionary Key: fail
+@value                    0 1e-10 1e-10
+Eval Functions Sens:
+Dictionary Key: CD
+Dictionary Key: shapey
+@value  0.09468248325357696 1e-06 1e-10
+@value   0.2186653998753367 1e-06 1e-10
+@value -0.04187348373363502 1e-06 1e-10
+@value -0.09915797268246404 1e-06 1e-10
+@value  -0.1552426236126148 1e-06 1e-10
+@value  -0.2543980080390585 1e-06 1e-10
+Dictionary Key: CL
+Dictionary Key: shapey
+@value    -1.77220639978289 1e-06 1e-10
+@value   -1.818573422681252 1e-06 1e-10
+@value  -0.1042651565298716 1e-06 1e-10
+@value -0.01275215422167186 1e-06 1e-10
+@value   -1.720570127045639 1e-06 1e-10
+@value  -0.7907715647637905 1e-06 1e-10
+Dictionary Key: CMX
+Dictionary Key: shapey
+@value  -0.8536188298770859 1e-06 1e-10
+@value  -0.8916201203476394 1e-06 1e-10
+@value  -0.8828622062313571 1e-06 1e-10
+@value   -1.131725290645236 1e-06 1e-10
+@value  -0.3753603498645408 1e-06 1e-10
+@value  -0.6825143418121509 1e-06 1e-10
+Dictionary Key: CMY
+Dictionary Key: shapey
+@value   -4.189176786831506 1e-06 1e-10
+@value    3.680209722287779 1e-06 1e-10
+@value   -6.891052867844896 1e-06 1e-10
+@value    6.140621670393914 1e-06 1e-10
+@value   -5.661669555678166 1e-06 1e-10
+@value    4.681767399410417 1e-06 1e-10
+Dictionary Key: CMZ
+Dictionary Key: shapey
+@value  -0.6159099281793488 1e-06 1e-10
+@value  -0.6122438790585401 1e-06 1e-10
+@value -0.03922587481705805 1e-06 1e-10
+@value -0.01326132271373956 1e-06 1e-10
+@value   -1.078247324853171 1e-06 1e-10
+@value  -0.7062292442015561 1e-06 1e-10
+Dictionary Key: NUS
+Dictionary Key: shapey
+@value   -33265.95487620815 1e-06 1e-10
+@value   -326.9404920300276 1e-06 1e-10
+@value    892.3513406655743 1e-06 1e-10
+@value    1941.106709601956 1e-06 1e-10
+@value   -2193.396993603123 1e-06 1e-10
+@value   -4168.435596356951 1e-06 1e-10
+Dictionary Key: fail
+@value                    0 1e-06 1e-10

@@ -1,59 +1,126 @@
 +------------------------------------------------------------------------------+
-| Test Name: rhoSimpleDAFoam                                                   |
+| Test Name: rhoSimpleDAFoam kOmegaSST                                         |
 +------------------------------------------------------------------------------+
 Eval Functions:
 Dictionary Key: CD
-@value  0.01455937169579174 1e-10 1e-10
+@value  0.02096326222774438 1e-10 1e-10
 Dictionary Key: CL
-@value   0.6326243779937764 1e-10 1e-10
+@value   0.5750430322424757 1e-10 1e-10
 Dictionary Key: CMX
-@value -0.03163286653124736 1e-10 1e-10
+@value -0.02877050616695362 1e-10 1e-10
 Dictionary Key: CMY
-@value -0.0006524586709132484 1e-10 1e-10
+@value -0.0002069857462004832 1e-10 1e-10
 Dictionary Key: CMZ
-@value   0.2445143679120778 1e-10 1e-10
+@value   0.2184178174919476 1e-10 1e-10
 Dictionary Key: fail
 @value                    0 1e-10 1e-10
 Eval Functions Sens:
 Dictionary Key: CD
 Dictionary Key: shapey
-@value   0.1156622759476667 1e-06 1e-10
-@value   0.2190127168455174 1e-06 1e-10
-@value -0.03717207386850253 1e-06 1e-10
-@value  -0.1025349399420209 1e-06 1e-10
-@value  -0.1735561329980463 1e-06 1e-10
-@value  -0.2653004514524276 1e-06 1e-10
+@value   0.1377712462241228 1e-06 1e-10
+@value   0.2368917702354698 1e-06 1e-10
+@value -0.04253904873325209 1e-06 1e-10
+@value -0.08373082902707374 1e-06 1e-10
+@value  -0.1247640411056077 1e-06 1e-10
+@value   -0.252359266852311 1e-06 1e-10
 Dictionary Key: CL
 Dictionary Key: shapey
-@value   -2.065416564794901 1e-06 1e-10
-@value   -1.864352186668728 1e-06 1e-10
-@value -0.05883055123258057 1e-06 1e-10
-@value  0.06935312422963741 1e-06 1e-10
-@value   -2.244275227664685 1e-06 1e-10
-@value   -1.070107167323948 1e-06 1e-10
+@value   -3.356637439641291 1e-06 1e-10
+@value   -2.728698238096582 1e-06 1e-10
+@value -0.07978415401274674 1e-06 1e-10
+@value  -0.3130398178165632 1e-06 1e-10
+@value   -2.585044841053436 1e-06 1e-10
+@value    -1.07157933488519 1e-06 1e-10
 Dictionary Key: CMX
 Dictionary Key: shapey
-@value  -0.8392357442871263 1e-06 1e-10
-@value  -0.8861800759866134 1e-06 1e-10
-@value  -0.8859328641887799 1e-06 1e-10
-@value   -1.133215623983765 1e-06 1e-10
-@value   -0.349435045762334 1e-06 1e-10
-@value  -0.6670786668942856 1e-06 1e-10
+@value  -0.7730642418483569 1e-06 1e-10
+@value  -0.8475261028367722 1e-06 1e-10
+@value   -0.883457442837345 1e-06 1e-10
+@value   -1.118611957985633 1e-06 1e-10
+@value  -0.3320777888619578 1e-06 1e-10
+@value  -0.6694502427714837 1e-06 1e-10
 Dictionary Key: CMY
 Dictionary Key: shapey
-@value   -4.198704609940007 1e-06 1e-10
-@value    3.662078122943224 1e-06 1e-10
-@value   -6.914284631254105 1e-06 1e-10
-@value    6.105396804700781 1e-06 1e-10
-@value   -5.705799993489107 1e-06 1e-10
-@value     4.62558292627569 1e-06 1e-10
+@value   -4.177993379046933 1e-06 1e-10
+@value    3.695298167940281 1e-06 1e-10
+@value   -6.881402593976928 1e-06 1e-10
+@value    6.161798800623494 1e-06 1e-10
+@value   -5.647684899547857 1e-06 1e-10
+@value    4.700109158659433 1e-06 1e-10
 Dictionary Key: CMZ
 Dictionary Key: shapey
-@value  -0.7355866952024845 1e-06 1e-10
-@value  -0.6341395546999697 1e-06 1e-10
-@value -0.01524885742349272 1e-06 1e-10
-@value  0.02563438643053197 1e-06 1e-10
-@value   -1.328522418609014 1e-06 1e-10
-@value  -0.8336212063671703 1e-06 1e-10
+@value   -1.089554856065155 1e-06 1e-10
+@value  -0.9110503134349568 1e-06 1e-10
+@value -0.04865127225109736 1e-06 1e-10
+@value -0.07991951898811828 1e-06 1e-10
+@value   -1.344250091734559 1e-06 1e-10
+@value  -0.7820802020345023 1e-06 1e-10
+Dictionary Key: fail
+@value                    0 1e-06 1e-10
+
+
++------------------------------------------------------------------------------+
+| Test Name: rhoSimpleDAFoam curvedCube-SA                                     |
++------------------------------------------------------------------------------+
+Eval Functions:
+Dictionary Key: AVGS
+@value    105791.5437152898 1e-10 1e-10
+Dictionary Key: AVGV
+@value    207.6244635173591 1e-10 1e-10
+Dictionary Key: CD
+@value    1.536833062629213 1e-10 1e-10
+Dictionary Key: CL
+@value   -64.53476019204204 1e-10 1e-10
+Dictionary Key: CMX
+@value    32.26820364941646 1e-10 1e-10
+Dictionary Key: CMY
+@value   0.7687702411053285 1e-10 1e-10
+Dictionary Key: CMZ
+@value   -30.51052208651351 1e-10 1e-10
+Dictionary Key: VARV
+@value    487.1915764458973 1e-10 1e-10
+Dictionary Key: fail
+@value                    0 1e-10 1e-10
+Eval Functions Sens:
+Dictionary Key: AVGS
+Dictionary Key: UIn
+@value    120.7942843944215 1e-06 1e-10
+Dictionary Key: shapey
+@value    10917.82334730953 1e-06 1e-10
+Dictionary Key: AVGV
+Dictionary Key: UIn
+@value    1.685610221300128 1e-06 1e-10
+Dictionary Key: shapey
+@value    90.45218263558526 1e-06 1e-10
+Dictionary Key: CD
+Dictionary Key: UIn
+@value   0.0327053306937623 1e-06 1e-10
+Dictionary Key: shapey
+@value    4.515306258424578 1e-06 1e-10
+Dictionary Key: CL
+Dictionary Key: UIn
+@value   0.1026865251697524 1e-06 1e-10
+Dictionary Key: shapey
+@value    12.56160967005277 1e-06 1e-10
+Dictionary Key: CMX
+Dictionary Key: UIn
+@value -0.05132729849077773 1e-06 1e-10
+Dictionary Key: shapey
+@value   -6.277572608959125 1e-06 1e-10
+Dictionary Key: CMY
+Dictionary Key: UIn
+@value  0.01635977576352568 1e-06 1e-10
+Dictionary Key: shapey
+@value    2.258610879661112 1e-06 1e-10
+Dictionary Key: CMZ
+Dictionary Key: UIn
+@value  0.08954588904243049 1e-06 1e-10
+Dictionary Key: shapey
+@value    9.760241534234561 1e-06 1e-10
+Dictionary Key: VARV
+Dictionary Key: UIn
+@value    14.38084864472949 1e-06 1e-10
+Dictionary Key: shapey
+@value    2028.121314271666 1e-06 1e-10
 Dictionary Key: fail
 @value                    0 1e-06 1e-10

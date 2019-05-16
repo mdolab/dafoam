@@ -1,0 +1,124 @@
++------------------------------------------------------------------------------+
+| Test Name: turboDAFoam Transonic                                             |
++------------------------------------------------------------------------------+
+Eval Functions:
+Dictionary Key: CMZ
+@value    30.28762922178657 1e-10 1e-10
+Dictionary Key: MFR
+@value   0.8218576805007861 1e-10 1e-10
+Dictionary Key: TPR
+@value    1.169708182777611 1e-10 1e-10
+Dictionary Key: TTR
+@value    1.066912818602703 1e-10 1e-10
+Dictionary Key: fail
+@value                    0 1e-10 1e-10
+Eval Functions Sens:
+Dictionary Key: CMZ
+Dictionary Key: shapey
+@value    30.40279026554341 1e-06 1e-10
+@value    20.23250917932614 1e-06 1e-10
+@value    42.27757691366324 1e-06 1e-10
+@value    38.80722229525968 1e-06 1e-10
+Dictionary Key: shapez
+@value    30.90233811349452 1e-06 1e-10
+@value    43.78287939402398 1e-06 1e-10
+@value    11.85819123495532 1e-06 1e-10
+@value    27.37523896461582 1e-06 1e-10
+Dictionary Key: MFR
+Dictionary Key: shapey
+@value   0.4989396103893833 1e-06 1e-10
+@value   -1.926849838643164 1e-06 1e-10
+@value   0.6821339798930891 1e-06 1e-10
+@value   -0.749090901605784 1e-06 1e-10
+Dictionary Key: shapez
+@value   0.5905284924323075 1e-06 1e-10
+@value    1.918525447516943 1e-06 1e-10
+@value   0.3492069710702931 1e-06 1e-10
+@value    1.557259678258761 1e-06 1e-10
+Dictionary Key: TPR
+Dictionary Key: shapey
+@value   0.1347800433055804 1e-06 1e-10
+@value   0.2786935036228638 1e-06 1e-10
+@value   0.1325208446159232 1e-06 1e-10
+@value   0.2801230736236183 1e-06 1e-10
+Dictionary Key: shapez
+@value -0.008260573334466101 1e-06 1e-10
+@value -0.05197990370056236 1e-06 1e-10
+@value  -0.0357999264255805 1e-06 1e-10
+@value -0.06746465684586961 1e-06 1e-10
+Dictionary Key: TTR
+Dictionary Key: shapey
+@value  0.04048782234250085 1e-06 1e-10
+@value   0.1727202380998953 1e-06 1e-10
+@value  0.02071299882952386 1e-06 1e-10
+@value   0.1040258064597746 1e-06 1e-10
+Dictionary Key: shapez
+@value   0.0141216946762244 1e-06 1e-10
+@value -0.02019439883722973 1e-06 1e-10
+@value  0.01752722424053702 1e-06 1e-10
+@value -0.01404414151495559 1e-06 1e-10
+Dictionary Key: fail
+@value                    0 1e-06 1e-10
+
+
++------------------------------------------------------------------------------+
+| Test Name: turboDAFoam Subsonic                                              |
++------------------------------------------------------------------------------+
+Eval Functions:
+Dictionary Key: CMZ
+@value    10.92517952887331 1e-10 1e-10
+Dictionary Key: MFR
+@value    0.719766843657484 1e-10 1e-10
+Dictionary Key: TPR
+@value    1.038418972901722 1e-10 1e-10
+Dictionary Key: TTR
+@value    1.013743728912733 1e-10 1e-10
+Dictionary Key: fail
+@value                    0 1e-10 1e-10
+Eval Functions Sens:
+Dictionary Key: CMZ
+Dictionary Key: shapey
+@value    4.445924303391315 1e-06 1e-10
+@value    10.10002614925569 1e-06 1e-10
+@value    11.32835841241246 1e-06 1e-10
+@value    4.885151639383039 1e-06 1e-10
+Dictionary Key: shapez
+@value    20.46754955504068 1e-06 1e-10
+@value    25.34041392299988 1e-06 1e-10
+@value    12.81679301461162 1e-06 1e-10
+@value    25.69849176440812 1e-06 1e-10
+Dictionary Key: MFR
+Dictionary Key: shapey
+@value -0.02091932349828712 1e-06 1e-10
+@value   -1.266148786509361 1e-06 1e-10
+@value  0.03737200644612627 1e-06 1e-10
+@value   -1.443374519570546 1e-06 1e-10
+Dictionary Key: shapez
+@value   0.3870971179250827 1e-06 1e-10
+@value    1.319718040822666 1e-06 1e-10
+@value   0.4447482871825678 1e-06 1e-10
+@value    1.765150643594367 1e-06 1e-10
+Dictionary Key: TPR
+Dictionary Key: shapey
+@value  0.03812168256079192 1e-06 1e-10
+@value  0.05253318061901075 1e-06 1e-10
+@value  0.03509225387590931 1e-06 1e-10
+@value  0.05687137866176169 1e-06 1e-10
+Dictionary Key: shapez
+@value 0.006275526125884372 1e-06 1e-10
+@value  0.02039978251525933 1e-06 1e-10
+@value 0.002210024657293778 1e-06 1e-10
+@value 0.006339461867400101 1e-06 1e-10
+Dictionary Key: TTR
+Dictionary Key: shapey
+@value   0.0138492838776227 1e-06 1e-10
+@value  0.03765091142371307 1e-06 1e-10
+@value  0.01194429308915303 1e-06 1e-10
+@value  0.03511869938892206 1e-06 1e-10
+Dictionary Key: shapez
+@value 0.002742030568146636 1e-06 1e-10
+@value 0.0002817186089294722 1e-06 1e-10
+@value 0.001497350411198238 1e-06 1e-10
+@value -0.005979236823941163 1e-06 1e-10
+Dictionary Key: fail
+@value                    0 1e-06 1e-10

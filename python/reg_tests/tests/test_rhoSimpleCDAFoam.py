@@ -34,11 +34,16 @@ inletu0, dragdir0, liftdir0 = calcUAndDir(UmagIn,alpha0)
 # solver configurations
 testInfo=OrderedDict()
 testInfo['task1']={'solver':'rhoSimpleCDAFoam',
-                    'turbModel':'SpalartAllmarasFv3',
+                    'turbModel':'kOmegaSST',
                     'flowCondition':'Compressible',
                     'useWallFunction':'true',
                     'testCases':[allCases[0]]}
-                    
+testInfo['task2']={'solver':'rhoSimpleCDAFoam',
+                    'turbModel':'kOmega',
+                    'flowCondition':'Compressible',
+                    'useWallFunction':'true',
+                    'testCases':[allCases[0]]}
+
 defOpts = {
             'outputdirectory':          './',
             'writesolution':            False,
@@ -46,7 +51,7 @@ defOpts = {
 
             'designsurfacefamily':      'designsurfaces',
             'designsurfaces':           ['wing'],
-            'rasmodel':                 'SpalartAllmarasFv3',
+            'rasmodel':                 'kEpsilon',
             'divdev2':                  True,
             'flowcondition':            'Compressible',
             'adjointsolver':            'rhoSimpleCDAFoam',
@@ -85,6 +90,9 @@ defOpts = {
             'divschemes':               {'div(phi,U)':'Gauss linearUpwindV grad(U)',
                                          'div(phi,e)':'Gauss upwind',
                                          'div(phi,nuTilda)':'Gauss upwind',
+                                         'div(phi,k)':'Gauss upwind',
+                                         'div(phi,omega)':'Gauss upwind',
+                                         'div(phi,epsilon)':'Gauss upwind',
                                          'default':'none',
                                          'div(((rho*nuEff)*dev2(T(grad(U)))))': 'Gauss linear',
                                          'div(phi,Ekp)': 'Gauss upwind',
@@ -101,10 +109,10 @@ defOpts = {
                                          'eUpperBound':'500000',
                                          'transonic':'true'},
             'fvrelaxfactors':           {'fields':{'p':1.0},
-                                         'equations':{'p':1.0,'U':0.8,'nuTilda':0.7,'e':0.7}},
+                                         'equations':{'p':1.0,'U':0.8,'nuTilda':0.7,'e':0.7,'k':0.7,'omega':0.7,'epsilon':0.7}},
             'nffdpoints':               6,
-            'maxflowiters':             400, 
-            'writeinterval':            400, 
+            'maxflowiters':             500, 
+            'writeinterval':            500, 
             'stateresettol':            1e-5,
             'adjgmresmaxiters':         1000,
             'adjgmresrestart':          1000,
@@ -123,12 +131,11 @@ defOpts = {
                                          'nuTildaScaling':1e-3,
                                          'kScaling':0.06,
                                          'omegaScaling':400.0,
-                                         'epsilonScaling':2.16,
+                                         'epsilonScaling':1.0,
                                          'TScaling':300.0},
             'referencevalues':          {'magURef':UmagIn,'ARef':0.1,'LRef':1.0,'pRef':101325.0,'rhoRef':1.0},
             'mpispawnrun':              True,
             'adjdvtypes':               ['FFD'],
-            'decomposepardict':         {'method':'simple','simpleCoeffs':{'n':'(2 2 1)','delta':'0.001'}}
            }
 
 if __name__ == '__main__':

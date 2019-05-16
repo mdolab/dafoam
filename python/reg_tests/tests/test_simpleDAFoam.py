@@ -3,10 +3,11 @@ import sys
 from mpi4py import MPI
 from collections import OrderedDict
 from AirfoilSetup import runTests
+from CurvedCubeSetup import runTests as runTests1
 import numpy as np
 
 # ###################################################################
-# Test: rhoSimpleDAFoam
+# Test: simpleDAFoam
 # ###################################################################
 
 def printHeader(testName):
@@ -19,8 +20,9 @@ printHeader('simpleDAFoam')
 sys.stdout.flush()
 
 # cases
-allCases = ['Airfoil']
+allCases = ['Airfoil','CurvedCubeSnappyHexMesh']
 
+# Airfoil case
 def calcUAndDir(UIn,alpha1):
     dragDir = [ np.cos(alpha1*np.pi/180),np.sin(alpha1*np.pi/180),0]
     liftDir = [-np.sin(alpha1*np.pi/180),np.cos(alpha1*np.pi/180),0]
@@ -32,12 +34,31 @@ alpha0=2.5
 inletu0, dragdir0, liftdir0 = calcUAndDir(UmagIn,alpha0)
 
 # solver configurations
+# for the airfoil case
 testInfo=OrderedDict()
 testInfo['task1']={'solver':'simpleDAFoam',
-                    'turbModel':'SpalartAllmaras',
+                    'turbModel':'kOmegaSST',
                     'flowCondition':'Incompressible',
                     'useWallFunction':'false',
                     'testCases':[allCases[0]]}
+testInfo['task2']={'solver':'simpleDAFoam',
+                    'turbModel':'kEpsilon',
+                    'flowCondition':'Incompressible',
+                    'useWallFunction':'true',
+                    'testCases':[allCases[0]]}
+testInfo['task3']={'solver':'simpleDAFoam',
+                    'turbModel':'LaunderSharmaKE',
+                    'flowCondition':'Incompressible',
+                    'useWallFunction':'false',
+                    'testCases':[allCases[0]]}
+
+# for the curvedCube case
+testInfo1=OrderedDict()
+testInfo1['task1']={'solver':'simpleDAFoam',
+                    'turbModel':'SpalartAllmaras',
+                    'flowCondition':'Incompressible',
+                    'useWallFunction':'false',
+                    'testCases':[allCases[1]]}
                     
 defOpts = {
             'outputdirectory':          './',
@@ -101,10 +122,59 @@ defOpts = {
             'referencevalues':          {'magURef':UmagIn,'ARef':0.1,'LRef':1.0,'pRef':0.0,'rhoRef':1.0},
             'mpispawnrun':              True,
             'adjdvtypes':               ['FFD'],
-            'decomposepardict':         {'method':'simple','simpleCoeffs':{'n':'(2 2 1)','delta':'0.001'}}
+            'runpotentialfoam':         True
            }
 
 if __name__ == '__main__':
 
+    # run the airfoil case
     runTests(sys.argv[1],defOpts,testInfo)
+
+    # now reset some parameters and run the 3D curvedCube case
+    alpha0=0.0
+    inletu0, dragdir0, liftdir0         = calcUAndDir(UmagIn,alpha0)
+    defOpts['liftdir']                  = liftdir0
+    defOpts['dragdir']                  = dragdir0
+    defOpts['flowbcs']['bc0']['value']  = inletu0
+    defOpts['nffdpoints']               = 1
+    defOpts['maxflowiters']             = 100 
+    defOpts['writeinterval']            = 100 
+    defOpts['objfuncs']                 = ['CD','CL','CMX','CMY','CMZ','AVGV','VARV','AVGS']
+    defOpts['designsurfaces']           = ['wallsbump']
+    defOpts['objfuncgeoinfo']           = [['wallsbump'],
+                                           ['wallsbump'],
+                                           ['wallsbump'],
+                                           ['wallsbump'],
+                                           ['wallsbump'],
+                                           ['userDefinedVolume0'],
+                                           ['userDefinedVolume0'],
+                                           ['userDefinedPatch0']]
+    defOpts['userdefinedpatchinfo']     = {'userDefinedPatch0':{'type':'patch',
+                                           'patchName':'inlet',
+                                           'stateName':'p',
+                                           'component':0,
+                                           'scale':1.0}}
+    defOpts['userdefinedvolumeinfo']    = {'userDefinedVolume0':{'type':'annulus',
+                                           'stateName':'U',
+                                           'component':0,
+                                           'scale':1.0,
+                                           'centerX':0.5,
+                                           'centerY':0.5,
+                                           'centerZ':0.5,
+                                           'width':0.5,
+                                           'radiusInner':0.1,
+                                           'radiusOuter':0.3,
+                                           'axis':'x'}}
+    defOpts['inletpatches']             = ['inlet']
+    defOpts['outletpatches']            = ['outlet']
+    defOpts['flowbcs']                  = {'bc0':{'patch':'inlet','variable':'U','value':inletu0},
+                                           'bc1':{'patch':'outlet','variable':'p','value':[0.0]},
+                                           'bc2':{'patch':'inlet','variable':'k','value':[0.06]},
+                                           'bc3':{'patch':'inlet','variable':'omega','value':[400.0]},
+                                           'bc4':{'patch':'inlet','variable':'epsilon','value':[2.16]},
+                                           'bc5':{'patch':'inlet','variable':'nuTilda','value':[1.5e-4]},
+                                           'bc6':{'patch':'inlet','variable':'T','value':[300.0]},
+                                           'useWallFunction':'false'}
+    defOpts['adjdvtypes']               = ['FFD','UIn']
+    runTests1(sys.argv[1],defOpts,testInfo1)
 

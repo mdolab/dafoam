@@ -1,495 +1,248 @@
 +------------------------------------------------------------------------------+
-| Test Name: simpleDAFoam                                                      |
+| Test Name: simpleDAFoam kOmegaSST                                            |
 +------------------------------------------------------------------------------+
-+---------------------------------------+
-|          All PYDAFOAM Options:          |
-+---------------------------------------+
-{'actuatoractive': 0,
- 'actuatoradjustthrust': 0,
- 'actuatorpoverd': [],
- 'actuatorrotationdir': [],
- 'actuatorthrustcoeff': [],
- 'actuatorvolumenames': [],
- 'adjasmoverlap': 1,
- 'adjdvtypes': ['FFD'],
- 'adjglobalpciters': 0,
- 'adjgmresabstol': 1e-16,
- 'adjgmresmaxiters': 1000,
- 'adjgmresreltol': 1e-08,
- 'adjgmresrestart': 1000,
- 'adjjacmatordering': 'cell',
- 'adjjacmatreordering': 'nd',
- 'adjlocalpciters': 1,
- 'adjointsolver': 'simpleDAFoam',
- 'adjpcfilllevel': 1,
- 'avgobjfuncs': False,
- 'avgobjfuncsstart': 1000,
- 'calcpcmat': True,
- 'casename': 'pyDAFoamCase',
- 'cofr': [0.0, 0.0, 0.0],
- 'correctwalldist': True,
- 'd2dt2schemes': {'default': 'steadyState'},
- 'ddtschemes': {'default': 'steadyState'},
- 'decomposepardict': {'method': 'simple',
-                      'simpleCoeffs': {'delta': '0.001', 'n': '(2 2 1)'}},
- 'delturbprod4pcmat': False,
- 'derivuininfo': {'component': 0,
-                  'patchNames': ['inlet'],
-                  'stateName': 'U',
-                  'type': 'fixedValue'},
- 'designsurfacefamily': 'designsurfaces',
- 'designsurfaces': ['wing'],
- 'divdev2': True,
- 'divschemes': {'default': 'none',
-                'div(((rho*nuEff)*dev2(T(grad(U)))))': 'Gauss linear',
-                'div((-devRhoReff.T()&U))': 'Gauss linear',
-                'div((nuEff*dev2(T(grad(U)))))': 'Gauss linear',
-                'div((p*(U-URel)))': 'Gauss linear',
-                'div((phi|interpolate(rho)),p)': 'Gauss upwind',
-                'div(pc)': 'bounded Gauss upwind',
-                'div(phi,Ekp)': 'bounded Gauss upwind',
-                'div(phi,K)': 'bounded Gauss upwind',
-                'div(phi,ReThetat)': 'bounded Gauss upwind',
-                'div(phi,T)': 'bounded Gauss upwind',
-                'div(phi,U)': 'bounded Gauss linearUpwindV grad(U)',
-                'div(phi,e)': 'bounded Gauss upwind',
-                'div(phi,epsilon)': 'bounded Gauss upwind',
-                'div(phi,gammaInt)': 'bounded Gauss upwind',
-                'div(phi,h)': 'bounded Gauss upwind',
-                'div(phi,k)': 'bounded Gauss upwind',
-                'div(phi,nuTilda)': 'bounded Gauss upwind',
-                'div(phi,omega)': 'bounded Gauss upwind',
-                'div(phid,p)': 'Gauss upwind',
-                'div(sigmaD)': 'Gauss linear'},
- 'divuadj': '',
- 'dragdir': [0.9990482215818578, 0.043619387365336, 0],
- 'dummy': 'test',
- 'epsderiv': 1e-06,
- 'epsderivffd': 0.0001,
- 'epsderivuin': 1e-05,
- 'epsderivvis': 1e-08,
- 'epsderivxv': 1e-07,
- 'fastpcmat': False,
- 'filechecktime': 1.0,
- 'flowbcs': {'bc0': {'patch': 'inout',
-                     'value': [29.971446647455736, 1.30858162096008, 0],
-                     'variable': 'U'},
-             'bc1': {'patch': 'inout', 'value': [0.0], 'variable': 'p'},
-             'bc2': {'patch': 'inout', 'value': [0.06], 'variable': 'k'},
-             'bc3': {'patch': 'inout', 'value': [400.0], 'variable': 'omega'},
-             'bc4': {'patch': 'inout',
-                     'value': [2.16],
-                     'variable': 'epsilon'},
-             'bc5': {'patch': 'inout',
-                     'value': [0.00015],
-                     'variable': 'nuTilda'},
-             'bc6': {'patch': 'inout', 'value': [300.0], 'variable': 'T'},
-             'useWallFunction': 'false'},
- 'flowcondition': 'Incompressible',
- 'fluxrequired': ['p', 'p_rgh', 'Phi'],
- 'fvrelaxfactors': {'equations': {'G': 0.7,
-                                  'ReThetat': 0.7,
-                                  'T': 0.7,
-                                  'U': 0.7,
-                                  'e': 0.7,
-                                  'epsilon': 0.7,
-                                  'gammaInt': 0.7,
-                                  'h': 0.7,
-                                  'k': 0.7,
-                                  'nuTilda': 0.7,
-                                  'omega': 0.7},
-                    'fields': {'p': 0.3, 'p_rgh': 0.3, 'rho': 0.3}},
- 'fvsolvers': {'"(U|T|e|h|nuTilda|k|omega|epsilon|ReThetat|gammaInt)"': {'maxIter': '10',
-                                                                         'nSweeps': '1',
-                                                                         'relTol': '0.1',
-                                                                         'smoother': 'GaussSeidel',
-                                                                         'solver': 'smoothSolver',
-                                                                         'tolerance': '1e-20'},
-               '"(U|T|e|h|nuTilda|k|omega|epsilon|ReThetat|gammaInt)Final"': {'maxIter': '500',
-                                                                              'nSweeps': '1',
-                                                                              'relTol': '0',
-                                                                              'smoother': 'GaussSeidel',
-                                                                              'solver': 'smoothSolver',
-                                                                              'tolerance': '1e-06'},
-               '"(p|p_rgh|G)"': {'agglomerator': 'faceAreaPair',
-                                 'cacheAgglomeration': 'true',
-                                 'maxIter': '10',
-                                 'mergeLevels': '1',
-                                 'nCellsInCoarsestLevel': '10',
-                                 'nPostSweeps': '2',
-                                 'nPreSweeps': '0',
-                                 'relTol': '0.1',
-                                 'smoother': 'GaussSeidel',
-                                 'solver': 'GAMG',
-                                 'tolerance': '1e-20'},
-               '"(p|p_rgh|G)Final"': {'agglomerator': 'faceAreaPair',
-                                      'cacheAgglomeration': 'true',
-                                      'maxIter': '500',
-                                      'mergeLevels': '1',
-                                      'nCellsInCoarsestLevel': '10',
-                                      'nPostSweeps': '2',
-                                      'nPreSweeps': '0',
-                                      'relTol': '0',
-                                      'smoother': 'GaussSeidel',
-                                      'solver': 'GAMG',
-                                      'tolerance': '1e-06'},
-               'Phi': {'agglomerator': 'faceAreaPair',
-                       'cacheAgglomeration': 'true',
-                       'maxIter': '50',
-                       'mergeLevels': '1',
-                       'nCellsInCoarsestLevel': '10',
-                       'relTol': '1e-2',
-                       'smoother': 'DIC',
-                       'solver': 'GAMG',
-                       'tolerance': '1e-6'}},
- 'gradschemes': {'default': 'Gauss linear'},
- 'inletpatches': ['inout'],
- 'interpolationschemes': {'default': 'linear'},
- 'laplacianschemes': {'default': 'Gauss linear corrected'},
- 'liftdir': [-0.043619387365336, 0.9990482215818578, 0],
- 'maxflowiters': 400,
- 'maxresconlv4jacpcmat': {'GRes': 2,
-                          'ReThetatRes': 2,
-                          'TRes': 2,
-                          'URes': 2,
-                          'eRes': 2,
-                          'epsilonRes': 2,
-                          'gammaIntRes': 2,
-                          'kRes': 2,
-                          'nuTildaRes': 2,
-                          'omegaRes': 2,
-                          'pRes': 2,
-                          'p_rghRes': 2,
-                          'phiRes': 1},
- 'maxtoljac': 100000000000000.0,
- 'maxtolpc': 100000000000000.0,
- 'mechanicalproperties': {'E': 200000000000.0, 'nu': 0.0, 'rho': 7854.0},
- 'meshmaxaspectratio': 1000.0,
- 'meshmaxnonortho': 70.0,
- 'meshmaxskewness': 4.0,
- 'meshminfacearea': -1.0,
- 'meshminvol': 1e-16,
- 'meshsurfacefamily': None,
- 'mintoljac': 1e-14,
- 'mintolpc': 1e-14,
- 'mpispawnrun': True,
- 'mrfproperties': {'active': 'false',
-                   'axis': [0, 0, 1],
-                   'cellzone': 'region0',
-                   'nonrotatingpatches': [],
-                   'omega': 0,
-                   'origin': [0, 0, 0],
-                   'selectionmode': 'cellZone'},
- 'multipointopt': False,
- 'nffdpoints': 6,
- 'nkabstol': 1e-12,
- 'nkasmoverlap': 1,
- 'nkewrtol0': 0.3,
- 'nkewrtolmax': 0.7,
- 'nkglobalpciters': 0,
- 'nkgmresmaxiters': 500,
- 'nkgmresrestart': 500,
- 'nkjacmatreordering': 'rcm',
- 'nklocalpciters': 1,
- 'nkmaxfuncevals': 10000,
- 'nkmaxiters': 100,
- 'nkpcfilllevel': 0,
- 'nkpclag': 1,
- 'nkreltol': 1e-08,
- 'nksegregatedphi': False,
- 'nksegregatedturb': False,
- 'nkstol': 1e-08,
- 'normalizeresiduals': ['URes',
-                        'pRes',
-                        'p_rghRes',
-                        'phiRes',
-                        'TRes',
-                        'nuTildaRes',
-                        'kRes',
-                        'omegaRes',
-                        'epsilonRes'],
- 'normalizestates': ['U',
-                     'p',
-                     'p_rgh',
-                     'phi',
-                     'T',
-                     'nuTilda',
-                     'k',
-                     'omega',
-                     'epsilon'],
- 'objfuncgeoinfo': [['wing'], ['wing'], ['wing'], ['wing'], ['wing']],
- 'objfuncs': ['CD', 'CL', 'CMX', 'CMY', 'CMZ'],
- 'objstdthres': 100000000.0,
- 'outletpatches': ['inout'],
- 'outputdirectory': './',
- 'pisocontrol': {'maxCo': '0.5',
-                 'maxDeltaT': '0.5',
-                 'nCorrectors': '2',
-                 'nNonOrthogonalCorrectors': '0',
-                 'pRefCell': '0',
-                 'pRefValue': '0',
-                 'rDeltaTSmoothingCoeff': '0.5'},
- 'postprocessingdir': 'postProcessing',
- 'preservepatches': [],
- 'printalloptions': True,
- 'radiationproperties': {'E': 0.0,
-                         'absorptivity': 0.5,
-                         'emissivity': 0.5,
-                         'radiation': 'off',
-                         'radiationModel': 'none',
-                         'solverFreq': 1},
- 'rasmodel': 'SpalartAllmaras',
- 'rasmodelparameters': {'Cv2': '5.0',
-                        'decayControl': 'no',
-                        'epsilonMin': '1e-16',
-                        'kInf': '1.0',
-                        'kMin': '1e-16',
-                        'lambdaErr': '1e-6',
-                        'maxLambdaIter': '10',
-                        'nuTildaMin': '1e-16',
-                        'omegaInf': '1.0',
-                        'omegaMin': '1e-16'},
- 'reducerescon4jacmat': False,
- 'referencevalues': {'ARef': 0.1,
-                     'LRef': 1.0,
-                     'magURef': 30.0,
-                     'pRef': 0.0,
-                     'rhoRef': 1.0},
- 'rerunopt2': -9999,
- 'residualcontrol': 1e-20,
- 'residualscaling': {},
- 'restartopt': False,
- 'rotrad': [0.0, 0.0, 0.0],
- 'runpotentialfoam': False,
- 'setflowbcs': True,
- 'simplecontrol': {'ULowerBound': '-1000',
-                   'UUpperBound': '1000',
-                   'consistent': 'false',
-                   'eLowerBound': '50000',
-                   'eUpperBound': '800000',
-                   'hLowerBound': '50000',
-                   'hUpperBound': '800000',
-                   'nNonOrthogonalCorrectors': '0',
-                   'pLowerBound': '20000',
-                   'pUpperBound': '1000000',
-                   'rhoLowerBound': '0.2',
-                   'rhoUpperBound': '10.0',
-                   'transonic': 'false'},
- 'sngradschemes': {'default': 'corrected'},
- 'stateresettol': 1e-05,
- 'statescaling': {'TScaling': 300.0,
-                  'UScaling': 30.0,
-                  'epsilonScaling': 2.16,
-                  'kScaling': 0.06,
-                  'nuTildaScaling': 0.001,
-                  'omegaScaling': 400.0,
-                  'pScaling': 450.0,
-                  'p_rghScaling': 450.0,
-                  'phiScaling': 1.0},
- 'thermalproperties': {'C': 434.0,
-                       'alpha': 1.1e-05,
-                       'k': 60.5,
-                       'thermalStress': 'false'},
- 'thermoproperties': {'Cp': 1005.0,
-                      'Hf': 0.0,
-                      'Pr': 0.7,
-                      'Prt': 1.0,
-                      'TRef': 300.0,
-                      'molWeight': 28.97,
-                      'mu': 1.8e-05},
- 'thermotype': {'energy': 'sensibleInternalEnergy',
-                'equationOfState': 'perfectGas',
-                'mixture': 'pureMixture',
-                'specie': 'specie',
-                'thermo': 'hConst',
-                'transport': 'const',
-                'type': 'hePsiThermo'},
- 'tractionbcmaxiter': 20,
- 'transproperties': {'Pr': 0.7,
-                     'Prt': 0.85,
-                     'TRef': 300.0,
-                     'beta': 0.003,
-                     'nu': 1.5e-05},
- 'updatedefaultdicts': {},
- 'updatemesh': False,
- 'usecoloring': True,
- 'usenksolver': False,
- 'userdefinedpatchinfo': {},
- 'userdefinedvolumeinfo': {},
- 'walldistmethod': 'meshWave',
- 'writecompress': 'on',
- 'writeformat': 'ascii',
- 'writeinterval': 400,
- 'writelinesearch': False,
- 'writematrices': False,
- 'writesolution': False}
-Checking if we need to compress the mesh files
-Checking if we need to decompose the domain
-Checking if we need to copy points to points_orig
-Checking if we need to compress the mesh files
-Copying points_orig to points
-Reading points
-Done Init.
-+---------------------------------------+
-|     All IDWarp Options:               |
-+---------------------------------------+
-{'LdefFact': 1.0,
- 'aExp': 3.0,
- 'alpha': 0.25,
- 'bExp': 5.0,
- 'bucketSize': 8,
- 'cornerAngle': 30.0,
- 'errTol': 0.0005,
- 'evalMode': 'fast',
- 'fileType': 'openfoam',
- 'gridFile': './',
- 'restartFile': None,
- 'specifiedSurfaces': None,
- 'symmTol': 1e-06,
- 'symmetryPlanes': [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]],
- 'symmetrySurfaces': None,
- 'useRotations': True,
- 'zeroCornerRotations': True}
-Checking if we need to compress the mesh files
-#------------------------------#
- Total Volume Nodes :      4066 
-#------------------------------#
-+-------------------- Symmetry Planes -------------------+
-|           Point                        Normal          |
-| (  0.000   0.000   0.000)    (  0.000   0.000   1.000) |
-+--------------------------------------------------------+
-#--------------------------------#
- Unique Surface Nodes :       114 
-#--------------------------------#
- Computing Denomenator Estimate...
- Load Balancing...
- Finished Mesh Initialization.
-Colorings not found, running coloringSolverIncompressible, see coloringLog file for details
-Running Coloring Solver...
-Running Coloring Solver...
-Running Coloring Solver...
-Running Coloring Solver...
-Coloring finished
-Coloring finished
-Coloring finished
-Coloring finished
-Deleting Previous Solution Files
-Checking Mesh Quality.
-Copying checkMeshLog to ./checkMeshLog_000
-Checking Mesh Quality. Passed!
-Calling Flow Solver 000
-Simulation Started...
-Running Flow Solver...
-Running Flow Solver...
-Running Flow Solver...
-Running Flow Solver...
-Finished, writing end file
-Finished, writing end file
-Finished, writing end file
-Finished, writing end file
-Simulation Finished!
-Copying flowLog to ./flowLog_000
-Copying objFuncs.dat to ./objFuncs_000.dat
-Reading ./objFuncs_000.dat
-('keys', ['CL', 'CMX', 'CMZ', 'CMY', 'CD'])
-CD std: 1.16088115827e-11
-CL std: 2.27686444327e-10
-CMX std: 1.13554678235e-11
-CMY std: 9.96530773236e-13
-CMZ std: 6.8930704263e-11
 Eval Functions:
 Dictionary Key: CD
-@value  0.01336211358253882 1e-10 1e-10
+@value  0.01312899645348919 1e-10 1e-10
 Dictionary Key: CL
-@value   0.4501196019258704 1e-10 1e-10
+@value   0.4438403510653418 1e-10 1e-10
 Dictionary Key: CMX
-@value -0.02251370175012402 1e-10 1e-10
+@value -0.02219952960856132 1e-10 1e-10
 Dictionary Key: CMY
-@value -0.000314227273439198 1e-10 1e-10
+@value -0.0003121771823593549 1e-10 1e-10
 Dictionary Key: CMZ
-@value   0.1735511499993425 1e-10 1e-10
+@value    0.170633016116412 1e-10 1e-10
 Dictionary Key: fail
 @value                    0 1e-10 1e-10
-Calling Adjoint Solver 000
-/home/ping/hg/dafoam/python/pyDAFoam.py:3620: ComplexWarning: Casting complex values to real discards the imaginary part
-  f.write('%.15e '%val)
-Simulation Started...
-Running Flow Solver...
-Running Flow Solver...
-Running Flow Solver...
-Running Flow Solver...
-Finished, writing end file
-Finished, writing end file
-Finished, writing end file
-Finished, writing end file
-Simulation Finished!
-Copying adjointLog to ./adjointLog_000
-Copying designVariables.dat to ./designVariables_000.dat
-Copying objFuncsSens_dCMZdFFD.dat to ./objFuncsSens_dCMZdFFD_000.dat
-Copying objFuncsSens_dCMXdFFD.bin to ./objFuncsSens_dCMXdFFD_000.bin
-Copying objFuncsSens_dCDdFFD.bin to ./objFuncsSens_dCDdFFD_000.bin
-Copying objFuncsSens_dCMYdFFD.bin to ./objFuncsSens_dCMYdFFD_000.bin
-Copying objFuncsSens_dCMYdFFD.dat to ./objFuncsSens_dCMYdFFD_000.dat
-Copying objFuncsSens_dCMXdFFD.dat to ./objFuncsSens_dCMXdFFD_000.dat
-Copying objFuncsSens_dCMZdFFD.bin to ./objFuncsSens_dCMZdFFD_000.bin
-Copying objFuncsSens_dCDdFFD.dat to ./objFuncsSens_dCDdFFD_000.dat
-Copying objFuncsSens_dCLdFFD.dat to ./objFuncsSens_dCLdFFD_000.dat
-Copying objFuncsSens_dCLdFFD.bin to ./objFuncsSens_dCLdFFD_000.bin
-Reading adjoint: CD
-Reading ./objFuncsSens_dCDdFFD_000.dat
-Reading Function Sens for shapey
-Reading adjoint: CL
-Reading ./objFuncsSens_dCLdFFD_000.dat
-Reading Function Sens for shapey
-Reading adjoint: CMX
-Reading ./objFuncsSens_dCMXdFFD_000.dat
-Reading Function Sens for shapey
-Reading adjoint: CMY
-Reading ./objFuncsSens_dCMYdFFD_000.dat
-Reading Function Sens for shapey
-Reading adjoint: CMZ
-Reading ./objFuncsSens_dCMZdFFD_000.dat
-Reading Function Sens for shapey
 Eval Functions Sens:
 Dictionary Key: CD
 Dictionary Key: shapey
-@value  0.07299923702324124 1e-06 1e-10
-@value   0.1439723778878266 1e-06 1e-10
-@value -0.02547626375556322 1e-06 1e-10
-@value -0.06454626591249152 1e-06 1e-10
-@value  -0.1143416089173967 1e-06 1e-10
-@value   -0.174500895830372 1e-06 1e-10
+@value  0.07120116343124352 1e-06 1e-10
+@value   0.1434212159391328 1e-06 1e-10
+@value -0.02550311030373155 1e-06 1e-10
+@value -0.06439474767061759 1e-06 1e-10
+@value  -0.1119287963526455 1e-06 1e-10
+@value  -0.1721860319881787 1e-06 1e-10
 Dictionary Key: CL
 Dictionary Key: shapey
-@value   -1.274869004735106 1e-06 1e-10
-@value   -1.163953562194292 1e-06 1e-10
-@value  0.05058701146184288 1e-06 1e-10
-@value    0.169001548077828 1e-06 1e-10
-@value   -1.611100944229189 1e-06 1e-10
-@value  -0.7989658011991366 1e-06 1e-10
+@value   -1.274118598671937 1e-06 1e-10
+@value    -1.15631245172488 1e-06 1e-10
+@value  0.04309558010614474 1e-06 1e-10
+@value   0.1583065549862194 1e-06 1e-10
+@value    -1.54810520735981 1e-06 1e-10
+@value  -0.8011948543838918 1e-06 1e-10
 Dictionary Key: CMX
 Dictionary Key: shapey
-@value   0.0826812236069876 1e-06 1e-10
-@value   0.1304128000508108 1e-06 1e-10
-@value  0.01752586737583226 1e-06 1e-10
-@value  0.06269750447636047 1e-06 1e-10
-@value  0.08853434058593448 1e-06 1e-10
-@value  0.07311198064071502 1e-06 1e-10
+@value  0.08295612959057816 1e-06 1e-10
+@value   0.1297188339347542 1e-06 1e-10
+@value  0.01815725550709855 1e-06 1e-10
+@value  0.06284160393426216 1e-06 1e-10
+@value  0.08545359754145264 1e-06 1e-10
+@value  0.07296260023708569 1e-06 1e-10
 Dictionary Key: CMY
 Dictionary Key: shapey
-@value  0.01973332378405757 1e-06 1e-10
-@value  -0.3510521729523465 1e-06 1e-10
-@value -0.03908178465632321 1e-06 1e-10
-@value  -0.5783877716953992 1e-06 1e-10
-@value  -0.2296518205925894 1e-06 1e-10
-@value  -0.5417220949818315 1e-06 1e-10
+@value  0.02198034367202513 1e-06 1e-10
+@value  -0.3486950924565448 1e-06 1e-10
+@value  -0.0347886811421291 1e-06 1e-10
+@value  -0.5728769636704377 1e-06 1e-10
+@value  -0.2234329736909762 1e-06 1e-10
+@value  -0.5333531422449792 1e-06 1e-10
 Dictionary Key: CMZ
 Dictionary Key: shapey
-@value   -0.479939772216445 1e-06 1e-10
-@value  -0.4216269931784032 1e-06 1e-10
-@value  0.03601347283372678 1e-06 1e-10
-@value  0.07966415741206964 1e-06 1e-10
-@value  -0.9231829587643643 1e-06 1e-10
-@value  -0.5725777333025253 1e-06 1e-10
+@value  -0.4802354014527608 1e-06 1e-10
+@value  -0.4180348659496269 1e-06 1e-10
+@value  0.03237411540923193 1e-06 1e-10
+@value  0.07502456402124719 1e-06 1e-10
+@value  -0.8929944611394653 1e-06 1e-10
+@value   -0.573273243040144 1e-06 1e-10
+Dictionary Key: fail
+@value                    0 1e-06 1e-10
+
+
++------------------------------------------------------------------------------+
+| Test Name: simpleDAFoam kEpsilon                                             |
++------------------------------------------------------------------------------+
+Eval Functions:
+Dictionary Key: CD
+@value  0.01799012903548421 1e-10 1e-10
+Dictionary Key: CL
+@value   0.4211280292506743 1e-10 1e-10
+Dictionary Key: CMX
+@value -0.02107559635400258 1e-10 1e-10
+Dictionary Key: CMY
+@value -1.981701048022535e-05 1e-10 1e-10
+Dictionary Key: CMZ
+@value   0.1602854854387556 1e-10 1e-10
+Dictionary Key: fail
+@value                    0 1e-10 1e-10
+Eval Functions Sens:
+Dictionary Key: CD
+Dictionary Key: shapey
+@value  0.05941975723483947 1e-06 1e-10
+@value   0.1389837791802628 1e-06 1e-10
+@value -0.02694821768201218 1e-06 1e-10
+@value -0.06197824575255961 1e-06 1e-10
+@value   -0.104296833805721 1e-06 1e-10
+@value  -0.1640910637780435 1e-06 1e-10
+Dictionary Key: CL
+Dictionary Key: shapey
+@value   -1.165171389388222 1e-06 1e-10
+@value   -1.127127504585211 1e-06 1e-10
+@value  0.02077274592598899 1e-06 1e-10
+@value   0.1251337756227943 1e-06 1e-10
+@value   -1.295118104779314 1e-06 1e-10
+@value   -0.650976363762043 1e-06 1e-10
+Dictionary Key: CMX
+Dictionary Key: shapey
+@value  0.07819423908603845 1e-06 1e-10
+@value   0.1264651660193929 1e-06 1e-10
+@value  0.01974234060458428 1e-06 1e-10
+@value   0.0627493531674629 1e-06 1e-10
+@value  0.07299122161954465 1e-06 1e-10
+@value  0.06457159561733634 1e-06 1e-10
+Dictionary Key: CMY
+Dictionary Key: shapey
+@value  0.02726590405353378 1e-06 1e-10
+@value   -0.336067217608789 1e-06 1e-10
+@value -0.02179120176907178 1e-06 1e-10
+@value  -0.5508633075989299 1e-06 1e-10
+@value  -0.2007805152349036 1e-06 1e-10
+@value  -0.5042887514466187 1e-06 1e-10
+Dictionary Key: CMZ
+Dictionary Key: shapey
+@value  -0.4360385628401731 1e-06 1e-10
+@value  -0.4092949709259555 1e-06 1e-10
+@value  0.01852635479097049 1e-06 1e-10
+@value  0.05684768850718591 1e-06 1e-10
+@value  -0.7750301894201189 1e-06 1e-10
+@value  -0.5066981521007496 1e-06 1e-10
+Dictionary Key: fail
+@value                    0 1e-06 1e-10
+
+
++------------------------------------------------------------------------------+
+| Test Name: simpleDAFoam LaunderSharmaKE                                      |
++------------------------------------------------------------------------------+
+Eval Functions:
+Dictionary Key: CD
+@value  0.01165290596690414 1e-10 1e-10
+Dictionary Key: CL
+@value   0.4965057657047339 1e-10 1e-10
+Dictionary Key: CMX
+@value -0.02482707474207378 1e-10 1e-10
+Dictionary Key: CMY
+@value -0.0005007731172994582 1e-10 1e-10
+Dictionary Key: CMZ
+@value   0.1948640268120145 1e-10 1e-10
+Dictionary Key: fail
+@value                    0 1e-10 1e-10
+Eval Functions Sens:
+Dictionary Key: CD
+Dictionary Key: shapey
+@value  0.09556251667393162 1e-06 1e-10
+@value   0.1445968258453576 1e-06 1e-10
+@value -0.02387251670258144 1e-06 1e-10
+@value -0.06803112415403711 1e-06 1e-10
+@value  -0.1301493117674633 1e-06 1e-10
+@value  -0.1874799600649317 1e-06 1e-10
+Dictionary Key: CL
+Dictionary Key: shapey
+@value   -1.376229198460435 1e-06 1e-10
+@value   -1.196484597101568 1e-06 1e-10
+@value   0.1019174518551972 1e-06 1e-10
+@value    0.209238164944454 1e-06 1e-10
+@value     -2.1228309302479 1e-06 1e-10
+@value   -0.891306289325592 1e-06 1e-10
+Dictionary Key: CMX
+Dictionary Key: shapey
+@value   0.0861286160608286 1e-06 1e-10
+@value   0.1351098723605083 1e-06 1e-10
+@value  0.01342540322629523 1e-06 1e-10
+@value  0.06354712790191343 1e-06 1e-10
+@value    0.113637874507504 1e-06 1e-10
+@value  0.07938915256669092 1e-06 1e-10
+Dictionary Key: CMY
+Dictionary Key: shapey
+@value 0.005787093263745738 1e-06 1e-10
+@value   -0.370152144615128 1e-06 1e-10
+@value -0.06879196075312109 1e-06 1e-10
+@value  -0.6167877719334557 1e-06 1e-10
+@value  -0.2784716719850127 1e-06 1e-10
+@value   -0.603476757910642 1e-06 1e-10
+Dictionary Key: CMZ
+Dictionary Key: shapey
+@value  -0.5088239824457563 1e-06 1e-10
+@value  -0.4302756474034177 1e-06 1e-10
+@value  0.06045517185040016 1e-06 1e-10
+@value  0.09964151102563079 1e-06 1e-10
+@value   -1.160269939232311 1e-06 1e-10
+@value  -0.6104489902111194 1e-06 1e-10
+Dictionary Key: fail
+@value                    0 1e-06 1e-10
+
+
++------------------------------------------------------------------------------+
+| Test Name: simpleDAFoam curvedCubeSnappy-SA                                  |
++------------------------------------------------------------------------------+
+Eval Functions:
+Dictionary Key: AVGS
+@value    43.26626278920712 1e-10 1e-10
+Dictionary Key: AVGV
+@value    32.87659874842609 1e-10 1e-10
+Dictionary Key: CD
+@value   0.7502560779920053 1e-10 1e-10
+Dictionary Key: CL
+@value    3.544255617058148 1e-10 1e-10
+Dictionary Key: CMX
+@value   -1.771637029101113 1e-10 1e-10
+Dictionary Key: CMY
+@value   0.3752352798742743 1e-10 1e-10
+Dictionary Key: CMZ
+@value    2.673164674676321 1e-10 1e-10
+Dictionary Key: VARV
+@value     4.96699331868636 1e-10 1e-10
+Dictionary Key: fail
+@value                    0 1e-10 1e-10
+Eval Functions Sens:
+Dictionary Key: AVGS
+Dictionary Key: UIn
+@value    2.883856200813573 1e-06 1e-10
+Dictionary Key: shapey
+@value     84.1737313146205 1e-06 1e-10
+Dictionary Key: AVGV
+Dictionary Key: UIn
+@value      1.0958834275177 1e-06 1e-10
+Dictionary Key: shapey
+@value    5.404157794291082 1e-06 1e-10
+Dictionary Key: CD
+Dictionary Key: UIn
+@value  0.04998283314502001 1e-06 1e-10
+Dictionary Key: shapey
+@value    1.739276329624118 1e-06 1e-10
+Dictionary Key: CL
+Dictionary Key: UIn
+@value   0.2360853264020628 1e-06 1e-10
+Dictionary Key: shapey
+@value    5.729451483945669 1e-06 1e-10
+Dictionary Key: CMX
+Dictionary Key: UIn
+@value  -0.1180099868610635 1e-06 1e-10
+Dictionary Key: shapey
+@value   -2.863452871712365 1e-06 1e-10
+Dictionary Key: CMY
+Dictionary Key: UIn
+@value  0.02499844931776352 1e-06 1e-10
+Dictionary Key: shapey
+@value   0.8701209716150273 1e-06 1e-10
+Dictionary Key: CMZ
+Dictionary Key: UIn
+@value   0.1781080860669244 1e-06 1e-10
+Dictionary Key: shapey
+@value    4.027671517196705 1e-06 1e-10
+Dictionary Key: VARV
+Dictionary Key: UIn
+@value   0.3311134069099875 1e-06 1e-10
+Dictionary Key: shapey
+@value      16.480332498942 1e-06 1e-10
 Dictionary Key: fail
 @value                    0 1e-06 1e-10

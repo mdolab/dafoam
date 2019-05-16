@@ -5088,7 +5088,7 @@ class PYDAFOAM(AeroSolver):
             f.write('{\n')
             f.write('    version     2.0;\n')
             f.write('    format      ascii;\n')
-            f.write('    class       dictionary;\n')
+            f.write('    class       uniformDimensionedVectorField;\n')
             f.write('    location    "%s";\n'%sysDir)
             f.write('    object      %s;\n'%fileName)
             f.write('}\n')

@@ -80,7 +80,19 @@ volScalarField alphat
 );
 
 
-#include "readGravitationalAcceleration.H"
+//#include "readGravitationalAcceleration.H"
+Info<< "\nReading g" << endl;
+uniformDimensionedVectorField g
+(
+    IOobject
+    (
+        "g",
+        runTime.constant(),
+        mesh,
+        IOobject::MUST_READ_IF_MODIFIED,
+        IOobject::NO_WRITE
+    )
+);
 #include "readhRef.H"
 #include "gh.H"
 

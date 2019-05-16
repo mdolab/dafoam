@@ -115,8 +115,8 @@ void AdjointDerivativeBuoyantSimpleFoam::calcResiduals
     // out for now
 
     word divUScheme="div(phi,U)";
-    word divHEScheme="div(phi,h)";
-    if (thermo_.name()=="e") divHEScheme="div(phi,e)";
+    word divHEScheme="div(phi,e)";
+    if (he_.name()=="h") divHEScheme="div(phi,h)";
     if(isPC)
     {
         divUScheme="div(pc)";
