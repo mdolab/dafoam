@@ -2,8 +2,8 @@
 import sys
 from mpi4py import MPI
 from collections import OrderedDict
-from AirfoilSetup import runTests
-from CurvedCubeSetup import runTests as runTests1
+from setup_Airfoil import runTests
+from setup_CurvedCube import runTests as runTests1
 import numpy as np
 
 # ###################################################################

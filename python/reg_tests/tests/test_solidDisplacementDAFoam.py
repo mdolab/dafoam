@@ -2,7 +2,7 @@
 import sys
 from mpi4py import MPI
 from collections import OrderedDict
-from CompressorSolidSetup import runTests
+from setup_CompressorSolid import runTests
 import numpy as np
 
 # ###################################################################

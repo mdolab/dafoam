@@ -74,3 +74,9 @@ cd ../turboDAFoam
 wclean
 rm Make/options
 
+cd ../utilities
+./Allwclean
+
+
+cd ../
+

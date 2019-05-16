@@ -2,7 +2,7 @@
 import sys
 from mpi4py import MPI
 from collections import OrderedDict
-from UBendDuctSetup import runTests
+from setup_UBendDuct import runTests
 import numpy as np
 
 # ###################################################################
