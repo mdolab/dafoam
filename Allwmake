@@ -59,6 +59,9 @@ function makeCompressible()
     wmake 
 }
 
+echo "************** Compiling prerequisite Libraries **************"
+sleep 1
+
 cd src/myLibs
 ./Allwmake
 cd ../../
@@ -115,3 +118,13 @@ makeCompressible
 
 cd ../buoyantSimpleDAFoam
 makeCompressible
+
+cd ../../
+
+echo "************** Compiling Utilities **************"
+sleep 1
+
+cd applications/utilities
+./Allwmake
+
+cd ../../

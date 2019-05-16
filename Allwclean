@@ -20,7 +20,7 @@ fi
 
 cd src/myLibs
 ./Allwclean
-cd ../
+cd ../../
 
 cd src
 wclean
