@@ -1,9 +1,9 @@
 .. _Installation:
 
-Installation of DAFoam Optimization Packages:
----------------------------------------------
+Installation 
+------------
 
-**DAFoam** is based on **OpenFOAM-v1812**. You must install **OpenFOAM** and verify that it is working correctly. You also need to install the 3rd party and **MDOLab** packages prior to using **DAFoam** for optimization. Other dependencies include: 
+**DAFoam** runs on Linux systems and is based on **OpenFOAM-v1812**. You must install **OpenFOAM** and verify that it is working correctly. You also need to install the 3rd party and **MDOLab** packages before using **DAFoam** for optimization. Other dependencies include: 
 
 - C/C++ compilers (gcc/g++ or icc/icpc)
   

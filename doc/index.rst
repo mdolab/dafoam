@@ -3,25 +3,36 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-DAFoam
-======
+Home
+====
 
-DAFoam implements Discrete Adjoint for OpenFOAM. 
+.. image:: images/DPW6_Transparent.png
 
-DAFoam has two major layers: OpenFOAM and Python.
-The OpenFOAM layer contains multiple C++ libraries and discrete adjoint solvers.
-These adjoint solvers can run as standalone executives for derivative computation.
-The Python layer is a high-level Python interface. 
-It allows the adjoint solvers to interact with other external modules for optimization.
+DAFoam: Discrete Adjoint with OpenFoam
+--------------------------------------
+
+DAFoam contains a suite of discrete adjoint solvers for OpenFOAM. These adjoint solvers run as standalone executives to compute derivatives. DAFoam also has a Python interface that allows the adjoint solvers to interact with external modules for high-fidelity design optimization. DAFoam has the following features:
+
+- It implements an efficient discrete adjoint approach with competitive speed, scalability, accuracy, and compatibility.
+- It allows rapid discrete adjoint development for any steady-state OpenFOAM solvers with modifying only O(100) lines of source codes.
+- It supports design optimizations for a wide range of disciplines such as aerodynamics, heat transfer, structures, hydrodynamics, and radiation.
+
+The DAFoam repository comprises of five main directories:
+
+- applications: adjoint solvers and utilities
+- doc: documentation
+- python: python interface to other optimization packages
+- src: the core DAFoam libraries
+- tutorials: sample optimization setup for each adjoint solver
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
+   self
    Installation
    Tutorials
-   OpenFOAM_Layer
-   Python_Layer
+   Development
 
 

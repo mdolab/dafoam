@@ -5,7 +5,7 @@
 
     Description:
     Adjoint solver for turboFoam
-    A steady-state comparessible solver for turbomachinery
+    A steady-state compressible solver for turbomachinery
 
 \*---------------------------------------------------------------------------*/
 

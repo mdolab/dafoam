@@ -1,6 +1,7 @@
 echo "Compiling DAFoam documentation"
+make html
 cd Doxygen
 ./Allwmake
 cd ../
-make html
+mv Doxygen/html/* _build/html/_static/
 ln -s _build/html/index.html DAFoamDoc.html
