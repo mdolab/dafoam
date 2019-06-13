@@ -14,7 +14,7 @@ Documentation
 
 Refer to https://dafoamcode.readthedocs.io for DAFoam installation and tutorials.
 
-To build the documentation locally, load the OpenFOAM environment, go to the **doc** folder, and run:
+To build the documentation locally, go to the **doc** folder and run:
 
 `./Allwmake`
 
@@ -41,4 +41,4 @@ License
 
 Copyright 2019 MDO Lab
 
-Distributed using the GNU General Public License (GPL), verstion 3; see the LICENSE file for details.
+Distributed using the GNU General Public License (GPL), version 3; see the LICENSE file for details.

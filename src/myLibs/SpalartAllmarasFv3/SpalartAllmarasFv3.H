@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v1812
+    Version : v1.0
 
     Description:
     SpalartAllmaras turbulence model with Fv3 term

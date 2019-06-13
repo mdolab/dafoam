@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v1812
+    Version : v1.0
 
     Description:
     Interpolate velocity to walls such that we can use surfaceLIC to view 
