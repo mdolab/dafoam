@@ -148,6 +148,8 @@ int main(int argc, char *argv[])
         adjDev->solve();
     }
 
+    PetscEnd();
+
     return 0;
 }
 
