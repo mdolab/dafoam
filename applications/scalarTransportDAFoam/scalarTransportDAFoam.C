@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
         adjDev->solve();
     }
 
-    PetscEnd();
+    PetscFinalize();
 
     return 0;
 }

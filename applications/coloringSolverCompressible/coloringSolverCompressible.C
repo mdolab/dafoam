@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    PetscEnd();
+    PetscFinalize();
    
     return 0;
 }
