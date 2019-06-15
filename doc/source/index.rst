@@ -1,12 +1,5 @@
-.. DAFoam documentation master file, created by
-   sphinx-quickstart on Wed Jun  6 10:06:53 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Home
 ====
-
-.. image:: images/DPW6_Transparent.png
 
 DAFoam: Discrete Adjoint with OpenFoam
 --------------------------------------
@@ -16,6 +9,8 @@ DAFoam contains a suite of discrete adjoint solvers for OpenFOAM. These adjoint 
 - It implements an efficient discrete adjoint approach with competitive speed, scalability, accuracy, and compatibility.
 - It allows rapid discrete adjoint development for any steady-state OpenFOAM solvers with modifying only O(100) lines of source codes.
 - It supports design optimizations for a wide range of disciplines such as aerodynamics, heat transfer, structures, hydrodynamics, and radiation.
+
+.. image:: images/DPW6_Transparent.png
 
 The DAFoam repository comprises of five main directories:
 
@@ -31,8 +26,10 @@ Contents:
    :maxdepth: 2
 
    self
+   Download
    Installation
    Tutorials
    Development
+   Publications
 
 

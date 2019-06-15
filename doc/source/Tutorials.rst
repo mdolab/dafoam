@@ -3,7 +3,17 @@
 Tutorials
 ---------
 
-There are multiple optimization cases in the tutorials folder. In each optimization case, the **run** folder contains all the optimization setup. The **optOutput** folder is to store all the optimization results and logs. 
+There are multiple optimization cases in the tutorials folder. 
+
+.. toctree::
+   :maxdepth: 2
+
+   Aerodynamics
+   HeatTransfer
+   Structure
+   Hydrodynamics
+
+In each optimization case, the **run** folder contains all the optimization setup. The **optOutput** folder is to store all the optimization results and logs. 
 
 To run an optimization, first load the OpenFOAM environment::
 
@@ -22,3 +32,4 @@ The optimization configurations are defined in **runScript.py**. There are seven
 - **DVCon**. Define geometric constraints such as volume, thickness, and curvature constraints.
 - **optFuncs**. Link optimization functions. No need to change.
 - **Task**. Define optimization tasks (objective function, physical constraints, etc).
+
