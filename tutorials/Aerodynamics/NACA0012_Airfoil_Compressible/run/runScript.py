@@ -379,7 +379,7 @@ def aeroFuncsSens(xDV,funcs):
     # need to add alpha funcsSens, here we use FD
     if gcomm.rank == 0:
         print("Evaluating alpha sens...")
-    epsAlpha = 1.0e-3
+    epsAlpha = 1.0e-2
     alphaVal = xDV['alpha']
     alphaVal += epsAlpha
     alpha(alphaVal)
@@ -399,6 +399,7 @@ def aeroFuncsSens(xDV,funcs):
 
     # Print the current solution to the screen
     if gcomm.rank == 0:
+        print('Objective Functions Perturbed: ',funcsP)
         print('Objective Function Sensitivity: ',funcsSens)
         print('Adjoint Runtime: ',b-a)
 

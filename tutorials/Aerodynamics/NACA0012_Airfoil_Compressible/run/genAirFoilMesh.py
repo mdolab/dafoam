@@ -9,9 +9,9 @@ LE and ends at TE. We use blunt TE so truncate the PS and SS data at about 99.8%
 
 from pyhyp import pyHyp
 import numpy
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from pyspline import *
-plt.switch_backend('agg')
+#plt.switch_backend('agg')
 
 ########## user input ################
 # 2D
@@ -181,17 +181,17 @@ x1SS=c2SS.X[:,0]
 y1SS=c2SS.X[:,1]
 
 # Since the TE is open we need to close it. Close it multiple linear segments.
-delta_y = numpy.linspace(y1PS[-1], y1SS[-1],NpTE,dtype='d')
+delta_y = numpy.linspace(y1PS[-1], y1SS[-1],NpTE,'d')
 delta_y = delta_y[1:]
-delta_x=numpy.ones_like(delta_y,dtype='d')
+delta_x=numpy.ones_like(delta_y,'d')
 for i in range(len(delta_x)):
     delta_x[i]=x1SS[-1]
 
-x1SS_Flip=numpy.flip(x1SS,axis=0)
+x1SS_Flip=x1SS[::-1] # reverse the array #numpy.flip(x1SS,axis=0)
 xAll=numpy.append(x1SS_Flip,x1PS[1:])
 xAll=numpy.append(xAll,delta_x)
 
-y1SS_Flip=numpy.flip(y1SS,axis=0)
+y1SS_Flip=y1SS[::-1] # reverse the array # numpy.flip(y1SS,axis=0)
 yAll=numpy.append(y1SS_Flip,y1PS[1:])
 yAll=numpy.append(yAll,delta_y)
 
@@ -203,13 +203,13 @@ print('nPoints for TE: ',NpTE)
 print('nPoints Total: ',nStretch1PS+nStretch2PS+nXConstPS+nStretch1SS+nStretch2SS+nXConstSS+NpTE)
 print('Mesh cells: ',(nStretch1PS+nStretch2PS+nXConstPS+nStretch1SS+nStretch2SS+nXConstSS+NpTE-1)*(NpExtrude-1)*(nSpan-1))
 
-plt.plot(xPS,yPS,'-k',linewidth=1)
-plt.plot(xAll,yAll,'ro',markersize=2)
-plt.plot(xSS,ySS,'-k',linewidth=1)
-plt.gca().set_aspect('equal', adjustable='box')
+#plt.plot(xPS,yPS,'-k',linewidth=1)
+#plt.plot(xAll,yAll,'ro',markersize=2)
+#plt.plot(xSS,ySS,'-k',linewidth=1)
+#plt.gca().set_aspect('equal', adjustable='box')
 #plt.show()
-plt.savefig('figure.png',bbox_inches='tight')   # save the figure to file
-plt.close()    # close the figure
+#plt.savefig('figure.png',bbox_inches='tight')   # save the figure to file
+#plt.close()    # close the figure
 
 
 # Write the plot3d input file:
