@@ -1,0 +1,22 @@
+username="$USER"
+user="$(id -u)"
+home="${1:-$HOME}"
+
+imageName="dafoam/regtest"
+containerName="regtest"   
+displayVar="$DISPLAY"
+
+docker run  -it -d --name ${containerName} --user=${user}   \
+    -e USER=${username}                                     \
+    -e QT_X11_NO_MITSHM=1                                   \
+    -e DISPLAY=${displayVar}                                \
+    -e QT_XKB_CONFIG_ROOT=/usr/share/X11/xkb                \
+    --workdir="${home}"                                     \
+    --volume="${home}:${home}"                              \
+    --volume="/etc/group:/etc/group:ro"                     \
+    --volume="/etc/passwd:/etc/passwd:ro"                   \
+    --volume="/etc/shadow:/etc/shadow:ro"                   \
+    --volume="/etc/sudoers.d:/etc/sudoers.d:ro"             \
+     -v=/tmp/.X11-unix:/tmp/.X11-unix ${imageName}          \
+     /bin/bash --rcfile /opt/setupDAFoam.sh
+

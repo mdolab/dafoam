@@ -1,0 +1,19 @@
+sudo: required
+dist: trusty
+language: generic
+
+services:
+    - docker
+
+before_install:
+    - echo -e "machine github.com\n  login $GITHUB_TOKEN" > ~/.netrc
+    - git lfs pull
+
+install:
+    - cd $TRAVIS_BUILD_DIR/python/reg_tests
+    - ./getDockerImage
+
+script:
+    - docker exec -it regtest /bin/bash -c ". /opt/setupDAFoam.sh; cd $TRAVIS_BUILD_DIR; ./Allwmake"
+    - docker exec -it regtest /bin/bash -c ". /opt/setupDAFoam.sh; sudo cp -r $TRAVIS_BUILD_DIR /opt/repos/dafoam; cd $TRAVIS_BUILD_DIR/python/reg_tests; tar -xvf input.tar.gz; python run_reg_tests.py"
+
