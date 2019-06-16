@@ -2,6 +2,7 @@ DAFoam: Discrete Adjoint with OpenFOAM
 ======================================
 
 [![Build Status](https://travis-ci.com/mdolab/dafoam.svg?token=PKPXZYJ4Ny7P59TKMPSX&branch=master)](https://travis-ci.com/mdolab/dafoam)
+[![Documentation Status](https://readthedocs.org/projects/dafoam/badge/?version=latest)](https://dafoam.readthedocs.io/en/latest/?badge=latest)
 
 DAFoam contains a suite of discrete adjoint solvers for OpenFOAM. These adjoint solvers run as standalone executives to compute derivatives. DAFoam also has a Python interface that allows the adjoint solvers to interact with external modules for high-fidelity design optimization. DAFoam has the following features:
 
