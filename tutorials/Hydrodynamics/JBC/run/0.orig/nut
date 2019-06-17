@@ -1,0 +1,52 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+|       o          |                                                          |
+|    o     o       | HELYX-OS                                                  |
+|   o   O   o      | Version: v2.3.1                                           |
+|    o     o       | Web:     http://www.engys.com                            |
+|       o          |                                                          |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class volScalarField;
+    location "0";
+    object nut;
+}
+dimensions [ 0 2 -1 0 0 0 0 ];
+internalField uniform 1.0e-5;
+boundaryField
+{
+    
+    inlet
+    {
+        type            calculated;
+        value           $internalField;
+    }
+    outlet
+    {
+        type            zeroGradient;
+    }
+    back
+    {
+        type            zeroGradient;
+    }
+    front
+    {
+        type            zeroGradient;
+    }
+    top
+    {
+        type            symmetry;
+    }
+    bot
+    {
+        type            zeroGradient;
+    }
+    hull
+    {
+        type            nutLowReWallFunction;
+        value           $internalField;
+    }
+
+}
