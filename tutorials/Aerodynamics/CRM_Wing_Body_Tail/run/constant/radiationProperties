@@ -1,0 +1,32 @@
+/*--------------------------------*- C++ -*---------------------------------*\ 
+| ========                 |                                                 | 
+| \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           | 
+|  \    /   O peration     | Version:  v1812                                 | 
+|   \  /    A nd           | Web:      www.OpenFOAM.com                      | 
+|    \/     M anipulation  |                                                 | 
+\*--------------------------------------------------------------------------*/ 
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      radiationProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+radiation                                    off;
+radiationModel                               none;
+solverFreq                                   1;
+absorptionEmissionModel                      constantAbsorptionEmission;
+constantAbsorptionEmissionCoeffs
+{
+  absorptivity absorptivity [0 -1 0 0 0 0 0] 0.500000;
+  emissivity   emissivity   [0 -1 0 0 0 0 0] 0.500000;
+  E            E           [1 -1 -3 0 0 0 0] 0.000000;
+}
+scatterModel                                 none;
+sootModel                                    none;
+transmissivityModel                          none;
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

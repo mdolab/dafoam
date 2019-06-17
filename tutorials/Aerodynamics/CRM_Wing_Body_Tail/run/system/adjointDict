@@ -1,0 +1,110 @@
+/*--------------------------------*- C++ -*---------------------------------*\ 
+| ========                 |                                                 | 
+| \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           | 
+|  \    /   O peration     | Version:  v1812                                 | 
+|   \  /    A nd           | Web:      www.OpenFOAM.com                      | 
+|    \/     M anipulation  |                                                 | 
+\*--------------------------------------------------------------------------*/ 
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      adjointDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+flowOptions
+{
+    flowCondition          Compressible;
+    setFlowBCs             true;
+    flowBCs                { useWallFunction true; bc0 {patch inout; variable U; value (294.802760596 0 10.7857473112);} }
+    inletPatches           (inout);
+    outletPatches          (inout);
+    derivUInInfo           {stateName U; component 0; type fixedValue;patchNames (inlet ); }
+    userDefinedPatchInfo   { }
+    userDefinedVolumeInfo  { }
+    referenceValues        (ARef 1.918448e+02 magURef 2.950000e+02 rhoRef 1.176829e+00 pRef 1.013250e+05 TRef 3.000000e+02 LRef 7.005320e+00 );
+    divDev2                true;
+    useNKSolver            false;
+    nkSegregatedTurb       false;
+    nkSegregatedPhi        false;
+    nkRelTol               1.000000e-08;
+    nkAbsTol               1.000000e-12;
+    nkSTol                 1.000000e-08;
+    nkEWRTol0              0.300000;
+    nkEWRTolMax            0.700000;
+    nkPCLag                1;
+    nkMaxIters             100;
+    nkMaxFuncEvals         10000;
+    nkASMOverlap           1;
+    nkGlobalPCIters        0;
+    nkLocalPCIters         1;
+    nkPCFillLevel          0;
+    nkJacMatReOrdering     rcm;
+    nkGMRESMaxIters        500;
+    nkGMRESRestart         500;
+}
+
+adjointOptions
+{
+    solveAdjoint           false;
+    useColoring            false;
+    normalizeResiduals     (URes pRes phiRes nuTildaRes eRes TRes);
+    normalizeStates        (U p phi nuTilda e T);
+    nFFDPoints             227;
+    correctWallDist        true;
+    reduceResCon4JacMat    false;
+    calcPCMat              true;
+    fastPCMat              false;
+    delTurbProd4PCMat      false;
+    writeMatrices          false;
+    adjGMRESMaxIters       2000;
+    adjGMRESRestart        2000;
+    adjASMOverlap          1;
+    adjJacMatOrdering      cell;
+    adjJacMatReOrdering    natural;
+    adjGlobalPCIters       0;
+    adjLocalPCIters        1;
+    adjPCFillLevel         2;
+    adjGMRESRelTol         1.000000e-05;
+    adjGMRESAbsTol         1.000000e-16;
+    minTolJac              1.000000e-14;
+    maxTolJac              1.000000e+14;
+    minTolPC               1.000000e-14;
+    maxTolPC               1.000000e+14;
+    stateResetTol          1.000000e-04;
+    tractionBCMaxIter      20;
+    epsDeriv               1.000000e-06;
+    epsDerivFFD            1.000000e-03;
+    epsDerivXv             1.000000e-07;
+    epsDerivUIn            1.000000e-05;
+    epsDerivVis            1.000000e-08;
+    stateScaling           ( UScaling 300.0 nuTildaScaling 0.001 TScaling 300.0 phiScaling 1.0 pScaling 101325.0 eScaling 300000.0);
+    residualScaling        ();
+    maxResConLv4JacPCMat   ( eRes 2 nuTildaRes 2 URes 2 phiRes 1 TRes 2 pRes 2);
+    adjDVTypes             (FFD);
+}
+
+actuatorDiskOptions
+{
+    actuatorActive         0;
+    actuatorAdjustThrust   0;
+    actuatorVolumeNames    ();
+    actuatorThrustCoeff    ();
+    actuatorPOverD         ();
+    actuatorRotationDir    ();
+}
+
+objectiveFunctionOptions
+{
+    objFuncs               (CD CL CMY);
+    objFuncGeoInfo         (  (wing tail body)  (wing tail body)  (wing tail body) );
+    dragDir                (0.9993313919 0.0000000000 0.0365618553 );
+    liftDir                (-0.0365618553 0.0000000000 0.9993313919 );
+    CofR                   (33.6778600000 11.9062500000 4.5199300000 );
+    rotRad                 (0.0000000000 0.0000000000 0.0000000000 );
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
