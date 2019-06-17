@@ -183,6 +183,8 @@ if args.opt == 'snopt':
         'Verify level':                 -1,
         'Function precision':           1.0e-7,
         'Nonderivative linesearch':     None, 
+        'Major step limit':             2.0,
+        'Penalty parameter':            0.0, # initial penalty parameter
         'Print file':                   os.path.join(outPrefix+'_SNOPT_print.out'),
         'Summary file':                 os.path.join(outPrefix+'_SNOPT_summary.out')
     }
@@ -198,6 +200,12 @@ elif args.opt == 'slsqp':
         'ACC':                          1.0e-7,   # convergence accuracy
         'MAXIT':                        25,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_SLSQP.out')
+    }
+elif args.opt == 'ipopt':
+    optOptions = {
+        'tol':                          1.0e-7,   # convergence accuracy
+        'max_iter':                     25,       # max optimization iterations
+        'output_file':                  os.path.join(outPrefix+'_IPOPT.out')
     }
 else:
     print("opt arg not valid!")

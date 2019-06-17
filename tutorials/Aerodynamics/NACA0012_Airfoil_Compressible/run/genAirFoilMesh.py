@@ -15,7 +15,7 @@ from pyspline import *
 
 ########## user input ################
 # 2D
-prefix='../../../geometries/NACA0012/'
+prefix='./profiles/'
 airfoilProfilePS=prefix+'NACA0012PS.profile'     
 airfoilProfileSS=prefix+'NACA0012SS.profile'       
 ZSpan=0.1                              # width in the z direction
