@@ -1,0 +1,110 @@
+/*--------------------------------*- C++ -*---------------------------------*\ 
+| ========                 |                                                 | 
+| \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           | 
+|  \    /   O peration     | Version:  v1812                                 | 
+|   \  /    A nd           | Web:      www.OpenFOAM.com                      | 
+|    \/     M anipulation  |                                                 | 
+\*--------------------------------------------------------------------------*/ 
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      adjointDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+flowOptions
+{
+    flowCondition          Incompressible;
+    setFlowBCs             true;
+    flowBCs                { useWallFunction true; bc0 {patch inout; variable U; value (24.7870734644 0.800617929439 0.0);} }
+    inletPatches           (inout);
+    outletPatches          (inout);
+    derivUInInfo           {stateName U; component 0; type fixedValue;patchNames (inlet ); }
+    userDefinedPatchInfo   { }
+    userDefinedVolumeInfo  { }
+    referenceValues        (ARef 1.219352e+00 magURef 2.480000e+01 pRef 0.000000e+00 rhoRef 1.000000e+00 LRef 1.000000e+00 );
+    divDev2                true;
+    useNKSolver            false;
+    nkSegregatedTurb       false;
+    nkSegregatedPhi        false;
+    nkRelTol               1.000000e-08;
+    nkAbsTol               1.000000e-12;
+    nkSTol                 1.000000e-08;
+    nkEWRTol0              0.300000;
+    nkEWRTolMax            0.700000;
+    nkPCLag                1;
+    nkMaxIters             100;
+    nkMaxFuncEvals         10000;
+    nkASMOverlap           1;
+    nkGlobalPCIters        0;
+    nkLocalPCIters         1;
+    nkPCFillLevel          0;
+    nkJacMatReOrdering     rcm;
+    nkGMRESMaxIters        500;
+    nkGMRESRestart         500;
+}
+
+adjointOptions
+{
+    solveAdjoint           true;
+    useColoring            true;
+    normalizeResiduals     (URes pRes phiRes nuTildaRes eRes kRes omegaRes gammaIntRes ReThetatRes);
+    normalizeStates        (U p k omega gammaInt ReThetat phi nuTilda e);
+    nFFDPoints             0;
+    correctWallDist        true;
+    reduceResCon4JacMat    false;
+    calcPCMat              true;
+    fastPCMat              false;
+    delTurbProd4PCMat      false;
+    writeMatrices          false;
+    adjGMRESMaxIters       1500;
+    adjGMRESRestart        1500;
+    adjASMOverlap          1;
+    adjJacMatOrdering      state;
+    adjJacMatReOrdering    nd;
+    adjGlobalPCIters       0;
+    adjLocalPCIters        1;
+    adjPCFillLevel         1;
+    adjGMRESRelTol         1.000000e-06;
+    adjGMRESAbsTol         1.000000e-16;
+    minTolJac              1.000000e-14;
+    maxTolJac              1.000000e+14;
+    minTolPC               1.000000e-14;
+    maxTolPC               1.000000e+14;
+    stateResetTol          1.000000e-03;
+    tractionBCMaxIter      20;
+    epsDeriv               1.000000e-06;
+    epsDerivFFD            1.000000e-03;
+    epsDerivXv             1.000000e-07;
+    epsDerivUIn            1.000000e-05;
+    epsDerivVis            1.000000e-08;
+    stateScaling           ( UScaling 25 nuTildaScaling 0.00045 kScaling 0.02 TScaling 300.0 phiScaling 1.0 pScaling 200 omegaScaling 30.0);
+    residualScaling        ();
+    maxResConLv4JacPCMat   ( URes 2 eRes 2 kRes 2 phiRes 1 omegaRes 2 gammaIntRes 2 ReThetatRes 2 nuTildaRes 2 pRes 2);
+    adjDVTypes             (FFD);
+}
+
+actuatorDiskOptions
+{
+    actuatorActive         0;
+    actuatorAdjustThrust   0;
+    actuatorVolumeNames    ();
+    actuatorThrustCoeff    ();
+    actuatorPOverD         ();
+    actuatorRotationDir    ();
+}
+
+objectiveFunctionOptions
+{
+    objFuncs               (CD CL);
+    objFuncGeoInfo         (  (wing)  (wing) );
+    dragDir                (0.9994787687 0.0322829810 0.0000000000 );
+    liftDir                (-0.0322829810 0.9994787687 0.0000000000 );
+    CofR                   (0.0000000000 0.0000000000 0.0000000000 );
+    rotRad                 (0.0000000000 0.0000000000 0.0000000000 );
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

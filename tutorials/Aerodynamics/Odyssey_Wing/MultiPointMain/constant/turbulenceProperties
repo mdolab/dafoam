@@ -1,0 +1,38 @@
+/*--------------------------------*- C++ -*---------------------------------*\ 
+| ========                 |                                                 | 
+| \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           | 
+|  \    /   O peration     | Version:  v1812                                 | 
+|   \  /    A nd           | Web:      www.OpenFOAM.com                      | 
+|    \/     M anipulation  |                                                 | 
+\*--------------------------------------------------------------------------*/ 
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      turbulenceProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+simulationType RAS;
+RAS 
+{ 
+    RASModel             SpalartAllmarasFv3;
+
+    turbulence           on;
+
+    printCoeffs          on;
+    epsilonMin           1e-16;
+    kInf                 1.0;
+    lambdaErr            1e-6;
+    decayControl         no;
+    omegaInf             1.0;
+    omegaMin             1e-16;
+    maxLambdaIter        10;
+    Cv2                  5.0;
+    kMin                 1e-16;
+    nuTildaMin           1e-16;
+} 
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
