@@ -14,7 +14,8 @@ fi
 if [ "$DF_CleanDoc" = "True" ]; then
   rm -rf doc/build
   rm -rf doc/DAFoamDoc.html
-  rm -rf doc/source/_static/DAFoam
+  rm -rf doc/source/_static/OpenFOAM
+  rm -rf doc/source/_static/Python
 fi
 
 cd src/myLibs
