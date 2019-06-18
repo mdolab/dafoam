@@ -14,8 +14,10 @@
 
 import subprocess
 
-subprocess.call('cd Doxygen; doxygen DoxygenConfig', shell=True)
-subprocess.call('mv Doxygen/html _static/DAFoam', shell=True)
+subprocess.call('cd Doxygen_OpenFOAM; doxygen DoxygenConfig', shell=True)
+subprocess.call('mv Doxygen_OpenFOAM/html _static/OpenFOAM', shell=True)
+subprocess.call('cd Doxygen_Python; doxygen DoxygenConfig', shell=True)
+subprocess.call('mv Doxygen_Python/html _static/Python', shell=True)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
