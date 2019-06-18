@@ -8,10 +8,12 @@ There are multiple optimization cases in the tutorials folder.
 .. toctree::
    :maxdepth: 2
 
-   Aerodynamics
-   HeatTransfer
-   Structure
-   Hydrodynamics
+   Tutorial_Aerodynamics
+   Tutorial_HeatTransfer
+   Tutorial_Structure
+   Tutorial_Hydrodynamics
+   Tutorial_Aerothermal
+   Tutorial_Aerostructural
 
 In each optimization case, the **run** folder contains all the optimization setup. The **optOutput** folder is to store all the optimization results and logs. 
 
@@ -26,7 +28,7 @@ Then go to the **run** folder, and run::
 The optimization configurations are defined in **runScript.py**. There are seven sections:
 
 - **Imports**. Import all external modules. No need to change.
-- **Input Parameters**. Define the flow, adjoint, and optimization parameters. The explanation of these input parameters is in the **Python Layer** tab in DAFoamDoc.html.
+- **Input Parameters**. Define the flow, adjoint, and optimization parameters. The explanation of these input parameters is in :ref:`Python_Layer`.
 - **DVGeo**. Import FFD files in plot3d format and define design variables.
 - **DAFoam**. Adjoint misc setup. No need to change.
 - **DVCon**. Define geometric constraints such as volume, thickness, and curvature constraints.

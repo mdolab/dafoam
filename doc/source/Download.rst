@@ -3,22 +3,35 @@
 Download 
 --------
 
-DAFoam supports Linux and MacOS systems, it does not supports Windows at this moment. 
+There are two options to run DAFoam: **pre-compiled package** and **source code**. If you are running DAFoam for the first time, we recommend using the pre-compiled version. For production runs on a HPC system, you need to compile DAFoam from the source.
 
-For new users, we recommend using the pre-compiled version of the DAFoam optimization package.
+**Pre-compiled package**
 
-The pre-compiled version works for both Linux (Ubuntu, Centos, etc.) and MacOS, and is available on Docker Hub.
+The pre-compiled package is available on Docker Hub. It supports Linux (Ubuntu, Centos, etc) and MacOS systems.
 
-To get the pre-compiled DAFoam package, download this script:
+To download the pre-compiled package, you need to first install **docker**, refer to https://www.docker.com/ for more details. On Ubuntu, you can get docker by::
 
-initDAFoam
+    sudo apt-get install docker.io
 
-startDAFoam
+Once you have installed docker, download the following script:
 
-If you want to run DAFoam on a HPC system, you need to compile it from the source.
+`getDAFoam.sh <https://github.com/mdolab/dafoam_files/raw/master/scripts/getDAFoam.sh>`_
 
-The source code for the DAFoam packages is available at:
+and run::
 
+    chmod +x getDAFoam.sh & ./getDAFoam.sh
 
-Follow the instructions in the Installation section to use/compile DAFoam.
+This will download the docker image for DAFoam optimization package. Then, download this script:
+
+`startDAFoam.sh <https://github.com/mdolab/dafoam_files/raw/master/scripts/startDAFoam.sh>`_
+
+and run::
+
+    chmod +x startDAFoam.sh & ./startDAFoam.sh
+
+This will start a new bash window where you can run DAFoam tutorials. Refer to :ref:`Tutorials` for more details.
+
+**Source code**
+
+DAFoam depends on multiple prerequisites and packages. Refer to :ref:`Installation` for detailed DAFoam installation instructions.
 

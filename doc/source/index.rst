@@ -27,7 +27,6 @@ Contents:
 
    self
    Download
-   Installation
    Tutorials
    Development
    Publications

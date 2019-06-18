@@ -3,7 +3,7 @@
 Installation 
 ------------
 
-This section assumes you want to compile DAFoam package from the source. If you use the pre-compiled version, skip this section.
+This section assumes you want to compile the DAFoam optimization package from the source. If you use the pre-compiled version, skip this section.
 
 **DAFoam** runs on Linux systems and is based on **OpenFOAM-v1812**. You must install **OpenFOAM** and verify that it is working correctly. You also need to install the 3rd party and **MDOLab** packages before using **DAFoam** for optimization. Other dependencies include: 
 
@@ -134,8 +134,7 @@ To install the **DAFoam** package:
      
 - Get **pyOptSparse** (https://github.com/mdolab/pyoptsparse). Run::
  
-     python setup.py build_ext --inplace
-
+     python setup.py install --user
      
 4. Download **DAFoam** (https://github.com/mdolab/dafoam) to $HOME/repos. First source the **OpenFOAM** environmental variables::
 
