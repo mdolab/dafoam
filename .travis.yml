@@ -8,7 +8,7 @@ services:
 before_install:
     - echo -e "machine github.com\n  login $GITHUB_TOKEN" > ~/.netrc
     - git lfs pull
-    - sudo apt-get install doxygen python-sphinx
+    - sudo apt-get install doxygen python-sphinx graphviz
 
 install:
     - cd $TRAVIS_BUILD_DIR/python/reg_tests
