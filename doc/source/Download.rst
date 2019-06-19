@@ -19,7 +19,7 @@ Once you have installed docker, download the following script:
 
 and run::
 
-    chmod +x getDAFoam.sh && ./getDAFoam.sh
+    chmod +x getDAFoam.sh & ./getDAFoam.sh
 
 This will download the docker image for DAFoam optimization package. Then, download this script:
 
@@ -27,11 +27,11 @@ This will download the docker image for DAFoam optimization package. Then, downl
 
 and run::
 
-    chmod +x startDAFoam.sh && ./startDAFoam.sh
+    chmod +x startDAFoam.sh & ./startDAFoam.sh
 
 This will start a new bash window where you can run DAFoam tutorials. Refer to :ref:`Tutorials` for more details.
 
 **Source code**
 
-DAFoam depends on multiple prerequisites and packages. Refer to :ref:`Installation` for detailed DAFoam installation instructions.
+The DAFoam source code is available at: https://github.com/mdolab/dafoam. DAFoam depends on multiple prerequisites and packages. Refer to :ref:`Installation` for installation instructions.
 
