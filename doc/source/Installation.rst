@@ -38,7 +38,11 @@ To install the **DAFoam** package:
 
 3. Create a **packages** folder in your home dir, and install the following 3rd party packages
 
-- **PETSc v3.6.4** (http://www.mcs.anl.gov/petsc/). Untar the package, run::
+- **PETSc v3.6.4** (http://www.mcs.anl.gov/petsc/). Untar the package, go into petsc-3.6.4, and run::
+
+   sed -i 's/ierr = MPI_Finalize();CHKERRQ(ierr);/\/\/ierr = MPI_Finalize();CHKERRQ(ierr);/g' src/sys/objects/pinit.c
+
+  This will comment out line 1367 in src/sys/objects/pinit.c to prevent Petsc from conflicting with OpenFOAM MPI. After this, run::
 
    ./configure --with-shared-libraries --download-superlu_dist --download-parmetis --download-metis --with-fortran-interfaces --with-debugging=no --with-scalar-type=real --PETSC_ARCH=real-opt --download-fblaslapack
    

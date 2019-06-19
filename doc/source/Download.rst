@@ -33,5 +33,5 @@ This will start a new bash window where you can run DAFoam tutorials. Refer to :
 
 **Source code**
 
-DAFoam depends on multiple prerequisites and packages. Refer to :ref:`Installation` for detailed DAFoam installation instructions.
+The DAFoam source code is available at: https://github.com/mdolab/dafoam. DAFoam depends on multiple prerequisites and packages. Refer to :ref:`Installation` for installation instructions.
 
