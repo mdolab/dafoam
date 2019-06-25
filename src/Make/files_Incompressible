@@ -16,6 +16,7 @@ AdjointRASModel/AdjointkOmega.C
 AdjointRASModel/AdjointkOmegaSST.C
 AdjointRASModel/AdjointkOmegaSSTLM.C
 AdjointRASModel/AdjointkEpsilon.C
+AdjointRASModel/AdjointRealizableKE.C
 AdjointRASModel/AdjointLaunderSharmaKE.C
 
 AdjointIndexing/AdjointIndexing.C
