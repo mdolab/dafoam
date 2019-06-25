@@ -47,7 +47,7 @@ testInfo['task2']={'solver':'simpleDAFoam',
                     'useWallFunction':'true',
                     'testCases':[allCases[0]]}
 testInfo['task3']={'solver':'simpleDAFoam',
-                    'turbModel':'LaunderSharmaKE',
+                    'turbModel':'realizableKE',
                     'flowCondition':'Incompressible',
                     'useWallFunction':'false',
                     'testCases':[allCases[0]]}

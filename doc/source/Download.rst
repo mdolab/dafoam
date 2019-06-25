@@ -9,7 +9,7 @@ There are two options to run DAFoam: **pre-compiled package** and **source code*
 
 The pre-compiled package is available on Docker Hub. It supports Linux (Ubuntu, Centos, etc) and MacOS systems.
 
-To download the pre-compiled package, you need to first install **docker**, refer to https://www.docker.com/ for more details. On Ubuntu, you can get docker by::
+To download the pre-compiled package, you need to first install **docker**, refer to https://docs.docker.com/ for more details. On Ubuntu, you can get docker by::
 
     sudo apt-get install docker.io
 
