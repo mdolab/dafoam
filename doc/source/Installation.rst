@@ -107,18 +107,6 @@ To install the **DAFoam** package:
   and::
  
      make
-
-- Get **cgnsUtilities** (https://github.com/mdolab/cgnsutilities). Run::
-   
-     cp config.mk.info config.mk
-   
-  and::
- 
-     make
-     
-  Add this to your bashrc and source it::
-   
-     export PATH=$PATH:$HOME/repos/cgnsutilities/bin
     
 - Get **pyHyp** (https://github.com/mdolab/pyHyp). Run::
    
