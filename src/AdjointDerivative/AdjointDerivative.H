@@ -346,7 +346,7 @@ public:
     void dFdWAll2dFdW(const word objFunc);
     
     /// calculate AdjointDerivative::dRdFFD_
-    void calcdRdFFD();
+    void calcdRdFFD(Mat dRdFFD);
 
     /// calculate AdjointDerivative::dRdXv_
     void calcdRdXv();

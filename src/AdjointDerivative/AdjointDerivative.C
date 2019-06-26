@@ -2092,10 +2092,10 @@ void AdjointDerivative::calcdRdUIn()
     this->calcFlowResidualStatistics("verify");
 }
 
-void AdjointDerivative::calcdRdFFD()
+void AdjointDerivative::calcdRdFFD(Mat dRdFFD)
 {
     
-    MatZeroEntries(dRdFFD_);
+    MatZeroEntries(dRdFFD);
 
     // read deltaVolPointMat
     label nProcs = Pstream::nProcs();
@@ -2148,7 +2148,7 @@ void AdjointDerivative::calcdRdFFD()
         newPoints=pointsRef_;
 
         // Index will be based on the iFFD
-        this->setJacobianMat(dRdFFD_,i,transposed);
+        this->setJacobianMat(dRdFFD,i,transposed);
 
     }
 
@@ -2157,15 +2157,15 @@ void AdjointDerivative::calcdRdFFD()
     
     adjRAS_.correctWallDist();
 
-    MatAssemblyBegin(dRdFFD_,MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(dRdFFD_,MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(dRdFFD,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(dRdFFD,MAT_FINAL_ASSEMBLY);
     
     MatDestroy(&deltaVolPointMatPlusEps);
 
     //output the matrix to a file
     if(adjIO_.writeMatrices)
     {
-        adjIO_.writeMatrixBinary(dRdFFD_,"dRdFFD");
+        adjIO_.writeMatrixBinary(dRdFFD,"dRdFFD");
     }
 
     this->calcFlowResidualStatistics("verify");
@@ -2779,7 +2779,7 @@ void AdjointDerivative::calcTotalDerivFFD()
 
     this->initializedRdFFD();
 
-    this->calcdRdFFD();
+    this->calcdRdFFD(dRdFFD_);
 
     this->initializedFdFFD();
 
