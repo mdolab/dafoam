@@ -26,6 +26,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--output", help='Output directory', type=str,default='../optOutput/')
 parser.add_argument("--opt", help="optimizer to use", type=str, default='slsqp')
 parser.add_argument("--task", help="type of run to do", type=str, default='opt')
+parser.add_argument("--nProcs", help="number of processors to use", type=int, default=1)
 parser.add_argument('--optVars',type=str,help='Vars for the optimizer',default="['shape']")
 args = parser.parse_args()
 exec('optVars=%s'%args.optVars)
@@ -34,7 +35,7 @@ outputDirectory = args.output
 gcomm = MPI.COMM_WORLD
 
 
-nProcs     = 2
+nProcs     = args.nProcs
 nFlowCases = 2
 CL_star    = [0.6,0.75,0.9]
 alphaMP    = [1.85,3.252340,5.6]

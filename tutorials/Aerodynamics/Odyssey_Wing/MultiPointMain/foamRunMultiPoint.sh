@@ -1,24 +1,24 @@
 #!/bin/bash
 
 ################## user input ####################
-nProcs=2
-nCases=3
+nProcs=$1
+nCases=2
 exec=mpirun
 outputPath=../optOutput/
 ################## user input ####################
 
-if [ $nProcs -eq 1 ]
+if [ $1 -eq 1 ]
 then
   jobFlag=
 else
   jobFlag=-parallel 
 fi
 
-rm runCheckMesh
-rm runColoring
-rm runFlowSolver*
-rm runAdjointSolver*
-rm jobFinished*
+rm -f runCheckMesh
+rm -f runColoring
+rm -f runFlowSolver*
+rm -f runAdjointSolver*
+rm -f jobFinished*
 
 # main loop
 for (( n=0; n <=1000000; ++n ))
