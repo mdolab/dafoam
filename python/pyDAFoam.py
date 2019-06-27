@@ -1429,8 +1429,14 @@ class PYDAFOAM(AeroSolver):
             # Wait for all of the processors to get here
             self.comm.Barrier()
             
-            
-        elif self.parallel and not mpiSpawnRun:
+        elif not self.parallel and mpiSpawnRun: 
+
+            print("Running potentialFoam.")
+            f=open(logName,'w')
+            subprocess.call("potentialFoam",stdout=f,stderr=subprocess.STDOUT, shell=False)
+            f.close()
+
+        elif not mpiSpawnRun:
         
             finishFile='jobFinished'
             runFile = 'runPotentialFoam'
@@ -1464,13 +1470,11 @@ class PYDAFOAM(AeroSolver):
             while not os.path.isfile(finishFile):
                 time.sleep(checkTime)
             # end
-            self.comm.Barrier()
-            
+            self.comm.Barrier()  
+
         else:
-            print("Running potentialFoam.")
-            f=open(logName,'w')
-            subprocess.call("potentialFoam",stdout=f,stderr=subprocess.STDOUT, shell=False)
-            f.close()
+
+            raise Error('Parallel and MPISpawn not valid!')
 
         return
 
@@ -1528,8 +1532,13 @@ class PYDAFOAM(AeroSolver):
             # Wait for all of the processors to get here
             self.comm.Barrier()
             
-            
-        elif self.parallel and not mpiSpawnRun:
+        elif not self.parallel and mpiSpawnRun:
+
+            f=open(logName,'w')
+            subprocess.call("checkMesh",stdout=f,stderr=subprocess.STDOUT, shell=False)
+            f.close()
+
+        elif not mpiSpawnRun:
         
             finishFile='jobFinished'
             runFile = 'runCheckMesh'
@@ -1566,10 +1575,8 @@ class PYDAFOAM(AeroSolver):
             self.comm.Barrier()
             
         else:
-            
-            f=open(logName,'w')
-            subprocess.call("checkMesh",stdout=f,stderr=subprocess.STDOUT, shell=False)
-            f.close()
+
+            raise Error('Parallel and MPISpawn not valid!')
 
         return
     
@@ -1726,7 +1733,7 @@ class PYDAFOAM(AeroSolver):
             self.writeParallelRunScript(logFileName,scriptName)
 
             if self.comm.rank==0:
-                print("Simulation Started...")
+                print("Simulation Started. Check the %s file for the progress."%logFileName)
             self.comm.Barrier()
             
             # check if the run script exists
@@ -1753,7 +1760,16 @@ class PYDAFOAM(AeroSolver):
             if self.comm.rank==0:
                 print("Simulation Finished!")
 
-        elif self.parallel and not mpiSpawnRun:
+        elif not self.parallel and mpiSpawnRun:
+
+            f = open(logFileName,'w')
+            adjointSolver = self.getOption("adjointsolver")
+            status = subprocess.call(adjointSolver,stdout=f,stderr=subprocess.STDOUT, shell=False)
+            f.close()
+            if status != 0:
+                raise Error('pyDAFoam: status %d: Unable to run %s'%(status,adjointSolver))
+
+        elif not mpiSpawnRun:
             
             finishFile='jobFinished'
             
@@ -1785,7 +1801,7 @@ class PYDAFOAM(AeroSolver):
             self.comm.Barrier()
             
             if self.comm.rank==0:
-                print("Simulation Started...")
+                print("Simulation Started. Check the %s file for the progress."%logFileName)
                         
             # check if the job finishes
             checkTime = self.getOption('filechecktime')
@@ -1796,12 +1812,8 @@ class PYDAFOAM(AeroSolver):
                 print("Simulation Finished!")
 
         else:
-            f = open(logFileName,'w')
-            adjointSolver = self.getOption("adjointsolver")
-            status = subprocess.call(adjointSolver,stdout=f,stderr=subprocess.STDOUT, shell=False)
-            f.close()
-            if status != 0:
-                raise Error('pyDAFoam: status %d: Unable to run %s'%(status,adjointSolver))
+            
+            raise Error('Parallel and MPISpawn not valid!')
         # end
         
         return
@@ -1934,7 +1946,7 @@ class PYDAFOAM(AeroSolver):
             return
             
         if self.rank==0:
-            print('Colorings not found, running coloringSolver%s, see coloringLog file for details'%self.getOption('flowcondition'))
+            print(' Colorings not found, running coloringSolver%s, check the coloringLog file for the progress.'%self.getOption('flowcondition'))
 
         # Update the current adjoint options
         self._writeAdjointDictFile()
@@ -1989,8 +2001,16 @@ class PYDAFOAM(AeroSolver):
 
             # Wait for all of the processors to get here
             self.comm.Barrier()
+        
+        elif not self.parallel and mpiSpawnRun:
+
+            f = open('coloringLog','w')
+            status = subprocess.call('coloringSolver%s'%self.getOption('flowcondition'),stdout=f,stderr=subprocess.STDOUT, shell=False)
+            f.close()
+            if status != 0:
+                raise Error('pyDAFoam: status %d: Unable to run coloring'%status)
             
-        elif self.parallel and not mpiSpawnRun:
+        elif not mpiSpawnRun:
         
             runFile  = 'runColoring'
             finishFile = 'jobFinished'
@@ -2023,11 +2043,8 @@ class PYDAFOAM(AeroSolver):
             self.comm.Barrier()
             
         else:
-            f = open('coloringLog','w')
-            status = subprocess.call('coloringSolver%s'%self.getOption('flowcondition'),stdout=f,stderr=subprocess.STDOUT, shell=False)
-            f.close()
-            if status != 0:
-                raise Error('pyDAFoam: status %d: Unable to run coloring'%status)
+            
+            raise Error('Parallel and MPISpawn not valid!')
 
         return
 

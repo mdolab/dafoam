@@ -5,7 +5,7 @@ Development
 
 DAFoam contains two main layers: OpenFOAM and Python, and they interact through file input and output.
 
-The OpenFOAM layer is written in C++ and contains libraries and solvers for the discrete adjoint, the documentation of the OpenFOAM layer is as follows:
+The OpenFOAM layer is written in C++ and contains libraries and solvers for the discrete adjoint, the documentation of the classes and functions in the OpenFOAM layer is as follows:
 
 `OpenFOAM layer <_static/OpenFOAM/index.html>`_
 

@@ -15,12 +15,12 @@ There are multiple optimization cases in the tutorials folder.
    Tutorial_Aerothermal
    Tutorial_Aerostructural
 
-In each optimization case, the **run** folder contains all the optimization setup. The **optOutput** folder is to store all the optimization results and logs. 
+In each optimization case, the **run** folder contains all the optimization setup. The **optOutput** folder stores all the optimization results and logs. 
 
 The optimization configurations are defined in **runScript.py**. There are seven sections:
 
 - **Imports**. Import all external modules. No need to change.
-- **Input Parameters**. Define the flow, adjoint, and optimization parameters. The explanation of these input parameters is in `Python layer <_static/Python/index.html>`_.
+- **Input Parameters**. Define the flow, adjoint, and optimization parameters. The explanation of these input parameters is in `Python layer <_static/Python/index.html>`_. Refer to classes-python-pyDAFoam-PYDAFOAM-aCompleteInputParameterSet()
 - **DVGeo**. Import FFD files in plot3d format and define design variables.
 - **DAFoam**. Adjoint misc setup. No need to change.
 - **DVCon**. Define geometric constraints such as volume, thickness, and curvature constraints.
@@ -31,33 +31,28 @@ The optimization configurations are defined in **runScript.py**. There are seven
 
 Before running the tutorials, you need to load the DAFoam environment.
 
-- If you use the self-compiled package, first initialize the DAFoam package::
+- If you use the pre-compiled package, run this command to start a container::
 
-    ./getDAFoam.sh
+    docker run -it --rm -v $HOME:/UserHome -w /UserHome dafoam/opt-packages:latest bash -rcfile /opt/setupDAFoam.sh
 
- This will download the DAFoam docker image (if not exist) and start a docker container. You can check docker images on your computer by::
-
-     docker images
- 
- You can also check docker containers running on your computer::
-
-     docker ps -a
-
- Once the DAFoam docker container is up, you can load the DAFoam environment by running::
-
-    ./startDAFoam.sh
-
- This will create a new bash session. Then in the bash session, copy the tutorials from /opt to your local folder::
+ This will mount your local computer's home directory to the container's /UserHome directory and login there. Then, copy the tutorials from /opt/repos/dafoam to /UserHome::
 
     cp -r /opt/repos/dafoam/tutorials .
 
- Finally, you can go into the **run** folder of a tutorial and run::
+ Finally, you can go into the **run** folder of a tutorial and run the optimization. For example, for the aerodynamic optimization of NACA0012 airfoil, run::
 
-   ./Allrun.sh
+   cd tutorials/Aerodynamics/NACA0012_Airfoil_Incompressible/run && ./Allrun.sh 1
 
- Once finished, you can release the resources occupied by the container by running::
+ The last parameter **1** means running the optimization using 1 CPU core. After this, check the log.opt for the optimization progress. All the intermediate shapes and logs (flow, adjoint, mesh quality, design variables, etc.) are stored in the optOutput directory. Once the optimization is finished, you can run **exit** to quit the container and use `Paraview <https://www.paraview.org/>`_ to post-process the optimization results on your local computer. Remember to choose **Case Type-Decomposed Case** to view the decomposed (parallel) cases in Paraview. 
+ 
+ A few notes:
+   
+   - Always run Allclean.sh before running Allrun.sh. 
 
-    docker stop dafoam && docker rm dafoam
+   - You run a container and login as root, which means, from your local computer, you have no write permission for the generated files; you need to move or delete these files from the container bash session.
+
+   - Treat the Docker container as disposable, i.e., start one container for one optimization run. If the optimization is running and you want to kill it, just run **exit** to quit the container and start a new one.
+
 
 - If you have compiled DAFoam from the source code following :ref:`Installation`, load the OpenFOAM environment::
 
