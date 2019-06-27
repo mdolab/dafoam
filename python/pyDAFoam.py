@@ -1680,7 +1680,7 @@ class PYDAFOAM(AeroSolver):
                 else:
                     raise Error('pyDAFoam: logFileName error!')
                         
-                print("Simulations Started...")
+                print("Simulation Started. Check the %s file for the progress."%logFileName)
                 
             self.comm.Barrier()
             
