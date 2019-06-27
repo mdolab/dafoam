@@ -33,7 +33,7 @@ Before running the tutorials, you need to load the DAFoam environment.
 
 - If you use the pre-compiled package, run this command to start a container::
 
-    docker run -it --rm -v $HOME:/UserHome -w /UserHome dafoam/opt-packages:latest bash -rcfile /opt/setupDAFoam.sh
+    docker run -it --rm -u dafoamuser -v $HOME:/UserHome -w /UserHome dafoam/opt-packages:latest bash -rcfile /opt/setupDAFoam.sh
 
  This will mount your local computer's home directory to the container's /UserHome directory and login there. Then, copy the tutorials from /opt/repos/dafoam to /UserHome::
 
@@ -47,11 +47,11 @@ Before running the tutorials, you need to load the DAFoam environment.
  
  A few notes:
    
-   - Always run Allclean.sh before running Allrun.sh. 
-
-   - You run a container and login as root, which means, from your local computer, you have no write permission for the generated files; you need to move or delete these files from the container bash session.
-
    - Treat the Docker container as disposable, i.e., start one container for one optimization run. If the optimization is running and you want to kill it, just run **exit** to quit the container and start a new one.
+   
+   - You run a container and login as dafoamuser, its sudo password is: dafoamuser.
+
+   - Always run Allclean.sh before running Allrun.sh. 
 
 
 - If you have compiled DAFoam from the source code following :ref:`Installation`, load the OpenFOAM environment::
