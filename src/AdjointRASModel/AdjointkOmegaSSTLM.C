@@ -1672,7 +1672,7 @@ void AdjointkOmegaSSTLM::setAdjStateResidualTurbCon
 
     adjStateResidualConInfo.set
     (
-        "kRes",
+        "ReThetatRes",
         {
             {"U","T",pName,"omega","k","ReThetat","gammaInt","phi"}, // lv0
             {"U","T",pName,"omega","k","ReThetat","gammaInt"},       // lv1
@@ -1682,7 +1682,7 @@ void AdjointkOmegaSSTLM::setAdjStateResidualTurbCon
 
     adjStateResidualConInfo.set
     (
-        "kRes",
+        "gammaIntRes",
         {
             {"U","T",pName,"omega","k","ReThetat","gammaInt","phi"}, // lv0
             {"U","T",pName,"omega","k","ReThetat","gammaInt"},       // lv1
