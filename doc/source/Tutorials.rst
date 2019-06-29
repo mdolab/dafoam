@@ -47,9 +47,11 @@ Before running the tutorials, you need to load the DAFoam environment.
  
  A few notes:
    
-   - Treat the Docker container as disposable, i.e., start one container for one optimization run. If the optimization is running and you want to kill it, just run **exit** to quit the container and start a new one.
+   - Treat the Docker container as disposable, i.e., start one container for one optimization run. If the optimization is running and you want to kill it, just run **exit** to quit the container.
+
+   - Do not store simulation results in the container because they will be deleted after you exit. Run simulations on the mounted space /UserHome instead.
    
-   - You run a container and login as dafoamuser, its sudo password is: dafoamuser.
+   - dafoamuser has the sudo privilege and its password is: dafoamuser.
 
    - Always run Allclean.sh before running Allrun.sh. 
 
@@ -64,5 +66,5 @@ Before running the tutorials, you need to load the DAFoam environment.
 
  Finally, you can go into the **run** folder of a tutorial and run::
 
-   ./Allrun.sh
+   ./Allrun.sh 1
 
