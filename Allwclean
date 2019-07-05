@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Clean pyOptFoam solvers
+# Clean DAFoam
 
 rm *.pyc
 rm python/*.pyc

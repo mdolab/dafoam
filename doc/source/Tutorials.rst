@@ -33,11 +33,11 @@ Before running the tutorials, you need to load the DAFoam environment.
 
 - If you use the pre-compiled package, run this command to start a container::
 
-    docker run -it --rm -u dafoamuser -v $HOME:/UserHome -w /UserHome dafoam/opt-packages:latest bash -rcfile /opt/setupDAFoam.sh
+   docker run -it --rm -u dafoamuser -v $HOME:/UserHome -w /UserHome dafoam/opt-packages:latest bash -rcfile /opt/setupDAFoam.sh
 
  This will mount your local computer's home directory to the container's /UserHome directory and login there. Then, copy the tutorials from /opt/repos/dafoam to /UserHome::
 
-    cp -r /opt/repos/dafoam/tutorials .
+   cp -r /opt/repos/dafoam/tutorials .
 
  Finally, you can go into the **run** folder of a tutorial and run the optimization. For example, for the aerodynamic optimization of NACA0012 airfoil, run::
 
@@ -62,7 +62,7 @@ Before running the tutorials, you need to load the DAFoam environment.
 
  Then, copy the tutorials to your local folder::
 
-    cp -r $HOME/repos/dafoam/tutorials .
+   cp -r $HOME/repos/dafoam/tutorials .
 
  Finally, you can go into the **run** folder of a tutorial and run::
 

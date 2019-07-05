@@ -136,8 +136,20 @@ To install the **DAFoam** package:
   
     ./Allwmake
     
-   Next, go to dafoam/python/reg_tests and untar “input.tar.gz”. Finally, run the regression test there::
+   Next, go to dafoam/python/reg_tests, download `input.tar.gz <https://github.com/mdolab/dafoam/raw/master/python/reg_tests/input.tar.gz>`_ and untar it. Finally, run the regression test there::
   
     python run_reg_tests.py
     
-   Make sure the regression test passes. OK, the installation of **DAFoam** is finished.
+   The regression tests should take less than 30 minutes. You should see something like::
+   
+    dafoam buoyantBoussinesqSimpleDAFoam: Success!
+    dafoam buoyantSimpleDAFoam: Success!
+    dafoam calcDeltaVolPointMat: Success!
+    dafoam rhoSimpleCDAFoam: Success!
+    dafoam rhoSimpleDAFoam: Success!
+    dafoam simpleDAFoam: Success!
+    dafoam simpleTDAFoam: Success!
+    dafoam solidDisplacementDAFoam: Success!
+    dafoam turboDAFoam: Success!
+  
+   If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam. OK, the installation of DAFoam is finished.
