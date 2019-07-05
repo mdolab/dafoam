@@ -68,3 +68,11 @@ Before running the tutorials, you need to load the DAFoam environment.
 
    ./Allrun.sh 1
 
+ A few notes:
+
+   - Before running the optimization, source the OpenFOAM environment: ". $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc"
+   
+   - Because the OpenFOAM and Python layers interact through IO, job cleaning needs special attention. We assume you compile DAFoam from source and run it on an HPC system. In this case, the running executives will be automatically cleaned when you kill the job. However, if you compile DAFoam and run it on your local computer (not recommended, use the pre-compiled docker version instead!), you need to manually kill the job and clean the running stuff (e.g., the foamRun.sh script and other running executives).
+
+   - Always run Allclean.sh before running Allrun.sh. 
+

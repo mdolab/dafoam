@@ -152,4 +152,4 @@ To install the **DAFoam** package:
     dafoam solidDisplacementDAFoam: Success!
     dafoam turboDAFoam: Success!
   
-   If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam. OK, the installation of DAFoam is finished.
+   If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam.
