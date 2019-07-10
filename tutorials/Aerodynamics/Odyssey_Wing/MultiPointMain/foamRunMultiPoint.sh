@@ -4,7 +4,6 @@
 nProcs=$1
 nCases=2
 exec=mpirun
-outputPath=../optOutput/
 ################## user input ####################
 
 if [ $1 -eq 1 ]

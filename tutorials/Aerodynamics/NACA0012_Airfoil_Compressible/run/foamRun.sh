@@ -3,7 +3,6 @@
 ########## user input ##########
 nProcs=$1
 exec=mpirun
-outputPath=../optOutput/
 ########## user input ##########
 
 pFlag='-parallel'
