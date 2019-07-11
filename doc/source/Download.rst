@@ -7,7 +7,13 @@ There are two options to run DAFoam: **pre-compiled package** and **source code*
 
 - **Pre-compiled package**
 
- The pre-compiled package is available on Docker Hub. Before downloading the pre-compiled package, you need to install **Docker**. Follow the installation instructions for `Ubuntu <https://docs.docker.com/install/linux/docker-ce/ubuntu/>`_, `Fedora <https://docs.docker.com/install/linux/docker-ce/fedora/>`_, `CentOS <https://docs.docker.com/install/linux/docker-ce/centos/>`_, `MacOS <https://docs.docker.com/docker-for-mac/install/>`_, and  `Windows <https://docs.docker.com/docker-for-windows/install/>`_. Once finished, open a terminal and verify the installation by::
+ The pre-compiled package is available on Docker Hub. Before downloading the pre-compiled package, you need to install **Docker**. Follow the installation instructions for `Ubuntu <https://docs.docker.com/install/linux/docker-ce/ubuntu/>`_, `Fedora <https://docs.docker.com/install/linux/docker-ce/fedora/>`_, `CentOS <https://docs.docker.com/install/linux/docker-ce/centos/>`_, `MacOS <https://docs.docker.com/docker-for-mac/install/>`_, and  `Windows <https://docs.docker.com/docker-for-windows/install/>`_. 
+ 
+ On Ubuntu, you can easily install Docker by::
+
+    sudo apt-get install docker-io
+
+ Once finished, open a terminal and verify the docker installation by::
 
     docker --version
 
