@@ -32,13 +32,18 @@ Using self-built C/Fortran and MPI may cause linking issues
 
 To install the **DAFoam** package:
 
-1. Compile **OpenFOAM-v1812** following this website: http://openfoamwiki.net/index.php/Installation/Linux **NOTE**: After the OpenFOAM installation is done, start a new session to install the rest packages; **DO NOT** load the OpenFOAM environment. This is to prevent environmental variable conflict between OpenFOAM and other packages.
+1. Create a "**OpenFOAM**" folder in your home directory ($HOME). Go into the "OpenFOAM" directory and install **OpenFOAM-v1812** following this website: http://openfoamwiki.net/index.php/Installation/Linux **NOTE**: After the OpenFOAM installation is done, start a new session to install the rest packages; **DO NOT** load the OpenFOAM environment. This is to prevent environmental variable conflict between OpenFOAM and other packages.
 
-2. Install **Anaconda** package for Python (https://repo.continuum.io/archive/Anaconda2-2.4.0-Linux-x86_64.sh). **NOTE**: Anaconda2-2.4.0 is recommended since the newer version may have libgfortran conflict.
 
-3. Create a **packages** folder in your home dir, and install the following 3rd party packages
+2. Create a "**packages**" folder in your home directory. Go into the "packages" directory and install the following 3rd party packages:
 
-- **PETSc v3.6.4** (http://www.mcs.anl.gov/petsc/). Untar the package, go into petsc-3.6.4, and run::
+- **Anaconda** Python. **NOTE**: Anaconda2-2.4.0 is recommended since the newer version may have libgfortran conflict. Download https://repo.continuum.io/archive/Anaconda2-2.4.0-Linux-x86_64.sh and run::
+  
+   chmod 755 Anaconda2-2.4.0-Linux-x86_64.sh && ./Anaconda2-2.4.0-Linux-x86_64.sh 
+
+  When asked, put $HOME/packages/anaconda2 as the prefix for the installation path. At the end of the installation, reply "yes" to add the anaconda bin path to your bashrc.
+
+- **PETSc v3.6.4** (http://www.mcs.anl.gov/petsc/). Download petsc-3.6.4.tar.gz and put it in the $HOME/packages folder, go into $HOME/packages/petsc-3.6.4, and run::
 
    sed -i 's/ierr = MPI_Finalize();CHKERRQ(ierr);/\/\/ierr = MPI_Finalize();CHKERRQ(ierr);/g' src/sys/objects/pinit.c
 
@@ -46,7 +51,7 @@ To install the **DAFoam** package:
 
    ./configure --with-shared-libraries --download-superlu_dist --download-parmetis --download-metis --with-fortran-interfaces --with-debugging=no --with-scalar-type=real --PETSC_ARCH=real-opt --download-fblaslapack
    
-  and::
+  and after this, run::
 
     make PETSC_DIR=$HOME/packages/petsc-3.6.4 PETSC_ARCH=real-opt all
 
@@ -57,8 +62,9 @@ To install the **DAFoam** package:
     export PATH=$PETSC_DIR/$PETSC_ARCH/bin:$PATH
     export PATH=$PETSC_DIR/$PETSC_ARCH/include:$PATH
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH/lib
+    export PETSC_LIB=$PETSC_DIR/$PETSC_ARCH/lib
 
-- **cgnslib_3.2.1** (http://cgns.sourceforge.net/download.html). NOTE: The 3.2.1 version fortran include file is bad. After untaring, manually edit the cgnslib_f.h file in the src directory and remove all the comment lines at the beginning of the file starting with c. Then run::
+- **cgnslib_3.2.1** (http://cgns.sourceforge.net/download.html). Download cgnslib_3.2.1.tar.gz, put it in the $HOME/packages/ folder, and untar it. NOTE: The 3.2.1 version fortran include file is bad, so you need to manually edit the cgnslib_f.h file in the src directory and remove all the comment lines at the beginning of the file starting with "C". Then run::
 
     cmake .
 
@@ -86,7 +92,9 @@ To install the **DAFoam** package:
     
   This will install the package to the .local directory.
   
-3. Create a **repos** folder in your home dir, and install the following **MDOLab** packages. 
+
+
+3. Create a "**repos**" folder in your home directory. Go into the "repos" directory and download and install the following **MDOLab** packages (use small cases for all the repository names):
 
 - First add this to your bashrc and source it::
  
@@ -115,6 +123,18 @@ To install the **DAFoam** package:
   and::
  
      make
+
+- Get **cgnsUtilities** (https://github.com/mdolab/cgnsutilities). Run::
+   
+     cp config.mk.info config.mk
+   
+  and::
+ 
+     make
+     
+  Add this to your bashrc and source it::
+   
+     export PATH=$PATH:$HOME/repos/cgnsutilities/bin
      
 - Get **IDWarp** (https://github.com/mdolab/idwarp). Run::
      
@@ -127,8 +147,9 @@ To install the **DAFoam** package:
 - Get **pyOptSparse** (https://github.com/mdolab/pyoptsparse). Run::
  
      python setup.py install --user
-     
-4. Download **DAFoam** (https://github.com/mdolab/dafoam) to $HOME/repos. First source the OpenFOAM environmental variables::
+
+
+4. Download **DAFoam** (https://github.com/mdolab/dafoam) and put it into the $HOME/repos folder. First source the OpenFOAM environmental variables::
 
     source $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc
     
@@ -136,7 +157,7 @@ To install the **DAFoam** package:
   
     ./Allwmake
     
-   Next, go to dafoam/python/reg_tests, download `input.tar.gz <https://github.com/mdolab/dafoam/raw/master/python/reg_tests/input.tar.gz>`_ and untar it. Finally, run the regression test there::
+   Next, go to $HOME/repos/dafoam/python/reg_tests, download `input.tar.gz <https://github.com/mdolab/dafoam/raw/master/python/reg_tests/input.tar.gz>`_ and untar it. Finally, run the regression test there::
   
     python run_reg_tests.py
     
@@ -152,4 +173,56 @@ To install the **DAFoam** package:
     dafoam solidDisplacementDAFoam: Success!
     dafoam turboDAFoam: Success!
   
-   If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam.
+   You should see the first "Success" in less than 5 minute. If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam.
+
+|
+
+In summary, here is the folder structures for all the installed packages::
+   
+  $HOME
+    - OpenFOAM
+      - OpenFOAM-v1812
+      - ThirdParty-v1812
+    - packages
+      - anaconda2
+      - cgnslib_3.2.1
+      - mpi4py-1.3.1
+      - petsc-3.6.4
+      - petsc4py-3.6.0
+    - repos
+      - baseclasses
+      - cgnsutilities
+      - dafoam
+      - idwarp
+      - multipoint
+      - openfoammeshreader
+      - pygeo
+      - pyhyp
+      - pyoptsparse
+      - pyspline
+
+Here is the DAFoam related environmental variable setup that should appear in your bashrc file::
+
+  # PETSC
+  export PETSC_DIR=$HOME/packages/petsc-3.6.4
+  export PETSC_ARCH=real-opt
+  export PATH=$PETSC_DIR/$PETSC_ARCH/bin:$PATH
+  export PATH=$PETSC_DIR/$PETSC_ARCH/include:$PATH
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH/lib
+  export PETSC_LIB=$PETSC_DIR/$PETSC_ARCH/lib
+  
+  # cgns lib
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/packages/cgnslib_3.2.1/src
+
+  # cgns utlis
+  export PATH=$PATH:$HOME/repos/cgnsutilities/bin
+
+  # Python path
+  export PYTHONPATH=$PYTHONPATH:$HOME/repos
+
+  # Anaconda2
+  export PATH="$HOME/packages/anaconda2/bin:$PATH"
+
+
+
+  
