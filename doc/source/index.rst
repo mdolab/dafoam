@@ -31,5 +31,6 @@ Contents:
    Tutorials
    Development
    Publications
+   Contact
 
 
