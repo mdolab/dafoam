@@ -1173,13 +1173,17 @@ class PYDAFOAM(AeroSolver):
                 self.setSurfaceCoordinates(coords, self.designFamilyGroup)
                 if self.comm.rank == 0:
                     print ('DVGeo PointSet UpToDate: '+str(self.DVGeo.pointSetUpToDate(ptSetName)))
-        
-            # warp the mesh
-            self.mesh.warpMesh()
-            # write the new volume coords to a file
-            newGrid = self.mesh.getSolverGrid()
-            #print newGrid
-            ofm._writeOpenFOAMVolumePoints(self.fileNames,newGrid)
+                
+                # warp the mesh
+                if self.comm.rank == 0:
+                    print ('Warping the volume mesh....')
+                self.mesh.warpMesh()
+
+                # write the new volume coords to a file
+                if self.comm.rank == 0:
+                    print ('Writting the updated volume mesh....')
+                newGrid = self.mesh.getSolverGrid()
+                ofm._writeOpenFOAMVolumePoints(self.fileNames,newGrid)
 
         # remove the old post processing results if they exist
         self._cleanPostprocessingDir()
