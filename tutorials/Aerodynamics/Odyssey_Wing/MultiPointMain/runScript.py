@@ -37,9 +37,9 @@ gcomm = MPI.COMM_WORLD
 
 nProcs     = args.nProcs
 nFlowCases = 2
-CL_star    = [0.6,0.75,0.9]
-alphaMP    = [1.85,3.252340,5.6]
-MPWeights  = [0.25,0.5,0.25]
+CL_star    = [0.6,0.75]
+alphaMP    = [1.768493,3.607844]
+MPWeights  = [0.3,0.7]
 UmagIn     = 24.8
 ARef       = 1.2193524
 
@@ -58,7 +58,6 @@ aeroOptions = {
     'casename':                 'Odyssey_'+task+'_'+optVars[0],
     'outputdirectory':          outputDirectory,
     'writesolution':            True,
-    'usecoloring':              True,
 
     # multipoit
     'multipointopt':            True,
@@ -83,11 +82,7 @@ aeroOptions = {
     'outletpatches':           ['inout'],
     'flowbcs':                 {'bc0':{'patch':'inout','variable':'U','value':inletu0},
                                 'useWallFunction':'true'},    
-    'transproperties':         {'nu':1.5E-5,
-                                'TRef':300.0,
-                                'beta':3e-3,
-                                'Pr':0.7,
-                                'Prt':0.85},     
+
     # adjoint setup
     'adjgmresmaxiters':        1500,
     'adjgmresrestart':         1500,
@@ -99,17 +94,10 @@ aeroOptions = {
     'adjpcfilllevel':          1, 
     'adjjacmatordering':       'state',
     'adjjacmatreordering':     'nd',
-    'normalizestates':         ['U','p','k','omega','gammaInt','ReThetat','phi','nuTilda','e'],
-    'normalizeresiduals':      ['URes','pRes','phiRes','nuTildaRes','eRes','kRes','omegaRes','gammaIntRes','ReThetatRes'],
-    'maxresconlv4jacpcmat':    {'URes':2,'pRes':2,'phiRes':1,'eRes':2,'nuTildaRes':2,'kRes':2,'omegaRes':2,'gammaIntRes':2,'ReThetatRes':2},
-    'statescaling':            {'UScaling':25,
-                                'pScaling':200,
+    'statescaling':            {'UScaling':UmagIn,
+                                'pScaling':UmagIn*UmagIn/2.0,
                                 'phiScaling':1.0,
-                                'nuTildaScaling':4.5e-4,
-                                'kScaling':0.02,
-                                'omegaScaling':30.0,
-                                'TScaling':300.0},
-    
+                                'nuTildaScaling':4.5e-4},
     
     ########## misc setup ##########
     'mpispawnrun':             False,
@@ -131,11 +119,12 @@ meshOptions = {
 outPrefix = outputDirectory+task+optVars[0]
 if args.opt == 'snopt':
     optOptions = {
-        'Major feasibility tolerance':  1.0e-7,   # tolerance for constraint
-        'Major optimality tolerance':   1.0e-7,   # tolerance for gradient 
-        'Minor feasibility tolerance':  1.0e-7,   # tolerance for constraint
+        'Major feasibility tolerance':  1.0e-6,   # tolerance for constraint
+        'Major optimality tolerance':   1.0e-6,   # tolerance for gradient 
+        'Minor feasibility tolerance':  1.0e-6,   # tolerance for constraint
         'Verify level':                 -1,
-        'Function precision':           1.0e-7,
+        'Function precision':           1.0e-6,
+        'Major iterations limit':       20,
         'Nonderivative linesearch':     None, 
         'Major step limit':             2.0,
         'Penalty parameter':            0.0, # initial penalty parameter
@@ -144,21 +133,21 @@ if args.opt == 'snopt':
     }
 elif args.opt == 'psqp':
     optOptions = {
-        'TOLG':                         1.0e-7,   # tolerance for gradient 
-        'TOLC':                         1.0e-7,   # tolerance for constraint
-        'MIT':                          25,       # max optimization iterations
+        'TOLG':                         1.0e-6,   # tolerance for gradient 
+        'TOLC':                         1.0e-6,   # tolerance for constraint
+        'MIT':                          20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_PSQP.out')
     }
 elif args.opt == 'slsqp':
     optOptions = {
-        'ACC':                          1.0e-7,   # convergence accuracy
-        'MAXIT':                        25,       # max optimization iterations
+        'ACC':                          1.0e-6,   # convergence accuracy
+        'MAXIT':                        20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_SLSQP.out')
     }
 elif args.opt == 'ipopt':
     optOptions = {
-        'tol':                          1.0e-7,   # convergence accuracy
-        'max_iter':                     25,       # max optimization iterations
+        'tol':                          1.0e-6,   # convergence accuracy
+        'max_iter':                     20,       # max optimization iterations
         'output_file':                  os.path.join(outPrefix+'_IPOPT.out')
     }
 else:
@@ -197,12 +186,6 @@ def twist(val, geo):
     # Set all the twist values
     for i in xrange(nTwist):
         geo.rot_z['wingAxis'].coef[i] = val[i]
-        
-def chords(val, geo): # only support 2 chord sections: root and tip
-    s = geo.refAxis.curves[0].s
-    # Interpolate chords 
-    for i in xrange(len(s)):
-        geo.scale['wingAxis'].coef[i] = (s[i]-s[0])/(s[-1]-s[0])*(val[1]-val[0]) + val[0]
 
 def alpha(val, geo=None):
     inletu, dragdir, liftdir = calcUAndDir(UmagIn,np.real(val))
@@ -218,32 +201,18 @@ def alpha(val, geo=None):
     CFDSolver.setOption('dragdir',dragdir)
     CFDSolver.setOption('liftdir',liftdir)        
 
-if 'chord' in optVars[0]:
-    lower = -10*np.ones(2)
-    upper =  10*np.ones(2)
-    lower[0] = 1.0 # root chord does not change
-    upper[0] = 1.0
-    DVGeo.addGeoDVGlobal(optVars[0], np.ones(2), chords,lower=lower, upper=upper, scale=1.0)
-elif 'twist' in optVars[0]:
-    lower = -10*np.ones(nTwist)
-    upper =  10*np.ones(nTwist)
-    #lower[0] = 0.0 # root twist does not change
-    #upper[0] = 0.0
-    DVGeo.addGeoDVGlobal(optVars[0], 0*np.zeros(nTwist), twist,lower=lower, upper=upper, scale=0.1)
-elif 'alpha' in optVars[0]:
-    DVGeo.addGeoDVGlobal('alpha', alphaMP[0],alpha,lower=0, upper=10.0, scale=1.0)
-elif 'shape' in optVars[0]:
-    # FFD shape
-    DVGeo.addGeoDVLocal(optVars[0], lower=-0.5, upper=0.5, axis='y', scale=10.0)
-    # twist
-    lower = -10*np.ones(nTwist)
-    upper =  10*np.ones(nTwist)
-    lower[0] = 0.0 # root twist does not change
-    #upper[0] = 0.0
-    DVGeo.addGeoDVGlobal('twist', 0*np.zeros(nTwist), twist,lower=lower, upper=upper, scale=0.1)
-    # AOA
-    for i in range(nFlowCases):
-        DVGeo.addGeoDVGlobal('fc%d_alpha'%i, alphaMP[i],alpha,lower=0, upper=10.0, scale=1.0)
+
+# FFD shape
+DVGeo.addGeoDVLocal(optVars[0], lower=-0.5, upper=0.5, axis='y', scale=10.0)
+# twist
+lower = -10*np.ones(nTwist)
+upper =  10*np.ones(nTwist)
+lower[0] = 0.0 # root twist does not change
+upper[0] = 0.0
+DVGeo.addGeoDVGlobal('twist', 0*np.zeros(nTwist), twist,lower=lower, upper=upper, scale=0.1)
+# AOA
+for i in range(nFlowCases):
+    DVGeo.addGeoDVGlobal('fc%d_alpha'%i, alphaMP[i],alpha,lower=0, upper=10.0, scale=1.0)
 
 # =================================================================================================
 # DAFoam
@@ -273,23 +242,22 @@ DVCon.setDVGeo(DVGeo)
 surf = [p0, v1, v2]
 DVCon.setSurface(surf)
 
-if 'shape' in optVars[0] and task.lower()=='opt':
-    # Le/Te constraints
-    DVCon.addLeTeConstraints(0, 'iLow')
-    DVCon.addLeTeConstraints(0, 'iHigh')
-    
-    #Create a volume constraint
-    # Volume constraints
-    leList = [[0.5334*0.01, 0, 0.005],     [0.5334*0.01, 0, 2.286]]
-    teList = [[0.5334*0.99, 0.0013, 0.005],[0.5334*0.99, 0.0013, 2.286]]
-    DVCon.addVolumeConstraint(leList, teList, 20, 20, lower=1.0)
-    
-    # Thickness constraints
-    DVCon.addThicknessConstraints2D(leList, teList, 20, 20, lower=0.5)
-    
-    if gcomm.rank == 0:
-        fileName = os.path.join(args.output, 'constraints.dat')
-        DVCon.writeTecplot(fileName)
+# Le/Te constraints
+DVCon.addLeTeConstraints(0, 'iLow')
+DVCon.addLeTeConstraints(0, 'iHigh')
+
+#Create a volume constraint
+# Volume constraints
+leList = [[0.5334*0.01, 0, 0.005],     [0.5334*0.01, 0, 2.286]]
+teList = [[0.5334*0.99, 0.0013, 0.005],[0.5334*0.99, 0.0013, 2.286]]
+DVCon.addVolumeConstraint(leList, teList, 20, 20, lower=1.0)
+
+# Thickness constraints
+DVCon.addThicknessConstraints2D(leList, teList, 20, 20, lower=0.5)
+
+if gcomm.rank == 0:
+    fileName = os.path.join(args.output, 'constraints.dat')
+    DVCon.writeTecplot(fileName)
 
 # =================================================================================================
 # optFuncs

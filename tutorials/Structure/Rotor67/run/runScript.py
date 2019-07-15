@@ -57,11 +57,7 @@ aeroOptions = {
                                                       'scale':1.0,
                                                       'component':2}},
     'referencevalues':         {'KSCoeff':8.0e-7,'magURef':1.0,'ARef':1.0,'LRef':1.0,'pRef':0.0,'rhoRef':1.0},
-    'liftdir':                 [0.0,0.0,1.0],
-    'dragdir':                 [1.0,0.0,0.0],
     'rotrad':                  [0.0,0.0,-1680.0],
-#    'derivuininfo':            {'stateName':'D','component':1,'type':'fixedValue','patchNames':['top']},
-#    'derivuininfo':            {'stateName':'D','component':-1,'type':'tractionDisplacement','patchNames':['bladeps']},
     'derivuininfo':            {'stateName':'D','component':2,'type':'rotRad','patchNames':['top']},
     # flow setup
     'adjointsolver':           'solidDisplacementDAFoam',
@@ -71,37 +67,20 @@ aeroOptions = {
     'writeinterval':           300,
     'setflowbcs':              True,
     'flowbcs':                 {},  
-    #'flowbcs':                 {'bc0':{'patch':'bladeps','variable':'D','value':[0.0,0.0,0.0],'pressure':[1.0e4]}},  
-    #'flowbcs':                 {'bc0':{'patch':'top','variable':'D','value':[0.0,1e-9,0.0]}},  
-    'transproperties':         {'nu':1.5E-5,
-                                'TRef':300.0,
-                                'beta':3e-3,
-                                'Pr':0.7,
-                                'Prt':0.85}, 
-    'thermalproperties':       {'C':880.0,
-                                'k':190.0,
-                                'alpha':1.1e-5,
-                                'thermalStress':'false'},
     'mechanicalproperties':     {'rho':2700.0,
                                  'nu':0.33,
                                  'E':0.689e11},
     'gradschemes':              {'default':'leastSquares'},
-    'fvsolvers':                 {'"(D|T)"':{'solver':'GAMG',
-                                            'tolerance':'1e-20',
-                                            'relTol':'0.9',
-                                            'smoother':'GaussSeidel',
-                                            'maxIter':'1',
-                                            'nCellsInCoarsestLevel':'20'}},
-    #'updatedefaultdicts':       {'fvsolvers':{'"(D|T)"':{'solver':'GAMG',
-    #                                                     'tolerance':'1e-20',
-    #                                                     'relTol':'0.9',
-    #                                                     'smoother':'GaussSeidel',
-    #                                                     'maxIter':'1',
-    #                                                     'nCellsInCoarsestLevel':'20'}}},
+    'fvsolvers':                 {'D':{'solver':'GAMG',
+                                       'tolerance':'1e-20',
+                                       'relTol':'0.9',
+                                       'smoother':'GaussSeidel',
+                                       'maxIter':'1',
+                                       'nCellsInCoarsestLevel':'20'}},
+
     # adjoint setup
     'adjgmresmaxiters':        500,
     'adjgmresrestart':         500,
-    'adjgmresreltol':          1e-6,
     'adjdvtypes':              ['FFD'], 
     'maxtoljac':               1e200,
     'maxtolpc':                1e200,
@@ -111,11 +90,7 @@ aeroOptions = {
     'adjpcfilllevel':          1, 
     'adjjacmatordering':       'state',
     'adjjacmatreordering':     'rcm',
-    'normalizestates':         ['D','T'],
-    'normalizeresiduals':      ['DRes','TRes'],
-    'maxresconlv4jacpcmat':    {'DRes':2,'TRes':2},
-    'statescaling':            {'DScaling':1e-7,
-                                'TScaling':300.0},
+    'statescaling':            {'DScaling':1e-7},
     
     
     ########## misc setup ##########
@@ -139,11 +114,12 @@ meshOptions = {
 outPrefix = outputDirectory+task+optVars[0]
 if args.opt == 'snopt':
     optOptions = {
-        'Major feasibility tolerance':  1.0e-7,   # tolerance for constraint
-        'Major optimality tolerance':   1.0e-7,   # tolerance for gradient 
-        'Minor feasibility tolerance':  1.0e-7,   # tolerance for constraint
+        'Major feasibility tolerance':  1.0e-6,   # tolerance for constraint
+        'Major optimality tolerance':   1.0e-6,   # tolerance for gradient 
+        'Minor feasibility tolerance':  1.0e-6,   # tolerance for constraint
         'Verify level':                 -1,
-        'Function precision':           1.0e-7,
+        'Function precision':           1.0e-6,
+        'Major iterations limit':       20,
         'Nonderivative linesearch':     None, 
         'Major step limit':             2.0,
         'Penalty parameter':            0.0, # initial penalty parameter
@@ -152,21 +128,21 @@ if args.opt == 'snopt':
     }
 elif args.opt == 'psqp':
     optOptions = {
-        'TOLG':                         1.0e-7,   # tolerance for gradient 
-        'TOLC':                         1.0e-7,   # tolerance for constraint
-        'MIT':                          25,       # max optimization iterations
+        'TOLG':                         1.0e-6,   # tolerance for gradient 
+        'TOLC':                         1.0e-6,   # tolerance for constraint
+        'MIT':                          20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_PSQP.out')
     }
 elif args.opt == 'slsqp':
     optOptions = {
-        'ACC':                          1.0e-7,   # convergence accuracy
-        'MAXIT':                        25,       # max optimization iterations
+        'ACC':                          1.0e-5,   # convergence accuracy
+        'MAXIT':                        20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_SLSQP.out')
     }
 elif args.opt == 'ipopt':
     optOptions = {
-        'tol':                          1.0e-7,   # convergence accuracy
-        'max_iter':                     25,       # max optimization iterations
+        'tol':                          1.0e-6,   # convergence accuracy
+        'max_iter':                     20,       # max optimization iterations
         'output_file':                  os.path.join(outPrefix+'_IPOPT.out')
     }
 else:

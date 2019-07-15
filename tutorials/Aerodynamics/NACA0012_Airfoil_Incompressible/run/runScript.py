@@ -116,9 +116,9 @@ meshOptions = {
 outPrefix = outputDirectory+task+optVars[0]
 if args.opt == 'snopt':
     optOptions = {
-        'Major feasibility tolerance':  1.0e-5,   # tolerance for constraint
-        'Major optimality tolerance':   1.0e-5,   # tolerance for gradient 
-        'Minor feasibility tolerance':  1.0e-5,   # tolerance for constraint
+        'Major feasibility tolerance':  1.0e-6,   # tolerance for constraint
+        'Major optimality tolerance':   1.0e-6,   # tolerance for gradient 
+        'Minor feasibility tolerance':  1.0e-6,   # tolerance for constraint
         'Verify level':                 -1,
         'Function precision':           1.0e-6,
         'Major iterations limit':       20,
@@ -130,8 +130,8 @@ if args.opt == 'snopt':
     }
 elif args.opt == 'psqp':
     optOptions = {
-        'TOLG':                         1.0e-5,   # tolerance for gradient 
-        'TOLC':                         1.0e-5,   # tolerance for constraint
+        'TOLG':                         1.0e-6,   # tolerance for gradient 
+        'TOLC':                         1.0e-6,   # tolerance for constraint
         'MIT':                          20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_PSQP.out')
     }
@@ -143,7 +143,7 @@ elif args.opt == 'slsqp':
     }
 elif args.opt == 'ipopt':
     optOptions = {
-        'tol':                          1.0e-5,   # convergence accuracy
+        'tol':                          1.0e-6,   # convergence accuracy
         'max_iter':                     20,       # max optimization iterations
         'output_file':                  os.path.join(outPrefix+'_IPOPT.out')
     }

@@ -68,9 +68,7 @@ aeroOptions = {
                                                       'radiusOuter':0.1015,
                                                       'axis':'x'}},
     'referencevalues':         {'magURef':1.179,'ARef':12.2206,'LRef':7.0,'pRef':0.0,'rhoRef':1.0},
-    'liftdir':                 [0.0,0.0,1.0],
     'dragdir':                 [1.0,0.0,0.0],
-    'cofr':                    [0.0,0.0,0.0],
 
 
     # flow setup
@@ -79,17 +77,7 @@ aeroOptions = {
     'flowcondition':           'Incompressible', 
     'maxflowiters':            1000, 
     'writeinterval':           1000,
-    'avgobjfuncs':             False,
-    'avgobjfuncsstart':        2400, 
-    'setflowbcs':              False,  
-    'inletpatches':            ['inlet'],
-    'outletpatches':           ['outlet'],
-    'setflowbcs':              False,  
-    'inletpatches':            ['inlet'],
-    'outletpatches':           ['outlet'],
-    'flowbcs':                 {'bc0':{'patch':'inlet','variable':'U','value':[1.179,0.0,0.0]},
-                                'bc1':{'patch':'outlet','variable':'p','value':[0.0]},
-                                'bc5':{'patch':'inlet','variable':'nuTilda','value':[1.0e-5]}},        
+    'setflowbcs':              False,      
     'transproperties':         {'nu':1.107E-6,
                                 'TRef':293.15,
                                 'beta':3e-3,
@@ -97,7 +85,7 @@ aeroOptions = {
                                 'Prt':0.85}, 
     
     # actuator disk
-    'actuatoractive':          1,
+    'actuatoractive':          0,
     'actuatorvolumenames':     ['userDefinedVolume1'],
     'actuatorthrustcoeff':     [0.00226],
     'actuatorpoverd':          [0.75],
@@ -107,24 +95,17 @@ aeroOptions = {
     # adjoint setup
     'adjgmresmaxiters':        1500,
     'adjgmresrestart':         1500,
-    'adjgmresreltol':          1e-5,
     'adjdvtypes':              ['FFD'], 
     'correctwalldist':         True,
     'epsderiv':                1.0e-7, 
     'epsderivffd':             1.0e-4, 
     'adjpcfilllevel':          1, 
-    'adjjacmatordering':          'cell',
-    'adjjacmatreordering':        'rcm',
-    'normalizestates':         ['U','p','phi','k','omega','nuTilda'],
-    'normalizeresiduals':      ['URes','pRes','phiRes','kRes','omegaRes','nuTildaRes'],
-    'maxresconlv4jacpcmat':    {'URes':2,'pRes':2,'phiRes':1,'nuTildaRes':2},
+    'adjjacmatordering':       'cell',
+    'adjjacmatreordering':     'rcm',
     'statescaling':            {'UScaling':1.0,
                                 'pScaling':0.5,
                                 'phiScaling':1.0,
-                                'p_rghScaling':0.5,
-                                'nuTildaScaling':1.0e-4,
-                                'kScaling':1.0e-4,
-                                'omegaScaling':1.0},
+                                'nuTildaScaling':1.0e-4},
     
     
     ########## misc setup ##########
@@ -146,11 +127,12 @@ meshOptions = {
 outPrefix = outputDirectory+task+optVars[0]
 if args.opt == 'snopt':
     optOptions = {
-        'Major feasibility tolerance':  1.0e-7,   # tolerance for constraint
-        'Major optimality tolerance':   1.0e-7,   # tolerance for gradient 
-        'Minor feasibility tolerance':  1.0e-7,   # tolerance for constraint
+        'Major feasibility tolerance':  1.0e-6,   # tolerance for constraint
+        'Major optimality tolerance':   1.0e-6,   # tolerance for gradient 
+        'Minor feasibility tolerance':  1.0e-6,   # tolerance for constraint
         'Verify level':                 -1,
-        'Function precision':           1.0e-7,
+        'Function precision':           1.0e-6,
+        'Major iterations limit':       20,
         'Nonderivative linesearch':     None, 
         'Major step limit':             2.0,
         'Penalty parameter':            0.0, # initial penalty parameter
@@ -159,21 +141,21 @@ if args.opt == 'snopt':
     }
 elif args.opt == 'psqp':
     optOptions = {
-        'TOLG':                         1.0e-7,   # tolerance for gradient 
-        'TOLC':                         1.0e-7,   # tolerance for constraint
-        'MIT':                          25,       # max optimization iterations
+        'TOLG':                         1.0e-6,   # tolerance for gradient 
+        'TOLC':                         1.0e-6,   # tolerance for constraint
+        'MIT':                          20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_PSQP.out')
     }
 elif args.opt == 'slsqp':
     optOptions = {
-        'ACC':                          1.0e-7,   # convergence accuracy
-        'MAXIT':                        25,       # max optimization iterations
+        'ACC':                          1.0e-6,   # convergence accuracy
+        'MAXIT':                        20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_SLSQP.out')
     }
 elif args.opt == 'ipopt':
     optOptions = {
-        'tol':                          1.0e-7,   # convergence accuracy
-        'max_iter':                     25,       # max optimization iterations
+        'tol':                          1.0e-6,   # convergence accuracy
+        'max_iter':                     20,       # max optimization iterations
         'output_file':                  os.path.join(outPrefix+'_IPOPT.out')
     }
 else:
@@ -325,8 +307,8 @@ optFuncs.gcomm = gcomm
 # =================================================================================================
 # Task
 # =================================================================================================
-weightCD = 0.9/0.00226
-weightVAR = 0.1/0.02880
+weightCD = 0.9/0.001773
+weightVAR = 0.1/0.001169
 
 def objCon(xDV):
 

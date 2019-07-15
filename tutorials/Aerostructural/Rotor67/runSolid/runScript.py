@@ -70,26 +70,17 @@ aeroOptions = {
     'maxflowiters':            500, 
     'writeinterval':           500,
     'setflowbcs':              True,
-    'flowbcs':                 {},  
-    'transproperties':         {'nu':1.5E-5,
-                                'TRef':300.0,
-                                'beta':3e-3,
-                                'Pr':0.7,
-                                'Prt':0.85}, 
-    'thermalproperties':       {'C':880.0,
-                                'k':190.0,
-                                'alpha':1.1e-5,
-                                'thermalStress':'false'},
+    'flowbcs':                 {},
     'mechanicalproperties':     {'rho':2700.0,
                                  'nu':0.33,
                                  'E':0.689e11},
     'gradschemes':              {'default':'leastSquares'},
-    'fvsolvers':                 {'"(D|T)"':{'solver':'GAMG',
-                                            'tolerance':'1e-20',
-                                            'relTol':'0.9',
-                                            'smoother':'GaussSeidel',
-                                            'maxIter':'1',
-                                            'nCellsInCoarsestLevel':'20'}},
+    'fvsolvers':                 {'D':{'solver':'GAMG',
+                                       'tolerance':'1e-20',
+                                       'relTol':'0.9',
+                                       'smoother':'GaussSeidel',
+                                       'maxIter':'1',
+                                       'nCellsInCoarsestLevel':'20'}},
     # adjoint setup
     'adjgmresmaxiters':        500,
     'adjgmresrestart':         500,
@@ -103,11 +94,7 @@ aeroOptions = {
     'adjpcfilllevel':          1, 
     'adjjacmatordering':       'state',
     'adjjacmatreordering':     'rcm',
-    'normalizestates':         ['D','T'],
-    'normalizeresiduals':      ['DRes','TRes'],
-    'maxresconlv4jacpcmat':    {'DRes':2,'TRes':2},
-    'statescaling':            {'DScaling':1e-7,
-                                'TScaling':300.0},
+    'statescaling':            {'DScaling':1e-7},
     
     
     ########## misc setup ##########
@@ -126,37 +113,6 @@ meshOptions = {
     # point and normal for the symmetry plane
     'symmetryPlanes':          [[[0.,0., 0.],[0., 0., 0.]]], 
 }
-
-# options for optimizers
-outPrefix = outputDirectory+task+optVars[0]
-if args.opt == 'snopt':
-    optOptions = {
-        'Major feasibility tolerance':  1.0e-7,   # tolerance for constraint
-        'Major optimality tolerance':   1.0e-7,   # tolerance for gradient 
-        'Minor feasibility tolerance':  1.0e-7,   # tolerance for constraint
-        'Verify level':                 -1,
-        'Function precision':           1.0e-7,
-        'Nonderivative linesearch':     None, 
-        'Print file':                   os.path.join(outPrefix+'_SNOPT_print.out'),
-        'Summary file':                 os.path.join(outPrefix+'_SNOPT_summary.out')
-    }
-elif args.opt == 'psqp':
-    optOptions = {
-        'TOLG':                         1.0e-7,   # tolerance for gradient 
-        'TOLC':                         1.0e-7,   # tolerance for constraint
-        'MIT':                          25,       # max optimization iterations
-        'IFILE':                        os.path.join(outPrefix+'_PSQP.out')
-    }
-elif args.opt == 'slsqp':
-    optOptions = {
-        'ACC':                          1.0e-7,   # convergence accuracy
-        'MAXIT':                        25,       # max optimization iterations
-        'IFILE':                        os.path.join(outPrefix+'_SLSQP.out')
-    }
-else:
-    print("opt arg not valid!")
-    exit(0)
-
 
 # =================================================================================================
 # DVGeo
@@ -229,26 +185,7 @@ optFuncs.gcomm = gcomm
 # =================================================================================================
 # Task
 # =================================================================================================
-if task.lower()=='opt':
-    optProb = Optimization('opt', optFuncs.aeroFuncs, comm=gcomm)
-    DVGeo.addVariablesPyOpt(optProb)
-    DVCon.addConstraintsPyOpt(optProb)
-
-    # Add objective
-    optProb.addObj('VMS', scale=1)
-    # Add physical constraints
-    #optProb.addCon('CL',lower=0.5,upper=0.5,scale=1)
-
-    if gcomm.rank == 0:
-        print optProb
-
-    opt = OPT(args.opt, options=optOptions)
-    histFile = os.path.join(outputDirectory, '%s_hist.hst'%args.opt)
-    sol = opt(optProb, sens=optFuncs.aeroFuncsSens, storeHistory=histFile)
-    if gcomm.rank == 0:
-        print sol
-
-elif task.lower() == 'runflow':
+if task.lower() == 'runflow':
 
     # read the design variable values
     f = open('designVariables.dat','r')
@@ -322,32 +259,6 @@ elif task.lower() == 'runadjoint':
 
     CFDSolver.adjointRunsCounter = runcounter
     CFDSolver.solveADjoint()
-
-elif task.lower() == 'plotsensmap':
-
-    optFuncs.plotSensMap(runAdjoint=True)
-
-elif task.lower() == 'testsensuin':
-
-    optFuncs.testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-3])
-        
-elif task.lower() == 'testsensshape':
-
-    optFuncs.testSensShape(normStatesList=[True],deltaUList=[1e-5],deltaXList=[1e-4])
-
-elif task.lower() == 'xdv2xv':
-
-    #optFuncs.xDV2xV()
-    xDV = DVGeo.getValues()
-    
-    
-    #xDV['shapey'][4]=0.05
-    xDV['twist'][3]=10
-    
-    if gcomm.rank==0:
-        print xDV
-    DVGeo.setDesignVars(xDV)
-    CFDSolver.writeUpdatedVolumePoints()
 
 else:
     print("task arg not found!")

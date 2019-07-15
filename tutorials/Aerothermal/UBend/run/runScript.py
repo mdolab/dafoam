@@ -39,7 +39,6 @@ aeroOptions = {
     'casename':                 'UBendDuct_'+task+'_'+optVars[0],
     'outputdirectory':          outputDirectory,
     'writesolution':            True,
-    'writelinesearch':          False,
 
     # design surfaces and cost functions 
     'designsurfacefamily':     'designsurfaces', 
@@ -62,43 +61,16 @@ aeroOptions = {
     'adjointsolver':           'buoyantBoussinesqSimpleDAFoam',
     'flowcondition':           'Incompressible',
     'rasmodel':                'SpalartAllmarasFv3',
-    'rasmodelparameters':      {'kMin':1e-16,'omegaMin':1e-16,'epsilonMin':1e-16,'nuTildaMin':1e-16}, 
-    'maxflowiters':            1000, 
-    'writeinterval':           1000,
-    'avgobjfuncs':             False,
-    'avgobjfuncsstart':        1600,
-    'divschemes':           {'default':'none',
-                             'div(phi,U)': 'bounded Gauss linearUpwindV grad(U)',
-                             'div(phi,nuTilda)': 'bounded Gauss upwind',
-                             'div(phi,k)': 'bounded Gauss upwind',
-                             'div(phi,omega)': 'bounded Gauss upwind',
-                             'div(phi,T)': 'bounded Gauss upwind',
-                             'div((nuEff*dev2(T(grad(U)))))':'Gauss linear',
-                             'div(pc)':'bounded  Gauss upwind'},
-    'laplacianschemes':      {'default':'Gauss linear  corrected'},
-    'sngradschemes':         {'default':'corrected '},
-    'gradschemes':           {'default':'Gauss linear','grad(U)': 'cellLimited Gauss linear 1.000000',
-                              'grad(nuTilda)':'cellLimited Gauss linear 1.000000'},
-    'setflowbcs':              False,  
-    'inletpatches':            ['inlet'],
-    'outletpatches':           ['outlet'],
-    'flowbcs':                 {'bc0':{'patch':'inlet','variable':'U','value':[8.4,0.0,0.0]},
-                                'bc1':{'patch':'outlet','variable':'p','value':[0.0]},
-                                'bc2':{'patch':'inlet','variable':'k','value':[0.265]},
-                                'bc3':{'patch':'inlet','variable':'omega','value':[1764.0]},
-                                'bc4':{'patch':'inlet','variable':'epsilon','value':[42.0]},
-                                'bc5':{'patch':'inlet','variable':'nuTilda','value':[1.5e-4]},
-                                'bc6':{'patch':'inlet','variable':'T','value':[293.15]},
-                                'useWallFunction':'false'},               
+    'maxflowiters':            500, 
+    'writeinterval':           500,
+    'avgobjfuncs':             True,
+    'avgobjfuncsstart':        400,
+    'setflowbcs':              False,             
     'transproperties':         {'nu':1.5E-5,
                                 'TRef':293.15,
                                 'beta':3e-3,
                                 'Pr':0.7,
                                 'Prt':0.7,'g':[-9.81,0,0],'rhoRef':1.0,'CpRef':1005.0}, 
-    #'fvrelaxfactors':          {'fields':{'p_rgh':0.3,'p':0.3},
-    #                             'equations':{'U':0.7,
-    #                                          'nuTilda':0.7,'k':0.7,'omega':0.7,'p_rgh':0.3,'p':0.3,
-    #                                          'T':0.7,'G':0.7}},
     'updatedefaultdicts':       {'radiationproperties':{'radiation':'on','radiationModel':'P1'}}, 
     # adjoint setup
     'adjgmresmaxiters':        1500,
@@ -110,18 +82,11 @@ aeroOptions = {
     'adjpcfilllevel':          2, 
     'adjjacmatordering':       'state',
     'adjjacmatreordering':     'rcm',
-    'normalizestates':         ['U','p','p_rgh','phi','k','omega','nuTilda','T','epsilon','G'],
-    'normalizeresiduals':      ['URes','pRes','p_rghRes','phiRes','kRes','omegaRes','nuTildaRes','epsilonRes','TRes','GRes'],
-    'maxresconlv4jacpcmat':    {'URes':2,'pRes':2,'p_rghRes':2,'phiRes':1,'kRes':2,'omegaRes':2,'epsilonRes':2,'TRes':2,'nuTildaRes':2,'GRes':2},
     'statescaling':            {'UScaling':8.4,
-                                'pScaling':32.0,
                                 'phiScaling':1.0,
                                 'p_rghScaling':32.0,
                                 'GScaling':1000.0,
                                 'nuTildaScaling':1.5e-3,
-                                'kScaling':0.265,
-                                'omegaScaling':1764.0,
-                                'epsilonScaling':42.0,
                                 'TScaling':293.15},
     
     
@@ -145,11 +110,12 @@ meshOptions = {
 outPrefix = outputDirectory+task+optVars[0]
 if args.opt == 'snopt':
     optOptions = {
-        'Major feasibility tolerance':  1.0e-7,   # tolerance for constraint
-        'Major optimality tolerance':   1.0e-7,   # tolerance for gradient 
-        'Minor feasibility tolerance':  1.0e-7,   # tolerance for constraint
+        'Major feasibility tolerance':  1.0e-6,   # tolerance for constraint
+        'Major optimality tolerance':   1.0e-6,   # tolerance for gradient 
+        'Minor feasibility tolerance':  1.0e-6,   # tolerance for constraint
         'Verify level':                 -1,
-        'Function precision':           1.0e-7,
+        'Function precision':           1.0e-6,
+        'Major iterations limit':       20,
         'Nonderivative linesearch':     None, 
         'Major step limit':             2.0,
         'Penalty parameter':            0.0, # initial penalty parameter
@@ -158,21 +124,21 @@ if args.opt == 'snopt':
     }
 elif args.opt == 'psqp':
     optOptions = {
-        'TOLG':                         1.0e-7,   # tolerance for gradient 
-        'TOLC':                         1.0e-7,   # tolerance for constraint
-        'MIT':                          25,       # max optimization iterations
+        'TOLG':                         1.0e-6,   # tolerance for gradient 
+        'TOLC':                         1.0e-6,   # tolerance for constraint
+        'MIT':                          20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_PSQP.out')
     }
 elif args.opt == 'slsqp':
     optOptions = {
-        'ACC':                          1.0e-7,   # convergence accuracy
-        'MAXIT':                        25,       # max optimization iterations
+        'ACC':                          1.0e-5,   # convergence accuracy
+        'MAXIT':                        20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_SLSQP.out')
     }
 elif args.opt == 'ipopt':
     optOptions = {
-        'tol':                          1.0e-7,   # convergence accuracy
-        'max_iter':                     25,       # max optimization iterations
+        'tol':                          1.0e-6,   # convergence accuracy
+        'max_iter':                     20,       # max optimization iterations
         'output_file':                  os.path.join(outPrefix+'_IPOPT.out')
     }
 else:
@@ -254,13 +220,13 @@ DVCon.setSurface(surf)
 DVCon.writeSurfaceTecplot('trisurface.dat')
 
 # add max curvature constraint for inner bend section to avoid kinks
-DVCon.addCurvatureConstraint('./FFD/innerBendCurv.xyz',curvatureType='KSmean',KSCoeff=1e5,lower=0.0,upper=2.0,addToPyOpt=True,scaled=True)
+#DVCon.addCurvatureConstraint('./FFD/innerBendCurv.xyz',curvatureType='KSmean',KSCoeff=1e5,lower=0.0,upper=2.0,addToPyOpt=True,scaled=True)
 
 # add max curvature constraint for inner bend section to avoid kinks
-DVCon.addCurvatureConstraint('./FFD/outerBendCurv.xyz',curvatureType='KSmean',KSCoeff=4e5,lower=0.0,upper=2.0,addToPyOpt=True,scaled=True)
+#DVCon.addCurvatureConstraint('./FFD/outerBendCurv.xyz',curvatureType='KSmean',KSCoeff=4e5,lower=0.0,upper=2.0,addToPyOpt=True,scaled=True)
 
 # add max curvature constraint for inner bend section to avoid kinks
-DVCon.addCurvatureConstraint('./FFD/topBendCurv.xyz',curvatureType='KSmean',KSCoeff=2e4,lower=0.0,upper=5e-4,addToPyOpt=True,scaled=False)
+#DVCon.addCurvatureConstraint('./FFD/topBendCurv.xyz',curvatureType='KSmean',KSCoeff=2e4,lower=0.0,upper=5e-4,addToPyOpt=True,scaled=False)
 
 
 

@@ -24,7 +24,7 @@ from pyoptsparse import Optimization, OPT
 # =============================================================================
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", help='Output directory', type=str,default='../optOutputFluid/')
-parser.add_argument("--opt", help="optimizer to use", type=str, default='snopt')
+parser.add_argument("--opt", help="optimizer to use", type=str, default='slsqp')
 parser.add_argument("--task", help="type of run to do", type=str, default='opt')
 parser.add_argument('--optVars',type=str,help='Vars for the optimizer',default="['shape']")
 args = parser.parse_args()
@@ -39,7 +39,6 @@ aeroOptions = {
     'casename':                 'Rotor67_'+task+'_'+optVars[0],
     'outputdirectory':          outputDirectory,
     'writesolution':            True,
-    'writelinesearch':          False,
 
     # design surfaces and cost functions 
     'designsurfacefamily':     'designSurfaces', 
@@ -62,52 +61,41 @@ aeroOptions = {
     'adjgmresrestart':         1000,
     'adjgmresreltol':          1e-5,
     'adjdvtypes':              ['FFD'],
-    'maxtoljac':               1e200,
-    'maxtolpc':                1e200,
     'epsderiv':                1.0e-5,
-    'epsderivuin':             1.0e-3,
     'epsderivffd':             1.0e-4,
     'adjpcfilllevel':          1,
     'adjjacmatordering':       'cell',
     'adjjacmatreordering':     'natural',
-    'normalizestates':         ['U','p','e','nuTilda','T','phi','k','epsilon','omega'],
-    'normalizeresiduals':      ['URes','pRes','eRes','nuTildaRes','TRes','phiRes','kRes','epsilonRes','omegaRes'],
-    'maxresconlv4jacpcmat':    {'URes':2,'pRes':3,'eRes':2,'nuTildaRes':2,'TRes':2,'phiRes':2,'kRes':2,'epsilonRes':2,'omegaRes':2},
     'statescaling':            {'UScaling':100,
                                 'pScaling':100000.0,
                                 'TScaling':300.0,
                                 'eScaling':10000,
-                                'kScaling':1.0,
-                                'epsilonScaling':1.0,
-                                'omegaScaling':1.0,
                                 'nuTildaScaling':1e-3,
                                 'phiScaling':1,},
-    'fvrelaxfactors':{'fields':{'p':0.3,'rho':0.02,
-                                },
-                      'equations':{'U':0.7,
-                                   'nuTilda':0.7,
-                                   'h':0.7,
-                                   'e':0.7,'k':0.7,'epsilon':0.7,'omega':0.7,
-                                   'G':0.7,}},
-    'mrfproperties':{'active':'true',
-                                           'selectionmode':'cellZone',
-                                           'cellzone':'region0',
-                                           'nonrotatingpatches':['per1','per2','inlet','outlet'],
-                                           'axis':[0,0,1],
-                                           'origin':[0,0,0],
-                                           'omega':-840.0},
+    'fvrelaxfactors':          {'fields':{'p':0.3,'rho':0.02},
+                                'equations':{'U':0.7,
+                                             'nuTilda':0.7,
+                                             'e':0.7,
+                                             'G':0.7,}},
+    'mrfproperties':           {'active':'true',
+                                'selectionmode':'cellZone',
+                                'cellzone':'region0',
+                                'nonrotatingpatches':['per1','per2','inlet','outlet'],
+                                'axis':[0,0,1],
+                                'origin':[0,0,0],
+                                'omega':-840.0},
 
-    'simplecontrol':{'nNonOrthogonalCorrectors':'0',
-                                           'rhoLowerBound':'0.2',
-                                           'rhoUpperBound':'5.0',
-                                           'pLowerBound':'20000',
-                                           'pUpperBound':'500000',
-                                           'ULowerBound':'-400',
-                                           'UUpperBound':'400',
-                                           'nuTildaUpperBound':'1.0',
-                                           'eLowerBound':'100000',
-                                           'eUpperBound':'500000',
-                                           'transonic':'false'},
+    'simplecontrol':           {'nNonOrthogonalCorrectors':'0',
+                                'rhoLowerBound':'0.2',
+                                'rhoUpperBound':'5.0',
+                                'pLowerBound':'20000',
+                                'pUpperBound':'500000',
+                                'ULowerBound':'-400',
+                                'UUpperBound':'400',
+                                'nuTildaUpperBound':'1.0',
+                                'eLowerBound':'100000',
+                                'eUpperBound':'500000',
+                                'transonic':'false'},
 
     ########## misc setup ##########
     'mpispawnrun':             False,
@@ -129,29 +117,36 @@ meshOptions = {
 outPrefix = outputDirectory+task+optVars[0]
 if args.opt == 'snopt':
     optOptions = {
-        'Major feasibility tolerance':  1.0e-7,   # tolerance for constraint
-        'Major optimality tolerance':   1.0e-7,   # tolerance for gradient 
-        'Minor feasibility tolerance':  1.0e-7,   # tolerance for constraint
+        'Major feasibility tolerance':  1.0e-6,   # tolerance for constraint
+        'Major optimality tolerance':   1.0e-6,   # tolerance for gradient 
+        'Minor feasibility tolerance':  1.0e-6,   # tolerance for constraint
         'Verify level':                 -1,
-        #'Major step limit':             2.0,
-        #'Penalty parameter':            1e-7,
-        'Function precision':           1.0e-7,
+        'Function precision':           1.0e-6,
+        'Major iterations limit':       20,
         'Nonderivative linesearch':     None, 
+        'Major step limit':             2.0,
+        'Penalty parameter':            0.0, # initial penalty parameter
         'Print file':                   os.path.join(outPrefix+'_SNOPT_print.out'),
         'Summary file':                 os.path.join(outPrefix+'_SNOPT_summary.out')
     }
 elif args.opt == 'psqp':
     optOptions = {
-        'TOLG':                         1.0e-7,   # tolerance for gradient 
-        'TOLC':                         1.0e-7,   # tolerance for constraint
-        'MIT':                          25,       # max optimization iterations
+        'TOLG':                         1.0e-6,   # tolerance for gradient 
+        'TOLC':                         1.0e-6,   # tolerance for constraint
+        'MIT':                          20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_PSQP.out')
     }
 elif args.opt == 'slsqp':
     optOptions = {
-        'ACC':                          1.0e-7,   # convergence accuracy
-        'MAXIT':                        25,       # max optimization iterations
+        'ACC':                          1.0e-5,   # convergence accuracy
+        'MAXIT':                        20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_SLSQP.out')
+    }
+elif args.opt == 'ipopt':
+    optOptions = {
+        'tol':                          1.0e-6,   # convergence accuracy
+        'max_iter':                     20,       # max optimization iterations
+        'output_file':                  os.path.join(outPrefix+'_IPOPT.out')
     }
 else:
     print("opt arg not valid!")
