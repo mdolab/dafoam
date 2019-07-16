@@ -982,9 +982,9 @@ class PYDAFOAM(AeroSolver):
                     'adjgmresmaxiters':[int,1000],
                     'adjgmresabstol':[float,1.0e-16],
                     'adjgmresreltol':[float,1.0e-6],
-                    'normalizeresiduals':[list,['URes','pRes','p_rghRes','phiRes','TRes','nuTildaRes','kRes','omegaRes','epsilonRes','ReThetatRes','gammaIntRes','GRes']],
-                    'normalizestates':[list,['U','p','p_rgh','phi','T','nuTilda','k','omega','epsilon','ReThetat','gammaInt','G']],
-                    'maxresconlv4jacpcmat':[dict,{'URes':2,'pRes':2,'p_rghRes':2,'phiRes':1,'nuTildaRes':2,'kRes':2,'omegaRes':2,'epsilonRes':2,'ReThetatRes':2,'gammaIntRes':2,'TRes':2,'eRes':2,'GRes':2}],
+                    'normalizeresiduals':[list,['URes','pRes','p_rghRes','phiRes','TRes','nuTildaRes','kRes','omegaRes','epsilonRes','ReThetatRes','gammaIntRes','GRes','DRes']],
+                    'normalizestates':[list,['U','p','p_rgh','phi','T','nuTilda','k','omega','epsilon','ReThetat','gammaInt','G','D']],
+                    'maxresconlv4jacpcmat':[dict,{'URes':2,'pRes':2,'p_rghRes':2,'phiRes':1,'nuTildaRes':2,'kRes':2,'omegaRes':2,'epsilonRes':2,'ReThetatRes':2,'gammaIntRes':2,'TRes':2,'eRes':2,'GRes':2,'DRes':2}],
                     'statescaling':[dict,{}],
                     'residualscaling':[dict,{}],
                     'nffdpoints':[int,0],
@@ -1173,13 +1173,17 @@ class PYDAFOAM(AeroSolver):
                 self.setSurfaceCoordinates(coords, self.designFamilyGroup)
                 if self.comm.rank == 0:
                     print ('DVGeo PointSet UpToDate: '+str(self.DVGeo.pointSetUpToDate(ptSetName)))
-        
-            # warp the mesh
-            self.mesh.warpMesh()
-            # write the new volume coords to a file
-            newGrid = self.mesh.getSolverGrid()
-            #print newGrid
-            ofm._writeOpenFOAMVolumePoints(self.fileNames,newGrid)
+                
+                # warp the mesh
+                if self.comm.rank == 0:
+                    print ('Warping the volume mesh....')
+                self.mesh.warpMesh()
+
+                # write the new volume coords to a file
+                if self.comm.rank == 0:
+                    print ('Writting the updated volume mesh....')
+                newGrid = self.mesh.getSolverGrid()
+                ofm._writeOpenFOAMVolumePoints(self.fileNames,newGrid)
 
         # remove the old post processing results if they exist
         self._cleanPostprocessingDir()

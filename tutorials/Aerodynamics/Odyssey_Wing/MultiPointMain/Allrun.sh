@@ -50,5 +50,7 @@ copyFC 1
 
 # these are the actually commands to run the case
 ./foamRunMultiPoint.sh $nProcs &
-mpirun -np $nProcs python runScript.py --nProcs=$nProcs &> log.opt &
+sleep 1
 echo "Running the optimization. Check the log.opt file for the progress."
+mpirun -np $nProcs python runScript.py --nProcs=$nProcs &> log.opt 
+

@@ -45,7 +45,7 @@ CofR       = [1325.90*0.0254*LScale, 468.75*0.0254*LScale, 177.95*0.0254*LScale]
 
 CL_star    = 0.5
 CMY_star   = 0.0
-alpha0     = 2.095307
+alpha0     = 2.631143
 
 def calcUAndDir(UIn,alpha1):
     dragDir = [ np.cos(alpha1*np.pi/180),0,np.sin(alpha1*np.pi/180)] 
@@ -61,8 +61,6 @@ aeroOptions = {
     'casename':                 'DPW4_'+task+'_'+optVars[0],
     'outputdirectory':          outputDirectory,
     'writesolution':            True,
-    'usecoloring':              True,
-
 
     # design surfaces and cost functions 
     'designsurfacefamily':     'designsurfaces', 
@@ -75,43 +73,30 @@ aeroOptions = {
     'liftdir':                 liftdir0,
     'dragdir':                 dragdir0,
     'cofr':                    CofR,
-    'rasmodelparameters':      {'nuTildaMin':'1e-16'},
-
 
     # flow setup
     'adjointsolver':           'rhoSimpleCDAFoam',
     'flowcondition':           'Compressible',
     'rasmodel':                'SpalartAllmarasFv3', 
-    'maxflowiters':            2000,
-    'writeinterval':           2000,
-    'divschemes':           {'default':'none',
-                             'div(phi,U)': 'Gauss linearUpwindV grad(U)',
-                             'div(phi,nuTilda)': 'Gauss upwind',
-                             'div(phi,e)': 'Gauss upwind',
-                             'div(phid,p)': 'Gauss limitedLinear 1.0',
-                             'div(phi,Ekp)': 'Gauss upwind',
-                             'div(((rho*nuEff)*dev2(T(grad(U)))))': 'Gauss linear',
-                             'div(pc)':'Gauss upwind'},
-    #'laplacianschemes':      {'default':'Gauss linear correct'},
-    #'sngradschemes':         {'default':'corrected '},
+    'maxflowiters':            1000,
+    'writeinterval':           1000,
+    'divschemes':              {'default':'none',
+                                'div(phi,U)': 'Gauss linearUpwindV grad(U)',
+                                'div(phi,nuTilda)': 'Gauss upwind',
+                                'div(phi,e)': 'Gauss upwind',
+                                'div(phid,p)': 'Gauss limitedLinear 1.0',
+                                'div(phi,Ekp)': 'Gauss upwind',
+                                'div(((rho*nuEff)*dev2(T(grad(U)))))': 'Gauss linear',
+                                'div(pc)':'Gauss upwind'},
     'setflowbcs':              True,  
     'inletpatches':            ['inout'],
     'outletpatches':           ['inout'],
-    # Tu=0.5%, nut/nu=50
     'flowbcs':                 {'bc0':{'patch':'inout','variable':'U','value':inletu0},
                                 'useWallFunction':'true'},    
-    'thermoproperties':        {'molWeight':28.97,
-                                'Cp':1005.0,
-                                'Hf':0.0,
-                                'mu':4.8e-4,
-                                'Pr':0.7,
-                                'Prt':0.7,
-                                'TRef':300.0}, 
     'fvrelaxfactors':          {'fields':{'p':1.0},
                                  'equations':{'U':0.8,
                                               'p':1.0,
                                               'nuTilda':0.7,
-                                              'h':0.7,
                                               'T':0.7,
                                               'e':0.7}},
    
@@ -125,33 +110,30 @@ aeroOptions = {
     'adjpcfilllevel':          2, 
     'adjjacmatordering':       'cell',
     'adjjacmatreordering':     'natural',
-    'normalizestates':         ['U','p','phi','nuTilda','e','T'],
-    'normalizeresiduals':      ['URes','pRes','phiRes','nuTildaRes','eRes','TRes'],
-    'maxresconlv4jacpcmat':    {'URes':2,'pRes':2,'phiRes':1,'eRes':2,'nuTildaRes':2,'TRes':2},
-    'statescaling':            {'UScaling':300.0,
-                                'pScaling':101325.0,
-                                'eScaling':300000.0,
+    'statescaling':            {'UScaling':UmagIn,
+                                'pScaling':pRef,
+                                'eScaling':TRef*1004.0,
                                 'phiScaling':1.0,
                                 'nuTildaScaling':1.0e-3,
-                                'TScaling':300.0},
+                                'TScaling':TRef},
     
     'simplecontrol':{'nNonOrthogonalCorrectors':'0',
-                                           'rhoLowerBound':'0.2',
-                                           'rhoUpperBound':'10.0',
-                                           'pLowerBound':'20000',
-                                           'pUpperBound':'1000000',
-                                           'ULowerBound':'-600',
-                                           'UUpperBound':'600',
-                                           'eLowerBound':'100000',
-                                           'eUpperBound':'500000',
-                                           'transonic':'true'},
+                     'rhoLowerBound':'0.2',
+                     'rhoUpperBound':'10.0',
+                     'pLowerBound':'20000',
+                     'pUpperBound':'1000000',
+                     'ULowerBound':'-600',
+                     'UUpperBound':'600',
+                     'eLowerBound':'100000',
+                     'eUpperBound':'500000',
+                     'transonic':'true'},
 
     ########## misc setup ##########
     'mpispawnrun':             False,
     'restartopt':              False,
     'meshmaxnonortho':         75.0,
     'meshmaxskewness':         6.0,
-    'stateresettol':           1e-4,
+    'stateresettol':           1e-2,
 }
 
 # mesh warping parameters, users need to manually specify the symmetry plane
@@ -171,22 +153,31 @@ if args.opt == 'snopt':
         'Minor feasibility tolerance':  1.0e-6,   # tolerance for constraint
         'Verify level':                 -1,
         'Function precision':           1.0e-6,
+        'Major iterations limit':       20,
         'Nonderivative linesearch':     None, 
+        'Major step limit':             2.0,
+        'Penalty parameter':            0.0, # initial penalty parameter
         'Print file':                   os.path.join(outPrefix+'_SNOPT_print.out'),
         'Summary file':                 os.path.join(outPrefix+'_SNOPT_summary.out')
     }
 elif args.opt == 'psqp':
     optOptions = {
-        'TOLG':                         1.0e-7,   # tolerance for gradient 
-        'TOLC':                         1.0e-7,   # tolerance for constraint
-        'MIT':                          25,       # max optimization iterations
+        'TOLG':                         1.0e-6,   # tolerance for gradient 
+        'TOLC':                         1.0e-6,   # tolerance for constraint
+        'MIT':                          20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_PSQP.out')
     }
 elif args.opt == 'slsqp':
     optOptions = {
-        'ACC':                          1.0e-7,   # convergence accuracy
-        'MAXIT':                        25,       # max optimization iterations
+        'ACC':                          1.0e-6,   # convergence accuracy
+        'MAXIT':                        20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_SLSQP.out')
+    }
+elif args.opt == 'ipopt':
+    optOptions = {
+        'tol':                          1.0e-6,   # convergence accuracy
+        'max_iter':                     20,       # max optimization iterations
+        'output_file':                  os.path.join(outPrefix+'_IPOPT.out')
     }
 else:
     print("opt arg not valid!")
@@ -262,29 +253,21 @@ def alpha(val, geo=None):
     CFDSolver.setOption('dragdir',dragdir)
     CFDSolver.setOption('liftdir',liftdir)
 
-if 'twist' in optVars[0]:
-    lower = -10*np.ones(nTwist)
-    upper =  10*np.ones(nTwist)
-    lower[0] = 0.0 # root twist does not change
-    upper[0] = 0.0
-    DVGeo.addGeoDVGlobal(optVars[0], 0*np.zeros(nTwist), twist,lower=lower, upper=upper, scale=0.1)
-elif 'alpha' in optVars[0]:
-    DVGeo.addGeoDVGlobal('alpha', alpha0,alpha,lower=0, upper=10.0, scale=1.0)
-elif 'shape' in optVars[0]:
-    # FFD shape
-    pts=DVGeo.getLocalIndex(0)
-    indexList=pts[:,:,:].flatten()  # select the top layer FFD starts with i=1
-    PS=geo_utils.PointSelect('list',indexList)
-    DVGeo.addGeoDVLocal(optVars[0], lower=-1.0, upper=1.0, axis='z', scale=10.0,pointSelect=PS)
-    # twist
-    lower = -10*np.ones(nTwist)
-    upper =  10*np.ones(nTwist)
-    lower[0] = 0.0 # root twist does not change
-    upper[0] = 0.0
-    DVGeo.addGeoDVGlobal('twist', 0*np.zeros(nTwist), twist,lower=lower, upper=upper, scale=0.1)
-    DVGeo.addGeoDVGlobal('tail', 0*np.zeros(1), tailTwist,lower=-10, upper=10, scale=0.1)
-    # AOA
-    DVGeo.addGeoDVGlobal('alpha', alpha0,alpha,lower=0, upper=10., scale=1.0)
+
+# FFD shape
+pts=DVGeo.getLocalIndex(0)
+indexList=pts[:,:,:].flatten()  # select the top layer FFD starts with i=1
+PS=geo_utils.PointSelect('list',indexList)
+DVGeo.addGeoDVLocal(optVars[0], lower=-1.0, upper=1.0, axis='z', scale=10.0,pointSelect=PS)
+# twist
+lower = -10*np.ones(nTwist)
+upper =  10*np.ones(nTwist)
+lower[0] = 0.0 # root twist does not change
+upper[0] = 0.0
+DVGeo.addGeoDVGlobal('twist', 0*np.zeros(nTwist), twist,lower=lower, upper=upper, scale=0.1)
+DVGeo.addGeoDVGlobal('tail', 0*np.zeros(1), tailTwist,lower=-10, upper=10, scale=0.1)
+# AOA
+DVGeo.addGeoDVGlobal('alpha', alpha0,alpha,lower=0, upper=10., scale=1.0)
 
 # =================================================================================================
 # DAFoam

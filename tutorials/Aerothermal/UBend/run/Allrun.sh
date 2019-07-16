@@ -32,5 +32,6 @@ cp -r 0.orig 0
 
 # these are the actually commands to run the case
 ./foamRun.sh $1 &
-mpirun -np $1 python runScript.py &> log.opt &
+sleep 1
 echo "Running the optimization. Check the log.opt file for the progress."
+mpirun -np $1 python runScript.py &> log.opt 

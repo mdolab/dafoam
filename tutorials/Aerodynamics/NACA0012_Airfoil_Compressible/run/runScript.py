@@ -60,7 +60,6 @@ aeroOptions = {
     'casename':                 'NACA0012_'+task+'_'+optVars[0],
     'outputdirectory':          outputDirectory,
     'writesolution':            True,
-    'usecoloring':              True,
 
     # design surfaces and cost functions 
     'designsurfacefamily':     'designSurfaces', 
@@ -71,7 +70,6 @@ aeroOptions = {
     'liftdir':                 liftdir0,
     'dragdir':                 dragdir0,
     'cofr':                    CofR,
-    'rasmodelparameters':      {'nuTildaMin':'1e-16'},
 
     # flow setup
     'adjointsolver':           'rhoSimpleCDAFoam',
@@ -84,18 +82,10 @@ aeroOptions = {
     'outletpatches':           ['inout'],
     'flowbcs':                 {'bc0':{'patch':'inout','variable':'U','value':inletu0},
                                 'useWallFunction':'true'},
-    'thermoproperties':        {'molWeight':28.97,
-                                 'Cp':1005.0,
-                                 'Hf':0.0,
-                                 'mu':1.8e-5,
-                                 'Pr':0.7,
-                                 'TRef':300.0,
-                                 'Prt':0.7},
 
     # adjoint setup
-    'adjgmresmaxiters':        2000,
-    'adjgmresrestart':         2000,
-    #'stateresettol':           1e-5,
+    'adjgmresmaxiters':        1000,
+    'adjgmresrestart':         1000,
     'adjgmresreltol':          1e-6,
     'adjdvtypes':              ['FFD'], 
     'epsderiv':                1.0e-6, 
@@ -103,58 +93,35 @@ aeroOptions = {
     'adjpcfilllevel':          2, 
     'adjjacmatordering':       'cell',
     'adjjacmatreordering':     'natural',
-    'normalizestates':         ['U','p','e','nuTilda','T','phi','k','epsilon','omega'],
-    'normalizeresiduals':      ['URes','pRes','eRes','nuTildaRes','TRes','phiRes','kRes','omegaRes','epsilonRes'],
-    'maxresconlv4jacpcmat':    {'URes':2,'pRes':3,'eRes':2,'nuTildaRes':2,'TRes':2,'phiRes':2,'kRes':2,'omegaRes':2,'epsilonRes':2},
     'statescaling':            {'UScaling':UmagIn,
                                 'pScaling':pRef,
                                 'TScaling':TRef,
                                 'nuTildaScaling':1e-4,
-                                'kScaling':0.1,
-                                'omegaScaling':1000,
-                                'epsilonScaling':100.0,
-                                'phiScaling':1,},
+                                'phiScaling':1},
     
     'simplecontrol':           {'nNonOrthogonalCorrectors':'0',                 
-                               'rhoLowerBound':'0.2',
-                               'rhoUpperBound':'10.0',
-                               'pLowerBound':'20000',
-                               'pUpperBound':'1000000',
-                               'ULowerBound':'-800',
-                               'UUpperBound':'800',
-                               'eLowerBound':'100000',
-                               'eUpperBound':'500000',
-                               'transonic':'true'},
-
-    #'laplacianschemes':{'default':'Gauss linear limited corrected 0.333'},
-    #'sngradschemes':{'default':'limited corrected 0.333'},
+                                'rhoLowerBound':'0.2',
+                                'rhoUpperBound':'10.0',
+                                'pLowerBound':'20000',
+                                'pUpperBound':'1000000',
+                                'ULowerBound':'-800',
+                                'UUpperBound':'800',
+                                'eLowerBound':'100000',
+                                'eUpperBound':'500000',
+                                'transonic':'true'},
 
     'fvrelaxfactors':          {'fields':{'p':1,'rho':1.0},
                                 'equations':{'p':1,'U':0.8,'nuTilda':0.8,'e':0.8}},
                                 
     'divschemes':              {'div(phi,U)':'Gauss linearUpwindV grad(U)',
                                 'div(phi,e)':'Gauss upwind',
-                                'div(phi,h)':'Gauss upwind',
                                 'div(phi,nuTilda)':'Gauss upwind',
-                                'div(phi,k)':'Gauss upwind',
-                                'div(phi,omega)':'Gauss upwind',
-                                'div(phi,epsilon)':'Gauss upwind',
                                 'default':'none',
                                 'div(((rho*nuEff)*dev2(T(grad(U)))))': 'Gauss linear',
                                 'div(phi,Ekp)': 'Gauss upwind',
-                                'div(phi,K)': 'Gauss upwind',
                                 'div(phid,p)':'Gauss limitedLinear 1',
-                                'div(pc)':'Gauss upwind',
-                                'div((p*(U-URel)))': 'Gauss linear',
-                                'div((-devRhoReff.T()&U))':'Gauss linear',},
+                                'div(pc)':'Gauss upwind'},
 
-    'thermotype':              {'type':'hePsiThermo',
-                                'mixture':'pureMixture',
-                                'thermo':'hConst',
-                                'transport':'const',
-                                'equationOfState':'perfectGas',
-                                'specie':'specie',
-                                'energy':'sensibleInternalEnergy'},
     
     ########## misc setup ##########
     'mpispawnrun':             False,
@@ -170,18 +137,19 @@ meshOptions = {
     'gridFile':                os.getcwd(),
     'fileType':                'openfoam',
     # point and normal for the symmetry plane
-    'symmetryPlanes':          [[[0.,0., 0.],[0., 0., 1.]]], 
+    'symmetryPlanes':          [[[0.,0., 0.],[0., 0., 1.]],[[0.,0., 0.1],[0., 0., 1.]]],
 }
 
 # options for optimizers
 outPrefix = outputDirectory+task+optVars[0]
 if args.opt == 'snopt':
     optOptions = {
-        'Major feasibility tolerance':  1.0e-7,   # tolerance for constraint
-        'Major optimality tolerance':   1.0e-7,   # tolerance for gradient 
-        'Minor feasibility tolerance':  1.0e-7,   # tolerance for constraint
+        'Major feasibility tolerance':  1.0e-6,   # tolerance for constraint
+        'Major optimality tolerance':   1.0e-6,   # tolerance for gradient 
+        'Minor feasibility tolerance':  1.0e-6,   # tolerance for constraint
         'Verify level':                 -1,
-        'Function precision':           1.0e-7,
+        'Function precision':           1.0e-6,
+        'Major iterations limit':       20,
         'Nonderivative linesearch':     None, 
         'Major step limit':             2.0,
         'Penalty parameter':            0.0, # initial penalty parameter
@@ -190,21 +158,21 @@ if args.opt == 'snopt':
     }
 elif args.opt == 'psqp':
     optOptions = {
-        'TOLG':                         1.0e-7,   # tolerance for gradient 
-        'TOLC':                         1.0e-7,   # tolerance for constraint
-        'MIT':                          25,       # max optimization iterations
+        'TOLG':                         1.0e-6,   # tolerance for gradient 
+        'TOLC':                         1.0e-6,   # tolerance for constraint
+        'MIT':                          20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_PSQP.out')
     }
 elif args.opt == 'slsqp':
     optOptions = {
-        'ACC':                          1.0e-7,   # convergence accuracy
-        'MAXIT':                        25,       # max optimization iterations
+        'ACC':                          1.0e-5,   # convergence accuracy
+        'MAXIT':                        20,       # max optimization iterations
         'IFILE':                        os.path.join(outPrefix+'_SLSQP.out')
     }
 elif args.opt == 'ipopt':
     optOptions = {
-        'tol':                          1.0e-7,   # convergence accuracy
-        'max_iter':                     25,       # max optimization iterations
+        'tol':                          1.0e-6,   # convergence accuracy
+        'max_iter':                     20,       # max optimization iterations
         'output_file':                  os.path.join(outPrefix+'_IPOPT.out')
     }
 else:
@@ -219,11 +187,11 @@ FFDFile = './FFD/wingFFD.xyz'
 DVGeo = DVGeometry(FFDFile)
 
 # ref axis
-x = [0,1.0]
-y = [0.001,0.001 ]
-z = [0.001,0.001]
+x = [0.25,0.25]
+y = [0.00,0.00]
+z = [0.00,0.10]
 c1 = pySpline.Curve(x=x, y=y, z=z, k=2)
-DVGeo.addRefAxis('bodyAxis', curve = c1,axis='y')
+DVGeo.addRefAxis('bodyAxis', curve = c1,axis='z')
 
 def alpha(val, geo=None):
     inletu, dragdir, liftdir = calcUAndDir(UmagIn,np.real(val))
@@ -244,7 +212,7 @@ def alpha(val, geo=None):
 pts=DVGeo.getLocalIndex(0) 
 indexList=pts[:,:,:].flatten()
 PS=geo_utils.PointSelect('list',indexList)
-DVGeo.addGeoDVLocal('shapey',lower=-0.05, upper=0.05,axis='y',scale=1.0,pointSelect=PS)
+DVGeo.addGeoDVLocal('shapey',lower=-1.0, upper=1.0,axis='y',scale=1.0,pointSelect=PS)
 DVGeo.addGeoDVGlobal('alpha', alpha0,alpha,lower=0, upper=10., scale=1.0)
 
 # =================================================================================================
@@ -274,15 +242,11 @@ DVCon.setDVGeo(DVGeo)
 surf = [p0, v1, v2]
 DVCon.setSurface(surf)
 
-# Le/Te constraints
-#DVCon.addLeTeConstraints(0, 'iHigh')
-#DVCon.addLeTeConstraints(0, 'iLow')
+leList = [[1e-4,0.0,1e-4],[1e-4,0.0,0.1-1e-4]]
+teList = [[0.998-1e-4,0.0,1e-4],[0.998-1e-4,0.0,0.1-1e-4]]
 
-leList = [[1e-4,0.0,1e-4],[1e-4,0.0,0.01-1e-4]]
-teList = [[0.998-1e-4,0.0,1e-4],[0.998-1e-4,0.0,0.01-1e-4]]
-
-#DVCon.addVolumeConstraint(leList, teList, nSpan=2, nChord=60,lower=1.0,upper=3, scaled=True)
-DVCon.addThicknessConstraints2D(leList, teList,nSpan=2,nChord=30,lower=0.2, upper=3.0,scaled=True)
+DVCon.addVolumeConstraint(leList, teList, nSpan=2, nChord=50,lower=1.0,upper=3, scaled=True)
+DVCon.addThicknessConstraints2D(leList, teList,nSpan=2,nChord=50,lower=0.8, upper=3.0,scaled=True)
 
 #Create a linear constraint so that the curvature at the symmetry plane is zero
 pts1=DVGeo.getLocalIndex(0)
@@ -293,6 +257,16 @@ for i in range(10):
         indSetA.append(pts1[i,j,1])
         indSetB.append(pts1[i,j,0])
 DVCon.addLinearConstraintsShape(indSetA,indSetB,factorA=1.0,factorB=-1.0,lower=0.0,upper=0.0)
+
+#Create a linear constraint so that the leading and trailing edges do not change
+pts1=DVGeo.getLocalIndex(0)
+indSetA = []
+indSetB = []
+for i in [0,9]:
+    for k in [0]: # do not constrain k=1 because it is linked in the above symmetry constraint
+        indSetA.append(pts1[i,0,k])
+        indSetB.append(pts1[i,1,k])
+DVCon.addLinearConstraintsShape(indSetA,indSetB,factorA=1.0,factorB=1.0,lower=0.0,upper=0.0)
 
 # ================================================================================================
 # optFuncs
@@ -481,7 +455,7 @@ elif task.lower() == 'solvecl':
                 print ("Completed! alpha = %f"%alpha0.real)
             break
         # compute sens
-        eps = 1e-3
+        eps = 1e-2
         alphaVal = alpha0 + eps
         alpha(alphaVal)
         funcsP={}

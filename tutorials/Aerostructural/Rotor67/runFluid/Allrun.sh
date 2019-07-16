@@ -34,6 +34,7 @@ setRotVelBCs -rotRad '(0 0 -840)' -patchNames '(bladeps bladess bladefillet shro
 
 # these are the actually commands to run the case
 ./foamRun.sh $1 &
-sleep 5
-mpirun -np $1 python runScript.py &> log.opt &
+sleep 1
 echo "Running the optimization. Check the log.opt file for the progress."
+mpirun -np $1 python runScript.py &> log.opt 
+
