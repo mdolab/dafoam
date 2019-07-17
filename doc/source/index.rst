@@ -23,7 +23,7 @@ The DAFoam repository comprises of five main directories, and the source code is
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    self
    Download
