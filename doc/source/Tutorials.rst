@@ -3,10 +3,10 @@
 Tutorials
 ---------
 
-There are multiple optimization cases in the tutorials folder. 
+There are multiple optimization cases in the **tutorials** folder. 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    Tutorial_Aerodynamics
    Tutorial_HeatTransfer
@@ -15,7 +15,10 @@ There are multiple optimization cases in the tutorials folder.
    Tutorial_Aerothermal
    Tutorial_Aerostructural
 
-In each optimization case, the **run** folder contains all the optimization setup. The **optOutput** folder stores all the optimization results and logs. 
+In each optimization case, the **run** folder contains all the optimization setup. 
+The **optOutput** folder stores all the optimization results and logs. 
+We recommend you first read the instructions in :ref:`Aerodynamics_NACA0012_Incomp` before running other cases.
+All these tutorials use very coarse meshes, you need to refine the mesh for more realistic runs.
 
 The optimization configurations are defined in **runScript.py**. There are seven sections:
 
@@ -43,17 +46,17 @@ Before running the tutorials, you need to load the DAFoam environment.
 
    cd tutorials/Aerodynamics/NACA0012_Airfoil_Incompressible/run && ./Allrun.sh 1
 
- The last parameter **1** means running the optimization using 1 CPU core. After this, check the log.opt for the optimization progress. All the intermediate shapes and logs (flow, adjoint, mesh quality, design variables, etc.) are stored in the optOutput directory. Once the optimization is finished, you can run **exit** to quit the container and use `Paraview <https://www.paraview.org/>`_ to post-process the optimization results on your local computer. Remember to choose **Case Type-Decomposed Case** to view the decomposed (parallel) cases in Paraview. 
+ The last parameter **1** means running the optimization using 1 CPU core. After this, check the log.opt for the optimization progress. All the intermediate shapes and logs (flow, adjoint, mesh quality, design variables, etc.) are stored in the optOutput directory. Once the optimization is finished, you can run ``exit`` to quit the container and use `Paraview <https://www.paraview.org/>`_ to post-process the optimization results on your local computer. Remember to choose **Case Type-Decomposed Case** to view the decomposed (parallel) cases in Paraview. 
  
  A few notes:
    
-   - Treat the Docker container as disposable, i.e., start one container for one optimization run. If the optimization is running and you want to kill it, just run **exit** to quit the container.
+   - Treat the Docker container as disposable, i.e., start one container for one optimization run. If the optimization is running and you want to kill it, just run ``exit`` to quit the container.
 
    - Do not store simulation results in the container because they will be deleted after you exit. Run simulations on the mounted space /UserHome instead.
    
    - dafoamuser has the sudo privilege and its password is: dafoamuser.
 
-   - Always run Allclean.sh before running Allrun.sh. 
+   - Always run ``./Allclean.sh`` before running ``./Allrun.sh``. 
 
 
 - If you have compiled DAFoam from the source code following :ref:`Installation`, load the OpenFOAM environment::
