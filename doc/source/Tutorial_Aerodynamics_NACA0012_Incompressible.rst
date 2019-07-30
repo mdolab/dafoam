@@ -55,7 +55,7 @@ In the second section, we generate a structured mesh using the `pyHyp <https://g
 
 Here the genAirFoilMesh.py script reads the NACA 0012 profile, generates a surface mesh, and calls pyHyp to generate a volume mesh. 
 DAFoam does not support pure 2D cases, so we use one cell in the spanwise (z) direction and impose the symmetry boundary condition. 
-The pyHyp will output the volume mesh in plot3D format (*.xyz). 
+The pyHyp will output the volume mesh in plot3D format (.xyz). 
 We convert it to OpenFOAM meshes using the **plot3dToFoam**, **autoPatch**, **createPatch**, and **renumberMesh** utilities in OpenFOAM. 
 Refer to `Mesh Generation in OpenFOAM <https://www.openfoam.com/documentation/user-guide/mesh.php>`_ for detailed instructions.
 The mesh is as follows:

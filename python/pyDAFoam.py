@@ -451,6 +451,9 @@ class PYDAFOAM(AeroSolver):
         
         writematrices : bool
             Whether to write all partial derivative matrices and vectors to disk. This is for debugging only
+
+        adjgmrescalceigen: bool
+            whether to compute the preconditioned eigenvalues during the adjoint GMRES solution
         
         adjgmresrestart : int
             GMRES solver restart number. Typically, we set it to adjgmresmaxiters; we never restart
@@ -974,6 +977,7 @@ class PYDAFOAM(AeroSolver):
                     'calcpcmat':[bool,True],
                     'fastpcmat':[bool,False],
                     'writematrices':[bool,False],
+                    'adjgmrescalceigen':[bool,False],
                     'adjgmresrestart':[int,200],
                     'adjglobalpciters':[int,0],
                     'adjlocalpciters':[int,1],
@@ -5518,6 +5522,7 @@ class PYDAFOAM(AeroSolver):
             normalizeStates= self.getOption('normalizestates')
             normalizeStates = ' '.join(normalizeStates)
             writeMatrices =  self._checkBoolean(self.getOption('writematrices'))
+            adjGMRESCalcEigen =  self._checkBoolean(self.getOption('adjgmrescalcEigen'))
             correctWallDist = self._checkBoolean(self.getOption('correctwalldist'))
             reduceResCon4JacMat = self._checkBoolean(self.getOption('reducerescon4jacmat'))
             delTurbProd4PCMat = self._checkBoolean(self.getOption('delturbprod4pcmat'))
@@ -5620,7 +5625,8 @@ class PYDAFOAM(AeroSolver):
             f.write('    calcPCMat              %s;\n'%calcPCMat)
             f.write('    fastPCMat              %s;\n'%self._checkBoolean(self.getOption('fastpcmat')))
             f.write('    delTurbProd4PCMat      %s;\n'%delTurbProd4PCMat)
-            f.write('    writeMatrices          %s;\n'%writeMatrices)                  
+            f.write('    writeMatrices          %s;\n'%writeMatrices)   
+            f.write('    adjGMRESCalcEigen      %s;\n'%adjGMRESCalcEigen)                 
             f.write('    adjGMRESMaxIters       %d;\n'%self.getOption('adjgmresmaxiters'))
             f.write('    adjGMRESRestart        %d;\n'%self.getOption('adjgmresrestart'))
             f.write('    adjASMOverlap          %d;\n'%self.getOption('adjasmoverlap'))

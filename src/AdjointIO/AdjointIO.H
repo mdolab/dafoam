@@ -123,6 +123,8 @@ public:
     scalar adjGMRESAbsTol;
     /// relative convergence tolerance for solving adjoint equations
     scalar adjGMRESRelTol;
+    /// whether to compute the preconditioned eigenvalues during the adjoint GMRES solution
+    label adjGMRESCalcEigen;
     /// whether to write all Jacobian matrices and vectors to disk (only for debugging)
     label writeMatrices;
     /// whether to read state Jacobian matrices from disk 

@@ -3000,6 +3000,22 @@ void AdjointDerivative::solveAdjoint(const word objFunc)
     VecZeroEntries(psi_);
 
     KSPSolve(ksp_,dFdW_,psi_);
+
+    // check if we need to extract the computed eigenvalue and save to files
+    if(adjIO_.adjGMRESCalcEigen)
+    {
+        word prefix = "PreconditionedJacobianEigenValues_"+objFunc+".dat";
+        OFstream fOut(prefix);
+        PetscInt nn=adjIO_.adjGMRESRestart;
+        PetscReal realEigen[nn],complexEigen[nn];
+        PetscInt nEigen;
+        KSPComputeEigenvalues(ksp_,nn,realEigen,complexEigen,&nEigen);
+    
+        for(label i=0;i<nEigen;i++)
+        {
+            fOut<<realEigen[i]<<" "<<complexEigen[i]<<endl;
+        }
+    }
     
     //Print convergence information
     label its;
@@ -3709,6 +3725,8 @@ void AdjointDerivative::createMLRKSP
     // Set the overlap required
     MLRoverlap = readLabel( options.lookup("ASMOverlap") );
     PCASMSetOverlap(MLRGlobalPC, MLRoverlap);
+
+    if(adjIO_.adjGMRESCalcEigen) KSPSetComputeEigenvalues(*genksp,PETSC_TRUE);
 
     //Setup the main ksp context before extracting the subdomains
     KSPSetUp(*genksp);

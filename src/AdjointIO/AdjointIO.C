@@ -76,6 +76,7 @@ AdjointIO::AdjointIO
     calcPCMat           = readBooleanOptionOrDefault(adjointOptions,"calcPCMat","true");
     fastPCMat           = readBooleanOptionOrDefault(adjointOptions,"fastPCMat","false");
     writeMatrices       = readBooleanOptionOrDefault(adjointOptions,"writeMatrices","false");
+    adjGMRESCalcEigen   = readBooleanOptionOrDefault(adjointOptions,"adjGMRESCalcEigen","false");
     readMatrices        = readBooleanOptionOrDefault(adjointOptions,"readMatrices","false");
     adjJacMatOrdering   = readOptionOrDefault<word>(adjointOptions,"adjJacMatOrdering","state");
     adjJacMatReOrdering = readOptionOrDefault<word>(adjointOptions,"adjJacMatReOrdering","rcm");
