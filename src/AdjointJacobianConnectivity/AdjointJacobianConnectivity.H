@@ -19,6 +19,7 @@
 #include "AdjointSolverRegistry.H"
 #include "AdjointRASModel.H"
 #include "AdjointIndexing.H"
+#include "cyclicAMIPolyPatch.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -54,11 +55,20 @@ protected:
     /// matrix to store boundary connectivity ID for state Jacobians
     Mat stateBoundaryConID_;
 
+    /// matrix to store cyclicAMI boundary connectivity levels for state Jacobians
+    Mat stateCyclicAMICon_;
+
+    /// matrix to store cyclicAMI boundary connectivity ID for state Jacobians
+    Mat stateCyclicAMIConID_;
+
     /// matrix to store boundary connectivity levels for Xv Jacobians
     Mat xvBoundaryCon_;
 
     /// neibough face global index for a given local boundary face
     labelList neiBFaceGlobalCompact_;
+
+    /// cyclicAMI face global indices for a given local boundary face
+    List< List<label> > cyclicAMIBFaceGlobalCompact_;
     
     /// dRdW connectivity mat
     Mat dRdWCon_;
@@ -111,6 +121,9 @@ protected:
 
     /// a backup for AdjointJacobianConnectivity::adjStateResidualConInfo_ when reducing the connectivity levels
     HashTable< List< List<word> > > adjStateResidualConInfoBK_;
+
+    /// does this processor has AMI patches?
+    label procHasAMI_;
     
 public:
 
@@ -180,12 +193,24 @@ public:
     
     /// calculate AdjointJacobianConnectivity::neiBFaceGlobalCompact_
     void calcNeiBFaceGlobalCompact();
+
+    /// calculate AdjointJacobianConnectivity::cyclicAMIBFaceGlobalCompact_
+    void calcCyclicAMIBFaceGlobalCompact();
     
     /// calculate AdjointJacobianConnectivity::stateBoundaryCon_
     void setupStateBoundaryCon();
     
     /// calculate AdjointJacobianConnectivity::stateBoundaryConID_
     void setupStateBoundaryConID();
+
+    /// calculate AdjointJacobianConnectivity::stateBoundaryCon_
+    void setupStateCyclicAMICon();
+    
+    /// calculate AdjointJacobianConnectivity::stateBoundaryConID_
+    void setupStateCyclicAMIConID();
+
+    /// combine the connectivity for all state con mats
+    void combineAllStateCons();
 
     /// calculate AdjointJacobianConnectivity::xvBoundaryCon_
     void setupXvBoundaryCon();
@@ -249,6 +274,17 @@ public:
         label addFaces
     );
 
+    /// add the column index of the AMI connected states and faces to conMat, given a local face index 
+    void addCyclicAMIFaceConnections
+    (
+        Mat conMat,
+        label gRow, 
+        label cellI,
+        labelList v,
+        List< List<word> > connectedStates,
+        label addFaces
+    );
+
     /// add the column index of the (iner-proc) connected Xv to conMat, given a local face index 
     void addBoundaryFaceConnectionsXv
     (
@@ -274,6 +310,9 @@ public:
     
     /// given a local face index, return the local index of the coupled boundary face
     PetscInt getLocalCoupledBFaceIndex(label localFaceI);
+
+    /// given a local face index, return the index of cyclicAMI boundary face
+    PetscInt getLocalCyclicAMIFaceIndex(label localFaceI);
     
     /// initialize petsc vectors
     void initializePetscVecs();

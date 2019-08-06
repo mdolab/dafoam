@@ -40,11 +40,37 @@ AdjointJacobianConnectivity::AdjointJacobianConnectivity
         Info <<"Generating Connectivity for Boundaries:"<<endl;
         
         this->calcNeiBFaceGlobalCompact();
+
+        this->calcCyclicAMIBFaceGlobalCompact();
     
         this->setupStateBoundaryCon();
 
+        this->setupStateCyclicAMICon();
+
+        this->combineAllStateCons();
+
+        this->setupStateCyclicAMIConID();
+
+        this->setupStateBoundaryConID();
+
         if( adjIO_.isInList<word>("Xv", adjIO_.adjDVTypes) ) this->setupXvBoundaryCon();
         
+        if(adjIO_.writeMatrices)
+        {
+            adjIO_.writeMatrixBinary(stateBoundaryCon_,"stateBoundaryCon");
+            adjIO_.writeMatrixBinary(stateBoundaryConID_,"stateBoundaryConID");
+
+            PetscViewer    viewer;
+            PetscViewerBinaryOpen(PETSC_COMM_SELF,"stateCyclicAMICon.bin",FILE_MODE_WRITE,&viewer);
+            MatView(stateCyclicAMICon_,viewer);
+            PetscViewerDestroy(&viewer);
+            
+            PetscViewerBinaryOpen(PETSC_COMM_SELF,"stateCyclicAMIConID.bin",FILE_MODE_WRITE,&viewer);
+            MatView(stateCyclicAMIConID_,viewer);
+            PetscViewerDestroy(&viewer);
+
+        }
+
         this->initializePetscVecs();
         
     }
@@ -245,7 +271,7 @@ void AdjointJacobianConnectivity::setupdRdWCon(label isPrealloc,label isPC)
                     );
                     
                     //Info<<"lv: "<<idxJ<<" locaStates: "<<connectedStatesLocal<<" interProcStates: "<<connectedStatesInterProc<<" addFace: "<<addFace<<endl;
-                    
+              
                 }   
                 
                 // get the global index of the current state for the row index
@@ -443,8 +469,38 @@ void AdjointJacobianConnectivity::setupdRdWCon(label isPrealloc,label isPC)
                     MatRestoreRow(stateBoundaryCon_,bRowGlobal,&nCols,&cols,&vals);
                     MatRestoreRow(stateBoundaryConID_,bRowGlobal,&nColsID,&colsID,&valsID);
                 }  
+                
+                if ( mesh_.boundaryMesh()[patchIdx].type() == "cyclicAMI" )
+                {
+                    
+                    label bRow=this->getLocalCyclicAMIFaceIndex(faceI);
+                    MatGetRow(stateCyclicAMICon_,bRow,&nCols,&cols,&vals);
+                    MatGetRow(stateCyclicAMIConID_,bRow,&nColsID,&colsID,&valsID);
+                    for(label i=0; i<nCols; i++)
+                    {
+                        PetscInt idxJ = cols[i];
+                        label val = round(vals[i]);
+                        // we are going to add some selective states with connectivity level <= 3
+                        // first check the state
+                        label stateID = round(valsID[i]);
+                        word conName = adjIdx_.adjStateNames[stateID];
+                        label addState = 0;
+                        // NOTE: we use val-1 here since phi actually has 3 levels of connectivity
+                        // however, when we assign adjStateResidualConInfo_, we ignore the level 0
+                        // connectivity since they are idxN and idxO
+                        if ( val!=10 && val<maxLevel+1)
+                        {
+                            if(adjIO_.isInList<word>(conName,adjStateResidualConInfo_[resName][val-1]))
+                                addState =1;
+                        }
+                        if(addState==1 && val<maxLevel+1 && val>0 ) 
+                            this->setConnections(connectedStatesP,idxJ);
+                    }
+                    MatRestoreRow(stateCyclicAMICon_,bRow,&nCols,&cols,&vals);
+                    MatRestoreRow(stateCyclicAMIConID_,bRow,&nColsID,&colsID,&valsID);
+                }  
             }
-            
+           
             // get the global index of the current state for the row index
             globalIdx = adjIdx_.getGlobalAdjointStateIndex(stateName,faceI);
             
@@ -1607,6 +1663,141 @@ void AdjointJacobianConnectivity::calcNeiBFaceGlobalCompact()
 
 }
 
+void AdjointJacobianConnectivity::calcCyclicAMIBFaceGlobalCompact()
+{
+    
+    // This function calculates cyclicAMIBFaceGlobalCompact[bFaceI][amiFaceI]. Here cyclicAMIBFaceGlobalCompact 
+    // stores the AMI coupled boundary face indices for the given bFaceI index.
+    // bFaceI is the "compact" face index. bFaceI=0 for the first boundary face on the local processor
+    // cyclicAMIBFaceGlobalCompat.size() = AdjointIndexing::nLocalBoundaryFaces
+    // cyclicAMIBFaceGlobalCompat[0].size() = nAMICoupledFaces: how many faces are coupled to bFaceI=0
+    // cyclicAMIBFaceGlobalCompat[bFaceI]={-1} means it is not a coupled AMI face
+    // NOTE: cyclicAMIBFaceGlobalCompat will be used to calculate the connectivity across processors
+    // in AdjointJacobianConnectivity::setupStateCyclicAMICon
+    //
+    // Basically, cyclicAMIBFaceGlobalCompat[0] = {1024,96} for the following example
+
+    //                  globalBFaceI=96, globalBFaceI=1024
+    // |-----------------------------=-=---------|  <- cyclicAMI patch
+    // |                                         |  
+    // |                                         |
+    // |   simulation domain                     |
+    // |                           |-----|       |
+    // |                           | cell|       |
+    // |-----------------------------------------|  <- cyclicAMI patch
+    //                                |
+    //                                |
+    //                           amiFaceIndex=0 
+                          
+
+    const polyBoundaryMesh& patches = mesh_.boundaryMesh();
+    
+    cyclicAMIBFaceGlobalCompact_.setSize(adjIdx_.nLocalBoundaryFaces);
+
+    // first we need to check if cyclicAMI patches are owned by only one processor
+    // if they are owned by more than one processor, quit and report an error
+    // in this case, use singleProcessorFaceSets in the decomposeParDict to fix
+    label nProcesOwnAMIPatches=0;
+    procHasAMI_=0;
+    forAll(patches,patchI)
+    {
+        if(patches[patchI].size()>0 && patches[patchI].type()=="cyclicAMI")
+        {
+            nProcesOwnAMIPatches=1;
+            procHasAMI_=1;
+        }
+    }
+    reduce(nProcesOwnAMIPatches, sumOp<label>() );
+    if(nProcesOwnAMIPatches!=1 && nProcesOwnAMIPatches!=0)
+    {
+        FatalErrorIn("")<<"cyclicAMI patches are owned by more than one processor!"
+                        <<abort(FatalError);
+    }
+
+    forAll(patches,patchI)
+    {
+        if(patches[patchI].size()>0 && patches[patchI].type()=="cyclicAMI")
+        {
+            // recast patches to patchAMI
+            cyclicAMIPolyPatch& patchAMI =refCast< cyclicAMIPolyPatch > 
+            ( 
+                const_cast<polyPatch&>
+                (
+                    patches[patchI]
+                )
+            );
+
+            // only treat the owner patch of the AMI pair
+            if (patchAMI.owner())
+            {
+                // get the AMI class
+                const AMIPatchToPatchInterpolation& ami=patchAMI.AMI();
+
+                // here src is the current AMI patch and tgt is the coupled AMI patch
+                label srcPatchI=patchI;
+                label tgtPatchI=patchAMI.neighbPatchID();
+
+                const polyPatch& srcPatch = patches[srcPatchI];
+                const polyPatch& tgtPatch = patches[tgtPatchI];
+
+                if(srcPatch.size()!=tgtPatch.size())
+                {
+                    FatalErrorIn("")<<"sizes of cyclicAMI patches are not same!"
+                        <<abort(FatalError);
+                }
+                
+                // deal with src cyclicAMI patch
+                // srcAddress stores the tgt patch (coupled AMI) indices
+                forAll(ami.srcAddress(),idxI) 
+                {
+                    forAll(ami.srcAddress()[idxI],idxJ) // we may have more than one coupled faces
+                    {
+                        label srcFaceI = idxI;
+                        label tgtFaceI = ami.srcAddress()[idxI][idxJ];
+
+                        label tgtFaceLocalIdx=adjIdx_.BFacePatchIFaceI2LocalIndex(tgtPatchI,tgtFaceI);
+                        label bFaceI=tgtFaceLocalIdx-adjIdx_.nLocalInternalFaces;
+
+                        label srcFaceLocalIdx=adjIdx_.BFacePatchIFaceI2LocalIndex(srcPatchI,srcFaceI);
+                        label srcCyclicAMIFaceIdx=this->getLocalCyclicAMIFaceIndex(srcFaceLocalIdx);
+
+                        cyclicAMIBFaceGlobalCompact_[bFaceI].append(srcCyclicAMIFaceIdx);
+
+                    }
+                    
+                }
+
+                // deal with tgt cyclicAMI patch
+                // tgtAddress stores the tgt patch (coupled AMI) indices
+                forAll(ami.tgtAddress(),idxI)
+                {
+                    forAll(ami.tgtAddress()[idxI],idxJ) // we may have more than one coupled faces
+                    {
+                        label tgtFaceI = idxI;
+                        label srcFaceI = ami.tgtAddress()[idxI][idxJ];
+
+                        label srcFaceLocalIdx=adjIdx_.BFacePatchIFaceI2LocalIndex(srcPatchI,srcFaceI);
+                        label bFaceI=srcFaceLocalIdx-adjIdx_.nLocalInternalFaces;
+
+                        label tgtFaceLocalIdx=adjIdx_.BFacePatchIFaceI2LocalIndex(tgtPatchI,tgtFaceI);
+                        label tgtCyclicAMIFaceIdx=this->getLocalCyclicAMIFaceIndex(tgtFaceLocalIdx);
+                        
+                        cyclicAMIBFaceGlobalCompact_[bFaceI].append(tgtCyclicAMIFaceIdx);
+
+                    }
+                    
+                }
+            }
+        }
+    }
+
+    //Info<<cyclicAMIBFaceGlobalCompact_<<endl;
+
+    return;
+
+}
+
+
 void AdjointJacobianConnectivity::addConMatCell
 (
     Mat conMat, 
@@ -1819,7 +2010,7 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
     // stateBoundaryConID will be used in addBoundaryFaceConnections                  
     
 
-    labelList idxJ(adjIdx_.adjStateNames.size());
+    //labelList idxJ(adjIdx_.adjStateNames.size());
 
     MatCreate(PETSC_COMM_WORLD,&stateBoundaryCon_);
     MatSetSizes(stateBoundaryCon_,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalAdjointStates,PETSC_DETERMINE,PETSC_DETERMINE);
@@ -1972,18 +2163,490 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
 
     // the above repeat loop is not enough to cover all the stencil, we need to do more
     this->combineStateBndCon(&stateBoundaryCon_,&stateBoundaryConTmp);
-
-    // now we can setup stateBoundaryConID_ based on stateBoundaryCon_
-    this->setupStateBoundaryConID();
-
-    if(adjIO_.writeMatrices)
-    {
-        adjIO_.writeMatrixBinary(stateBoundaryCon_,"stateBoundaryCon");
-        adjIO_.writeMatrixBinary(stateBoundaryConID_,"stateBoundaryConID");
-    }
     
     return;
     
+
+}
+
+
+void AdjointJacobianConnectivity::setupStateCyclicAMICon()
+{
+    // This function calculates stateCyclicAMICon and stateCyclicAMIConID
+    // stateCyclicAMICon stores the level of connected states (on the other side of the cyclicAMI faces) for a
+    // given AMI face boundary face. stateCyclicAMICon is a matrix with sizes of nCyclicAMIFaces by nGlobalAdjointStates
+    // stateCyclicAMICon is mainly used in the addCyclicAMIFaceConnection function
+    
+    // Basically, if there are 2 levels of connected states on the other side of the cyclicAMI boundary
+    //                                         
+    // |-----------------------------------------|  <- cyclicAMI patch
+    // |globalAdjStateIdx=100 ->   | lv1 |       |  
+    // |                           |_____|       |
+    // |globalAdjStateIdx=200 ->   | lv2 |       |
+    // |                           |_____|       |
+    // |                                         |
+    // |   simulation domain                     |
+    // |                           |-----|       |
+    // |                           | cell|       |
+    // |-----------------------------------------|  <- cyclicAMI patch
+    //                                |
+    //                                |
+    //                           amiFaceIndex=1024  
+    // The indices for row 1024 in the stateCyclicAMICon matrix will be
+    // stateCyclicAMICon
+    // rowI=1024   
+    // Cols: colI=0 .......... colI=100  ............ colI=200 .............  colI=nGlobalAdjointStates
+    // Vals:                       1                     2                
+    //
+    // stateCyclicAMIConID has the exactly same structure as stateCyclicAMICon except that 
+    // stateCyclicAMIConID stores the connected stateID instead of connected levels
+    // stateCyclicAMIConID will be used in addCyclicAMIFaceConnections   
+
+    // create a local matrix 
+    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,500,NULL,&stateCyclicAMICon_);
+    MatSetUp(stateCyclicAMICon_);
+    MatZeroEntries(stateCyclicAMICon_);     
+
+    Mat stateCyclicAMIConTmp;
+    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,500,NULL,&stateCyclicAMIConTmp);
+    MatSetUp(stateCyclicAMIConTmp);
+    MatZeroEntries(stateCyclicAMIConTmp);               
+
+    // loop over the patches and set the boundary connnectivity
+    const polyBoundaryMesh& patches = mesh_.boundaryMesh();
+    // level 3
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is cyclicAMI
+        if (pp.type() == "cyclicAMI")
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                labelList gRowAMI = cyclicAMIBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // Start with next to nearest neighbours
+                forAll(mesh_.cellCells()[idxN],cellI)
+                {
+                    label localCell = mesh_.cellCells()[idxN][cellI];
+                    forAll(adjIdx_.adjStateNames,idxI)
+                    {
+                        word stateName = adjIdx_.adjStateNames[idxI];
+                        if(adjIdx_.adjStateType[stateName] != "surfaceScalarState")
+                        {
+                            forAll(gRowAMI,aa)
+                            {
+                                // Now add level 3 connectivity, add all vars except for surfaceScalarStates
+                                this->addConMatNeighbourCells(stateCyclicAMICon_,gRowAMI[aa],localCell,stateName,3.0);
+                                this->addConMatNeighbourCells(stateCyclicAMIConTmp,gRowAMI[aa],localCell,stateName,3.0);
+                            }
+                        }   
+                    }
+                }
+            }
+        }
+    }
+
+    // level 2
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is cyclicAMI
+        if (pp.type() == "cyclicAMI")
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                labelList gRowAMI = cyclicAMIBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // now add the nearest neighbour cells, add all vars for level 2 except for surfaceScalarStates
+                forAll(adjIdx_.adjStateNames,idxI)
+                {
+                    word stateName = adjIdx_.adjStateNames[idxI];
+                    if(adjIdx_.adjStateType[stateName] != "surfaceScalarState")
+                    {
+                        forAll(gRowAMI,aa)
+                        {
+                            this->addConMatNeighbourCells(stateCyclicAMICon_,gRowAMI[aa],idxN,stateName,2.0);
+                            this->addConMatNeighbourCells(stateCyclicAMIConTmp,gRowAMI[aa],idxN,stateName,2.0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // level 1
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is cyclicAMI
+        if (pp.type() == "cyclicAMI")
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                labelList gRowAMI = cyclicAMIBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // and add the surfaceScalarStates for idxN
+                forAll(adjReg_.surfaceScalarStates,idxI)
+                {
+                    const word& stateName = adjReg_.surfaceScalarStates[idxI];
+                    forAll(gRowAMI,aa)
+                    {
+                        // for faces, its connectivity level is 10
+                        this->addConMatCellFaces(stateCyclicAMICon_,gRowAMI[aa],idxN,stateName,10.0); 
+                        this->addConMatCellFaces(stateCyclicAMIConTmp,gRowAMI[aa],idxN,stateName,10.0); 
+                    }
+
+                }
+          
+                // Add all the cell states for idxN
+                forAll(adjIdx_.adjStateNames,idxI)
+                {
+                    word stateName = adjIdx_.adjStateNames[idxI];
+                    if(adjIdx_.adjStateType[stateName] != "surfaceScalarState")
+                    {
+                        forAll(gRowAMI,aa)
+                        {
+                            this->addConMatCell(stateCyclicAMICon_,gRowAMI[aa],idxN,stateName,1.0);
+                            this->addConMatCell(stateCyclicAMIConTmp,gRowAMI[aa],idxN,stateName,1.0);
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+
+    MatAssemblyBegin(stateCyclicAMIConTmp,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMIConTmp,MAT_FINAL_ASSEMBLY);
+
+    // Now repeat loop adding boundary connections from other procs using matrix
+    // created in the first loop.
+    // level 3
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.type() == "cyclicAMI")
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                labelList gRowAMI = cyclicAMIBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // Start with nearest neighbours
+                forAll(mesh_.cellCells()[idxN],cellI)
+                {
+                    label localCell = mesh_.cellCells()[idxN][cellI];
+                    labelList val1={3};
+                    // pass a zero list to add all states
+                    List< List<word> > connectedStates(0);
+                    forAll(gRowAMI,aa)
+                    {
+                        this->addBoundaryFaceConnections(stateCyclicAMICon_,gRowAMI[aa],localCell,val1,connectedStates,0); 
+                    }
+                }
+            }
+        }
+    }
+
+    // level 2
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.type() == "cyclicAMI")
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                labelList gRowAMI = cyclicAMIBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // now add the neighbour cells
+                labelList vals2= {2,3};
+                // pass a zero list to add all states
+                List< List<word> > connectedStates(0); 
+                forAll(gRowAMI,aa)
+                {
+                    this->addBoundaryFaceConnections(stateCyclicAMICon_,gRowAMI[aa],idxN,vals2,connectedStates,0);
+                }
+            }
+        }
+    }
+
+    // level 2 again, because the previous call will mess up level 2 con
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.type() == "cyclicAMI")
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                labelList gRowAMI = cyclicAMIBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // now add the neighbour cells
+                labelList vals1= {2};
+                // pass a zero list to add all states
+                List< List<word> > connectedStates(0); 
+                forAll(gRowAMI,aa)
+                {
+                    this->addBoundaryFaceConnections(stateCyclicAMICon_,gRowAMI[aa],idxN,vals1,connectedStates,0);
+                }
+            }
+        }
+    }
+
+    MatAssemblyBegin(stateCyclicAMICon_,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMICon_,MAT_FINAL_ASSEMBLY);
+ 
+    // Now stateCyclicAMICon_ will have all the missing stencil. However, it will also mess up the existing stencil
+    // in stateCyclicAMIConTmp. So we need to do a check to make sure that stateCyclicAMICon_ only add stencil, not replacing
+    // any existing stencil in stateCyclicAMIConTmp. If anything in stateCyclicAMIConTmp is replaced, rollback the changes.
+
+    PetscInt    nCols;
+    const PetscInt    *cols;
+    const PetscScalar *vals;
+    PetscInt    nCols1;
+    const PetscInt    *cols1;
+    const PetscScalar *vals1;
+    label Istart, Iend;
+    MatGetOwnershipRange(stateCyclicAMICon_,&Istart,&Iend);
+    
+    Mat tmpMat; // create a temp mat
+    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,500,NULL,&tmpMat);
+    MatSetUp(tmpMat);  
+    MatZeroEntries(tmpMat); // initialize with zeros
+    for(PetscInt i=Istart; i<Iend; i++)
+    {
+        MatGetRow(stateCyclicAMIConTmp,i,&nCols,&cols,&vals);
+        MatGetRow(stateCyclicAMICon_,i,&nCols1,&cols1,&vals1);
+        for (PetscInt j=0; j<nCols1; j++)
+        {
+            // for each col in stateBoundaryConTmp, we need to check if there are any existing values for the same 
+            // col in stateBoundaryCon. If yes, assign the val from stateBoundaryCon instead of stateBoundaryConTmp
+            PetscScalar newVal = vals1[j];
+            PetscInt newCol = cols1[j];
+            for (PetscInt k=0; k<nCols; k++)
+            {
+                if ( int(cols[k]) == int(cols1[j]) )
+                {
+                    newVal = vals[k];
+                    newCol = cols[k];
+                    break;
+                }
+            }
+            MatSetValue(tmpMat,i,newCol,newVal,INSERT_VALUES);
+        }
+        MatRestoreRow(stateCyclicAMIConTmp,i,&nCols,&cols,&vals);
+        MatRestoreRow(stateCyclicAMICon_,i,&nCols1,&cols1,&vals1);
+    }
+    MatAssemblyBegin(tmpMat,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(tmpMat,MAT_FINAL_ASSEMBLY);
+
+    // copy ConMat to ConMatTmp
+    MatDestroy(&stateCyclicAMICon_);
+    MatConvert(tmpMat, MATSAME,MAT_INITIAL_MATRIX,&stateCyclicAMICon_);
+    MatAssemblyBegin(stateCyclicAMICon_,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMICon_,MAT_FINAL_ASSEMBLY);
+        
+
+    return;
+    
+
+}
+
+void AdjointJacobianConnectivity::combineAllStateCons()
+{
+    // now we need to add the missing connectivity in stateBoundaryCon mat,
+    // this is because stateBoundaryCon may have connectivity for e.g., cyclicAMI patches
+    // this connectivity has not been added!
+    // Note the stateCyclicAMI will also have connectivty for stateBoundaryCon, but it has been added 
+    // in the  AdjointJacobianConnectivity::setupStateCyclicAMICon() function
+
+    // Now repeat loop adding boundary connections from other procs using matrix
+    // created in the first loop.
+    // level 3
+    // Now repeat loop adding boundary connections from other procs using matrix
+    // created in the first loop.
+
+    Mat stateBoundaryConTmp;
+    MatCreate(PETSC_COMM_WORLD,&stateBoundaryConTmp);
+    MatSetSizes(stateBoundaryConTmp,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalAdjointStates,PETSC_DETERMINE,PETSC_DETERMINE);
+    MatSetFromOptions(stateBoundaryConTmp);
+    MatMPIAIJSetPreallocation(stateBoundaryConTmp,500,NULL,500,NULL);
+    MatSeqAIJSetPreallocation(stateBoundaryConTmp,500,NULL);
+    MatSetOption(stateBoundaryConTmp, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+    MatSetUp(stateBoundaryConTmp);
+
+    MatConvert(stateBoundaryCon_, MATSAME,MAT_INITIAL_MATRIX,&stateBoundaryConTmp);
+
+    const polyBoundaryMesh& patches = mesh_.boundaryMesh();
+
+    // level 3
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // Start with nearest neighbours
+                forAll(mesh_.cellCells()[idxN],cellI)
+                {
+                    label localCell = mesh_.cellCells()[idxN][cellI];
+                    labelList val1={3};
+                    // pass a zero list to add all states
+                    List< List<word> > connectedStates(0);
+                    this->addCyclicAMIFaceConnections(stateBoundaryConTmp,gRow,localCell,val1,connectedStates,0);  
+                }
+            }
+        }
+    }
+
+    // level 2 and 3
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // now add the neighbour cells
+                labelList vals2= {2,3};
+                // pass a zero list to add all states
+                List< List<word> > connectedStates(0); 
+                this->addCyclicAMIFaceConnections(stateBoundaryConTmp,gRow,idxN,vals2,connectedStates,0);
+
+            }
+        }
+    }
+
+    // level 2 again
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+                
+                // now add the neighbour cells
+                labelList vals2= {2};
+                // pass a zero list to add all states
+                List< List<word> > connectedStates(0); 
+                this->addCyclicAMIFaceConnections(stateBoundaryConTmp,gRow,idxN,vals2,connectedStates,0);
+
+            }
+        }
+    }
+
+    MatAssemblyBegin(stateBoundaryConTmp,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryConTmp,MAT_FINAL_ASSEMBLY);
+
+
+    MatDestroy(&stateBoundaryCon_);
+    MatConvert(stateBoundaryConTmp, MATSAME,MAT_INITIAL_MATRIX,&stateBoundaryCon_);
+    MatAssemblyBegin(stateBoundaryCon_,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryCon_,MAT_FINAL_ASSEMBLY);
+
+    return;
 
 }
 
@@ -2041,6 +2704,61 @@ void AdjointJacobianConnectivity::setupStateBoundaryConID()
 
     MatAssemblyBegin(stateBoundaryConID_,MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(stateBoundaryConID_,MAT_FINAL_ASSEMBLY);
+
+    return;
+
+}
+
+
+void AdjointJacobianConnectivity::setupStateCyclicAMIConID()
+{
+    /*
+        This function computes stateCyclicAMIConID_.
+        stateCyclicAMIConID_ has the exactly same structure as stateCyclicAMICon except that 
+        stateCyclicAMIConID_ stores the connected stateID instead of connected levels
+        stateCyclicAMIConID_ will be used in addCyclicAMIFaceConnections
+    */
+
+    PetscInt nCols, colI;
+    const PetscInt    *cols;
+    const PetscScalar *vals;
+    PetscInt Istart,Iend;
+
+    PetscScalar valIn;
+
+    // assemble adjStateID4GlobalAdjIdx
+    // adjStateID4GlobalAdjIdx stores the adjStateID for given a global adj index
+    labelList adjStateID4GlobalAdjIdx;
+    adjStateID4GlobalAdjIdx.setSize(adjIdx_.nGlobalAdjointStates);
+    adjIdx_.calcAdjStateID4GlobalAdjIdx(adjStateID4GlobalAdjIdx);
+
+    // initialize
+    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,500,NULL,&stateCyclicAMIConID_);
+    MatSetUp(stateCyclicAMIConID_);  
+    MatZeroEntries(stateCyclicAMIConID_); // initialize with zeros
+
+    MatGetOwnershipRange(stateCyclicAMIConID_,&Istart,&Iend);
+
+    // set stateCyclicAMIConID_ based on stateCyclicAMICon_ and adjStateID4GlobalAdjIdx
+    for(PetscInt i=Istart; i<Iend; i++)
+    {
+        MatGetRow(stateCyclicAMICon_,i,&nCols,&cols,&vals);
+        for (PetscInt j=0; j<nCols; j++)
+        {
+            if ( !adjIO_.isValueCloseToRef(vals[j],0.0) )
+            {
+                colI=cols[j];
+                valIn = adjStateID4GlobalAdjIdx[colI];
+                MatSetValue(stateCyclicAMIConID_,i,colI,valIn,INSERT_VALUES);
+            }
+        }
+        MatRestoreRow(stateCyclicAMICon_,i,&nCols,&cols,&vals);
+    }
+
+    adjStateID4GlobalAdjIdx.clear();
+
+    MatAssemblyBegin(stateCyclicAMIConID_,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMIConID_,MAT_FINAL_ASSEMBLY);
 
     return;
 
@@ -2335,6 +3053,156 @@ void AdjointJacobianConnectivity::addBoundaryFaceConnections
 }
 
 
+void AdjointJacobianConnectivity::addCyclicAMIFaceConnections
+(
+    Mat conMat,
+    label gRow, 
+    label cellI,
+    labelList v,
+    List< List<word> > connectedStates,
+    label addFaces
+)
+{
+    // This function adds AMI connectivity into conMat.
+    // For all the AMI faces owned by cellI, get the global adj state indices from stateCyclicAMICon
+    // and then add them into conMat
+    // Row index to add: gRow
+    // Col index to add: the same col index for a given row (bRow) in the stateCyclicAMICon mat if the
+    // element value in the stateCyclicAMICon mat is less than the input level, i.e., v.size().
+    // v: an array denoting the desired values to add, the size of v denotes the maximal levels to add
+    // connectedStates: selectively add some states into the conMat for the current level. If its size is 0,
+    // add all the possible states (except for surfaceStates). The dimension of connectedStates is nLevel by nStates. 
+    //
+    // Example:
+    // 
+    // labelList val2={1,2};
+    // PetscInt gRow=1024, idxN = 100, addFaces=1;
+    // wordListList connectedStates={{"U","p"},{"U"}}; 
+    // addCyclicAMIFaceConnections(conMat,gRow,idxN,vals2,connectedStates,addFaces);
+    // The above call will add 2 levels of connected states for all the AMI faces belonged to cellI=idxN 
+    // The cols to added are: the level1 connected states (U, p) for all the AMI faces belonged to cellI=idxN 
+    // the level2 connected states (U only) for all the AMI faces belonged to cellI=idxN 
+    // The valus "1" will be added to conMat for all the level1 connected states while the value "2" will be added for level2
+    // Note: this function will also add all faces belonged to level1 of the AMI faces, see the following for reference
+    //              
+    //                             _______
+    //                             | idxN|
+    //                             |     |         proc0, idxN=100, globalBFaceI=1024 for the south face of idxN
+    //                        -----------------  <-AMI coupled boundary face
+    //  add state U and p     ->   | lv1 |         proc1
+    //  also add faces        ->   |_____|
+    //                             | lv2 |
+    //  add state U           ->   |_____| 
+
+    if(!procHasAMI_) return;
+    
+    if(v.size()!=connectedStates.size() && connectedStates.size()!=0)
+    {
+        FatalErrorIn("")<<"size of v and connectedStates are not identical!"<<abort(FatalError);
+    }
+    
+
+    PetscInt  idxJ,idxI,bRow;
+    PetscInt nCols;
+    const PetscInt    *cols;
+    const PetscScalar *vals;
+
+    PetscInt nColsID;
+    const PetscInt    *colsID;
+    const PetscScalar *valsID;
+    
+    // convert stateNames to stateIDs
+    labelListList connectedStateIDs(connectedStates.size());
+    forAll(connectedStates,idxI)
+    {
+        forAll(connectedStates[idxI],idxJ)
+        {
+            word stateName = connectedStates[idxI][idxJ];
+            label stateID = adjIdx_.adjStateID[stateName];
+            connectedStateIDs[idxI].append(stateID);
+        }
+    }
+
+    idxI = gRow;
+    // get the faces connected to this cell, note these are in a single
+    // list that includes all internal and boundary faces
+    const labelList& faces = mesh_.cells()[cellI];
+
+    //get the level
+    label level = v.size();
+
+    for (label lv=level; lv>=1; lv--) // we need to start from the largest levels since they have higher priority
+    {
+        forAll(faces,faceI)
+        {
+            // Now deal with coupled faces
+            label currFace = faces[faceI];
+            
+            if(adjIdx_.isCyclicAMIFace[currFace])
+            {
+                //this is a coupled face
+    
+                // use the boundary connectivity to figure out what is connected
+                // to this face for this level
+    
+                // get bRow in boundaryCon for this face
+                bRow=this->getLocalCyclicAMIFaceIndex(currFace);
+    
+                // now extract the boundaryCon row
+                MatGetRow(stateCyclicAMICon_, bRow,&nCols,&cols,&vals);
+                if (connectedStates.size()!=0)
+                {
+                    // check if we need to get stateID
+                    MatGetRow(stateCyclicAMIConID_, bRow,&nColsID,&colsID,&valsID);
+                }
+
+                // now loop over the row and set any column that match this level
+                // in conMat
+                for(label i=0; i<nCols; i++)
+                {
+                    idxJ = cols[i];
+                    label val = round(vals[i]); // val is the connectivity level extracted from stateBoundaryCon_ at this col
+                    // selectively add some states into conMat
+                    label addState;
+                    label stateID=-9999;
+                    // check if we need to get stateID
+                    if (connectedStates.size()!=0) stateID= round(valsID[i]);
+
+                    if (connectedStates.size()==0) addState=1;
+                    else if (adjIO_.isInList<label>(stateID,connectedStateIDs[lv-1]) ) addState=1;
+                    else addState =0;
+                    // if the level match and the state is what you want
+                    if( val==lv && addState )
+                    {
+                        // need to do v[lv-1] here since v is an array with starting index 0
+                        PetscScalar valIn = v[lv-1];
+                        MatSetValues(conMat,1,&idxI,1,&idxJ,&valIn,INSERT_VALUES);
+                    }
+                    if( val==10 && addFaces)
+                    {
+                        // this is a necessary connection
+                        PetscScalar valIn = v[lv-1];
+                        MatSetValues(conMat,1,&idxI,1,&idxJ,&valIn,INSERT_VALUES);
+                    }
+                }
+    
+                // restore the row of the matrix
+                MatRestoreRow(stateCyclicAMICon_,bRow,&nCols,&cols,&vals);
+                if (connectedStates.size()!=0)
+                {
+                    // check if we need to get stateID
+                    MatRestoreRow(stateCyclicAMIConID_,bRow,&nColsID,&colsID,&valsID);
+                }
+            }
+
+        }
+        
+    }
+    
+    return;
+}
+
+
 void AdjointJacobianConnectivity::addBoundaryFaceConnectionsXv
 (
     Mat conMat,
@@ -2462,6 +3330,46 @@ PetscInt AdjointJacobianConnectivity::getLocalCoupledBFaceIndex(label localFaceI
 }
 
 
+
+PetscInt AdjointJacobianConnectivity::getLocalCyclicAMIFaceIndex(label localFaceI)
+{
+    
+    //Calculate the index of the local cyclicAMI boundary face: amiIdx. amiIdx is in
+    //a list of faces starts with the first cyclicAMI face.
+    //localFaceI: The local face index. It is in a list of faces including all the
+    //internal and boundary faces.
+
+    label counter=0;
+    forAll(mesh_.boundaryMesh(), patchI)
+    {
+        const polyPatch& pp = mesh_.boundaryMesh()[patchI];
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.type() == "cyclicAMI")
+        {
+            // get the start index of this patch in the global face
+            // list and the size of this patch.
+            label faceStart = pp.start();
+            label patchSize = pp.size();
+            label faceEnd = faceStart+patchSize;
+            if(localFaceI>=faceStart && localFaceI < faceEnd)
+            {
+                // this face is on this patch, find the exact index
+                label countDelta = localFaceI-pp.start();//-faceStart;
+                PetscInt amiIdx = counter+countDelta;
+                return amiIdx;
+            }
+            else
+            {
+                //increment the counter by patchSize
+                counter +=patchSize;
+            }
+        }
+    }
+    
+    // no match found
+    FatalErrorIn("getLocalCyclicAMIFaceIndex")<<abort(FatalError);
+    return -1;
+}
 
 
 void AdjointJacobianConnectivity::combineStateBndCon
@@ -3220,11 +4128,20 @@ void AdjointJacobianConnectivity::addStateConnections
             // pass, not adding anything
         }
         else if(interProcLevel == 1)
+        {
             this->addBoundaryFaceConnections(connections,0,cellI,val1,connectedStatesInterProc,addFace);
+            this->addCyclicAMIFaceConnections(connections,0,cellI,val1,connectedStatesInterProc,addFace);
+        }
         else if (interProcLevel == 2)
+        {
             this->addBoundaryFaceConnections(connections,0,cellI,vals2,connectedStatesInterProc,addFace);
+            this->addCyclicAMIFaceConnections(connections,0,cellI,vals2,connectedStatesInterProc,addFace);
+        }
         else if (interProcLevel == 3)
+        {
             this->addBoundaryFaceConnections(connections,0,cellI,vals3,connectedStatesInterProc,addFace);
+            this->addCyclicAMIFaceConnections(connections,0,cellI,vals3,connectedStatesInterProc,addFace);
+        }
         else 
             FatalErrorIn("interProcLevel not valid")<< abort(FatalError);
 
@@ -3246,11 +4163,20 @@ void AdjointJacobianConnectivity::addStateConnections
                 // pass, not adding anything
             }
             else if(interProcLevel == 1)
+            {
                 this->addBoundaryFaceConnections(connections,0,localCell,val1,connectedStatesInterProc,addFace);
+                this->addCyclicAMIFaceConnections(connections,0,localCell,val1,connectedStatesInterProc,addFace);
+            }
             else if (interProcLevel == 2)
+            {
                 this->addBoundaryFaceConnections(connections,0,localCell,vals2,connectedStatesInterProc,addFace);
+                this->addCyclicAMIFaceConnections(connections,0,localCell,vals2,connectedStatesInterProc,addFace);
+            }
             else if (interProcLevel == 3)
+            {
                 this->addBoundaryFaceConnections(connections,0,localCell,vals3,connectedStatesInterProc,addFace);
+                this->addCyclicAMIFaceConnections(connections,0,localCell,vals3,connectedStatesInterProc,addFace);
+            }
             else 
                 FatalErrorIn("interProcLevel not valid")<< abort(FatalError);
         }    
@@ -3276,11 +4202,20 @@ void AdjointJacobianConnectivity::addStateConnections
                     // pass, not adding anything
                 }
                 else if(interProcLevel == 1)
+                {
                     this->addBoundaryFaceConnections(connections,0,localCell2,val1,connectedStatesInterProc,addFace);
+                    this->addCyclicAMIFaceConnections(connections,0,localCell2,val1,connectedStatesInterProc,addFace);
+                }
                 else if (interProcLevel == 2)
+                {
                     this->addBoundaryFaceConnections(connections,0,localCell2,vals2,connectedStatesInterProc,addFace);
+                    this->addCyclicAMIFaceConnections(connections,0,localCell2,vals2,connectedStatesInterProc,addFace);
+                }
                 else if (interProcLevel == 3)
+                {
                     this->addBoundaryFaceConnections(connections,0,localCell2,vals3,connectedStatesInterProc,addFace);
+                    this->addCyclicAMIFaceConnections(connections,0,localCell2,vals3,connectedStatesInterProc,addFace);
+                }
                 else 
                     FatalErrorIn("interProcLevel not valid")<< abort(FatalError);
 
