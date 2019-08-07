@@ -24,7 +24,7 @@ autoPtr<incompressible::turbulenceModel> turbulence
 
 // adjoint
 AdjointIO adjIO(mesh);
-if(!adjIO.useColoring) FatalErrorIn("")<<"Set useColoring to true!"<<endl;
+if(adjIO.useColoring==0) FatalErrorIn("")<<"Set useColoring to true!"<<abort(FatalError);
 
 autoPtr<AdjointSolverRegistry> adjReg
 (

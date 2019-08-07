@@ -97,6 +97,9 @@ public:
     
     /// local coupled boundary patch size
     label nLocalCoupledBFaces;
+
+    /// local cyclicAMI patch size
+    label nLocalCyclicAMIFaces;
     
     /** given a local boundary face index (starting with zero for the first boundary face, 
         and ends with the last boundary faces), return its boundary patchI, 
@@ -112,6 +115,9 @@ public:
 
     /// for a given face index, return whether this face is a coupled boundary face
     labelList isCoupledFace;
+
+    /// for a given face index, return whether this face is a cyclicAMI boundary face
+    labelList isCyclicAMIFace;
 
     // glocal sizes
     /// global cell size

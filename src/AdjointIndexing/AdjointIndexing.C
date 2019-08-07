@@ -182,7 +182,27 @@ AdjointIndexing::AdjointIndexing
         
         globalCoupledBFaceNumbering = this->genGlobalIndex(nLocalCoupledBFaces);
         nGlobalCoupledBFaces = globalCoupledBFaceNumbering.size();
+
+        // calculate nLocalCyclicAMIFaces and isCyclicAMIFace
+        isCyclicAMIFace.setSize(nLocalFaces);
+        for(label i=0;i<nLocalFaces;i++) isCyclicAMIFace[i]=0;
         
+        nLocalCyclicAMIFaces=0;
+        faceIdx = nLocalInternalFaces;
+        forAll(mesh_.boundaryMesh(),patchI)
+        {
+            forAll(mesh_.boundaryMesh()[patchI],faceI)
+            {
+                if(mesh_.boundaryMesh()[patchI].type()=="cyclicAMI")
+                {
+                    // this is a cyclicAMI patch
+                    isCyclicAMIFace[faceIdx]=1;
+                    nLocalCyclicAMIFaces++;
+                }
+                faceIdx++;
+            }
+        }
+                
         this->initializeLocalIdxLists();
 
     }
@@ -1069,6 +1089,7 @@ void AdjointIndexing::writeAdjointIndexing()
     forAll(adjReg_.surfaceScalarStates,idx)
     {
         const word& stateName = adjReg_.surfaceScalarStates[idx];
+        label cellI=-1;
         forAll(mesh_.faces(), faceI)
         {
             if (faceI < nLocalInternalFaces)
@@ -1086,10 +1107,14 @@ void AdjointIndexing::writeAdjointIndexing()
                 xx=mesh_.Cf().boundaryField()[patchIdx][faceIdx].x();
                 yy=mesh_.Cf().boundaryField()[patchIdx][faceIdx].y();
                 zz=mesh_.Cf().boundaryField()[patchIdx][faceIdx].z();
+
+                const polyPatch& pp = mesh_.boundaryMesh()[patchIdx];
+                const UList<label>& pFaceCells = pp.faceCells();
+                cellI=pFaceCells[faceIdx];
             } 
             
             label glbIdx = getGlobalAdjointStateIndex(stateName,faceI);
-            aOut << "Face: "<<faceI<<" State: "<<stateName<<" glbIdx: "<<glbIdx <<" x: "<<xx<<" y: "<<yy<<" z: "<<zz<<endl;
+            aOut << "Face: "<<faceI<<" State: "<<stateName<<" glbIdx: "<<glbIdx <<" x: "<<xx<<" y: "<<yy<<" z: "<<zz<<" OwnerCellI: "<<cellI<<endl;
   
         }
         
