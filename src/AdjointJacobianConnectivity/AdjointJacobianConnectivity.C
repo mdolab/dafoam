@@ -1736,15 +1736,6 @@ void AdjointJacobianConnectivity::calcCyclicAMIBFaceGlobalCompact()
                 // here src is the current AMI patch and tgt is the coupled AMI patch
                 label srcPatchI=patchI;
                 label tgtPatchI=patchAMI.neighbPatchID();
-
-                const polyPatch& srcPatch = patches[srcPatchI];
-                const polyPatch& tgtPatch = patches[tgtPatchI];
-
-                if(srcPatch.size()!=tgtPatch.size())
-                {
-                    FatalErrorIn("")<<"sizes of cyclicAMI patches are not same!"
-                        <<abort(FatalError);
-                }
                 
                 // deal with src cyclicAMI patch
                 // srcAddress stores the tgt patch (coupled AMI) indices
