@@ -2006,8 +2006,8 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
     MatCreate(PETSC_COMM_WORLD,&stateBoundaryCon_);
     MatSetSizes(stateBoundaryCon_,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalAdjointStates,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(stateBoundaryCon_);
-    MatMPIAIJSetPreallocation(stateBoundaryCon_,500,NULL,500,NULL);
-    MatSeqAIJSetPreallocation(stateBoundaryCon_,500,NULL);
+    MatMPIAIJSetPreallocation(stateBoundaryCon_,1000,NULL,1000,NULL);
+    MatSeqAIJSetPreallocation(stateBoundaryCon_,1000,NULL);
     MatSetOption(stateBoundaryCon_, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(stateBoundaryCon_);
 
@@ -2015,8 +2015,8 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
     MatCreate(PETSC_COMM_WORLD,&stateBoundaryConTmp);
     MatSetSizes(stateBoundaryConTmp,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalAdjointStates,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(stateBoundaryConTmp);
-    MatMPIAIJSetPreallocation(stateBoundaryConTmp,500,NULL,500,NULL);
-    MatSeqAIJSetPreallocation(stateBoundaryConTmp,500,NULL);
+    MatMPIAIJSetPreallocation(stateBoundaryConTmp,1000,NULL,1000,NULL);
+    MatSeqAIJSetPreallocation(stateBoundaryConTmp,1000,NULL);
     MatSetOption(stateBoundaryConTmp, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(stateBoundaryConTmp);
 
@@ -2194,12 +2194,12 @@ void AdjointJacobianConnectivity::setupStateCyclicAMICon()
     // stateCyclicAMIConID will be used in addCyclicAMIFaceConnections   
 
     // create a local matrix 
-    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,500,NULL,&stateCyclicAMICon_);
+    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,1000,NULL,&stateCyclicAMICon_);
     MatSetUp(stateCyclicAMICon_);
     MatZeroEntries(stateCyclicAMICon_);     
 
     Mat stateCyclicAMIConTmp;
-    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,500,NULL,&stateCyclicAMIConTmp);
+    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,1000,NULL,&stateCyclicAMIConTmp);
     MatSetUp(stateCyclicAMIConTmp);
     MatZeroEntries(stateCyclicAMIConTmp);               
 
@@ -2463,7 +2463,7 @@ void AdjointJacobianConnectivity::setupStateCyclicAMICon()
     MatGetOwnershipRange(stateCyclicAMICon_,&Istart,&Iend);
     
     Mat tmpMat; // create a temp mat
-    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,500,NULL,&tmpMat);
+    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,1000,NULL,&tmpMat);
     MatSetUp(tmpMat);  
     MatZeroEntries(tmpMat); // initialize with zeros
     for(PetscInt i=Istart; i<Iend; i++)
@@ -2523,8 +2523,8 @@ void AdjointJacobianConnectivity::combineAllStateCons()
     MatCreate(PETSC_COMM_WORLD,&stateBoundaryConTmp);
     MatSetSizes(stateBoundaryConTmp,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalAdjointStates,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(stateBoundaryConTmp);
-    MatMPIAIJSetPreallocation(stateBoundaryConTmp,500,NULL,500,NULL);
-    MatSeqAIJSetPreallocation(stateBoundaryConTmp,500,NULL);
+    MatMPIAIJSetPreallocation(stateBoundaryConTmp,1000,NULL,1000,NULL);
+    MatSeqAIJSetPreallocation(stateBoundaryConTmp,1000,NULL);
     MatSetOption(stateBoundaryConTmp, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(stateBoundaryConTmp);
 
@@ -2667,8 +2667,8 @@ void AdjointJacobianConnectivity::setupStateBoundaryConID()
     MatCreate(PETSC_COMM_WORLD,&stateBoundaryConID_);
     MatSetSizes(stateBoundaryConID_,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalAdjointStates,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(stateBoundaryConID_);
-    MatMPIAIJSetPreallocation(stateBoundaryConID_,500,NULL,500,NULL);
-    MatSeqAIJSetPreallocation(stateBoundaryConID_,500,NULL);
+    MatMPIAIJSetPreallocation(stateBoundaryConID_,1000,NULL,1000,NULL);
+    MatSeqAIJSetPreallocation(stateBoundaryConID_,1000,NULL);
     MatSetOption(stateBoundaryConID_, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(stateBoundaryConID_);
     MatZeroEntries(stateBoundaryConID_);
@@ -2724,7 +2724,7 @@ void AdjointJacobianConnectivity::setupStateCyclicAMIConID()
     adjIdx_.calcAdjStateID4GlobalAdjIdx(adjStateID4GlobalAdjIdx);
 
     // initialize
-    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,500,NULL,&stateCyclicAMIConID_);
+    MatCreateSeqAIJ(PETSC_COMM_SELF,adjIdx_.nLocalCyclicAMIFaces,adjIdx_.nGlobalAdjointStates,1000,NULL,&stateCyclicAMIConID_);
     MatSetUp(stateCyclicAMIConID_);  
     MatZeroEntries(stateCyclicAMIConID_); // initialize with zeros
 
@@ -2766,8 +2766,8 @@ void AdjointJacobianConnectivity::setupXvBoundaryCon()
     MatCreate(PETSC_COMM_WORLD,&xvBoundaryCon_);
     MatSetSizes(xvBoundaryCon_,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalXv,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(xvBoundaryCon_);
-    MatMPIAIJSetPreallocation(xvBoundaryCon_,500,NULL,500,NULL);
-    MatSeqAIJSetPreallocation(xvBoundaryCon_,500,NULL);
+    MatMPIAIJSetPreallocation(xvBoundaryCon_,1000,NULL,1000,NULL);
+    MatSeqAIJSetPreallocation(xvBoundaryCon_,1000,NULL);
     MatSetOption(xvBoundaryCon_, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(xvBoundaryCon_);
 
@@ -2775,8 +2775,8 @@ void AdjointJacobianConnectivity::setupXvBoundaryCon()
     MatCreate(PETSC_COMM_WORLD,&xvBoundaryConTmp);
     MatSetSizes(xvBoundaryConTmp,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalXv,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(xvBoundaryConTmp);
-    MatMPIAIJSetPreallocation(xvBoundaryConTmp,500,NULL,500,NULL);
-    MatSeqAIJSetPreallocation(xvBoundaryConTmp,500,NULL);
+    MatMPIAIJSetPreallocation(xvBoundaryConTmp,1000,NULL,1000,NULL);
+    MatSeqAIJSetPreallocation(xvBoundaryConTmp,1000,NULL);
     MatSetOption(xvBoundaryConTmp, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(xvBoundaryConTmp);
 
@@ -3398,8 +3398,8 @@ void AdjointJacobianConnectivity::combineStateBndCon
     MatCreate(PETSC_COMM_WORLD,stateBoundaryCon);
     MatSetSizes(*stateBoundaryCon,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalAdjointStates,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(*stateBoundaryCon);
-    MatMPIAIJSetPreallocation(*stateBoundaryCon,500,NULL,500,NULL);
-    MatSeqAIJSetPreallocation(*stateBoundaryCon,500,NULL);
+    MatMPIAIJSetPreallocation(*stateBoundaryCon,1000,NULL,1000,NULL);
+    MatSeqAIJSetPreallocation(*stateBoundaryCon,1000,NULL);
     MatSetOption(*stateBoundaryCon, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(*stateBoundaryCon);
     MatZeroEntries(*stateBoundaryCon); // initialize with zeros
@@ -3470,8 +3470,8 @@ void AdjointJacobianConnectivity::combineStateBndCon
     MatCreate(PETSC_COMM_WORLD,&tmpMat);
     MatSetSizes(tmpMat,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalAdjointStates,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(tmpMat);
-    MatMPIAIJSetPreallocation(tmpMat,500,NULL,500,NULL);
-    MatSeqAIJSetPreallocation(tmpMat,500,NULL);
+    MatMPIAIJSetPreallocation(tmpMat,1000,NULL,1000,NULL);
+    MatSeqAIJSetPreallocation(tmpMat,1000,NULL);
     MatSetOption(tmpMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(tmpMat);
     MatZeroEntries(tmpMat); // initialize with zeros
@@ -3561,7 +3561,7 @@ void AdjointJacobianConnectivity::combineXvBndCon
     MatCreate(PETSC_COMM_WORLD,&tmpMat);
     MatSetSizes(tmpMat,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalXv,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(tmpMat);
-    MatMPIAIJSetPreallocation(tmpMat,500,NULL,500,NULL);
+    MatMPIAIJSetPreallocation(tmpMat,1000,NULL,1000,NULL);
     MatSetOption(tmpMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(tmpMat);
     MatZeroEntries(tmpMat); // initialize with zeros
@@ -3649,7 +3649,7 @@ void AdjointJacobianConnectivity::combineXvBndCon
     MatCreate(PETSC_COMM_WORLD,&tmpMat);
     MatSetSizes(tmpMat,adjIdx_.nLocalCoupledBFaces,adjIdx_.nLocalXv,PETSC_DETERMINE,PETSC_DETERMINE);
     MatSetFromOptions(tmpMat);
-    MatMPIAIJSetPreallocation(tmpMat,500,NULL,500,NULL);
+    MatMPIAIJSetPreallocation(tmpMat,1000,NULL,1000,NULL);
     MatSetOption(tmpMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(tmpMat);
     MatZeroEntries(tmpMat); // initialize with zeros
