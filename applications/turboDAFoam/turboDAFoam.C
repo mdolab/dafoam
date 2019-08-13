@@ -6,6 +6,7 @@
     Description:
     Adjoint solver for turboFoam
     A steady-state compressible solver for turbomachinery
+    Modified based on TCFD redSolver
 
 \*---------------------------------------------------------------------------*/
 

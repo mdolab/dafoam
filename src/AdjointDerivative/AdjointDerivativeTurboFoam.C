@@ -147,8 +147,11 @@ void AdjointDerivativeTurboFoam::calcResiduals
     // copied and modified from pEqn.H
     volScalarField AU(UEqn.A());
     volScalarField AtU(AU - UEqn.H1());
-    volVectorField HbyA = UEqn.H()/AU;
+    // need to create a tmp field to store U_ because U_=UEqn.H()/AU changes U_!
+    volVectorField UTmp("UTmp",U_);
+    U_=UEqn.H()/AU;
     
+
     volScalarField rAU(1.0/UEqn.A());
     tUEqn.clear();
 
@@ -157,7 +160,7 @@ void AdjointDerivativeTurboFoam::calcResiduals
         surfaceScalarField phid
         (
             "phid",
-            fvc::interpolate(psi_)*(fvc::interpolate(HbyA) & mesh_.Sf())
+            fvc::interpolate(psi_)*(fvc::interpolate(U_) & mesh_.Sf())
         );
     
         this->MRF_.makeRelative(fvc::interpolate(psi_), phid);
@@ -186,8 +189,8 @@ void AdjointDerivativeTurboFoam::calcResiduals
     
         // ******** phi Residuals **********
         // copied and modified from pEqn.H
-        if(isRef) phiResRef_ = pEqn.flux() - phi_;
-        else phiRes_ = pEqn.flux() - phi_;
+        if(isRef) phiResRef_ == pEqn.flux() - phi_;
+        else phiRes_ == pEqn.flux() - phi_;
     
         // need to normalize phiRes
         normalizePhiResiduals(phiRes);
@@ -195,16 +198,18 @@ void AdjointDerivativeTurboFoam::calcResiduals
     }
     else
     {
-        surfaceScalarField phiHbyA = fvc::interpolate(rho_*HbyA) & mesh_.Sf();
+        surfaceScalarField phiTmp("phiTmp",phi_);
+        
+        phi_ = fvc::interpolate(rho_*U_) & mesh_.Sf();
     
-        this->MRF_.makeRelative(fvc::interpolate(rho_), phiHbyA);
+        this->MRF_.makeRelative(fvc::interpolate(rho_), phi_);
     
-        adjustPhi(phiHbyA, HbyA, p_);
-        phiHbyA += fvc::interpolate(rho_/AtU - rho_/AU)*fvc::snGrad(p_)*mesh_.magSf();
+        adjustPhi(phi_, U_, p_);
+        phi_ += fvc::interpolate(rho_/AtU - rho_/AU)*fvc::snGrad(p_)*mesh_.magSf();
 
         fvScalarMatrix pEqn
         (
-            fvc::div(phiHbyA)
+            fvc::div(phi_)
           - fvm::laplacian(rho_/AtU, p_)
         );
     
@@ -219,17 +224,26 @@ void AdjointDerivativeTurboFoam::calcResiduals
             normalizeResiduals(pRes);
         }
     
-        if(updatePhi) phi_ = phiHbyA + pEqn.flux();
+        if(updatePhi) phi_ += pEqn.flux();
     
         // ******** phi Residuals **********
         // copied and modified from pEqn.H
-        if(isRef) phiResRef_ = phiHbyA + pEqn.flux() - phi_;
-        else phiRes_ = phiHbyA + pEqn.flux() - phi_;
+        // TODO: the phiRes is not zero, need to fix
+        if(isRef) phiResRef_ == pEqn.flux() ;
+        else phiRes_ == pEqn.flux();
     
         // need to normalize phiRes
         normalizePhiResiduals(phiRes);
 
+        // assign phi_ back
+        phi_==phiTmp;
+
     }
+    
+    // assign U_ back
+    U_=UTmp;
+    U_.correctBoundaryConditions();
+    
 
     return;
 

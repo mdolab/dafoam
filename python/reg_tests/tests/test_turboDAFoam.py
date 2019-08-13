@@ -19,7 +19,7 @@ printHeader('turboDAFoam')
 sys.stdout.flush()
 
 # cases
-allCases = ['CompressorFluid']
+allCases = ['CompressorFluid','CompressorFluidAMI']
 
 # solver configurations
 testInfo=OrderedDict()
@@ -27,7 +27,22 @@ testInfo['task1']={'solver':'turboDAFoam',
                     'turbModel':'SpalartAllmaras',
                     'flowCondition':'Compressible',
                     'useWallFunction':'true',
+                    'energy':'sensibleInternalEnergy',
                     'testCases':[allCases[0]]}
+
+testInfo['task2']={'solver':'turboDAFoam',
+                    'turbModel':'SpalartAllmarasFv3',
+                    'flowCondition':'Compressible',
+                    'useWallFunction':'true',
+                    'energy':'sensibleEnthalpy',
+                    'testCases':[allCases[0]]}
+# test AMI                    
+#testInfo['task3']={'solver':'turboDAFoam',
+#                    'turbModel':'SpalartAllmarasFv3',
+#                    'flowCondition':'Compressible',
+#                    'useWallFunction':'true',
+#                    'energy':'sensibleInternalEnergy',
+#                    'testCases':[allCases[1]]}
 
 defOpts = {
             'outputdirectory':          './',
@@ -60,9 +75,11 @@ defOpts = {
                                         'TRef':300.0},
             'divschemes':              {'div(phi,U)':'Gauss upwind',
                                         'div(phi,h)':'Gauss upwind',
+                                        'div(phi,e)':'Gauss upwind',
                                         'div(phi,nuTilda)':'Gauss upwind',
                                         'default':'none',
                                         'div(((rho*nuEff)*dev2(T(grad(U)))))': 'Gauss linear',
+                                        'div(phi,Ekp)': 'Gauss upwind',
                                         'div(phi,K)': 'Gauss upwind',
                                         'div(phid,p)':'Gauss upwind',
                                         'div((p*(U-URel)))': 'Gauss linear',
@@ -77,6 +94,8 @@ defOpts = {
                                         'UUpperBound':'800',
                                         'hLowerBound':'50000',
                                         'hUpperBound':'500000',
+                                        'eLowerBound':'50000',
+                                        'eUpperBound':'500000',
                                         'transonic':'true'},
             'thermotype':              {'type':'hePsiThermo',
                                         'mixture':'pureMixture',
@@ -84,7 +103,7 @@ defOpts = {
                                         'transport':'const',
                                         'equationOfState':'perfectGas',
                                         'specie':'specie',
-                                        'energy':'sensibleEnthalpy'},
+                                        'energy':'sensibleInternalEnergy'},
             'mrfproperties':           {'active':'true',
                                         'selectionmode':'cellZone',
                                         'cellzone':'region0',
@@ -93,11 +112,11 @@ defOpts = {
                                         'origin':[0,0,0],
                                         'omega':-1000},
             'fvrelaxfactors':          {'fields':{'p':0.8,'rho':1.0},
-                                        'equations':{'p':0.8,'U':0.2,'nuTilda':0.2,'h':0.2}},
+                                        'equations':{'p':0.8,'U':0.2,'nuTilda':0.2,'h':0.2,'e':0.2}},
             'nffdpoints':               8,
             'maxflowiters':             3000, 
             'writeinterval':            3000, 
-            'stateresettol':            1e-4,
+            'stateresettol':            1e16,
             'adjgmresmaxiters':         1000,
             'adjgmresrestart':          1000,
             'adjgmresreltol':           1e-5,
@@ -107,20 +126,19 @@ defOpts = {
             'epsderivffd':              1.0e-3, 
             'adjpcfilllevel':           1,
             'adjasmoverlap':            1, 
-            'normalizestates':         ['U','p','e','nuTilda','T','phi','k','epsilon'],
-            'normalizeresiduals':      ['URes','pRes','eRes','nuTildaRes','TRes','phiRes','kRes','epsilonRes'],
-            'maxresconlv4jacpcmat':    {'URes':2,'pRes':3,'eRes':2,'nuTildaRes':2,'TRes':2,'phiRes':2,'kRes':2,'epsilonRes':2},
+            'normalizestates':         ['U','p','e','nuTilda','T','phi','k','epsilon','h'],
+            'normalizeresiduals':      ['URes','pRes','eRes','nuTildaRes','TRes','phiRes','kRes','epsilonRes','hRes'],
+            'maxresconlv4jacpcmat':    {'URes':2,'pRes':3,'eRes':2,'nuTildaRes':2,'TRes':2,'phiRes':2,'kRes':2,'epsilonRes':2,'hRes':2},
             'statescaling':            {'UScaling':1,
                                         'pScaling':1000.0,
                                         'TScaling':300.0,
-                                        'k':1.0,
-                                        'epsilon':1.0,
                                         'nuTildaScaling':1e-3,
                                         'phiScaling':1,},
             'referencevalues':          {'magURef':1.0,'ARef':1.0,'LRef':1.0,'pRef':101325.0,'rhoRef':1.0},
             'mpispawnrun':              True,
             'adjdvtypes':               ['FFD'],
             'preservepatches':          ['per1','per2'],
+            'singleprocessorfacesets':  ['cyclics'],
            }
 
 if __name__ == '__main__':
@@ -128,10 +146,10 @@ if __name__ == '__main__':
     runTests(sys.argv[1],defOpts,testInfo)
 
     # run subsonic
-    defOpts['mrfproperties']['omega']    = -500.0
-    defOpts['simplecontrol']['transonic']= 'false'
-    defOpts['fvrelaxfactors']            = {'fields':{'p':0.3,'rho':0.02},
-                                            'equations':{'p':0.3,'U':0.7,'nuTilda':0.7,'h':0.7}}
-    defOpts['flowbcs']['bc0']['value'][0]=100000.0
-    runTests(sys.argv[1],defOpts,testInfo)
+    #defOpts['mrfproperties']['omega']    = -500.0
+    #defOpts['simplecontrol']['transonic']= 'false'
+    #defOpts['fvrelaxfactors']            = {'fields':{'p':0.3,'rho':0.02},
+    #                                        'equations':{'p':0.3,'U':0.7,'nuTilda':0.7,'h':0.7}}
+    #defOpts['flowbcs']['bc0']['value'][0]=100000.0
+    #runTests(sys.argv[1],defOpts,testInfo)
 

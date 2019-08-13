@@ -30,6 +30,7 @@ def runTests(mode,defOpts,testInfo):
         aeroOptions['adjointsolver']=testInfo[task]['solver']
         aeroOptions['flowCondition']=testInfo[task]['flowCondition']
         aeroOptions['flowbcs']['useWallFunction']=testInfo[task]['useWallFunction']
+        aeroOptions['thermotype']['energy']=testInfo[task]['energy']
         
         if mode=='compare':
             aeroOptions['usecoloring'] = False
@@ -46,6 +47,10 @@ def runTests(mode,defOpts,testInfo):
                     os.system('cp 0.incompressible/* 0/')
                 elif testInfo[task]['flowCondition']=='Compressible':
                     os.system('cp 0.compressible/* 0/')
+                    if aeroOptions['simplecontrol']['transonic']=='true':
+                        os.system('cp 0/U.transonic 0/U')
+                    else:
+                        os.system('cp 0/U.subsonic 0/U')
             MPI.COMM_WORLD.Barrier()
 
             # =====================
