@@ -3912,6 +3912,11 @@ void AdjointDerivative::calcFlowResidualStatistics
         const word stateName = adjReg_.volVectorStates[idxI];
         const word resName = stateName+"Res";                   
         const volVectorField& stateRes = db_.lookupObject<volVectorField>(resName); 
+
+        if (stateRes.size()==0)
+        {
+            Pout<<"Warning!!!!! Number of cells equals zero"<<endl;
+        }
         
         vector vecResMax(0,0,0);
         vector vecResNorm2(0,0,0);
@@ -3928,7 +3933,7 @@ void AdjointDerivative::calcFlowResidualStatistics
             if(fabs(stateRes[cellI].y()) > vecResMax.y()) vecResMax.y()=fabs(stateRes[cellI].y());
             if(fabs(stateRes[cellI].z()) > vecResMax.z()) vecResMax.z()=fabs(stateRes[cellI].z());
         }
-        vecResMean=vecResMean/stateRes.size();
+        vecResMean=vecResMean/(stateRes.size()+1.0e-8);
         reduce(vecResMean,sumOp<vector>());
         vecResMean=vecResMean/Pstream::nProcs();
         reduce(vecResNorm2,sumOp<vector>());
@@ -3967,6 +3972,11 @@ void AdjointDerivative::calcFlowResidualStatistics
         const word stateName = adjReg_.volScalarStates[idxI];
         const word resName = stateName+"Res";                   
         const volScalarField& stateRes = db_.lookupObject<volScalarField>(resName); 
+
+        if (stateRes.size()==0)
+        {
+            Pout<<"Warning!!!!! Number of cells equals zero"<<endl;
+        }
         
         scalar scalarResMax=0, scalarResNorm2=0, scalarResMean=0;
         forAll(stateRes,cellI)
@@ -3975,7 +3985,7 @@ void AdjointDerivative::calcFlowResidualStatistics
             scalarResMean+=fabs(stateRes[cellI]);
             if(fabs(stateRes[cellI]) > scalarResMax) scalarResMax=fabs(stateRes[cellI]);
         }
-        scalarResMean=scalarResMean/stateRes.size();
+        scalarResMean=scalarResMean/(stateRes.size()+1.0e-8);
         reduce(scalarResMean,sumOp<scalar>());
         scalarResMean=scalarResMean/Pstream::nProcs();
         reduce(scalarResNorm2,sumOp<scalar>());
@@ -4010,6 +4020,11 @@ void AdjointDerivative::calcFlowResidualStatistics
         const word stateName = adjRAS_.turbStates[idxI];
         const word resName = stateName+"Res";  
         const volScalarField& stateRes = db_.lookupObject<volScalarField>(resName); 
+
+        if (stateRes.size()==0)
+        {
+            Pout<<"Warning!!!!! Number of cells equals zero"<<endl;
+        }
         
         scalar scalarResMax=0, scalarResNorm2=0, scalarResMean=0;
         forAll(stateRes,cellI)
@@ -4018,7 +4033,7 @@ void AdjointDerivative::calcFlowResidualStatistics
             scalarResMean+=fabs(stateRes[cellI]);
             if(fabs(stateRes[cellI]) > scalarResMax) scalarResMax=fabs(stateRes[cellI]);
         }
-        scalarResMean=scalarResMean/stateRes.size();
+        scalarResMean=scalarResMean/(stateRes.size()+1.0e-8);
         reduce(scalarResMean,sumOp<scalar>());
         scalarResMean=scalarResMean/Pstream::nProcs();
         reduce(scalarResNorm2,sumOp<scalar>());
@@ -4053,6 +4068,11 @@ void AdjointDerivative::calcFlowResidualStatistics
         const word stateName = adjReg_.surfaceScalarStates[idxI];
         const word resName = stateName+"Res";  
         const surfaceScalarField& stateRes = db_.lookupObject<surfaceScalarField>(resName); 
+
+        if (stateRes.size()==0)
+        {
+            Pout<<"Warning!!!!! Number of cells equals zero"<<endl;
+        }
         
         scalar phiResMax=0, phiResNorm2=0, phiResMean=0;
         forAll(stateRes,faceI)
@@ -4072,7 +4092,7 @@ void AdjointDerivative::calcFlowResidualStatistics
                 if(fabs(bPhiRes) > phiResMax) phiResMax=fabs(bPhiRes);
             }
         }
-        phiResMean=phiResMean/mesh_.nFaces();
+        phiResMean=phiResMean/(mesh_.nFaces()+1.0e-8);
         reduce(phiResMean,sumOp<scalar>());
         phiResMean=phiResMean/Pstream::nProcs();
         reduce(phiResNorm2,sumOp<scalar>());

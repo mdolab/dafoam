@@ -720,6 +720,9 @@ class PYDAFOAM(AeroSolver):
         
         preservepatches : list
             Patches name for preservePatches which is needed for cycic boundary conditions in parallel
+        
+        singleprocessorfacesets : list
+            Face set name for singleprocessorfacesets which is needed for cycicAMI boundary conditions in parallel
 
         decomposepardict: dict
             Information for decomposeParDict
@@ -1056,6 +1059,7 @@ class PYDAFOAM(AeroSolver):
                     'updatemesh':[bool,True],
                     'rerunopt2':[int,-9999],
                     'preservepatches':[list,[]],
+                    'singleprocessorfacesets':[list,[]],
                     'decomposepardict':[dict,{'method':'scotch','simpleCoeffs':{'n':'(2 2 1)','delta':'0.001'}}]
         }
 
@@ -4918,6 +4922,11 @@ class PYDAFOAM(AeroSolver):
                 for patch in self.getOption('preservepatches'):
                     f.write('%s '%patch)
                 f.write(');\n')
+            if not len(self.getOption('singleprocessorfacesets'))==0:
+                f.write('constraints{ singleProcessorFaceSets{ type singleProcessorFaceSets; sets (')
+                for patch in self.getOption('singleprocessorfacesets'):
+                    f.write(' (%s -1) '%patch)
+                f.write('); } }\n')
             f.write('\n')
             f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
 

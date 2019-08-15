@@ -60,6 +60,7 @@ void AdjointDerivativeSimpleFoam::calcResiduals
     tmp<fvVectorMatrix> tUEqn
     (
         fvm::div(phi_, U_,divUScheme)
+      + this->MRF_.DDt(U_)
       + adjRAS_.divDevReff(U_)
     );
     fvVectorMatrix& UEqn = tUEqn.ref();
@@ -96,6 +97,7 @@ void AdjointDerivativeSimpleFoam::calcResiduals
     HbyA = rAU*UEqn.H();
 
     surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
+    this->MRF_.makeRelative(phiHbyA);
     adjustPhi(phiHbyA, U_, p_);
 
     tmp<volScalarField> rAtU(rAU);
@@ -108,6 +110,9 @@ void AdjointDerivativeSimpleFoam::calcResiduals
     }
 
     tUEqn.clear();
+
+    // Update the pressure BCs to ensure flux consistency
+    constrainPressure(p_, U_, phiHbyA, rAtU(), this->MRF_);
     
     fvScalarMatrix pEqn
     (
@@ -142,7 +147,8 @@ void AdjointDerivativeSimpleFoam::calcResiduals
 
 void AdjointDerivativeSimpleFoam::updateIntermediateVariables()
 {
-    // do nothing, we don't have intermediate state to update
+    // update velocity boundary based on MRF
+    this->MRF_.correctBoundaryVelocity(U_);
 }
 
 } // End namespace Foam
