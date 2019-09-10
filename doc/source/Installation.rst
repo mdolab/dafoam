@@ -173,7 +173,16 @@ To install the **DAFoam** package:
     dafoam solidDisplacementDAFoam: Success!
     dafoam turboDAFoam: Success!
   
-   You should see the first "Success" in less than 5 minute. If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam.
+   You should see the first "Success" in less than 5 minute. If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam. **NOTE:** The regression tests verify the latest version of DAFoam on Github. However, we use specific old versions for DAFoam's dependencies (e.g., pyGeo, IDWarp, see the following). We recommend using these old versions for the dependencies, which have been routinely tested and verified on Travis::
+
+    Modules              Updated Date    Commit ID 
+    BaseClasses          Apr 17, 2019    298ac94b42ef9b057af4f64b329ca81e730fd79e
+    IDWarp               Apr 17, 2019    0149681f5fb1edbf86f10d4b038c2cc4c88f68a4
+    pyGeo                Apr 17, 2019    90f4b90f98f6f6901f9a724dba2376e7c3c70f4d
+    pySpline             Apr 17, 2019    30f2340d721d63ea279851c98fd2a03277ea609e
+    pyOptSparse          May 17, 2019    6bc17292b9a569300d1f1e44f378f1a452dccc60
+    multipoint           May 09, 2019    68188870d6bb2efcf4e4bfb553757a42fbd68d21
+    OpenFOAMMeshReader   Jun 18, 2019    32358d1772737bf6063fe102a646cb18b4fcc1d5
 
 |
 
