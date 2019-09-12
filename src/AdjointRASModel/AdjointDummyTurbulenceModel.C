@@ -38,6 +38,15 @@ AdjointDummyTurbulenceModel::AdjointDummyTurbulenceModel
     
 {
     turbStates.setSize(0); 
+    // set turbulence variable to zero
+    forAll(nut_,idxI) nut_[idxI]=0.0;
+    forAll(nut_.boundaryField(),patchI)
+    {
+        forAll(nut_.boundaryField()[patchI],faceI)
+        {
+            nut_.boundaryFieldRef()[patchI][faceI]=0.0;
+        }
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -74,6 +83,22 @@ void AdjointDummyTurbulenceModel::correctAdjStateResidualTurbCon
     List< List<word> >& adjStateResidualConInfo
 )
 {
+    // we need to remove nut from the conList
+    List< List<word> > tmp;
+    tmp.setSize(adjStateResidualConInfo.size());
+
+    // For SA model just replace nut with nuTilda
+    forAll(adjStateResidualConInfo,idxI)
+    {
+        forAll(adjStateResidualConInfo[idxI],idxJ)
+        {
+            word conStateName = adjStateResidualConInfo[idxI][idxJ];
+            if( conStateName != "nut" ) tmp[idxI].append(adjStateResidualConInfo[idxI][idxJ]);
+        }
+    }
+    adjStateResidualConInfo.clear();
+
+    adjStateResidualConInfo=tmp;
 }
 
 void AdjointDummyTurbulenceModel::setAdjStateResidualTurbCon
