@@ -53,7 +53,15 @@ dummyTurbulenceModel<BasicTurbulenceModel>::dummyTurbulenceModel
         propertiesName
     )
 {
-
+    // set turbulence variable to zero
+    forAll(this->nut_,idxI) this->nut_[idxI]=0.0;
+    forAll(this->nut_.boundaryField(),patchI)
+    {
+        forAll(this->nut_.boundaryField()[patchI],faceI)
+        {
+            this->nut_.boundaryFieldRef()[patchI][faceI]=0.0;
+        }
+    }
 }
 
 
