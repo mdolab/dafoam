@@ -32,7 +32,7 @@ Using self-built C/Fortran and MPI may cause linking issues
 
 To install the **DAFoam** package:
 
-1. Create a "**OpenFOAM**" folder in your home directory ($HOME). Go into the "OpenFOAM" directory and install **OpenFOAM-v1812** following this website: http://openfoamwiki.net/index.php/Installation/Linux **NOTE**: DAFoam does not support long integer, so in OpenFOAM/OpenFOAM-v1812/etc/bashrc, use 32bit integer (WM_LABEL_SIZE=32), and double precision scalar (WM_PRECISION_OPTION=DP). After the OpenFOAM installation is done, start a new session to install the rest packages; **DO NOT** load the OpenFOAM environment. This is to prevent environmental variable conflict between OpenFOAM and other packages.
+1. Create a "**OpenFOAM**" folder in your home directory ($HOME). Go into the "OpenFOAM" directory and install **OpenFOAM-v1812** following this website: http://openfoamwiki.net/index.php/Installation/Linux/OpenFOAM-v1806/Ubuntu **NOTE**: DAFoam does not support long integer, so in OpenFOAM/OpenFOAM-v1812/etc/bashrc, use 32bit integer (WM_LABEL_SIZE=32), and double precision scalar (WM_PRECISION_OPTION=DP). After the OpenFOAM installation is done, start a new session to install the rest packages; **DO NOT** load the OpenFOAM environment. This is to prevent environmental variable conflict between OpenFOAM and other packages.
 
 
 2. Create a "**packages**" folder in your home directory. Go into the "packages" directory and install the following 3rd party packages:
@@ -127,7 +127,12 @@ To install the **DAFoam** package:
 - Get **cgnsUtilities** (https://github.com/mdolab/cgnsutilities). Run::
    
      cp config.mk.info config.mk
-   
+
+  In config.mk, change the flags for cgnslib to::
+
+     CGNS_INCLUDE_FLAGS=-I$(HOME)/packages/cgnslib_3.2.1/src
+     CGNS_LINKER_FLAGS=-L$(HOME)/packages/cgnslib_3.2.1/src -lcgns
+
   and::
  
      make
@@ -139,7 +144,12 @@ To install the **DAFoam** package:
 - Get **IDWarp** (https://github.com/mdolab/idwarp). Run::
      
      cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk
-     
+
+  In config.mk, change the flags for cgnslib to::
+
+     CGNS_INCLUDE_FLAGS=-I$(HOME)/packages/cgnslib_3.2.1/src
+     CGNS_LINKER_FLAGS=-L$(HOME)/packages/cgnslib_3.2.1/src -lcgns
+
   and::
    
      make
