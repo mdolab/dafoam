@@ -202,10 +202,9 @@ AdjointIndexing::AdjointIndexing
                 faceIdx++;
             }
         }
-                
-        this->initializeLocalIdxLists();
-
     }
+
+    this->initializeLocalIdxLists();
     
     // check if we have user-defined patches or volumes, if yes, calculate their face and cell indices
     if (adjIO_.userDefinedPatchInfo.size()!=0)
