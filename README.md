@@ -26,10 +26,23 @@ The built documentation is located at **doc/DAFoamDoc.html**
 Citation
 --------
 
+Refer to the following two papers for more technical background of DAFoam. If you use DAFoam in publications, please cite these papers.
+
+Ping He, Charles A. Mader, Joaquim R.R.A. Martins, Kevin J. Maki. DAFoam: An open-source adjoint framework for multidisciplinary design optimization with OpenFOAM. AIAA Journal, 2019. https://doi.org/10.2514/1.J058853
+
+```
+@article{DAFoamAIAAJ19,
+	Author = {Ping He and Charles A. Mader and Joaquim R. R. A. Martins and Kevin J. Maki},
+	Doi = {10.2514/1.J058853},
+	Journal = {AIAA Journal},
+	Title = {{DAFoam}: An open-source adjoint framework for multidisciplinary design optimization with {OpenFOAM}},
+	Year = {2019}}
+```
+
 Ping He, Charles A. Mader, Joaquim R.R.A. Martins, Kevin J. Maki. An aerodynamic design optimization framework using a discrete adjoint approach with OpenFOAM. Computer & Fluids, 168:285-303, 2018. https://doi.org/10.1016/j.compfluid.2018.04.012
 
 ```
-@article{DAFoamPaper,
+@article{DAFoamCAF18,
 	Author = {Ping He and Charles A. Mader and Joaquim R. R. A. Martins and Kevin J. Maki},
 	Doi = {10.1016/j.compfluid.2018.04.012},
 	Journal = {Computers \& Fluids},
