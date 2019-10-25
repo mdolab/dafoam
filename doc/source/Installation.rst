@@ -119,6 +119,11 @@ To install the **DAFoam** package:
 - Get **pyHyp** (https://github.com/mdolab/pyHyp). Run::
    
      cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk
+    
+  In config.mk, change the flags for cgnslib to::
+
+     CGNS_INCLUDE_FLAGS=-I$(HOME)/packages/cgnslib_3.2.1/src
+     CGNS_LINKER_FLAGS=-L$(HOME)/packages/cgnslib_3.2.1/src -lcgns
    
   and::
  

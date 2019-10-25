@@ -5,7 +5,11 @@ Publications
 
 2019
 
-- Gaetan K. W. Kenway, Charles A. Mader, Ping He, Joaquim R. R. A. Martins. Effective adjoint approaches for computational fluid dynamics. Progress in Aerospace Sciences, 2019. http://dx.doi.org/10.1016/j.paerosci.2019.05.002 
+- Ping He, Charles A. Mader, Joaquim R.R.A. Martins, Kevin J. Maki. DAFoam: An open-source adjoint framework for multidisciplinary design optimization with OpenFOAM. AIAA Journal, 2019. https://doi.org/10.2514/1.J058853
+
+- Ping He, Grzegorz Filip, Kevin J. Maki, Joaquim R. R. A. Martins. Design optimization for self-propulsion of a bulk carrier hull using a discrete adjoint method. Computers & Fluids, 192, pp. 104259, 2019. http://dx.doi.org/10.1016/j.compfluid.2019.104259
+
+- Gaetan K. W. Kenway, Charles A. Mader, Ping He, Joaquim R. R. A. Martins. Effective adjoint approaches for computational fluid dynamics. Progress in Aerospace Sciences, 110, pp. 100542, 2019. http://dx.doi.org/10.1016/j.paerosci.2019.05.002 
 
 - Ping He, Charles A. Mader, Joaquim R. R. A. Martins, Kevin J. Maki. Aerothermal optimization of a ribbed U-bend cooling channel using the adjoint method. International Journal of Heat and Mass Transfer, 140, 152-172, 2019. http://dx.doi.org/10.1016/j.ijheatmasstransfer.2019.05.075
 
