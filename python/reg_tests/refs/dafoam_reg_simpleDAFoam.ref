@@ -254,20 +254,20 @@ Dictionary Key: fail
 +------------------------------------------------------------------------------+
 Eval Functions:
 Dictionary Key: CMZ
-@value 0.001274351977536108 1e-10 1e-10
+@value 0.001526650189377684 1e-10 1e-10
 Dictionary Key: fail
 @value                    0 1e-10 1e-10
 Eval Functions Sens:
 Dictionary Key: CMZ
 Dictionary Key: shapey
-@value  0.02778993035804228 1e-06 1e-10
-@value  0.05577223495970205 1e-06 1e-10
-@value  0.02868382774244875 1e-06 1e-10
-@value  0.06021061012043427 1e-06 1e-10
+@value  0.02305641525641615 1e-06 1e-10
+@value  0.08586977890044531 1e-06 1e-10
+@value  0.02515657340544635 1e-06 1e-10
+@value  0.09572820871216924 1e-06 1e-10
 Dictionary Key: shapez
-@value -0.009704463697321352 1e-06 1e-10
-@value -0.01676344680401013 1e-06 1e-10
-@value -0.01630878049193812 1e-06 1e-10
-@value -0.03058735510762048 1e-06 1e-10
+@value -0.01158741570587573 1e-06 1e-10
+@value -0.03317842721493831 1e-06 1e-10
+@value -0.01532361313059609 1e-06 1e-10
+@value -0.03764984274147003 1e-06 1e-10
 Dictionary Key: fail
 @value                    0 1e-06 1e-10
