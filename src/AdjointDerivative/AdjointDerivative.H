@@ -277,6 +277,9 @@ public:
 
     /// perturb state variables given a color index
     void perturbStates(const label colorI,const word mode);
+
+    /// check if we need to perturb states again for some special boundary conditions
+    void checkSpecialBCs();
     
     /// perturb FFD point based on the perturbed Xv in deltaVolPointMat
     void perturbFFD
