@@ -4,6 +4,7 @@ from mpi4py import MPI
 from collections import OrderedDict
 from setup_Airfoil import runTests
 from setup_CurvedCube import runTests as runTests1
+from setup_CompressorFluid import runTests as runTests2
 import numpy as np
 
 # ###################################################################
@@ -20,7 +21,7 @@ printHeader('simpleDAFoam')
 sys.stdout.flush()
 
 # cases
-allCases = ['Airfoil','CurvedCubeSnappyHexMesh']
+allCases = ['Airfoil','CurvedCubeSnappyHexMesh','CompressorFluid']
 
 # Airfoil case
 def calcUAndDir(UIn,alpha1):
@@ -59,6 +60,15 @@ testInfo1['task1']={'solver':'simpleDAFoam',
                     'flowCondition':'Incompressible',
                     'useWallFunction':'false',
                     'testCases':[allCases[1]]}
+
+# for the compressor case
+testInfo2=OrderedDict()
+testInfo2['task1']={'solver':'simpleDAFoam',
+                    'turbModel':'SpalartAllmaras',
+                    'flowCondition':'Incompressible',
+                    'useWallFunction':'true',
+                    'energy':'sensibleInternalEnergy',
+                    'testCases':[allCases[2]]}
                     
 defOpts = {
             'outputdirectory':          './',
@@ -177,4 +187,31 @@ if __name__ == '__main__':
                                            'useWallFunction':'false'}
     defOpts['adjdvtypes']               = ['FFD','UIn']
     runTests1(sys.argv[1],defOpts,testInfo1)
+
+    # reset the parameters and run the compressor case
+    defOpts['designsurfaces']           =  ['blade','hub','shroud','inlet','outlet','per1','per2']
+    defOpts['objfuncs']                 =  ['CMZ']
+    defOpts['objfuncgeoinfo']           =  [['blade']]
+    defOpts['maxflowiters']             = 40 
+    defOpts['writeinterval']            = 40
+    defOpts['setflowbcs']               = False
+    defOpts['mrfproperties']            = {'active':'true',
+                                           'selectionmode':'cellZone',
+                                           'cellzone':'region0',
+                                           'nonrotatingpatches':['per1','per2','inlet','outlet'],
+                                           'axis':[0,0,1],
+                                           'origin':[0,0,0],
+                                           'omega':-50.0}
+    defOpts['thermotype']               = {'type':'hePsiThermo',
+                                        'mixture':'pureMixture',
+                                        'thermo':'hConst',
+                                        'transport':'const',
+                                        'equationOfState':'perfectGas',
+                                        'specie':'specie',
+                                        'energy':'sensibleInternalEnergy'}
+    defOpts['preservepatches']          = ['per1','per2']
+    defOpts['nffdpoints']               = 8
+    defOpts['adjdvtypes']               = ['FFD']
+    runTests2(sys.argv[1],defOpts,testInfo2)
+    
 

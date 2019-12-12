@@ -246,3 +246,28 @@ Dictionary Key: shapey
 @value      16.480332498942 1e-06 1e-10
 Dictionary Key: fail
 @value                    0 1e-06 1e-10
+
+
+
++------------------------------------------------------------------------------+
+| Test Name: simpleDAFoam Compressor                                           |
++------------------------------------------------------------------------------+
+Eval Functions:
+Dictionary Key: CMZ
+@value 0.001274351977536108 1e-10 1e-10
+Dictionary Key: fail
+@value                    0 1e-10 1e-10
+Eval Functions Sens:
+Dictionary Key: CMZ
+Dictionary Key: shapey
+@value  0.02778993035804228 1e-06 1e-10
+@value  0.05577223495970205 1e-06 1e-10
+@value  0.02868382774244875 1e-06 1e-10
+@value  0.06021061012043427 1e-06 1e-10
+Dictionary Key: shapez
+@value -0.009704463697321352 1e-06 1e-10
+@value -0.01676344680401013 1e-06 1e-10
+@value -0.01630878049193812 1e-06 1e-10
+@value -0.03058735510762048 1e-06 1e-10
+Dictionary Key: fail
+@value                    0 1e-06 1e-10
