@@ -10,7 +10,7 @@ volScalarField p0(p);
 
 volScalarField AU(UEqn.A());
 volScalarField AtU(AU - UEqn.H1());
-U = UEqn.H()/AU;
+volVectorField HbyA = UEqn.H()/AU;
 
 volScalarField rAU(1.0/UEqn.A());
 tUEqn.clear();
@@ -23,7 +23,7 @@ if (simple.transonic())
     surfaceScalarField phid
     (
         "phid",
-        fvc::interpolate(psi)*(fvc::interpolate(U) & mesh.Sf())
+        fvc::interpolate(psi)*(fvc::interpolate(HbyA) & mesh.Sf())
     );
 
     MRF.makeRelative(fvc::interpolate(psi), phid);
@@ -59,18 +59,22 @@ if (simple.transonic())
 }
 else
 {
-    phi = fvc::interpolate(rho*U) & mesh.Sf();
+    surfaceScalarField phiHbyA
+    (
+        "phiHbyA",
+        fvc::interpolate(rho*HbyA) & mesh.Sf()
+    );
 
-    MRF.makeRelative(fvc::interpolate(rho), phi);
+    MRF.makeRelative(fvc::interpolate(rho), phiHbyA);
 
-    closedVolume = adjustPhi(phi, U, p);
-    phi += fvc::interpolate(rho/AtU - rho/AU)*fvc::snGrad(p)*mesh.magSf();
+    closedVolume = adjustPhi(phiHbyA, U, p);
+    phiHbyA += fvc::interpolate(rho/AtU - rho/AU)*fvc::snGrad(p)*mesh.magSf();
 
     while (simple.correctNonOrthogonal())
     {
         fvScalarMatrix pEqn
         (
-            fvc::div(phi)
+            fvc::div(phiHbyA)
           - fvm::laplacian(rho/AtU, p)
           ==
             fvOptions(psi, p, rho.name())
@@ -88,7 +92,7 @@ else
 
         if (simple.finalNonOrthogonalIter())
         {
-            phi += pEqn.flux();
+            phi = phiHbyA + pEqn.flux();
         }
     }
 }
@@ -101,7 +105,7 @@ p.relax();
 // bound p
 adjIO.boundVar(p);
 
-U -= (fvc::grad(p0)*(1.0/AU - 1.0/AtU) + fvc::grad(p)/AtU);
+U = HbyA - (fvc::grad(p0)*(1.0/AU - 1.0/AtU) + fvc::grad(p)/AtU);
 
 fvOptions.correct(U);
 
