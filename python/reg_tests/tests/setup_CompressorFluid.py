@@ -49,8 +49,10 @@ def runTests(mode,defOpts,testInfo):
                     os.system('cp 0.compressible/* 0/')
                     if aeroOptions['simplecontrol']['transonic']=='true':
                         os.system('cp 0/U.transonic 0/U')
+                        os.system('cp 0/p.transonic 0/p')
                     else:
                         os.system('cp 0/U.subsonic 0/U')
+                        os.system('cp 0/p.subsonic 0/p')
             MPI.COMM_WORLD.Barrier()
 
             # =====================
