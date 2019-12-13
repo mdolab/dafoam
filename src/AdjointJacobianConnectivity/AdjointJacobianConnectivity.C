@@ -29,8 +29,8 @@ AdjointJacobianConnectivity::AdjointJacobianConnectivity
     adjIO_(adjIO),
     adjReg_(adjReg),
     adjRAS_(adjRAS),
-    adjIdx_(adjIdx)
-
+    adjIdx_(adjIdx),
+    db_(mesh.thisDb())
 
 {
     if(adjIO_.useColoring)
@@ -72,8 +72,46 @@ AdjointJacobianConnectivity::AdjointJacobianConnectivity
         }
 
         this->initializePetscVecs();
+
+        // check if we have pressure inlet velocity boundary condition
+        // if yes, we need special treatment for connectivity
+        // Note we need to read the U field, instead of getting it from db
+        // this is because coloringSolver does not read U 
+        volVectorField U
+        (
+            IOobject
+            (
+                "U",
+                mesh_.time().timeName(),
+                mesh_,
+                IOobject::READ_IF_PRESENT,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mesh_,
+            dimensionedVector("U",dimensionSet(0,1,-1,0,0,0,0),vector::zero),
+            zeroGradientFvPatchVectorField::typeName
+        );
+        
+        forAll(U.boundaryField(),patchI)
+        {
+            if(U.boundaryFieldRef()[patchI].type()=="pressureInletVelocity")
+            {
+                hasPIVBC=1;
+            }
+        }
+        if(hasPIVBC==1)
+        {
+            Info<<"pressureInletVelocity detected, applying special treatment for connectivity."<<endl;
+            VecCreate(PETSC_COMM_WORLD,&isPIVBCState_);
+            VecSetSizes(isPIVBCState_,adjIdx_.nLocalAdjointStates,PETSC_DECIDE);
+            VecSetFromOptions(isPIVBCState_);
+            this->calcIsPIVBCState(U,isPIVBCState_);
+        }
         
     }
+
+    
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
@@ -193,7 +231,7 @@ void AdjointJacobianConnectivity::setupdRdWCon(label isPrealloc,label isPC)
         {
             for(label comp=0; comp<compMax; comp++)
             {
-            
+
                 //zero the connections
                 this->createConnectionMat(&connectedStatesP);
         
@@ -234,7 +272,7 @@ void AdjointJacobianConnectivity::setupdRdWCon(label isPrealloc,label isPC)
                                     connectedStatesInterProc[k].append(conName);
                             }
                         }
-                        
+
                     }
                     else
                     {
@@ -257,6 +295,10 @@ void AdjointJacobianConnectivity::setupdRdWCon(label isPrealloc,label isPC)
                         const word& conName = adjReg_.surfaceScalarStates[idxK];
                         if ( adjIO_.isInList<word>(conName,adjStateResidualConInfo_[resName][idxJ]) ) 
                             addFace=1;
+                    }
+                    if(hasPIVBC==1 && this->addPhi4PIV(stateName,cellI,comp)) 
+                    {
+                        addFace=1;
                     }
 
                     // Add connectivity
@@ -399,6 +441,10 @@ void AdjointJacobianConnectivity::setupdRdWCon(label isPrealloc,label isPC)
                     if ( adjIO_.isInList<word>(conName,adjStateResidualConInfo_[resName][levelCheck]) ) 
                         addFace=1;
 
+                }
+                if(hasPIVBC==1 && this->addPhi4PIV(stateName,faceI)) 
+                {
+                    addFace=1;
                 }
 
                 // Add connectivity for idxN
@@ -564,6 +610,104 @@ void AdjointJacobianConnectivity::setupdRdWCon(label isPrealloc,label isPC)
 
 }
 
+
+label AdjointJacobianConnectivity::addPhi4PIV(word stateName, label idxI, label comp)
+{
+    
+    label localI=adjIdx_.getLocalAdjointStateIndex(stateName,idxI,comp);
+    PetscScalar *isPIVArray;
+    VecGetArray(isPIVBCState_,&isPIVArray);
+    if( adjIO_.isValueCloseToRef(isPIVArray[localI],1.0) )
+    {
+        VecRestoreArray(isPIVBCState_,&isPIVArray);
+        return 1;
+    }
+    else
+    {
+        VecRestoreArray(isPIVBCState_,&isPIVArray);
+        return 0;
+    }
+    
+    VecRestoreArray(isPIVBCState_,&isPIVArray);
+    return 0;
+}
+
+
+void AdjointJacobianConnectivity::setPIVVec(Vec isPIV,label cellI)
+{
+    forAll(adjIdx_.adjStateNames,idxI) 
+    {
+        // get stateName and residual names
+        word stateName = adjIdx_.adjStateNames[idxI];
+
+        // check if this state is a cell state, we do surfaceScalarState  separately
+        if (adjIdx_.adjStateType[stateName] == "surfaceScalarState")
+        {
+            forAll(mesh_.cells()[cellI],faceI)
+            {
+                label cellFaceI = mesh_.cells()[cellI][faceI];
+                label rowI=adjIdx_.getGlobalAdjointStateIndex(stateName,cellFaceI);
+                VecSetValue(isPIV,rowI,1.0,INSERT_VALUES);
+            }
+        } 
+        else
+        {
+            // if it is a vectorState, set compMax=3
+            label compMax = 1;
+            if (adjIdx_.adjStateType[stateName] == "volVectorState") compMax=3;
+            
+            for(label comp=0;comp<compMax;comp++)
+            {
+                label rowI=adjIdx_.getGlobalAdjointStateIndex(stateName,cellI,comp);
+                VecSetValue(isPIV,rowI,1.0,INSERT_VALUES);
+            }
+        }
+        
+    }
+
+}
+
+void AdjointJacobianConnectivity::calcIsPIVBCState(volVectorField& U, Vec isPIV)
+{
+    Info<<"Calculating pressureInletVelocity state vec..."<<endl;
+    VecZeroEntries(isPIV);
+
+    forAll(U.boundaryField(),patchI)
+    {
+        if(U.boundaryFieldRef()[patchI].type()=="pressureInletVelocity")
+        {
+            const UList<label>& pFaceCells = mesh_.boundaryMesh()[patchI].faceCells();
+            forAll(U.boundaryFieldRef()[patchI],faceI)
+            {
+
+                label faceCellI = pFaceCells[faceI]; // lv 1 face neibouring cells
+                this->setPIVVec(isPIV,faceCellI);
+
+                forAll(mesh_.cellCells()[faceCellI],cellJ)
+                {
+
+                    label faceCellJ = mesh_.cellCells()[faceCellI][cellJ]; // lv 2 face neibouring cells 
+                    this->setPIVVec(isPIV,faceCellJ);
+
+                    forAll(mesh_.cellCells()[faceCellJ],cellK)
+                    {
+                        label faceCellK = mesh_.cellCells()[faceCellI][cellJ]; // lv 3 face neibouring cells
+                        this->setPIVVec(isPIV,faceCellK);
+                    }
+                }
+            }
+        }
+    }
+
+    VecAssemblyBegin(isPIV);
+    VecAssemblyEnd(isPIV);
+
+    if(adjIO_.writeMatrices)
+    {
+        adjIO_.writeVectorASCII(isPIV,"isPIVVec");
+    }
+
+}
 
 void AdjointJacobianConnectivity::setupdRdXvCon(label isPrealloc)
 {
@@ -1031,7 +1175,7 @@ void AdjointJacobianConnectivity::setupObjFuncCon(const word objFunc,const word 
         word pName=adjIO_.getPName();
         List< List<word> > TPRConInfo=
         {
-            {"U",pName,"T"}
+            {"U",pName,"T","phi"} // for pressureInlet velocity, U depends on phi
         };
         if (mode=="dFdW") this->addObjFuncConnectivity("TPR",TPRConInfo);
         else FatalErrorIn("")<<"mode not valid for TPR"<<abort(FatalError);
@@ -1041,7 +1185,7 @@ void AdjointJacobianConnectivity::setupObjFuncCon(const word objFunc,const word 
         // TTR con is connected to Level0 of U, T
         List< List<word> > TTRConInfo=
         {
-            {"U","T"}
+            {"U","T","phi"} // for pressureInlet velocity, U depends on phi
         };
         if (mode=="dFdW") this->addObjFuncConnectivity("TTR",TTRConInfo);
         else FatalErrorIn("")<<"mode not valid for TTR"<<abort(FatalError);
@@ -1052,7 +1196,7 @@ void AdjointJacobianConnectivity::setupObjFuncCon(const word objFunc,const word 
         word pName=adjIO_.getPName();
         List< List<word> > MFRConInfo=
         {
-            {"U",pName,"T"}
+            {"U",pName,"T","phi"} // for pressureInlet velocity, U depends on phi
         };
         if (mode=="dFdW") this->addObjFuncConnectivity("MFR",MFRConInfo);
         else FatalErrorIn("")<<"mode not valid for MFR"<<abort(FatalError);
@@ -1111,6 +1255,7 @@ void AdjointJacobianConnectivity::addObjFuncConnectivity
     List<word> objFuncGeoInfo = adjIdx_.getObjFuncGeoInfo(objFunc);
 
     // objFuncConInfo shouldn't include surfaceScalarStates for surface-based obj
+    label addFace=0;
     forAll(objFuncGeoInfo,idxI)
     {
         word geoName = objFuncGeoInfo[idxI];
@@ -1122,13 +1267,16 @@ void AdjointJacobianConnectivity::addObjFuncConnectivity
                 {
                     word stateType = adjIdx_.adjStateType[objFuncConInfo[idxJ][idxK]];
                     if(stateType == "surfaceScalarState")
-                        FatalErrorIn("")<<"surfaceScalarState not supported!"<<abort(FatalError);
+                    {
+                        addFace=1;
+                        //FatalErrorIn("")<<"surfaceScalarState not supported!"<<abort(FatalError);
+                    }
                 }
             }
         }
     }
     
-    label addFace=0;
+    //label addFace=0;
     
     // maximal connectivity level information
     label maxConLevel = objFuncConInfo.size()-1;
@@ -4059,7 +4207,7 @@ void AdjointJacobianConnectivity::addStateConnections
     if(connectedLevelLocal>3 or connectedLevelLocal<0) FatalErrorIn("connectedLevelLocal not valid")<< abort(FatalError);
     if(addFace!=0 && addFace!=1) FatalErrorIn("addFace not valid")<< abort(FatalError);
     if(cellI>=mesh_.nCells()) FatalErrorIn("cellI not valid")<< abort(FatalError);
-    if(connectedLevelLocal>=2 && addFace==1) FatalErrorIn("addFace not supported for localLevel>=2")<< abort(FatalError);
+    //if(connectedLevelLocal>=2 && addFace==1) FatalErrorIn("addFace not supported for localLevel>=2")<< abort(FatalError);
         
     labelList val1 = {1};
     labelList vals2= {1,1};
@@ -4142,12 +4290,28 @@ void AdjointJacobianConnectivity::addStateConnections
         forAll(mesh_.cellCells()[cellI],cellJ)
         {
             label localCell = mesh_.cellCells()[cellI][cellJ];
+
             // add connectedStatesLocal for level2
             forAll(connectedStatesLocal,idxI)
             {
                 word stateName = connectedStatesLocal[idxI];   
                 this->addConMatNeighbourCells(connections,0,localCell,stateName,1.0);
             }
+
+            // add faces for level2
+            if(addFace)
+            {
+                forAll(mesh_.cellCells()[localCell],cellK)
+                {
+                    label localCellK = mesh_.cellCells()[localCell][cellK];
+                    forAll(adjReg_.surfaceScalarStates,idxI)
+                    {
+                        const word& stateName = adjReg_.surfaceScalarStates[idxI];
+                        this->addConMatCellFaces(connections,0,localCellK,stateName,1.0);
+                    }
+                }
+            }
+
             // add inter-proc connecitivty for level2
             if(interProcLevel == 0)
             {
@@ -4181,12 +4345,28 @@ void AdjointJacobianConnectivity::addStateConnections
             forAll(mesh_.cellCells()[localCell],cellK)
             {
                 label localCell2 = mesh_.cellCells()[localCell][cellK];
+
                 // add connectedStatesLocal for level3
                 forAll(connectedStatesLocal,idxI)
                 {
                     word stateName = connectedStatesLocal[idxI];   
                     this->addConMatNeighbourCells(connections,0,localCell2,stateName,1.0);
                 }
+
+                // add faces for level3
+                if(addFace)
+                {
+                    forAll(mesh_.cellCells()[localCell2],cellL)
+                    {
+                        label localCellL = mesh_.cellCells()[localCell2][cellL];
+                        forAll(adjReg_.surfaceScalarStates,idxI)
+                        {
+                            const word& stateName = adjReg_.surfaceScalarStates[idxI];
+                            this->addConMatCellFaces(connections,0,localCellL,stateName,1.0);
+                        }
+                    }
+                }
+
                 // add inter-proc connecitivty for level3
                 if(interProcLevel == 0)
                 {

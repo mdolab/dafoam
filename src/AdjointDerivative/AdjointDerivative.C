@@ -136,7 +136,7 @@ AdjointDerivative::AdjointDerivative
     MRF_(mesh_)
     
 {
-
+    
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
@@ -760,9 +760,33 @@ void AdjointDerivative::perturbStates
     // calculation or objection function calculation that are not state variables need to be updated.
     // This function is implemented in child class
     this->updateIntermediateVariables();
-    
+
+    // for some special boundary conditions, e.g. pressureInletVelocity, the inlet U depends on 
+    // rho and phi, so we need to call U.correctBoundaryConditions again
+    this->checkSpecialBCs();
+
     return;
 }
+
+void AdjointDerivative::checkSpecialBCs()
+{
+    
+    if (adjCon_.hasPIVBC==1)
+    {
+        // for pressureInletVelocity, the inlet U depends on 
+        // rho and phi, so we need to call U.correctBoundaryConditions again
+        volVectorField& U
+        (
+            const_cast<volVectorField&>
+            (
+                db_.lookupObject<volVectorField>("U") 
+            ) 
+        ); 
+        U.correctBoundaryConditions();    
+    }
+
+}
+
 
 void AdjointDerivative::perturbUIn(scalar eps)
 {

@@ -48,6 +48,7 @@ protected:
     const AdjointSolverRegistry& adjReg_;
     AdjointRASModel& adjRAS_;
     AdjointIndexing& adjIdx_;
+    const objectRegistry& db_;
     
     /// matrix to store boundary connectivity levels for state Jacobians
     Mat stateBoundaryCon_;
@@ -124,6 +125,9 @@ protected:
 
     /// does this processor has AMI patches?
     label procHasAMI_;
+
+    /// a vector to show whether a state is connected to a pressureInletVelocity boundary face (3 level max)
+    Vec isPIVBCState_;
     
 public:
 
@@ -594,6 +598,16 @@ public:
     /// restore the connectivity level for AdjointJacobianConnectivity::dRdWCon_
     void restoreAdjStateResidualConLevel();
 
+    /// compute IsPIVBCState_
+    void calcIsPIVBCState(volVectorField& U,Vec isPIV);
+
+    /// function used in calcIsPIVBCState to add connectivity for pressureInletVelocity
+    void setPIVVec(Vec iSPIV,label idxI);
+    
+    /// whether the pressureInletVelocity boundary condition exists
+    label hasPIVBC=0;
+
+    label addPhi4PIV(word stateName, label idxI, label comp=-1);
 };
 
 
