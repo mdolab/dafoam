@@ -66,6 +66,7 @@ AdjointIO::AdjointIO
     maxTolJac           = readOptionOrDefault<scalar>(adjointOptions,"maxTolJac",1.0e14);
     minTolPC            = readOptionOrDefault<scalar>(adjointOptions,"minTolPC",1.0e-14);
     maxTolPC            = readOptionOrDefault<scalar>(adjointOptions,"maxTolPC",1.0e14);
+    transonicPCOption   = readOptionOrDefault<label>(adjointOptions,"transonicPCOption",0);
     stateResetTol       = readOptionOrDefault<scalar>(adjointOptions,"stateResetTol",1.0e-6);
     tractionBCMaxIter   = readOptionOrDefault<label>(adjointOptions,"tractionBCMaxIter",20);
     solveAdjoint        = readBooleanOptionOrDefault(adjointOptions,"solveAdjoint","true");

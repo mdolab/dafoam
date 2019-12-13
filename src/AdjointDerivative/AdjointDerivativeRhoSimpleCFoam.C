@@ -65,6 +65,10 @@ AdjointDerivativeRhoSimpleCFoam::AdjointDerivativeRhoSimpleCFoam
     pressureControl_(p_,rho_,simple_.dict())
 {
     this->copyStates("Var2Ref"); // copy states to statesRef
+    if(adjIO_.transonicPCOption==1)
+    {
+        Info<<"Using adjoint transonic preconditioner option: "<<adjIO_.transonicPCOption<<endl;
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -179,6 +183,9 @@ void AdjointDerivativeRhoSimpleCFoam::calcResiduals
           + fvm::div(phid, p_,divPhidPScheme)
           - fvm::laplacian(rhorAtU, p_)
         );
+
+        // for PC we do not include the div(phid, p) term, this improves the convergence
+        if(isPC && adjIO_.transonicPCOption==1) pEqn -= fvm::div(phid, p_,divPhidPScheme);
     
         // Relax the pressure equation to maintain diagonal dominance
         pEqn.relax();

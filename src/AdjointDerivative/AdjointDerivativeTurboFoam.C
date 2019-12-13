@@ -72,6 +72,10 @@ AdjointDerivativeTurboFoam::AdjointDerivativeTurboFoam
     pressureControl_(p_,rho_,simple_.dict())
 {
     this->copyStates("Var2Ref"); // copy states to statesRef
+    if(adjIO_.transonicPCOption==1 || adjIO_.transonicPCOption==2)
+    {
+        Info<<"Using adjoint transonic preconditioner option: "<<adjIO_.transonicPCOption<<endl;
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -168,6 +172,9 @@ void AdjointDerivativeTurboFoam::calcResiduals
           - fvm::laplacian(rho_*rAU, p_)
         );
 
+        // for PC we do not include the div(phid, p) term, this improves the convergence
+        if(isPC && adjIO_.transonicPCOption==1) pEqn -= fvm::div(phid, p_,divPhidPScheme);
+
         // Relax the pressure equation to maintain diagonal dominance
         pEqn.relax();
     
@@ -186,10 +193,10 @@ void AdjointDerivativeTurboFoam::calcResiduals
     
         // ******** phi Residuals **********
         // copied and modified from pEqn.H
-        if(isPC)
+        if(isPC && adjIO_.transonicPCOption==2)
         {
-            // for the preconditioner, we ignore all the off-diagonal terms
-            // for the phiRes, this can improve the convergence
+            // transonic PC option 2, we ignore all the off-diagonal
+            // terms for the phiRes
             if(isRef) phiResRef_ == phi_;
             else phiRes_ == phi_;
         }
