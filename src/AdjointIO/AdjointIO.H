@@ -95,6 +95,8 @@ public:
     scalar minTolPC;
     /// maximal values for PC Jacobian matrices
     scalar maxTolPC;
+    /// which option to use for adjoint transonic preconditioner
+    label transonicPCOption;
     /// residual L2 diff tolerance for checking if the state perturbation is properly reset 
     scalar stateResetTol;
     ///  maximal iteration number to iteratively correct D and gradD

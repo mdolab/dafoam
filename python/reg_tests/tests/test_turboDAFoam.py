@@ -161,6 +161,7 @@ if __name__ == '__main__':
                                         'div((-devRhoReff.T()&U))':'Gauss linear',
                                         'div(pc)':'Gauss upwind'}
     defOpts['preservepatches']          = ['per1','per2']
+    defOpts['transonicpcoption']        = 2
     defOpts['singleprocessorfacesets']  = []
     runTests(sys.argv[1],defOpts,testInfo1)
 

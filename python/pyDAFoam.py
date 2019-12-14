@@ -972,6 +972,7 @@ class PYDAFOAM(AeroSolver):
                     'maxtoljac':[float,1e14],
                     'mintolpc':[float,1e-14],
                     'maxtolpc':[float,1e14],
+                    'transonicpcoption':[int,0],
                     'stateresettol':[float,1e-6],
                     'tractionbcmaxiter':[int,20],
                     'correctwalldist':[bool,True],
@@ -5650,6 +5651,7 @@ class PYDAFOAM(AeroSolver):
             f.write('    maxTolJac              %e;\n'%self.getOption('maxtoljac'))
             f.write('    minTolPC               %e;\n'%self.getOption('mintolpc')) 
             f.write('    maxTolPC               %e;\n'%self.getOption('maxtolpc')) 
+            f.write('    transonicPCOption      %d;\n'%self.getOption('transonicpcoption')) 
             f.write('    stateResetTol          %e;\n'%self.getOption('stateresettol')) 
             f.write('    tractionBCMaxIter      %d;\n'%self.getOption('tractionbcmaxiter'))              
             f.write('    epsDeriv               %e;\n'%self.getOption('epsderiv'))  
