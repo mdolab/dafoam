@@ -17,7 +17,7 @@ This is a multipoint aerodynamic shape optimization case for a low-speed UAV win
     | Mesh cells: 25K
     | Adjoint solver: simpleDAFoam
 
-To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **MultiPointMain** folder and run::
+The configuration files are available at `Github <https://github.com/mdolab/dafoam/tree/master/tutorials/Aerodynamics/Odyssey_Wing>`_. To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **MultiPointMain** folder and run::
 
   ./Allrun.sh 2
 

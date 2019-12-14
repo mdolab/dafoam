@@ -15,7 +15,7 @@ This is a structural optimization case for a axial compressor rotor (Rotor 67). 
     | Mesh cells: 94K
     | Adjoint solver: solidDisplacementDAFoam
 
-To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
+The configuration files are available at `Github <https://github.com/mdolab/dafoam/tree/master/tutorials/Structure/Rotor67>`_. To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
 
   ./Allrun.sh 1
 

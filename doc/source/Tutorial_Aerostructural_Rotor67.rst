@@ -18,7 +18,7 @@ This is an aerostructural optimization case for an axial compressor rotor (Rotor
     | Mesh cells: 61K for fluid and 94K for solid
     | Adjoint solver: rhoSimpleDAFoam and solidDisplacementDAFoam
 
-To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **runFluid** folder and run::
+The configuration files are available at `Github <https://github.com/mdolab/dafoam/tree/master/tutorials/Aerostructural/Rotor67>`_. To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **runFluid** folder and run::
 
   ./Allrun.sh 4
 

@@ -15,7 +15,7 @@ This is an aerodynamic shape optimization case for an airfoil at low speed. The 
     | Mesh cells: 8.6K
     | Adjoint solver: simpleDAFoam
 
-To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
+The configuration files are available at `Github <https://github.com/mdolab/dafoam/tree/master/tutorials/Aerodynamics/NACA0012_Airfoil_Incompressible>`_. To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
 
   ./Allrun.sh 1
 
