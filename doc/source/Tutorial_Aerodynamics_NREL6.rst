@@ -18,7 +18,7 @@ This is an aerodynamic shape optimization case for the NREL6 wind turbine. The s
     | Mesh cells: 60K
     | Adjoint solver: turboDAFoam
 
-To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
+The configuration files are available at `Github <https://github.com/mdolab/dafoam/tree/master/tutorials/Aerodynamics/NREL6>`_. To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
 
   ./Allrun.sh 8
 

@@ -17,7 +17,7 @@ This is a heat transfer optimization case for a U-bend internal cooling channel.
     | Mesh cells: 4.8K
     | Adjoint solver: simpleTDAFoam
 
-To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
+The configuration files are available at `Github <https://github.com/mdolab/dafoam/tree/master/tutorials/HeatTransfer/UBend>`_. To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
 
   ./Allrun.sh 1
 

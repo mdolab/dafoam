@@ -18,7 +18,7 @@ This is a trimmed aerodynamic shape optimization case for an aircraft wing-body-
     | Mesh cells: 100K
     | Adjoint solver: rhoSimpleCDAFoam
 
-To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
+The configuration files are available at `Github <https://github.com/mdolab/dafoam/tree/master/tutorials/Aerodynamics/CRM_Wing_Body_Tail>`_. To run this case, first source the DAFoam environment (see :ref:`Tutorials`). Then you can go into the **run** folder and run::
 
   ./Allrun.sh 4
 
