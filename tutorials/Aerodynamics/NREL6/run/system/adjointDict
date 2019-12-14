@@ -25,7 +25,7 @@ flowOptions
     derivUInInfo           {stateName U; component 0; type fixedValue;patchNames (inlet ); }
     userDefinedPatchInfo   { }
     userDefinedVolumeInfo  { }
-    referenceValues        (ARef 1.000000e+00 magURef 1.000000e+00 rhoRef 1.000000e+00 pRef 1.010000e+05 TRef 2.881500e+02 LRef 2.000000e+00 );
+    referenceValues        (ARef 1.000000e+00 magURef 1.000000e+00 rhoRef 1.000000e+00 pRef 1.010000e+05 TRef 2.881500e+02 LRef 1.000000e+00 );
     divDev2                true;
     useNKSolver            false;
     nkSegregatedTurb       false;
@@ -49,11 +49,11 @@ flowOptions
 
 adjointOptions
 {
-    solveAdjoint           true;
+    solveAdjoint           false;
     useColoring            true;
     normalizeResiduals     (URes pRes nuTildaRes phiRes TRes);
     normalizeStates        (U p nuTilda phi T);
-    nFFDPoints             0;
+    nFFDPoints             100;
     correctWallDist        true;
     reduceResCon4JacMat    false;
     calcPCMat              true;
@@ -68,14 +68,15 @@ adjointOptions
     adjJacMatReOrdering    rcm;
     adjGlobalPCIters       0;
     adjLocalPCIters        1;
-    adjPCFillLevel         0;
+    adjPCFillLevel         1;
     adjGMRESRelTol         1.000000e-06;
     adjGMRESAbsTol         1.000000e-16;
     minTolJac              1.000000e-14;
     maxTolJac              1.000000e+14;
     minTolPC               1.000000e-14;
     maxTolPC               1.000000e+14;
-    stateResetTol          1.000000e-06;
+    transonicPCOption      0;
+    stateResetTol          1.000000e+00;
     tractionBCMaxIter      20;
     epsDeriv               1.000000e-06;
     epsDerivFFD            1.000000e-04;

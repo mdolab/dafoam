@@ -58,7 +58,7 @@ functions
         CofR                (0.000000 0.000000 0.000000);
         pitchAxis           (0 1 0);
         magUInf             1.000000;
-        lRef                2.000000;
+        lRef                1.000000;
         Aref                1.000000;
     } 
 } 

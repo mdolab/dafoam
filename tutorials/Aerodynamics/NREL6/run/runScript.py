@@ -58,7 +58,8 @@ aeroOptions = {
     # adjoint setup
     'adjgmresmaxiters':        1000,
     'adjgmresrestart':         1000,
-    'adjgmresreltol':          1e10,
+    'adjgmresreltol':          1.0e-6,
+    'stateresettol':           1.0,
     'adjdvtypes':              ['FFD'],
     'epsderiv':                1.0e-6,
     'epsderivffd':             1.0e-4,
@@ -147,25 +148,21 @@ else:
 FFDFile = './FFD/bodyFittedFFD.xyz'
 DVGeo = DVGeometry(FFDFile)
 # Setup curves for ref_axis
-nTwist = 14
-x = [ 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-y = [ 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-z = [ -5.07,-4.1,-3.1,-2.5,-2.0,-1.6,-1.2,1.2,1.6,2.0,2.5,3.1,4.1,5.07]
-
+x = [ 0.0,0.00]
+y = [ 0.0,0.0]
+z = [ -5.0,5.0]
 c1 = pySpline.Curve(x=x, y=y, z=z, k=2)
 DVGeo.addRefAxis('bladeAxis', curve = c1,axis='x')
+# FFD shape
+pts=DVGeo.getLocalIndex(0)
+indexList=pts[:,:,:].flatten()  # select the top layer FFD starts with i=1
+PS=geo_utils.PointSelect('list',indexList)
+DVGeo.addGeoDVLocal('shapex1', lower=-0.5, upper=0.5, axis='x', scale=1.0,pointSelect=PS)
 
-def twist(val, geo):
-    # Set all the twist values
-    for i in xrange(nTwist):
-        geo.rot_z['bladeAxis'].coef[i] = val[i]
-
-DVGeo.addGeoDVGlobal('twist',0*np.ones(nTwist), twist,lower=-10, upper=10, scale=1.0)
-#DVGeo.addGeoDVLocal('shapex', lower=-0.5, upper=0.5, axis='x', scale=1.0)
-#DVGeo.addGeoDVLocal('shapey', lower=-0.5, upper=0.5, axis='y', scale=1.0)
-
-
-
+pts=DVGeo.getLocalIndex(1)
+indexList=pts[:,:,:].flatten()  # select the top layer FFD starts with i=1
+PS=geo_utils.PointSelect('list',indexList)
+DVGeo.addGeoDVLocal('shapex2', lower=-0.5, upper=0.5, axis='x', scale=1.0,pointSelect=PS)
 
 # =================================================================================================
 # DAFoam
@@ -214,7 +211,7 @@ if task.lower()=='opt':
     DVCon.addConstraintsPyOpt(optProb)
 
     # Add objective
-    optProb.addObj('CMX', scale=1)
+    optProb.addObj('CMX', scale=-1)
     # Add physical constraints
 
     if gcomm.rank == 0:

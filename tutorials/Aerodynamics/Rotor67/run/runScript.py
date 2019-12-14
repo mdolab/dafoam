@@ -124,7 +124,7 @@ aeroOptions = {
     'restartopt':              False,
     'meshmaxnonortho':         75.0,
     'meshmaxskewness':         6.0,
-    'trasonicpcoption':        1,
+    'transonicpcoption':       1,
     'preservepatches':         ['per1','per2'],
 }
 
