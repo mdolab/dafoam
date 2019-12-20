@@ -628,6 +628,26 @@ void AdjointIO::boundVar(volVectorField& var)
         }
     }
 
+    forAll(var.boundaryField(),patchI)
+    {
+        forAll(var.boundaryField()[patchI],faceI)
+        {
+            for(label i=0;i<3;i++)
+            {
+                if(var.boundaryFieldRef()[patchI][faceI][i]<=varMin) 
+                {
+                    var.boundaryFieldRef()[patchI][faceI][i]=varMin;
+                    useLowerBound = 1;
+                }
+                if(var.boundaryFieldRef()[patchI][faceI][i]>=varMax) 
+                {
+                    var.boundaryFieldRef()[patchI][faceI][i]=varMax;
+                    useUpperBound = 1;
+                }
+            }
+        }
+    }
+
     if (useUpperBound) Info<<"Bounding "<<var.name()<<"<"<<varMax<<endl;
     if (useLowerBound) Info<<"Bounding "<<var.name()<<">"<<varMin<<endl;
 
