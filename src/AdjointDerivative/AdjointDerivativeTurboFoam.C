@@ -151,7 +151,8 @@ void AdjointDerivativeTurboFoam::calcResiduals
     // copied and modified from pEqn.H
     volScalarField AU(UEqn.A());
     volScalarField AtU(AU - UEqn.H1());
-    volVectorField HbyA=UEqn.H()/AU;
+    volVectorField HbyA("HbyA", U_);
+    HbyA=UEqn.H()/AU;
     
     volScalarField rAU(1.0/UEqn.A());
     tUEqn.clear();
