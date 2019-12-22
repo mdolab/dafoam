@@ -10,7 +10,8 @@ volScalarField p0(p);
 
 volScalarField AU(UEqn.A());
 volScalarField AtU(AU - UEqn.H1());
-volVectorField HbyA = UEqn.H()/AU;
+volVectorField HbyA("HbyA", U);
+HbyA = UEqn.H()/AU;
 
 volScalarField rAU(1.0/UEqn.A());
 tUEqn.clear();
