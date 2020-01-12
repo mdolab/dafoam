@@ -96,6 +96,11 @@ Taking the runScript.py in tutorials/Aerodynamics/NACA0012_Airfoil_Incompressibl
   parser.add_argument('--optVars',type=str,help='Vars for the optimizer',default="['shape']")
 
 Here the --output argument defines where the intermediate results are stored, the default is ../optOutput.
+The intermediate results contain the OpenFOAM 3D flow fields, design variables, objective and derivatives values, flow and adjoint solution log files, check mesh quality logs for each optimization iteration.
+We do not store the adjoint vectors but they are available in the ``run`` folder with names ``psi_*``.
+The adjoint vectors are stored in the same order as the state variables, either in state-by-state or cell-by-cell order. 
+Refer to `this paper <https://doi.org/10.1016/j.paerosci.2019.05.002>`_ for details. 
+Note that the adjoint vectors are scaled based on the values defined by ``stateScaling`` in ``adjointDict``.
 The --opt argument defines which optimizer to use. 
 pyOptsparse supports multiple optimizers, here we pre-define some parameters for SNOPT, SLSQP, IPOPT, and PSQP.
 SLSQP (default), IPOPT, and PSQP are open souce while SNOPT is not.
