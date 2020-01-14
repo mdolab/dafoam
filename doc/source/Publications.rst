@@ -3,9 +3,13 @@
 Publications 
 ------------
 
-2019
+2020
 
-- Ping He, Charles A. Mader, Joaquim R.R.A. Martins, Kevin J. Maki. DAFoam: An open-source adjoint framework for multidisciplinary design optimization with OpenFOAM. AIAA Journal, 2019. https://doi.org/10.2514/1.J058853
+- Ping He, Charles A. Mader, Joaquim R.R.A. Martins, Kevin J. Maki. DAFoam: An open-source adjoint framework for multidisciplinary design optimization with OpenFOAM. AIAA Journal, 2020. https://doi.org/10.2514/1.J058853
+
+- Ping He, Alton J. Luder, Charles A. Mader, Joaquim R.R.A. Martins, Kevin J. Maki. A time-spectral adjoint approach for aerodynamic shape optimization under periodic wakes. In: AIAA Scitech Forum, 2020. AIAA-2020-2114. https://doi.org/10.2514/6.2020-2114
+
+2019
 
 - Ping He, Grzegorz Filip, Kevin J. Maki, Joaquim R. R. A. Martins. Design optimization for self-propulsion of a bulk carrier hull using a discrete adjoint method. Computers & Fluids, 192, pp. 104259, 2019. http://dx.doi.org/10.1016/j.compfluid.2019.104259
 
