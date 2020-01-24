@@ -9,17 +9,21 @@ There are two options to run DAFoam: **pre-compiled package** and **source code*
 
  The pre-compiled package is available on Docker Hub. Before downloading the pre-compiled package, you need to install **Docker**. Follow the installation instructions for `Ubuntu <https://docs.docker.com/install/linux/docker-ce/ubuntu/>`_, `Fedora <https://docs.docker.com/install/linux/docker-ce/fedora/>`_, `CentOS <https://docs.docker.com/install/linux/docker-ce/centos/>`_, `MacOS <https://docs.docker.com/docker-for-mac/install/>`_, and  `Windows <https://docs.docker.com/docker-for-windows/install/>`_. 
  
- For example, on Ubuntu, you can install the latest Docker by running::
+ For example, on Ubuntu, you can install the latest Docker by running this command in the terminal::
 
     sudo apt-get remove docker docker-engine docker.io containerd runc && sudo apt-get update && sudo apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common -y && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - && sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && sudo apt-get update && sudo apt-get install docker-ce -y
 
- Once finished, open a terminal and verify the docker installation by::
+ Then you need to add your user name to the docker group by::
+
+    sudo usermod -aG docker $USER
+
+ After this, you need to logout and re-login your account to make the usermod command effective. Once done, verify the docker installation by::
 
     docker --version
 
- You should be able to see your installed Docker version. 
+ You should be able to see your installed Docker version. Note that different operating systems have very different Docker installation process, refer to the above links for more details. 
 
- Next, run this command from the terminal::
+ Once the Docker is installed and verified, run this command from the terminal::
 
     docker run -it --rm -u dafoamuser -v $HOME:/UserHome -w /UserHome dafoam/opt-packages:latest bash -rcfile /opt/setupDAFoam.sh
 
