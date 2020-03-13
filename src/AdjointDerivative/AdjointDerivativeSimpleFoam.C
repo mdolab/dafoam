@@ -65,6 +65,9 @@ void AdjointDerivativeSimpleFoam::calcResiduals
     );
     fvVectorMatrix& UEqn = tUEqn.ref();
 
+    // add actuator disk source term
+    if(adjIO_.actuatorActive) adjObj_.calcActuatorDiskSource(UEqn.source());
+
     //UEqn.relax();
 
     // set fvMatrix for fast PC construction in NK solver
