@@ -25,16 +25,11 @@ To compile the documentation, you also need:
 
 - Sphinx 
 
-**NOTE:** Always try to use the system provided C/Fortran compiler and MPI software to compile DAFoam and all its dependencies. 
-Using self-built C/Fortran and MPI may cause linking issues
+**NOTE 1:** Make sure you use only one MPI version to compile all the DAFoam related packages (including OpenFoam and PETSc). Compiling packages using different MPI versions will cause linking issues. We recommend using system MPI software. On Ubuntu, it can be done by running ``sudo apt-get install libopenmpi-dev openmpi-bin``.
 
-**NOTE:** For **Ubuntu 18.04** users, you need to compile your own OpenMPI since the Ubuntu 18.04 comes with OpenMPI-2.1 which is known to have compatibility issues with the MDOLab packages. Please follow this page https://www.open-mpi.org/faq/?category=building and use version OpenMPI-1.10.7. Make sure you compile OpenMPI before the following steps. After it is done, add this to your bashrc file and source it::
+**NOTE 2:** If the system MPI software has issues, you need to compile your own OpenMPI. For example, the **Ubuntu 18.04** comes with OpenMPI-2.1 which is known to have **compatibility issues** with the MDOLab packages. So ``sudo apt-get install libopenmpi-dev openmpi-bin`` won't work for Ubuntu 18.04. Please follow the instructions at the end of this page to install your own MPI. Note that this is only needed if the system OpenMPI has known issues, like Ubuntu 18.04. 
 
-   export LD_PRELOAD=/change_this_to_your_compiled_openmpi_lib_path/libmpi.so
-  
-Note that the above is needed only for Ubuntu 18.04 because we compile our own OpenMPI.
-
-**NOTE:** The following steps assume you use GNU compilers. For Intel compilers, users need to adjust settings in OpenFOAM and PETSc, and use configuration file config/defaults/config.LINUX_INTEL_OPENMPI.mk for each MDOLab repo.
+**NOTE 3:** The following steps assume you use GNU compilers. For Intel compilers, users need to adjust settings in OpenFOAM and PETSc, and use configuration file config/defaults/config.LINUX_INTEL_OPENMPI.mk for each MDOLab repo.
 
 |
 
@@ -90,13 +85,13 @@ To install the **DAFoam** package:
 
 - **mpi4py-1.3.1** (http://bitbucket.org/mpi4py/mpi4py/downloads/). Untar and run::
  
-    python setup.py install --user
+    rm -rf build && python setup.py install --user
     
   This will install the package to the .local directory.
   
 - **petsc4py-3.6.0** (http://bitbucket.org/petsc/petsc4py/downloads/). Untar and run::
  
-    python setup.py install --user
+    rm -rf build && python setup.py install --user
     
   This will install the package to the .local directory.
   
@@ -166,7 +161,7 @@ To install the **DAFoam** package:
     
   and in the "**pyoptsparse**" folder, run::
  
-     python setup.py install --user
+     rm -rf build && python setup.py install --user
 
 
 4. Download **DAFoam**. In the "**repos**" folder, Run::
@@ -243,6 +238,49 @@ Here is the DAFoam related environmental variable setup that should appear in yo
   # Anaconda2
   export PATH="$HOME/packages/anaconda2/bin:$PATH"
 
+|
+
+**Build your own MPI**:
+
+**Note:** the following is needed only if your system MPI has known issues, like on Ubuntu 18.04.
+
+To compile your own OpenMPI:
+
+1. Download the OpenMPI-1.10.7 package, untar it by doing:
+
+.. code-block:: bash
+
+   cd $HOME/packages
+   wget https://download.open-mpi.org/release/open-mpi/v1.10/openmpi-1.10.7.tar.gz
+   tar -xvf openmpi-1.10.7.tar.gz
+   cd openmpi-1.10.7
+
+2. Add this into your bashrc file and source it:
+
+.. code-block:: bash
+
+   # -- OpenMPI Installation
+   export MPI_INSTALL_DIR=$HOME/packages/openmpi-1.10.7/opt-gfortran
+   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MPI_INSTALL_DIR/lib
+   export PATH=$MPI_INSTALL_DIR/bin:$PATH
+   export LD_PRELOAD=$MPI_INSTALL_DIR/lib/libmpi.so
+
+3. Finally, configure and build it:
+
+.. code-block:: bash
+
+   # export CC=icc CXX=icpc F77=ifort FC=ifort  # Only necessary if using non-GCC compiler
+   ./configure --prefix=$MPI_INSTALL_DIR
+   make all install
+
+4. To verify that paths are as expected run:
+
+.. code-block:: bash
+
+   which mpicc
+   echo $MPI_INSTALL_DIR/bin/mpicc
+  
+The above should print out the same path for both.
 
 
   
