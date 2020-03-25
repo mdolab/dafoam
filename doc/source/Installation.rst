@@ -28,7 +28,13 @@ To compile the documentation, you also need:
 **NOTE:** Always try to use the system provided C/Fortran compiler and MPI software to compile DAFoam and all its dependencies. 
 Using self-built C/Fortran and MPI may cause linking issues
 
-**NOTE:** For **Ubuntu 18.04** users, you need to compile your own OpenMPI since the Ubuntu 18.04 comes with OpenMPI-2.1 which is known to have compatibility issues with the MDOLab packages. Please follow this page https://www.open-mpi.org/faq/?category=building and use version OpenMPI-1.10.7. Make sure you compile OpenMPI before the following steps.
+**NOTE:** For **Ubuntu 18.04** users, you need to compile your own OpenMPI since the Ubuntu 18.04 comes with OpenMPI-2.1 which is known to have compatibility issues with the MDOLab packages. Please follow this page https://www.open-mpi.org/faq/?category=building and use version OpenMPI-1.10.7. Make sure you compile OpenMPI before the following steps. After it is done, add this to your bashrc file and source it::
+
+   export LD_PRELOAD=/change_this_to_your_compiled_openmpi_lib_path/libmpi.so
+  
+Note that the above is needed only for Ubuntu 18.04 because we compile our own OpenMPI.
+
+**NOTE:** The following steps assume you use GNU compilers. For Intel compilers, users need to adjust settings in OpenFOAM and PETSc, and use configuration file config/defaults/config.LINUX_INTEL_OPENMPI.mk for each MDOLab repo.
 
 |
 
@@ -122,7 +128,7 @@ To install the **DAFoam** package:
 
      git clone https://github.com/mdolab/pyspline && cd pyspline && git checkout 30f2340 && cd ../
   
-  and::
+  and in the "**pyspline**" folder, run::
    
      cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk && make
    
@@ -130,7 +136,7 @@ To install the **DAFoam** package:
 
      git clone https://github.com/mdolab/pyhyp && cd pyhyp && git checkout 926b3f7 && cd ../
   
-  and::
+  and in the "**pyhyp**" folder, run::
    
      cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && make
 
@@ -138,7 +144,7 @@ To install the **DAFoam** package:
 
      git clone https://github.com/mdolab/cgnsutilities && cd cgnsutilities && git checkout 3430e04 && cd ../
   
-  and::
+  and in the "**cgnsutilities**" folder, run::
    
      cp config.mk.info config.mk && make
      
@@ -150,7 +156,7 @@ To install the **DAFoam** package:
 
      git clone https://github.com/mdolab/idwarp && cd idwarp && git checkout 0149681 && cd ../
     
-  and::
+  and in the "**idwarp**" folder, run::
      
      cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && make
      
@@ -158,7 +164,7 @@ To install the **DAFoam** package:
 
      git clone https://github.com/mdolab/pyoptsparse && cd pyoptsparse && git checkout 6d2ae0a  && cd ../
     
-  and::
+  and in the "**pyoptsparse**" folder, run::
  
      python setup.py install --user
 
