@@ -28,6 +28,14 @@ To compile the documentation, you also need:
 **NOTE:** Always try to use the system provided C/Fortran compiler and MPI software to compile DAFoam and all its dependencies. 
 Using self-built C/Fortran and MPI may cause linking issues
 
+**NOTE:** For **Ubuntu 18.04** users, you need to compile your own OpenMPI since the Ubuntu 18.04 comes with OpenMPI-2.1 which is known to have compatibility issues with the MDOLab packages. Please follow this page https://www.open-mpi.org/faq/?category=building and use version OpenMPI-1.10.7. Make sure you compile OpenMPI before the following steps. After it is done, add this to your bashrc file and source it::
+
+   export LD_PRELOAD=/change_this_to_your_compiled_openmpi_lib_path/libmpi.so
+  
+Note that the above is needed only for Ubuntu 18.04 because we compile our own OpenMPI.
+
+**NOTE:** The following steps assume you use GNU compilers. For Intel compilers, users need to adjust settings in OpenFOAM and PETSc, and use configuration file config/defaults/config.LINUX_INTEL_OPENMPI.mk for each MDOLab repo.
+
 |
 
 To install the **DAFoam** package:
@@ -43,7 +51,7 @@ To install the **DAFoam** package:
 
   When asked, put $HOME/packages/anaconda2 as the prefix for the installation path. At the end of the installation, reply "yes" to add the anaconda bin path to your bashrc.
 
-- **PETSc v3.6.4** (http://www.mcs.anl.gov/petsc/). Download petsc-3.6.4.tar.gz and put it in the $HOME/packages folder, go into $HOME/packages/petsc-3.6.4, and run::
+- **PETSc v3.6.4**. Download http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.6.4.tar.gz and untar it in the $HOME/packages folder, go into $HOME/packages/petsc-3.6.4, and run::
 
    sed -i 's/ierr = MPI_Finalize();CHKERRQ(ierr);/\/\/ierr = MPI_Finalize();CHKERRQ(ierr);/g' src/sys/objects/pinit.c
 
@@ -100,77 +108,74 @@ To install the **DAFoam** package:
  
      export PYTHONPATH=$PYTHONPATH:$HOME/repos/
    
-- Get **baseClasses** (https://github.com/mdolab/baseclasses). No need to compile. 
+- Get **baseClasses**. In the "**repos**" folder, Run::
 
-- Get **pyGeo** (https://github.com/mdolab/pygeo). No need to compile.
+     git clone https://github.com/mdolab/baseclasses && cd baseclasses && git checkout 298ac94 && cd ../
+
+- Get **pyGeo**. In the "**repos**" folder, Run::
+
+     git clone https://github.com/mdolab/pygeo && cd pygeo && git checkout 90f4b90 && cd ../
  
-- Get **openFoamMeshReader** (https://github.com/mdolab/openfoammeshreader). No need to compile.   
+- Get **openFoamMeshReader**. In the "**repos**" folder, Run::
 
-- Get **multipoint** (https://github.com/mdolab/multipoint). No need to compile.   
+     git clone https://github.com/mdolab/openfoammeshreader && cd openfoammeshreader && git checkout d53d72d && cd ../
 
-- Get **pySpline** (https://github.com/mdolab/pyspline). Run::
+- Get **multipoint**. In the "**repos**" folder, Run::
+
+     git clone https://github.com/mdolab/multipoint && cd multipoint && git checkout 6818887 && cd ../
+
+- Get **pySpline**. In the "**repos**" folder, Run::
+
+     git clone https://github.com/mdolab/pyspline && cd pyspline && git checkout 30f2340 && cd ../
+  
+  and in the "**pyspline**" folder, run::
    
-     cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk
+     cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk && make
    
-  and::
- 
-     make
-    
-- Get **pyHyp** (https://github.com/mdolab/pyHyp). Run::
+- Get **pyHyp**. In the "**repos**" folder, Run::
+
+     git clone https://github.com/mdolab/pyhyp && cd pyhyp && git checkout 926b3f7 && cd ../
+  
+  and in the "**pyhyp**" folder, run::
    
-     cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk
-    
-  In config.mk, change the flags for cgnslib to::
+     cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && make
 
-     CGNS_INCLUDE_FLAGS=-I$(HOME)/packages/cgnslib_3.2.1/src
-     CGNS_LINKER_FLAGS=-L$(HOME)/packages/cgnslib_3.2.1/src -lcgns
+- Get **cgnsUtilities**. In the "**repos**" folder, Run::
+
+     git clone https://github.com/mdolab/cgnsutilities && cd cgnsutilities && git checkout 3430e04 && cd ../
+  
+  and in the "**cgnsutilities**" folder, run::
    
-  and::
- 
-     make
-
-- Get **cgnsUtilities** (https://github.com/mdolab/cgnsutilities). Run::
-   
-     cp config.mk.info config.mk
-
-  In config.mk, change the flags for cgnslib to::
-
-     CGNS_INCLUDE_FLAGS=-I$(HOME)/packages/cgnslib_3.2.1/src
-     CGNS_LINKER_FLAGS=-L$(HOME)/packages/cgnslib_3.2.1/src -lcgns
-
-  and::
- 
-     make
+     cp config.mk.info config.mk && make
      
   Add this to your bashrc and source it::
    
      export PATH=$PATH:$HOME/repos/cgnsutilities/bin
      
-- Get **IDWarp** (https://github.com/mdolab/idwarp). Run::
+- Get **IDWarp**. In the "**repos**" folder, Run::
+
+     git clone https://github.com/mdolab/idwarp && cd idwarp && git checkout 0149681 && cd ../
+    
+  and in the "**idwarp**" folder, run::
      
-     cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk
-
-  In config.mk, change the flags for cgnslib to::
-
-     CGNS_INCLUDE_FLAGS=-I$(HOME)/packages/cgnslib_3.2.1/src
-     CGNS_LINKER_FLAGS=-L$(HOME)/packages/cgnslib_3.2.1/src -lcgns
-
-  and::
-   
-     make
+     cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && make
      
-- Get **pyOptSparse** (https://github.com/mdolab/pyoptsparse). Run::
+- Get **pyOptSparse**. In the "**repos**" folder, Run::
+
+     git clone https://github.com/mdolab/pyoptsparse && cd pyoptsparse && git checkout 6d2ae0a  && cd ../
+    
+  and in the "**pyoptsparse**" folder, run::
  
      python setup.py install --user
 
 
-4. Download **DAFoam** (https://github.com/mdolab/dafoam) and put it into the $HOME/repos folder. First source the OpenFOAM environmental variables::
+4. Download **DAFoam**. In the "**repos**" folder, Run::
 
-    source $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc
-    
-   Then run::
-  
-    ./Allwmake
+     git clone https://github.com/mdolab/dafoam
+     
+   Then, source the OpenFOAM environmental variables and compile ::
+
+    source $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && ./Allwmake
     
    Next, go to $HOME/repos/dafoam/python/reg_tests, download `input.tar.gz <https://github.com/mdolab/dafoam/raw/master/python/reg_tests/input.tar.gz>`_ and untar it. Finally, run the regression test there::
   
@@ -188,16 +193,7 @@ To install the **DAFoam** package:
     dafoam solidDisplacementDAFoam: Success!
     dafoam turboDAFoam: Success!
   
-   You should see the first "Success" in less than 5 minute. If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam. **NOTE:** The regression tests verify the latest version of DAFoam on Github. However, we use specific old versions for DAFoam's dependencies (e.g., pyGeo, IDWarp, see the following). We recommend using these old versions for the dependencies, which have been routinely tested and verified on Travis::
-
-    Modules              Updated Date    Commit ID 
-    BaseClasses          Apr 17, 2019    298ac94b42ef9b057af4f64b329ca81e730fd79e
-    IDWarp               Apr 17, 2019    0149681f5fb1edbf86f10d4b038c2cc4c88f68a4
-    pyGeo                Apr 17, 2019    90f4b90f98f6f6901f9a724dba2376e7c3c70f4d
-    pySpline             Apr 17, 2019    30f2340d721d63ea279851c98fd2a03277ea609e
-    pyOptSparse          May 17, 2019    6bc17292b9a569300d1f1e44f378f1a452dccc60
-    multipoint           May 09, 2019    68188870d6bb2efcf4e4bfb553757a42fbd68d21
-    OpenFOAMMeshReader   Jun 18, 2019    32358d1772737bf6063fe102a646cb18b4fcc1d5
+   You should see the first "Success" in less than 5 minute. If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam. **NOTE:** The regression tests verify the latest version of DAFoam on Github. However, we use specific old versions for DAFoam's dependencies (e.g., pyGeo, IDWarp).
 
 |
 
@@ -238,7 +234,7 @@ Here is the DAFoam related environmental variable setup that should appear in yo
   # cgns lib
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/packages/cgnslib_3.2.1/src
 
-  # cgns utlis
+  # cgns utilities
   export PATH=$PATH:$HOME/repos/cgnsutilities/bin
 
   # Python path
