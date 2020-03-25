@@ -246,14 +246,18 @@ Here is the DAFoam related environmental variable setup that should appear in yo
 
 To compile your own OpenMPI:
 
-1. Download the OpenMPI-1.10.7 package, untar it by doing::
+1. Download the OpenMPI-1.10.7 package, untar it by doing:
+
+.. code-block:: bash
 
    cd $HOME/packages
    wget https://download.open-mpi.org/release/open-mpi/v1.10/openmpi-1.10.7.tar.gz
    tar -xvf openmpi-1.10.7.tar.gz
    cd openmpi-1.10.7
 
-2. Add this into your bashrc file and source it::
+2. Add this into your bashrc file and source it:
+
+.. code-block:: bash
 
    # -- OpenMPI Installation
    export MPI_INSTALL_DIR=$HOME/packages/openmpi-1.10.7/opt-gfortran
@@ -261,13 +265,17 @@ To compile your own OpenMPI:
    export PATH=$MPI_INSTALL_DIR/bin:$PATH
    export LD_PRELOAD=$MPI_INSTALL_DIR/lib/libmpi.so
 
-3. Finally, configure and build it::
+3. Finally, configure and build it:
+
+.. code-block:: bash
 
    # export CC=icc CXX=icpc F77=ifort FC=ifort  # Only necessary if using non-GCC compiler
    ./configure --prefix=$MPI_INSTALL_DIR
    make all install
 
-4. To verify that paths are as expected run::
+4. To verify that paths are as expected run:
+
+.. code-block:: bash
 
    which mpicc
    echo $MPI_INSTALL_DIR/bin/mpicc
