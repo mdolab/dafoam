@@ -16,7 +16,7 @@ fi
 echo "Downloading the geometry.."
 cd constant
 if [ ! -d NREL6_triSurface.tar.gz ]; then
-  wget --no-check-certificate https://github.com/mdolab/dafoam_files/raw/master/tutorials/NREL6_triSurface.tar.gz &> ../log.download
+  wget --no-check-certificate -O NREL6_triSurface.tar.gz https://umich.box.com/shared/static/gk1423lbdbqj6hqehyfgaqiicws3mugq.gz &> ../log.download
   tar -xvf NREL6_triSurface.tar.gz >> ../log.download
 fi
 cd ../

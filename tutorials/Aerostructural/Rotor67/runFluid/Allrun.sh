@@ -16,12 +16,12 @@ fi
 echo "Downloading the mesh.."
 cd constant
 if [ ! -d polyMesh ]; then
-  wget --no-check-certificate https://github.com/mdolab/dafoam_files/raw/master/tutorials/Rotor67_Fluid_polyMesh.tar.gz &> ../log.download
+  wget --no-check-certificate -O Rotor67_Fluid_polyMesh.tar.gz https://umich.box.com/shared/static/2wiotcvb8n3pusu9u6cgojr5ou7r8dy3.gz &> ../log.download
   tar -xvf Rotor67_Fluid_polyMesh.tar.gz >> ../log.download
 fi
 cd ../../runSolid/constant
 if [ ! -d polyMesh ]; then
-  wget --no-check-certificate https://github.com/mdolab/dafoam_files/raw/master/tutorials/Rotor67_Structure_polyMesh.tar.gz &> ../log.download
+  wget --no-check-certificate -O Rotor67_Structure_polyMesh.tar.gz https://umich.box.com/shared/static/f9otwqcqyq0326av6o4vmmxqpqiqjpyv.gz &> ../log.download
   tar -xvf Rotor67_Structure_polyMesh.tar.gz >> ../log.download
 fi
 cd ../../runFluid/
