@@ -17,13 +17,13 @@ fi
 # generate mesh
 cd constant
 if [ ! -d triSurface ]; then
-  wget --no-check-certificate https://github.com/mdolab/dafoam_files/raw/master/tutorials/JBC_triSurface.tar.gz &> ../log.download
+  wget --no-check-certificate -O JBC_triSurface.tar.gz https://umich.box.com/shared/static/q007vhg3bppwadz4dv3yfxbn660coz5l.gz &> ../log.download
   tar -xvf JBC_triSurface.tar.gz >> ../log.download
 fi
 cd ..
 
 if [ ! -d FFD ]; then
-  wget --no-check-certificate https://github.com/mdolab/dafoam_files/raw/master/tutorials/JBC_FFD.tar.gz &>> log.download
+  wget --no-check-certificate -O JBC_FFD.tar.gz https://umich.box.com/shared/static/7wfpijw4901yzvu7j70c3c4zr3cs2h4n.gz &>> log.download
   tar -xvf JBC_FFD.tar.gz >> log.download
 fi
 

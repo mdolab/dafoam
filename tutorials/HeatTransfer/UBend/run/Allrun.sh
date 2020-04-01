@@ -17,7 +17,7 @@ fi
 # download the FFD folder
 echo "Downloading the FFD.."
 if [ ! -d FFD ]; then
-  wget --no-check-certificate https://github.com/mdolab/dafoam_files/raw/master/tutorials/UBend_FFD.tar.gz &> log.download
+  wget --no-check-certificate -O UBend_FFD.tar.gz https://umich.box.com/shared/static/rwt93cs8ea7kbvxqr1coy5t832v09x89.gz &> log.download
   tar -xvf UBend_FFD.tar.gz >> log.download
 fi
 

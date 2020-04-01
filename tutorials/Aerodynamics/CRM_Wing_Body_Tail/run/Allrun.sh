@@ -19,7 +19,7 @@ fi
 echo "Downloading the DPW4 geometry.."
 cd constant
 if [ ! -d triSurface ]; then
-  wget --no-check-certificate https://github.com/mdolab/dafoam_files/raw/master/tutorials/DPW4_triSurface.tar.gz &> ../log.download
+  wget --no-check-certificate -O DPW4_triSurface.tar.gz https://umich.box.com/shared/static/jb2cq6ckdbfad85tbengcnaki3rojfe2.gz &> ../log.download
   tar -xvf DPW4_triSurface.tar.gz >> ../log.download
 fi
 cd ..

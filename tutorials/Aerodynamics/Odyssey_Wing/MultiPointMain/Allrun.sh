@@ -29,7 +29,7 @@ copyFC ()
 # pre-processing
 echo "Downloading the surface mesh.."
 if [ ! -f surfaceMesh.cgns ]; then
-  wget --no-check-certificate https://github.com/mdolab/dafoam_files/raw/master/tutorials/Odyssey_surfaceMesh.cgns.tar.gz &> log.download
+  wget --no-check-certificate -O Odyssey_surfaceMesh.cgns.tar.gz https://umich.box.com/shared/static/ky6ritzm8eyq5vmi16q1719jxgt7i9pe.gz &> log.download
   tar -xvf Odyssey_surfaceMesh.cgns.tar.gz >> log.download
 fi
 echo "Generating mesh.."
