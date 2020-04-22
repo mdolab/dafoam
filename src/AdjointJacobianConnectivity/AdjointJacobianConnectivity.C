@@ -2158,6 +2158,7 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
     MatSeqAIJSetPreallocation(stateBoundaryCon_,1000,NULL);
     MatSetOption(stateBoundaryCon_, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(stateBoundaryCon_);
+    MatZeroEntries(stateBoundaryCon_);
 
     Mat stateBoundaryConTmp;
     MatCreate(PETSC_COMM_WORLD,&stateBoundaryConTmp);
@@ -2167,8 +2168,20 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
     MatSeqAIJSetPreallocation(stateBoundaryConTmp,1000,NULL);
     MatSetOption(stateBoundaryConTmp, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(stateBoundaryConTmp);
+    MatZeroEntries(stateBoundaryConTmp);
 
     // loop over the patches and set the boundary connnectivity
+    // Add connectivity in reverse so that the nearer stencils take priority
+
+    // NOTE: we need to start with level 3, then to 2, then to 1, and flush the matrix
+    // for each level before going to another level This is necessary because
+    // we need to make sure a proper INSERT_VALUE behavior in MatSetValues
+    // i.e., we found that if you use INSERT_VALUE to insert different values (e.g., 1, 2, and 3) 
+    // to a same rowI and colI in MatSetValues, and call Mat_Assembly in the end. The, the actual
+    // value in rowI and colI is kind of random, it does not depend on which value is
+    // insert first, in this case, it can be 1, 2, or 3... This happens only in parallel and 
+    // only happens after Petsc-3.8.4  
+
     const polyBoundaryMesh& patches = mesh_.boundaryMesh();
     forAll(patches, patchI)
     {
@@ -2192,10 +2205,6 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
 
                 // This cell is already a neighbour cell, so we need this plus two
                 // more levels
-
-                // Add connectivity in reverse so that the nearer stencils take
-                // priority
-
                 // Start with next to nearest neighbours
                 forAll(mesh_.cellCells()[idxN],cellI)
                 {
@@ -2211,6 +2220,34 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
                         }   
                     }
                 }
+            }
+        }
+    }
+
+    MatAssemblyBegin(stateBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyBegin(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
 
                 // now add the nearest neighbour cells, add all vars for level 2 except for surfaceScalarStates
                 forAll(adjIdx_.adjStateNames,idxI)
@@ -2222,7 +2259,34 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
                         this->addConMatNeighbourCells(stateBoundaryConTmp,gRow,idxN,stateName,2.0);
                     }
                 }
+            }
+        }
+    }
 
+    MatAssemblyBegin(stateBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyBegin(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
                 // and add the surfaceScalarStates for idxN
                 forAll(adjReg_.surfaceScalarStates,idxI)
                 {
@@ -2230,7 +2294,34 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
                     this->addConMatCellFaces(stateBoundaryCon_,gRow,idxN,stateName,10.0); // for faces, its connectivity level is 10
                     this->addConMatCellFaces(stateBoundaryConTmp,gRow,idxN,stateName,10.0);
                 }
-          
+            }
+        }
+    }
+
+    MatAssemblyBegin(stateBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyBegin(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];          
                 // Add all the cell states for idxN
                 forAll(adjIdx_.adjStateNames,idxI)
                 {
@@ -2241,7 +2332,6 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
                         this->addConMatCell(stateBoundaryConTmp,gRow,idxN,stateName,1.0);
                     }
                 }
-
             }
         }
     }
@@ -2251,6 +2341,7 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
     
     // Now repeat loop adding boundary connections from other procs using matrix
     // created in the first loop.
+    // Add connectivity in reverse so that the nearer stencils take priority
     forAll(patches, patchI)
     {
         const polyPatch& pp = patches[patchI];
@@ -2273,10 +2364,6 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
 
                 // This cell is already a neighbour cell, so we need this plus two
                 // more levels
-
-                // Add connectivity in reverse so that the nearer stencils take
-                // priority
-
                 // Start with nearest neighbours
                 forAll(mesh_.cellCells()[idxN],cellI)
                 {
@@ -2286,12 +2373,70 @@ void AdjointJacobianConnectivity::setupStateBoundaryCon()
                     List< List<word> > connectedStates(0);
                     this->addBoundaryFaceConnections(stateBoundaryConTmp,gRow,localCell,val1,connectedStates,0);  
                 }
+            }
+        }
+    }
 
+    MatAssemblyBegin(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
                 // now add the neighbour cells
                 labelList vals2= {2,3};
                 // pass a zero list to add all states
                 List< List<word> > connectedStates(0); 
                 this->addBoundaryFaceConnections(stateBoundaryConTmp,gRow,idxN,vals2,connectedStates,0);
+
+            }
+        }
+    }
+
+    MatAssemblyBegin(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    // level 2 again, because the previous call will mess up level 2 con
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+                // now add the neighbour cells
+                labelList vals1= {2};
+                // pass a zero list to add all states
+                List< List<word> > connectedStates(0); 
+                this->addBoundaryFaceConnections(stateBoundaryConTmp,gRow,idxN,vals1,connectedStates,0);
 
             }
         }
@@ -2528,6 +2673,9 @@ void AdjointJacobianConnectivity::setupStateCyclicAMICon()
         }
     }
 
+    MatAssemblyBegin(stateCyclicAMICon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMICon_,MAT_FLUSH_ASSEMBLY);
+
     // level 2
     forAll(patches, patchI)
     {
@@ -2560,6 +2708,9 @@ void AdjointJacobianConnectivity::setupStateCyclicAMICon()
             }
         }
     }
+
+    MatAssemblyBegin(stateCyclicAMICon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMICon_,MAT_FLUSH_ASSEMBLY);
 
     // level 2 again, because the previous call will mess up level 2 con
     forAll(patches, patchI)
@@ -2714,6 +2865,9 @@ void AdjointJacobianConnectivity::combineAllStateCons()
         }
     }
 
+    MatAssemblyBegin(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
     // level 2 and 3
     forAll(patches, patchI)
     {
@@ -2745,7 +2899,10 @@ void AdjointJacobianConnectivity::combineAllStateCons()
         }
     }
 
-    // level 2 again
+    MatAssemblyBegin(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    // level 2 again, because the previous call will mess up level 2 con
     forAll(patches, patchI)
     {
         const polyPatch& pp = patches[patchI];
@@ -3185,7 +3342,7 @@ void AdjointJacobianConnectivity::addBoundaryFaceConnections
             }
 
         }
-        
+
     }
     
     return;
@@ -3575,6 +3732,15 @@ void AdjointJacobianConnectivity::combineStateBndCon
     // We need to do another loop adding boundary connections from other procs using ConMat
     // this will add missing connectivity if the stateBoundaryCon stencil extends through
     // three more more processors 
+    // NOTE: we need to start with level 3, then to 2, then to 1, and flush the matrix
+    // for each level before going to another level This is necessary because
+    // we need to make sure a proper INSERT_VALUE behavior in MatSetValues
+    // i.e., we found that if you use INSERT_VALUE to insert different values (e.g., 1, 2, and 3) 
+    // to a same rowI and colI in MatSetValues, and call Mat_Assembly in the end. The, the actual
+    // value in rowI and colI is kind of random, it does not depend on which value is
+    // insert first, in this case, it can be 1, 2, or 3... This happens only in parallel and 
+    // only happens after Petsc-3.8.4  
+    
     const polyBoundaryMesh& patches = mesh_.boundaryMesh();
     forAll(patches, patchI)
     {
@@ -3599,11 +3765,56 @@ void AdjointJacobianConnectivity::combineStateBndCon
                     this->addBoundaryFaceConnections(*stateBoundaryConTmp,gRow,localCell,val1,connectedStates,0);  
 
                 }
+            }
+        }
+    }
+    MatAssemblyBegin(*stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(*stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        label faceIStart = pp.start();
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+                label idxN = pFaceCells[faceI];
                 // now add the neighbour cells
                 labelList vals2= {2,3};
                 // pass a zero list to add all states
                 List< List<word> > connectedStates(0); 
                 this->addBoundaryFaceConnections(*stateBoundaryConTmp,gRow,idxN,vals2,connectedStates,0);
+
+            }
+        }
+    }
+    MatAssemblyBegin(*stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(*stateBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    // level 2 again, because the previous call will mess up level 2 con
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        label faceIStart = pp.start();
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+                label idxN = pFaceCells[faceI];
+                // now add the neighbour cells
+                labelList vals1= {2};
+                // pass a zero list to add all states
+                List< List<word> > connectedStates(0); 
+                this->addBoundaryFaceConnections(*stateBoundaryConTmp,gRow,idxN,vals1,connectedStates,0);
 
             }
         }
