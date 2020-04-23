@@ -2,10 +2,15 @@
 # Clean DAFoam
 
 rm *.pyc
+rm -rf __pycache__
 rm python/*.pyc
+rm -rf python/__pycache__
 rm python/scripts/*.pyc
+rm -rf python/scripts/__pycache__
 rm python/reg_tests/*.pyc
+rm -rf python/reg_tests/__pycache__
 rm python/reg_tests/tests/*.pyc
+rm -rf python/reg_tests/tests/__pycache__
 rm python/reg_tests/dafoam*reg*
 
 if [ -z "$DF_CleanDoc" ]; then
