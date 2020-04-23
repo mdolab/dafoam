@@ -26,11 +26,11 @@ def aeroFuncs(xDV):
     """
     
     if gcomm.rank == 0:
-        print ('\n')
-        print ('+--------------------------------------------------------------------------+')
-        print ('|                    Evaluating Objective Function                         |')
-        print ('+--------------------------------------------------------------------------+')
-        print ('Design Variables: ',xDV)
+        print('\n')
+        print('+--------------------------------------------------------------------------+')
+        print('|                    Evaluating Objective Function                         |')
+        print('+--------------------------------------------------------------------------+')
+        print('Design Variables: ',xDV)
     
     a = time.time()
 
@@ -54,16 +54,16 @@ def aeroFuncs(xDV):
     # note: we first offset then scale!
     if not len(objFuncOffset) == 0:
         if gcomm.rank == 0:
-            print ('Offseting objective functions: ',objFuncOffset)
+            print('Offseting objective functions: ',objFuncOffset)
         for key in funcs.keys():
-            if key in objFuncOffset.keys():
+            if key in list(objFuncOffset.keys()):
                 origVal = funcs[key]
                 funcs[key] = origVal+objFuncOffset[key]
     if not len(objFuncScale) == 0:
         if gcomm.rank == 0:
-            print ('scaling objective functions: ',objFuncScale)
+            print('scaling objective functions: ',objFuncScale)
         for key in funcs.keys():
-            if key in objFuncScale.keys():
+            if key in list(objFuncScale.keys()):
                 origVal = funcs[key]
                 funcs[key] = origVal*objFuncScale[key]
 
@@ -71,8 +71,8 @@ def aeroFuncs(xDV):
     
     # Print the current solution to the screen
     if gcomm.rank == 0:
-        print ('Objective Functions: ',funcs)
-        print ('Flow Runtime: ',b-a)
+        print('Objective Functions: ',funcs)
+        print('Flow Runtime: ',b-a)
         
     fail = funcs['fail']
         
@@ -84,11 +84,11 @@ def aeroFuncs(xDV):
 def aeroFuncsMP(xDV):
     
     if gcomm.rank == 0:
-        print ('\n')
-        print ('+--------------------------------------------------------------------------+')
-        print ('|                    Evaluating Objective Function                         |')
-        print ('+--------------------------------------------------------------------------+')
-        print ('Design Variables: ',xDV)
+        print('\n')
+        print('+--------------------------------------------------------------------------+')
+        print('|                    Evaluating Objective Function                         |')
+        print('+--------------------------------------------------------------------------+')
+        print('Design Variables: ',xDV)
         
     fail = False
     
@@ -101,9 +101,9 @@ def aeroFuncsMP(xDV):
     DVGeo.setDesignVars(xDV)
     CFDSolver.setDesignVars(xDV)
     
-    for i in xrange(nFlowCases):       
+    for i in range(nFlowCases):       
         if gcomm.rank == 0:
-            print ('--Solving Flow Configuratioin %d--'%i)
+            print('--Solving Flow Configuratioin %d--'%i)
         
         # funcs dict for each flow configuration    
         funcs = {}
@@ -124,7 +124,7 @@ def aeroFuncsMP(xDV):
 
         # Print the current solution to the screen
         if gcomm.rank == 0:
-            print ('Objective Functions: ',funcs)
+            print('Objective Functions: ',funcs)
     
         if funcs['fail'] == True:
             fail = True
@@ -142,11 +142,11 @@ def aeroFuncsMP(xDV):
     
     # Print the current solution to the screen
     if gcomm.rank == 0:
-        print ('Objective Functions MultiPoint: ',funcsMP)
+        print('Objective Functions MultiPoint: ',funcsMP)
     
     b = time.time()
     if gcomm.rank == 0:
-        print 'Flow runtime: ',b-a
+        print('Flow runtime: ',b-a)
     
     # flush the output to the screen/file
     sys.stdout.flush()   
@@ -159,10 +159,10 @@ def aeroFuncsSens(xDV,funcs):
     """
     
     if gcomm.rank == 0:
-        print ('\n')
-        print ('+--------------------------------------------------------------------------+')
-        print ('|                Evaluating Objective Function Sensitivity                 |')
-        print ('+--------------------------------------------------------------------------+')
+        print('\n')
+        print('+--------------------------------------------------------------------------+')
+        print('|                Evaluating Objective Function Sensitivity                 |')
+        print('+--------------------------------------------------------------------------+')
 
     a = time.time()
    
@@ -182,9 +182,9 @@ def aeroFuncsSens(xDV,funcs):
     # note: we dont need to offset!
     if not len(objFuncScale) == 0:
         if gcomm.rank == 0:
-            print ('scaling objective functions sensitivities: ',objFuncScale)
+            print('scaling objective functions sensitivities: ',objFuncScale)
         for key in funcsSens.keys():
-            if key in objFuncScale.keys():
+            if key in list(objFuncScale.keys()):
                 for key1 in funcsSens[key].keys():
                     nDVs = len(funcsSens[key][key1]) 
                     if nDVs > 1:
@@ -212,10 +212,10 @@ def aeroFuncsSens(xDV,funcs):
 def aeroFuncsSensMP(xDV,funcs):
 
     if gcomm.rank == 0:
-        print ('\n')
-        print ('+--------------------------------------------------------------------------+')
-        print ('|                Evaluating Objective Function Sensitivity                 |')
-        print ('+--------------------------------------------------------------------------+')
+        print('\n')
+        print('+--------------------------------------------------------------------------+')
+        print('|                Evaluating Objective Function Sensitivity                 |')
+        print('+--------------------------------------------------------------------------+')
         
     fail = False
 
@@ -224,10 +224,10 @@ def aeroFuncsSensMP(xDV,funcs):
     # Setup an empty dictionary for the evaluated derivative values
     funcsSensMP={}
     
-    for i in xrange(nFlowCases):
+    for i in range(nFlowCases):
     
         if gcomm.rank == 0:
-            print ('--Solving Adjoint for Flow Configuration %d--'%i)
+            print('--Solving Adjoint for Flow Configuration %d--'%i)
         
         funcsSens={}
 
@@ -261,7 +261,7 @@ def aeroFuncsSensMP(xDV,funcs):
 
     b = time.time()
     if gcomm.rank == 0:
-        print 'Adjoint runtime: ',b-a
+        print('Adjoint runtime: ',b-a)
     
     return funcsSensMP
     
@@ -269,12 +269,12 @@ def aeroFuncsSensMP(xDV,funcs):
 def objCon(funcs, printOK):
 
     funcs['obj'] = 0.0
-    for i in xrange(nFlowCases):
+    for i in range(nFlowCases):
         funcs['obj'] += funcs['fc%d_fx'%i]*MPWeights[i]
         #funcs['fc%d_fy_con'%i] = funcs['fc%d_fy'%i] - CL_star[i]
     if printOK:
        if gcomm.rank == 0:
-           print 'MultiPoint Objective Functions:', funcs
+           print('MultiPoint Objective Functions:', funcs)
     return funcs
         
 def run():
@@ -288,14 +288,14 @@ def run():
     funcs,fail = aeroFuncs(xDV)
     
     if gcomm.rank == 0:
-        print funcs
+        print(funcs)
         
     # Evaluate the sensitivities
     funcsSens = {}
     funcsSens,fail = aeroFuncsSens(xDV,funcs)
     
     if gcomm.rank == 0:
-        print funcsSens
+        print(funcsSens)
 
 def plotSensMap(runAdjoint=True):
     """
@@ -313,14 +313,14 @@ def plotSensMap(runAdjoint=True):
         funcs,fail = aeroFuncs(xDV)
         
         if gcomm.rank == 0:
-            print funcs
+            print(funcs)
             
         # Evaluate the sensitivities
         funcsSens = {}
         funcsSens,fail = aeroFuncsSens(xDV,funcs)
         
         if gcomm.rank == 0:
-            print funcsSens
+            print(funcsSens)
     
     CFDSolver.writeSurfaceSensitivityMap(evalFuncs=evalFuncs,groupName=CFDSolver.getOption('designsurfacefamily'))
 
@@ -363,7 +363,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
         CFDSolver.evalFunctionsSens(funcsSens,evalFuncs=evalFuncs)
 
         if gcomm.rank == 0:
-            print funcsSens
+            print(funcsSens)
             fOut.write('Adjoint Results:\n')
             fOut.write('NormStates: '+str(normStates)+' DeltaU: '+str(deltaState)+' DeltaUIn: '+str(deltaUIn)+'\n')
         
@@ -382,7 +382,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
         CFDSolver()
         CFDSolver.evalFunctions(funcp,evalFuncs=evalFuncs)
         if gcomm.rank == 0:
-            print rotRad
+            print(rotRad)
             print(funcp)
         
         rotRad[component] -= 2.0*epsFD
@@ -391,7 +391,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
         CFDSolver()
         CFDSolver.evalFunctions(funcm,evalFuncs=evalFuncs)
         if gcomm.rank == 0:
-            print rotRad
+            print(rotRad)
             print(funcm)
 
         gradFD={}
@@ -399,7 +399,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
             gradFD[funcName] = ( funcp[funcName]-funcm[funcName] ) / 2.0/epsFD
             
         if gcomm.rank == 0:
-            print gradFD
+            print(gradFD)
             for funcName in sorted(evalFuncs):
                 line = funcName+' '+str(gradFD[funcName])+'\n'
                 fOut.write(line)
@@ -437,7 +437,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
         CFDSolver()
         CFDSolver.evalFunctions(funcp,evalFuncs=evalFuncs) 
         if gcomm.rank == 0:
-            print flowBCs
+            print(flowBCs)
             print(funcp)
         if component ==-1: # pressure
             flowBCs[bcKey]['pressure'][0] = stateRef-epsFD
@@ -448,7 +448,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
         CFDSolver()
         CFDSolver.evalFunctions(funcm,evalFuncs=evalFuncs) 
         if gcomm.rank == 0:
-            print flowBCs
+            print(flowBCs)
             print(funcm)
         if component == -1:
             flowBCs[bcKey]['pressure'][0] = stateRef
@@ -461,7 +461,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
             gradFD[funcName] = ( funcp[funcName]-funcm[funcName] ) / 2.0/epsFD
             
         if gcomm.rank == 0:
-            print gradFD
+            print(gradFD)
             for funcName in sorted(evalFuncs):
                 line = funcName+' '+str(gradFD[funcName])+'\n'
                 fOut.write(line)
@@ -495,7 +495,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
         CFDSolver()
         CFDSolver.evalFunctions(funcp,evalFuncs=evalFuncs) 
         if gcomm.rank == 0:
-            print flowBCs
+            print(flowBCs)
             print(funcp)
         
         flowBCs[bcKey]['value'][component] = stateRef-epsFD
@@ -504,7 +504,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
         CFDSolver()
         CFDSolver.evalFunctions(funcm,evalFuncs=evalFuncs) 
         if gcomm.rank == 0:
-            print flowBCs
+            print(flowBCs)
             print(funcm)
         
         flowBCs[bcKey]['value'][component] = stateRef
@@ -515,7 +515,7 @@ def testSensUIn(normStatesList=[True],deltaStateList=[1e-5],deltaUInList=[1e-5],
             gradFD[funcName] = ( funcp[funcName]-funcm[funcName] ) / 2.0/epsFD
             
         if gcomm.rank == 0:
-            print gradFD
+            print(gradFD)
             for funcName in sorted(evalFuncs):
                 line = funcName+' '+str(gradFD[funcName])+'\n'
                 fOut.write(line)
@@ -714,7 +714,7 @@ def xDV2xV():
     f.close()
     newDV = {}
     for line in lines:
-	cols = line.split()
+        cols = line.split()
         if not cols: # empty
             break
         newDV[cols[0]]=[]
@@ -727,7 +727,7 @@ def xDV2xV():
     xDV = DVGeo.getValues()
 
     if gcomm.rank==0:
-        print("DVGeo initial ",xDV)    
+        print("DVGeo initial ",xDV)
 
     for key in xDV:
         length = len(xDV[key])

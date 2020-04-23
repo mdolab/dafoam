@@ -32,7 +32,7 @@ def outputSparsity(mat):
                 f.write("1  #RADIUS\n")
 
     f.close()
-    print ("file written to "+mat+'Sparsity.dat')
+    print("file written to "+mat+'Sparsity.dat')
 
 if __name__ == '__main__':
     print("\nUsage: python MatSparsity matName")

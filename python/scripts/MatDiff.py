@@ -37,7 +37,7 @@ def evalMatDiff(mat1,mat2,diffTol=1e-16):
     maxColI = -1e12
     l2norm=0.0
     foundDiff=0
-    for i in xrange(Istart, Iend):
+    for i in range(Istart, Iend):
         rowVals = jacMatDiff.getRow(i)
         nCols = len(rowVals[0])
         for j in range(nCols):
