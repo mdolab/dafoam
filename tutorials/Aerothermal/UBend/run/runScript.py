@@ -349,13 +349,13 @@ if task.lower()=='opt':
     #optProb.addCon('CL',lower=0.5,upper=0.5,scale=1)
 
     if gcomm.rank == 0:
-        print optProb
+        print(optProb)
 
     opt = OPT(args.opt, options=optOptions)
     histFile = os.path.join(outputDirectory, '%s_hist.hst'%args.opt)
     sol = opt(optProb, sens=objConSens, storeHistory=histFile)
     if gcomm.rank == 0:
-        print sol
+        print(sol)
 
 
 elif task.lower() == 'run':

@@ -6,6 +6,7 @@ This script will read the experimental profile ExpUProfile.dat and interpolate t
 according to the wall distance output. You can copy the generated UInNonUniformField.dat to
 the inlet patch of U
 '''
+from __future__ import absolute_import
 import matplotlib.pyplot as plt
 from scipy import interpolate
 import numpy
