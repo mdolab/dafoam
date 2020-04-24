@@ -100,10 +100,10 @@ for i in range(nDims):
     objFuncStd /= nCount   
     objFuncStd = objFuncStd**0.5
     
-    print ('\nIn '+args_logName[i])
-    print ('Averaging objective function from step: '+str(stepStart))
-    print ('Mean: '+str(objFuncMean))
-    print ('Standard deviation: '+str(objFuncStd))
+    print('\nIn '+args_logName[i])
+    print('Averaging objective function from step: '+str(stepStart))
+    print('Mean: '+str(objFuncMean))
+    print('Standard deviation: '+str(objFuncStd))
 
     if args.plot:
         plt.plot(iteration,objFunc,label=args_legend[i])

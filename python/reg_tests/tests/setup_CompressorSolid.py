@@ -50,7 +50,7 @@ def runTests(mode,defOpts,testInfo):
             funcs = {}
             CFDSolver.evalFunctions(funcs, evalFuncs=evalFuncs)
             if MPI.COMM_WORLD.rank == 0:
-                print 'Eval Functions:'
+                print('Eval Functions:')
                 reg_write_dict(funcs, 1e-10, 1e-10)
 
             if mode=='test':
@@ -67,7 +67,7 @@ def runTests(mode,defOpts,testInfo):
                                 funcsSens[key1][key2]=numpy.delete( funcsSens[key1][key2],2 )
                                 funcsSens[key1][key2]=numpy.delete( funcsSens[key1][key2],1 )
                 if MPI.COMM_WORLD.rank == 0: 
-                    print 'Eval Functions Sens:'
+                    print('Eval Functions Sens:')
                     reg_write_dict(funcsSens, 1e-6, 1e-10)
                 MPI.COMM_WORLD.Barrier()
     
@@ -96,7 +96,7 @@ def runTests(mode,defOpts,testInfo):
                 CFDSolver()
                 CFDSolver.evalFunctions(funcp,evalFuncs=evalFuncs)
                 if MPI.COMM_WORLD.rank == 0:
-                    print flowBCs
+                    print(flowBCs)
                     print(funcp)
 
                 # perturb -epsUin
@@ -106,7 +106,7 @@ def runTests(mode,defOpts,testInfo):
                 CFDSolver()
                 CFDSolver.evalFunctions(funcm,evalFuncs=evalFuncs)
                 if MPI.COMM_WORLD.rank == 0:
-                    print flowBCs
+                    print(flowBCs)
                     print(funcm)
 
                 # reset perturbation    
@@ -121,7 +121,7 @@ def runTests(mode,defOpts,testInfo):
                     sys.stdout.flush()
 
                 if MPI.COMM_WORLD.rank == 0: 
-                    print 'Eval Functions Sens:'
+                    print('Eval Functions Sens:')
                     reg_write_dict(funcsSensFD, 1e-6, 1e-10)
                 MPI.COMM_WORLD.Barrier()
 

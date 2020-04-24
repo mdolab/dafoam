@@ -60,16 +60,16 @@ for i in range(len(testFiles)):
     
         # Set the proper return codes for the script running this:
         if res == 0: #reg.REG_FILES_MATCH
-            print '%s %s: Success!'%(module_name,testName)
+            print('%s %s: Success!'%(module_name,testName))
         
         elif res == 1: #reg.REG_FILES_DO_NOT_MATCH
-            print '%s %s: Failure!'%(module_name,testName)
+            print('%s %s: Failure!'%(module_name,testName))
             if not nodiff:
                 os.system('%s refs/%s_reg_%s.ref refs/%s_reg_%s'%(diff_cmd, module_name,testName,module_name,testName))
             masterRes += 1
             
         elif res == -1: #reg.REG_ERROR
-            print '%s: Error in regression. Missing files.'%(module_name)
+            print('%s: Error in regression. Missing files.'%(module_name))
             masterRes += 1
         
         # Concentenate outputs for reference if it failed:

@@ -338,7 +338,7 @@ def aeroFuncsMP(xDV):
     
     b = time.time()
     if gcomm.rank == 0:
-        print 'Flow runtime: ',b-a
+        print('Flow runtime: ',b-a)
     
     # flush the output to the screen/file
     sys.stdout.flush()   
@@ -421,7 +421,7 @@ def aeroFuncsSensMP(xDV,funcs):
 
     b = time.time()
     if gcomm.rank == 0:
-        print 'Adjoint runtime: ',b-a
+        print('Adjoint runtime: ',b-a)
     
     return funcsSensMP
 
@@ -434,7 +434,7 @@ def objCon(funcs, printOK):
         funcs['fc%d_CL_con'%i] = funcs['fc%d_CL'%i] - CL_star[i]
     if printOK:
        if gcomm.rank == 0:
-           print 'MultiPoint Objective Functions:', funcs
+           print('MultiPoint Objective Functions:', funcs)
     return funcs
 
 # =================================================================================================
@@ -453,7 +453,7 @@ if task.lower()=='opt':
         optProb.addCon('fc%d_CL_con'%i, lower=0.0, upper=0.0, scale=1.0)
     
     if gcomm.rank == 0:
-        print optProb
+        print(optProb)
 
     # The MP object needs the 'obj' and 'sens' function for each proc set,
     # the optimization problem and what the objcon function is:
@@ -470,7 +470,7 @@ if task.lower()=='opt':
     histFile = os.path.join(outputDirectory, '%s_hist.hst'%args.opt)
     sol = opt(optProb, MP.sens, storeHistory=histFile)
     if gcomm.rank == 0:
-        print sol
+        print(sol)
 
 elif task.lower() == 'solvecl':
     

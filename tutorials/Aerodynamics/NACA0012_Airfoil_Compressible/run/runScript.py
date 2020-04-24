@@ -323,8 +323,8 @@ def aeroFuncs(xDV):
 
     # Print the current solution to the screen
     if gcomm.rank == 0:
-        print ('Objective Functions: ',funcs)
-        print ('Flow Runtime: ',b-a)
+        print('Objective Functions: ',funcs)
+        print('Flow Runtime: ',b-a)
 
     fail = funcs['fail']
 
@@ -406,13 +406,13 @@ if task.lower()=='opt':
     optProb.addCon('CL',lower=CL_star,upper=CL_star,scale=1)
 
     if gcomm.rank == 0:
-        print optProb
+        print(optProb)
 
     opt = OPT(args.opt, options=optOptions)
     histFile = os.path.join(outputDirectory, '%s_hist.hst'%args.opt)
     sol = opt(optProb, sens=aeroFuncsSens, storeHistory=histFile)
     if gcomm.rank == 0:
-        print sol
+        print(sol)
 
 elif task.lower() == 'run':
 
@@ -452,7 +452,7 @@ elif task.lower() == 'solvecl':
             print('alpha: %f, CL: %f'%(alpha0.real,CL0))
         if abs(CL0-CL_star)/CL_star<1e-5:
             if gcomm.rank==0:
-                print ("Completed! alpha = %f"%alpha0.real)
+                print("Completed! alpha = %f"%alpha0.real)
             break
         # compute sens
         eps = 1e-2

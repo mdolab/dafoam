@@ -15,9 +15,9 @@ import numpy as np
 
 def printHeader(testName):
     if MPI.COMM_WORLD.rank == 0:
-        print '+' + '-'*78 + '+'
-        print '| Test Name: ' + '%-66s'%testName + '|'
-        print '+' + '-'*78 + '+'
+        print('+' + '-'*78 + '+')
+        print('| Test Name: ' + '%-66s'%testName + '|')
+        print('+' + '-'*78 + '+')
 
 printHeader('calcDeltaVolPointMat')
 sys.stdout.flush()
@@ -121,7 +121,7 @@ def runTests(defOpts):
             print('%s and %s have different values!'%(file1,file2))
             output['deltaVolumeMatPass']=0
     if MPI.COMM_WORLD.rank == 0:
-        print 'Eval Functions:'
+        print('Eval Functions:')
         reg_write_dict(output, 1e-10, 1e-10)
     
     if MPI.COMM_WORLD.rank == 0:

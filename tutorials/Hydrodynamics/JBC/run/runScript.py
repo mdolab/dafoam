@@ -351,13 +351,13 @@ if task.lower()=='opt':
     # Add physical constraints
 
     if gcomm.rank == 0:
-        print optProb
+        print(optProb)
 
     opt = OPT(args.opt, options=optOptions)
     histFile = os.path.join(outputDirectory, '%s_hist.hst'%args.opt)
     sol = opt(optProb, sens=objConSens, storeHistory=histFile)
     if gcomm.rank == 0:
-        print sol
+        print(sol)
 
 elif task.lower() == 'run':
 

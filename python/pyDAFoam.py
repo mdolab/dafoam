@@ -87,7 +87,7 @@ class PYDAFOAM(AeroSolver):
         # If 'options' is not None, go through and make sure all keys
         # are lower case:
         if options is not None:
-            for key in options.keys():
+            for key in list(options.keys()):
                 options[key.lower()] = options.pop(key)
         else:
             raise Error('The \'options\' keyword argument must be passed \
@@ -1095,7 +1095,7 @@ class PYDAFOAM(AeroSolver):
 
         nCoords = self.comm.allgather(nCoords)
         offset = 0
-        for i in xrange(self.comm.rank):
+        for i in range(self.comm.rank):
             offset += nCoords[i]
 
         meshInd = np.arange(nCoords[self.comm.rank])+offset
@@ -2107,7 +2107,7 @@ class PYDAFOAM(AeroSolver):
         res = self._getSolution()
 
         if self.comm.rank == 0:
-            print('keys', res.keys())
+            print('keys', list(res.keys()))
         if evalFuncs is None:
             print('evalFuncs not set, exiting...')
             sys.exit(0)
@@ -2117,10 +2117,10 @@ class PYDAFOAM(AeroSolver):
 
         for f in evalFuncs:
             fname = self.possibleObjectives[f]
-            if f in res.keys():
+            if f in list(res.keys()):
                 key = f
                 funcs[key] = res[f]
-            elif fname in res.keys():
+            elif fname in list(res.keys()):
                 key = fname
                 funcs[key] = res[fname]
             else:
@@ -2640,7 +2640,7 @@ class PYDAFOAM(AeroSolver):
                 # reset xDvDot
                 xDvDot[key][i] -= 1.0e6  # reset the perturbation
                 # assign the delta vol coords to the mat
-                for idx in xrange(Istart, Iend):
+                for idx in range(Istart, Iend):
                     idxRel = idx-Istart
                     deltaVal = xVDot[idxRel] * epsFFD / 1.0e6  # scale the result back
                     if abs(deltaVal) > deltaVPointThreshold:  # a threshold
@@ -2728,7 +2728,7 @@ class PYDAFOAM(AeroSolver):
                 # get the new vol points
                 newVolPoints = self.getVolumePoints()
                 # assign the delta vol coords to the mat
-                for idx in xrange(Istart, Iend):
+                for idx in range(Istart, Iend):
                     idxRel = idx-Istart
                     deltaVal = newVolPoints[idxRel] - oldVolPoints[idxRel]
                     if abs(deltaVal) > deltaVPointThreshold:  # a threshold
@@ -2803,7 +2803,7 @@ class PYDAFOAM(AeroSolver):
         viewer = PETSc.Viewer().createBinary(fileName, comm=PETSc.COMM_WORLD)
         sensXv.load(viewer)
 
-        for idx in xrange(Istart, Iend):
+        for idx in range(Istart, Iend):
             idxRel = idx-Istart
             tJtX[idxRel] = sensXv[idx]
         # end
@@ -3060,9 +3060,9 @@ class PYDAFOAM(AeroSolver):
             # check that this isn't an empty boundary
             if nFace > 0:
                 # loop over the faces and add them to the connectivity and faceSizes array
-                for iFace in xrange(nFace):
+                for iFace in range(nFace):
                     face = copy.copy(bc['facesRed'][iFace])
-                    for i in xrange(len(face)):
+                    for i in range(len(face)):
                         face[i] += pointOffset
                     conn.extend(face)
                     faceSizes.append(len(face))
@@ -3308,7 +3308,7 @@ class PYDAFOAM(AeroSolver):
 
             # now create the reverse dictionary to connect the reduced set with the original
             inverseInd = {}
-            for i in xrange(len(indices)):
+            for i in range(len(indices)):
                 inverseInd[indices[i]] = i
 
             # Now loop back over the faces and store the connectivity in terms of the reduces index set
@@ -3976,7 +3976,7 @@ class PYDAFOAM(AeroSolver):
 
                 # loop over the faces
                 connCounter = 0
-                for iFace in xrange(len(faceSizes)):
+                for iFace in range(len(faceSizes)):
                     # Get the number of nodes on this face
                     faceSize = faceSizes[iFace]
                     faceNodes = conn[connCounter:connCounter+faceSize]
@@ -3984,7 +3984,7 @@ class PYDAFOAM(AeroSolver):
                     # Start by getting the centerpoint and the sens at the centerpoint
                     ptSum = [0, 0, 0]
                     sensSum = [0, 0, 0]
-                    for i in xrange(faceSize):
+                    for i in range(faceSize):
                         idx = faceNodes[i]
                         ptSum += pts[idx]
                         # just get the sum of dIdx at the centerpoint
@@ -3995,7 +3995,7 @@ class PYDAFOAM(AeroSolver):
                     # Now go around the face and add a triangle for each adjacent pair
                     # of points. This assumes an ordered connectivity from the
                     # meshwarping
-                    for i in xrange(faceSize):
+                    for i in range(faceSize):
                         idx = faceNodes[i]
                         p0.append(avgPt)
                         v1.append(pts[idx]-avgPt)
@@ -5140,7 +5140,7 @@ class PYDAFOAM(AeroSolver):
             transP = self.getOption('transproperties')
             f.write('dimensions      [0 1 -2 0 0 0 0];\n')
             f.write('\n')
-            if 'g' in transP.keys():
+            if 'g' in list(transP.keys()):
                 f.write('value           (%f %f %f);\n' % (transP['g'][0], transP['g'][1], transP['g'][2]))
             else:
                 f.write('value           (0 0 0);\n')
@@ -5561,10 +5561,12 @@ class PYDAFOAM(AeroSolver):
                     patch = flowbcs[key]['patch']
                     variable = flowbcs[key]['variable']
                     value = flowbcs[key]['value']
-                    valStr = ' '.join(str(i) for i in value)
-                    if 'pressure' in flowbcs[key].keys():
+                    # use repr to preserve all digits for float
+                    valStr = ' '.join(repr(i) for i in value)
+                    if 'pressure' in list(flowbcs[key].keys()):
                         pressure = flowbcs[key]['pressure']
-                        preStr = ' '.join(str(i) for i in pressure)
+                        # use repr to preserve all digits for float
+                        preStr = ' '.join(repr(i) for i in pressure)
                         f.write('{patch %s; variable %s; pressure (%s); value (%s);}' % (patch, variable, preStr,
                                                                                          valStr))
                     else:
@@ -5674,19 +5676,22 @@ class PYDAFOAM(AeroSolver):
             scaling = ''
             statescaling = self.getOption('statescaling')
             for key in statescaling.keys():
-                scaling = scaling+' '+key+' '+str(statescaling[key])
+                # use repr to preserve all digits for float
+                scaling = scaling+' '+key+' '+repr(statescaling[key])
             f.write('    stateScaling           (%s);\n' % scaling)
 
             scaling = ''
             residualscaling = self.getOption('residualscaling')
             for key in residualscaling.keys():
-                scaling = scaling+' '+key+' '+str(residualscaling[key])
+                # use repr to preserve all digits for float
+                scaling = scaling+' '+key+' '+repr(residualscaling[key])
             f.write('    residualScaling        (%s);\n' % scaling)
 
             maxResConLv4JacPCMat = self.getOption('maxresconlv4jacpcmat')
             pcConLv = ''
             for key in maxResConLv4JacPCMat.keys():
-                pcConLv = pcConLv+' '+key+' '+str(maxResConLv4JacPCMat[key])
+                # use repr to preserve all digits for float
+                pcConLv = pcConLv+' '+key+' '+repr(maxResConLv4JacPCMat[key])
             f.write('    maxResConLv4JacPCMat   (%s);\n' % pcConLv)
 
             adjDVTypes = self.getOption('adjdvtypes')

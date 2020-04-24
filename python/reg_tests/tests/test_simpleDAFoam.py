@@ -13,9 +13,9 @@ import numpy as np
 
 def printHeader(testName):
     if MPI.COMM_WORLD.rank == 0:
-        print '+' + '-'*78 + '+'
-        print '| Test Name: ' + '%-66s'%testName + '|'
-        print '+' + '-'*78 + '+'
+        print('+' + '-'*78 + '+')
+        print('| Test Name: ' + '%-66s'%testName + '|')
+        print('+' + '-'*78 + '+')
 
 printHeader('simpleDAFoam')
 sys.stdout.flush()
