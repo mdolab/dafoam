@@ -2541,6 +2541,11 @@ void AdjointJacobianConnectivity::setupStateCyclicAMICon()
         }
     }
 
+    MatAssemblyBegin(stateCyclicAMICon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMICon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyBegin(stateCyclicAMIConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMIConTmp,MAT_FLUSH_ASSEMBLY);
+
     // level 2
     forAll(patches, patchI)
     {
@@ -2578,6 +2583,11 @@ void AdjointJacobianConnectivity::setupStateCyclicAMICon()
             }
         }
     }
+
+    MatAssemblyBegin(stateCyclicAMICon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMICon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyBegin(stateCyclicAMIConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(stateCyclicAMIConTmp,MAT_FLUSH_ASSEMBLY);
 
     // level 1
     forAll(patches, patchI)
@@ -3075,6 +3085,7 @@ void AdjointJacobianConnectivity::setupXvBoundaryCon()
     MatSeqAIJSetPreallocation(xvBoundaryCon_,1000,NULL);
     MatSetOption(xvBoundaryCon_, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(xvBoundaryCon_);
+    MatZeroEntries(xvBoundaryCon_);
 
     Mat xvBoundaryConTmp;
     MatCreate(PETSC_COMM_WORLD,&xvBoundaryConTmp);
@@ -3084,8 +3095,19 @@ void AdjointJacobianConnectivity::setupXvBoundaryCon()
     MatSeqAIJSetPreallocation(xvBoundaryConTmp,1000,NULL);
     MatSetOption(xvBoundaryConTmp, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(xvBoundaryConTmp);
+    MatZeroEntries(xvBoundaryConTmp);
 
     // loop over the patches and set the boundary connnectivity
+    // Add connectivity in reverse so that the nearer stencils take priority
+
+    // NOTE: we need to start with level 3, then to 2, then to 1, and flush the matrix
+    // for each level before going to another level This is necessary because
+    // we need to make sure a proper INSERT_VALUE behavior in MatSetValues
+    // i.e., we found that if you use INSERT_VALUE to insert different values (e.g., 1, 2, and 3) 
+    // to a same rowI and colI in MatSetValues, and call Mat_Assembly in the end. The, the actual
+    // value in rowI and colI is kind of random, it does not depend on which value is
+    // insert first, in this case, it can be 1, 2, or 3... This happens only in parallel and 
+    // only happens after Petsc-3.8.4  
     const polyBoundaryMesh& patches = mesh_.boundaryMesh();
     forAll(patches, patchI)
     {
@@ -3110,10 +3132,6 @@ void AdjointJacobianConnectivity::setupXvBoundaryCon()
 
                 // This cell is already a neighbour cell, so we need this plus two
                 // more levels
-
-                // Add connectivity in reverse so that the nearer stencils take
-                // priority
-
                 // Start with next to nearest neighbours
                 forAll(mesh_.cellCells()[idxN],cellI)
                 {
@@ -3121,23 +3139,15 @@ void AdjointJacobianConnectivity::setupXvBoundaryCon()
                     this->addConMatNeighbourCellsXv(xvBoundaryCon_,gRow,localCell,3.0);
                     this->addConMatNeighbourCellsXv(xvBoundaryConTmp,gRow,localCell,3.0);
                 }
-
-                // now add the nearest neighbour cells
-                this->addConMatNeighbourCellsXv(xvBoundaryCon_,gRow,idxN,2.0);
-                this->addConMatNeighbourCellsXv(xvBoundaryConTmp,gRow,idxN,2.0);
-
-                // Now add the points of idxN itself
-                this->addConMatCellXv(xvBoundaryCon_,gRow,idxN,1.0);
-                this->addConMatCellXv(xvBoundaryConTmp,gRow,idxN,1.0);
             }
         }
     }
 
-    MatAssemblyBegin(xvBoundaryCon_,MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(xvBoundaryCon_,MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(xvBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(xvBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyBegin(xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
 
-    // Now repeat loop adding boundary connections from other procs using matrix
-    // created in the first loop.
     forAll(patches, patchI)
     {
         const polyPatch& pp = patches[patchI];
@@ -3159,11 +3169,73 @@ void AdjointJacobianConnectivity::setupXvBoundaryCon()
                 // Now get the cell that borders this coupled bFace
                 label idxN = pFaceCells[faceI];
 
-                // This cell is already a neighbour cell, so we need this plus two
-                // more levels
+                // now add the nearest neighbour cells
+                this->addConMatNeighbourCellsXv(xvBoundaryCon_,gRow,idxN,2.0);
+                this->addConMatNeighbourCellsXv(xvBoundaryConTmp,gRow,idxN,2.0);
 
-                // Add connectivity in reverse so that the nearer stencils take
-                // priority
+            }
+        }
+    }
+
+    MatAssemblyBegin(xvBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(xvBoundaryCon_,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyBegin(xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // Now add the points of idxN itself
+                this->addConMatCellXv(xvBoundaryCon_,gRow,idxN,1.0);
+                this->addConMatCellXv(xvBoundaryConTmp,gRow,idxN,1.0);
+            }
+        }
+    }
+
+    MatAssemblyBegin(xvBoundaryCon_,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(xvBoundaryCon_,MAT_FINAL_ASSEMBLY);
+
+    // Now repeat loop adding boundary connections from other procs using matrix
+    // created in the first loop.
+    // Leve 3
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
 
                 // Start with nearest neighbours
                 forAll(mesh_.cellCells()[idxN],cellI)
@@ -3172,10 +3244,70 @@ void AdjointJacobianConnectivity::setupXvBoundaryCon()
                     labelList val1={3};
                     this->addBoundaryFaceConnectionsXv(xvBoundaryConTmp,gRow,localCell,val1);
                 }
+            }
+        }
+    }
+
+    MatAssemblyBegin(xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    
+    // Level 2 and 3
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
 
                 // now add the neighbour cells
                 labelList vals2= {2,3};
                 this->addBoundaryFaceConnectionsXv(xvBoundaryConTmp,gRow,idxN,vals2);
+            }
+        }
+    }
+
+    MatAssemblyBegin(xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    // Need to add level 2 again because the above {2,3} will mess up level 2
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        // get the start index of this patch in the global face list
+        label faceIStart = pp.start();
+
+        // check whether this face is coupled (cyclic or processor?)
+        if (pp.coupled())
+        {
+
+            forAll(pp, faceI)
+            {
+                // get the necessary matrix row
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+
+                // Now get the cell that borders this coupled bFace
+                label idxN = pFaceCells[faceI];
+
+                // now add the neighbour cells
+                labelList vals1= {2};
+                this->addBoundaryFaceConnectionsXv(xvBoundaryConTmp,gRow,idxN,vals1);
             }
         }
     }
@@ -3970,6 +4102,7 @@ void AdjointJacobianConnectivity::combineXvBndCon
     MatConvert(*xvBoundaryCon, MATSAME,MAT_INITIAL_MATRIX,xvBoundaryConTmp);
 
     // Now repeat loop one more time add missing connectivity to cellBoundaryPointsConTmp
+    // add level 3
     forAll(patches, patchI)
     {
         const polyPatch& pp = patches[patchI];
@@ -3991,9 +4124,55 @@ void AdjointJacobianConnectivity::combineXvBndCon
                     labelList val1={3};
                     this->addBoundaryFaceConnectionsXv(*xvBoundaryConTmp,gRow,localCell,val1);
                 }
+            }
+        }
+    }
+    MatAssemblyBegin(*xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(*xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    // add level 2 and 3
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        label faceIStart = pp.start();
+
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+                label idxN = pFaceCells[faceI];
 
                 labelList vals2= {2,3};
                 this->addBoundaryFaceConnectionsXv(*xvBoundaryConTmp,gRow,idxN,vals2);
+            }
+        }
+    }
+
+    MatAssemblyBegin(*xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+    MatAssemblyEnd(*xvBoundaryConTmp,MAT_FLUSH_ASSEMBLY);
+
+    // add level 2 again because the above call will mess up level 2
+    forAll(patches, patchI)
+    {
+        const polyPatch& pp = patches[patchI];
+        const UList<label>& pFaceCells = pp.faceCells();
+        label faceIStart = pp.start();
+
+        if (pp.coupled())
+        {
+            forAll(pp, faceI)
+            {
+                label bFaceI = faceIStart-adjIdx_.nLocalInternalFaces;
+                faceIStart++;
+                label gRow = neiBFaceGlobalCompact_[bFaceI];
+                label idxN = pFaceCells[faceI];
+
+                labelList vals1= {2};
+                this->addBoundaryFaceConnectionsXv(*xvBoundaryConTmp,gRow,idxN,vals1);
             }
         }
     }
