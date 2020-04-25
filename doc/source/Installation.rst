@@ -5,175 +5,224 @@ Installation
 
 This section assumes you want to compile the DAFoam optimization package from the source on a Linux system. If you use the pre-compiled version, skip this section.
 
-**DAFoam** runs on Linux systems and is based on **OpenFOAM-v1812**. You must install OpenFOAM and verify that it is working correctly. You also need to install the 3rd party and **MDOLab** packages before using DAFoam for optimization. Other dependencies include: 
+The DAFoam package can be compiled with various dependency versions. Here we elaborate on how to compile it on Ubuntu 18.04 using the dependencies shown in the following table. 
 
-- C/C++ compilers (gcc/g++ or icc/icpc)
+.. list-table::
+   :header-rows: 1
+
+   *  - Ubuntu
+      - Compiler
+      - OpenMPI
+      - mpi4py
+      - PETSc
+      - petsc4py
+      - CGNS
+      - python
+      - numpy
+      - scipy
+      - swig
+
+   *  - 18.04
+      - gcc/7.5
+      - 1.10.7
+      - 3.0.2
+      - 3.11.0
+      - 3.11.0
+      - 3.3.0
+      - 3.6
+      - 1.16.4
+      - 1.2.1
+      - 2.0.12
+
+To compile, you can just copy the code blocks in the following steps and run them on the terminal. NOTE: if a code block contains multiple lines, copy all the lines and run them on the terminal. The corresponding Dockerfile for this example is located at dafoam/doc/source/Dockerfile.
+
+#. **Prerequisites**. Run this on terminal::
+
+    sudo apt-get update && \
+    sudo apt-get install -y build-essential flex bison cmake zlib1g-dev libboost-system-dev libboost-thread-dev libreadline-dev libncurses-dev libxt-dev qt5-default libqt5x11extras5-dev libqt5help5 qtdeclarative5-dev qttools5-dev libqtwebkit-dev freeglut3-dev libqt5opengl5-dev texinfo  libscotch-dev libcgal-dev gfortran swig wget git vim cmake-curses-gui libfl-dev apt-utils --no-install-recommends
+
+#. **Python**. Install Python 3.6::
+
+    sudo apt-get install -y python3.6 python3-pip python3-dev
+
+   Then, set Python 3 as default::
+
+    sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10 && \
+    sudo update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
   
-- Fortran compiler (gfortran or ifort)
+   Install Numpy-1.16.4::
+
+    pip install numpy==1.16.4 --user --no-cache
+
+   Install Scipy-1.2.1::
+
+    pip install scipy==1.2.1 --user --no-cache
   
-- MPI software (openmpi, mvapich2, or impi)
-  
-- Swig
-  
-- cmake
+   Add relevant path for f2py::
 
-To compile the documentation, you also need:
+    echo '# f2py' >> $HOME/.bashrc && \
+    echo 'export PATH=$PATH:$HOME/.local/bin ' >> $HOME/.bashrc && \
+    . $HOME/.bashrc
 
-- Doxygen 
+#. **OpenMPI**. Append relevant environmental variables by running::
 
-- Graphviz
-
-- Sphinx 
-
-**NOTE 1:** Make sure you use only one MPI version to compile all the DAFoam related packages (including OpenFoam and PETSc). Compiling packages using different MPI versions will cause linking issues. We recommend using system MPI software. On Ubuntu, it can be done by running ``sudo apt-get install libopenmpi-dev openmpi-bin``.
-
-**NOTE 2:** If the system MPI software has issues, you need to compile your own OpenMPI. For example, the **Ubuntu 18.04** comes with OpenMPI-2.1 which is known to have **compatibility issues** with the MDOLab packages. So ``sudo apt-get install libopenmpi-dev openmpi-bin`` won't work for Ubuntu 18.04. Please follow the instructions at the end of this page to install your own MPI. Note that this is only needed if the system OpenMPI has known issues, like Ubuntu 18.04. 
-
-**NOTE 3:** The following steps assume you use GNU compilers. For Intel compilers, users need to adjust settings in OpenFOAM and PETSc, and use configuration file config/defaults/config.LINUX_INTEL_OPENMPI.mk for each MDOLab repo.
-
-|
-
-To install the **DAFoam** package:
-
-1. Create a "**OpenFOAM**" folder in your home directory ($HOME). Go into the "OpenFOAM" directory and install **OpenFOAM-v1812** following this website: http://openfoamwiki.net/index.php/Installation/Linux/OpenFOAM-v1806/Ubuntu **NOTE**: DAFoam does not support long integer, so in OpenFOAM/OpenFOAM-v1812/etc/bashrc, use 32bit integer (WM_LABEL_SIZE=32), and double precision scalar (WM_PRECISION_OPTION=DP). After the OpenFOAM installation is done, start a new session to install the rest packages; **DO NOT** load the OpenFOAM environment. This is to prevent environmental variable conflict between OpenFOAM and other packages.
-
-
-2. Create a "**packages**" folder in your home directory. Go into the "packages" directory and install the following 3rd party packages:
-
-- **Anaconda** Python. **NOTE**: Anaconda2-2.4.0 is recommended since the newer version may have libgfortran conflict. Download https://repo.continuum.io/archive/Anaconda2-2.4.0-Linux-x86_64.sh and run::
-  
-   chmod 755 Anaconda2-2.4.0-Linux-x86_64.sh && ./Anaconda2-2.4.0-Linux-x86_64.sh 
-
-  When asked, put $HOME/packages/anaconda2 as the prefix for the installation path. At the end of the installation, reply "yes" to add the anaconda bin path to your bashrc.
-
-- **PETSc v3.6.4**. Download http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.6.4.tar.gz and untar it in the $HOME/packages folder, go into $HOME/packages/petsc-3.6.4, and run::
-
-   sed -i 's/ierr = MPI_Finalize();CHKERRQ(ierr);/\/\/ierr = MPI_Finalize();CHKERRQ(ierr);/g' src/sys/objects/pinit.c
-
-  This will comment out line 1367 in src/sys/objects/pinit.c to prevent Petsc from conflicting with OpenFOAM MPI. After this, run::
-
-   ./configure --with-shared-libraries --download-superlu_dist --download-parmetis --download-metis --with-fortran-interfaces --with-debugging=no --with-scalar-type=real --PETSC_ARCH=real-opt --download-fblaslapack
-   
-  and after this, run::
-
-    make PETSC_DIR=$HOME/packages/petsc-3.6.4 PETSC_ARCH=real-opt all
-
-  Add the following into your bashrc and source it::
-
-    export PETSC_DIR=$HOME/packages/petsc-3.6.4
-    export PETSC_ARCH=real-opt
-    export PATH=$PETSC_DIR/$PETSC_ARCH/bin:$PATH
-    export PATH=$PETSC_DIR/$PETSC_ARCH/include:$PATH
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH/lib
-    export PETSC_LIB=$PETSC_DIR/$PETSC_ARCH/lib
-
-- **cgnslib_3.2.1** (http://cgns.sourceforge.net/download.html). Download cgnslib_3.2.1.tar.gz, put it in the $HOME/packages/ folder, and untar it. NOTE: The 3.2.1 version fortran include file is bad, so you need to manually edit the cgnslib_f.h file in the src directory and remove all the comment lines at the beginning of the file starting with "C". Then run::
-
-    cmake .
-
-  and::
-
-    ccmake .
-
-  A “GUI” appears and toggle ENABLE_FORTRAN by pressing [enter] (should be OFF when entering the screen for the first time, hence set it to ON). Type ‘c’ to reconfigure and ‘g’ to generate and exit. Then run::
-
-    make
-
-  Now add this into your bashrc and source it::
-
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/packages/cgnslib_3.2.1/src
-
-- **mpi4py-1.3.1** (http://bitbucket.org/mpi4py/mpi4py/downloads/). Untar and run::
+    echo '# OpenMPI-1.10.7' >> $HOME/.bashrc && \
+    echo 'export MPI_INSTALL_DIR=$HOME/packages/openmpi-1.10.7/opt-gfortran' >> $HOME/.bashrc && \
+    echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MPI_INSTALL_DIR/lib' >> $HOME/.bashrc && \
+    echo 'export PATH=$MPI_INSTALL_DIR/bin:$PATH' >> $HOME/.bashrc && \
+    . $HOME/.bashrc
  
-    rm -rf build && python setup.py install --user
+   Then, configure and build OpenMPI::
+
+    mkdir -p $HOME/packages && \
+    cd $HOME/packages && \
+    wget https://download.open-mpi.org/release/open-mpi/v1.10/openmpi-1.10.7.tar.gz && \
+    tar -xvf openmpi-1.10.7.tar.gz && \
+    cd openmpi-1.10.7 && \
+    ./configure --prefix=$MPI_INSTALL_DIR && \
+    make all install
+
+   Append one more relevant environmental variable by running::
+
+    echo 'export LD_PRELOAD=$MPI_INSTALL_DIR/lib/libmpi.so' >> $HOME/.bashrc && \
+    . $HOME/.bashrc
+
+   To verify the installation, run::
+
+    mpicc -v
+  
+   You should see the version of the compiled OpenMPI.
+
+   Finally, install mpi4py-3.0.2::
+
+    pip install mpi4py==3.0.2 --user --no-cache
+
+#. **Petsc**. Append relevant environmental variables by running::
+   
+    echo '# Petsc-3.11.0' >> $HOME/.bashrc && \
+    echo 'export PETSC_DIR=$HOME/packages/petsc-3.11.0' >> $HOME/.bashrc && \
+    echo 'export PETSC_ARCH=real-opt' >> $HOME/.bashrc && \
+    echo 'export PATH=$PETSC_DIR/$PETSC_ARCH/bin:$PATH' >> $HOME/.bashrc && \
+    echo 'export PATH=$PETSC_DIR/$PETSC_ARCH/include:$PATH' >> $HOME/.bashrc && \
+    echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH/lib' >> $HOME/.bashrc && \
+    echo 'export PETSC_LIB=$PETSC_DIR/$PETSC_ARCH/lib' >> $HOME/.bashrc
+    . $HOME/.bashrc
+
+   Then, configure and compile::
+
+    cd $HOME/packages && \
+    wget http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.11.0.tar.gz --no-check-certificate && \
+    tar -xvf petsc-3.11.0.tar.gz && \
+    cd petsc-3.11.0 && \
+    sed -i 's/ierr = MPI_Finalize();CHKERRQ(ierr);/\/\/ierr = MPI_Finalize();CHKERRQ(ierr);/g' src/sys/objects/pinit.c && \
+    ./configure --PETSC_ARCH=real-opt --with-scalar-type=real --with-debugging=0 --with-mpi-dir=$MPI_INSTALL_DIR --download-metis=yes --download-parmetis=yes --download-superlu_dist=yes --download-fblaslapack=yes --with-shared-libraries=yes --with-fortran-bindings=1 --with-cxx-dialect=C++11 && \
+    make PETSC_DIR=$HOME/packages/petsc-3.11.0 PETSC_ARCH=real-opt all
+
+   NOTE: The above ``sed`` command comments out line 1367 in src/sys/objects/pinit.c to prevent Petsc from conflicting with OpenFOAM MPI_Finalize. 
+
+   Finally, install petsc4py-3.11.0::
+
+    pip install petsc4py==3.11.0 --user --no-cache
+
+#. **CGNS**. Append relevant environmental variables by running::
+  
+    echo '# CGNS-3.3.0' >> $HOME/.bashrc && \
+    echo 'export CGNS_HOME=$HOME/packages/CGNS-3.3.0/opt-gfortran' >> $HOME/.bashrc && \
+    echo 'export PATH=$PATH:$CGNS_HOME/bin' >> $HOME/.bashrc && \
+    echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CGNS_HOME/lib' >> $HOME/.bashrc && \
+    . $HOME/.bashrc
+
+   Then, configure and compile::
+
+    cd $HOME/packages && \
+    wget https://github.com/CGNS/CGNS/archive/v3.3.0.tar.gz && \
+    tar -xvaf v3.3.0.tar.gz && \
+    cd CGNS-3.3.0 && \
+    mkdir -p build && \
+    cd build && \
+    cmake .. -DCGNS_ENABLE_FORTRAN=1 -DCMAKE_INSTALL_PREFIX=$CGNS_HOME -DCGNS_BUILD_CGNSTOOLS=0 && \
+    make all install
+  
+#. **MACH framework**. First create a ``repos`` folder and setup relevant environmental variables::
+
+    echo '# Python Path' >> $HOME/.bashrc && \
+    echo 'export PYTHONPATH=$PYTHONPATH:$HOME/repos' >> $HOME/.bashrc
+    . $HOME/.bashrc && \
+    mkdir -p $HOME/repos
     
-  This will install the package to the .local directory.
-  
-- **petsc4py-3.6.0** (http://bitbucket.org/petsc/petsc4py/downloads/). Untar and run::
- 
-    rm -rf build && python setup.py install --user
+   Then run::
+
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/baseclasses && \
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/pygeo && \
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/openfoammeshreader && \
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/multipoint && \
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/pyspline && \
+    cd pyspline && \
+    cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk && \
+    make && \
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/pyhyp && \
+    cd pyhyp && \
+    cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && \
+    make && \
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/cgnsutilities && \
+    cd cgnsutilities && \
+    cp config.mk.info config.mk && \
+    make && \
+    echo '# cgnsUtilities' >> $HOME/.bashrc && \
+    echo 'export PATH=$PATH:$HOME/repos/cgnsutilities/bin' >> $HOME/.bashrc && \
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/idwarp && \
+    cd idwarp && \
+    cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && \
+    make && \
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/pyoptsparse && \
+    cd pyoptsparse && \
+    rm -rf build && \
+    python setup.py install --user
+
+#. **OpenFOAM**. Compile OpenFOAM-v1812 using 4 CPU cores by running::
+
+    mkdir -p $HOME/OpenFOAM && \
+    cd $HOME/OpenFOAM && \
+    wget https://sourceforge.net/projects/openfoamplus/files/v1812/OpenFOAM-v1812.tgz/download  --no-check-certificate -O OpenFOAM-v1812.tgz && \
+    wget https://sourceforge.net/projects/openfoamplus/files/v1812/ThirdParty-v1812.tgz/download  --no-check-certificate -O ThirdParty-v1812.tgz && \
+    tar -xvf OpenFOAM-v1812.tgz && \
+    tar -xvf ThirdParty-v1812.tgz && \
+    cd $HOME/OpenFOAM/OpenFOAM-v1812 && \
+    . etc/bashrc && \
+    export WM_NCOMPPROCS=4 && \
+    ./Allwmake
+
+   If you want to compile OpenFOAM using more cores, change the ``WM_NCOMPPROCS`` parameter before running ``./Allwmake``
+
+   Finally, verify the installation by running::
+
+    simpleFoam -help
+
+   It should see some basic information of OpenFOAM
+
+#. **DAFoam**. Run::
+
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/dafoam && \
+    . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
+    cd $HOME/repos/dafoam && \
+    ./Allwmake
     
-  This will install the package to the .local directory.
-  
+   Next, run the regression test::
 
-
-3. Create a "**repos**" folder in your home directory. Go into the "repos" directory and download and install the following **MDOLab** packages (use small cases for all the repository names):
-
-- First add this to your bashrc and source it::
- 
-     export PYTHONPATH=$PYTHONPATH:$HOME/repos/
-   
-- Get **baseClasses**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/baseclasses && cd baseclasses && git checkout 298ac94 && cd ../
-
-- Get **pyGeo**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/pygeo && cd pygeo && git checkout 90f4b90 && cd ../
- 
-- Get **openFoamMeshReader**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/openfoammeshreader && cd openfoammeshreader && git checkout d53d72d && cd ../
-
-- Get **multipoint**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/multipoint && cd multipoint && git checkout 6818887 && cd ../
-
-- Get **pySpline**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/pyspline && cd pyspline && git checkout 30f2340 && cd ../
-  
-  and in the "**pyspline**" folder, run::
-   
-     cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk && make
-   
-- Get **pyHyp**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/pyhyp && cd pyhyp && git checkout 926b3f7 && cd ../
-  
-  and in the "**pyhyp**" folder, run::
-   
-     cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && make
-
-- Get **cgnsUtilities**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/cgnsutilities && cd cgnsutilities && git checkout 3430e04 && cd ../
-  
-  and in the "**cgnsutilities**" folder, run::
-   
-     cp config.mk.info config.mk && make
-     
-  Add this to your bashrc and source it::
-   
-     export PATH=$PATH:$HOME/repos/cgnsutilities/bin
-     
-- Get **IDWarp**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/idwarp && cd idwarp && git checkout 0149681 && cd ../
-    
-  and in the "**idwarp**" folder, run::
-     
-     cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && make
-     
-- Get **pyOptSparse**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/pyoptsparse && cd pyoptsparse && git checkout 6d2ae0a  && cd ../
-    
-  and in the "**pyoptsparse**" folder, run::
- 
-     rm -rf build && python setup.py install --user
-
-
-4. Download **DAFoam**. In the "**repos**" folder, Run::
-
-     git clone https://github.com/mdolab/dafoam
-     
-   Then, source the OpenFOAM environmental variables and compile ::
-
-    source $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && ./Allwmake
-    
-   Next, go to $HOME/repos/dafoam/python/reg_tests, download `input.tar.gz <https://github.com/mdolab/dafoam/raw/master/python/reg_tests/input.tar.gz>`_ and untar it. Finally, run the regression test there::
-  
+    cd $HOME/repos/dafoam/python/reg_tests && \
+    rm -rf input.tar.gz && \
+    wget https://github.com/mdolab/dafoam/raw/master/python/reg_tests/input.tar.gz && \
+    tar -xvf input.tar.gz && \
     python run_reg_tests.py
     
    The regression tests should take less than 30 minutes. You should see something like::
@@ -181,6 +230,7 @@ To install the **DAFoam** package:
     dafoam buoyantBoussinesqSimpleDAFoam: Success!
     dafoam buoyantSimpleDAFoam: Success!
     dafoam calcDeltaVolPointMat: Success!
+    dafoam calcSensMap: Success!
     dafoam rhoSimpleCDAFoam: Success!
     dafoam rhoSimpleDAFoam: Success!
     dafoam simpleDAFoam: Success!
@@ -199,11 +249,9 @@ In summary, here is the folder structures for all the installed packages::
       - OpenFOAM-v1812
       - ThirdParty-v1812
     - packages
-      - anaconda2
-      - cgnslib_3.2.1
-      - mpi4py-1.3.1
-      - petsc-3.6.4
-      - petsc4py-3.6.0
+      - CGNS-3.3.0
+      - mpi4py-3.0.1
+      - petsc-3.11.0
     - repos
       - baseclasses
       - cgnsutilities
@@ -218,69 +266,27 @@ In summary, here is the folder structures for all the installed packages::
 
 Here is the DAFoam related environmental variable setup that should appear in your bashrc file::
 
+  # OpenMPI-1.10.7
+  export MPI_INSTALL_DIR=$HOME/packages/openmpi-1.10.7/opt-gfortran
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MPI_INSTALL_DIR/lib
+  export PATH=$MPI_INSTALL_DIR/bin:$PATH
+  export LD_PRELOAD=$MPI_INSTALL_DIR/lib/libmpi.so
   # PETSC
-  export PETSC_DIR=$HOME/packages/petsc-3.6.4
+  export PETSC_DIR=$HOME/packages/petsc-3.11.0
   export PETSC_ARCH=real-opt
   export PATH=$PETSC_DIR/$PETSC_ARCH/bin:$PATH
   export PATH=$PETSC_DIR/$PETSC_ARCH/include:$PATH
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PETSC_DIR/$PETSC_ARCH/lib
   export PETSC_LIB=$PETSC_DIR/$PETSC_ARCH/lib
-  
-  # cgns lib
-  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/packages/cgnslib_3.2.1/src
-
-  # cgns utilities
+  # CGNS-3.3.0
+  export CGNS_HOME=$HOME/packages/CGNS-3.3.0/opt-gfortran
+  export PATH=$PATH:$CGNS_HOME/bin
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CGNS_HOME/lib
+  # Python Path
+  export PYTHONPATH=$PYTHONPATH:$HOME/repos
+  # cgnsUtilities
   export PATH=$PATH:$HOME/repos/cgnsutilities/bin
 
-  # Python path
-  export PYTHONPATH=$PYTHONPATH:$HOME/repos
-
-  # Anaconda2
-  export PATH="$HOME/packages/anaconda2/bin:$PATH"
-
-|
-
-**Build your own MPI**:
-
-**Note:** the following is needed only if your system MPI has known issues, like on Ubuntu 18.04.
-
-To compile your own OpenMPI:
-
-1. Download the OpenMPI-1.10.7 package, untar it by doing:
-
-.. code-block:: bash
-
-   cd $HOME/packages
-   wget https://download.open-mpi.org/release/open-mpi/v1.10/openmpi-1.10.7.tar.gz
-   tar -xvf openmpi-1.10.7.tar.gz
-   cd openmpi-1.10.7
-
-2. Add this into your bashrc file and source it:
-
-.. code-block:: bash
-
-   # -- OpenMPI Installation
-   export MPI_INSTALL_DIR=$HOME/packages/openmpi-1.10.7/opt-gfortran
-   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$MPI_INSTALL_DIR/lib
-   export PATH=$MPI_INSTALL_DIR/bin:$PATH
-   export LD_PRELOAD=$MPI_INSTALL_DIR/lib/libmpi.so
-
-3. Finally, configure and build it:
-
-.. code-block:: bash
-
-   # export CC=icc CXX=icpc F77=ifort FC=ifort  # Only necessary if using non-GCC compiler
-   ./configure --prefix=$MPI_INSTALL_DIR
-   make all install
-
-4. To verify that paths are as expected run:
-
-.. code-block:: bash
-
-   which mpicc
-   echo $MPI_INSTALL_DIR/bin/mpicc
-  
-The above should print out the same path for both.
-
+ 
 
   
