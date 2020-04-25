@@ -203,7 +203,7 @@ coef = DVGeo.FFD.vols[0].coef.copy()
 # First determine the reference chord lengths:
 nTwist = coef.shape[1]
 sweep_ref = np.zeros((nTwist+1, 3))
-for j in xrange(nTwist):
+for j in range(nTwist):
     max_x = np.max(coef[:, j, :, 0])
     min_x = np.min(coef[:, j, :, 0])
     sweep_ref[j+1, 0] = min_x + 0.25*(max_x-min_x)
@@ -228,7 +228,7 @@ DVGeo.addRefAxis('tail', c2, volumes=[25])
 
 def twist(val, geo):
     # Set all the twist values
-    for i in xrange(nTwist):
+    for i in range(nTwist):
         geo.rot_y['wing'].coef[i+1] = val[i]
 
     # Also set the twist of the root to the SOB twist
