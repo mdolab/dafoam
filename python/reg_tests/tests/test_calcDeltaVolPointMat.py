@@ -110,16 +110,9 @@ def runTests(defOpts):
     file1='deltaVolPointMatPlusEps_4_Ref.bin'
     file2='deltaVolPointMatPlusEps_4.bin'
     maxDiff,maxRelD=evalMatDiff(file1,file2)
-    size1=os.path.getsize(file1)
-    size2=os.path.getsize(file2)
-    sizeDiff = abs(size1-size2)/size1
-    if sizeDiff > 0.01:
-        print('%s and %s have different size!'%(file1,file2))
+    if maxDiff>1e-12:
+        print('%s and %s have different values!'%(file1,file2))
         output['deltaVolumeMatPass']=0
-    else:
-        if maxDiff>1e-8 and maxRelD>1e-4:
-            print('%s and %s have different values!'%(file1,file2))
-            output['deltaVolumeMatPass']=0
     if MPI.COMM_WORLD.rank == 0:
         print('Eval Functions:')
         reg_write_dict(output, 1e-10, 1e-10)
