@@ -142,7 +142,8 @@ RUN cd $HOME/OpenFOAM && \
     export WM_NCOMPPROCS=4 && \
     ./Allwmake && \
     rm -rf $HOME/OpenFOAM/OpenFOAM-v1812.tgz $HOME/OpenFOAM/ThirdParty-v1812.tgz && \
-    rm -rf $HOME/OpenFOAM/OpenFOAM-v1812/applications $HOME/OpenFOAM/OpenFOAM-v1812/tutorials 
+    rm -rf $HOME/OpenFOAM/OpenFOAM-v1812/build && \
+    rm -rf $HOME/OpenFOAM/ThirdParty-v1812/boost_1_64_0 $HOME/OpenFOAM/ThirdParty-v1812/openmpi-1.10.4 $HOME/OpenFOAM/ThirdParty-v1812/ParaView-v5.6.0
 
 # DAFoam
 RUN cd $HOME/repos && \
@@ -150,7 +151,10 @@ RUN cd $HOME/repos && \
     . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
     cd $HOME/repos/dafoam && \
     ./Allwmake && \
-    ./Allclean
+    ./Allwclean
+
+# Create a mount folder
+RUN mkdir -p $HOME/mount
 
 # Add environmental variables to bashrc
 RUN echo '# f2py' >> $HOME/.bashrc
@@ -175,3 +179,5 @@ RUN echo '# Python Path' >> $HOME/.bashrc
 RUN echo 'export PYTHONPATH=$PYTHONPATH:$HOME/repos' >> $HOME/.bashrc
 RUN echo '# cgnsUtilities' >> $HOME/.bashrc
 RUN echo 'export PATH=$PATH:$HOME/repos/cgnsutilities/bin' >> $HOME/.bashrc
+RUN echo '# OpenFOAM' >> $HOME/.bashrc
+RUN echo 'source $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc' >> $HOME/.bashrc
