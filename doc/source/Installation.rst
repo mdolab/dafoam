@@ -34,7 +34,7 @@ The DAFoam package can be compiled with various dependency versions. Here we ela
       - 1.2.1
       - 2.0.12
 
-To compile, you can just copy the code blocks in the following steps and run them on the terminal. NOTE: if a code block contains multiple lines, copy all the lines and run them on the terminal. The corresponding Dockerfile for this example is located at dafoam/doc/source/Dockerfile.
+To compile, you can just copy the code blocks in the following steps and run them on the terminal. **NOTE:** if a code block contains multiple lines, copy all the lines and run them on the terminal. The corresponding ``Dockerfile`` for this example is located at ``dafoam/doc/source/Dockerfile``. The entire compilation may take a few hours, the most time-consuming part is OpenFOAM.
 
 #. **Prerequisites**. Run this on terminal::
 
@@ -185,6 +185,7 @@ To compile, you can just copy the code blocks in the following steps and run the
     cd $HOME/repos && \
     git clone https://github.com/mdolab/pyoptsparse && \
     cd pyoptsparse && \
+    pip install -r requirements.txt && \
     rm -rf build && \
     python setup.py install --user
 

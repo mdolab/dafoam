@@ -43,7 +43,7 @@ RUN cd $HOME/packages && \
     tar -xvf openmpi-1.10.7.tar.gz && cd openmpi-1.10.7 && \
     ./configure --prefix=$MPI_INSTALL_DIR && \
     make all install && \
-    mv opt-gfortran ../ && rm -rf * && mv ../opt-gfortran . && \
+    rm -rf ompi && \
     rm -rf $HOME/packages/openmpi-1.10.7.tar.gz
 
 ENV LD_PRELOAD=$MPI_INSTALL_DIR/lib/libmpi.so
@@ -64,7 +64,7 @@ RUN cd $HOME/packages && \
     sed -i 's/ierr = MPI_Finalize();CHKERRQ(ierr);/\/\/ierr = MPI_Finalize();CHKERRQ(ierr);/g' src/sys/objects/pinit.c && \
     ./configure --PETSC_ARCH=real-opt --with-scalar-type=real --with-debugging=0 --with-mpi-dir=$MPI_INSTALL_DIR --download-metis=yes --download-parmetis=yes --download-superlu_dist=yes --download-fblaslapack=yes --with-shared-libraries=yes --with-fortran-bindings=1 --with-cxx-dialect=C++11 && \
     make PETSC_DIR=$HOME/packages/petsc-3.11.0 PETSC_ARCH=real-opt all && \
-    mv real-opt ../ && rm -rf * && mv ../real-opt . && \
+    rm -rf src docs && \
     rm -rf $HOME/packages/petsc-3.11.0.tar.gz
 
 RUN pip install petsc4py==3.11.0 --user --no-cache
@@ -127,7 +127,7 @@ RUN cd $HOME/repos && \
 
 RUN cd $HOME/repos && \
     git clone https://github.com/mdolab/pyoptsparse && \
-    cd pyoptsparse && rm -rf build && python setup.py install --user
+    cd pyoptsparse && pip install -r requirements.txt && rm -rf build && python setup.py install --user
 
 # OpenFOAM
 RUN mkdir -p $HOME/OpenFOAM 
@@ -175,5 +175,3 @@ RUN echo '# Python Path' >> $HOME/.bashrc
 RUN echo 'export PYTHONPATH=$PYTHONPATH:$HOME/repos' >> $HOME/.bashrc
 RUN echo '# cgnsUtilities' >> $HOME/.bashrc
 RUN echo 'export PATH=$PATH:$HOME/repos/cgnsutilities/bin' >> $HOME/.bashrc
-
-RUN docker-clean
