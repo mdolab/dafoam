@@ -25,9 +25,9 @@ There are two options to run DAFoam: **pre-compiled package** and **source code*
 
  Once the Docker is installed and verified, run this command from the terminal::
 
-    docker run -it --rm -u dafoamuser -v $HOME:/UserHome -w /UserHome dafoam/opt-packages:latest bash -rcfile /opt/setupDAFoam.sh
+    docker run -it --rm -u dafoamuser -v $HOME:/home/dafoamuser/mount -w /home/dafoamuser/mount dafoam/opt-packages:latest bash
 
- It will first download the pre-compiled package from the Docker Hub if it has not been downloaded. Then it will start a Docker container (a light-weight virtual machine), mount your local computer's home directory to the container's /UserHome directory, login to /UserHome as dafoamuser, and set the relevant DAFoam environmental variables. Now you are ready to run DAFoam tutorials. Refer to :ref:`Tutorials` for more details.
+ It will first download the pre-compiled package from the Docker Hub if it has not been downloaded. Then it will start a Docker container (a light-weight virtual machine), mount your local computer's home directory to the container's ``mount`` directory, login to ``mount`` as dafoamuser, and set the relevant DAFoam environmental variables. Now you are ready to run DAFoam tutorials. Refer to :ref:`Tutorials` for more details.
 
 - **Source code**
 
