@@ -237,7 +237,7 @@ To compile, you can just copy the code blocks in the following steps and run the
     dafoam solidDisplacementDAFoam: Success!
     dafoam turboDAFoam: Success!
   
-   You should see the first "Success" in less than 5 minute. If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam. **NOTE:** The regression tests verify the latest version of DAFoam on Github. However, we use specific old versions for DAFoam's dependencies (e.g., pyGeo, IDWarp).
+   You should see the first "Success" in less than 5 minute. If any of these tests fails or they take more than 30 minutes, check the error in the generated dafoam_reg_* files. Make sure all the tests pass before running DAFoam.
 
 |
 
@@ -248,18 +248,20 @@ In summary, here is the folder structures for all the installed packages::
       - OpenFOAM-v1812
       - ThirdParty-v1812
     - packages
+      - anaconda3
       - CGNS-3.3.0
-      - mpi4py-3.0.1
+      - mpi4py-3.0.2
       - petsc-3.11.0
+      - petsc4py-3.11.0
     - repos
       - baseclasses
       - cgnsutilities
       - dafoam
       - idwarp
       - multipoint
-      - pyofm
       - pygeo
       - pyhyp
+      - pyofm
       - pyoptsparse
       - pyspline
 
