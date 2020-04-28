@@ -95,7 +95,7 @@ RUN cd $HOME/repos && \
     git clone https://github.com/mdolab/pygeo
 
 RUN cd $HOME/repos && \
-    git clone https://github.com/mdolab/openfoammeshreader
+    git clone https://github.com/mdolab/pyofm
 
 RUN cd $HOME/repos && \
     git clone https://github.com/mdolab/multipoint
@@ -180,4 +180,4 @@ RUN echo 'export PYTHONPATH=$PYTHONPATH:$HOME/repos' >> $HOME/.bashrc
 RUN echo '# cgnsUtilities' >> $HOME/.bashrc
 RUN echo 'export PATH=$PATH:$HOME/repos/cgnsutilities/bin' >> $HOME/.bashrc
 RUN echo '# OpenFOAM' >> $HOME/.bashrc
-RUN echo 'source $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc' >> $HOME/.bashrc
+RUN echo '. $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc' >> $HOME/.bashrc

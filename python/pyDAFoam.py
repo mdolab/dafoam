@@ -24,7 +24,7 @@ import subprocess
 import numpy as np
 from mpi4py import MPI
 from baseclasses import AeroSolver, AeroProblem
-from openfoammeshreader import of_mesh_utils as ofm
+from pyofm import pyOFM as ofm
 import petsc4py
 petsc4py.init(sys.argv)
 from petsc4py import PETSc

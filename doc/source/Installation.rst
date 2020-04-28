@@ -34,34 +34,23 @@ The DAFoam package can be compiled with various dependency versions. Here we ela
       - 1.2.1
       - 2.0.12
 
-To compile, you can just copy the code blocks in the following steps and run them on the terminal. **NOTE:** if a code block contains multiple lines, copy all the lines and run them on the terminal. The corresponding ``Dockerfile`` for this example is located at ``dafoam/doc/source/Dockerfile``. The entire compilation may take a few hours, the most time-consuming part is OpenFOAM.
+To compile, you can just copy the code blocks in the following steps and run them on the terminal. **NOTE:** if a code block contains multiple lines, copy all the lines and run them on the terminal. Make sure each step run successfully before going to the next one. The entire compilation may take a few hours, the most time-consuming part is OpenFOAM.
 
 #. **Prerequisites**. Run this on terminal::
 
     sudo apt-get update && \
     sudo apt-get install -y build-essential flex bison cmake zlib1g-dev libboost-system-dev libboost-thread-dev libreadline-dev libncurses-dev libxt-dev qt5-default libqt5x11extras5-dev libqt5help5 qtdeclarative5-dev qttools5-dev libqtwebkit-dev freeglut3-dev libqt5opengl5-dev texinfo  libscotch-dev libcgal-dev gfortran swig wget git vim cmake-curses-gui libfl-dev apt-utils --no-install-recommends
 
-#. **Python**. Install Python 3.6::
+#. **Python**. Install Anaconda3-5.2.0::
 
-    sudo apt-get install -y python3.6 python3-pip python3-dev
-
-   Then, set Python 3 as default::
-
-    sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.6 10 && \
-    sudo update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
-  
-   Install Numpy-1.16.4::
-
-    pip install numpy==1.16.4 --user --no-cache
-
-   Install Scipy-1.2.1::
-
-    pip install scipy==1.2.1 --user --no-cache
-  
-   Add relevant path for f2py::
-
-    echo '# f2py' >> $HOME/.bashrc && \
-    echo 'export PATH=$PATH:$HOME/.local/bin ' >> $HOME/.bashrc && \
+    mkdir -p $HOME/packages && \
+    cd $HOME/packages && \
+    wget https://repo.anaconda.com/archive/Anaconda3-5.2.0-Linux-x86_64.sh --no-check-certificate && \
+    chmod 755 Anaconda3-5.2.0-Linux-x86_64.sh && \
+    ./Anaconda3-5.2.0-Linux-x86_64.sh -b -p $HOME/packages/anaconda3 && \
+    echo '# Anaconda3' >> $HOME/.bashrc && \
+    echo 'export PATH=$HOME/packages/anaconda3/bin:$PATH' >> $HOME/.bashrc && \
+    echo 'export LD_LIBRARY_PATH=$LD_LIBRAARY_PATH:$HOME/packages/anaconda3/lib' >> $HOME/.bashrc && \
     . $HOME/.bashrc
 
 #. **OpenMPI**. Append relevant environmental variables by running::
@@ -74,9 +63,8 @@ To compile, you can just copy the code blocks in the following steps and run the
  
    Then, configure and build OpenMPI::
 
-    mkdir -p $HOME/packages && \
     cd $HOME/packages && \
-    wget https://download.open-mpi.org/release/open-mpi/v1.10/openmpi-1.10.7.tar.gz && \
+    wget https://download.open-mpi.org/release/open-mpi/v1.10/openmpi-1.10.7.tar.gz --no-check-certificate && \
     tar -xvf openmpi-1.10.7.tar.gz && \
     cd openmpi-1.10.7 && \
     ./configure --prefix=$MPI_INSTALL_DIR && \
@@ -95,7 +83,12 @@ To compile, you can just copy the code blocks in the following steps and run the
 
    Finally, install mpi4py-3.0.2::
 
-    pip install mpi4py==3.0.2 --user --no-cache
+    cd $HOME/packages && \
+    wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.0.2.tar.gz --no-check-certificate && \
+    tar -xvf mpi4py-3.0.2.tar.gz && \
+    cd mpi4py-3.0.2 && \
+    rm -rf build && \
+    python setup.py install --user
 
 #. **Petsc**. Append relevant environmental variables by running::
    
@@ -122,7 +115,12 @@ To compile, you can just copy the code blocks in the following steps and run the
 
    Finally, install petsc4py-3.11.0::
 
-    pip install petsc4py==3.11.0 --user --no-cache
+    cd $HOME/packages && \
+    wget https://bitbucket.org/petsc/petsc4py/downloads/petsc4py-3.11.0.tar.gz --no-check-certificate && \
+    tar -xvf petsc4py-3.11.0.tar.gz && \
+    cd petsc4py-3.11.0 && \
+    rm -rf build && \
+    python setup.py install --user
 
 #. **CGNS**. Append relevant environmental variables by running::
   
@@ -135,7 +133,7 @@ To compile, you can just copy the code blocks in the following steps and run the
    Then, configure and compile::
 
     cd $HOME/packages && \
-    wget https://github.com/CGNS/CGNS/archive/v3.3.0.tar.gz && \
+    wget https://github.com/CGNS/CGNS/archive/v3.3.0.tar.gz --no-check-certificate && \
     tar -xvaf v3.3.0.tar.gz && \
     cd CGNS-3.3.0 && \
     mkdir -p build && \
@@ -157,7 +155,7 @@ To compile, you can just copy the code blocks in the following steps and run the
     cd $HOME/repos && \
     git clone https://github.com/mdolab/pygeo && \
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/openfoammeshreader && \
+    git clone https://github.com/mdolab/pyofm && \
     cd $HOME/repos && \
     git clone https://github.com/mdolab/multipoint && \
     cd $HOME/repos && \
@@ -222,7 +220,7 @@ To compile, you can just copy the code blocks in the following steps and run the
 
     cd $HOME/repos/dafoam/python/reg_tests && \
     rm -rf input.tar.gz && \
-    wget https://github.com/mdolab/dafoam/raw/master/python/reg_tests/input.tar.gz && \
+    wget https://github.com/mdolab/dafoam/raw/master/python/reg_tests/input.tar.gz --no-check-certificate && \
     tar -xvf input.tar.gz && \
     python run_reg_tests.py
     
@@ -259,7 +257,7 @@ In summary, here is the folder structures for all the installed packages::
       - dafoam
       - idwarp
       - multipoint
-      - openfoammeshreader
+      - pyofm
       - pygeo
       - pyhyp
       - pyoptsparse
