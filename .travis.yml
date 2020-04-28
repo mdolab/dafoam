@@ -35,4 +35,3 @@ script:
 
 after_script:
   - docker rm -f regtest
-
