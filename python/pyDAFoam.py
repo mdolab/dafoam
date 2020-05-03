@@ -24,7 +24,6 @@ import subprocess
 import numpy as np
 from mpi4py import MPI
 from baseclasses import AeroSolver, AeroProblem
-from pyofm import pyOFM as ofm
 import petsc4py
 petsc4py.init(sys.argv)
 from petsc4py import PETSc
@@ -1197,7 +1196,7 @@ class PYDAFOAM(AeroSolver):
                 if self.comm.rank == 0:
                     print('Writing the updated volume mesh....')
                 newGrid = self.mesh.getSolverGrid()
-                ofm._writeOpenFOAMVolumePoints(self.fileNames, newGrid)
+                self.ofm.writeVolumeMeshPoints(newGrid)
 
         # remove the old post processing results if they exist
         self._cleanPostprocessingDir()
@@ -1839,7 +1838,7 @@ class PYDAFOAM(AeroSolver):
         # first check if mesh files are properly compressed. This can happen if writecompress is on, but the mesh files
         # have not been compressed. In this case, we will manually compress all the mesh files (except for boundary),
         # and delete the uncompressed ones.
-        ofm.checkMeshCompression()
+        #self.ofm.checkMeshCompression() # the new pyOFM can automatically do that so this is not needed anymore
 
         # we need to decompose the domain if running in parallel
         if self.comm.rank == 0:
@@ -2473,7 +2472,7 @@ class PYDAFOAM(AeroSolver):
         # write the new volume coords to a file
         newGrid = self.mesh.getSolverGrid()
         # print newGrid
-        ofm._writeOpenFOAMVolumePoints(self.fileNames, newGrid)
+        self.ofm.writeVolumeMeshPoints(newGrid)
 
         return
 
@@ -3214,8 +3213,13 @@ class PYDAFOAM(AeroSolver):
             The directory containing the openFOAM Mesh files
         """
 
+        from pyofm import PYOFM
+
+        # Initialize pyOFM
+        self.ofm = PYOFM(comm=self.comm)
+
         # generate the file names
-        self.fileNames = ofm.getFileNames(caseDir, comm=self.comm)
+        self.fileNames = self.ofm.getFileNames(caseDir, comm=self.comm)
 
         # Copy the reference points file to points to ensure
         # consistant starting point
@@ -3256,17 +3260,17 @@ class PYDAFOAM(AeroSolver):
             print("Reading points")
 
         # Read in the volume points
-        self.x0 = ofm.readVolumeMeshPoints(self.fileNames)
+        self.x0 = self.ofm.readVolumeMeshPoints()
         self.x = copy.copy(self.x0)
 
         # Read the face info for the mesh
-        self.faces = ofm.readFaceInfo(self.fileNames)
+        self.faces = self.ofm.readFaceInfo()
 
         # Read the boundary info
-        self.boundaries = ofm.readBoundaryInfo(self.fileNames, self.faces)
+        self.boundaries = self.ofm.readBoundaryInfo(self.faces)
 
         # Read the cell info for the mesh
-        self.owners, self.neighbours = ofm.readCellInfo(self.fileNames)
+        self.owners, self.neighbours = self.ofm.readCellInfo()
 
         self.nCells = self._countCells()
 
@@ -5413,13 +5417,17 @@ class PYDAFOAM(AeroSolver):
             f.write('\n')
             f.write('libs\n')
             f.write('(\n')
-            f.write('    "libbuoyantPressureFvPatchScalarField.so" \n')
+            #f.write('    "libbuoyantPressureFvPatchScalarField.so" \n')
             if self.getOption('flowcondition') == "Incompressible":
-                f.write('    "libDummyTurbulenceModelIncompressible.so" \n')
-                f.write('    "libSpalartAllmarasFv3Incompressible.so" \n')
+                if self.getOption('rasmodel') == "SpalartAllmarasFv3":
+                    f.write('    "libSpalartAllmarasFv3Incompressible.so" \n')
+                if self.getOption('rasmodel') == "dummyTurbulenceModel":
+                    f.write('    "libDummyTurbulenceModelIncompressible.so" \n')
             elif self.getOption('flowcondition') == "Compressible":
-                f.write('    "libDummyTurbulenceModelCompressible.so" \n')
-                f.write('    "libSpalartAllmarasFv3Compressible.so" \n')
+                if self.getOption('rasmodel') == "SpalartAllmarasFv3":
+                    f.write('    "libSpalartAllmarasFv3Compressible.so" \n')
+                if self.getOption('rasmodel') == "dummyTurbulenceModel":
+                    f.write('    "libDummyTurbulenceModelCompressible.so" \n')
             f.write(');\n')
             f.write('\n')
             f.write('application     %s;' % self.getOption('adjointsolver'))
