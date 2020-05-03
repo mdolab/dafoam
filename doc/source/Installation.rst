@@ -29,10 +29,10 @@ The DAFoam package can be compiled with various dependency versions. Here we ela
       - 3.11.0
       - 3.11.0
       - 3.3.0
-      - 3.6
-      - 1.16.4
-      - 1.2.1
-      - 2.0.12
+      - 3.6.5
+      - 1.14.3
+      - 1.1.0
+      - 2.0.11
 
 To compile, you can just copy the code blocks in the following steps and run them on the terminal. **NOTE:** if a code block contains multiple lines, copy all the lines and run them on the terminal. Make sure each step run successfully before going to the next one. The entire compilation may take a few hours, the most time-consuming part is OpenFOAM.
 
@@ -155,8 +155,6 @@ To compile, you can just copy the code blocks in the following steps and run the
     cd $HOME/repos && \
     git clone https://github.com/mdolab/pygeo && \
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/pyofm && \
-    cd $HOME/repos && \
     git clone https://github.com/mdolab/multipoint && \
     cd $HOME/repos && \
     git clone https://github.com/mdolab/pyspline && \
@@ -187,7 +185,7 @@ To compile, you can just copy the code blocks in the following steps and run the
     rm -rf build && \
     python setup.py install --user
 
-#. **OpenFOAM**. Compile OpenFOAM-v1812 using 4 CPU cores by running::
+#. **OpenFOAM**. Compile OpenFOAM-v1812 by running::
 
     mkdir -p $HOME/OpenFOAM && \
     cd $HOME/OpenFOAM && \
@@ -196,11 +194,15 @@ To compile, you can just copy the code blocks in the following steps and run the
     tar -xvf OpenFOAM-v1812.tgz && \
     tar -xvf ThirdParty-v1812.tgz && \
     cd $HOME/OpenFOAM/OpenFOAM-v1812 && \
+    wget https://github.com/mdolab/dafoam/releases/download/v1.1.0/UPstream.C --no-check-certificate && \
+    mv UPstream.C src/Pstream/mpi/UPstream.C && \
     . etc/bashrc && \
     export WM_NCOMPPROCS=4 && \
     ./Allwmake
+  
+   NOTE: In the above command, we replaced the OpenFOAM-v1812's built-in UPstream.C file with a customized one because we need to prevent OpenFOAM from calling the MPI_Finialize function when wrapping OpenFOAM functions using Cython.
 
-   If you want to compile OpenFOAM using more cores, change the ``WM_NCOMPPROCS`` parameter before running ``./Allwmake``
+   NOTE: The above command will compile OpenFOAM using 4 CPU cores. If you want to compile OpenFOAM using more cores, change the ``WM_NCOMPPROCS`` parameter before running ``./Allwmake``
 
    Finally, verify the installation by running::
 
@@ -208,7 +210,15 @@ To compile, you can just copy the code blocks in the following steps and run the
 
    It should see some basic information of OpenFOAM
 
-#. **DAFoam**. Run::
+#. **DAFoam** and **pyOFM**. First compile pyOFM::
+
+    cd $HOME/repos && \
+    git clone https://github.com/mdolab/pyofm && \
+    cd pyofm && \
+    . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
+    make
+
+   Then, compile DAFoam by running::
 
     cd $HOME/repos && \
     git clone https://github.com/mdolab/dafoam && \
@@ -216,7 +226,7 @@ To compile, you can just copy the code blocks in the following steps and run the
     cd $HOME/repos/dafoam && \
     ./Allwmake
     
-   Next, run the regression test::
+   Finally, run the regression test::
 
     cd $HOME/repos/dafoam/python/reg_tests && \
     rm -rf input.tar.gz && \
