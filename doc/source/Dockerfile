@@ -95,9 +95,6 @@ RUN cd $HOME/repos && \
     git clone https://github.com/mdolab/pygeo
 
 RUN cd $HOME/repos && \
-    git clone https://github.com/mdolab/pyofm
-
-RUN cd $HOME/repos && \
     git clone https://github.com/mdolab/multipoint
 
 RUN cd $HOME/repos && \
@@ -138,12 +135,21 @@ RUN cd $HOME/OpenFOAM && \
     tar -xvf OpenFOAM-v1812.tgz && \
     tar -xvf ThirdParty-v1812.tgz && \
     cd $HOME/OpenFOAM/OpenFOAM-v1812 && \
+    wget https://github.com/mdolab/dafoam/releases/download/v1.1.0/UPstream.C --no-check-certificate && \
+    mv UPstream.C src/Pstream/mpi/UPstream.C && \
     . etc/bashrc && \
     export WM_NCOMPPROCS=4 && \
     ./Allwmake && \
     rm -rf $HOME/OpenFOAM/OpenFOAM-v1812.tgz $HOME/OpenFOAM/ThirdParty-v1812.tgz && \
     rm -rf $HOME/OpenFOAM/OpenFOAM-v1812/build && \
     rm -rf $HOME/OpenFOAM/ThirdParty-v1812/boost_1_64_0 $HOME/OpenFOAM/ThirdParty-v1812/openmpi-1.10.4 $HOME/OpenFOAM/ThirdParty-v1812/ParaView-v5.6.0
+
+# pyOFM
+RUN cd $HOME/repos && \
+    git clone https://github.com/mdolab/pyofm && \
+    cd pyofm && \
+    . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
+    make
 
 # DAFoam
 RUN cd $HOME/repos && \
