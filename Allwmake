@@ -50,17 +50,17 @@ function makeCompressible()
 echo "************** Compiling prerequisite Libraries **************"
 sleep 1
 
-cd src/myLibs
+cd src/ofLibs/myLibs
 ./Allwmake
-cd ../../
+cd ../../../
 
 echo "************** Compiling Incompressible Adjoint Solvers **************"
 sleep 1
 
-cd src
+cd src/ofLibs
 makeIncompressible
 
-cd ../applications/coloringSolverIncompressible
+cd ../../applications/coloringSolverIncompressible
 makeIncompressible
 
 cd ../simpleDAFoam
@@ -89,10 +89,10 @@ export DF_CleanDoc=False
 echo "************** Compiling Compressible Adjoint Solvers **************"
 sleep 1
 
-cd src
+cd src/ofLibs
 makeCompressible
 
-cd ../applications/coloringSolverCompressible
+cd ../../applications/coloringSolverCompressible
 makeCompressible
 
 cd ../rhoSimpleDAFoam
