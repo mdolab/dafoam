@@ -20,7 +20,7 @@ The DAFoam package can be compiled with various dependency versions. Here we ela
       - python
       - numpy
       - scipy
-      - swig
+      - Cython
 
    *  - 18.04
       - gcc/7.5
@@ -32,7 +32,7 @@ The DAFoam package can be compiled with various dependency versions. Here we ela
       - 3.6.5
       - 1.14.3
       - 1.1.0
-      - 2.0.11
+      - 0.28.2
 
 To compile, you can just copy the code blocks in the following steps and run them on the terminal. **NOTE:** if a code block contains multiple lines, copy all the lines and run them on the terminal. Make sure each step run successfully before going to the next one. The entire compilation may take a few hours, the most time-consuming part is OpenFOAM.
 

@@ -26,18 +26,12 @@ function makeIncompressible()
     if [ -f Make/files_Incompressible ]; then
         cp Make/files_Incompressible Make/files
     fi
-    sed -e '1d' Make/options_Incompressible > Make/options
-    sed -i '4i\    \-DIncompressibleFlow \\' Make/options
-    if [ "$DF_CompileMode" = "Debug" ]; then
-        sed -i '4i\    \-DFULLDEBUG -g -O0 \\' Make/options
-    fi
-    wmake dep
     cp Make/options_Incompressible Make/options
     sed -i '4i\    \-DIncompressibleFlow \\' Make/options
     if [ "$DF_CompileMode" = "Debug" ]; then
         sed -i '4i\    \-DFULLDEBUG -g -O0 \\' Make/options
     fi
-    wmake 
+    wmake
 }
 
 function makeCompressible() 
@@ -45,18 +39,12 @@ function makeCompressible()
     if [ -f Make/files_Compressible ]; then
         cp Make/files_Compressible Make/files
     fi
-    sed -e '1d' Make/options_Compressible > Make/options
-    sed -i '4i\    \-DCompressibleFlow \\' Make/options
-    if [ "$DF_CompileMode" = "Debug" ]; then
-        sed -i '4i\    \-DFULLDEBUG -g -O0 \\' Make/options
-    fi
-    wmake dep
     cp Make/options_Compressible Make/options
     sed -i '4i\    \-DCompressibleFlow \\' Make/options
     if [ "$DF_CompileMode" = "Debug" ]; then
         sed -i '4i\    \-DFULLDEBUG -g -O0 \\' Make/options
     fi
-    wmake 
+    wmake
 }
 
 echo "************** Compiling prerequisite Libraries **************"
