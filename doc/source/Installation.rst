@@ -50,7 +50,7 @@ To compile, you can just copy the code blocks in the following steps and run the
     ./Anaconda3-5.2.0-Linux-x86_64.sh -b -p $HOME/packages/anaconda3 && \
     echo '# Anaconda3' >> $HOME/.bashrc && \
     echo 'export PATH=$HOME/packages/anaconda3/bin:$PATH' >> $HOME/.bashrc && \
-    echo 'export LD_LIBRARY_PATH=$LD_LIBRAARY_PATH:$HOME/packages/anaconda3/lib' >> $HOME/.bashrc && \
+    echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/packages/anaconda3/lib' >> $HOME/.bashrc && \
     . $HOME/.bashrc
 
 #. **OpenMPI**. Append relevant environmental variables by running::
