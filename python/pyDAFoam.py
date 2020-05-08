@@ -3346,6 +3346,14 @@ class PYDAFOAM(AeroSolver):
 
         # wait for rank 0
         self.comm.Barrier()
+        
+        from pyofm import PYOFM
+
+        # Initialize pyOFM
+        self.ofm = PYOFM(comm=self.comm)
+
+        # generate the file names
+        self.fileNames = self.ofm.getFileNames(caseDir, comm=self.comm)
 
         if self.comm.rank == 0:
             print("Reading points")
