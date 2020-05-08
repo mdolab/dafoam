@@ -23,15 +23,15 @@ if [ "$DF_CleanDoc" = "True" ]; then
   rm -rf doc/source/_static/Python
 fi
 
-cd src/myLibs
+cd src/ofLibs/myLibs
 ./Allwclean
-cd ../../
+cd ../../../
 
-cd src
+cd src/ofLibs
 wclean
 rm Make/options Make/files
 
-cd ../applications/coloringSolverIncompressible
+cd ../../applications/coloringSolverIncompressible
 wclean
 rm Make/options
 
@@ -82,6 +82,7 @@ rm Make/options
 cd ../utilities
 ./Allwclean
 
+cd ../../
 
-cd ../
-
+cd src/pyLibs
+./Allclean

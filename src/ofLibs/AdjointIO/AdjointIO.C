@@ -91,6 +91,7 @@ AdjointIO::AdjointIO
     adjGMRESMaxIters    = readOptionOrDefault<label>(adjointOptions,"adjGMRESMaxIters",1000);
     adjGMRESAbsTol      = readOptionOrDefault<scalar>(adjointOptions,"adjGMRESAbsTol",1.0e-16);
     adjGMRESRelTol      = readOptionOrDefault<scalar>(adjointOptions,"adjGMRESRelTol",1.0e-6);
+    printSolverPars     = readBooleanOptionOrDefault(adjointOptions,"printSolverPars","true");
     readListOption< List<word> >
     (
         normalizeResiduals,

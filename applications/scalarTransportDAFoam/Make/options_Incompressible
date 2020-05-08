@@ -1,5 +1,3 @@
-include ${PETSC_DIR}/lib/petsc/conf/variables 
-
 EXE_INC = \
     -std=c++11  \
     -Wno-old-style-cast \
@@ -12,7 +10,8 @@ EXE_INC = \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/sampling/lnInclude \
     -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
-    -I../../src/lnInclude
+    -I../../src/ofLibs/lnInclude \
+    $(shell mpicxx --showme:compile)
 
 
 EXE_LIBS = \
@@ -24,4 +23,5 @@ EXE_LIBS = \
     -lmeshTools \
     -lsampling  \
     -L$(PETSC_LIB) -lpetsc \
-    -L$(FOAM_USER_LIBBIN) -lAdjointDerivativeIncompressible
+    -L$(FOAM_USER_LIBBIN) -lAdjointDerivativeIncompressible \
+    $(shell mpicxx --showme:link)
