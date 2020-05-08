@@ -16,7 +16,7 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 import os, petsc4py
 
-libName="pyBuoyantSimpleDAFoam"
+libName="pyColoringSolverCompressible"
 
 os.environ["CC"] = "mpicc" 
 os.environ["CXX"] = "mpicxx"
@@ -25,8 +25,8 @@ os.environ["CXX"] = "mpicxx"
 ext = [Extension(libName,
     # All source files, taken from Make/files
     sources=[
-        "pyBuoyantSimpleDAFoam.pyx",
-        "BuoyantSimpleDAFoam.C"],
+        "pyColoringSolverCompressible.pyx",
+        "ColoringSolverCompressible.C"],
     # All include dirs, refer to Make/options in OpenFOAM
     include_dirs=[
         # These are from Make/options:EXE_INC 
