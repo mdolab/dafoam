@@ -82,6 +82,7 @@ rm Make/options
 cd ../utilities
 ./Allwclean
 
+cd ../../
 
-cd ../
-
+cd src/pyLibs
+./Allclean

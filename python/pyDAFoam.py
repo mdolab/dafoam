@@ -1054,6 +1054,7 @@ class PYDAFOAM(AeroSolver):
 
                     # misc
                     'dummy': [str, 'test'],
+                    'printsolverpars': [bool, True],
                     'objstdthres': [float, 1.0e8],
                     'postprocessingdir': [str, 'postProcessing'],
                     'filechecktime': [float, 1.0],
@@ -1062,6 +1063,7 @@ class PYDAFOAM(AeroSolver):
                     'avgobjfuncs': [bool, False],
                     'avgobjfuncsstart': [int, 1000],
                     'mpispawnrun': [bool, True],
+                    'usecython':[bool,False],
                     'runpotentialfoam': [bool, False],
                     'updatemesh': [bool, True],
                     'rerunopt2': [int, -9999],
@@ -1221,7 +1223,7 @@ class PYDAFOAM(AeroSolver):
             logFileName = os.path.join(outputDir, 'checkMeshLog_FC%d_%3.3d' % (self.multiPointFCIndex,
                                                                                self.flowRunsCounter))
 
-        self.meshQualityFailure = self.checkMeshLog(logFileName)
+        #self.meshQualityFailure = self.checkMeshLog(logFileName)
 
         if self.meshQualityFailure is True:
             if self.comm.rank == 0:
@@ -1503,6 +1505,27 @@ class PYDAFOAM(AeroSolver):
 
         mpiSpawnRun = self.getOption('mpispawnrun')
 
+        useCython = self.getOption('usecython')
+
+        if useCython:
+
+            parallelFlag = ''
+            if self.parallel:
+                parallelFlag = '-parallel'
+
+            solverName = 'checkMesh'
+            solverArg = solverName+' '+parallelFlag
+            from .pyCheckMesh import pyCheckMesh
+            checkMesh = pyCheckMesh(solverArg.encode())
+            meshOK = checkMesh.run()
+            if meshOK == 0:
+                self.meshQualityFailure = True
+            else:
+                self.meshQualityFailure = False
+            checkMesh = None
+
+            return
+
         if self.parallel and mpiSpawnRun:
 
             # Setup the indicator file to tell the python layer that checkMesh
@@ -1723,6 +1746,52 @@ class PYDAFOAM(AeroSolver):
 
         # if it is not multipoint optimization, do the following
         mpiSpawnRun = self.getOption('mpispawnrun')
+
+        useCython = self.getOption('usecython')
+
+        if useCython:
+
+            parallelFlag = ''
+            if self.parallel:
+                parallelFlag = '-parallel'
+
+            solverName = self.getOption('adjointSolver')
+            solverArg = solverName+' '+parallelFlag
+            if solverName == 'buoyantBoussinesqSimpleDAFoam':
+                from .pyBuoyantBoussinesqSimpleDAFoam import pyBuoyantBoussinesqSimpleDAFoam
+                primalSolver = pyBuoyantBoussinesqSimpleDAFoam(solverArg.encode())
+            if solverName == 'buoyantSimpleDAFoam':
+                from .pyBuoyantSimpleDAFoam import pyBuoyantSimpleDAFoam
+                primalSolver = pyBuoyantSimpleDAFoam(solverArg.encode())
+            if solverName == 'laplacianDAFoam':
+                from .pyLaplacianDAFoam import pyLaplacianDAFoam
+                primalSolver = pyLaplacianDAFoam(solverArg.encode())
+            if solverName == 'rhoSimpleCDAFoam':
+                from .pyRhoSimpleCDAFoam import pyRhoSimpleCDAFoam
+                primalSolver = pyRhoSimpleCDAFoam(solverArg.encode())
+            if solverName == 'rhoSimpleDAFoam':
+                from .pyRhoSimpleDAFoam import pyRhoSimpleDAFoam
+                primalSolver = pyRhoSimpleDAFoam(solverArg.encode())
+            if solverName == 'simpleDAFoam':
+                from .pySimpleDAFoam import pySimpleDAFoam
+                primalSolver = pySimpleDAFoam(solverArg.encode())
+            if solverName == 'simpleTDAFoam':
+                from .pySimpleTDAFoam import pySimpleTDAFoam
+                primalSolver = pySimpleTDAFoam(solverArg.encode())
+            if solverName == 'solidDisplacementDAFoam':
+                from .pySolidDisplacementDAFoam import pySolidDisplacementDAFoam
+                primalSolver = pySolidDisplacementDAFoam(solverArg.encode())
+            if solverName == 'turboDAFoam':
+                from .pyTurboDAFoam import pyTurboDAFoam
+                primalSolver = pyTurboDAFoam(solverArg.encode())
+            else:
+                raise Error(solverName+' not supported')
+            
+            primalSolver.run()
+
+            primalSolver = None
+
+            return
 
         if self.parallel and mpiSpawnRun:
             # Setup the indicator file to tell the python layer that simpleFoam
@@ -1979,6 +2048,30 @@ class PYDAFOAM(AeroSolver):
         self._writeFvSchemesFile()
         self._writeFvSolutionFile()
         self.comm.Barrier()
+
+        useCython = self.getOption('useCython')
+
+        if useCython:
+
+            parallelFlag = ''
+            if self.parallel:
+                parallelFlag = '-parallel'
+
+            solverName = 'coloringSolver'
+            solverArg = solverName+' '+parallelFlag
+
+            if self.getOption('flowcondition') == 'Incompressible':
+                from .pyColoringSolverIncompressible import pyColoringSolverIncompressible
+                coloringSolver = pyColoringSolverIncompressible(solverArg.encode())
+            elif self.getOption('flowcondition') == 'Compressible':
+                from .pyColoringSolverCompressible import pyColoringSolverCompressible
+                coloringSolver = pyColoringSolverCompressible(solverArg.encode())
+            
+            coloringSolver.run()
+            coloringSolver = None
+
+            return
+
 
         if self.parallel and mpiSpawnRun:
             # Setup the indicator file to tell the python layer that coloring
@@ -2237,6 +2330,9 @@ class PYDAFOAM(AeroSolver):
             List containing the names of the objective functions
         '''
 
+        if self.getOption('usecython'):
+            return False
+
         returnFlag = False
 
         outputDir = self.getOption('outputdirectory')
@@ -2298,6 +2394,9 @@ class PYDAFOAM(AeroSolver):
         """
         Read the adjointLog file and check if adjoint converges
         """
+
+        if self.getOption('usecython'):
+            return False
 
         outputDir = self.getOption('outputdirectory')
         if not self.getOption('multipointopt'):
@@ -3213,14 +3312,6 @@ class PYDAFOAM(AeroSolver):
             The directory containing the openFOAM Mesh files
         """
 
-        from pyofm import PYOFM
-
-        # Initialize pyOFM
-        self.ofm = PYOFM(comm=self.comm)
-
-        # generate the file names
-        self.fileNames = self.ofm.getFileNames(caseDir, comm=self.comm)
-
         # Copy the reference points file to points to ensure
         # consistant starting point
         if self.getOption('writecompress') == 'on':
@@ -3258,6 +3349,14 @@ class PYDAFOAM(AeroSolver):
 
         if self.comm.rank == 0:
             print("Reading points")
+        
+        from pyofm import PYOFM
+
+        # Initialize pyOFM
+        self.ofm = PYOFM(comm=self.comm)
+
+        # generate the file names
+        self.fileNames = self.ofm.getFileNames(caseDir, comm=self.comm)
 
         # Read in the volume points
         self.x0 = self.ofm.readVolumeMeshPoints()
@@ -3561,9 +3660,10 @@ class PYDAFOAM(AeroSolver):
                 fileName = os.path.join(outputDir, 'flowLog_FC%d_%3.3d' % (self.multiPointFCIndex,
                                                                            self.flowRunsCounter))
 
-            if not os.path.isfile(fileName):
-                self.skipFlowAndAdjointRuns = False
-                return
+            if not self.getOption('usecython'):
+                if not os.path.isfile(fileName):
+                    self.skipFlowAndAdjointRuns = False
+                    return
 
             # check objFuncs.dat
             if not self.getOption('multipointopt'):
@@ -3584,9 +3684,10 @@ class PYDAFOAM(AeroSolver):
                     fileName = os.path.join(outputDir, 'objFuncsMean_FC%d_%3.3d.dat' % (self.multiPointFCIndex,
                                                                                         self.flowRunsCounter))
 
-                if not os.path.isfile(fileName):
-                    self.skipFlowAndAdjointRuns = False
-                    return
+                if not self.getOption('usecython'):
+                    if not os.path.isfile(fileName):
+                        self.skipFlowAndAdjointRuns = False
+                        return
 
         elif logOpt == 2:
             # check adjointLog
@@ -3596,9 +3697,10 @@ class PYDAFOAM(AeroSolver):
                 fileName = os.path.join(outputDir, 'adjointLog_FC%d_%3.3d' % (self.multiPointFCIndex,
                                                                               self.adjointRunsCounter))
 
-            if not os.path.isfile(fileName):
-                self.skipFlowAndAdjointRuns = False
-                return
+            if not self.getOption('usecython'):
+                if not os.path.isfile(fileName):
+                    self.skipFlowAndAdjointRuns = False
+                    return
 
             # check designVariables.dat
             if not self.getOption('multipointopt'):
@@ -3641,9 +3743,10 @@ class PYDAFOAM(AeroSolver):
                 fileName = os.path.join(outputDir, 'checkMeshLog_FC%d_%3.3d' % (self.multiPointFCIndex,
                                                                                 self.flowRunsCounter))
 
-            if not os.path.isfile(fileName):
-                self.skipFlowAndAdjointRuns = False
-                return
+            if not self.getOption('usecython'):
+                if not os.path.isfile(fileName):
+                    self.skipFlowAndAdjointRuns = False
+                    return
 
         else:
             raise Error('logOpt not valid')
@@ -3701,9 +3804,10 @@ class PYDAFOAM(AeroSolver):
                 fileCopy = os.path.join(outputDir, 'flowLog_FC%d_%3.3d' % (self.multiPointFCIndex,
                                                                            self.flowRunsCounter))
 
-            if self.comm.rank == 0:
-                print("Copying %s to %s" % (fileOrig, fileCopy))
-                shutil.copyfile(fileOrig, fileCopy)
+            if not self.getOption('usecython'):
+                if self.comm.rank == 0:
+                    print("Copying %s to %s" % (fileOrig, fileCopy))
+                    shutil.copyfile(fileOrig, fileCopy)
 
             # copy objFuncs.dat to the outputdirectory
             if not self.getOption('multipointopt'):
@@ -3727,10 +3831,10 @@ class PYDAFOAM(AeroSolver):
                     fileOrig = '../FlowConfig%d/objFuncsMean.dat' % self.multiPointFCIndex
                     fileCopy = os.path.join(outputDir, 'objFuncsMean_FC%d_%3.3d.dat' % (self.multiPointFCIndex,
                                                                                         self.flowRunsCounter))
-
-                if self.comm.rank == 0:
-                    print("Copying %s to %s" % (fileOrig, fileCopy))
-                    shutil.copyfile(fileOrig, fileCopy)
+                if not self.getOption('usecython'):
+                    if self.comm.rank == 0:
+                        print("Copying %s to %s" % (fileOrig, fileCopy))
+                        shutil.copyfile(fileOrig, fileCopy)
 
         elif logOpt == 2:
             # copy adjointLog to the outputdirectory
@@ -3742,9 +3846,10 @@ class PYDAFOAM(AeroSolver):
                 fileCopy = os.path.join(outputDir, 'adjointLog_FC%d_%3.3d' % (self.multiPointFCIndex,
                                                                               self.adjointRunsCounter))
 
-            if self.comm.rank == 0:
-                print("Copying %s to %s" % (fileOrig, fileCopy))
-                shutil.copyfile(fileOrig, fileCopy)
+            if not self.getOption('usecython'):
+                if self.comm.rank == 0:
+                    print("Copying %s to %s" % (fileOrig, fileCopy))
+                    shutil.copyfile(fileOrig, fileCopy)
 
             # copy designVariables.dat to the outputdirectory
             if not self.getOption('multipointopt'):
@@ -3797,9 +3902,10 @@ class PYDAFOAM(AeroSolver):
                 fileCopy = os.path.join(outputDir, 'checkMeshLog_FC%d_%3.3d' % (self.multiPointFCIndex,
                                                                                 self.flowRunsCounter))
 
-            if self.comm.rank == 0:
-                print("Copying %s to %s" % (fileOrig, fileCopy))
-                shutil.copyfile(fileOrig, fileCopy)
+            if not self.getOption('usecython'):
+                if self.comm.rank == 0:
+                    print("Copying %s to %s" % (fileOrig, fileCopy))
+                    shutil.copyfile(fileOrig, fileCopy)
 
         else:
             raise Error('logOpt not valid')
@@ -5469,6 +5575,7 @@ class PYDAFOAM(AeroSolver):
                     isForceObj = True
                     break
             if isForceObj:
+                f.write('/*\n')
                 f.write('functions\n')
                 f.write('{ \n')
                 f.write('    forceCoeffs\n')
@@ -5499,6 +5606,7 @@ class PYDAFOAM(AeroSolver):
                 f.write('        Aref                %f;\n' % self.getOption('referencevalues')['ARef'])
                 f.write('    } \n')
                 f.write('} \n')
+                f.write('*/\n')
             f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
 
             f.close()
@@ -5640,6 +5748,7 @@ class PYDAFOAM(AeroSolver):
             f.write('    nkJacMatReOrdering     %s;\n' % self.getOption('nkjacmatreordering'))
             f.write('    nkGMRESMaxIters        %d;\n' % self.getOption('nkgmresmaxiters'))
             f.write('    nkGMRESRestart         %d;\n' % self.getOption('nkgmresrestart'))
+            f.write('    printSolverPars        %s;\n' % self._checkBoolean(self.getOption('printsolverpars')))
             f.write('}\n')
             f.write('\n')
 

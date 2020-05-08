@@ -145,6 +145,8 @@ public:
     label nFFDPoints;
     /// hash table to limit the maximal connectivity levels for PC Jacobian matrices. this will save memory when doing PC fill-in
     HashTable<label> maxResConLv4JacPCMat;
+    ///  whether to print the solver parameters
+    label printSolverPars;
     
     // flow options
     /// whether to set boundary condition for flow solvers

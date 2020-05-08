@@ -116,3 +116,7 @@ cd applications/utilities
 ./Allwmake
 
 cd ../../
+
+echo "************** Compiling pyLibs **************"
+cd src/pyLibs
+./Allmake
