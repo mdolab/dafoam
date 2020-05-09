@@ -56,7 +56,7 @@ ext = [Extension("pyCheckMesh",
     library_dirs = [os.getenv("FOAM_LIBBIN")],
     # All other flags for OpenFOAM, users don't need to touch this 
     extra_compile_args= [
-        "-std=c++11",
+        "-std=c++11","-DFULLDEBUG -g -O0",
         "-m64",
         "-DOPENFOAM_PLUS=1812",
         "-Dlinux64",

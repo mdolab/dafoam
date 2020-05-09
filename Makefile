@@ -23,9 +23,9 @@ clean:
 opt:
 	@echo "******************Compiling Opt Mode******************"
 # compile src/ofLibs/boundaryConditions
-	cd src/ofLibs/boundaryConditions && ./Allmake_Opt
+	cd src/ofLibs/boundaryConditions && ./Allmake
 # compile src/ofLibs/models
-	cd src/ofLibs/models && ./Allmake_Opt
+	cd src/ofLibs/models && ./Allmake
 # compile src/ofLibs/adjoint with incompressible
 	cd src/ofLibs/adjoint && ./Allmake_Incompressible_Opt
 # compile applications/incompressible
@@ -41,4 +41,19 @@ opt:
 	
 debug:
 	@echo "******************Compiling Debug Mode******************"
-	@exit 1
+# compile src/ofLibs/boundaryConditions
+	cd src/ofLibs/boundaryConditions && ./Allmake
+# compile src/ofLibs/models
+	cd src/ofLibs/models && ./Allmake
+# compile src/ofLibs/adjoint with incompressible
+	cd src/ofLibs/adjoint && ./Allmake_Incompressible_Debug
+# compile applications/incompressible
+	cd applications/incompressible && ./Allmake_Debug
+# compile src/ofLibs/adjoint with compressible
+	cd src/ofLibs/adjoint && ./Allmake_Compressible_Debug
+# compile applications/compressible
+	cd applications/compressible && ./Allmake_Debug
+# compile applications/utilities
+	cd applications/utilities && ./Allmake
+# compile srs/pyLibs
+	cd src/pyLibs && ./Allmake_Debug
