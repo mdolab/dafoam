@@ -224,7 +224,7 @@ To compile, you can just copy the code blocks in the following steps and run the
     git clone https://github.com/mdolab/dafoam && \
     . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
     cd $HOME/repos/dafoam && \
-    ./Allwmake
+    make
     
    Finally, run the regression test::
 

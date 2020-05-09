@@ -156,8 +156,8 @@ RUN cd $HOME/repos && \
     git clone https://github.com/mdolab/dafoam && \
     . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
     cd $HOME/repos/dafoam && \
-    ./Allwmake && \
-    ./Allwclean
+    make && \
+    make clean
 
 # Create a mount folder
 RUN mkdir -p $HOME/mount
