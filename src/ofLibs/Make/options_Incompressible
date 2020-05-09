@@ -2,6 +2,7 @@ EXE_INC = \
     -std=c++11 \
     -Wno-old-style-cast \
     -Wno-conversion-null \
+    -DIncompressibleFlow \
     -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude \
     -I$(LIB_SRC)/TurbulenceModels/incompressible/lnInclude \
     -I$(LIB_SRC)/transportModels/incompressible/lnInclude \
@@ -14,7 +15,8 @@ EXE_INC = \
     -I$(LIB_SRC)/fvOptions/lnInclude\
     -I$(LIB_SRC)/OpenFOAM/lnInclude \
     -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
-    $(shell mpicxx --showme:compile)
+    -I$(MPI_ARCH_PATH)/include \
+    -I$(MPI_ARCH_PATH)/include64
     
 
 LIB_LIBS = \
@@ -29,4 +31,5 @@ LIB_LIBS = \
     -lfvOptions \
     -L$(FOAM_USER_LIBBIN) -ltractionDisplacementFvPatchVectorField \
     -L$(PETSC_LIB) -lpetsc \
-    $(shell mpicxx --showme:link)
+    -L$(MPI_ARCH_PATH)/lib \
+    -L$(MPI_ARCH_PATH)/lib64

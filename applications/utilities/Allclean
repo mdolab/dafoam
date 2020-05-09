@@ -5,5 +5,4 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-for d in ./*/ ; do (cd "$d" && make clean); done
-
+for d in ./*/ ; do (cd "$d" && wclean); done

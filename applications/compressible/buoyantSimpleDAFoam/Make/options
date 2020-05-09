@@ -2,6 +2,7 @@ EXE_INC = \
     -std=c++11  \
     -Wno-old-style-cast \
     -Wno-conversion-null \
+    -DCompressibleFlow \
     -I$(LIB_SRC)/transportModels/compressible/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/radiation/lnInclude \
@@ -12,8 +13,9 @@ EXE_INC = \
     -I$(LIB_SRC)/sampling/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(PETSC_DIR)/include -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
-    -I../../src/ofLibs/lnInclude \
-    $(shell mpicxx --showme:compile)
+    -I../../../src/ofLibs/lnInclude \
+    -I$(MPI_ARCH_PATH)/include \
+    -I$(MPI_ARCH_PATH)/include64
 
 EXE_LIBS = \
     -lcompressibleTransportModels \
@@ -28,4 +30,5 @@ EXE_LIBS = \
     -lfvOptions \
     -L$(PETSC_LIB) -lpetsc \
     -L$(FOAM_USER_LIBBIN) -lAdjointDerivativeCompressible \
-    $(shell mpicxx --showme:link)
+    -L$(MPI_ARCH_PATH)/lib \
+    -L$(MPI_ARCH_PATH)/lib64
