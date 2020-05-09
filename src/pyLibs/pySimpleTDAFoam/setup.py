@@ -45,7 +45,8 @@ ext = [Extension(libName,
         os.getenv("PETSC_DIR")+"/include",
         petsc4py.get_include(),
         os.getenv("PETSC_DIR")+"/"+os.getenv("PETSC_ARCH")+"/include",
-        "../../ofLibs/lnInclude",
+        "../../ofLibs/adjoint/lnInclude",
+        "../../ofLibs/boundaryConditions/tractionDisplacement",
         "./"
         "../../include"],
     # These are from Make/options:EXE_LIBS
@@ -69,7 +70,7 @@ ext = [Extension(libName,
     # All other flags for OpenFOAM, users don't need to touch this 
     extra_compile_args=[
         "-DIncompressibleFlow",
-        "-std=c++11",
+        "-std=c++11","-DFULLDEBUG -g -O0",
         "-m64",
         "-DOPENFOAM_PLUS=1812",
         "-Dlinux64",

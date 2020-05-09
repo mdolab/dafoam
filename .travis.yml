@@ -27,7 +27,7 @@ install:
   # Download input.tar.gz
   - docker exec -it regtest /bin/bash -c "cd $DOCKER_WORKING_DIR/python/reg_tests && rm -rf input.tar.gz && wget https://github.com/mdolab/dafoam/raw/master/python/reg_tests/input.tar.gz && tar -xzf input.tar.gz"
   # Compile
-  - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allwmake"
+  - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && make"
 
 script:
   # Run tests

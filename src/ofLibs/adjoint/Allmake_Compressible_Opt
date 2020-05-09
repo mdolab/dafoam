@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+if [ -z "$WM_PROJECT" ]; then
+  echo "OpenFOAM environment not found, forgot to source the OpenFOAM bashrc?"
+  exit 1
+fi
+
+cp Make/files_Compressible Make/files
+cp Make/options_Compressible Make/options
+wmake
