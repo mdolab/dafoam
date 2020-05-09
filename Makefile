@@ -5,29 +5,33 @@ default:
 
 clean:
 	@echo "********************Cleaning up********************"
-# clean src/ofLibs/myLibs
-	cd src/ofLibs/myLibs && ./Allclean
-# clean src/ofLibs with incompressible
-	cd src/ofLibs && ./Allclean
-# clean applications/incompressible
+# compile src/ofLibs/boundaryConditions
+	cd src/ofLibs/boundaryConditions && ./Allclean
+# compile src/ofLibs/models
+	cd src/ofLibs/models && ./Allclean
+# compile src/ofLibs/adjoint with incompressible
+	cd src/ofLibs/adjoint && ./Allclean
+# compile applications/incompressible
 	cd applications/incompressible && ./Allclean
-# clean applications/compressible
+# compile applications/compressible
 	cd applications/compressible && ./Allclean
-# clean applications/utilities
+# compile applications/utilities
 	cd applications/utilities && ./Allclean
-# clean srs/pyLibs
+# compile srs/pyLibs
 	cd src/pyLibs && ./Allclean
 
 opt:
 	@echo "******************Compiling Opt Mode******************"
-# compile src/ofLibs/myLibs
-	cd src/ofLibs/myLibs && ./Allmake_Opt
-# compile src/ofLibs with incompressible
-	cd src/ofLibs && ./Allmake_Incompressible_Opt
+# compile src/ofLibs/boundaryConditions
+	cd src/ofLibs/boundaryConditions && ./Allmake_Opt
+# compile src/ofLibs/models
+	cd src/ofLibs/models && ./Allmake_Opt
+# compile src/ofLibs/adjoint with incompressible
+	cd src/ofLibs/adjoint && ./Allmake_Incompressible_Opt
 # compile applications/incompressible
 	cd applications/incompressible && ./Allmake_Opt
-# compile src/ofLibs with compressible
-	cd src/ofLibs && ./Allmake_Compressible_Opt
+# compile src/ofLibs/adjoint with compressible
+	cd src/ofLibs/adjoint && ./Allmake_Compressible_Opt
 # compile applications/compressible
 	cd applications/compressible && ./Allmake_Opt
 # compile applications/utilities

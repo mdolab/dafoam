@@ -45,7 +45,8 @@ ext = [Extension(libName,
         os.getenv("PETSC_DIR")+"/include",
         petsc4py.get_include(),
         os.getenv("PETSC_DIR")+"/"+os.getenv("PETSC_ARCH")+"/include",
-        "../../ofLibs/lnInclude",
+        "../../ofLibs/adjoint/lnInclude",
+        "../../ofLibs/boundaryConditions/tractionDisplacement",
         "./"
         "../../include"],
     # These are from Make/options:EXE_LIBS
