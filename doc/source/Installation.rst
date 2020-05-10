@@ -3,7 +3,7 @@
 Installation 
 ------------
 
-This section assumes you want to compile the DAFoam optimization package from the source on a Linux system. If you use the pre-compiled version, skip this section.
+This section assumes you want to compile the DAFoam optimization package (v1.1) from the source on a Linux system. If you use the pre-compiled version, skip this section.
 
 The DAFoam package can be compiled with various dependency versions. Here we elaborate on how to compile it on Ubuntu 18.04 using the dependencies shown in the following table. 
 
@@ -151,23 +151,23 @@ To compile, you can just copy the code blocks in the following steps and run the
    Then run::
 
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/baseclasses && \
+    git clone https://github.com/mdolab/baseclasses -b v1.1.0 && \
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/pygeo && \
+    git clone https://github.com/mdolab/pygeo -b v1.1.0 && \
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/multipoint && \
+    git clone https://github.com/mdolab/multipoint -b v1.1.0 && \
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/pyspline && \
+    git clone https://github.com/mdolab/pyspline -b v1.1.0 && \
     cd pyspline && \
     cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk && \
     make && \
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/pyhyp && \
+    git clone https://github.com/mdolab/pyhyp -b v2.1.0 && \
     cd pyhyp && \
     cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && \
     make && \
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/cgnsutilities && \
+    git clone https://github.com/mdolab/cgnsutilities -b v2.1.0 && \
     cd cgnsutilities && \
     cp config.mk.info config.mk && \
     make && \
@@ -176,10 +176,11 @@ To compile, you can just copy the code blocks in the following steps and run the
     cd $HOME/repos && \
     git clone https://github.com/mdolab/idwarp && \
     cd idwarp && \
+    git checkout f854b65 && \
     cp -r config/defaults/config.LINUX_GFORTRAN_OPENMPI.mk config/config.mk && \
     make && \
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/pyoptsparse && \
+    git clone https://github.com/mdolab/pyoptsparse -b v2.1.0 && \
     cd pyoptsparse && \
     pip install -r requirements.txt && \
     rm -rf build && \
@@ -213,7 +214,7 @@ To compile, you can just copy the code blocks in the following steps and run the
 #. **DAFoam** and **pyOFM**. First compile pyOFM::
 
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/pyofm && \
+    git clone https://github.com/mdolab/pyofm -b v1.1.1 && \
     cd pyofm && \
     . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
     make
@@ -221,7 +222,7 @@ To compile, you can just copy the code blocks in the following steps and run the
    Then, compile DAFoam by running::
 
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/dafoam && \
+    git clone https://github.com/mdolab/dafoam -b v1.1.1 && \
     . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
     cd $HOME/repos/dafoam && \
     make
