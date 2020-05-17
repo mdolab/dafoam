@@ -36,11 +36,11 @@ Before running the tutorials, you need to load the DAFoam environment.
 
 - If you use the pre-compiled package, run this command to start a container::
 
-   docker run -it --rm -u dafoamuser -v $HOME:/UserHome -w /UserHome dafoam/opt-packages:latest bash -rcfile /opt/setupDAFoam.sh
+   docker run -it --rm -u dafoamuser -v $HOME:/home/dafoamuser/mount -w /home/dafoamuser/mount dafoam/opt-packages:v1.1 bash
 
- This will mount your local computer's home directory to the container's /UserHome directory and login there. Then, copy the tutorials from /opt/repos/dafoam to /UserHome::
+ This will mount your local computer's home directory to the container's `~/mount` directory and login there. Then, copy the tutorials from `~/repos/dafoam` to `~/mount`::
 
-   cp -r /opt/repos/dafoam/tutorials .
+   cp -r /home/dafoamuser/repos/dafoam/tutorials .
 
  Finally, you can go into the **run** folder of a tutorial and run the optimization. For example, for the aerodynamic optimization of NACA0012 airfoil, run::
 
@@ -52,7 +52,7 @@ Before running the tutorials, you need to load the DAFoam environment.
    
    - Treat the Docker container as disposable, i.e., start one container for one optimization run. If the optimization is running and you want to kill it, just run ``exit`` to quit the container.
 
-   - Do not store simulation results in the container because they will be deleted after you exit. Run simulations on the mounted space /UserHome instead.
+   - Do not store simulation results in the container because they will be deleted after you exit. Run simulations on the mounted space `~/mount` instead.
    
    - dafoamuser has the sudo privilege and its password is: dafoamuser.
 
