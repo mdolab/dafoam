@@ -214,7 +214,7 @@ To compile, you can just copy the code blocks in the following steps and run the
 #. **DAFoam** and **pyOFM**. First compile pyOFM::
 
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/pyofm -b v1.1.1 && \
+    git clone https://github.com/mdolab/pyofm -b v1.1.2 && \
     cd pyofm && \
     . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
     make
