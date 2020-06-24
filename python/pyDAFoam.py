@@ -1223,7 +1223,7 @@ class PYDAFOAM(AeroSolver):
             logFileName = os.path.join(outputDir, 'checkMeshLog_FC%d_%3.3d' % (self.multiPointFCIndex,
                                                                                self.flowRunsCounter))
 
-        #self.meshQualityFailure = self.checkMeshLog(logFileName)
+        self.meshQualityFailure = self.checkMeshLog(logFileName)
 
         if self.meshQualityFailure is True:
             if self.comm.rank == 0:
