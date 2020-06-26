@@ -222,7 +222,7 @@ To compile, you can just copy the code blocks in the following steps and run the
    Then, compile DAFoam by running::
 
     cd $HOME/repos && \
-    git clone https://github.com/mdolab/dafoam -b v1.1.1 && \
+    git clone https://github.com/mdolab/dafoam -b v1.1.2 && \
     . $HOME/OpenFOAM/OpenFOAM-v1812/etc/bashrc && \
     cd $HOME/repos/dafoam && \
     make
