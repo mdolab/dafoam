@@ -36,8 +36,6 @@ opt:
 	cd applications/compressible && ./Allmake_Opt
 # compile applications/utilities
 	cd applications/utilities && ./Allmake
-# compile srs/pyLibs
-	cd src/pyLibs && ./Allmake_Opt
 	
 debug:
 	@echo "******************Compiling Debug Mode******************"
@@ -55,5 +53,3 @@ debug:
 	cd applications/compressible && ./Allmake_Debug
 # compile applications/utilities
 	cd applications/utilities && ./Allmake
-# compile srs/pyLibs
-	cd src/pyLibs && ./Allmake_Debug

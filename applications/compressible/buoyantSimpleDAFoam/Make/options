@@ -1,5 +1,5 @@
 EXE_INC = \
-    -std=c++11 -DFULLDEBUG -g -O0  \
+    -std=c++11 \
     -Wno-old-style-cast \
     -Wno-conversion-null \
     -DCompressibleFlow \
