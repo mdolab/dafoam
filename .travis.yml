@@ -11,7 +11,7 @@ env:
     - DOCKER_WORKING_DIR=/home/dafoamuser/repos/$REPO_NAME
     - DOCKER_MOUNT_DIR=/home/dafoamuser/mount/$REPO_NAME
   jobs:
-    - DOCKER_TAG=latest
+    - DOCKER_TAG=v1.1
 
 before_install:
     - docker pull dafoam/opt-packages:$DOCKER_TAG
