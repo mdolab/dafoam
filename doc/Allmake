@@ -1,3 +1,0 @@
-echo "Compiling DAFoam documentation"
-make html
-ln -s build/html/index.html DAFoamDoc.html

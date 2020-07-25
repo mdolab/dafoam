@@ -1,3 +1,0 @@
-simpleTDAFoam.C
-
-EXE = $(FOAM_USER_APPBIN)/simpleTDAFoam

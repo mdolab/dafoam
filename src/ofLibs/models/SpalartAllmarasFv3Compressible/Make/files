@@ -1,3 +1,0 @@
-makeSpalartAllmarasFv3Compressible.C
-
-LIB = $(FOAM_USER_LIBBIN)/libSpalartAllmarasFv3Compressible

@@ -1,3 +1,0 @@
-tractionDisplacementFvPatchVectorField.C
-
-LIB = $(FOAM_USER_LIBBIN)/libtractionDisplacementFvPatchVectorField

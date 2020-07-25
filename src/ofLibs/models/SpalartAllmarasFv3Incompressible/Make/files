@@ -1,3 +1,0 @@
-makeSpalartAllmarasFv3Incompressible.C
-
-LIB = $(FOAM_USER_LIBBIN)/libSpalartAllmarasFv3Incompressible

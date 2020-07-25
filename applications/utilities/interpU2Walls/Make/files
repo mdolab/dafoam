@@ -1,3 +1,0 @@
-interpU2Walls.C
-
-EXE = $(FOAM_USER_APPBIN)/interpU2Walls
