@@ -3,6 +3,9 @@
 Download 
 --------
 
+.. note::
+    NOTE: this website is for DAFoam v1.1 and is no longer updated. For DAFoam v2.0+, visit `dafoam.github.io <https://dafoam.github.io>`_
+
 The current stable version of DAFoam is v1.1. See the changes log from `here. <https://github.com/mdolab/dafoam/releases/tag/v1.1.1>`_
 
 There are two options to run DAFoam: **pre-compiled package** and **source code**. If you are running DAFoam for the first time, we recommend using the pre-compiled version, which supports Linux (Ubuntu, Fedora, CentOS, etc), MacOS, and Windows systems. For production runs on an HPC system, you need to compile DAFoam from the source.

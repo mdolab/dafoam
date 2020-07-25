@@ -3,6 +3,9 @@
 Publications 
 ------------
 
+.. note::
+    NOTE: this website is for DAFoam v1.1 and is no longer updated. For DAFoam v2.0+, visit `dafoam.github.io <https://dafoam.github.io>`_
+
 2020
 
 - Ping He, Charles A. Mader, Joaquim R.R.A. Martins, Kevin J. Maki. DAFoam: An open-source adjoint framework for multidisciplinary design optimization with OpenFOAM. AIAA Journal, 2020. https://doi.org/10.2514/1.J058853

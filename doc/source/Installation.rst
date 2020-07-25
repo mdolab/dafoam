@@ -3,6 +3,9 @@
 Installation 
 ------------
 
+.. note::
+    NOTE: this website is for DAFoam v1.1 and is no longer updated. For DAFoam v2.0+, visit `dafoam.github.io <https://dafoam.github.io>`_
+
 This section assumes you want to compile the DAFoam optimization package (v1.1) from the source on a Linux system. If you use the pre-compiled version, skip this section.
 
 The DAFoam package can be compiled with various dependency versions. Here we elaborate on how to compile it on Ubuntu 18.04 using the dependencies shown in the following table. 
