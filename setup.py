@@ -1,0 +1,43 @@
+from setuptools import setup
+import re
+
+__version__ = re.findall(
+    r"""__version__ = ["']+([0-9\.]*)["']+""",
+    open('dafoam/__init__.py').read(),
+)[0]
+
+setup(name='dafoam',
+      version=__version__,
+
+
+      description="DAFoam: Discrete Adjoint with OpenFOAM for High-fidelity, gradient-based Optimization",
+      long_description="""
+      DAFoam contains a suite of adjoint solvers to efficiently compute derivatives. It also provides a Python interface to interact with a high-fidelity gradient-based design optimization framework (MACH). DAFoam is based on OpenFOAM and has the following features:
+
+      - It implements an efficient discrete adjoint approach with competitive speed, scalability, accuracy, and compatibility.
+      - It allows rapid discrete adjoint development for any steady and unsteady OpenFOAM primal solvers with modifying only a few hundred lines of source codes.
+      - It supports design optimizations for a wide range of disciplines such as aerodynamics, heat transfer, structures, hydrodynamics, and radiation.
+
+      """,
+      long_description_content_type="text/markdown",
+      keywords='OpenFOAM adjoint optimization',
+      author='',
+      author_email='',
+      url='https://github.com/mdolab/dafoam',
+      license='GPL version 3',
+      packages=[
+          'dafoam',
+      ],
+      package_data={
+          'dafoam': ['*.so']
+      },
+      install_requires=[
+            'numpy>=1.16.4',
+            'mpi4py>=3.0.2',
+            'petsc4py>=3.11.0'
+      ],
+      classifiers=[
+        "Operating System :: Linux",
+        "Programming Language :: Cython, C++"]
+      )
+

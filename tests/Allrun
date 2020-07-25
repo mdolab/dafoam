@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+if [ -z "$WM_PROJECT" ]; then
+  echo "OpenFOAM environment not found, forgot to source the OpenFOAM bashrc?"
+  exit 1
+fi
+
+if [ -f "input.tar.gz" ]; then
+  echo "input.tar.gz already exists."
+else
+  echo "Downloading input.tar.gz"
+  wget https://github.com/dafoam/files/releases/download/v1.0.0/input.tar.gz --no-check-certificate
+fi
+
+# test DAFoamIncompresible lib
+rm -rf input
+tar -zxf input.tar.gz
+cd input/CurvedCubeHexMesh && cp -r 0.incompressible/* 0/ && decomposePar
+cd ../../
+
+cd DAFoamIncompressible && make && mpirun --use-hwthread-cpus -np 4 python runTests.py || exit 1
+echo "DAFoamIncompressible: Success!"
+cd ../
+
+# test DAFoamCompressible lib
+rm -rf input
+tar -zxf input.tar.gz
+cd input/CurvedCubeHexMesh && cp -r 0.compressible/* 0/ && decomposePar
+cd ../../
+
+cd DAFoamCompressible && make && mpirun --use-hwthread-cpus -np 4 python runTests.py || exit 1
+echo "DAFoamCompressible: Success!"
+cd ../
+
+# test DASimpleFoam
+rm -rf input
+tar -zxf input.tar.gz
+
+cd pyDAFoam && mpirun --use-hwthread-cpus -np 4 python runTests_DASimpleFoam.py 2>&1 | tee DAFoam_Test_DASimpleFoam.txt
+python testFuncs.py refs/DAFoam_Test_DASimpleFoamRef.txt DAFoam_Test_DASimpleFoam.txt || exit 1
+echo "DASimpleFoam: Success!"
+cd ../
+
+# test DARhoSimpleFoam
+rm -rf input
+tar -zxf input.tar.gz
+
+cd pyDAFoam && mpirun --use-hwthread-cpus -np 4 python runTests_DARhoSimpleFoam.py 2>&1 | tee DAFoam_Test_DARhoSimpleFoam.txt
+python testFuncs.py refs/DAFoam_Test_DARhoSimpleFoamRef.txt DAFoam_Test_DARhoSimpleFoam.txt || exit 1
+echo "DARhoSimpleFoam: Success!"
+cd ../
+
+# test DARhoSimpleCFoam
+rm -rf input
+tar -zxf input.tar.gz
+
+cd pyDAFoam && mpirun --use-hwthread-cpus -np 4 python runTests_DARhoSimpleCFoam.py 2>&1 | tee DAFoam_Test_DARhoSimpleCFoam.txt
+python testFuncs.py refs/DAFoam_Test_DARhoSimpleCFoamRef.txt DAFoam_Test_DARhoSimpleCFoam.txt || exit 1
+echo "DARhoSimpleCFoam: Success!"
+cd ../
+
+echo " "
+echo "************************************************************"
+echo "**************** All DAFoam tests passed! ******************"
+echo "************************************************************"
+echo " "

@@ -1,0 +1,8 @@
+# Add any directories, files, or patterns you don't want to be tracked by version control
+
+# MacOS files
+.DS_Store
+._*
+
+# PyCharm specific
+/.idea

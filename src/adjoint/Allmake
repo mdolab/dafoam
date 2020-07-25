@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+if [ -z "$WM_PROJECT" ]; then
+  echo "OpenFOAM environment not found, forgot to source the OpenFOAM bashrc?"
+  exit 1
+fi
+
+case $1 in
+  "opt")
+    cp Make/files_Incompressible Make/files
+    cp Make/options_Incompressible Make/options
+    wmake -j 4 || exit 1
+    ./Allclean
+    cp Make/files_Compressible Make/files
+    cp Make/options_Compressible Make/options
+    wmake -j 4 || exit 1
+    ;;
+  "debug")
+    cp Make/files_Incompressible Make/files
+    cp Make/options_Incompressible Make/options
+    sed -i 's/-std=c++11/-std=c++11 -DFULLDEBUG -g -O0/g' Make/options
+    wmake -j 4 || exit 1
+    ./Allclean
+    cp Make/files_Compressible Make/files
+    cp Make/options_Compressible Make/options
+    sed -i 's/-std=c++11/-std=c++11 -DFULLDEBUG -g -O0/g' Make/options
+    wmake -j 4 || exit 1
+    ;;
+  "incompressible")
+    cp Make/files_Incompressible Make/files
+    cp Make/options_Incompressible Make/options
+    wmake -j 4 || exit 1
+    ;;
+  "compressible")
+    cp Make/files_Compressible Make/files
+    cp Make/options_Compressible Make/options
+    wmake -j 4 || exit 1
+    ;;
+  *)
+    echo "Argument not valid! Options are: opt, debug, incompressible, and compressible"
+    echo "Example: ./Allmake opt"
+    exit 1
+    ;;
+esac
+
