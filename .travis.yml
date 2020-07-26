@@ -10,7 +10,7 @@ env:
     - REPO_NAME=dafoam
     - DOCKER_WORKING_DIR=/home/dafoamuser/$REPO_NAME
     - DOCKER_MOUNT_DIR=/home/dafoamuser/mount/$REPO_NAME
-    - DOCKER_TAG=v2.0
+    - DOCKER_TAG=latest
 
 notifications:
   webhooks: https://coveralls.io/webhook
