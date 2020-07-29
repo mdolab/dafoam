@@ -43,6 +43,7 @@ jobs:
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake && rm -rf $DOCKER_PIP_INSTALL_PATH/dafoam* && pip install ."
         # just run the tests
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && ./Allrun"
+
     - stage: cppCodeCoverageIncomp
       script:
         # compile incompressible solvers
@@ -50,9 +51,10 @@ jobs:
         # install cpp-coveralls and coverage
         - docker exec -it regtest /bin/bash -c "pip install cpp-coveralls --user && pip install coverage --user"
         # compile and run the tests
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests/pyDAFoam && mpirun --use-hwthread-cpus -np 4 python runTests_DASimpleFoam.py noCheckVal"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DASimpleFoam.py noCheckVal"
         # run coveralls, the -lp option is for inline functions in C++
         - docker exec -it -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/src/adjoint && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && COVERALLS_PARALLEL=true coveralls --gcov-options '\-lp'"
+
     - stage: cppCodeCoverageComp
       script:
         # compile incompressible solvers
@@ -60,20 +62,21 @@ jobs:
         # install cpp-coveralls and coverage
         - docker exec -it regtest /bin/bash -c "pip install cpp-coveralls --user && pip install coverage --user"
         # compile and run the tests
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests/pyDAFoam && mpirun --use-hwthread-cpus -np 4 python runTests_DARhoSimpleFoam.py noCheckVal"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DARhoSimpleFoam.py noCheckVal"
         - docker exec -it regtest /bin/bash -c "cd $DOCKER_WORKING_DIR/tests && rm -rf input && tar -xzf input.tar.gz"
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests/pyDAFoam && mpirun --use-hwthread-cpus -np 4 python runTests_DARhoSimpleCFoam.py noCheckVal"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DARhoSimpleCFoam.py noCheckVal"
         # run coveralls, the -lp option is for inline functions in C++
         - docker exec -it -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/src/adjoint && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && COVERALLS_PARALLEL=true coveralls --gcov-options '\-lp'"
+
     - stage: pythonCodeCoverage
       script:
         # compile incompressible solvers
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake incompressible && rm -rf $DOCKER_PIP_INSTALL_PATH/dafoam* && pip install ."
         # install coveralls and coverage
         - docker exec -it regtest /bin/bash -c "pip install coveralls --user && pip install coverage --user"
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests/pyDAFoam && coverage run --include=$DOCKER_PIP_INSTALL_PATH/dafoam/pyDAFoam.py runTests_DASimpleFoam.py noCheckVal"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && coverage run --include=$DOCKER_PIP_INSTALL_PATH/dafoam/pyDAFoam.py runTests_DASimpleFoam.py noCheckVal"
         # run coveralls
-        - docker exec -it -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests/pyDAFoam && COVERALLS_PARALLEL=true coveralls"
+        - docker exec -it -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && COVERALLS_PARALLEL=true coveralls"
 
 after_script:
   - docker rm -f regtest 
