@@ -222,65 +222,6 @@ void DAUtility::pyDict2OFDict(
     }
 }
 
-void DAUtility::pyStrList2OFWordList(
-    PyObject* pyList,
-    wordList& ofList)
-{
-    /*
-    Description:
-        Parse a Python str list to an OpenFOAM word list
-
-    Input:
-        pyList: Pytion str list
-
-    Output:
-        ofList: OpenFOAM wordList
-
-    Example:
-        In Python
-        pyList = ["CD", "CL"]
-        ....
-        Call:
-        wordList ofList;
-        DAUtility::pyStrList2OFWordList(pyList, ofList);
-        ofList -> {"CD", "CL"}
-    */
-
-    //PyObject_Print(pyDict,stdout,0);Info<<endl;
-
-    // size of the pyOpions keys
-    Py_ssize_t listSize = PyList_Size(pyList);
-    // loop over all the keys in pyDict and assign their values
-    // to ofDict
-    for (label i = 0; i < listSize; i++)
-    {
-        // the ith key
-        PyObject* keyI = PyList_GetItem(pyList, i);
-
-        const char* keyIType = Py_TYPE(keyI)->tp_name;
-
-        if (word(keyIType) == "str")
-        {
-            char* valSet = PyUnicode_AsUTF8(keyI);
-            ofList.append(word(valSet));
-        }
-        else if (word(keyIType) == "list")
-        {
-            // if its a subList, recursely call this function
-            wordList ofSubList;
-            DAUtility::pyStrList2OFWordList(keyI, ofSubList);
-            ofList.append(ofSubList);
-        }
-        else
-        {
-            FatalErrorIn("pyStrList2OFWordList") << "Type: " << keyIType
-                                                 << " for the pyList is not supported!"
-                                                 << " The only option is: str!"
-                                                 << abort(FatalError);
-        }
-    }
-}
-
 void DAUtility::readVectorBinary(
     Vec vecIn,
     const word prefix)

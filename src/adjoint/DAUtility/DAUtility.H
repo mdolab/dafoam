@@ -48,11 +48,6 @@ public:
         PyObject* pyDict,
         dictionary& ofDict);
 
-    /// convert a python str list to OpenFOAM wordList
-    static void pyStrList2OFWordList(
-        PyObject* pyList,
-        wordList& ofList);
-
     /// check whether a value is in the list
     template<class classType>
     static label isInList(
