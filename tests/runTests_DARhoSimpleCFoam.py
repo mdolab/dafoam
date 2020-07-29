@@ -138,12 +138,7 @@ DASolver.printFamilyList()
 DASolver.setMesh(mesh)
 # set evalFuncs
 evalFuncs = []
-objFuncs = DASolver.getOption("objFunc")
-for funcName in objFuncs:
-    for funcPart in objFuncs[funcName]:
-        if objFuncs[funcName][funcPart]["addToAdjoint"] is True:
-            if funcName not in evalFuncs:
-                evalFuncs.append(funcName)
+DASolver.setEvalFuncs(evalFuncs)
 
 # DVCon
 DVCon = DVConstraints()

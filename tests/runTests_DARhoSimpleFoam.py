@@ -50,8 +50,6 @@ aeroOptions = {
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
     "primalMinResTol": 1e-12,
-    "multiPoint": True,
-    "nMultiPoints": 1,
     "primalBC": {
         "UIn": {"variable": "U", "patch": "inlet", "value": [UmagIn, 0.0, 0.0]},
         "pIn": {"variable": "p", "patch": "outlet", "value": [pIn]},
@@ -149,12 +147,7 @@ DASolver.printFamilyList()
 DASolver.setMesh(mesh)
 # set evalFuncs
 evalFuncs = []
-objFuncs = DASolver.getOption("objFunc")
-for funcName in objFuncs:
-    for funcPart in objFuncs[funcName]:
-        if objFuncs[funcName][funcPart]["addToAdjoint"] is True:
-            if funcName not in evalFuncs:
-                evalFuncs.append(funcName)
+DASolver.setEvalFuncs(evalFuncs)
 
 # DVCon
 DVCon = DVConstraints()
@@ -164,41 +157,19 @@ surf = [p0, v1, v2]
 DVCon.setSurface(surf)
 
 # optFuncs
-# provide a function to set primal conditions
-def setMultiPointCondition(xDV, index):
-    pass
-
-
-# provide a function to assemble the funcs from MP
-def setMultiPointObjFuncs(funcs, funcsMP, index):
-    for key in funcs:
-        funcsMP[key] = funcs[key]
-    return
-
-
-# provide a function to assemble the funcs from MP
-def setMultiPointObjFuncsSens(xDVs, funcsMP, funcsSens, funcsSensMP, index):
-    for key in funcsSens:
-        funcsSensMP[key] = funcsSens[key]
-    return
-
-
 optFuncs.DASolver = DASolver
 optFuncs.DVGeo = DVGeo
 optFuncs.DVCon = DVCon
 optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
-optFuncs.setMultiPointCondition = setMultiPointCondition
-optFuncs.setMultiPointObjFuncs = setMultiPointObjFuncs
-optFuncs.setMultiPointObjFuncsSens = setMultiPointObjFuncsSens
 
 # Run
 DASolver.runColoring()
 xDV = DVGeo.getValues()
 funcs = {}
-funcs, fail = optFuncs.calcObjFuncValuesMP(xDV)
+funcs, fail = optFuncs.calcObjFuncValues(xDV)
 funcsSens = {}
-funcsSens, fail = optFuncs.calcObjFuncSensMP(xDV, funcs)
+funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
 
 if checkRegVal:
     if gcomm.rank == 0:
