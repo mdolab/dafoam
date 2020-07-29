@@ -251,7 +251,9 @@ Foam::label Foam::checkGeometry(const polyMesh& mesh)
     }
 
     if (mesh.checkClosedBoundary(true))
+    {
         noFailedChecks++;
+    }
 
     {
         cellSet cells(mesh, "nonClosedCells", mesh.nCells() / 100 + 1);
