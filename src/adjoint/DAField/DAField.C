@@ -659,7 +659,6 @@ void DAField::setPrimalBoundaryConditions()
     // we also set wall boundary conditions for turbulence variables
     if (setTurbWallBCs)
     {
-        wordList turbVars = {"nut", "nuTilda", "k", "omega", "epsilon"};
 
         IOdictionary turbDict(
             IOobject(
@@ -679,78 +678,74 @@ void DAField::setPrimalBoundaryConditions()
             {"SpalartAllmaras.*", wordRe::REGEX}};
         wordRes SAModelWordRes(SAModelWordReList);
 
-        forAll(turbVars, idxI)
+        // ------ nut ----------
+        if (db.foundObject<volScalarField>("nut"))
         {
-            word turbVar = turbVars[idxI];
 
-            // ------ nut ----------
-            if (turbVar == "nut" && db.foundObject<volScalarField>("nut"))
+            volScalarField& nut(const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("nut")));
+
+            forAll(nut.boundaryField(), patchI)
             {
-                volScalarField& nut(const_cast<volScalarField&>(
-                    db.lookupObject<volScalarField>("nut")));
-
-                forAll(nut.boundaryField(), patchI)
+                if (mesh_.boundaryMesh()[patchI].type() == "wall")
                 {
-                    if (mesh_.boundaryMesh()[patchI].type() == "wall")
+                    Info << "Setting nut wall BC for "
+                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+
+                    if (useWallFunction)
                     {
-                        Info << "Setting nut wall BC for "
-                             << mesh_.boundaryMesh()[patchI].name() << ". ";
-
-                        if (useWallFunction)
-                        {
-                            // wall function for SA
-                            if (SAModelWordRes(turbModelType))
-                            {
-                                nut.boundaryFieldRef().set(
-                                    patchI,
-                                    fvPatchField<scalar>::New(
-                                        "nutUSpaldingWallFunction",
-                                        mesh_.boundary()[patchI],
-                                        nut));
-                                Info << "BCType=nutUSpaldingWallFunction" << endl;
-                            }
-                            else // wall function for kOmega and kEpsilon
-                            {
-                                nut.boundaryFieldRef().set(
-                                    patchI,
-                                    fvPatchField<scalar>::New(
-                                        "nutkWallFunction",
-                                        mesh_.boundary()[patchI],
-                                        nut));
-                                Info << "BCType=nutkWallFunction" << endl;
-                            }
-
-                            // set boundary values
-                            // for decomposed domain, don't set BC if the patch is empty
-                            if (mesh_.boundaryMesh()[patchI].size() > 0)
-                            {
-                                scalar wallVal = nut[0];
-                                forAll(nut.boundaryFieldRef()[patchI], faceI)
-                                {
-                                    // assign uniform field
-                                    nut.boundaryFieldRef()[patchI][faceI] = wallVal;
-                                }
-                            }
-                        }
-                        else
+                        // wall function for SA
+                        if (SAModelWordRes(turbModelType))
                         {
                             nut.boundaryFieldRef().set(
                                 patchI,
                                 fvPatchField<scalar>::New(
-                                    "nutLowReWallFunction",
+                                    "nutUSpaldingWallFunction",
                                     mesh_.boundary()[patchI],
                                     nut));
-                            Info << "BCType=nutLowReWallFunction" << endl;
+                            Info << "BCType=nutUSpaldingWallFunction" << endl;
+                        }
+                        else // wall function for kOmega and kEpsilon
+                        {
+                            nut.boundaryFieldRef().set(
+                                patchI,
+                                fvPatchField<scalar>::New(
+                                    "nutkWallFunction",
+                                    mesh_.boundary()[patchI],
+                                    nut));
+                            Info << "BCType=nutkWallFunction" << endl;
+                        }
 
-                            // set boundary values
-                            // for decomposed domain, don't set BC if the patch is empty
-                            if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            scalar wallVal = nut[0];
+                            forAll(nut.boundaryFieldRef()[patchI], faceI)
                             {
-                                forAll(nut.boundaryFieldRef()[patchI], faceI)
-                                {
-                                    // assign uniform field
-                                    nut.boundaryFieldRef()[patchI][faceI] = 1e-14;
-                                }
+                                // assign uniform field
+                                nut.boundaryFieldRef()[patchI][faceI] = wallVal;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        nut.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New(
+                                "nutLowReWallFunction",
+                                mesh_.boundary()[patchI],
+                                nut));
+                        Info << "BCType=nutLowReWallFunction" << endl;
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            forAll(nut.boundaryFieldRef()[patchI], faceI)
+                            {
+                                // assign uniform field
+                                nut.boundaryFieldRef()[patchI][faceI] = 1e-14;
                             }
                         }
                     }
@@ -759,7 +754,6 @@ void DAField::setPrimalBoundaryConditions()
         }
     }
 }
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

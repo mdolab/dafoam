@@ -34,7 +34,18 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getTotalDerivVal(char *, char *, int)
         void updateDAOption(object)
         double getPrevPrimalSolTime()
-
+        # functions for unit tests
+        void pointVec2OFMesh(PetscVec)
+        void ofMesh2PointVec(PetscVec)
+        void resVec2OFResField(PetscVec)
+        void ofResField2ResVec(PetscVec)
+        void writeMatrixBinary(PetscMat, char *)
+        void writeMatrixASCII(PetscMat, char *)
+        void readMatrixBinary(PetscMat, char *)
+        void writeVectorASCII(PetscVec, char *)
+        void readVectorBinary(PetscVec, char *)
+        void writeVectorBinary(PetscVec, char *)
+    
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
 
@@ -98,6 +109,18 @@ cdef class pyDASolvers:
     def stateVec2OFField(self, Vec stateVec):
         self._thisptr.stateVec2OFField(stateVec.vec)
     
+    def pointVec2OFMesh(self, Vec xvVec):
+        self._thisptr.pointVec2OFMesh(xvVec.vec)
+    
+    def ofMesh2PointVec(self, Vec xvVec):
+        self._thisptr.ofMesh2PointVec(xvVec.vec)
+    
+    def resVec2OFResField(self, Vec rVec):
+        self._thisptr.resVec2OFResField(rVec.vec)
+    
+    def ofResField2ResVec(self, Vec rVec):
+        self._thisptr.ofResField2ResVec(rVec.vec)
+    
     def getNLocalAdjointStates(self):
         return self._thisptr.getNLocalAdjointStates()
     
@@ -118,3 +141,21 @@ cdef class pyDASolvers:
     
     def getPrevPrimalSolTime(self):
         return self._thisptr.getPrevPrimalSolTime()
+    
+    def writeMatrixBinary(self, Mat magIn, prefix):
+        self._thisptr.writeMatrixBinary(magIn.mat, prefix)
+    
+    def writeMatrixASCII(self, Mat magIn, prefix):
+        self._thisptr.writeMatrixASCII(magIn.mat, prefix)
+    
+    def readMatrixBinary(self, Mat magIn, prefix):
+        self._thisptr.readMatrixBinary(magIn.mat, prefix)
+    
+    def writeVectorASCII(self, Vec vecIn, prefix):
+        self._thisptr.writeVectorASCII(vecIn.vec, prefix)
+    
+    def readVectorBinary(self, Vec vecIn, prefix):
+        self._thisptr.readVectorBinary(vecIn.vec, prefix)
+    
+    def writeVectorBinary(self, Vec vecIn, prefix):
+        self._thisptr.writeVectorBinary(vecIn.vec, prefix)

@@ -52,7 +52,8 @@ aeroOptions = {
     "primalBC": {
         "UIn": {"variable": "U", "patch": "inout", "value": [UmagIn, 0.0, 0.0]},
         "pIn": {"variable": "p", "patch": "inout", "value": [pIn]},
-        "nuTildaIn": {"variable": "nuTilda", "patch": "inout", "value": [nuTildaIn], "useWallFunction": True},
+        "nuTildaIn": {"variable": "nuTilda", "patch": "inout", "value": [nuTildaIn]},
+        "useWallFunction": True,
     },
     "fvSource": {
         "disk1": {
