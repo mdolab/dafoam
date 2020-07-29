@@ -13,6 +13,10 @@ from idwarp import *
 from pyoptsparse import Optimization, OPT
 import numpy as np
 from testFuncs import *
+import petsc4py
+from petsc4py import PETSc
+
+petsc4py.init(sys.argv)
 
 checkRegVal = 1
 if len(sys.argv) == 1:
@@ -25,7 +29,7 @@ else:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("../input/CurvedCubeSnappyHexMesh")
+os.chdir("./input/CurvedCubeSnappyHexMesh")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
@@ -50,7 +54,8 @@ aeroOptions = {
         "UIn": {"variable": "U", "patch": "inlet", "value": [UmagIn, 0.0, 0.0]},
         "pIn": {"variable": "p", "patch": "outlet", "value": [pIn]},
         "TIn": {"variable": "T", "patch": "inlet", "value": [TIn]},
-        "nuTildaIn": {"variable": "nuTilda", "patch": "inlet", "value": [nuTildaIn], "useWallFunction": True},
+        "nuTildaIn": {"variable": "nuTilda", "patch": "inlet", "value": [nuTildaIn]},
+        "useWallFunction": False,
     },
     "primalVarBounds": {
         "UUpperBound": 1000.0,
@@ -95,6 +100,8 @@ aeroOptions = {
             }
         },
     },
+    "adjStateOrdering": "cell",
+    "debug": True,
     "normalizeStates": {"U": UmagIn, "p": pIn, "nuTilda": nuTildaIn * 10.0, "phi": 1.0, "T": TIn},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
@@ -140,12 +147,7 @@ DASolver.printFamilyList()
 DASolver.setMesh(mesh)
 # set evalFuncs
 evalFuncs = []
-objFuncs = DASolver.getOption("objFunc")
-for funcName in objFuncs:
-    for funcPart in objFuncs[funcName]:
-        if objFuncs[funcName][funcPart]["addToAdjoint"] is True:
-            if funcName not in evalFuncs:
-                evalFuncs.append(funcName)
+DASolver.setEvalFuncs(evalFuncs)
 
 # DVCon
 DVCon = DVConstraints()
@@ -174,3 +176,91 @@ if checkRegVal:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-6, 1e-8)
 
+
+# *************************************************************
+# Unit tests for functions that are not called in the above run
+# *************************************************************
+
+# Additional test for a failed mesh
+# perturb a large value for design variable to make a failed mesh
+xDV["shapey"][0] = 1000.0
+funcs1 = {}
+funcs1, fail1 = optFuncs.calcObjFuncValues(xDV)
+
+if checkRegVal:
+    # the checkMesh utility should detect failed mesh
+    if fail1 is False:
+        exit(1)
+
+# test point2Vec functions
+xvSize = len(DASolver.xv) * 3
+xvVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+xvVec.setSizes((xvSize, PETSc.DECIDE), bsize=1)
+xvVec.setFromOptions()
+
+DASolver.solver.ofMesh2PointVec(xvVec)
+xvVecNorm = xvVec.norm(1)
+DASolver.solver.pointVec2OFMesh(xvVec)
+DASolver.solver.ofMesh2PointVec(xvVec)
+xvVecNorm1 = xvVec.norm(1)
+
+if checkRegVal:
+    if xvVecNorm != xvVecNorm1:
+        exit(1)
+
+# test res2Vec functions
+rSize = DASolver.solver.getNLocalAdjointStates()
+rVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+rVec.setSizes((rSize, PETSc.DECIDE), bsize=1)
+rVec.setFromOptions()
+
+DASolver.solver.ofResField2ResVec(rVec)
+rVecNorm = rVec.norm(1)
+DASolver.solver.resVec2OFResField(rVec)
+DASolver.solver.ofResField2ResVec(rVec)
+rVecNorm1 = rVec.norm(1)
+
+if checkRegVal:
+    if rVecNorm != rVecNorm1:
+        exit(1)
+
+# Test vector IO functions
+DASolver.solver.writeVectorASCII(rVec, b"rVecRead")
+DASolver.solver.writeVectorBinary(rVec, b"rVecRead")
+rVecRead = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+rVecRead.setSizes((rSize, PETSc.DECIDE), bsize=1)
+rVecRead.setFromOptions()
+DASolver.solver.readVectorBinary(rVecRead, b"rVecRead")
+rVecNormRead = rVecRead.norm(1)
+
+if checkRegVal:
+    if rVecNorm != rVecNormRead:
+        exit(1)
+
+# Test matrix IO functions
+lRow = gcomm.rank + 1
+testMat = PETSc.Mat().create(PETSc.COMM_WORLD)
+testMat.setSizes(((lRow, None), (None, gcomm.size)))
+testMat.setFromOptions()
+testMat.setPreallocationNNZ((gcomm.size, gcomm.size))
+testMat.setUp()
+Istart, Iend = testMat.getOwnershipRange()
+for i in range(Istart, Iend):
+    testMat[i, gcomm.rank] = gcomm.rank
+testMat.assemblyBegin()
+testMat.assemblyEnd()
+DASolver.solver.writeMatrixASCII(testMat, b"testMat")
+DASolver.solver.writeMatrixBinary(testMat, b"testMat")
+testMatNorm = testMat.norm(0)
+
+testMat1 = PETSc.Mat().create(PETSc.COMM_WORLD)
+testMat1.setSizes(((lRow, None), (None, gcomm.size)))
+testMat1.setFromOptions()
+testMat1.setPreallocationNNZ((gcomm.size, gcomm.size))
+testMat1.setUp()
+DASolver.solver.readMatrixBinary(testMat1, b"testMat")
+testMatNorm1 = testMat1.norm(0)
+
+if checkRegVal:
+    if testMatNorm != testMatNorm1:
+        exit(1)

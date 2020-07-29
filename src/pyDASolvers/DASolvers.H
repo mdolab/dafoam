@@ -155,6 +155,78 @@ public:
     {
         return DASolverPtr_->getPrevPrimalSolTime();
     }
+
+    /// assign the points in fvMesh of OpenFOAM based on the point vector
+    void pointVec2OFMesh(const Vec xvVec) const
+    {
+        DASolverPtr_->pointVec2OFMesh(xvVec);
+    }
+
+    /// assign the point vector based on the points in fvMesh of OpenFOAM
+    void ofMesh2PointVec(Vec xvVec) const
+    {
+        DASolverPtr_->ofMesh2PointVec(xvVec);
+    }
+
+    /// assign the OpenFOAM residual fields based on the resVec
+    void resVec2OFResField(const Vec resVec) const
+    {
+        DASolverPtr_->resVec2OFResField(resVec);
+    }
+
+    /// assign the resVec based on OpenFOAM residual fields
+    void ofResField2ResVec(Vec resVec) const
+    {
+        DASolverPtr_->resVec2OFResField(resVec);
+    }
+
+    /// write the matrix in binary format
+    void writeMatrixBinary(
+        const Mat matIn,
+        const word prefix)
+    {
+        DASolverPtr_->writeMatrixBinary(matIn, prefix);
+    }
+
+    /// write the matrix in ASCII format
+    void writeMatrixASCII(
+        const Mat matIn,
+        const word prefix)
+    {
+        DASolverPtr_->writeMatrixASCII(matIn, prefix);
+    }
+
+    /// read petsc matrix in binary format
+    void readMatrixBinary(
+        Mat matIn,
+        const word prefix)
+    {
+        DASolverPtr_->readMatrixBinary(matIn, prefix);
+    }
+
+    /// write petsc vector in ascii format
+    void writeVectorASCII(
+        const Vec vecIn,
+        const word prefix)
+    {
+        DASolverPtr_->writeVectorASCII(vecIn, prefix);
+    }
+
+    /// read petsc vector in binary format
+    void readVectorBinary(
+        Vec vecIn,
+        const word prefix)
+    {
+        DASolverPtr_->readVectorBinary(vecIn, prefix);
+    }
+
+    /// write petsc vector in binary format
+    void writeVectorBinary(
+        const Vec vecIn,
+        const word prefix)
+    {
+        DASolverPtr_->writeVectorBinary(vecIn, prefix);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

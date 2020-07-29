@@ -405,12 +405,6 @@ class PYDAFOAM(object):
 
         return
 
-    def __del__(self):
-
-        self.primalSolver = None
-
-        return
-
     def __call__(self):
         """
         Solve the primal
@@ -1016,26 +1010,6 @@ class PYDAFOAM(object):
 
         return
 
-    def runCheckMesh(self):
-        """
-        Run checkMesh for mesh quality
-
-        Returns
-        -------
-
-        meshOK : int
-            meshOK=1 means the mesh quality check passes
-        """
-
-        Info("\n")
-        Info("+--------------------------------------------------------------------------+")
-        Info("|                        Checking Mesh Quality                             |")
-        Info("+--------------------------------------------------------------------------+")
-
-        meshOK = self.solver.checkMesh()
-
-        return meshOK
-
     def runColoring(self):
         """
         Run coloring solver
@@ -1623,43 +1597,6 @@ class PYDAFOAM(object):
         xvVec.assemblyEnd()
 
         return
-
-    def xvVec2Xv(self, xvVec, xv):
-        """
-        Convert a Petsc xvVec to a Nx3 mesh point numpy array
-        """
-
-        xSize = len(xv)
-
-        for i in range(xSize):
-            for j in range(3):
-                globalIdx = self.solver.getGlobalXvIndex(i, j)
-                xv[i][j] = xvVec[globalIdx]
-
-        return
-
-    def _coloringComputationRequired(self):
-        """
-        check whether any of the required colorings are missing, if so
-        recompute.
-        """
-        missingColorings = False
-
-        if self.getOption("adjUseColoring"):
-            # We need colorings, check if they exist
-            requiredColorings = []
-
-            requiredColorings.append("dRdWColoring_%d.bin" % self.nProcs)
-            for objFunc in self.getOption("objFunc"):
-                requiredColorings.append("dFdWColoring_%s_%d.bin" % (objFunc, self.nProcs))
-
-            # now check for the require coloring
-            for coloring in requiredColorings:
-                if not os.path.exists(coloring):
-                    missingColorings = True
-                    break
-
-        return missingColorings
 
     # base case files
     def _readOFGrid(self, caseDir):

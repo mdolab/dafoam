@@ -25,7 +25,7 @@ else:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("../input/NACA0012")
+os.chdir("./input/NACA0012")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
@@ -49,10 +49,14 @@ aeroOptions = {
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
+    "multiPoint": True,
+    "nMultiPoints": 1,
+    "printAllOptions": True,
     "primalBC": {
         "UIn": {"variable": "U", "patch": "inout", "value": [UmagIn, 0.0, 0.0]},
         "pIn": {"variable": "p", "patch": "inout", "value": [pIn]},
-        "nuTildaIn": {"variable": "nuTilda", "patch": "inout", "value": [nuTildaIn], "useWallFunction": True},
+        "nuTildaIn": {"variable": "nuTilda", "patch": "inout", "value": [nuTildaIn]},
+        "useWallFunction": True,
     },
     "fvSource": {
         "disk1": {
@@ -168,12 +172,7 @@ DASolver.printFamilyList()
 DASolver.setMesh(mesh)
 # set evalFuncs
 evalFuncs = []
-objFuncs = DASolver.getOption("objFunc")
-for funcName in objFuncs:
-    for funcPart in objFuncs[funcName]:
-        if objFuncs[funcName][funcPart]["addToAdjoint"] is True:
-            if funcName not in evalFuncs:
-                evalFuncs.append(funcName)
+DASolver.setEvalFuncs(evalFuncs)
 
 # DVCon
 DVCon = DVConstraints()
@@ -210,15 +209,36 @@ for i in [0, nFFDs_x - 1]:
 DVCon.addLinearConstraintsShape(indSetA, indSetB, factorA=1.0, factorB=1.0, lower=0.0, upper=0.0)
 
 # optFuncs
+# provide a function to set primal conditions
+def setMultiPointCondition(xDV, index):
+    pass
+
+
+# provide a function to assemble the funcs from MP
+def setMultiPointObjFuncs(funcs, funcsMP, index):
+    for key in funcs:
+        funcsMP[key] = funcs[key]
+    return
+
+
+# provide a function to assemble the funcs from MP
+def setMultiPointObjFuncsSens(xDVs, funcsMP, funcsSens, funcsSensMP, index):
+    for key in funcsSens:
+        funcsSensMP[key] = funcsSens[key]
+    return
+
 optFuncs.DASolver = DASolver
 optFuncs.DVGeo = DVGeo
 optFuncs.DVCon = DVCon
 optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
+optFuncs.setMultiPointCondition = setMultiPointCondition
+optFuncs.setMultiPointObjFuncs = setMultiPointObjFuncs
+optFuncs.setMultiPointObjFuncsSens = setMultiPointObjFuncsSens
 
 # Optimize
 DASolver.runColoring()
-optProb = Optimization("opt", optFuncs.calcObjFuncValues, comm=gcomm)
+optProb = Optimization("opt", optFuncs.calcObjFuncValuesMP, comm=gcomm)
 DVGeo.addVariablesPyOpt(optProb)
 DVCon.addConstraintsPyOpt(optProb)
 # Add objective
@@ -232,7 +252,7 @@ if gcomm.rank == 0:
 
 opt = OPT("slsqp", options=optOptions)
 histFile = os.path.join("./", "slsqp_hist.hst")
-sol = opt(optProb, sens=optFuncs.calcObjFuncSens, storeHistory=histFile)
+sol = opt(optProb, sens=optFuncs.calcObjFuncSensMP, storeHistory=histFile)
 
 if gcomm.rank == 0:
     print(sol)

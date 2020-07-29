@@ -25,7 +25,7 @@ else:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("../input/NACA0012")
+os.chdir("./input/NACA0012")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
@@ -52,7 +52,8 @@ aeroOptions = {
         "UIn": {"variable": "U", "patch": "inout", "value": [UmagIn, 0.0, 0.0]},
         "pIn": {"variable": "p", "patch": "inout", "value": [pIn]},
         "TIn": {"variable": "T", "patch": "inout", "value": [TIn]},
-        "nuTildaIn": {"variable": "nuTilda", "patch": "inout", "value": [nuTildaIn], "useWallFunction": True},
+        "nuTildaIn": {"variable": "nuTilda", "patch": "inout", "value": [nuTildaIn]},
+        "useWallFunction": True,
     },
     "primalVarBounds": {
         "UUpperBound": 1000.0,
@@ -137,12 +138,7 @@ DASolver.printFamilyList()
 DASolver.setMesh(mesh)
 # set evalFuncs
 evalFuncs = []
-objFuncs = DASolver.getOption("objFunc")
-for funcName in objFuncs:
-    for funcPart in objFuncs[funcName]:
-        if objFuncs[funcName][funcPart]["addToAdjoint"] is True:
-            if funcName not in evalFuncs:
-                evalFuncs.append(funcName)
+DASolver.setEvalFuncs(evalFuncs)
 
 # DVCon
 DVCon = DVConstraints()
