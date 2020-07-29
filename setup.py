@@ -34,7 +34,8 @@ setup(name='dafoam',
       install_requires=[
             'numpy>=1.16.4',
             'mpi4py>=3.0.2',
-            'petsc4py>=3.11.0'
+            'petsc4py>=3.11.0',
+            'cython>=0.29.21'
       ],
       classifiers=[
         "Operating System :: Linux",
