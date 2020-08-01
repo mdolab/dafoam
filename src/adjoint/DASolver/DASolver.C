@@ -33,7 +33,8 @@ DASolver::DASolver(
       daIndexPtr_(nullptr),
       daFieldPtr_(nullptr),
       daCheckMeshPtr_(nullptr),
-      daResidualPtr_(nullptr)
+      daResidualPtr_(nullptr),
+      objFuncHistFilePtr_(nullptr)
 {
     // initialize fvMesh and Time object pointer
 #include "setArgs.H"
@@ -1824,6 +1825,31 @@ label DASolver::checkResidualTol()
     }
 
     return 1;
+}
+
+void DASolver::initializeObjFuncHistFilePtr(const word fileName)
+{
+    label myProc = Pstream::myProcNo();
+    if (myProc == 0)
+    {
+        objFuncHistFilePtr_.reset(new OFstream(fileName));
+    }
+    return;
+}
+
+void DASolver::writeObjFuncHistFile()
+{
+    Ostream& f1 = objFuncHistFilePtr_();
+    scalar t = runTimePtr_->timeOutputValue();
+    f1 << t << " ";
+    forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
+    {
+        word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
+        scalar objFuncVal = this->getObjFuncValue(objFuncName);
+        f1 << objFuncVal << " ";
+    }
+    f1 << endl;
+    return;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

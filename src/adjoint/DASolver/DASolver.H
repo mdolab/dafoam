@@ -16,6 +16,7 @@
 #include "Python.h"
 #include "fvCFD.H"
 #include "runTimeSelectionTables.H"
+#include "OFstream.H"
 #include "DAUtility.H"
 #include "DACheckMesh.H"
 #include "DAOption.H"
@@ -105,6 +106,9 @@ protected:
     /// the dictionary that stores the total derivatives reduced from processors
     dictionary totalDerivDict_;
 
+    /// pointer to the objective function file used in unsteady primal solvers
+    autoPtr<OFstream> objFuncHistFilePtr_;
+
     /// assign the psiVec to psiVecArray_
     void setPsiVecDict(
         const word objFuncName,
@@ -121,7 +125,7 @@ protected:
     Mat dXvdFFDMat_;
 
     /// the maximal residual for primal solution
-    scalar primalMinRes_;
+    scalar primalMinRes_ = 1e10;
 
     /// the solution time for the previous primal solution
     scalar prevPrimalSolTime_ = -1e10;
@@ -136,6 +140,17 @@ protected:
 
     /// check whether the min residual in primal satisfy the prescribed tolerance
     label checkResidualTol();
+
+    /// reduce the connectivity level for Jacobian connectivity mat
+    void reduceStateResConLevel(
+        const dictionary& maxResConLv4JacPCMat,
+        HashTable<List<List<word>>>& stateResConInfo) const;
+
+    /// initialize objFuncHistFilePtr_
+    void initializeObjFuncHistFilePtr(const word fileName);
+
+    /// write objective functions values to the objFuncHistFile
+    void writeObjFuncHistFile();
 
 public:
     /// Runtime type information
@@ -313,11 +328,6 @@ public:
         Info << "DAFoam option dictionary: ";
         Info << daOptionPtr_->getAllOptions() << endl;
     }
-
-    /// reduce the connectivity level for Jacobian connectivity mat
-    void reduceStateResConLevel(
-        const dictionary& maxResConLv4JacPCMat,
-        HashTable<List<List<word>>>& stateResConInfo) const;
 
     /// calculate the norms of all residuals and print to screen
     void calcPrimalResidualStatistics(

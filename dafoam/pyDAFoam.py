@@ -231,6 +231,9 @@ class DAOPTION(object):
     ## solution steps, how frequent to print the dRdWT partial derivative computation.
     printInterval = 100
 
+    ## The print interval of unsteady primal solvers, e.g., for DAPisoFoam
+    printIntervalUnsteady = 500
+
     ## Users can adjust primalMinResTolDiff to tweak how much difference between primalMinResTol
     ## and the actual primal convergence is consider to be fail=True for the primal solution.
     primalMinResTolDiff = 1.0e2

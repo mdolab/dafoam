@@ -85,7 +85,28 @@ DASpalartAllmaras::DASpalartAllmaras(
           nuTildaRes_),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
-    printInterval_ = daOption.getAllOptions().lookupOrDefault<label>("printInterval", 100);
+
+    // initialize printInterval_ we need to check whether it is a steady state 
+    // or unsteady primal solver
+    IOdictionary fvSchemes(
+        IOobject(
+            "fvSchemes",
+            mesh.time().system(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false));
+    word ddtScheme = word(fvSchemes.subDict("ddtSchemes").lookup("default"));
+    if (ddtScheme == "steadyState")
+    {
+        printInterval_ =
+            daOption.getAllOptions().lookupOrDefault<label>("printInterval", 100);
+    }
+    else
+    {
+        printInterval_ =
+            daOption.getAllOptions().lookupOrDefault<label>("printIntervalUnsteady", 500);
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
