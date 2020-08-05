@@ -34,4 +34,5 @@ LIB_LIBS = \
     -L$(PETSC_LIB) -lpetsc \
     -L$(MPI_ARCH_PATH)/lib \
     -L$(MPI_ARCH_PATH)/lib64 \
-    $(shell python3-config --ldflags) 
+    $(shell python3-config --ldflags) \
+    -fno-lto
