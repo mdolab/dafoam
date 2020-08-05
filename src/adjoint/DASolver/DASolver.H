@@ -194,6 +194,9 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec) = 0;
+    
+    /// assign primal variables based on the current time instance
+    virtual void getTimeInstance(const label instanceI);
 
     /// solve the adjoint linear equations
     label solveAdjoint(

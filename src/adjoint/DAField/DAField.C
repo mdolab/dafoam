@@ -754,6 +754,182 @@ void DAField::setPrimalBoundaryConditions()
         }
     }
 }
+
+void DAField::ofField2List(scalarList& listIn) const
+{
+    /*
+    Description:
+        Assign values for the scalar list of states based on the latest OpenFOAM field values. 
+        This function is same as DAField::ofField2StateVec except that the output is a 
+        scalarList instead of a Petsc vector
+
+    Input:
+        OpenFOAM field variables
+
+    Output:
+        listIn: scalar list of states
+
+    Example:
+        Image we have two state variables (p,T) and five cells, running on two CPU
+        processors, the proc0 owns two cells and the proc1 owns three cells,
+        then calling this function gives the scalar list of states (state-by-state ordering):
+    
+        scalarList = [p0, p1, T0, T1 | p0, p1, p2, T0, T1, T2] <- p0 means p for the 0th cell on local processor
+                       0   1   2   3 |  4   5   6   7   8   9  <- global state index
+                     ---- proc0 -----|--------- proc1 ------- 
+    */
+
+    const objectRegistry& db = mesh_.thisDb();
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volVectorStates"][idxI], volVectorField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
+                listIn[localIdx] = state[cellI][comp];
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volScalarStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            listIn[localIdx] = state[cellI];
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["modelStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            listIn[localIdx] = state[cellI];
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["surfaceScalarStates"][idxI], surfaceScalarField, db);
+
+        forAll(mesh_.faces(), faceI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
+            if (faceI < daIndex_.nLocalInternalFaces)
+            {
+                listIn[localIdx] = state[faceI];
+            }
+            else
+            {
+                label relIdx = faceI - daIndex_.nLocalInternalFaces;
+                const label& patchIdx = daIndex_.bFacePatchI[relIdx];
+                const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
+                listIn[localIdx] = state.boundaryField()[patchIdx][faceIdx];
+            }
+        }
+    }
+
+}
+
+void DAField::list2OFField(const scalarList& listIn) const
+{
+    /*
+    Description:
+        Assign values OpenFOAM field values based on the scalar list of states
+    
+    Input:
+    listIn: scalar list of states
+
+    Output:
+    OpenFoam field variables
+
+    Example:
+        Image we have two state variables (p,T) and five cells, running on two CPU
+        processors, the proc0 owns two cells and the proc1 owns three cells,
+        then calling this function gives the scalar list of states (state-by-state ordering):
+    
+        scalarList = [p0, p1, T0, T1 | p0, p1, p2, T0, T1, T2] <- p0 means p for the 0th cell on local processor
+                       0   1   2   3 |  4   5   6   7   8   9  <- global state index
+                     ---- proc0 -----|--------- proc1 ------- 
+    */
+
+    const objectRegistry& db = mesh_.thisDb();
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volVectorStates"][idxI], volVectorField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
+                state[cellI][comp] = listIn[localIdx];
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volScalarStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            state[cellI] = listIn[localIdx];
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["modelStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            state[cellI] = listIn[localIdx];
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["surfaceScalarStates"][idxI], surfaceScalarField, db);
+
+        forAll(mesh_.faces(), faceI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
+            if (faceI < daIndex_.nLocalInternalFaces)
+            {
+                state[faceI] = listIn[localIdx];
+            }
+            else
+            {
+                label relIdx = faceI - daIndex_.nLocalInternalFaces;
+                const label& patchIdx = daIndex_.bFacePatchI[relIdx];
+                const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
+                state.boundaryFieldRef()[patchIdx][faceIdx] = listIn[localIdx];
+            }
+        }
+    }
+
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

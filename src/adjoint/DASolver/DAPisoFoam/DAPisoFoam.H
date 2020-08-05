@@ -33,7 +33,6 @@ class DAPisoFoam
 {
 
 protected:
-
     /// piso pointer
     autoPtr<pisoControl> pisoPtr_;
 
@@ -61,7 +60,15 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
-    
+    /// state variable list for all instances
+    List< List<scalar> > stateAllInstances_;
+
+    /// number of time instances for hybird adjoint
+    label nTimeInstances_;
+
+    /// save primal variable to time instance list for unsteady adjoint
+    void saveTimeInstance();
+
 public:
     TypeName("DAPisoFoam");
     // Constructors
@@ -83,7 +90,9 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec);
-
+    
+    /// assign primal variables based on the current time instance
+    virtual void getTimeInstance(const label instanceI);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

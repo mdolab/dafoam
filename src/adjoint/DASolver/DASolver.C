@@ -1829,6 +1829,13 @@ label DASolver::checkResidualTol()
 
 void DASolver::initializeObjFuncHistFilePtr(const word fileName)
 {
+    /*
+    Description:
+        Initialize the log file to store objective function
+        values for each step. This is only used for unsteady
+        primal solvers
+    */
+
     label myProc = Pstream::myProcNo();
     if (myProc == 0)
     {
@@ -1839,6 +1846,12 @@ void DASolver::initializeObjFuncHistFilePtr(const word fileName)
 
 void DASolver::writeObjFuncHistFile()
 {
+    /*
+    Description:
+        Write objective function values to the log file  for each step. 
+        This is only used for unsteady primal solvers
+    */
+
     Ostream& f1 = objFuncHistFilePtr_();
     scalar t = runTimePtr_->timeOutputValue();
     f1 << t << " ";
@@ -1850,6 +1863,17 @@ void DASolver::writeObjFuncHistFile()
     }
     f1 << endl;
     return;
+}
+
+void DASolver::getTimeInstance(const label instanceI)
+{
+    /*
+        Description:
+            Assign primal variables based on the current time instance
+    */
+
+    FatalErrorIn("") << "getTimeInstance should be implemented in child classes!"
+                     << abort(FatalError);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

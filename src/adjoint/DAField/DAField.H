@@ -92,6 +92,12 @@ public:
     /// assign the residual vector based on the residual field in OpenFOAM
     void ofResField2ResVec(Vec resVec) const;
 
+    /// set the scalar list of states based on the latest fields in OpenFOAM
+    void ofField2List(scalarList& listIn) const;
+
+    /// assign the fields in OpenFOAM based on the scalar list of states
+    void list2OFField(const scalarList& listIn) const;
+
     /// set the boundary conditions based on parameters defined in DAOption
     void setPrimalBoundaryConditions();
 

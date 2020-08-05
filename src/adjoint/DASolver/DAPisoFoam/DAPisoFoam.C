@@ -45,6 +45,15 @@ void DAPisoFoam::initSolver()
 #include "createAdjointIncompressible.H"
     // initialize checkMesh
     daCheckMeshPtr_.reset(new DACheckMesh(runTime, mesh));
+
+    nTimeInstances_ = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
+
+    stateAllInstances_.setSize(nTimeInstances_);
+
+    forAll(stateAllInstances_, idxI)
+    {
+        stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
+    }
 }
 
 label DAPisoFoam::solvePrimal(
@@ -134,6 +143,8 @@ label DAPisoFoam::solvePrimal(
 
         runTime.write();
 
+        this->saveTimeInstance();
+
         nSolverIters++;
     }
 
@@ -149,6 +160,42 @@ label DAPisoFoam::solvePrimal(
          << endl;
 
     return 0;
+}
+
+void DAPisoFoam::saveTimeInstance()
+{
+    /*
+    Description:
+        Save primal variable to time instance list for unsteady adjoint
+        Here we save the last nTimeInstances snapshots
+    */
+    scalar t = runTimePtr_->timeOutputValue();
+    scalar periodicity = daOptionPtr_->getSubDictOption<scalar>("hybridAdjoint", "periodicity");
+    scalar endTime = runTimePtr_->endTime().value();
+    scalar saveStart = endTime - periodicity;
+    scalar ToNT = periodicity/nTimeInstances_;
+    if (t > saveStart)
+    {
+        scalar remaindTime = endTime - t;
+        if ( std::fmod( remaindTime, ToNT ) < 1.0e-10 )
+        {
+            Info<<"Saving time instances... "<<endl;
+            label instanceI = nTimeInstances_ - 1 - round(remaindTime/ToNT);
+            daFieldPtr_->ofField2List(stateAllInstances_[instanceI]);
+        }
+    }
+    return;
+}
+
+void DAPisoFoam::getTimeInstance(const label instanceI)
+{
+    /*
+    Description:
+        Assign primal variables based on the current time instance
+        If unsteady adjoint solvers are used, this virtual function should be 
+        implemented in a child class, otherwise, return error if called
+    */
+    daFieldPtr_->list2OFField(stateAllInstances_[instanceI]);
 }
 
 } // End namespace Foam
