@@ -35,12 +35,12 @@ if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.compressible 0")
 
-UmagIn = 50.0
-pIn = 101325.0
-nuTildaIn = 4.5e-5
-TIn = 300.0
-ARef = 1.0
-rhoRef = 1.0
+U0 = 50.0
+p0 = 101325.0
+nuTilda0 = 4.5e-5
+T0 = 300.0
+A0 = 1.0
+rho0 = 1.0
 
 # test incompressible solvers
 aeroOptions = {
@@ -51,10 +51,10 @@ aeroOptions = {
     "designSurfaces": ["wallsbump"],
     "primalMinResTol": 1e-12,
     "primalBC": {
-        "UIn": {"variable": "U", "patch": "inlet", "value": [UmagIn, 0.0, 0.0]},
-        "pIn": {"variable": "p", "patch": "outlet", "value": [pIn]},
-        "TIn": {"variable": "T", "patch": "inlet", "value": [TIn]},
-        "nuTildaIn": {"variable": "nuTilda", "patch": "inlet", "value": [nuTildaIn]},
+        "UIn": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
+        "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
+        "T0": {"variable": "T", "patches": ["inlet"], "value": [T0]},
+        "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [nuTilda0]},
         "useWallFunction": False,
     },
     "primalVarBounds": {
@@ -75,7 +75,7 @@ aeroOptions = {
                 "patches": ["wallsbump"],
                 "directionMode": "fixedDirection",
                 "direction": [1.0, 0.0, 0.0],
-                "scale": 1.0 / (0.5 * rhoRef * UmagIn * UmagIn * ARef),
+                "scale": 1.0 / (0.5 * rho0 * U0 * U0 * A0),
                 "addToAdjoint": True,
             },
             "part2": {
@@ -84,7 +84,7 @@ aeroOptions = {
                 "patches": ["walls", "frontandback"],
                 "directionMode": "fixedDirection",
                 "direction": [1.0, 0.0, 0.0],
-                "scale": 1.0 / (0.5 * rhoRef * UmagIn * UmagIn * ARef),
+                "scale": 1.0 / (0.5 * rho0 * U0 * U0 * A0),
                 "addToAdjoint": True,
             },
         },
@@ -95,20 +95,20 @@ aeroOptions = {
                 "patches": ["walls", "frontandback", "wallsbump"],
                 "directionMode": "fixedDirection",
                 "direction": [0.0, 1.0, 0.0],
-                "scale": 1.0 / (0.5 * rhoRef * UmagIn * UmagIn * ARef),
+                "scale": 1.0 / (0.5 * rho0 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
         },
     },
     "adjStateOrdering": "cell",
     "debug": True,
-    "normalizeStates": {"U": UmagIn, "p": pIn, "nuTilda": nuTildaIn * 10.0, "phi": 1.0, "T": TIn},
+    "normalizeStates": {"U": U0, "p": p0, "nuTilda": nuTilda0 * 10.0, "phi": 1.0, "T": T0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
     "designVar": {
         "shapey": {"designVarType": "FFD"},
-        "uin": {"designVarType": "BC", "patch": "inlet", "variable": "U", "comp": 0},
+        "uin": {"designVarType": "BC", "patches": ["inlet"], "variable": "U", "comp": 0},
     },
 }
 
@@ -127,7 +127,7 @@ DVGeo = DVGeometry(FFDFile)
 
 def uin(val, geo):
     inletU = val[0]
-    DASolver.setOption("primalBC", {"UIn": {"variable": "U", "patch": "inlet", "value": [inletU, 0.0, 0.0]}})
+    DASolver.setOption("primalBC", {"UIn": {"variable": "U", "patches": ["inlet"], "value": [inletU, 0.0, 0.0]}})
     DASolver.updateDAOption()
 
 
@@ -136,7 +136,7 @@ pts = DVGeo.getLocalIndex(0)
 indexList = pts[1:3, 1, 1:3].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
-DVGeo.addGeoDVGlobal("uin", [UmagIn], uin, lower=0.0, upper=100.0, scale=1.0)
+DVGeo.addGeoDVGlobal("uin", [U0], uin, lower=0.0, upper=100.0, scale=1.0)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)

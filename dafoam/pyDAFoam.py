@@ -70,10 +70,10 @@ class DAOPTION(object):
     ## The primalBC setting will be printed to screen for each primal solution during the optimization
     ## Example
     ##    "primalBC": {
-    ##        "UIn": {"variable": "U", "patch": "inlet", "value": [10.0, 0.0, 0.0]},
-    ##        "pIn": {"variable": "p", "patch": "inlet", "value": [101325.0]},
-    ##        "nuTildaIn": {"variable": "nuTilda", "patch": "inlet", "value": [1.5e-4],
-    ##                      "useWallFunction": True},
+    ##        "U0": {"variable": "U", "patches": ["inlet"], "value": [10.0, 0.0, 0.0]},
+    ##        "p0": {"variable": "p", "patches": ["outlet"], "value": [101325.0]},
+    ##        "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [1.5e-4]},
+    ##        "useWallFunction": True,
     ##    },
     primalBC = {}
 
@@ -141,16 +141,25 @@ class DAOPTION(object):
     objFunc = {}
 
     ## Design variable information. Different type of design variables require different keys
+    ## For alpha, we need to prescribe a list of far field patch names from which the angle of
+    ## attack is computed, this is usually a far field patch. Also, we need to prescribe
+    ## flow and normal axies, and alpha = atan( U_normal / U_flow ) at patches
     ## Example
     ##     designVar = {
     ##         "shapey" : {"designVarType": "FFD"},
     ##         "twist": {"designVarType": "FFD"},
     ##         "alpha" = {
     ##             "designVarType": "AOA",
-    ##             "patch": "inout",
+    ##             "patches": ["farField"],
     ##             "flowAxis": "x",
     ##             "normalAxis": "y"
-    ##         }
+    ##         },
+    ##         "ux0" = {
+    ##             "designVarType": "BC",
+    ##             "patches": ["inlet"],
+    ##             "variable": "U",
+    ##             "comp": 0
+    ##         },
     ##     }
     designVar = {}
 
@@ -271,6 +280,13 @@ class DAOPTION(object):
         "epsilonRes": 2,
         "omegaRes": 2,
         "p_rghRes": 2,
+    }
+
+    ## The min bound for Jacobians, any value that is smaller than the bound will be set to 0
+    ## Setting a large lower bound for preconditioner (PC) can help to reduce memory.
+    jacBounds = {
+        "lowerBound": 1.0e-16,
+        "lowerBoundPC": 1.0e-16,
     }
 
     ## The ordering of state variable. Options are: state or cell. Most of the case, the state
