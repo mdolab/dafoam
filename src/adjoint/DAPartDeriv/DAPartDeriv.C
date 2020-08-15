@@ -241,7 +241,8 @@ void DAPartDeriv::setPartDerivMat(
             val = resVecArray[relIdx];
             // if val < bound, don't set the matrix. The exception is that
             // we always set values for diagonal elements (colI==rowI)
-            if(fabs(val) > jacLowerBound || colI == rowI)
+            // Another exception is that jacLowerBound is less than 1e-16
+            if(jacLowerBound < 1.0e-16 || fabs(val) > jacLowerBound || colI == rowI)
             {
                 if (transposed)
                 {
