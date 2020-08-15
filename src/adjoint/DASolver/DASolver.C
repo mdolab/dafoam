@@ -700,6 +700,7 @@ label DASolver::solveAdjoint(
         dictionary options1;
         options1.set("transposed", 1);
         options1.set("isPC", 0);
+        options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdW"));
 
         // initilalize dRdWT matrix
         daPartDeriv->initializePartDerivMat(options1, &dRdWT);
@@ -776,6 +777,7 @@ label DASolver::solveAdjoint(
         dictionary options1;
         options1.set("transposed", 1);
         options1.set("isPC", 1);
+        options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdWPC"));
 
         // initilalize dRdWT matrix
         daPartDeriv->initializePartDerivMat(options1, &dRdWTPC);

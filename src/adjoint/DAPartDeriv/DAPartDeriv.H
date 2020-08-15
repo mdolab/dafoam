@@ -89,7 +89,8 @@ protected:
         const Vec resVec,
         const Vec coloredColumn,
         const label transposed,
-        Mat jacMat) const;
+        Mat jacMat,
+        const scalar jacLowerBound=1e-30) const;
     
     /// perturb the angle of attack
     void perturbAOA(

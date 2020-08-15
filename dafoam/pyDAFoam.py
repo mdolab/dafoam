@@ -284,9 +284,9 @@ class DAOPTION(object):
 
     ## The min bound for Jacobians, any value that is smaller than the bound will be set to 0
     ## Setting a large lower bound for preconditioner (PC) can help to reduce memory.
-    jacBounds = {
-        "lowerBound": 1.0e-16,
-        "lowerBoundPC": 1.0e-16,
+    jacLowerBounds = {
+        "dRdW": 1.0e-30,
+        "dRdWPC": 1.0e-30,
     }
 
     ## The ordering of state variable. Options are: state or cell. Most of the case, the state

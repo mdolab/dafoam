@@ -163,7 +163,8 @@ void DAPartDeriv::setPartDerivMat(
     const Vec resVec,
     const Vec coloredColumn,
     const label transposed,
-    Mat jacMat) const
+    Mat jacMat,
+    const scalar jacLowerBound) const
 {
     /*
     Description:
@@ -178,6 +179,8 @@ void DAPartDeriv::setPartDerivMat(
 
         transposed: whether the jacMat is transposed or not, for dRdWT transpoed = 1, for 
         all the other cases, set it to 0
+
+        jacLowerBound: any |value| that is smaller than lowerBound will be set to zero in PartDerivMat
 
     Output:
         jacMat: the jacobian matrix to set
@@ -236,14 +239,18 @@ void DAPartDeriv::setPartDerivMat(
         {
             rowI = i;
             val = resVecArray[relIdx];
-
-            if (transposed)
+            // if val < bound, don't set the matrix. The exception is that
+            // we always set values for diagonal elements (colI==rowI)
+            if(fabs(val) > jacLowerBound || colI == rowI)
             {
-                MatSetValue(jacMat, colI, rowI, val, INSERT_VALUES);
-            }
-            else
-            {
-                MatSetValue(jacMat, rowI, colI, val, INSERT_VALUES);
+                if (transposed)
+                {
+                    MatSetValue(jacMat, colI, rowI, val, INSERT_VALUES);
+                }
+                else
+                {
+                    MatSetValue(jacMat, rowI, colI, val, INSERT_VALUES);
+                }
             }
         }
     }
