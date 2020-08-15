@@ -29,7 +29,7 @@ setup(
         "dafoam/scripts/dafoam_matreldiff.py",
         "dafoam/scripts/dafoam_vecreldiff.py",
         "dafoam/scripts/dafoam_matgetvalues.py",
-        "dafoam/scripts/dafoam_matvecgetvalues.py",
+        "dafoam/scripts/dafoam_vecgetvalues.py",
     ],
     install_requires=[
         "numpy>=1.16.4",
