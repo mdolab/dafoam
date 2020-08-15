@@ -34,8 +34,8 @@ protected:
     /// if dynamically adjusting the angle what mode to use
     word dirMode_;
 
-    /// the patch name from the alpha design variable dict
-    word inoutPatch_;
+    /// the reference patch name from the alpha design variable dict patches[0] from which we compute the flow direction
+    word inoutRefPatchName_;
 
     /// flowAxisIndex_ for the alpha design variable with tan(U_normal/U_flow)
     label flowAxisIndex_;

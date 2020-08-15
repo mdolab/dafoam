@@ -163,7 +163,8 @@ void DAPartDeriv::setPartDerivMat(
     const Vec resVec,
     const Vec coloredColumn,
     const label transposed,
-    Mat jacMat) const
+    Mat jacMat,
+    const scalar jacLowerBound) const
 {
     /*
     Description:
@@ -178,6 +179,8 @@ void DAPartDeriv::setPartDerivMat(
 
         transposed: whether the jacMat is transposed or not, for dRdWT transpoed = 1, for 
         all the other cases, set it to 0
+
+        jacLowerBound: any |value| that is smaller than lowerBound will be set to zero in PartDerivMat
 
     Output:
         jacMat: the jacobian matrix to set
@@ -236,14 +239,19 @@ void DAPartDeriv::setPartDerivMat(
         {
             rowI = i;
             val = resVecArray[relIdx];
-
-            if (transposed)
+            // if val < bound, don't set the matrix. The exception is that
+            // we always set values for diagonal elements (colI==rowI)
+            // Another exception is that jacLowerBound is less than 1e-16
+            if(jacLowerBound < 1.0e-16 || fabs(val) > jacLowerBound || colI == rowI)
             {
-                MatSetValue(jacMat, colI, rowI, val, INSERT_VALUES);
-            }
-            else
-            {
-                MatSetValue(jacMat, rowI, colI, val, INSERT_VALUES);
+                if (transposed)
+                {
+                    MatSetValue(jacMat, colI, rowI, val, INSERT_VALUES);
+                }
+                else
+                {
+                    MatSetValue(jacMat, rowI, colI, val, INSERT_VALUES);
+                }
             }
         }
     }
@@ -271,86 +279,93 @@ void DAPartDeriv::perturbBC(
         delta: the delta value to perturb
     */
 
-    word varName, patchName;
+    word varName;
+    wordList patches;
     label comp;
     options.readEntry<word>("variable", varName);
-    options.readEntry<word>("patch", patchName);
+    options.readEntry<wordList>("patches", patches);
     options.readEntry<label>("comp", comp);
 
-    label patchI = mesh_.boundaryMesh().findPatchID(patchName);
-
-    if (mesh_.thisDb().foundObject<volVectorField>(varName))
+    // loop over all patches
+    forAll(patches, idxI)
     {
-        volVectorField& state(const_cast<volVectorField&>(
-            mesh_.thisDb().lookupObject<volVectorField>(varName)));
+        word patchName = patches[idxI];
 
-        // for decomposed domain, don't set BC if the patch is empty
-        if (mesh_.boundaryMesh()[patchI].size() > 0)
+        label patchI = mesh_.boundaryMesh().findPatchID(patchName);
+
+        if (mesh_.thisDb().foundObject<volVectorField>(varName))
         {
-            if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+            volVectorField& state(const_cast<volVectorField&>(
+                mesh_.thisDb().lookupObject<volVectorField>(varName)));
+
+            // for decomposed domain, don't set BC if the patch is empty
+            if (mesh_.boundaryMesh()[patchI].size() > 0)
             {
-                forAll(state.boundaryField()[patchI], faceI)
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
                 {
-                    state.boundaryFieldRef()[patchI][faceI][comp] += delta;
+                    forAll(state.boundaryField()[patchI], faceI)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI][comp] += delta;
+                    }
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    // perturb inletValue
+                    mixedFvPatchField<vector>& inletOutletPatch =
+                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                    vector perturbedValue = inletOutletPatch.refValue()[0];
+                    perturbedValue[comp] += delta;
+                    inletOutletPatch.refValue() = perturbedValue;
+                }
+                else
+                {
+                    FatalErrorIn("") << "boundaryType: " << state.boundaryFieldRef()[patchI].type()
+                                     << " not supported!"
+                                     << "Avaiable options are: fixedValue, inletOutlet, outletInlet"
+                                     << abort(FatalError);
                 }
             }
-            else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                     || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-            {
-                // perturb inletValue
-                mixedFvPatchField<vector>& inletOutletPatch =
-                    refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                vector perturbedValue = inletOutletPatch.refValue()[0];
-                perturbedValue[comp] += delta;
-                inletOutletPatch.refValue() = perturbedValue;
-            }
-            else
-            {
-                FatalErrorIn("") << "boundaryType: " << state.boundaryFieldRef()[patchI].type()
-                                 << " not supported!"
-                                 << "Avaiable options are: fixedValue, inletOutlet, outletInlet"
-                                 << abort(FatalError);
-            }
         }
-    }
-    else if (mesh_.thisDb().foundObject<volScalarField>(varName))
-    {
-        volScalarField& state(const_cast<volScalarField&>(
-            mesh_.thisDb().lookupObject<volScalarField>(varName)));
-
-        // for decomposed domain, don't set BC if the patch is empty
-        if (mesh_.boundaryMesh()[patchI].size() > 0)
+        else if (mesh_.thisDb().foundObject<volScalarField>(varName))
         {
-            if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+            volScalarField& state(const_cast<volScalarField&>(
+                mesh_.thisDb().lookupObject<volScalarField>(varName)));
+
+            // for decomposed domain, don't set BC if the patch is empty
+            if (mesh_.boundaryMesh()[patchI].size() > 0)
             {
-                forAll(state.boundaryField()[patchI], faceI)
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
                 {
-                    state.boundaryFieldRef()[patchI][faceI] += delta;
+                    forAll(state.boundaryField()[patchI], faceI)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI] += delta;
+                    }
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    // perturb inletValue
+                    mixedFvPatchField<scalar>& inletOutletPatch =
+                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                    scalar perturbedValue = inletOutletPatch.refValue()[0];
+                    perturbedValue += delta;
+                    inletOutletPatch.refValue() = perturbedValue;
+                }
+                else
+                {
+                    FatalErrorIn("") << "boundaryType: " << state.boundaryFieldRef()[patchI].type()
+                                     << " not supported!"
+                                     << "Avaiable options are: fixedValue, inletOutlet, outletInlet"
+                                     << abort(FatalError);
                 }
             }
-            else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                     || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-            {
-                // perturb inletValue
-                mixedFvPatchField<scalar>& inletOutletPatch =
-                    refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                scalar perturbedValue = inletOutletPatch.refValue()[0];
-                perturbedValue += delta;
-                inletOutletPatch.refValue() = perturbedValue;
-            }
-            else
-            {
-                FatalErrorIn("") << "boundaryType: " << state.boundaryFieldRef()[patchI].type()
-                                 << " not supported!"
-                                 << "Avaiable options are: fixedValue, inletOutlet, outletInlet"
-                                 << abort(FatalError);
-            }
         }
-    }
-    else
-    {
-        FatalErrorIn("") << varName << " is neither volVectorField nor volScalarField!"
-                         << abort(FatalError);
+        else
+        {
+            FatalErrorIn("") << varName << " is neither volVectorField nor volScalarField!"
+                             << abort(FatalError);
+        }
     }
 }
 
@@ -388,8 +403,9 @@ void DAPartDeriv::perturbAOA(
         delta: the delta value to perturb
     */
 
-    word varName = "U", patchName;
-    options.readEntry<word>("patch", patchName);
+    word varName = "U";
+    wordList patches;
+    options.readEntry<wordList>("patches", patches);
 
     HashTable<label> axisIndices;
     axisIndices.set("x", 0);
@@ -400,69 +416,75 @@ void DAPartDeriv::perturbAOA(
     label flowAxisIndex = axisIndices[flowAxis];
     label normalAxisIndex = axisIndices[normalAxis];
 
-    label patchI = mesh_.boundaryMesh().findPatchID(patchName);
-
-    if (mesh_.thisDb().foundObject<volVectorField>(varName))
+    // loop over all patches
+    forAll(patches, idxI)
     {
-        volVectorField& state(const_cast<volVectorField&>(
-            mesh_.thisDb().lookupObject<volVectorField>(varName)));
+        word patchName = patches[idxI];
 
-        // for decomposed domain, don't set BC if the patch is empty
-        if (mesh_.boundaryMesh()[patchI].size() > 0)
+        label patchI = mesh_.boundaryMesh().findPatchID(patchName);
+
+        if (mesh_.thisDb().foundObject<volVectorField>(varName))
         {
-            if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+            volVectorField& state(const_cast<volVectorField&>(
+                mesh_.thisDb().lookupObject<volVectorField>(varName)));
+
+            // for decomposed domain, don't set BC if the patch is empty
+            if (mesh_.boundaryMesh()[patchI].size() > 0)
             {
-                scalar UmagIn = mag(state.boundaryField()[patchI][0]);
-                scalar Uratio =
-                    state.boundaryField()[patchI][0][normalAxisIndex] / state.boundaryField()[patchI][0][flowAxisIndex];
-                scalar aoa = Foam::radToDeg(Foam::atan(Uratio)); // we want the partials in degree
-                scalar aoaNew = aoa + delta;
-                scalar aoaNewArc = Foam::degToRad(aoaNew);
-
-                scalar UxNew = UmagIn / Foam::sqrt(1 + Foam::tan(aoaNewArc) * Foam::tan(aoaNewArc));
-                scalar UyNew = UxNew * Foam::tan(aoaNewArc);
-
-                forAll(state.boundaryField()[patchI], faceI)
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
                 {
-                    state.boundaryFieldRef()[patchI][faceI][flowAxisIndex] = UxNew;
-                    state.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = UyNew;
+                    scalar UmagIn = mag(state.boundaryField()[patchI][0]);
+                    scalar Uratio =
+                        state.boundaryField()[patchI][0][normalAxisIndex] / state.boundaryField()[patchI][0][flowAxisIndex];
+                    scalar aoa = Foam::radToDeg(Foam::atan(Uratio)); // we want the partials in degree
+                    scalar aoaNew = aoa + delta;
+                    scalar aoaNewArc = Foam::degToRad(aoaNew);
+
+                    scalar UxNew = UmagIn / Foam::sqrt(1 + Foam::tan(aoaNewArc) * Foam::tan(aoaNewArc));
+                    scalar UyNew = UxNew * Foam::tan(aoaNewArc);
+
+                    forAll(state.boundaryField()[patchI], faceI)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI][flowAxisIndex] = UxNew;
+                        state.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = UyNew;
+                    }
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet")
+                {
+                    // perturb inletValue
+                    mixedFvPatchField<vector>& inletOutletPatch =
+                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                    scalar UmagIn = mag(inletOutletPatch.refValue()[0]);
+
+                    scalar Uratio =
+                        inletOutletPatch.refValue()[0][normalAxisIndex] / inletOutletPatch.refValue()[0][flowAxisIndex];
+                    scalar aoa = Foam::radToDeg(Foam::atan(Uratio)); // we want the partials in degree
+                    scalar aoaNew = aoa + delta;
+                    scalar aoaNewArc = Foam::degToRad(aoaNew);
+
+                    scalar UxNew = UmagIn / Foam::sqrt(1 + Foam::tan(aoaNewArc) * Foam::tan(aoaNewArc));
+                    scalar UyNew = UxNew * Foam::tan(aoaNewArc);
+
+                    vector UNew = vector::zero;
+                    UNew[flowAxisIndex] = UxNew;
+                    UNew[normalAxisIndex] = UyNew;
+
+                    inletOutletPatch.refValue() = UNew;
+                }
+                else
+                {
+                    FatalErrorIn("") << "boundaryType: " << state.boundaryFieldRef()[patchI].type()
+                                     << " not supported!"
+                                     << "Avaiable options are: fixedValue, inletOutlet"
+                                     << abort(FatalError);
                 }
             }
-            else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet")
-            {
-                // perturb inletValue
-                mixedFvPatchField<vector>& inletOutletPatch =
-                    refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                scalar UmagIn = mag(inletOutletPatch.refValue()[0]);
-
-                scalar Uratio =
-                    inletOutletPatch.refValue()[0][normalAxisIndex] / inletOutletPatch.refValue()[0][flowAxisIndex];
-                scalar aoa = Foam::radToDeg(Foam::atan(Uratio)); // we want the partials in degree
-                scalar aoaNew = aoa + delta;
-                scalar aoaNewArc = Foam::degToRad(aoaNew);
-
-                scalar UxNew = UmagIn / Foam::sqrt(1 + Foam::tan(aoaNewArc) * Foam::tan(aoaNewArc));
-                scalar UyNew = UxNew * Foam::tan(aoaNewArc);
-
-                vector UNew = vector::zero;
-                UNew[flowAxisIndex] = UxNew;
-                UNew[normalAxisIndex] = UyNew;
-
-                inletOutletPatch.refValue() = UNew;
-            }
-            else
-            {
-                FatalErrorIn("") << "boundaryType: " << state.boundaryFieldRef()[patchI].type()
-                                 << " not supported!"
-                                 << "Avaiable options are: fixedValue, inletOutlet"
-                                 << abort(FatalError);
-            }
         }
-    }
-    else
-    {
-        FatalErrorIn("") << "U is not found in volVectorField!"
-                         << abort(FatalError);
+        else
+        {
+            FatalErrorIn("") << "U is not found in volVectorField!"
+                             << abort(FatalError);
+        }
     }
 }
 

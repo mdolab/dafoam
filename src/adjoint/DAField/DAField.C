@@ -485,21 +485,21 @@ void DAField::setPrimalBoundaryConditions()
         Note: this function should be called before running the primal solver
         If nothing is set, the BC will remain unchanged
         Example
-        primalBC 
+        "primalBC":
         { 
-            bc1
+            "bc0":
             {
-                patch inlet; 
-                variable U; 
-                value {10 0 0};
-            } 
-            bc2
+                "patches": ["inlet", "side"], 
+                "variable": "U", 
+                "value": [10.0 0.0, 0.0],
+            },
+            "bc1":
             {
-                patch outlet;
-                variable p;
-                value {0};
-            }
-            useWallFunction 1;
+                "patches": ["outlet"], 
+                "variable": "p", 
+                "value": [101325.0],
+            },
+            useWallFunction True
         }
     */
 
@@ -524,135 +524,142 @@ void DAField::setPrimalBoundaryConditions()
 
         dictionary bcSubDict = bcDict.subDict(bcKey);
 
-        word patch = bcSubDict.getWord("patch");
+        wordList patches;
+        bcSubDict.readEntry<wordList>("patches", patches);
         word variable = bcSubDict.getWord("variable");
         scalarList value;
         bcSubDict.readEntry<scalarList>("value", value);
 
-        // it should be a scalar
-        if (value.size() == 1)
+        // loop over all patches and set values
+        forAll(patches, idxI)
         {
-            if (!db.foundObject<volScalarField>(variable))
+            word patch = patches[idxI];
+
+            // it should be a scalar
+            if (value.size() == 1)
             {
-                Info << variable << " not found, skip it." << endl;
-                continue;
-            }
-            // it is a scalar
-            volScalarField& state(const_cast<volScalarField&>(
-                db.lookupObject<volScalarField>(variable)));
-
-            Info << "Setting primal boundary conditions..." << endl;
-            Info << "Setting " << variable << " = " << value[0] << " at " << patch << endl;
-
-            label patchI = mesh_.boundaryMesh().findPatchID(patch);
-
-            // for decomposed domain, don't set BC if the patch is empty
-            if (mesh_.boundaryMesh()[patchI].size() > 0)
-            {
-                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                if (!db.foundObject<volScalarField>(variable))
                 {
-                    forAll(state.boundaryFieldRef()[patchI], faceI)
+                    Info << variable << " not found, skip it." << endl;
+                    continue;
+                }
+                // it is a scalar
+                volScalarField& state(const_cast<volScalarField&>(
+                    db.lookupObject<volScalarField>(variable)));
+
+                Info << "Setting primal boundary conditions..." << endl;
+                Info << "Setting " << variable << " = " << value[0] << " at " << patch << endl;
+
+                label patchI = mesh_.boundaryMesh().findPatchID(patch);
+
+                // for decomposed domain, don't set BC if the patch is empty
+                if (mesh_.boundaryMesh()[patchI].size() > 0)
+                {
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
                     {
-                        state.boundaryFieldRef()[patchI][faceI] = value[0];
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI] = value[0];
+                        }
                     }
-                }
-                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                {
-                    // set value
-                    forAll(state.boundaryFieldRef()[patchI], faceI)
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
                     {
-                        state.boundaryFieldRef()[patchI][faceI] = value[0];
-                    }
-                    // set inletValue
-                    mixedFvPatchField<scalar>& inletOutletPatch =
-                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                        // set value
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI] = value[0];
+                        }
+                        // set inletValue
+                        mixedFvPatchField<scalar>& inletOutletPatch =
+                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
 
-                    inletOutletPatch.refValue() = value[0];
-                }
-                else if (state.boundaryFieldRef()[patchI].type() == "fixedGradient")
-                {
-                    fixedGradientFvPatchField<scalar>& patchBC =
-                        refCast<fixedGradientFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                    scalarField& grad = const_cast<scalarField&>(patchBC.gradient());
-                    forAll(grad, idxI)
+                        inletOutletPatch.refValue() = value[0];
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "fixedGradient")
                     {
-                        grad[idxI] = value[0];
+                        fixedGradientFvPatchField<scalar>& patchBC =
+                            refCast<fixedGradientFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                        scalarField& grad = const_cast<scalarField&>(patchBC.gradient());
+                        forAll(grad, idxI)
+                        {
+                            grad[idxI] = value[0];
+                        }
                     }
-                }
-                else
-                {
-                    FatalErrorIn("") << "only support fixedValues, inletOutlet, "
-                                     << "outletInlet, fixedGradient!" << abort(FatalError);
-                }
-            }
-        }
-        else if (value.size() == 3)
-        {
-            if (!db.foundObject<volVectorField>(variable))
-            {
-                Info << variable << " not found, skip it." << endl;
-                continue;
-            }
-            // it is a vector
-            volVectorField& state(const_cast<volVectorField&>(
-                db.lookupObject<volVectorField>(variable)));
-
-            vector valVec = {value[0], value[1], value[2]};
-
-            Info << "Setting primal boundary conditions..." << endl;
-            Info << "Setting " << variable << " = (" << value[0] << " "
-                 << value[1] << " " << value[2] << ") at " << patch << endl;
-
-            label patchI = mesh_.boundaryMesh().findPatchID(patch);
-
-            // for decomposed domain, don't set BC if the patch is empty
-            if (mesh_.boundaryMesh()[patchI].size() > 0)
-            {
-                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                {
-                    forAll(state.boundaryFieldRef()[patchI], faceI)
+                    else
                     {
-                        state.boundaryFieldRef()[patchI][faceI] = valVec;
+                        FatalErrorIn("") << "only support fixedValues, inletOutlet, "
+                                         << "outletInlet, fixedGradient!" << abort(FatalError);
                     }
-                }
-                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                {
-                    // set value
-                    forAll(state.boundaryFieldRef()[patchI], faceI)
-                    {
-                        state.boundaryFieldRef()[patchI][faceI] = valVec;
-                    }
-                    // set inletValue
-                    mixedFvPatchField<vector>& inletOutletPatch =
-                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                    inletOutletPatch.refValue() = valVec;
-                }
-                else if (state.boundaryFieldRef()[patchI].type() == "fixedGradient")
-                {
-                    fixedGradientFvPatchField<vector>& patchBC =
-                        refCast<fixedGradientFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                    vectorField& grad = const_cast<vectorField&>(patchBC.gradient());
-                    forAll(grad, idxI)
-                    {
-                        grad[idxI][0] = value[0];
-                        grad[idxI][1] = value[1];
-                        grad[idxI][2] = value[2];
-                    }
-                }
-                else
-                {
-                    FatalErrorIn("") << "only support fixedValues, inletOutlet, "
-                                     << "fixedGradient, and tractionDisplacement!"
-                                     << abort(FatalError);
                 }
             }
-        }
-        else
-        {
-            FatalErrorIn("") << "value should be a list of either 1 (scalar) "
-                             << "or 3 (vector) elements" << abort(FatalError);
+            else if (value.size() == 3)
+            {
+                if (!db.foundObject<volVectorField>(variable))
+                {
+                    Info << variable << " not found, skip it." << endl;
+                    continue;
+                }
+                // it is a vector
+                volVectorField& state(const_cast<volVectorField&>(
+                    db.lookupObject<volVectorField>(variable)));
+
+                vector valVec = {value[0], value[1], value[2]};
+
+                Info << "Setting primal boundary conditions..." << endl;
+                Info << "Setting " << variable << " = (" << value[0] << " "
+                     << value[1] << " " << value[2] << ") at " << patch << endl;
+
+                label patchI = mesh_.boundaryMesh().findPatchID(patch);
+
+                // for decomposed domain, don't set BC if the patch is empty
+                if (mesh_.boundaryMesh()[patchI].size() > 0)
+                {
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                    {
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI] = valVec;
+                        }
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                    {
+                        // set value
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI] = valVec;
+                        }
+                        // set inletValue
+                        mixedFvPatchField<vector>& inletOutletPatch =
+                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                        inletOutletPatch.refValue() = valVec;
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "fixedGradient")
+                    {
+                        fixedGradientFvPatchField<vector>& patchBC =
+                            refCast<fixedGradientFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                        vectorField& grad = const_cast<vectorField&>(patchBC.gradient());
+                        forAll(grad, idxI)
+                        {
+                            grad[idxI][0] = value[0];
+                            grad[idxI][1] = value[1];
+                            grad[idxI][2] = value[2];
+                        }
+                    }
+                    else
+                    {
+                        FatalErrorIn("") << "only support fixedValues, inletOutlet, "
+                                         << "fixedGradient, and tractionDisplacement!"
+                                         << abort(FatalError);
+                    }
+                }
+            }
+            else
+            {
+                FatalErrorIn("") << "value should be a list of either 1 (scalar) "
+                                 << "or 3 (vector) elements" << abort(FatalError);
+            }
         }
     }
 

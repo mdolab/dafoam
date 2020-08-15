@@ -86,6 +86,8 @@ void DAPartDerivdRdW::calcPartDerivMat(
 
         options.isPC: whether to compute the jacMat for preconditioner
 
+        options.lowerBound: any |value| that is smaller than lowerBound will be set to zero in dRdW
+
         xvVec: the volume mesh coordinate vector
 
         wVec: the state variable vector
@@ -127,6 +129,8 @@ void DAPartDerivdRdW::calcPartDerivMat(
     mOptions.set("setResVec", 1);
     mOptions.set("isPC", options.getLabel("isPC"));
     daResidual.masterFunction(mOptions, xvVec, wVec, resVecRef);
+
+    scalar jacLowerBound = options.getScalar("lowerBound");
 
     scalar delta = daOption_.getSubDictOption<scalar>("adjPartDerivFDStep", "State");
     scalar rDelta = 1.0 / delta;
@@ -174,7 +178,7 @@ void DAPartDerivdRdW::calcPartDerivMat(
 
         // compute the colored coloumn and assign resVec to jacMat
         daJacCon_.calcColoredColumns(color, coloredColumn);
-        this->setPartDerivMat(resVec, coloredColumn, transposed, jacMat);
+        this->setPartDerivMat(resVec, coloredColumn, transposed, jacMat, jacLowerBound);
     }
 
     // call masterFunction again to reset the wVec to OpenFOAM field
