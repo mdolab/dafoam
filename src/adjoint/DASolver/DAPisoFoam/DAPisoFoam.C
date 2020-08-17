@@ -46,19 +46,39 @@ void DAPisoFoam::initSolver()
     // initialize checkMesh
     daCheckMeshPtr_.reset(new DACheckMesh(runTime, mesh));
 
-    if (daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active"))
+    label active = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
+
+    nTimeInstances_ =
+        daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
+
+    periodicity_ = 
+        daOptionPtr_->getSubDictOption<scalar>("hybridAdjoint", "periodicity");
+
+    if (!active)
     {
-        nTimeInstances_ =
-            daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
+        FatalErrorIn("hybridAdjoint") << "active is False!" << abort(FatalError);
+    }
 
-        stateAllInstances_.setSize(nTimeInstances_);
-        stateBounaryAllInstances_.setSize(nTimeInstances_);
+    if (periodicity_ <= 0)
+    {
+        FatalErrorIn("hybridAdjoint") << "periodicity <= 0!" << abort(FatalError);
+    }
 
-        forAll(stateAllInstances_, idxI)
-        {
-            stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
-            stateBounaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
-        }
+    if (nTimeInstances_ <= 0)
+    {
+        FatalErrorIn("hybridAdjoint") << "nTimeInstances <= 0!" << abort(FatalError);
+    }
+
+    endTime_ = runTimePtr_->endTime().value();
+    deltaT_ = runTimePtr_->deltaT().value();
+
+    stateAllInstances_.setSize(nTimeInstances_);
+    stateBounaryAllInstances_.setSize(nTimeInstances_);
+
+    forAll(stateAllInstances_, idxI)
+    {
+        stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
+        stateBounaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
     }
 }
 
@@ -176,20 +196,19 @@ void DAPisoFoam::saveTimeInstance()
         Here we save the last nTimeInstances snapshots
     */
     scalar t = runTimePtr_->timeOutputValue();
-    scalar periodicity = daOptionPtr_->getSubDictOption<scalar>("hybridAdjoint", "periodicity");
-    scalar endTime = runTimePtr_->endTime().value();
-    scalar saveStart = endTime - periodicity;
-    scalar ToNT = periodicity / nTimeInstances_;
-    scalar deltaT = runTimePtr_->deltaT().value();
+    scalar saveStart = endTime_ - periodicity_;
+    scalar ToNT = periodicity_ / nTimeInstances_;
 
     if (t > saveStart)
     {
-        scalar remaindTime = endTime - t;
-        if (std::fmod(remaindTime, ToNT) < deltaT)
+        scalar remaindTime = endTime_ - t;
+        if (std::fmod(remaindTime, ToNT) < deltaT_)
         {
             Info << "Saving time instances at Time = " << t << endl;
             label instanceI = nTimeInstances_ - 1 - round(remaindTime / ToNT);
-            daFieldPtr_->ofField2List(stateAllInstances_[instanceI], stateBounaryAllInstances_[instanceI]);
+            daFieldPtr_->ofField2List(
+                stateAllInstances_[instanceI],
+                stateBounaryAllInstances_[instanceI]);
         }
     }
     return;
@@ -203,7 +222,9 @@ void DAPisoFoam::getTimeInstance(const label instanceI)
         If unsteady adjoint solvers are used, this virtual function should be 
         implemented in a child class, otherwise, return error if called
     */
-    daFieldPtr_->list2OFField(stateAllInstances_[instanceI], stateBounaryAllInstances_[instanceI]);
+    daFieldPtr_->list2OFField(
+        stateAllInstances_[instanceI],
+        stateBounaryAllInstances_[instanceI]);
 }
 
 } // End namespace Foam

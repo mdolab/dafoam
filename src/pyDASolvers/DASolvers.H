@@ -227,6 +227,12 @@ public:
     {
         DASolverPtr_->writeVectorBinary(vecIn, prefix);
     }
+
+    /// assign primal variables based on the current time instance
+    void getTimeInstance(const label instanceI)
+    {
+        DASolverPtr_->getTimeInstance(instanceI);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

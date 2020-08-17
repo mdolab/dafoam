@@ -69,6 +69,15 @@ protected:
     /// number of time instances for hybird adjoint
     label nTimeInstances_;
 
+    /// periodicity of oscillating flow variables
+    scalar periodicity_;
+
+    /// primal end time
+    scalar endTime_;
+
+    /// primal time step
+    scalar deltaT_;
+
     /// save primal variable to time instance list for unsteady adjoint
     void saveTimeInstance();
 
