@@ -196,7 +196,12 @@ public:
         Vec wVec) = 0;
     
     /// assign primal variables based on the current time instance
-    virtual void getTimeInstance(const label instanceI);
+    virtual void setTimeInstanceField(const label instanceI);
+
+    /// return the value of objective function at the given time instance and name
+    virtual scalar getTimeInstanceObjFunc(
+        const label instanceI,
+        const word objFuncName);
 
     /// solve the adjoint linear equations
     label solveAdjoint(

@@ -229,9 +229,17 @@ public:
     }
 
     /// assign primal variables based on the current time instance
-    void getTimeInstance(const label instanceI)
+    void setTimeInstanceField(const label instanceI)
     {
-        DASolverPtr_->getTimeInstance(instanceI);
+        DASolverPtr_->setTimeInstanceField(instanceI);
+    }
+
+    /// return the value of objective function at the given time instance and name
+    scalar getTimeInstanceObjFunc(
+        const label instanceI,
+        const word objFuncName)
+    {
+        return DASolverPtr_->getTimeInstanceObjFunc(instanceI, objFuncName);
     }
 };
 

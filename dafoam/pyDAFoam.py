@@ -526,6 +526,22 @@ class PYDAFOAM(object):
         self.wVec.assemblyEnd()
 
         return
+    
+    def setTimeInstanceField(self, instanceI):
+        """
+        Set the OpenFOAM state variables based on instance index
+        """
+
+        self.solver.setTimeInstanceField(instanceI)
+
+        return
+    
+    def getTimeInstanceObjFunc(self, instanceI, objFuncName):
+        """
+        Return the value of objective function at the given time instance and name
+        """
+
+        return self.solver.getTimeInstanceObjFunc(instanceI, objFuncName)
 
     def evalFunctions(self, funcs, evalFuncs=None, ignoreMissing=False):
         """

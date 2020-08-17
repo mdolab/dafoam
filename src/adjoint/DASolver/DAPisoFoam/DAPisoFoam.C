@@ -51,7 +51,7 @@ void DAPisoFoam::initSolver()
     nTimeInstances_ =
         daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
 
-    periodicity_ = 
+    periodicity_ =
         daOptionPtr_->getSubDictOption<scalar>("hybridAdjoint", "periodicity");
 
     if (!active)
@@ -74,6 +74,7 @@ void DAPisoFoam::initSolver()
 
     stateAllInstances_.setSize(nTimeInstances_);
     stateBounaryAllInstances_.setSize(nTimeInstances_);
+    objFuncsAllInstances_.setSize(nTimeInstances_);
 
     forAll(stateAllInstances_, idxI)
     {
@@ -169,7 +170,7 @@ label DAPisoFoam::solvePrimal(
 
         runTime.write();
 
-        this->saveTimeInstance();
+        this->saveTimeInstanceField();
 
         nSolverIters++;
     }
@@ -188,7 +189,7 @@ label DAPisoFoam::solvePrimal(
     return 0;
 }
 
-void DAPisoFoam::saveTimeInstance()
+void DAPisoFoam::saveTimeInstanceField()
 {
     /*
     Description:
@@ -209,12 +210,20 @@ void DAPisoFoam::saveTimeInstance()
             daFieldPtr_->ofField2List(
                 stateAllInstances_[instanceI],
                 stateBounaryAllInstances_[instanceI]);
+            
+            // save objective functions
+            forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
+            {
+                word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
+                scalar objFuncVal = this->getObjFuncValue(objFuncName);
+                objFuncsAllInstances_[instanceI].set(objFuncName, objFuncVal);
+            }
         }
     }
     return;
 }
 
-void DAPisoFoam::getTimeInstance(const label instanceI)
+void DAPisoFoam::setTimeInstanceField(const label instanceI)
 {
     /*
     Description:
@@ -225,6 +234,18 @@ void DAPisoFoam::getTimeInstance(const label instanceI)
     daFieldPtr_->list2OFField(
         stateAllInstances_[instanceI],
         stateBounaryAllInstances_[instanceI]);
+}
+
+scalar DAPisoFoam::getTimeInstanceObjFunc(
+    const label instanceI,
+    const word objFuncName)
+{
+    /*
+    Description:
+        Return the value of objective function at the given time instance and name
+    */
+
+    return objFuncsAllInstances_[instanceI].getScalar(objFuncName);
 }
 
 } // End namespace Foam

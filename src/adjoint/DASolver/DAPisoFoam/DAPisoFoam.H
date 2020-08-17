@@ -61,10 +61,13 @@ protected:
     scalar pRefValue_ = 0.0;
 
     /// state variable list for all instances
-    List< List<scalar> > stateAllInstances_;
+    List<List<scalar>> stateAllInstances_;
 
     /// state boundary variable list for all instances
-    List< List<scalar> > stateBounaryAllInstances_;
+    List<List<scalar>> stateBounaryAllInstances_;
+
+    /// objective function for all instances
+    List<dictionary> objFuncsAllInstances_;
 
     /// number of time instances for hybird adjoint
     label nTimeInstances_;
@@ -79,7 +82,7 @@ protected:
     scalar deltaT_;
 
     /// save primal variable to time instance list for unsteady adjoint
-    void saveTimeInstance();
+    void saveTimeInstanceField();
 
 public:
     TypeName("DAPisoFoam");
@@ -102,9 +105,14 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec);
-    
+
     /// assign primal variables based on the current time instance
-    virtual void getTimeInstance(const label instanceI);
+    virtual void setTimeInstanceField(const label instanceI);
+
+    /// return the value of objective function at the given time instance and name
+    virtual scalar getTimeInstanceObjFunc(
+        const label instanceI,
+        const word objFuncName);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

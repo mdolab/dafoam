@@ -135,6 +135,50 @@ def calcObjFuncValuesMP(xDV):
     return funcsMP, fail
 
 
+def calcObjFuncValuesHybridAdjoint(xDV):
+    """
+    Update the design surface and run the primal solver to get objective function values.
+    This is the hybrid adjoint version of calcObjFuncValues
+    """
+
+    Info("\n")
+    Info("+--------------------------------------------------------------------------+")
+    Info("|                  Evaluating Objective Functions %03d                      |" % DASolver.nSolvePrimals)
+    Info("+--------------------------------------------------------------------------+")
+    Info("Design Variables: ")
+    Info(xDV)
+
+    a = time.time()
+
+    # Setup an empty dictionary for the evaluated function values
+    funcs = {}
+
+    # Set the current design variables in the DV object
+    DVGeo.setDesignVars(xDV)
+    DASolver.setDesignVars(xDV)
+
+    # Evaluate the geometric constraints and add them to the funcs dictionary
+    DVCon.evalFunctions(funcs)
+
+    # Solve the CFD problem
+    DASolver()
+
+    # Set values for the hybrid adjoint objectives. This function needs to be
+    # implemented in run scripts
+    setHybridAdjointObjFuncs(funcs, evalFuncs)
+
+    b = time.time()
+
+    # Print the current solution to the screen
+    Info("Objective Functions: ")
+    Info(funcs)
+    Info("Flow Runtime: %g" % (b - a))
+
+    fail = funcs["fail"]
+
+    return funcs, fail
+
+
 def calcObjFuncSens(xDV, funcs):
     """
     Run the adjoint solver and get objective function sensitivities.
@@ -239,6 +283,69 @@ def calcObjFuncSensMP(xDV, funcs):
     Info("Adjoint Runtime: %g s" % (b - a))
 
     return funcsSensMP, fail
+
+
+def calcObjFuncSensHybridAdjoint(xDV, funcs):
+    """
+    Run the adjoint solver and get objective function sensitivities.
+    This is the hybrid adjoint version of calcObjFuncSens
+    """
+
+    Info("\n")
+    Info("+--------------------------------------------------------------------------+")
+    Info("|              Evaluating Objective Function Sensitivities %03d             |" % DASolver.nSolveAdjoints)
+    Info("+--------------------------------------------------------------------------+")
+
+    fail = False
+
+    a = time.time()
+
+    # Setup an empty dictionary for the evaluated derivative values
+    funcsSensHA = {}
+
+    nTimeInstances = DASolver.getOption("hybridAdjoint")["nTimeInstances"]
+
+    for i in range(nTimeInstances):
+
+        Info("--Solving Adjoint for Time Instance %d--" % i)
+
+        funcsSens = {}
+
+        # Evaluate the geometric constraint derivatives
+        DVCon.evalFunctionsSens(funcsSens)
+
+        # set the state vector for case i
+        DASolver.setTimeInstanceField(i)
+
+        # Solve the adjoint
+        DASolver.solveAdjoint()
+        DASolver.calcTotalDeriv()
+
+        # Evaluate the CFD derivatives
+        DASolver.evalFunctionsSens(funcsSens, evalFuncs=evalFuncs)
+
+        if funcsSens["fail"] is True:
+            fail = True
+
+        if DASolver.getOption("debug"):
+            with np.printoptions(precision=16, threshold=5, suppress=True):
+                Info("Objective Function Sensitivity: ")
+                Info(funcsSens)
+
+        # assign funcs to funcsMP
+        setHybridAdjointObjFuncsSens(xDV, funcs, funcsSens, funcsSensHA, i)
+
+    funcsSensHA["fail"] = fail
+
+    # Print the current solution to the screen
+    with np.printoptions(precision=16, threshold=5, suppress=True):
+        Info("Objective Function Sensitivity MultiPoiint: ")
+        Info(funcsSensHA)
+
+    b = time.time()
+    Info("Adjoint Runtime: %g s" % (b - a))
+
+    return funcsSensHA, fail
 
 
 def run():

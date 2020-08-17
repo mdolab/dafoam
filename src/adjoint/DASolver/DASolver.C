@@ -1869,15 +1869,29 @@ void DASolver::writeObjFuncHistFile()
     return;
 }
 
-void DASolver::getTimeInstance(const label instanceI)
+void DASolver::setTimeInstanceField(const label instanceI)
 {
     /*
-        Description:
-            Assign primal variables based on the current time instance
+    Description:
+        Assign primal variables based on the current time instance
     */
 
-    FatalErrorIn("") << "getTimeInstance should be implemented in child classes!"
+    FatalErrorIn("") << "setTimeInstanceField should be implemented in child classes!"
                      << abort(FatalError);
+}
+ 
+scalar DASolver::getTimeInstanceObjFunc(
+    const label instanceI,
+    const word objFuncName)
+{
+    /*
+    Description:
+        Return the value of objective function at the given time instance and name
+    */
+    FatalErrorIn("") << "getTimeInstanceObjFunc should be implemented in child classes!"
+                     << abort(FatalError);
+    
+    return 0.0;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
