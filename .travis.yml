@@ -74,9 +74,12 @@ jobs:
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake incompressible && rm -rf $DOCKER_PIP_INSTALL_PATH/dafoam* && pip install ."
         # install coveralls and coverage
         - docker exec -it regtest /bin/bash -c "pip install coveralls --user && pip install coverage --user"
+        # serial test
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && coverage run --include=$DOCKER_PIP_INSTALL_PATH/dafoam/pyDAFoam.py runTests_DASimpleFoam.py noCheckVal"
-        # run coveralls
-        - docker exec -it -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && COVERALLS_PARALLEL=true coveralls"
+        # parallel test
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 coverage run --include=$DOCKER_PIP_INSTALL_PATH/dafoam/pyDAFoam.py runTests_DASimpleFoam.py noCheckVal"  
+        # combine and run coveralls
+        - docker exec -it -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && coverage combine && COVERALLS_PARALLEL=true coveralls"
 
 after_script:
   - docker rm -f regtest 

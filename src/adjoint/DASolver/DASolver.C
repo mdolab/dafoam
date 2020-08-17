@@ -199,7 +199,7 @@ void DASolver::setDAObjFuncList()
                 {
                     "objFuncName": "force",
                     "source": "patchToFace",
-                    "patch": ["walls", "wallsbump"],
+                    "patches": ["walls", "wallsbump"],
                     "scale": 0.5,
                     "addToAdjoint": True,
                 },
@@ -207,7 +207,7 @@ void DASolver::setDAObjFuncList()
                 {
                     "objFuncName": "force",
                     "source": "patchToFace",
-                    "patch": ["wallsbump", "frontandback"],
+                    "patches": ["wallsbump", "frontandback"],
                     "scale": 0.5,
                     "addToAdjoint": True,
                 },
@@ -218,7 +218,7 @@ void DASolver::setDAObjFuncList()
                 {
                     "objFuncName": "force",
                     "source": "patchToFace",
-                    "patch": ["walls", "wallsbump", "frontandback"],
+                    "patches": ["walls", "wallsbump", "frontandback"],
                     "scale": 1.0,
                     "addToAdjoint": False,
                 }
@@ -701,6 +701,7 @@ label DASolver::solveAdjoint(
         dictionary options1;
         options1.set("transposed", 1);
         options1.set("isPC", 0);
+        options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdW"));
 
         // initilalize dRdWT matrix
         daPartDeriv->initializePartDerivMat(options1, &dRdWT);
@@ -777,6 +778,7 @@ label DASolver::solveAdjoint(
         dictionary options1;
         options1.set("transposed", 1);
         options1.set("isPC", 1);
+        options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdWPC"));
 
         // initilalize dRdWT matrix
         daPartDeriv->initializePartDerivMat(options1, &dRdWTPC);
@@ -1063,7 +1065,8 @@ label DASolver::calcTotalDeriv(
         // name of the variable for changing the boundary condition
         word varName = dvSubDict.getWord("variable");
         // name of the boundary patch
-        word patchName = dvSubDict.getWord("patch");
+        wordList patches;
+        dvSubDict.readEntry<wordList>("patches", patches);
         // the compoent of a vector variable, ignore when it is a scalar
         label comp = dvSubDict.getLabel("comp");
 
@@ -1093,7 +1096,7 @@ label DASolver::calcTotalDeriv(
             // setup options to compute dRdBC
             dictionary options;
             options.set("variable", varName);
-            options.set("patch", patchName);
+            options.set("patches", patches);
             options.set("comp", comp);
             options.set("isPC", 0);
 
@@ -1166,7 +1169,7 @@ label DASolver::calcTotalDeriv(
                         options.set("objFuncPart", objFuncPart);
                         options.set("objFuncSubDictPart", objFuncSubDictPart);
                         options.set("variable", varName);
-                        options.set("patch", patchName);
+                        options.set("patches", patches);
                         options.set("comp", comp);
 
                         // initialize dFdBC
@@ -1246,7 +1249,8 @@ label DASolver::calcTotalDeriv(
     {
         // get info from dvSubDict. This needs to be defined in the pyDAFoam
         // name of the boundary patch
-        word patchName = dvSubDict.getWord("patch");
+        wordList patches;
+        dvSubDict.readEntry<wordList>("patches", patches);
         // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
         word flowAxis = dvSubDict.getWord("flowAxis");
         word normalAxis = dvSubDict.getWord("normalAxis");
@@ -1276,7 +1280,7 @@ label DASolver::calcTotalDeriv(
 
             // setup options to compute dRdAOA
             dictionary options;
-            options.set("patch", patchName);
+            options.set("patches", patches);
             options.set("flowAxis", flowAxis);
             options.set("normalAxis", normalAxis);
             options.set("isPC", 0);
@@ -1349,7 +1353,7 @@ label DASolver::calcTotalDeriv(
                         options.set("objFuncName", objFuncName);
                         options.set("objFuncPart", objFuncPart);
                         options.set("objFuncSubDictPart", objFuncSubDictPart);
-                        options.set("patch", patchName);
+                        options.set("patches", patches);
                         options.set("flowAxis", flowAxis);
                         options.set("normalAxis", normalAxis);
 

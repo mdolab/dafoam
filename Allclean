@@ -11,3 +11,4 @@ cd src/utilities && ./Allclean && cd -
 cd src/models && ./Allclean && cd -
 cd src/boundaryConditions && ./Allclean && cd -
 cd tests && ./Allclean && cd -
+rm -rf dafoam/*.so

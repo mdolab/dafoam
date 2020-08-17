@@ -32,13 +32,13 @@ if gcomm.rank == 0:
     os.system("cp -r 0.compressible 0")
     os.system("cp -r system.transonic system")
 
-UmagIn = 238.0
-pIn = 101325.0
-nuTildaIn = 4.5e-5
-TIn = 300.0
-ARef = 0.1
+U0 = 238.0
+p0 = 101325.0
+nuTilda0 = 4.5e-5
+T0 = 300.0
+A0 = 0.1
 alpha0 = 2.7
-rhoRef = 1.0
+rho0 = 1.0
 
 # test incompressible solvers
 aeroOptions = {
@@ -49,10 +49,10 @@ aeroOptions = {
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
     "primalBC": {
-        "UIn": {"variable": "U", "patch": "inout", "value": [UmagIn, 0.0, 0.0]},
-        "pIn": {"variable": "p", "patch": "inout", "value": [pIn]},
-        "TIn": {"variable": "T", "patch": "inout", "value": [TIn]},
-        "nuTildaIn": {"variable": "nuTilda", "patch": "inout", "value": [nuTildaIn]},
+        "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
+        "T0": {"variable": "T", "patches": ["inout"], "value": [T0]},
+        "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
         "useWallFunction": True,
     },
     "primalVarBounds": {
@@ -73,7 +73,7 @@ aeroOptions = {
                 "patches": ["wing"],
                 "directionMode": "parallelToFlow",
                 "alphaName": "alpha",
-                "scale": 1.0 / (0.5 * rhoRef * UmagIn * UmagIn * ARef),
+                "scale": 1.0 / (0.5 * rho0 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
         },
@@ -84,18 +84,18 @@ aeroOptions = {
                 "patches": ["wing"],
                 "directionMode": "normalToFlow",
                 "alphaName": "alpha",
-                "scale": 1.0 / (0.5 * rhoRef * UmagIn * UmagIn * ARef),
+                "scale": 1.0 / (0.5 * rho0 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
         },
     },
-    "normalizeStates": {"U": UmagIn, "p": pIn, "nuTilda": nuTildaIn * 10.0, "phi": 1.0},
+    "normalizeStates": {"U": U0, "p": p0, "nuTilda": nuTilda0 * 10.0, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
     "designVar": {
         "shapey": {"designVarType": "FFD"},
-        "alpha": {"designVarType": "AOA", "patch": "inout", "flowAxis": "x", "normalAxis": "y"},
+        "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
     },
 }
 
@@ -117,8 +117,8 @@ nTwists = DVGeo.addRefAxis("bodyAxis", xFraction=0.25, alignIndex="k")
 
 def alpha(val, geo):
     aoa = val[0] * np.pi / 180.0
-    inletU = [float(UmagIn * np.cos(aoa)), float(UmagIn * np.sin(aoa)), 0]
-    DASolver.setOption("primalBC", {"UIn": {"variable": "U", "patch": "inout", "value": inletU}})
+    inletU = [float(U0 * np.cos(aoa)), float(U0 * np.sin(aoa)), 0]
+    DASolver.setOption("primalBC", {"UIn": {"variable": "U", "patches": ["inout"], "value": inletU}})
     DASolver.updateDAOption()
 
 

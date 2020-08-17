@@ -57,7 +57,9 @@ DAObjFuncForce::DAObjFuncForce(
         forceDir_ = {1.0, 0.0, 0.0};
         word alphaName = objFuncDict_.getWord("alphaName");
         dictionary alphaSubDict = daOption_.getAllOptions().subDict("designVar").subDict(alphaName);
-        inoutPatch_ = alphaSubDict.getWord("patch");
+        wordList patches;
+        alphaSubDict.readEntry<wordList>("patches", patches);
+        inoutRefPatchName_ = patches[0];
         HashTable<label> axisIndices;
         axisIndices.set("x", 0);
         axisIndices.set("y", 1);
@@ -197,7 +199,7 @@ void DAObjFuncForce::updateForceDir(vector& forceDir)
         forceDir: the force direction vector
     */
 
-    label patchI = mesh_.boundaryMesh().findPatchID(inoutPatch_);
+    label patchI = mesh_.boundaryMesh().findPatchID(inoutRefPatchName_);
 
     volVectorField& U =
         const_cast<volVectorField&>(mesh_.thisDb().lookupObject<volVectorField>("U"));
@@ -230,7 +232,7 @@ void DAObjFuncForce::updateForceDir(vector& forceDir)
     }
 
     // need to reduce the sum of force across all processors, this is becasue some of
-    // the processor might not own the inoutPatch_ so their flowDir will be -1e16, but
+    // the processor might not own the inoutRefPatchName_ so their flowDir will be -1e16, but
     // when calling the following reduce function, they will get the correct flowDir
     // computed by other processors
     reduce(flowDir[0], maxOp<scalar>());
