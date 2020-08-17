@@ -63,6 +63,9 @@ protected:
     /// state variable list for all instances
     List< List<scalar> > stateAllInstances_;
 
+    /// state boundary variable list for all instances
+    List< List<scalar> > stateBounaryAllInstances_;
+
     /// number of time instances for hybird adjoint
     label nTimeInstances_;
 

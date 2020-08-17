@@ -755,19 +755,22 @@ void DAField::setPrimalBoundaryConditions()
     }
 }
 
-void DAField::ofField2List(scalarList& listIn) const
+void DAField::ofField2List(
+    scalarList& stateList,
+    scalarList& stateBoundaryList) const
 {
     /*
     Description:
         Assign values for the scalar list of states based on the latest OpenFOAM field values. 
-        This function is same as DAField::ofField2StateVec except that the output is a 
-        scalarList instead of a Petsc vector
+        This function is similar to DAField::ofField2StateVec except that the output are 
+        scalarLists instead of a Petsc vector
 
     Input:
         OpenFOAM field variables
 
     Output:
-        listIn: scalar list of states
+        stateList: scalar list of states
+        stateBoundaryList: scalar list of boundary states
 
     Example:
         Image we have two state variables (p,T) and five cells, running on two CPU
@@ -781,6 +784,8 @@ void DAField::ofField2List(scalarList& listIn) const
 
     const objectRegistry& db = mesh_.thisDb();
 
+    label localBFaceI = 0;
+
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         // lookup state from meshDb
@@ -791,7 +796,22 @@ void DAField::ofField2List(scalarList& listIn) const
             for (label comp = 0; comp < 3; comp++)
             {
                 label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
-                listIn[localIdx] = state[cellI][comp];
+                stateList[localIdx] = state[cellI][comp];
+            }
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    for (label comp = 0; comp < 3; comp++)
+                    {
+                        stateList[localBFaceI] = state.boundaryField()[patchI][faceI][comp];
+                        localBFaceI++;
+                    }
+                }
             }
         }
     }
@@ -804,7 +824,19 @@ void DAField::ofField2List(scalarList& listIn) const
         forAll(mesh_.cells(), cellI)
         {
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-            listIn[localIdx] = state[cellI];
+            stateList[localIdx] = state[cellI];
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    stateList[localBFaceI] = state.boundaryField()[patchI][faceI];
+                    localBFaceI++;
+                }
+            }
         }
     }
 
@@ -816,7 +848,19 @@ void DAField::ofField2List(scalarList& listIn) const
         forAll(mesh_.cells(), cellI)
         {
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-            listIn[localIdx] = state[cellI];
+            stateList[localIdx] = state[cellI];
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    stateList[localBFaceI] = state.boundaryField()[patchI][faceI];
+                    localBFaceI++;
+                }
+            }
         }
     }
 
@@ -830,28 +874,30 @@ void DAField::ofField2List(scalarList& listIn) const
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
             if (faceI < daIndex_.nLocalInternalFaces)
             {
-                listIn[localIdx] = state[faceI];
+                stateList[localIdx] = state[faceI];
             }
             else
             {
                 label relIdx = faceI - daIndex_.nLocalInternalFaces;
                 const label& patchIdx = daIndex_.bFacePatchI[relIdx];
                 const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
-                listIn[localIdx] = state.boundaryField()[patchIdx][faceIdx];
+                stateList[localIdx] = state.boundaryField()[patchIdx][faceIdx];
             }
         }
     }
-
 }
 
-void DAField::list2OFField(const scalarList& listIn) const
+void DAField::list2OFField(
+    const scalarList& stateList,
+    const scalarList& stateBoundaryList) const
 {
     /*
     Description:
         Assign values OpenFOAM field values based on the scalar list of states
     
     Input:
-    listIn: scalar list of states
+    stateList: scalar list of states
+    stateBoundaryList: scalar list of boundary states
 
     Output:
     OpenFoam field variables
@@ -868,6 +914,8 @@ void DAField::list2OFField(const scalarList& listIn) const
 
     const objectRegistry& db = mesh_.thisDb();
 
+    label localBFaceI = 0;
+
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         // lookup state from meshDb
@@ -878,7 +926,22 @@ void DAField::list2OFField(const scalarList& listIn) const
             for (label comp = 0; comp < 3; comp++)
             {
                 label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
-                state[cellI][comp] = listIn[localIdx];
+                state[cellI][comp] = stateList[localIdx];
+            }
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    for (label comp = 0; comp < 3; comp++)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI][comp] = stateList[localBFaceI];
+                        localBFaceI++;
+                    }
+                }
             }
         }
     }
@@ -891,7 +954,19 @@ void DAField::list2OFField(const scalarList& listIn) const
         forAll(mesh_.cells(), cellI)
         {
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-            state[cellI] = listIn[localIdx];
+            state[cellI] = stateList[localIdx];
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    state.boundaryFieldRef()[patchI][faceI] = stateList[localBFaceI];
+                    localBFaceI++;
+                }
+            }
         }
     }
 
@@ -903,7 +978,19 @@ void DAField::list2OFField(const scalarList& listIn) const
         forAll(mesh_.cells(), cellI)
         {
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-            state[cellI] = listIn[localIdx];
+            state[cellI] = stateList[localIdx];
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    state.boundaryFieldRef()[patchI][faceI] = stateList[localBFaceI];
+                    localBFaceI++;
+                }
+            }
         }
     }
 
@@ -917,18 +1004,17 @@ void DAField::list2OFField(const scalarList& listIn) const
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
             if (faceI < daIndex_.nLocalInternalFaces)
             {
-                state[faceI] = listIn[localIdx];
+                state[faceI] = stateList[localIdx];
             }
             else
             {
                 label relIdx = faceI - daIndex_.nLocalInternalFaces;
                 const label& patchIdx = daIndex_.bFacePatchI[relIdx];
                 const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
-                state.boundaryFieldRef()[patchIdx][faceIdx] = listIn[localIdx];
+                state.boundaryFieldRef()[patchIdx][faceIdx] = stateList[localIdx];
             }
         }
     }
-
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

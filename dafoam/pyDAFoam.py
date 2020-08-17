@@ -211,6 +211,10 @@ class DAOPTION(object):
     ## This is used only for transonic solvers such as DARhoSimpleCFoam
     transonicPCOption = -1
 
+    ## Options for hybrid adjoint. Here nTimeInstances is the number of time instances
+    ## periodicity is the periodicity of flow oscillation
+    hybridAdjoint = {"active": False, "nTimeInstances": -1, "periodicity": -1.0}
+
     # *********************************************************************************************
     # ************************************ Advance Options ****************************************
     # *********************************************************************************************

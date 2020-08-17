@@ -46,13 +46,19 @@ void DAPisoFoam::initSolver()
     // initialize checkMesh
     daCheckMeshPtr_.reset(new DACheckMesh(runTime, mesh));
 
-    nTimeInstances_ = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
-
-    stateAllInstances_.setSize(nTimeInstances_);
-
-    forAll(stateAllInstances_, idxI)
+    if (daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active"))
     {
-        stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
+        nTimeInstances_ =
+            daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
+
+        stateAllInstances_.setSize(nTimeInstances_);
+        stateBounaryAllInstances_.setSize(nTimeInstances_);
+
+        forAll(stateAllInstances_, idxI)
+        {
+            stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
+            stateBounaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
+        }
     }
 }
 
@@ -173,15 +179,17 @@ void DAPisoFoam::saveTimeInstance()
     scalar periodicity = daOptionPtr_->getSubDictOption<scalar>("hybridAdjoint", "periodicity");
     scalar endTime = runTimePtr_->endTime().value();
     scalar saveStart = endTime - periodicity;
-    scalar ToNT = periodicity/nTimeInstances_;
+    scalar ToNT = periodicity / nTimeInstances_;
+    scalar deltaT = runTimePtr_->deltaT().value();
+
     if (t > saveStart)
     {
         scalar remaindTime = endTime - t;
-        if ( std::fmod( remaindTime, ToNT ) < 1.0e-10 )
+        if (std::fmod(remaindTime, ToNT) < deltaT)
         {
-            Info<<"Saving time instances... "<<endl;
-            label instanceI = nTimeInstances_ - 1 - round(remaindTime/ToNT);
-            daFieldPtr_->ofField2List(stateAllInstances_[instanceI]);
+            Info << "Saving time instances at Time = " << t << endl;
+            label instanceI = nTimeInstances_ - 1 - round(remaindTime / ToNT);
+            daFieldPtr_->ofField2List(stateAllInstances_[instanceI], stateBounaryAllInstances_[instanceI]);
         }
     }
     return;
@@ -195,7 +203,7 @@ void DAPisoFoam::getTimeInstance(const label instanceI)
         If unsteady adjoint solvers are used, this virtual function should be 
         implemented in a child class, otherwise, return error if called
     */
-    daFieldPtr_->list2OFField(stateAllInstances_[instanceI]);
+    daFieldPtr_->list2OFField(stateAllInstances_[instanceI], stateBounaryAllInstances_[instanceI]);
 }
 
 } // End namespace Foam
