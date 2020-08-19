@@ -46,7 +46,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void readVectorBinary(PetscVec, char *)
         void writeVectorBinary(PetscVec, char *)
         void setTimeInstanceField(int)
-        void getTimeInstanceObjFunc(int, char *)
+        double getTimeInstanceObjFunc(int, char *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -166,4 +166,4 @@ cdef class pyDASolvers:
         self._thisptr.setTimeInstanceField(instanceI)
     
     def getTimeInstanceObjFunc(self, instanceI, objFuncName):
-        self._thisptr.getTimeInstanceObjFunc(instanceI, objFuncName)
+        return self._thisptr.getTimeInstanceObjFunc(instanceI, objFuncName)

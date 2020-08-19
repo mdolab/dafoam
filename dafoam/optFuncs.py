@@ -165,7 +165,7 @@ def calcObjFuncValuesHybridAdjoint(xDV):
 
     # Set values for the hybrid adjoint objectives. This function needs to be
     # implemented in run scripts
-    setHybridAdjointObjFuncs(funcs, evalFuncs)
+    setHybridAdjointObjFuncs(DASolver, funcs, evalFuncs)
 
     b = time.time()
 

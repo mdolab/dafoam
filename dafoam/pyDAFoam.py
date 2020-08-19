@@ -541,7 +541,7 @@ class PYDAFOAM(object):
         Return the value of objective function at the given time instance and name
         """
 
-        return self.solver.getTimeInstanceObjFunc(instanceI, objFuncName)
+        return self.solver.getTimeInstanceObjFunc(instanceI, objFuncName.encode())
 
     def evalFunctions(self, funcs, evalFuncs=None, ignoreMissing=False):
         """

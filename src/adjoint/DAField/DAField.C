@@ -815,7 +815,7 @@ void DAField::ofField2List(
                 {
                     for (label comp = 0; comp < 3; comp++)
                     {
-                        stateList[localBFaceI] = state.boundaryField()[patchI][faceI][comp];
+                        stateBoundaryList[localBFaceI] = state.boundaryField()[patchI][faceI][comp];
                         localBFaceI++;
                     }
                 }
@@ -840,7 +840,7 @@ void DAField::ofField2List(
             {
                 forAll(state.boundaryField()[patchI], faceI)
                 {
-                    stateList[localBFaceI] = state.boundaryField()[patchI][faceI];
+                    stateBoundaryList[localBFaceI] = state.boundaryField()[patchI][faceI];
                     localBFaceI++;
                 }
             }
@@ -864,7 +864,7 @@ void DAField::ofField2List(
             {
                 forAll(state.boundaryField()[patchI], faceI)
                 {
-                    stateList[localBFaceI] = state.boundaryField()[patchI][faceI];
+                    stateBoundaryList[localBFaceI] = state.boundaryField()[patchI][faceI];
                     localBFaceI++;
                 }
             }
@@ -945,7 +945,7 @@ void DAField::list2OFField(
                 {
                     for (label comp = 0; comp < 3; comp++)
                     {
-                        state.boundaryFieldRef()[patchI][faceI][comp] = stateList[localBFaceI];
+                        state.boundaryFieldRef()[patchI][faceI][comp] = stateBoundaryList[localBFaceI];
                         localBFaceI++;
                     }
                 }
@@ -970,7 +970,7 @@ void DAField::list2OFField(
             {
                 forAll(state.boundaryField()[patchI], faceI)
                 {
-                    state.boundaryFieldRef()[patchI][faceI] = stateList[localBFaceI];
+                    state.boundaryFieldRef()[patchI][faceI] = stateBoundaryList[localBFaceI];
                     localBFaceI++;
                 }
             }
@@ -994,7 +994,7 @@ void DAField::list2OFField(
             {
                 forAll(state.boundaryField()[patchI], faceI)
                 {
-                    state.boundaryFieldRef()[patchI][faceI] = stateList[localBFaceI];
+                    state.boundaryFieldRef()[patchI][faceI] = stateBoundaryList[localBFaceI];
                     localBFaceI++;
                 }
             }

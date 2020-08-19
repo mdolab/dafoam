@@ -69,17 +69,18 @@ void DAPisoFoam::initSolver()
         FatalErrorIn("hybridAdjoint") << "nTimeInstances <= 0!" << abort(FatalError);
     }
 
-    endTime_ = runTimePtr_->endTime().value();
-    deltaT_ = runTimePtr_->deltaT().value();
-
     stateAllInstances_.setSize(nTimeInstances_);
     stateBounaryAllInstances_.setSize(nTimeInstances_);
     objFuncsAllInstances_.setSize(nTimeInstances_);
+    runTimeAllInstances_.setSize(nTimeInstances_);
+    runTimeIndexAllInstances_.setSize(nTimeInstances_);
 
     forAll(stateAllInstances_, idxI)
     {
         stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
         stateBounaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
+        runTimeAllInstances_[idxI] = 0.0;
+        runTimeIndexAllInstances_[idxI] = 0.0;
     }
 }
 
@@ -125,6 +126,10 @@ label DAPisoFoam::solvePrimal(
     {
         return 1;
     }
+
+    // We need to set the mesh moving to false, otherwise we will get V0 not found error.
+    // Need to dig into this issue later
+    mesh.moving(false);
 
     // create a file to store the objective values
     this->initializeObjFuncHistFilePtr("objFuncHist.txt");
@@ -196,21 +201,26 @@ void DAPisoFoam::saveTimeInstanceField()
         Save primal variable to time instance list for unsteady adjoint
         Here we save the last nTimeInstances snapshots
     */
+
+    scalar endTime = runTimePtr_->endTime().value();
+    scalar deltaT = runTimePtr_->deltaT().value();
     scalar t = runTimePtr_->timeOutputValue();
-    scalar saveStart = endTime_ - periodicity_;
+    scalar saveStart = endTime - periodicity_;
     scalar ToNT = periodicity_ / nTimeInstances_;
 
     if (t > saveStart)
     {
-        scalar remaindTime = endTime_ - t;
-        if (std::fmod(remaindTime, ToNT) < deltaT_)
+        scalar remaindTime = endTime - t;
+        if (std::fmod(remaindTime, ToNT) < deltaT)
         {
             Info << "Saving time instances at Time = " << t << endl;
+
+            // save fields
             label instanceI = nTimeInstances_ - 1 - round(remaindTime / ToNT);
             daFieldPtr_->ofField2List(
                 stateAllInstances_[instanceI],
                 stateBounaryAllInstances_[instanceI]);
-            
+
             // save objective functions
             forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
             {
@@ -218,6 +228,10 @@ void DAPisoFoam::saveTimeInstanceField()
                 scalar objFuncVal = this->getObjFuncValue(objFuncName);
                 objFuncsAllInstances_[instanceI].set(objFuncName, objFuncVal);
             }
+
+            // save runTime
+            runTimeAllInstances_[instanceI] = t;
+            runTimeIndexAllInstances_[instanceI] = runTimePtr_->timeIndex();
         }
     }
     return;
@@ -231,9 +245,16 @@ void DAPisoFoam::setTimeInstanceField(const label instanceI)
         If unsteady adjoint solvers are used, this virtual function should be 
         implemented in a child class, otherwise, return error if called
     */
+
+    Info << "Setting fields for time instance " << instanceI << endl;
+
+    // set fields
     daFieldPtr_->list2OFField(
         stateAllInstances_[instanceI],
         stateBounaryAllInstances_[instanceI]);
+
+    // set run time
+    runTimePtr_->setTime(runTimeAllInstances_[instanceI], runTimeIndexAllInstances_[instanceI]);
 }
 
 scalar DAPisoFoam::getTimeInstanceObjFunc(

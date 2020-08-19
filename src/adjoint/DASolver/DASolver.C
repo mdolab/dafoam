@@ -626,23 +626,33 @@ label DASolver::solveAdjoint(
     // where we need to set different boundary conditions for different points
     if (daOptionPtr_->getOption<label>("multiPoint"))
     {
-        dictionary bcDict = daOptionPtr_->getAllOptions().subDict("primalBC");
-        if (bcDict.toc().size() != 0)
-        {
-            Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
-            daFieldPtr_->setPrimalBoundaryConditions();
 
-            daFieldPtr_->stateVec2OFField(wVec);
-            // We need to call correctBC multiple times to reproduce
-            // the exact residual for mulitpoint, this is needed for some boundary conditions
-            // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
-            for (label i = 0; i < 10; i++)
-            {
-                daResidualPtr_->correctBoundaryConditions();
-                daResidualPtr_->updateIntermediateVariables();
-                daModelPtr_->correctBoundaryConditions();
-                daModelPtr_->updateIntermediateVariables();
-            }
+        Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
+        daFieldPtr_->setPrimalBoundaryConditions();
+        daFieldPtr_->stateVec2OFField(wVec);
+        // We need to call correctBC multiple times to reproduce
+        // the exact residual for mulitpoint, this is needed for some boundary conditions
+        // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
+        for (label i = 0; i < 10; i++)
+        {
+            daResidualPtr_->correctBoundaryConditions();
+            daResidualPtr_->updateIntermediateVariables();
+            daModelPtr_->correctBoundaryConditions();
+            daModelPtr_->updateIntermediateVariables();
+        }
+    }
+
+    if (daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active"))
+    {
+        // We need to call correctBC multiple times to reproduce
+        // the exact residual for mulitpoint, this is needed for some boundary conditions
+        // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
+        for (label i = 0; i < 10; i++)
+        {
+            daResidualPtr_->correctBoundaryConditions();
+            daResidualPtr_->updateIntermediateVariables();
+            daModelPtr_->correctBoundaryConditions();
+            daModelPtr_->updateIntermediateVariables();
         }
     }
 
@@ -1879,7 +1889,7 @@ void DASolver::setTimeInstanceField(const label instanceI)
     FatalErrorIn("") << "setTimeInstanceField should be implemented in child classes!"
                      << abort(FatalError);
 }
- 
+
 scalar DASolver::getTimeInstanceObjFunc(
     const label instanceI,
     const word objFuncName)
@@ -1890,7 +1900,7 @@ scalar DASolver::getTimeInstanceObjFunc(
     */
     FatalErrorIn("") << "getTimeInstanceObjFunc should be implemented in child classes!"
                      << abort(FatalError);
-    
+
     return 0.0;
 }
 
