@@ -255,6 +255,17 @@ void DAPisoFoam::setTimeInstanceField(const label instanceI)
 
     // set run time
     runTimePtr_->setTime(runTimeAllInstances_[instanceI], runTimeIndexAllInstances_[instanceI]);
+
+    // We need to call correctBC multiple times to reproduce
+    // the exact residual for mulitpoint, this is needed for some boundary conditions
+    // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
+    for (label i = 0; i < 10; i++)
+    {
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+    }
 }
 
 scalar DAPisoFoam::getTimeInstanceObjFunc(

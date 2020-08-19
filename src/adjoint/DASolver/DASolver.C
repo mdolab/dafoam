@@ -642,20 +642,6 @@ label DASolver::solveAdjoint(
         }
     }
 
-    if (daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active"))
-    {
-        // We need to call correctBC multiple times to reproduce
-        // the exact residual for mulitpoint, this is needed for some boundary conditions
-        // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
-        for (label i = 0; i < 10; i++)
-        {
-            daResidualPtr_->correctBoundaryConditions();
-            daResidualPtr_->updateIntermediateVariables();
-            daModelPtr_->correctBoundaryConditions();
-            daModelPtr_->updateIntermediateVariables();
-        }
-    }
-
     label solveAdjointFail = 0;
 
     DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
