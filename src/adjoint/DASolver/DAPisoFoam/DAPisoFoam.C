@@ -233,6 +233,11 @@ void DAPisoFoam::saveTimeInstanceField()
             // save runTime
             runTimeAllInstances_[instanceI] = t;
             runTimeIndexAllInstances_[instanceI] = runTimePtr_->timeIndex();
+
+            if (daOptionPtr_->getOption<label>("debug"))
+            {
+                this->calcPrimalResidualStatistics("print");
+            }
         }
     }
     return;
