@@ -82,7 +82,7 @@ protected:
     scalar periodicity_;
 
     /// save primal variable to time instance list for unsteady adjoint
-    void saveTimeInstanceField();
+    void saveTimeInstanceField(label& timeInstanceI);
 
 public:
     TypeName("DAPisoFoam");

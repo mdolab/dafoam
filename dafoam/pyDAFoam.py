@@ -297,12 +297,9 @@ class DAOPTION(object):
     }
 
     ## decomposeParDict option. This file will be automatically written such that users
-    ## can run optimization with any number of CPU cores without the need to manually 
+    ## can run optimization with any number of CPU cores without the need to manually
     ## change decomposeParDict
-    decomposeParDict = {
-        "method": "scotch",
-        "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001}
-    }
+    decomposeParDict = {"method": "scotch", "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001}}
 
     ## The ordering of state variable. Options are: state or cell. Most of the case, the state
     ## odering is the best choice.
@@ -526,16 +523,19 @@ class PYDAFOAM(object):
         self.wVec.assemblyEnd()
 
         return
-    
+
     def setTimeInstanceField(self, instanceI):
         """
         Set the OpenFOAM state variables based on instance index
         """
 
         self.solver.setTimeInstanceField(instanceI)
+        # NOTE: we need to set the OF field to wVec vector here!
+        # this is because we will assign self.wVec to the solveAdjoint function later
+        self.solver.ofField2StateVec(self.wVec)
 
         return
-    
+
     def getTimeInstanceObjFunc(self, instanceI, objFuncName):
         """
         Return the value of objective function at the given time instance and name
@@ -1829,65 +1829,65 @@ class PYDAFOAM(object):
 
         # return ("meshSurfaceFamily", "designSurfaceFamily")
         return ()
-    
+
     def _writeDecomposeParDict(self):
         """
         Write system/decomposeParDict
         """
         if self.comm.rank == 0:
             # Open the options file for writing
-            workingDirectory = os.getcwd()  
-            sysDir = 'system'
+            workingDirectory = os.getcwd()
+            sysDir = "system"
             varDir = os.path.join(workingDirectory, sysDir)
-            fileName = 'decomposeParDict'
+            fileName = "decomposeParDict"
             fileLoc = os.path.join(varDir, fileName)
-            f = open(fileLoc, 'w')
-            # write header 
+            f = open(fileLoc, "w")
+            # write header
             self._writeOpenFoamHeader(f, "dictionary", sysDir, fileName)
             # write content
-            decomDict=self.getOption('decomposeParDict')
-            n = decomDict['simpleCoeffs']['n']
-            f.write('numberOfSubdomains     %d;\n'%self.nProcs)
-            f.write('\n')
-            f.write('method                 %s;\n'%decomDict['method'])
-            f.write('\n')
-            f.write('simpleCoeffs \n')
-            f.write('{ \n')
-            f.write('    n                  (%d %d %d);\n'%(n[0], n[1], n[2]))
-            f.write('    delta              %g;\n'%decomDict['simpleCoeffs']['delta'])
-            f.write('} \n')
-            f.write('\n')
-            f.write('distributed            false;\n')
-            f.write('\n')
-            f.write('roots();\n')
-            f.write('\n')
-            f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
+            decomDict = self.getOption("decomposeParDict")
+            n = decomDict["simpleCoeffs"]["n"]
+            f.write("numberOfSubdomains     %d;\n" % self.nProcs)
+            f.write("\n")
+            f.write("method                 %s;\n" % decomDict["method"])
+            f.write("\n")
+            f.write("simpleCoeffs \n")
+            f.write("{ \n")
+            f.write("    n                  (%d %d %d);\n" % (n[0], n[1], n[2]))
+            f.write("    delta              %g;\n" % decomDict["simpleCoeffs"]["delta"])
+            f.write("} \n")
+            f.write("\n")
+            f.write("distributed            false;\n")
+            f.write("\n")
+            f.write("roots();\n")
+            f.write("\n")
+            f.write("// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n")
 
             f.close()
         self.comm.Barrier()
-    
+
     def _writeOpenFoamHeader(self, f, className, location, objectName):
         """
         Write OpenFOAM header file
         """
-        
-        f.write('/*--------------------------------*- C++ -*---------------------------------*\ \n')
-        f.write('| ========                 |                                                 | \n')
-        f.write('| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           | \n')
-        f.write('|  \\    /   O peration     | Version:  v1812                                 | \n')
-        f.write('|   \\  /    A nd           | Web:      www.OpenFOAM.com                      | \n')
-        f.write('|    \\/     M anipulation  |                                                 | \n')
-        f.write('\*--------------------------------------------------------------------------*/ \n')
-        f.write('FoamFile\n')
-        f.write('{\n')
-        f.write('    version     2.0;\n')
-        f.write('    format      ascii;\n')
-        f.write('    class       %s;\n'%className)
-        f.write('    location    "%s";\n'%location)
-        f.write('    object      %s;\n'%objectName)
-        f.write('}\n')
-        f.write('// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n')
-        f.write('\n')
+
+        f.write("/*--------------------------------*- C++ -*---------------------------------*\ \n")
+        f.write("| ========                 |                                                 | \n")
+        f.write("| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           | \n")
+        f.write("|  \\    /   O peration     | Version:  v1812                                 | \n")
+        f.write("|   \\  /    A nd           | Web:      www.OpenFOAM.com                      | \n")
+        f.write("|    \\/     M anipulation  |                                                 | \n")
+        f.write("\*--------------------------------------------------------------------------*/ \n")
+        f.write("FoamFile\n")
+        f.write("{\n")
+        f.write("    version     2.0;\n")
+        f.write("    format      ascii;\n")
+        f.write("    class       %s;\n" % className)
+        f.write('    location    "%s";\n' % location)
+        f.write("    object      %s;\n" % objectName)
+        f.write("}\n")
+        f.write("// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n")
+        f.write("\n")
 
 
 class Error(Exception):

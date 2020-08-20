@@ -137,13 +137,13 @@ label DAPisoFoam::solvePrimal(
     label nSolverIters = 1;
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
+    label timeInstanceI = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
 
         if (nSolverIters % printInterval == 0 || nSolverIters == 1)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
-#include "CourantNo.H"
         }
 
         // Pressure-velocity PISO corrector
@@ -162,6 +162,8 @@ label DAPisoFoam::solvePrimal(
 
         if (nSolverIters % printInterval == 0 || nSolverIters == 1)
         {
+#include "CourantNo.H"
+
             daTurbulenceModelPtr_->printYPlus();
 
             this->printAllObjFuncs();
@@ -176,7 +178,7 @@ label DAPisoFoam::solvePrimal(
 
         runTime.write();
 
-        this->saveTimeInstanceField();
+        this->saveTimeInstanceField(timeInstanceI);
 
         nSolverIters++;
     }
@@ -195,7 +197,7 @@ label DAPisoFoam::solvePrimal(
     return 0;
 }
 
-void DAPisoFoam::saveTimeInstanceField()
+void DAPisoFoam::saveTimeInstanceField(label& timeInstanceI)
 {
     /*
     Description:
@@ -204,41 +206,38 @@ void DAPisoFoam::saveTimeInstanceField()
     */
 
     scalar endTime = runTimePtr_->endTime().value();
-    scalar deltaT = runTimePtr_->deltaT().value();
     scalar t = runTimePtr_->timeOutputValue();
-    scalar saveStart = endTime - periodicity_;
-    scalar ToNT = periodicity_ / nTimeInstances_;
+    scalar instanceStart =
+        endTime - periodicity_ / nTimeInstances_ * (nTimeInstances_ - 1 - timeInstanceI);
 
-    if (t > saveStart)
+    // the 2nd condition is for t=9.999999999999 scenario)
+    if (t > instanceStart || fabs(t - endTime) < 1e-8)
     {
-        scalar remaindTime = endTime - t;
-        if (std::fmod(remaindTime, ToNT) < deltaT)
+        Info << "Saving time instance " << timeInstanceI << " at Time = " << t << endl;
+
+        // save fields
+        daFieldPtr_->ofField2List(
+            stateAllInstances_[timeInstanceI],
+            stateBounaryAllInstances_[timeInstanceI]);
+
+        // save objective functions
+        forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
         {
-            Info << "Saving time instances at Time = " << t << endl;
-
-            // save fields
-            label instanceI = nTimeInstances_ - 1 - round(remaindTime / ToNT);
-            daFieldPtr_->ofField2List(
-                stateAllInstances_[instanceI],
-                stateBounaryAllInstances_[instanceI]);
-
-            // save objective functions
-            forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
-            {
-                word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
-                scalar objFuncVal = this->getObjFuncValue(objFuncName);
-                objFuncsAllInstances_[instanceI].set(objFuncName, objFuncVal);
-            }
-
-            // save runTime
-            runTimeAllInstances_[instanceI] = t;
-            runTimeIndexAllInstances_[instanceI] = runTimePtr_->timeIndex();
-
-            if (daOptionPtr_->getOption<label>("debug"))
-            {
-                this->calcPrimalResidualStatistics("print");
-            }
+            word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
+            scalar objFuncVal = this->getObjFuncValue(objFuncName);
+            objFuncsAllInstances_[timeInstanceI].set(objFuncName, objFuncVal);
         }
+
+        // save runTime
+        runTimeAllInstances_[timeInstanceI] = t;
+        runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            this->calcPrimalResidualStatistics("print");
+        }
+
+        timeInstanceI++;
     }
     return;
 }
