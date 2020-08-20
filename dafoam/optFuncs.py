@@ -17,6 +17,7 @@ import time
 import sys
 import numpy as np
 import warnings
+import copy
 
 warnings.filterwarnings("once")
 np.set_printoptions(precision=16, suppress=True)
@@ -301,7 +302,9 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
     a = time.time()
 
     # Setup an empty dictionary for the evaluated derivative values
-    funcsSensHA = {}
+    funcsSensCombined = {}
+    
+    funcsSensAllInstances = []
 
     nTimeInstances = DASolver.getOption("hybridAdjoint")["nTimeInstances"]
 
@@ -331,21 +334,22 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
             with np.printoptions(precision=16, threshold=5, suppress=True):
                 Info("Objective Function Sensitivity: ")
                 Info(funcsSens)
+            
+        funcsSensAllInstances.append(funcsSens)
 
-        # assign funcs to funcsMP
-        setHybridAdjointObjFuncsSens(xDV, funcs, funcsSens, funcsSensHA, i)
+    setHybridAdjointObjFuncsSens(funcsSensAllInstances, funcsSensCombined)
 
-    funcsSensHA["fail"] = fail
+    funcsSensCombined["fail"] = fail
 
     # Print the current solution to the screen
     with np.printoptions(precision=16, threshold=5, suppress=True):
         Info("Objective Function Sensitivity MultiPoiint: ")
-        Info(funcsSensHA)
+        Info(funcsSensCombined)
 
     b = time.time()
     Info("Adjoint Runtime: %g s" % (b - a))
 
-    return funcsSensHA, fail
+    return funcsSensCombined, fail
 
 
 def run():
@@ -389,7 +393,7 @@ def solveCL(CL_star, alphaName, liftName):
         alpha += deltaAlpha
 
 
-def testSensShape():
+def testSensShape(objFun=calcObjFuncValues, sensFun=calcObjFuncSens):
     """
     Verify the FFD sensitivity against finite-difference references
     """
@@ -405,8 +409,8 @@ def testSensShape():
 
     funcs = {}
     funcsSens = {}
-    funcs, fail = calcObjFuncValues(xDV)
-    funcsSens, fail = calcObjFuncSens(xDV, funcs)
+    funcs, fail = objFun(xDV)
+    funcsSens, fail = sensFun(xDV, funcs)
     if gcomm.rank == 0:
         for funcName in evalFuncs:
             for shapeVar in xDV:
@@ -440,9 +444,9 @@ def testSensShape():
             funcp = {}
             funcm = {}
             xDV[shapeVar][i] += deltaX
-            funcp, fail = calcObjFuncValues(xDV)
+            funcp, fail = objFun(xDV)
             xDV[shapeVar][i] -= 2.0 * deltaX
-            funcm, fail = calcObjFuncValues(xDV)
+            funcm, fail = objFun(xDV)
             xDV[shapeVar][i] += deltaX
             for funcName in evalFuncs:
                 gradFD[funcName][shapeVar][i] = (funcp[funcName] - funcm[funcName]) / (2.0 * deltaX)

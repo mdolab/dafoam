@@ -143,6 +143,7 @@ label DAPisoFoam::solvePrimal(
         if (nSolverIters % printInterval == 0 || nSolverIters == 1)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
+#include "CourantNo.H"
         }
 
         // Pressure-velocity PISO corrector
