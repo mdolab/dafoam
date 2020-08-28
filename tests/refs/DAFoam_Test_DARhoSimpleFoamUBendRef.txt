@@ -1,0 +1,18 @@
+Dictionary Key: NU
+@value    792.9497673903433 1e-08 1e-10
+Dictionary Key: PL
+@value     2.55387059719169 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10
+Dictionary Key: NU
+Dictionary Key: shapey
+@value    79.61730948659024 1e-06 1e-08
+Dictionary Key: shapez
+@value    4.377159483886345 1e-06 1e-08
+Dictionary Key: PL
+Dictionary Key: shapey
+@value   -1.070424531738659 1e-06 1e-08
+Dictionary Key: shapez
+@value -0.05385017748652363 1e-06 1e-08
+Dictionary Key: fail
+@value                    0 1e-06 1e-08
