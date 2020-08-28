@@ -19,6 +19,7 @@ DAModel/DAModel.C
 
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoSimpleFoam.C
+DAStateInfo/DAStateInfoSimpleTFoam.C
 
 DAIndex/DAIndex.C
 
@@ -27,12 +28,14 @@ DAField/DAField.C
 DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncForce.C
 DAObjFunc/DAObjFuncMoment.C
+DAObjFunc/DAObjFuncWallHeatFlux.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualSimpleFoam.C
+DAResidual/DAResidualSimpleTFoam.C
 
 DAColoring/DAColoring.C
 
@@ -55,5 +58,6 @@ DALinearEqn/DALinearEqn.C
 
 DASolver/DASolver.C
 DASolver/DASimpleFoam/DASimpleFoam.C
+DASolver/DASimpleTFoam/DASimpleTFoam.C
 
 LIB = $(FOAM_USER_LIBBIN)/libDAFoamIncompressible

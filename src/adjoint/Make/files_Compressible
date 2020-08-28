@@ -28,6 +28,7 @@ DAField/DAField.C
 DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncForce.C
 DAObjFunc/DAObjFuncMoment.C
+DAObjFunc/DAObjFuncWallHeatFlux.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
