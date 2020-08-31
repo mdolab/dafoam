@@ -27,7 +27,8 @@ DASimpleFoam::DASimpleFoam(
       laminarTransportPtr_(nullptr),
       turbulencePtr_(nullptr),
       daFvSourcePtr_(nullptr),
-      fvSourcePtr_(nullptr)
+      fvSourcePtr_(nullptr),
+      MRFPtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -50,3 +50,5 @@ singlePhaseTransportModel& laminarTransport = laminarTransportPtr_();
 
 turbulencePtr_.reset(
     incompressible::turbulenceModel::New(U, phi, laminarTransport));
+
+#include "createMRFPython.H"
