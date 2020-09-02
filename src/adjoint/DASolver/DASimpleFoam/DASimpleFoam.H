@@ -59,9 +59,6 @@ protected:
     /// fvSource term 
     autoPtr<volVectorField> fvSourcePtr_;
 
-    /// MRF pointer
-    autoPtr<IOMRFZoneList> MRFPtr_;
-
     /// continuity error
     scalar cumulativeContErr_ = 0.0;
 
