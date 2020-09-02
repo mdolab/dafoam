@@ -28,6 +28,17 @@ volVectorField U(
     dimensionedVector("U", dimensionSet(0, 1, -1, 0, 0, 0, 0), vector::zero),
     zeroGradientFvPatchVectorField::typeName);
 
+volVectorField URel(
+    IOobject(
+        "URel",
+        mesh.time().timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE),
+    mesh,
+    dimensionedVector("URel", dimensionSet(0, 1, -1, 0, 0, 0, 0), vector::zero),
+    zeroGradientFvPatchVectorField::typeName);
+
 // need the p field for DATurbulenceModel
 volScalarField p(
     IOobject(
