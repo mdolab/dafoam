@@ -4,21 +4,16 @@
     Version : v2
 
     Description:
-        Child class for DARhoSimpleCFoam
+        Child class for DASolidDisplacementFoam
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DARhoSimpleCFoam_H
-#define DARhoSimpleCFoam_H
+#ifndef DASolidDisplacementFoam_H
+#define DASolidDisplacementFoam_H
 
+#include "Switch.H"
 #include "DASolver.H"
 #include "addToRunTimeSelectionTable.H"
-#include "fluidThermo.H"
-#include "turbulentFluidThermoModel.H"
-#include "simpleControl.H"
-#include "pressureControl.H"
-#include "DARegDbFluidThermo.H"
-#include "DARegDbTurbulenceModelCompressible.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -26,59 +21,66 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DARhoSimpleCFoam Declaration
+      Class DASolidDisplacementFoam Declaration
 \*---------------------------------------------------------------------------*/
 
-class DARhoSimpleCFoam
+class DASolidDisplacementFoam
     : public DASolver
 {
 
 protected:
 
-    /// simple pointer
-    autoPtr<simpleControl> simplePtr_;
+    /// whether to use compact normal stress
+    Switch compactNormalStress_;
 
-    /// thermal model
-    autoPtr<fluidThermo> pThermoPtr_;
+    /// number of correctors
+    label nCorr_;
 
-    /// pressure field pointer
-    autoPtr<volScalarField> pPtr_;
+    /// convergence tolerance for D
+    scalar convergenceTolerance_;
+
+    /// mechanicalProperties pointer
+    autoPtr<IOdictionary> mechanicalPropertiesPtr_;
 
     /// density field pointer
     autoPtr<volScalarField> rhoPtr_;
 
-    /// velocity field pointer
-    autoPtr<volVectorField> UPtr_;
+    /// mu field pointer
+    autoPtr<volScalarField> muPtr_;
 
-    /// surface flux field pointer
-    autoPtr<surfaceScalarField> phiPtr_;
+    /// lambda field pointer
+    autoPtr<volScalarField> lambdaPtr_;
 
-    /// pressure control pointer
-    autoPtr<pressureControl> pressureControlPtr_;
+    /// E field pointer
+    autoPtr<volScalarField> EPtr_;
 
-    /// turbulence pointer
-    autoPtr<compressible::turbulenceModel> turbulencePtr_;
+    /// nu field pointer
+    autoPtr<volScalarField> nuPtr_;
 
-    /// DATurbulenceModel pointer
-    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+    /// displacement field pointer
+    autoPtr<volVectorField> DPtr_;
+    
+    /// stress field pointer
+    autoPtr<volSymmTensorField> sigmaDPtr_;
 
-    /// initial mass
-    dimensionedScalar initialMass_;
+    /// displacement gradient pointer
+    autoPtr<volTensorField> gradDPtr_;
 
-    /// continuity error
-    scalar cumulativeContErr_ = 0.0;
+    /// explicit part of div(sigma) pointer
+    autoPtr<volVectorField> divSigmaExpPtr_;
 
+    
 public:
-    TypeName("DARhoSimpleCFoam");
+    TypeName("DASolidDisplacementFoam");
     // Constructors
 
     //- Construct from components
-    DARhoSimpleCFoam(
+    DASolidDisplacementFoam(
         char* argsAll,
         PyObject* pyOptions);
 
     //- Destructor
-    virtual ~DARhoSimpleCFoam()
+    virtual ~DASolidDisplacementFoam()
     {
     }
 

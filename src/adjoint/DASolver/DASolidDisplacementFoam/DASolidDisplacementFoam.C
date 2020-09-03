@@ -5,55 +5,53 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DASimpleTFoam.H"
+#include "DASolidDisplacementFoam.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DASimpleTFoam, 0);
-addToRunTimeSelectionTable(DASolver, DASimpleTFoam, dictionary);
+defineTypeNameAndDebug(DASolidDisplacementFoam, 0);
+addToRunTimeSelectionTable(DASolver, DASolidDisplacementFoam, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DASimpleTFoam::DASimpleTFoam(
+DASolidDisplacementFoam::DASolidDisplacementFoam(
     char* argsAll,
     PyObject* pyOptions)
     : DASolver(argsAll, pyOptions),
-      simplePtr_(nullptr),
-      pPtr_(nullptr),
-      UPtr_(nullptr),
-      phiPtr_(nullptr),
-      laminarTransportPtr_(nullptr),
-      turbulencePtr_(nullptr),
-      daTurbulenceModelPtr_(nullptr),
-      PrPtr_(nullptr),
-      PrtPtr_(nullptr),
-      TPtr_(nullptr),
-      alphatPtr_(nullptr)
+      mechanicalPropertiesPtr_(nullptr),
+      rhoPtr_(nullptr),
+      muPtr_(nullptr),
+      lambdaPtr_(nullptr),
+      EPtr_(nullptr),
+      nuPtr_(nullptr),
+      DPtr_(nullptr),
+      sigmaDPtr_(nullptr),
+      gradDPtr_(nullptr),
+      divSigmaExpPtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-void DASimpleTFoam::initSolver()
+void DASolidDisplacementFoam::initSolver()
 {
     /*
     Description:
         Initialize variables for DASolver
     */
 
-    Info << "Initializing fields for DASimpleTFoam" << endl;
+    Info << "Initializing fields for DASolidDisplacementFoam" << endl;
     Time& runTime = runTimePtr_();
     fvMesh& mesh = meshPtr_();
-#include "createSimpleControlPython.H"
-#include "createFieldsSimpleT.H"
-#include "createAdjointIncompressible.H"
+#include "createControlsSolidDisplacement.H"
+#include "createFieldsSolidDisplacement.H"
+#include "createAdjointSolid.H"
     // initialize checkMesh
     daCheckMeshPtr_.reset(new DACheckMesh(runTime, mesh));
-
 }
 
-label DASimpleTFoam::solvePrimal(
+label DASolidDisplacementFoam::solvePrimal(
     const Vec xvVec,
     Vec wVec)
 {
@@ -68,7 +66,7 @@ label DASimpleTFoam::solvePrimal(
         wVec: state variable vector
     */
 
-#include "createRefsSimpleT.H"
+#include "createRefsSolidDisplacement.H"
 
     // first check if we need to change the boundary conditions based on
     // the primalBC dict in DAOption. NOTE: this will overwrite whatever
@@ -80,9 +78,7 @@ label DASimpleTFoam::solvePrimal(
         daFieldPtr_->setPrimalBoundaryConditions();
     }
 
-    turbulencePtr_->validate();
-
-    Info << "\nStarting time loop\n"
+    Info << "\nCalculating displacement field\n"
          << endl;
 
     // deform the mesh based on the xvVec
@@ -103,27 +99,50 @@ label DASimpleTFoam::solvePrimal(
     {
         if (nSolverIters % printInterval == 0 || nSolverIters == 1)
         {
-            Info << "Time = " << runTime.timeName() << nl << endl;
+            Info << "Iteration = " << runTime.value() << nl << endl;
         }
 
-        p.storePrevIter();
+        label iCorr = 0;
+        scalar initialResidual = 0;
 
-        // --- Pressure-velocity SIMPLE corrector
+        do
         {
-#include "UEqnSimpleT.H"
-#include "pEqnSimpleT.H"
-#include "TEqnSimpleT.H"
-        }
+            fvVectorMatrix DEqn(
+                fvm::d2dt2(D)
+                == fvm::laplacian(2 * mu + lambda, D, "laplacian(DD,D)")
+                    + divSigmaExp);
 
-        laminarTransport.correct();
-        daTurbulenceModelPtr_->correct();
+            // get the solver performance info such as initial
+            // and final residuals
+            SolverPerformance<vector> solverU = DEqn.solve();
+            initialResidual = solverU.max().initialResidual();
+
+            this->primalResidualControl<vector>(solverU, nSolverIters, printInterval, "U");
+
+            if (!compactNormalStress_)
+            {
+                divSigmaExp = fvc::div(DEqn.flux());
+            }
+
+            gradD = fvc::grad(D);
+            sigmaD = mu * twoSymm(gradD) + (lambda * I) * tr(gradD);
+
+            if (compactNormalStress_)
+            {
+                divSigmaExp = fvc::div(
+                    sigmaD - (2 * mu + lambda) * gradD,
+                    "div(sigmaD)");
+            }
+            else
+            {
+                divSigmaExp += fvc::div(sigmaD);
+            }
+
+        } while (initialResidual > convergenceTolerance_ && ++iCorr < nCorr_);
 
         if (nSolverIters % printInterval == 0 || nSolverIters == 1)
         {
-            daTurbulenceModelPtr_->printYPlus();
-            
             this->printAllObjFuncs();
-
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                  << nl << endl;
@@ -133,6 +152,8 @@ label DASimpleTFoam::solvePrimal(
 
         nSolverIters++;
     }
+
+#include "calculateStressSolidDisplacement.H"
 
     this->calcPrimalResidualStatistics("print");
 

@@ -36,9 +36,17 @@
 #define DAModel_H
 
 #include "fvOptions.H"
+#include "DAOption.H"
+#include "fvc.H"
+#include "fvm.H"
+#include "surfaceFields.H"
+#include "geometricOneField.H"
+#include "zeroGradientFvPatchField.H"
+
+#ifndef SolidDASolver
 #include "DATurbulenceModel.H"
 #include "DARadiationModel.H"
-
+#endif
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -91,14 +99,16 @@ public:
     /// calculate the residuals for model state variables
     void calcResiduals(const dictionary& options);
 
-    /// get a reference to DATurbulenceModel
-    const DATurbulenceModel& getDATurbulenceModel() const;
-
     /// correct boundary conditions for model states
     void correctBoundaryConditions();
 
     /// update intermediate variables that are dependent on the model states
     void updateIntermediateVariables();
+
+#ifndef SolidDASolver
+    /// get a reference to DATurbulenceModel
+    const DATurbulenceModel& getDATurbulenceModel() const;
+#endif
 
 #ifdef CompressibleFlow
     /// return thermo_ from DATurbulenceModel

@@ -1021,6 +1021,11 @@ class PYDAFOAM(object):
             from .pyDASolverCompressible import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
+        elif self.getOption("flowCondition") == "Solid":
+
+            from .pyDASolverSolid import pyDASolvers
+
+            self.solver = pyDASolvers(solverArg.encode(), self.options)
         else:
             raise Error("pyDAFoam: flowCondition %s: not valid!" % self.getOption("flowCondition"))
 
@@ -1054,6 +1059,12 @@ class PYDAFOAM(object):
 
             solverArg = "ColoringCompressible -python " + self.parallelFlag
             solver = pyColoringCompressible(solverArg.encode(), self.options)
+        elif self.getOption("flowCondition") == "Solid":
+
+            from .pyColoringSolid import pyColoringSolid
+
+            solverArg = "ColoringSolid -python " + self.parallelFlag
+            solver = pyColoringSolid(solverArg.encode(), self.options)
         else:
             raise Error("pyDAFoam: flowCondition %s: not valid!" % self.getOption("flowCondition"))
         solver.run()
@@ -1555,7 +1566,7 @@ class PYDAFOAM(object):
 
         self.xv2XvVec(self.xv, self.xvVec)
 
-        # viewer = PETSc.Viewer().createASCII("xvVec", comm=PETSc.COMM_WORLD)
+        # viewer = PETSc.Viewer().createASCII("xvVec_init", comm=PETSc.COMM_WORLD)
         # viewer(self.xvVec)
 
         return

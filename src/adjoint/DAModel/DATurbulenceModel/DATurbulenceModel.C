@@ -51,7 +51,7 @@ DATurbulenceModel::DATurbulenceModel(
               false),
           mesh,
           dimensionedScalar("phase", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
-          zeroGradientFvPatchScalarField::typeName),
+          zeroGradientFvPatchField<scalar>::typeName),
       phaseRhoPhi_(const_cast<surfaceScalarField&>(
           mesh.thisDb().lookupObject<surfaceScalarField>("phi"))),
 #ifdef IncompressibleFlow
@@ -72,7 +72,7 @@ DATurbulenceModel::DATurbulenceModel(
               false),
           mesh,
           dimensionedScalar("rho", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
-          zeroGradientFvPatchScalarField::typeName),
+          zeroGradientFvPatchField<scalar>::typeName),
 #endif
 #ifdef CompressibleFlow
       daRegDbThermo_(mesh.thisDb().lookupObject<DARegDbFluidThermo>("DARegDbFluidThermo")),
@@ -420,10 +420,10 @@ void DATurbulenceModel::printYPlus() const
     {
         const fvPatch& patch = patches[patchI];
 
-        if (isA<nutWallFunctionFvPatchScalarField>(nutBf[patchI]))
+        if (isA<nutWallFunctionFvPatchField<scalar>>(nutBf[patchI]))
         {
-            const nutWallFunctionFvPatchScalarField& nutPf =
-                dynamic_cast<const nutWallFunctionFvPatchScalarField&>(
+            const nutWallFunctionFvPatchField<scalar>& nutPf =
+                dynamic_cast<const nutWallFunctionFvPatchField<scalar>&>(
                     nutBf[patchI]);
 
             yPlusBf[patchI] = nutPf.yPlus();

@@ -29,6 +29,7 @@ DATurboFoam::DATurboFoam(
       phiPtr_(nullptr),
       pressureControlPtr_(nullptr),
       turbulencePtr_(nullptr),
+      daTurbulenceModelPtr_(nullptr),
       MRFPtr_(nullptr),
       initialMass_(dimensionedScalar("initialMass", dimensionSet(1, 0, 0, 0, 0, 0, 0), 0.0))
 {

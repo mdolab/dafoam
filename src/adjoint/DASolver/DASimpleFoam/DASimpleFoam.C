@@ -26,6 +26,7 @@ DASimpleFoam::DASimpleFoam(
       phiPtr_(nullptr),
       laminarTransportPtr_(nullptr),
       turbulencePtr_(nullptr),
+      daTurbulenceModelPtr_(nullptr),
       daFvSourcePtr_(nullptr),
       fvSourcePtr_(nullptr)
 {

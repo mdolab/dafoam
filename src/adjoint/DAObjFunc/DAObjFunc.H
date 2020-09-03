@@ -14,7 +14,7 @@
 #include "runTimeSelectionTables.H"
 #include "fvOptions.H"
 #include "DAOption.H"
-#include "DATurbulenceModel.H"
+#include "DAModel.H"
 #include "DAIndex.H"
 #include "topoSetSource.H"
 #include "topoSet.H"

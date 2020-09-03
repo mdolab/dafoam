@@ -53,6 +53,9 @@ protected:
     /// turbulence pointer
     autoPtr<incompressible::turbulenceModel> turbulencePtr_;
 
+    /// DATurbulenceModel pointer
+    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;
 

@@ -12,7 +12,7 @@ volVectorField U(
         IOobject::NO_WRITE),
     mesh,
     dimensionedVector("U", dimensionSet(0, 1, -1, 0, 0, 0, 0), vector::zero),
-    zeroGradientFvPatchVectorField::typeName);
+    zeroGradientFvPatchField<vector>::typeName);
 
 // need the p field for DATurbulenceModel
 volScalarField p(
@@ -24,7 +24,7 @@ volScalarField p(
         IOobject::NO_WRITE),
     mesh,
     dimensionedScalar("p", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
-    zeroGradientFvPatchScalarField::typeName);
+    zeroGradientFvPatchField<scalar>::typeName);
 
 volScalarField alphat(
     IOobject(
@@ -35,7 +35,7 @@ volScalarField alphat(
         IOobject::NO_WRITE),
     mesh,
     dimensionedScalar("alphat", dimensionSet(1, -1, -1, 0, 0, 0, 0), 0.0),
-    zeroGradientFvPatchScalarField::typeName);
+    zeroGradientFvPatchField<scalar>::typeName);
 
 volScalarField T(
     IOobject(
@@ -46,7 +46,7 @@ volScalarField T(
         IOobject::NO_WRITE),
     mesh,
     dimensionedScalar("T", dimensionSet(0, 0, 0, 1, 0, 0, 0), 0.0),
-    zeroGradientFvPatchScalarField::typeName);
+    zeroGradientFvPatchField<scalar>::typeName);
 
 #include "createPhi.H"
 
@@ -60,7 +60,7 @@ volVectorField fvSource(
         IOobject::NO_WRITE),
     mesh,
     dimensionedVector("fvSource", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
-    zeroGradientFvPatchVectorField::typeName);
+    zeroGradientFvPatchField<vector>::typeName);
 
 singlePhaseTransportModel laminarTransport(U, phi);
 
