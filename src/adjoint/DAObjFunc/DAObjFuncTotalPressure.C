@@ -41,9 +41,10 @@ DAObjFuncTotalPressure::DAObjFuncTotalPressure(
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
     // setup the connectivity for heat flux, this is needed in Foam::DAJacCondFdW
+    // NOTE: for pressureInlet velocity, U depends on phi
     objFuncConInfo_ = {
-        {"U", "T", "p"}, // level 0
-        {"U", "T", "p"}}; // level 1
+        {"U", "T", "p", "phi"}, // level 0
+        {"U", "T", "p", "phi"}}; // level 1
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
 }
