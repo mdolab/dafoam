@@ -32,9 +32,6 @@ protected:
     /// coefficient for the KS function
     scalar coeffKS_;
 
-    // expSumKS stores sum[exp(coeffKS*x_i)], it will be used to scale dFdW
-    scalar expSumKS_;
-
 public:
     TypeName("vonMisesStressKS");
     // Constructors

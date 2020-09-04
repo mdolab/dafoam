@@ -230,6 +230,9 @@ public:
     {
         return objFuncConInfo_;
     }
+
+    /// expSumKS stores sum[exp(coeffKS*x_i)] for KS function which will be used to scale dFdW
+    scalar expSumKS = 1.0;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

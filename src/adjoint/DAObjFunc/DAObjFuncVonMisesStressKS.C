@@ -91,20 +91,22 @@ void DAObjFuncVonMisesStressKS::calcObjFunc(
     const volScalarField& mu = db.lookupObject<volScalarField>("solid:mu");
     const volScalarField& rho = db.lookupObject<volScalarField>("solid:rho");
     const volTensorField& gradD = db.lookupObject<volTensorField>("gradD");
-    
+
     volSymmTensorField sigma = rho * (mu * twoSymm(gradD) + lambda * (I * tr(gradD)));
 
-    volScalarField vonMises = sqrt((3.0 / 2.0) * magSqr(dev(sigma)));
+    // NOTE: vonMises stress is scaled by scale_ provided in the objFunc dict
+    volScalarField vonMises = scale_* sqrt((3.0 / 2.0) * magSqr(dev(sigma)));
 
+    scalar objValTmp = 0.0;
     forAll(objFuncCellSources, idxI)
     {
         const label& cellI = objFuncCellSources[idxI];
 
-        objFuncCellValues[idxI] = scale_ * Foam::exp(coeffKS_ * vonMises[cellI]);
+        objFuncCellValues[idxI] = Foam::exp(coeffKS_ * vonMises[cellI]);
 
-        objFuncValue += objFuncCellValues[idxI];
+        objValTmp += objFuncCellValues[idxI];
 
-        if (objFuncValue > 1e200)
+        if (objValTmp > 1e200)
         {
             FatalErrorIn(" ") << "KS function summation term too large! "
                               << "Reduce coeffKS! " << abort(FatalError);
@@ -112,12 +114,12 @@ void DAObjFuncVonMisesStressKS::calcObjFunc(
     }
 
     // need to reduce the sum of force across all processors
-    reduce(objFuncValue, sumOp<scalar>());
+    reduce(objValTmp, sumOp<scalar>());
 
     // expSumKS stores sum[exp(coeffKS*x_i)], it will be used to scale dFdW
-    expSumKS_ = objFuncValue;
+    expSumKS = objValTmp;
 
-    objFuncValue = log(objFuncValue) / coeffKS_;
+    objFuncValue = log(objValTmp) / coeffKS_;
 
     return;
 }
