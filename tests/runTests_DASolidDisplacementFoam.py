@@ -34,11 +34,12 @@ os.chdir("./input/PlateHole")
 # test incompressible solvers
 aeroOptions = {
     "debug": True,
+    "maxTractionBCIters": 50,
     "solverName": "DASolidDisplacementFoam",
     "flowCondition": "Solid",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["hole"],
-    "primalMinResTol": 1e-12,
+    "primalMinResTol": 1e-4,
     "objFunc": {
         "VMS": {
             "part1": {
@@ -52,9 +53,9 @@ aeroOptions = {
             }
         },
     },
-    "normalizeStates": {"D": 1.0e7},
-    "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
-    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
+    "normalizeStates": {"D": 1.0e-7},
+    "adjPartDerivFDStep": {"State": 1e-4, "FFD": 1e-3},
+    "adjEqnOption": {"gmresRelTol": 1.0e-15, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
     "designVar": {
         "shapey": {"designVarType": "FFD"},

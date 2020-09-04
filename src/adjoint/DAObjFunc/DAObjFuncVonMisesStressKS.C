@@ -86,12 +86,13 @@ void DAObjFuncVonMisesStressKS::calcObjFunc(
     objFuncValue = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
-    const volVectorField& D = db.lookupObject<volVectorField>("D");
+    //const volVectorField& D = db.lookupObject<volVectorField>("D");
     const volScalarField& lambda = db.lookupObject<volScalarField>("solid:lambda");
     const volScalarField& mu = db.lookupObject<volScalarField>("solid:mu");
     const volScalarField& rho = db.lookupObject<volScalarField>("solid:rho");
-
-    volSymmTensorField sigma = rho * (mu * twoSymm(fvc::grad(D)) + lambda * (I * tr(fvc::grad(D))));
+    const volTensorField& gradD = db.lookupObject<volTensorField>("gradD");
+    
+    volSymmTensorField sigma = rho * (mu * twoSymm(gradD) + lambda * (I * tr(gradD)));
 
     volScalarField vonMises = sqrt((3.0 / 2.0) * magSqr(dev(sigma)));
 
@@ -99,7 +100,7 @@ void DAObjFuncVonMisesStressKS::calcObjFunc(
     {
         const label& cellI = objFuncCellSources[idxI];
 
-        objFuncCellValues[idxI] = scale_ * exp(coeffKS_ * vonMises[cellI]);
+        objFuncCellValues[idxI] = scale_ * Foam::exp(coeffKS_ * vonMises[cellI]);
 
         objFuncValue += objFuncCellValues[idxI];
 

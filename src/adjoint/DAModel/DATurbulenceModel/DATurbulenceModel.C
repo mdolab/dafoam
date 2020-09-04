@@ -420,10 +420,10 @@ void DATurbulenceModel::printYPlus() const
     {
         const fvPatch& patch = patches[patchI];
 
-        if (isA<nutWallFunctionFvPatchField<scalar>>(nutBf[patchI]))
+        if (isA<nutWallFunctionFvPatchScalarField>(nutBf[patchI]))
         {
-            const nutWallFunctionFvPatchField<scalar>& nutPf =
-                dynamic_cast<const nutWallFunctionFvPatchField<scalar>&>(
+            const nutWallFunctionFvPatchScalarField& nutPf =
+                dynamic_cast<const nutWallFunctionFvPatchScalarField&>(
                     nutBf[patchI]);
 
             yPlusBf[patchI] = nutPf.yPlus();

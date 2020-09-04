@@ -281,6 +281,7 @@ class DAOPTION(object):
         "epsilonRes": 2,
         "omegaRes": 2,
         "p_rghRes": 2,
+        "DRes": 2,
     }
 
     ## The min bound for Jacobians, any value that is smaller than the bound will be set to 0
@@ -289,6 +290,9 @@ class DAOPTION(object):
         "dRdW": 1.0e-30,
         "dRdWPC": 1.0e-30,
     }
+
+    ## The maximal iterations of tractionDisplacement boundary conditions
+    maxTractionBCIters = 100
 
     ## decomposeParDict option. This file will be automatically written such that users
     ## can run optimization with any number of CPU cores without the need to manually
@@ -1566,7 +1570,7 @@ class PYDAFOAM(object):
 
         self.xv2XvVec(self.xv, self.xvVec)
 
-        # viewer = PETSc.Viewer().createASCII("xvVec_init", comm=PETSc.COMM_WORLD)
+        # viewer = PETSc.Viewer().createASCII("xvVec", comm=PETSc.COMM_WORLD)
         # viewer(self.xvVec)
 
         return

@@ -125,6 +125,23 @@ else
   echo "DATurboFoamTransonic: Success!"
 fi
 
+# test DASolidDisplacementFoam
+rm -rf input DAFoam_Test_DASolidDisplacementFoam.txt
+tar -zxf input.tar.gz
+mpirun -np 4 python runTests_DASolidDisplacementFoam.py $@ | tee DAFoam_Test_DASolidDisplacementFoam.txt
+if [ "${PIPESTATUS[0]}" -ne "0" ]; then
+  echo "DASolidDisplacementFoam: Failed!"
+  exit 1
+fi
+python testFuncs.py refs/DAFoam_Test_DASolidDisplacementFoamRef.txt DAFoam_Test_DASolidDisplacementFoam.txt
+if [ "$?" -ne "0" ]; then
+  echo "DASolidDisplacementFoam: Failed!"
+  exit 1
+else
+  echo "DASolidDisplacementFoam: Success!"
+fi
+
+
 echo " "
 echo "************************************************************"
 echo "**************** All DAFoam tests passed! ******************"

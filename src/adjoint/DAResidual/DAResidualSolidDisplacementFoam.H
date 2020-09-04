@@ -35,6 +35,16 @@ protected:
     volVectorField DResPartDeriv_;
     //@}
 
+    volTensorField& gradD_;
+    volSymmTensorField& sigmaD_;
+    volVectorField& divSigmaExp_;
+    volScalarField& lambda_;
+    volScalarField& mu_;
+
+    label isTractionDisplacementBC_;
+
+    void updateDAndGradD();
+
 public:
     TypeName("DASolidDisplacementFoam");
     // Constructors
