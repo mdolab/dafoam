@@ -304,6 +304,8 @@ void DAResidualTurboFoam::updateIntermediateVariables()
     he_.correctBoundaryConditions();
 
     // NOTE: alphat is updated in the correctNut function in DATurbulenceModel child classes
+
+    MRF_.correctBoundaryVelocity(U_);
 }
 
 void DAResidualTurboFoam::correctBoundaryConditions()
@@ -316,8 +318,7 @@ void DAResidualTurboFoam::correctBoundaryConditions()
     U_.correctBoundaryConditions();
     p_.correctBoundaryConditions();
     T_.correctBoundaryConditions();
-
-    MRF_.correctBoundaryVelocity(U_);
+    
 }
 
 } // End namespace Foam

@@ -97,6 +97,9 @@ label DATurboFoam::solvePrimal(
         return 1;
     }
 
+    // set the rotating wall velocity after the mesh is updated
+    this->setRotingWallVelocity();
+
     label nSolverIters = 1;
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
@@ -120,7 +123,7 @@ label DATurboFoam::solvePrimal(
         if (nSolverIters % printInterval == 0 || nSolverIters == 1)
         {
             daTurbulenceModelPtr_->printYPlus();
-            
+
             this->printAllObjFuncs();
 
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
@@ -145,6 +148,54 @@ label DATurboFoam::solvePrimal(
          << endl;
 
     return this->checkResidualTol();
+}
+
+void DATurboFoam::setRotingWallVelocity()
+{
+    /*
+    Description:
+        Set velocity boundary condition for rotating walls
+        This function should be called once for each primal solution.
+        It should be called AFTER the mesh points are updated
+    */
+
+    volVectorField& U = const_cast<volVectorField&>(
+        meshPtr_->thisDb().lookupObject<volVectorField>("U"));
+
+    IOdictionary MRFProperties(
+        IOobject(
+            "MRFProperties",
+            runTimePtr_->constant(),
+            meshPtr_(),
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE));
+
+    wordList nonRotatingPatches;
+    MRFProperties.subDict("MRF").readEntry<wordList>("nonRotatingPatches", nonRotatingPatches);
+
+    vector origin;
+    MRFProperties.subDict("MRF").readEntry<vector>("origin", origin);
+    vector axis;
+    MRFProperties.subDict("MRF").readEntry<vector>("axis", axis);
+    scalar omega = MRFProperties.subDict("MRF").getScalar("omega");
+
+    forAll(meshPtr_->boundaryMesh(), patchI)
+    {
+        word bcName = meshPtr_->boundaryMesh()[patchI].name();
+        if (!DAUtility::isInList<word>(bcName, nonRotatingPatches))
+        {
+            Info << "Setting rotating wall velocity for " << bcName << endl;
+            if (U.boundaryField()[patchI].size() > 0)
+            {
+                forAll(U.boundaryField()[patchI], faceI)
+                {
+                    vector patchCf = meshPtr_->Cf().boundaryField()[patchI][faceI];
+                    U.boundaryFieldRef()[patchI][faceI] =
+                        -omega * ((patchCf - origin) ^ (axis / mag(axis)));
+                }
+            }
+        }
+    }
 }
 
 } // End namespace Foam

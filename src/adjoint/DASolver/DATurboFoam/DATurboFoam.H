@@ -76,6 +76,9 @@ protected:
     /// continuity error
     scalar cumulativeContErr_ = 0.0;
 
+    /// set velocity boundary condition for rotating walls
+    void setRotingWallVelocity();
+
 public:
     TypeName("DATurboFoam");
     // Constructors
