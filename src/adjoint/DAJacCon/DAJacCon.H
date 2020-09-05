@@ -60,6 +60,9 @@ protected:
     /// DAColoring object
     DAColoring daColoring_;
 
+    /// DAField object
+    DAField daField_;
+
     /// the regState_ list from DAStateInfo object
     HashTable<wordList> stateInfo_;
 
@@ -168,6 +171,23 @@ protected:
         stateInfo_.clear();
         neiBFaceGlobalCompact_.clear();
     }
+
+    /// check if there is special boundary conditions that need special treatment in jacCon_
+    void checkSpecialBCs();
+
+    /// a vector to show whether a state is connected to a pressureInletVelocity boundary face (3 level max)
+    Vec isPIVBCState_;
+
+    /// function used to add connectivity for pressureInletVelocity
+    void setPIVVec(
+        Vec iSPIV,
+        const label idxI);
+
+    /// add connectivity phi for pressureInletVelocity
+    label addPhi4PIV(
+        const word stateName,
+        const label idxI,
+        const label comp = -1);
 
 public:
     /// Runtime type information

@@ -30,8 +30,12 @@ case $1 in
     cd pyColoringCompressible && python setup.py build_ext --inplace || exit 1
     mv *.so ../../../dafoam
     ;;
+  "solid")
+    cd pyColoringSolid && python setup.py build_ext --inplace || exit 1
+    mv *.so ../../../dafoam
+    ;;
   *)
-    echo "Argument not valid! Options are: opt, debug, incompressible, and compressible"
+    echo "Argument not valid! Options are: opt, debug, incompressible, compressible, or solid"
     echo "Example: ./Allmake opt"
     exit 1
     ;;

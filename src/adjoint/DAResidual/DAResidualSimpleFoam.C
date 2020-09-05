@@ -149,6 +149,7 @@ void DAResidualSimpleFoam::updateIntermediateVariables()
     */
 
     // nothing to update for DASimpleFoam
+    
 }
 
 void DAResidualSimpleFoam::correctBoundaryConditions()

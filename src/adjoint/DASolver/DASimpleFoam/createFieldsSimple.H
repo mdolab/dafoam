@@ -38,7 +38,7 @@ fvSourcePtr_.reset(
             IOobject::AUTO_WRITE),
         mesh,
         dimensionedVector("fvSource", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
-        zeroGradientFvPatchVectorField::typeName));
+        zeroGradientFvPatchField<vector>::typeName));
 volVectorField& fvSource = fvSourcePtr_();
 
 setRefCell(p, simple.dict(), pRefCell_, pRefValue_);

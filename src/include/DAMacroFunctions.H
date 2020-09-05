@@ -70,7 +70,7 @@
                 IOobject::NO_WRITE),                                  \
             mesh,                                                     \
             dimensionedScalar(#stateName "Res", stateUnit, 0.0),      \
-            zeroGradientFvPatchScalarField::typeName),                \
+            zeroGradientFvPatchField<scalar>::typeName),                \
         stateName##ResPartDeriv_(                                     \
             IOobject(                                                 \
                 #stateName "ResPartDeriv",                            \
@@ -93,7 +93,7 @@
                 IOobject::NO_WRITE),                                      \
             mesh,                                                         \
             dimensionedVector(#stateName "Res", stateUnit, vector::zero), \
-            zeroGradientFvPatchVectorField::typeName),                    \
+            zeroGradientFvPatchField<vector>::typeName),                    \
         stateName##ResPartDeriv_(                                         \
             IOobject(                                                     \
                 #stateName "ResPartDeriv",                                \

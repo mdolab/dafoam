@@ -21,7 +21,6 @@
 #include "DAOption.H"
 #include "DAStateInfo.H"
 #include "DAModel.H"
-#include "DATurbulenceModel.H"
 #include "DAIndex.H"
 #include "DAObjFunc.H"
 #include "DAJacCon.H"
@@ -68,9 +67,6 @@ protected:
 
     /// DAOption pointer
     autoPtr<DAOption> daOptionPtr_;
-
-    /// DATurbulenceModel pointer
-    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
 
     /// DAModel pointer
     autoPtr<DAModel> daModelPtr_;

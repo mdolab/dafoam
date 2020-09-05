@@ -398,6 +398,14 @@ void DAJacCondRdW::setupdRdWCon(
                         }
                     }
 
+                    // special treatment for pressureInletVelocity. No such treatment is needed
+                    // for dFdW because we have added phi in their conInfo
+                    if (DAUtility::isInList<word>("pressureInletVelocity", daField_.specialBCs)
+                        && this->addPhi4PIV(stateName, cellI, comp))
+                    {
+                        addFace = 1;
+                    }
+
                     // Add connectivity
                     this->addStateConnections(
                         connectedStatesP,
@@ -550,6 +558,14 @@ void DAJacCondRdW::setupdRdWCon(
                     {
                         addFace = 1;
                     }
+                }
+
+                // special treatment for pressureInletVelocity. No such treatment is needed
+                // for dFdW because we have added phi in their conInfo
+                if (DAUtility::isInList<word>("pressureInletVelocity", daField_.specialBCs)
+                    && this->addPhi4PIV(stateName, faceI))
+                {
+                    addFace = 1;
                 }
 
                 // Add connectivity for idxN

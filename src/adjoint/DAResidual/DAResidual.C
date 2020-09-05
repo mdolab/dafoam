@@ -141,6 +141,8 @@ void DAResidual::masterFunction(
         this->updateIntermediateVariables();
         daModel.correctBoundaryConditions();
         daModel.updateIntermediateVariables();
+        // if there are special boundary conditions, apply special treatment
+        daField_.specialBCTreatment();
     }
 
     this->calcResiduals(options);

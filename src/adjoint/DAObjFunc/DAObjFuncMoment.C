@@ -39,6 +39,8 @@ DAObjFuncMoment::DAObjFuncMoment(
 
     // for computing moment, first read in some parameters from objFuncDict_
     // these parameters are only for moment objective
+
+    // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
     scalarList dir;
