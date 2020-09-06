@@ -36,6 +36,7 @@ DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
 
 DAResidual/DAResidual.C
+DAResidual/DAResidualDummy.C
 DAResidual/DAResidualRhoSimpleFoam.C
 DAResidual/DAResidualRhoSimpleCFoam.C
 DAResidual/DAResidualTurboFoam.C

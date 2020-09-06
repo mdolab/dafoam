@@ -1,5 +1,7 @@
 // adjoint
 
+fvMesh& mesh = meshPtr_();
+
 DAUtility daUtil;
 
 DAOption daOption(mesh, pyOptions_);

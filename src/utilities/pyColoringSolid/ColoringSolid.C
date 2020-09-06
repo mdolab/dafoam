@@ -39,7 +39,6 @@ void ColoringSolid::run()
 #include "setRootCasePython.H"
 #include "createTimePython.H"
 #include "createMeshPython.H"
-#include "createFields.H"
 #include "createAdjoint.H"
 
     word solverName = daOption.getOption<word>("solverName");
@@ -79,8 +78,8 @@ void ColoringSolid::run()
     // dFdW
     const dictionary& allOptions = daOption.getAllOptions();
     dictionary objFuncDict = allOptions.subDict("objFunc");
-    // create DAResidual
-    autoPtr<DAResidual> daResidual(DAResidual::New(solverName, mesh, daOption, daModel, daIndex));
+    // create a dummy DAResidual just for initializing DAObjFunc
+    autoPtr<DAResidual> daResidual(DAResidual::New("dummy", mesh, daOption, daModel, daIndex));
     forAll(objFuncDict.toc(), idxI)
     {
         word objFuncName = objFuncDict.toc()[idxI];

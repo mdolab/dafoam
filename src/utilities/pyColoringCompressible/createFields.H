@@ -28,17 +28,6 @@ volVectorField U(
     dimensionedVector("U", dimensionSet(0, 1, -1, 0, 0, 0, 0), vector::zero),
     zeroGradientFvPatchField<vector>::typeName);
 
-volVectorField URel(
-    IOobject(
-        "URel",
-        mesh.time().timeName(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::NO_WRITE),
-    mesh,
-    dimensionedVector("URel", dimensionSet(0, 1, -1, 0, 0, 0, 0), vector::zero),
-    zeroGradientFvPatchField<vector>::typeName);
-
 // need the p field for DATurbulenceModel
 volScalarField p(
     IOobject(
@@ -59,18 +48,6 @@ surfaceScalarField phi(
         IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE),
     linearInterpolate(rho* U) & mesh.Sf());
-
-// fvSource term
-volVectorField fvSource(
-    IOobject(
-        "fvSource",
-        mesh.time().timeName(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::NO_WRITE),
-    mesh,
-    dimensionedVector("fvSource", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
-    zeroGradientFvPatchField<vector>::typeName);
     
 autoPtr<compressible::turbulenceModel> turbulence(
     compressible::turbulenceModel::New(

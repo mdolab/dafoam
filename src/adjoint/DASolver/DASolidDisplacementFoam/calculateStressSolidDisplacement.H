@@ -19,3 +19,5 @@ volScalarField sigmaEq(
 
 Info << "Max sigmaEq = " << max(sigmaEq).value()
      << endl;
+
+runTime.write();

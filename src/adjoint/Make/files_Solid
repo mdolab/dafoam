@@ -18,6 +18,7 @@ DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncVonMisesStressKS.C
 
 DAResidual/DAResidual.C
+DAResidual/DAResidualDummy.C
 DAResidual/DAResidualSolidDisplacementFoam.C
 
 DAColoring/DAColoring.C

@@ -26,41 +26,7 @@ volScalarField p(
     dimensionedScalar("p", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
     zeroGradientFvPatchField<scalar>::typeName);
 
-volScalarField alphat(
-    IOobject(
-        "alphat",
-        mesh.time().timeName(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::NO_WRITE),
-    mesh,
-    dimensionedScalar("alphat", dimensionSet(1, -1, -1, 0, 0, 0, 0), 0.0),
-    zeroGradientFvPatchField<scalar>::typeName);
-
-volScalarField T(
-    IOobject(
-        "T",
-        mesh.time().timeName(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::NO_WRITE),
-    mesh,
-    dimensionedScalar("T", dimensionSet(0, 0, 0, 1, 0, 0, 0), 0.0),
-    zeroGradientFvPatchField<scalar>::typeName);
-
 #include "createPhi.H"
-
-// fvSource term
-volVectorField fvSource(
-    IOobject(
-        "fvSource",
-        mesh.time().timeName(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::NO_WRITE),
-    mesh,
-    dimensionedVector("fvSource", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
-    zeroGradientFvPatchField<vector>::typeName);
 
 singlePhaseTransportModel laminarTransport(U, phi);
 
