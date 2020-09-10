@@ -48,7 +48,7 @@ aeroOptions = {
     "turbulenceModel": "SpalartAllmaras",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["blade"],
-    "primalMinResTol": 1e-8,
+    "primalMinResTol": 1e-12,
     "primalVarBounds": {
         "UUpperBound": 800.0,
         "ULowerBound": -800.0,
@@ -68,6 +68,37 @@ aeroOptions = {
                 "axis": [0.0, 0.0, 1.0],
                 "center": [0.0, 0.0, 0.0],
                 "scale": 1.0 / (0.5 * 10.0 * 10.0 * 1.0 * 1.0),
+                "addToAdjoint": True,
+            }
+        },
+        "TPR": {
+            "part1": {
+                "type": "totalPressureRatio",
+                "source": "patchToFace",
+                "patches": ["inlet", "outlet"],
+                "inletPatches": ["inlet"],
+                "outletPatches": ["outlet"],
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
+        "TTR": {
+            "part1": {
+                "type": "totalTemperatureRatio",
+                "source": "patchToFace",
+                "patches": ["inlet", "outlet"],
+                "inletPatches": ["inlet"],
+                "outletPatches": ["outlet"],
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
+        "MFR": {
+            "part1": {
+                "type": "massFlowRate",
+                "source": "patchToFace",
+                "patches": ["inlet"],
+                "scale": 1.0,
                 "addToAdjoint": True,
             }
         },
