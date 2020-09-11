@@ -25,7 +25,8 @@ DAPisoFoam::DAPisoFoam(
       UPtr_(nullptr),
       phiPtr_(nullptr),
       laminarTransportPtr_(nullptr),
-      turbulencePtr_(nullptr)
+      turbulencePtr_(nullptr),
+      daTurbulenceModelPtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
