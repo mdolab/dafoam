@@ -59,6 +59,9 @@ protected:
     /// turbulence pointer
     autoPtr<compressible::turbulenceModel> turbulencePtr_;
 
+    /// DATurbulenceModel pointer
+    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+
     /// initial mass
     dimensionedScalar initialMass_;
 

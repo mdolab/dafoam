@@ -248,9 +248,61 @@ void DAJacCondFdW::setupJacCon(const dictionary& options)
 
     forAll(objFuncCellSources, idxI)
     {
-        // TODO: need to implemnt this!
-        FatalErrorIn("") << "not implemented!"
-                         << abort(FatalError);
+        label cellI = objFuncCellSources[idxI];
+
+        //zero the connections
+        this->createConnectionMat(&connectedStatesP);
+
+        forAll(objFuncConInfo, idxJ) // idxJ: con level
+        {
+            // set connectedStatesLocal: the locally connected state variables for this level
+            wordList connectedStatesLocal = objFuncConInfo[idxJ];
+
+            // set connectedStatesInterProc: the globally connected state variables for this level
+            List<List<word>> connectedStatesInterProc;
+
+            if (idxJ == 0)
+            {
+                // pass a zero list, no need to add interProc connecitivity for level 0
+                connectedStatesInterProc.setSize(0);
+            }
+            else if (idxJ != maxConLevel)
+            {
+                connectedStatesInterProc.setSize(maxConLevel - idxJ + 1);
+                for (label k = 0; k < maxConLevel - idxJ + 1; k++)
+                {
+                    connectedStatesInterProc[k] = objFuncConInfo[k + idxJ];
+                }
+            }
+            else
+            {
+                connectedStatesInterProc.setSize(1);
+                connectedStatesInterProc[0] = objFuncConInfo[maxConLevel];
+            }
+
+            // check if we need to add face
+            label addFace = 0;
+            forAll(stateInfo_["surfaceScalarStates"], idxK)
+            {
+                word conName = stateInfo_["surfaceScalarStates"][idxK];
+                if (DAUtility::isInList<word>(conName, objFuncConInfo[idxJ]))
+                {
+                    addFace = 1;
+                }
+            }
+
+            this->addStateConnections(
+                connectedStatesP,
+                cellI,
+                idxJ,
+                connectedStatesLocal,
+                connectedStatesInterProc,
+                addFace);
+        }
+
+        label glbRowI = this->getGlobalObjFuncGeoIndex("cell", cellI);
+
+        this->setupJacobianConnections(jacCon_, connectedStatesP, glbRowI);
     }
 
     MatAssemblyBegin(jacCon_, MAT_FINAL_ASSEMBLY);

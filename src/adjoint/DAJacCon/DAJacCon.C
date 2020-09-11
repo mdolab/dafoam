@@ -30,12 +30,16 @@ DAJacCon::DAJacCon(
       daOption_(daOption),
       daModel_(daModel),
       daIndex_(daIndex),
-      daColoring_(mesh, daOption, daModel, daIndex)
+      daColoring_(mesh, daOption, daModel, daIndex),
+      daField_(mesh, daOption, daModel, daIndex)
 {
     // initialize stateInfo_
     word solverName = daOption.getOption<word>("solverName");
     autoPtr<DAStateInfo> daStateInfo(DAStateInfo::New(solverName, mesh, daOption, daModel));
     stateInfo_ = daStateInfo->getStateInfo();
+
+    // check if there is special boundary conditions that need special treatment in jacCon_
+    this->checkSpecialBCs();
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
@@ -2072,6 +2076,146 @@ void DAJacCon::calcColoredColumns(
         VecAssemblyBegin(coloredColumn);
         VecAssemblyEnd(coloredColumn);
     }
+}
+
+void DAJacCon::checkSpecialBCs()
+{
+    /*
+    Description:
+        Check if there is special boundary conditions that need special treatment in jacCon_
+    */
+
+    // *******************************************************************
+    //                     pressureInletVelocity
+    // *******************************************************************
+    if (DAUtility::isInList<word>("pressureInletVelocity", daField_.specialBCs))
+    {
+        // we need special treatment for connectivity
+        Info << "pressureInletVelocity detected, applying special treatment for connectivity." << endl;
+        // initialize and compute isPIVBCState_
+        VecCreate(PETSC_COMM_WORLD, &isPIVBCState_);
+        VecSetSizes(isPIVBCState_, daIndex_.nLocalAdjointStates, PETSC_DECIDE);
+        VecSetFromOptions(isPIVBCState_);
+        VecZeroEntries(isPIVBCState_);
+
+        // compute isPIVBCState_
+        // Note we need to read the U field, instead of getting it from db
+        // this is because coloringSolver does not read U
+        Info << "Calculating pressureInletVelocity state vec..." << endl;
+        volVectorField U(
+            IOobject(
+                "U",
+                mesh_.time().timeName(),
+                mesh_,
+                IOobject::READ_IF_PRESENT,
+                IOobject::NO_WRITE,
+                false),
+            mesh_,
+            dimensionedVector("U", dimensionSet(0, 1, -1, 0, 0, 0, 0), vector::zero),
+            zeroGradientFvPatchField<vector>::typeName);
+
+        forAll(U.boundaryField(), patchI)
+        {
+            if (U.boundaryFieldRef()[patchI].type() == "pressureInletVelocity")
+            {
+                const UList<label>& pFaceCells = mesh_.boundaryMesh()[patchI].faceCells();
+                forAll(U.boundaryFieldRef()[patchI], faceI)
+                {
+
+                    label faceCellI = pFaceCells[faceI]; // lv 1 face neibouring cells
+                    this->setPIVVec(isPIVBCState_, faceCellI);
+
+                    forAll(mesh_.cellCells()[faceCellI], cellJ)
+                    {
+
+                        label faceCellJ = mesh_.cellCells()[faceCellI][cellJ]; // lv 2 face neibouring cells
+                        this->setPIVVec(isPIVBCState_, faceCellJ);
+
+                        forAll(mesh_.cellCells()[faceCellJ], cellK)
+                        {
+                            label faceCellK = mesh_.cellCells()[faceCellI][cellJ]; // lv 3 face neibouring cells
+                            this->setPIVVec(isPIVBCState_, faceCellK);
+                        }
+                    }
+                }
+            }
+        }
+
+        VecAssemblyBegin(isPIVBCState_);
+        VecAssemblyEnd(isPIVBCState_);
+
+        if (daOption_.getOption<label>("writeJacobians"))
+        {
+            DAUtility::writeVectorASCII(isPIVBCState_, "isPIVVec");
+        }
+    }
+
+    // *******************************************************************
+    //                      append more special BCs
+    // *******************************************************************
+
+    return;
+}
+
+void DAJacCon::setPIVVec(
+    Vec isPIV,
+    const label cellI)
+{
+    forAll(daIndex_.adjStateNames, idxI)
+    {
+        // get stateName and residual names
+        word stateName = daIndex_.adjStateNames[idxI];
+
+        // check if this state is a cell state, we do surfaceScalarState  separately
+        if (daIndex_.adjStateType[stateName] == "surfaceScalarState")
+        {
+            forAll(mesh_.cells()[cellI], faceI)
+            {
+                label cellFaceI = mesh_.cells()[cellI][faceI];
+                label rowI = daIndex_.getGlobalAdjointStateIndex(stateName, cellFaceI);
+                VecSetValue(isPIV, rowI, 1.0, INSERT_VALUES);
+            }
+        }
+        else
+        {
+            // if it is a vectorState, set compMax=3
+            label compMax = 1;
+            if (daIndex_.adjStateType[stateName] == "volVectorState")
+            {
+                compMax = 3;
+            }
+
+            for (label comp = 0; comp < compMax; comp++)
+            {
+                label rowI = daIndex_.getGlobalAdjointStateIndex(stateName, cellI, comp);
+                VecSetValue(isPIV, rowI, 1.0, INSERT_VALUES);
+            }
+        }
+    }
+}
+
+label DAJacCon::addPhi4PIV(
+    const word stateName,
+    const label idxI,
+    const label comp)
+{
+
+    label localI = daIndex_.getLocalAdjointStateIndex(stateName, idxI, comp);
+    PetscScalar* isPIVArray;
+    VecGetArray(isPIVBCState_, &isPIVArray);
+    if (DAUtility::isValueCloseToRef(isPIVArray[localI], 1.0))
+    {
+        VecRestoreArray(isPIVBCState_, &isPIVArray);
+        return 1;
+    }
+    else
+    {
+        VecRestoreArray(isPIVBCState_, &isPIVArray);
+        return 0;
+    }
+
+    VecRestoreArray(isPIVBCState_, &isPIVArray);
+    return 0;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

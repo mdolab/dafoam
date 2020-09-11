@@ -26,14 +26,8 @@
 #define DATurbulenceModel_H
 
 #include "runTimeSelectionTables.H"
-#include "fvOptions.H"
-#include "fvc.H"
-#include "fvm.H"
-#include "surfaceFields.H"
-#include "geometricOneField.H"
 #include "wallDist.H"
 #include "nearWallDist.H"
-#include "zeroGradientFvPatchField.H"
 #include "DAUtility.H"
 #include "DAOption.H"
 #include "DARegDbNearWallDist.H"

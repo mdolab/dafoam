@@ -28,6 +28,9 @@ DAField::DAField(
     word solverName = daOption.getOption<word>("solverName");
     autoPtr<DAStateInfo> daStateInfo(DAStateInfo::New(solverName, mesh, daOption, daModel));
     stateInfo_ = daStateInfo->getStateInfo();
+
+    // check if we have special boundary conditions that need special treatment
+    this->checkSpecialBCs();
 }
 
 void DAField::ofField2StateVec(Vec stateVec) const
@@ -473,6 +476,71 @@ void DAField::resVec2OFResField(const Vec resVec) const
         }
     }
     VecRestoreArrayRead(resVec, &stateResVecArray);
+}
+
+void DAField::checkSpecialBCs()
+{
+    /*
+    Description:
+        Check if we need to do special treatment for boundary conditions
+        If any special BC is detected, append their names to specialBCs list
+    */
+
+    // *******************************************************************
+    //                     pressureInletVelocity
+    // *******************************************************************
+    // Note we need to read the U field, instead of getting it from db
+    // this is because coloringSolver does not read U
+    // Also we need to set read_if_present for solid solvers in which
+    // there is no U field
+    volVectorField U(
+        IOobject(
+            "U",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE,
+            false),
+        mesh_,
+        dimensionedVector("U", dimensionSet(0, 1, -1, 0, 0, 0, 0), vector::zero),
+        zeroGradientFvPatchField<vector>::typeName);
+    forAll(U.boundaryField(), patchI)
+    {
+        if (U.boundaryFieldRef()[patchI].type() == "pressureInletVelocity")
+        {
+            specialBCs.append("pressureInletVelocity");
+            break;
+        }
+    }
+
+    // *******************************************************************
+    //                      append more special BCs
+    // *******************************************************************
+}
+
+void DAField::specialBCTreatment()
+{
+    /*
+    Description:
+        Apply special treatment for boundary conditions
+    */
+
+    // *******************************************************************
+    //                     pressureInletVelocity
+    // *******************************************************************
+    // for pressureInletVelocity, the inlet U depends on
+    // rho and phi, so we need to call U.correctBoundaryConditions again
+    if (DAUtility::isInList<word>("pressureInletVelocity", specialBCs))
+    {
+
+        volVectorField& U(const_cast<volVectorField&>(
+            mesh_.thisDb().lookupObject<volVectorField>("U")));
+        U.correctBoundaryConditions();
+    }
+
+    // *******************************************************************
+    //                      append more special BCs
+    // *******************************************************************
 }
 
 void DAField::setPrimalBoundaryConditions()

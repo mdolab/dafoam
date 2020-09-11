@@ -1,0 +1,17 @@
+Dictionary Key: CMZ
+@value   0.1430368011080618 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10
+Dictionary Key: CMZ
+Dictionary Key: shapey
+@value   0.2847253475765422 1e-06 1e-08
+@value   0.5027186170899598 1e-06 1e-08
+@value   0.3399832386667239 1e-06 1e-08
+@value   0.4476514535487283 1e-06 1e-08
+Dictionary Key: shapez
+@value -0.03750840758009008 1e-06 1e-08
+@value  -0.1665657111161976 1e-06 1e-08
+@value  -0.1864868937703539 1e-06 1e-08
+@value  -0.2092429288127152 1e-06 1e-08
+Dictionary Key: fail
+@value                    0 1e-06 1e-08

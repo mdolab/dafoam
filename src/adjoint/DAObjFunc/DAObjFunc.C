@@ -278,6 +278,8 @@ scalar DAObjFunc::masterFunction(
         daResidual.updateIntermediateVariables();
         daModel.correctBoundaryConditions();
         daModel.updateIntermediateVariables();
+        // if there are special boundary conditions, apply special treatment
+        daField_.specialBCTreatment();
     }
 
     scalar objFuncValue = this->getObjFuncValue();

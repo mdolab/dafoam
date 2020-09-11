@@ -14,6 +14,10 @@ case $1 in
     cp setup_Compressible.py setup.py
     python setup.py build_ext --inplace || exit 1
     mv *.so ../../dafoam
+    ./Allclean
+    cp setup_Solid.py setup.py
+    python setup.py build_ext --inplace || exit 1
+    mv *.so ../../dafoam
     ;;
   "debug")
     cp setup_Incompressible.py setup.py
@@ -22,6 +26,11 @@ case $1 in
     mv *.so ../../dafoam
     ./Allclean
     cp setup_Compressible.py setup.py
+    sed -i 's/"-std=c++11",/"-std=c++11","-DFULLDEBUG -g -O0",/g' setup.py
+    python setup.py build_ext --inplace || exit 1
+    mv *.so ../../dafoam
+    ./Allclean
+    cp setup_Solid.py setup.py
     sed -i 's/"-std=c++11",/"-std=c++11","-DFULLDEBUG -g -O0",/g' setup.py
     python setup.py build_ext --inplace || exit 1
     mv *.so ../../dafoam
@@ -36,8 +45,13 @@ case $1 in
     python setup.py build_ext --inplace || exit 1
     mv *.so ../../dafoam
     ;;
+  "solid")
+    cp setup_Solid.py setup.py
+    python setup.py build_ext --inplace || exit 1
+    mv *.so ../../dafoam
+    ;;
   *)
-    echo "Argument not valid! Options are: opt, debug, incompressible, and compressible"
+    echo "Argument not valid! Options are: opt, debug, incompressible, compressible, or solid"
     echo "Example: ./Allmake opt"
     exit 1
     ;;

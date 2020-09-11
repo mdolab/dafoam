@@ -14,6 +14,10 @@ case $1 in
     cp Make/files_Compressible Make/files
     cp Make/options_Compressible Make/options
     wmake -j 4 || exit 1
+    ./Allclean
+    cp Make/files_Solid Make/files
+    cp Make/options_Solid Make/options
+    wmake -j 4 || exit 1
     ;;
   "debug")
     cp Make/files_Incompressible Make/files
@@ -23,6 +27,11 @@ case $1 in
     ./Allclean
     cp Make/files_Compressible Make/files
     cp Make/options_Compressible Make/options
+    sed -i 's/-std=c++11/-std=c++11 -DFULLDEBUG -g -O0/g' Make/options
+    wmake -j 4 || exit 1
+    ./Allclean
+    cp Make/files_Solid Make/files
+    cp Make/options_Solid Make/options
     sed -i 's/-std=c++11/-std=c++11 -DFULLDEBUG -g -O0/g' Make/options
     wmake -j 4 || exit 1
     ;;
@@ -36,8 +45,13 @@ case $1 in
     cp Make/options_Compressible Make/options
     wmake -j 4 || exit 1
     ;;
+  "solid")
+    cp Make/files_Solid Make/files
+    cp Make/options_Solid Make/options
+    wmake -j 4 || exit 1
+    ;;
   *)
-    echo "Argument not valid! Options are: opt, debug, incompressible, and compressible"
+    echo "Argument not valid! Options are: opt, debug, incompressible, compressible, or solid"
     echo "Example: ./Allmake opt"
     exit 1
     ;;

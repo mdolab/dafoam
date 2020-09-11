@@ -28,7 +28,6 @@ DASolver::DASolver(
       runTimePtr_(nullptr),
       meshPtr_(nullptr),
       daOptionPtr_(nullptr),
-      daTurbulenceModelPtr_(nullptr),
       daModelPtr_(nullptr),
       daIndexPtr_(nullptr),
       daFieldPtr_(nullptr),

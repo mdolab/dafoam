@@ -39,6 +39,8 @@ DAObjFuncForce::DAObjFuncForce(
 
     // for computing force, first read in some parameters from objFuncDict_
     // these parameters are only for force objective
+
+    // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
     // we support three direction modes

@@ -1,0 +1,11 @@
+Dictionary Key: VMS
+@value    28920.84955052898 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10
+Dictionary Key: VMS
+Dictionary Key: shapex
+@value    5115.765662739592 1e-06 1e-08
+Dictionary Key: shapey
+@value    11995.16147580095 1e-06 1e-08
+Dictionary Key: fail
+@value                    0 1e-06 1e-08

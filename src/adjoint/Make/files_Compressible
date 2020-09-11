@@ -20,6 +20,7 @@ DAModel/DAModel.C
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoRhoSimpleFoam.C
 DAStateInfo/DAStateInfoRhoSimpleCFoam.C
+DAStateInfo/DAStateInfoTurboFoam.C
 
 DAIndex/DAIndex.C
 
@@ -28,13 +29,20 @@ DAField/DAField.C
 DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncForce.C
 DAObjFunc/DAObjFuncMoment.C
+DAObjFunc/DAObjFuncWallHeatFlux.C
+DAObjFunc/DAObjFuncTotalPressure.C
+DAObjFunc/DAObjFuncTotalPressureRatio.C
+DAObjFunc/DAObjFuncTotalTemperatureRatio.C
+DAObjFunc/DAObjFuncMassFlowRate.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
 
 DAResidual/DAResidual.C
+DAResidual/DAResidualDummy.C
 DAResidual/DAResidualRhoSimpleFoam.C
 DAResidual/DAResidualRhoSimpleCFoam.C
+DAResidual/DAResidualTurboFoam.C
 
 DAColoring/DAColoring.C
 
@@ -59,5 +67,6 @@ DALinearEqn/DALinearEqn.C
 DASolver/DASolver.C
 DASolver/DARhoSimpleFoam/DARhoSimpleFoam.C
 DASolver/DARhoSimpleCFoam/DARhoSimpleCFoam.C
+DASolver/DATurboFoam/DATurboFoam.C
 
 LIB = $(FOAM_USER_LIBBIN)/libDAFoamCompressible

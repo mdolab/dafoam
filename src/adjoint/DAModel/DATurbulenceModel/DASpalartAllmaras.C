@@ -74,7 +74,7 @@ DASpalartAllmaras::DASpalartAllmaras(
 #ifdef IncompressibleFlow
           dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
 #endif
-          zeroGradientFvPatchScalarField::typeName),
+          zeroGradientFvPatchField<scalar>::typeName),
       nuTildaResPartDeriv_(
           IOobject(
               "nuTildaResPartDeriv",

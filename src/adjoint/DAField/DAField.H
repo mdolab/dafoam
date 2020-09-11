@@ -104,6 +104,16 @@ public:
 
     /// set the boundary conditions based on parameters defined in DAOption
     void setPrimalBoundaryConditions();
+
+    /// apply special treatment for boundary conditions
+    void specialBCTreatment();
+
+    /// check if we need to do special treatment for boundary conditions
+    void checkSpecialBCs();
+
+    /// a list that contains the names of detected special boundary conditions
+    wordList specialBCs;
+
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -29,6 +29,22 @@ else
   echo "DASimpleFoam: Success!"
 fi
 
+# test DASimpleTFoam
+rm -rf input DAFoam_Test_DASimpleTFoam.txt
+tar -zxf input.tar.gz
+mpirun -np 4 python runTests_DASimpleTFoam.py $@ | tee DAFoam_Test_DASimpleTFoam.txt 
+if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+  echo "DASimpleTFoam: Failed!"
+  exit 1
+fi
+python testFuncs.py refs/DAFoam_Test_DASimpleTFoamRef.txt DAFoam_Test_DASimpleTFoam.txt
+if [ "$?" -ne "0" ]; then 
+  echo "DASimpleTFoam: Failed!"
+  exit 1
+else
+  echo "DASimpleTFoam: Success!"
+fi
+
 # test DARhoSimpleFoam
 rm -rf input DAFoam_Test_DARhoSimpleFoam.txt
 tar -zxf input.tar.gz
@@ -43,6 +59,22 @@ if [ "$?" -ne "0" ]; then
   exit 1
 else
   echo "DARhoSimpleFoam: Success!"
+fi
+
+# test DARhoSimpleFoamUBend
+rm -rf input DAFoam_Test_DARhoSimpleFoamUBend.txt
+tar -zxf input.tar.gz
+mpirun -np 4 python runTests_DARhoSimpleFoamUBend.py $@ | tee DAFoam_Test_DARhoSimpleFoamUBend.txt
+if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+  echo "DARhoSimpleFoamUBend: Failed!"
+  exit 1
+fi
+python testFuncs.py refs/DAFoam_Test_DARhoSimpleFoamUBendRef.txt DAFoam_Test_DARhoSimpleFoamUBend.txt
+if [ "$?" -ne "0" ]; then 
+  echo "DARhoSimpleFoamUBend: Failed!"
+  exit 1
+else
+  echo "DARhoSimpleFoamUBend: Success!"
 fi
 
 # test DARhoSimpleCFoam
@@ -60,6 +92,55 @@ if [ "$?" -ne "0" ]; then
 else
   echo "DARhoSimpleCFoam: Success!"
 fi
+
+# test DATurboFoamSubsonic
+rm -rf input DAFoam_Test_DATurboFoamSubsonic.txt
+tar -zxf input.tar.gz
+mpirun -np 4 python runTests_DATurboFoamSubsonic.py $@ | tee DAFoam_Test_DATurboFoamSubsonic.txt
+if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+  echo "DATurboFoamSubsonic: Failed!"
+  exit 1
+fi
+python testFuncs.py refs/DAFoam_Test_DATurboFoamSubsonicRef.txt DAFoam_Test_DATurboFoamSubsonic.txt
+if [ "$?" -ne "0" ]; then 
+  echo "DATurboFoamSubsonic: Failed!"
+  exit 1
+else
+  echo "DATurboFoamSubsonic: Success!"
+fi
+
+# test DATurboFoamTransonic
+rm -rf input DAFoam_Test_DATurboFoamTransonic.txt
+tar -zxf input.tar.gz
+mpirun -np 4 python runTests_DATurboFoamTransonic.py $@ | tee DAFoam_Test_DATurboFoamTransonic.txt
+if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+  echo "DATurboFoamTransonic: Failed!"
+  exit 1
+fi
+python testFuncs.py refs/DAFoam_Test_DATurboFoamTransonicRef.txt DAFoam_Test_DATurboFoamTransonic.txt
+if [ "$?" -ne "0" ]; then 
+  echo "DATurboFoamTransonic: Failed!"
+  exit 1
+else
+  echo "DATurboFoamTransonic: Success!"
+fi
+
+# test DASolidDisplacementFoam
+rm -rf input DAFoam_Test_DASolidDisplacementFoam.txt
+tar -zxf input.tar.gz
+mpirun -np 4 python runTests_DASolidDisplacementFoam.py $@ | tee DAFoam_Test_DASolidDisplacementFoam.txt
+if [ "${PIPESTATUS[0]}" -ne "0" ]; then
+  echo "DASolidDisplacementFoam: Failed!"
+  exit 1
+fi
+python testFuncs.py refs/DAFoam_Test_DASolidDisplacementFoamRef.txt DAFoam_Test_DASolidDisplacementFoam.txt
+if [ "$?" -ne "0" ]; then
+  echo "DASolidDisplacementFoam: Failed!"
+  exit 1
+else
+  echo "DASolidDisplacementFoam: Success!"
+fi
+
 
 echo " "
 echo "************************************************************"
