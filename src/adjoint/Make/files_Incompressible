@@ -65,4 +65,9 @@ DASolver/DASimpleFoam/DASimpleFoam.C
 DASolver/DAPisoFoam/DAPisoFoam.C
 DASolver/DASimpleTFoam/DASimpleTFoam.C
 
+boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
+boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
+models/dummyTurbulenceModel/makeDummyTurbulenceModelIncompressible.C
+models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Incompressible.C
+
 LIB = $(FOAM_USER_LIBBIN)/libDAFoamIncompressible

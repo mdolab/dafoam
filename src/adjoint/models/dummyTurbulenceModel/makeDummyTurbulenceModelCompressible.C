@@ -15,7 +15,6 @@
 #include "EddyDiffusivity.H"
 
 #include "RASModel.H"
-#include "LESModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 #define createBaseTurbulenceModel(                          \
@@ -27,8 +26,6 @@
         Transport##BaseModel;                               \
     typedef RASModel<EddyDiffusivity<Transport##BaseModel>> \
         RAS##Transport##BaseModel;                          \
-    typedef LESModel<EddyDiffusivity<Transport##BaseModel>> \
-        LES##Transport##BaseModel;                          \
     }
 
 createBaseTurbulenceModel(
@@ -41,9 +38,6 @@ createBaseTurbulenceModel(
 
 #define makeRASModel(Type) \
     makeTemplatedTurbulenceModel(fluidThermoCompressibleTurbulenceModel, RAS, Type)
-
-#define makeLESModel(Type) \
-    makeTemplatedTurbulenceModel(fluidThermoCompressibleTurbulenceModel, LES, Type)
 
 #include "dummyTurbulenceModel.H"
 makeRASModel(dummyTurbulenceModel);

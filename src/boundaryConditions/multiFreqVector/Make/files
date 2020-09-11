@@ -1,2 +1,0 @@
-multiFreqVectorFvPatchField.C
-LIB = $(FOAM_USER_LIBBIN)/libmultiFreqVectorFvPatchField

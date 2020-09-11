@@ -40,6 +40,7 @@ DALinearEqn/DALinearEqn.C
 
 DASolver/DASolver.C
 DASolver/DASolidDisplacementFoam/DASolidDisplacementFoam.C
-DASolver/DASolidDisplacementFoam/tractionDisplacement/tractionDisplacementFvPatchVectorField.C
+
+boundaryConditions/tractionDisplacement/tractionDisplacementFvPatchVectorField.C
 
 LIB = $(FOAM_USER_LIBBIN)/libDAFoamSolid

@@ -1,3 +1,0 @@
-nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
-
-LIB = $(FOAM_USER_LIBBIN)/libnutUSpaldingWallFunctionFvPatchScalarFieldDF
