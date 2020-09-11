@@ -182,7 +182,8 @@ void DATurboFoam::setRotingWallVelocity()
     forAll(meshPtr_->boundaryMesh(), patchI)
     {
         word bcName = meshPtr_->boundaryMesh()[patchI].name();
-        if (!DAUtility::isInList<word>(bcName, nonRotatingPatches))
+        word bcType = meshPtr_->boundaryMesh()[patchI].type();
+        if (!DAUtility::isInList<word>(bcName, nonRotatingPatches) && bcType != "processor")
         {
             Info << "Setting rotating wall velocity for " << bcName << endl;
             if (U.boundaryField()[patchI].size() > 0)

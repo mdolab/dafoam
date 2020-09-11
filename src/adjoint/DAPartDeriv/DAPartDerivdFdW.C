@@ -155,14 +155,21 @@ void DAPartDerivdFdW::calcPartDerivMat(
     const scalarList& objFuncCellValues = daObjFunc->getObjFuncCellValues();
     daJacCon_.setObjFuncVec(objFuncFaceValues, objFuncCellValues, fVecRef);
 
+    // NOTE: for some objectives, we need special treatment to compute
+    // reference coefficient based on unperturbed states, e.g., totalPressureRatio
+    // and totalTemperatureRatio. Once the refCoeffs is computed, we don't recompute
+    // them when perturbing states, so here we need to set daObjFunc->calcRefCoeffs = 0
+    // After the perturbation is done, we need to reset it to 1
+    daObjFunc->calcRefCoeffs = 0;
+
     // NOTE: for some objectives, we need to scale dFdW so we first fetch their
     // scaling before perturbing W and after computing the reference objFunc
     scalar scalingKS = 1.0;
     if (objFuncSubDictPart.getWord("type") == "vonMisesStressKS")
     {
         scalar coeffKS = objFuncSubDictPart.getScalar("coeffKS");
-	// expSumKS should be computed by calling the above masterFunction
-	// based on unperturbed W
+        // expSumKS should be computed by calling the above masterFunction
+        // based on unperturbed W
         scalingKS = 1.0 / daObjFunc->expSumKS / coeffKS;
     }
 
@@ -201,13 +208,16 @@ void DAPartDerivdFdW::calcPartDerivMat(
         VecAXPY(fVec, -1.0, fVecRef);
         VecScale(fVec, rDelta);
         // NOTE: need to further scale fVec by scalingKS for KS objectives
-	    // If no KS objectives are used, scalingKS=1
+        // If no KS objectives are used, scalingKS=1
         VecScale(fVec, scalingKS);
 
         // compute the colored coloumn and assign resVec to jacMat
         daJacCon_.calcColoredColumns(color, coloredColumn);
         this->setPartDerivMat(fVec, coloredColumn, transposed, jacMat);
     }
+
+    // reset calcRefCoeffs to 1
+    daObjFunc->calcRefCoeffs = 1;
 
     // call the master function again to reset wVec to OpenFOAM fields
     scalar fRef = daObjFunc->masterFunction(mOptions, xvVec, wVec);

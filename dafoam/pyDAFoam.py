@@ -297,7 +297,11 @@ class DAOPTION(object):
     ## decomposeParDict option. This file will be automatically written such that users
     ## can run optimization with any number of CPU cores without the need to manually
     ## change decomposeParDict
-    decomposeParDict = {"method": "scotch", "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001}, "preservePatches": ["None"]}
+    decomposeParDict = {
+        "method": "scotch",
+        "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001},
+        "preservePatches": ["None"],
+    }
 
     ## The ordering of state variable. Options are: state or cell. Most of the case, the state
     ## odering is the best choice.

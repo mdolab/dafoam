@@ -1,17 +1,56 @@
 Dictionary Key: CMZ
-@value   0.4373969393966617 1e-08 1e-10
+@value   0.4340689879307076 1e-08 1e-10
+Dictionary Key: MFR
+@value   -1.408178776671015 1e-08 1e-10
+Dictionary Key: TPR
+@value    1.146103792506302 1e-08 1e-10
+Dictionary Key: TTR
+@value    1.054677675304934 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: CMZ
 Dictionary Key: shapey
-@value   0.6719421483713931 1e-06 1e-08
-@value   0.8097779660095928 1e-06 1e-08
-@value   0.8818256880399704 1e-06 1e-08
-@value    1.167817589194319 1e-06 1e-08
+@value   0.6112375676897273 1e-06 1e-08
+@value   0.6163024368714869 1e-06 1e-08
+@value    0.825452584477435 1e-06 1e-08
+@value   0.9505004847630188 1e-06 1e-08
 Dictionary Key: shapez
-@value  -0.2787417838240753 1e-06 1e-08
-@value  -0.3912949931041814 1e-06 1e-08
-@value  -0.5805704367179583 1e-06 1e-08
-@value  -0.8153445883597203 1e-06 1e-08
+@value  -0.2516869486728945 1e-06 1e-08
+@value  -0.2951918610198881 1e-06 1e-08
+@value  -0.5414849886638826 1e-06 1e-08
+@value  -0.6628151683319305 1e-06 1e-08
+Dictionary Key: MFR
+Dictionary Key: shapey
+@value  -0.3504671745047898 1e-06 1e-08
+@value    2.812956643563534 1e-06 1e-08
+@value  -0.4670185969894334 1e-06 1e-08
+@value    2.919871544399334 1e-06 1e-08
+Dictionary Key: shapez
+@value   0.0947842840414177 1e-06 1e-08
+@value   -1.876635314351204 1e-06 1e-08
+@value   0.1357027256678781 1e-06 1e-08
+@value   -2.365364821221039 1e-06 1e-08
+Dictionary Key: TPR
+Dictionary Key: shapey
+@value   0.1851303588789444 1e-06 1e-08
+@value   0.2905592256699659 1e-06 1e-08
+@value   0.1989557382197646 1e-06 1e-08
+@value   0.3455973659826993 1e-06 1e-08
+Dictionary Key: shapez
+@value   -0.103115592264251 1e-06 1e-08
+@value  -0.1591848662800113 1e-06 1e-08
+@value  -0.1547920458209941 1e-06 1e-08
+@value  -0.2571763585595537 1e-06 1e-08
+Dictionary Key: TTR
+Dictionary Key: shapey
+@value  0.06425100996193685 1e-06 1e-08
+@value   0.1681143482110045 1e-06 1e-08
+@value  0.06521193525059633 1e-06 1e-08
+@value   0.1859872011397679 1e-06 1e-08
+Dictionary Key: shapez
+@value -0.02273714774308761 1e-06 1e-08
+@value -0.06928796311659942 1e-06 1e-08
+@value -0.03551446050132799 1e-06 1e-08
+@value  -0.1125859733761187 1e-06 1e-08
 Dictionary Key: fail
 @value                    0 1e-06 1e-08

@@ -31,11 +31,15 @@ DAObjFunc/DAObjFuncForce.C
 DAObjFunc/DAObjFuncMoment.C
 DAObjFunc/DAObjFuncWallHeatFlux.C
 DAObjFunc/DAObjFuncTotalPressure.C
+DAObjFunc/DAObjFuncTotalPressureRatio.C
+DAObjFunc/DAObjFuncTotalTemperatureRatio.C
+DAObjFunc/DAObjFuncMassFlowRate.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
 
 DAResidual/DAResidual.C
+DAResidual/DAResidualDummy.C
 DAResidual/DAResidualRhoSimpleFoam.C
 DAResidual/DAResidualRhoSimpleCFoam.C
 DAResidual/DAResidualTurboFoam.C

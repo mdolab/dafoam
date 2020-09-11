@@ -233,6 +233,9 @@ public:
 
     /// expSumKS stores sum[exp(coeffKS*x_i)] for KS function which will be used to scale dFdW
     scalar expSumKS = 1.0;
+
+    /// whether to compute reference coefficients for special objFunc treatment such as totalPressureRatio
+    label calcRefCoeffs = 1;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
