@@ -7,6 +7,7 @@ Dictionary Key: TPR
 Dictionary Key: TTR
 @value    1.054677675304934 1e-08 1e-10
 Dictionary Key: fail
+@value                    0 1e-08 1e-10
 Dictionary Key: CMZ
 Dictionary Key: shapey
 @value   0.6112375676897273 1e-06 1e-08
