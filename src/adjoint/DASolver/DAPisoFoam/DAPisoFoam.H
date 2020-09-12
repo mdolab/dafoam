@@ -18,6 +18,7 @@
 #include "pisoControl.H"
 #include "DARegDbSinglePhaseTransportModel.H"
 #include "DARegDbTurbulenceModelIncompressible.H"
+#include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -53,6 +54,12 @@ protected:
 
     /// DATurbulenceModel pointer
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+
+    /// DASource pointer
+    autoPtr<DAFvSource> daFvSourcePtr_;
+
+    /// fvSource term 
+    autoPtr<volVectorField> fvSourcePtr_;
 
     /// continuity error
     scalar cumulativeContErr_ = 0.0;

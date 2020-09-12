@@ -30,7 +30,7 @@ class DADummyTurbulenceModel
 protected:
     
 public:
-    TypeName("dummyTurbulenceModel");
+    TypeName("dummy");
     // Constructors
 
     //- Construct from components

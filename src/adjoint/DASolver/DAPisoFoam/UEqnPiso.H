@@ -1,9 +1,13 @@
 // Solve the Momentum equation
 
+// update the actuator source term
+daFvSourcePtr_->calcFvSource(fvSource);
+
 fvVectorMatrix UEqn(
     fvm::ddt(U)
     + fvm::div(phi, U)
-    + turbulencePtr_->divDevReff(U));
+    + turbulencePtr_->divDevReff(U)
+    - fvSource);
 
 UEqn.relax();
 

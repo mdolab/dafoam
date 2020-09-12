@@ -10,5 +10,6 @@ singlePhaseTransportModel& laminarTransport = laminarTransportPtr_();
 scalar& cumulativeContErr = cumulativeContErr_;
 label& pRefCell = pRefCell_;
 scalar& pRefValue = pRefValue_;
+volVectorField& fvSource = fvSourcePtr_();
 
 this->setDAObjFuncList();

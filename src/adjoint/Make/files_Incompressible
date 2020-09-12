@@ -34,6 +34,7 @@ DAObjFunc/DAObjFuncTotalPressure.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
+DAFvSource/DAFvSourceActuatorPoint.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C

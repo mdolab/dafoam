@@ -15,6 +15,7 @@
 #include "addToRunTimeSelectionTable.H"
 #include "pisoControl.H"
 #include "adjustPhi.H"
+#include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -43,6 +44,12 @@ protected:
     surfaceScalarField phiRes_;
     surfaceScalarField phiResPartDeriv_;
     //@}
+
+    /// DASource
+    autoPtr<DAFvSource> daFvSourcePtr_;
+
+    /// fvSource term
+    volVectorField& fvSource_;
 
     /// DATurbulenceModel object
     DATurbulenceModel& daTurb_;

@@ -44,7 +44,7 @@ public:
     typedef typename BasicTurbulenceModel::transportModel transportModel;
 
     //- Runtime type information
-    TypeName("dummyTurbulenceModel");
+    TypeName("dummy");
 
     // Constructors
 
