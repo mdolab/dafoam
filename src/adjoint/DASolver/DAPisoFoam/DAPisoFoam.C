@@ -90,6 +90,7 @@ void DAPisoFoam::initSolver()
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)
     {
+        hasFvSource_ = 1;
         Info << "Computing fvSource" << endl;
         word sourceName = allOptions.subDict("fvSource").toc()[0];
         word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");

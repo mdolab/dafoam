@@ -37,7 +37,7 @@ tmp<scalarField> nutUSpaldingWallFunctionFvPatchScalarFieldDF::calcNut() const
             scalar(0),
             sqr(calcUTau(magGradU)) / (magGradU + ROOTVSMALL) - nuw));
 
-    if (tolerance_ != 0.01)
+    if (tolerance_ != 1.e-14)
     {
         // User-specified tolerance. Find out if current nut already satisfies
         // eqns.
@@ -143,8 +143,8 @@ void Foam::nutUSpaldingWallFunctionFvPatchScalarFieldDF::writeLocalEntries(
 {
     nutWallFunctionFvPatchScalarField::writeLocalEntries(os);
 
-    os.writeEntryIfDifferent<label>("maxIter", 10, maxIter_);
-    os.writeEntryIfDifferent<scalar>("tolerance", 0.01, tolerance_);
+    os.writeEntryIfDifferent<label>("maxIter", 1000, maxIter_);
+    os.writeEntryIfDifferent<scalar>("tolerance", 1.e-14, tolerance_);
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -154,8 +154,8 @@ nutUSpaldingWallFunctionFvPatchScalarFieldDF::
         const fvPatch& p,
         const DimensionedField<scalar, volMesh>& iF)
     : nutWallFunctionFvPatchScalarField(p, iF),
-      maxIter_(10),
-      tolerance_(0.01)
+      maxIter_(1000),
+      tolerance_(1.e-14)
 {
 }
 
@@ -177,8 +177,8 @@ nutUSpaldingWallFunctionFvPatchScalarFieldDF::
         const DimensionedField<scalar, volMesh>& iF,
         const dictionary& dict)
     : nutWallFunctionFvPatchScalarField(p, iF, dict),
-      maxIter_(dict.lookupOrDefault<label>("maxIter", 10)),
-      tolerance_(dict.lookupOrDefault<scalar>("tolerance", 0.01))
+      maxIter_(dict.lookupOrDefault<label>("maxIter", 1000)),
+      tolerance_(dict.lookupOrDefault<scalar>("tolerance", 1.e-14))
 {
 }
 

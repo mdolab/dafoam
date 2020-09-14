@@ -7,7 +7,11 @@
     Description:
 
         NOTE: It's the nutUSpaldingWallFunction implementation in OpenFOAM-v2006,
-        which supports two additional inputs: maxIter and tolerance
+        which supports two additional inputs: maxIter and tolerance. In DAFoam,
+        we need to make sure this boundary condition provides as accurate as
+        possible boundary values, so the default values are maxIter = 1000
+        and tolerance = 1e-14. If this causes very slow simulations, 
+        decrease maxIter or increate tolerance. 
 
         This boundary condition provides a wall constraint on the turbulent
         viscosity, i.e. \c nut, based on velocity, i.e. \c U. Using Spalding's
@@ -35,8 +39,8 @@
             type            nutUSpaldingWallFunction;
      
             // Optional entries (unmodifiable)
-            maxIter         10;
-            tolerance       0.0001;
+            maxIter         100;
+            tolerance       1e-8;
      
             // Optional (inherited) entries
             ...
@@ -47,8 +51,8 @@
         \table
           Property  | Description                         | Type   | Req'd  | Dflt
           type      | Type name: nutUBlendedWallFunction  | word   | yes    | -
-          maxIter   | Number of Newton-Raphson iterations | label  | no     | 10
-          tolerance | Convergence tolerance               | scalar | no     | 0.0001
+          maxIter   | Number of Newton-Raphson iterations | label  | no     | 1000
+          tolerance | Convergence tolerance               | scalar | no     | 1e-14
         \endtable
      
         The inherited entries are elaborated in:

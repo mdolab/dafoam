@@ -38,6 +38,7 @@ DAResidualPisoFoam::DAResidualPisoFoam(
     const dictionary& allOptions = daOption.getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)
     {
+        hasFvSource_ = 1;
         Info << "Computing fvSource" << endl;
         word sourceName = allOptions.subDict("fvSource").toc()[0];
         word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
@@ -95,8 +96,11 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
         divUScheme = "div(pc)";
     }
 
-    // update the actuator source term
-    daFvSourcePtr_->calcFvSource(fvSource_);
+    if (hasFvSource_)
+    {
+        // update the actuator source term
+        daFvSourcePtr_->calcFvSource(fvSource_);
+    }
 
     fvVectorMatrix UEqn(
         fvm::div(phi_, U_, divUScheme)

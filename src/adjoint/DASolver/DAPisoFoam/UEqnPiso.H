@@ -1,7 +1,10 @@
 // Solve the Momentum equation
 
-// update the actuator source term
-daFvSourcePtr_->calcFvSource(fvSource);
+if (hasFvSource_)
+{
+    // update the actuator source term
+    daFvSourcePtr_->calcFvSource(fvSource);
+}
 
 fvVectorMatrix UEqn(
     fvm::ddt(U)

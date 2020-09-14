@@ -57,6 +57,9 @@ protected:
     /// pisoControl object which will be initialized in this class
     pisoControl piso_;
 
+    /// whether to has fvSource term
+    label hasFvSource_ = 0;
+
 public:
     TypeName("DAPisoFoam");
     // Constructors
