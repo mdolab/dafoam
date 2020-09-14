@@ -39,7 +39,6 @@ fvSourcePtr_.reset(
         mesh,
         dimensionedVector("fvSource", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
         zeroGradientFvPatchField<vector>::typeName));
-volVectorField& fvSource = fvSourcePtr_();
 
 setRefCell(p, simple.dict(), pRefCell_, pRefValue_);
 mesh.setFluxRequired(p.name());

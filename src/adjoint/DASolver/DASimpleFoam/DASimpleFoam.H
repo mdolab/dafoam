@@ -62,6 +62,9 @@ protected:
     /// fvSource term 
     autoPtr<volVectorField> fvSourcePtr_;
 
+    /// whether to have fvSource term
+    label hasFvSource_ = 0;
+
     /// continuity error
     scalar cumulativeContErr_ = 0.0;
 

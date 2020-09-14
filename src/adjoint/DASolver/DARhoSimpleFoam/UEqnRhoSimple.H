@@ -1,8 +1,14 @@
 // Solve the Momentum equation
 
+if (hasFvSource_)
+{
+    daFvSourcePtr_->calcFvSource(fvSource);
+}
+
 tmp<fvVectorMatrix> tUEqn(
     fvm::div(phi, U)
-    + turbulencePtr_->divDevRhoReff(U));
+    + turbulencePtr_->divDevRhoReff(U)
+    - fvSource);
 fvVectorMatrix& UEqn = tUEqn.ref();
 
 UEqn.relax();
