@@ -38,6 +38,9 @@ protected:
     /// the subDict of fvSource in DAOption
     dictionary fvSourceSubDict_;
 
+    /// print interval for primal and adjoint
+    label printInterval_;
+
 public:
     TypeName("actuatorDisk");
     // Constructors

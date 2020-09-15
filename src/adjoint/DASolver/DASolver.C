@@ -619,6 +619,9 @@ label DASolver::solveAdjoint(
         to this list
     */
 
+    // Change the run status
+    daOptionPtr_->setOption<word>("runStatus", "solveAdjoint");
+
     // first check if we need to change the boundary conditions based on
     // the primalBC dict in DAOption. This is needed for multipoint cases
     // where we need to set different boundary conditions for different points
@@ -1039,6 +1042,9 @@ label DASolver::calcTotalDeriv(
         in the local totalDerivVec. See DASolver::setTotalDerivDict for details. We need
         to scatter the totalDerivVec and gather all the values
     */
+
+    // change the run status
+    daOptionPtr_->setOption<word>("runStatus", "calcTotalDeriv");
 
     // compute the total derivatives
     Info << "Computing total derivatives for " << designVarName << endl;

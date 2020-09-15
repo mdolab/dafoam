@@ -59,7 +59,7 @@ void DARhoSimpleFoam::initSolver()
     if (allOptions.subDict("fvSource").toc().size() != 0)
     {
         hasFvSource_ = 1;
-        Info << "Computing fvSource" << endl;
+        Info << "Initializing DASource" << endl;
         word sourceName = allOptions.subDict("fvSource").toc()[0];
         word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
         daFvSourcePtr_.reset(DAFvSource::New(
@@ -83,6 +83,9 @@ label DARhoSimpleFoam::solvePrimal(
     */
 
 #include "createRefsRhoSimple.H"
+
+    // change the run status
+    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
     // first check if we need to change the boundary conditions based on
     // the primalBC dict in DAOption. NOTE: this will overwrite whatever
