@@ -1895,6 +1895,24 @@ scalar DASolver::getTimeInstanceObjFunc(
     return 0.0;
 }
 
+label DASolver::isPrintTime(
+    const Time& runTime,
+    const label printInterval) const
+{
+    /*
+    Description:
+        Check if it is print time
+    */
+    if (runTime.timeIndex() % printInterval == 0 || runTime.timeIndex() == 1)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

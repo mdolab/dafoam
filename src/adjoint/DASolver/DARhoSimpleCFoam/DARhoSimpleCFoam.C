@@ -72,13 +72,13 @@ label DARhoSimpleCFoam::solvePrimal(
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
-    // first check if we need to change the boundary conditions based on 
-    // the primalBC dict in DAOption. NOTE: this will overwrite whatever 
+    // first check if we need to change the boundary conditions based on
+    // the primalBC dict in DAOption. NOTE: this will overwrite whatever
     // boundary conditions defined in the "0" folder
     dictionary bcDict = daOptionPtr_->getAllOptions().subDict("primalBC");
-    if (bcDict.toc().size()!=0)
+    if (bcDict.toc().size() != 0)
     {
-        Info<<"Setting up primal boundary conditions based on pyOptions: "<<endl;
+        Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
         daFieldPtr_->setPrimalBoundaryConditions();
     }
 
@@ -98,12 +98,15 @@ label DARhoSimpleCFoam::solvePrimal(
         return 1;
     }
 
-    label nSolverIters = 1;
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
+    label printToScreen = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+
+        printToScreen = this->isPrintTime(runTime, printInterval);
+
+        if (printToScreen)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
@@ -118,12 +121,12 @@ label DARhoSimpleCFoam::solvePrimal(
 
         daTurbulenceModelPtr_->correct();
 
-        if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+        if (printToScreen)
         {
             daTurbulenceModelPtr_->printYPlus();
-            
+
             this->printAllObjFuncs();
-            
+
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                  << nl << endl;
@@ -131,7 +134,6 @@ label DARhoSimpleCFoam::solvePrimal(
 
         runTime.write();
 
-        nSolverIters++;
     }
 
     this->calcPrimalResidualStatistics("print");

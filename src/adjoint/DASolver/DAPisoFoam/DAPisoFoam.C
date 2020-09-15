@@ -153,14 +153,15 @@ label DAPisoFoam::solvePrimal(
     // create a file to store the objective values
     this->initializeObjFuncHistFilePtr("objFuncHist.txt");
 
-    label nSolverIters = 1;
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
+    label printToScreen = 0;
     label timeInstanceI = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-
-        if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+        printToScreen = this->isPrintTime(runTime, printInterval);
+        
+        if (printToScreen)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
@@ -179,7 +180,7 @@ label DAPisoFoam::solvePrimal(
         laminarTransport.correct();
         daTurbulenceModelPtr_->correct();
 
-        if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+        if (printToScreen)
         {
 #include "CourantNo.H"
 
@@ -199,7 +200,6 @@ label DAPisoFoam::solvePrimal(
 
         this->saveTimeInstanceField(timeInstanceI);
 
-        nSolverIters++;
     }
 
     this->calcPrimalResidualStatistics("print");

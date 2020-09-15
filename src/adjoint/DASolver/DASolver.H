@@ -130,9 +130,13 @@ protected:
     template<class classType>
     void primalResidualControl(
         const SolverPerformance<classType>& solverP,
-        const label nSolverIters,
+        const label printToScreen,
         const label printInterval,
         const word varName);
+
+    label isPrintTime(
+        const Time& runTime,
+        const label printInterval) const;
 
     /// check whether the min residual in primal satisfy the prescribed tolerance
     label checkResidualTol();
@@ -190,7 +194,7 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec) = 0;
-    
+
     /// assign primal variables based on the current time instance
     virtual void setTimeInstanceField(const label instanceI);
 
@@ -370,7 +374,7 @@ public:
 template<class classType>
 void DASolver::primalResidualControl(
     const SolverPerformance<classType>& solverP,
-    const label nSolverIters,
+    const label printToScreen,
     const label printInterval,
     const word varName)
 {
@@ -382,7 +386,7 @@ void DASolver::primalResidualControl(
     {
         primalMinRes_ = mag(solverP.initialResidual());
     }
-    if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+    if (printToScreen)
     {
         Info << varName << " Initial residual: " << solverP.initialResidual() << endl
              << varName << "   Final residual: " << solverP.finalResidual() << endl;

@@ -277,6 +277,10 @@ public:
 
     /// print the min max and mean yPlus to screen
     void printYPlus() const;
+
+    label isPrintTime(
+        const Time& runTime,
+        const label printInterval) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

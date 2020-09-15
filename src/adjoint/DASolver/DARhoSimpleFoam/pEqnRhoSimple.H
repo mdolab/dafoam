@@ -32,7 +32,7 @@ while (simple.correctNonOrthogonal())
     // and final residuals
     SolverPerformance<scalar> solverP = pEqn.solve();
 
-    this->primalResidualControl<scalar>(solverP, nSolverIters, printInterval, "p");
+    this->primalResidualControl<scalar>(solverP, printToScreen, printInterval, "p");
 
     if (simple.finalNonOrthogonalIter())
     {
@@ -40,7 +40,7 @@ while (simple.correctNonOrthogonal())
     }
 }
 
-if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+if (printToScreen)
 {
 #include "continuityErrsPython.H"
 }
@@ -49,11 +49,11 @@ if (nSolverIters % printInterval == 0 || nSolverIters == 1)
 p.relax();
 
 // bound p
-DAUtility::boundVar(allOptions, p);
+DAUtility::boundVar(allOptions, p, printToScreen);
 
 U = HbyA - rAU * fvc::grad(p);
 // bound U
-DAUtility::boundVar(allOptions, U);
+DAUtility::boundVar(allOptions, U, printToScreen);
 U.correctBoundaryConditions();
 
 bool pLimited = pressureControl.limit(p);
@@ -76,4 +76,4 @@ rho = thermo.rho();
 rho.relax();
 
 // bound rho
-DAUtility::boundVar(allOptions, rho);
+DAUtility::boundVar(allOptions, rho, printToScreen);

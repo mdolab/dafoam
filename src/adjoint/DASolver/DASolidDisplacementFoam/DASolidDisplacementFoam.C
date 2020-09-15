@@ -95,12 +95,15 @@ label DASolidDisplacementFoam::solvePrimal(
         return 1;
     }
 
-    label nSolverIters = 1;
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
+    label printToScreen = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+
+        printToScreen = this->isPrintTime(runTime, printInterval);
+
+        if (printToScreen)
         {
             Info << "Iteration = " << runTime.value() << nl << endl;
         }
@@ -120,7 +123,7 @@ label DASolidDisplacementFoam::solvePrimal(
             SolverPerformance<vector> solverU = DEqn.solve();
             initialResidual = solverU.max().initialResidual();
 
-            this->primalResidualControl<vector>(solverU, nSolverIters, printInterval, "U");
+            this->primalResidualControl<vector>(solverU, printToScreen, printInterval, "U");
 
             if (!compactNormalStress_)
             {
@@ -143,7 +146,7 @@ label DASolidDisplacementFoam::solvePrimal(
 
         } while (initialResidual > convergenceTolerance_ && ++iCorr < nCorr_);
 
-        if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+        if (printToScreen)
         {
             this->printAllObjFuncs();
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
@@ -153,7 +156,6 @@ label DASolidDisplacementFoam::solvePrimal(
 
         runTime.write();
 
-        nSolverIters++;
     }
 
 #include "calculateStressSolidDisplacement.H"

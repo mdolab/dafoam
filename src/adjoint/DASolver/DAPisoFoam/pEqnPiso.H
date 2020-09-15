@@ -18,7 +18,7 @@ while (piso.correctNonOrthogonal())
     // and final residuals
     SolverPerformance<scalar> solverP = pEqn.solve(mesh.solver(p.select(piso.finalInnerIter())));
 
-    this->primalResidualControl<scalar>(solverP, nSolverIters, printInterval, "p");
+    this->primalResidualControl<scalar>(solverP, printToScreen, printInterval, "p");
 
     if (piso.finalNonOrthogonalIter())
     {
@@ -26,7 +26,7 @@ while (piso.correctNonOrthogonal())
     }
 }
 
-if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+if (printToScreen)
 {
 #include "continuityErrsPython.H"
 }

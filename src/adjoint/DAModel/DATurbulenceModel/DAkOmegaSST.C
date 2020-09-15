@@ -703,6 +703,8 @@ void DAkOmegaSST::calcResiduals(const dictionary& options)
 
     // Copy and modify based on the "correct" function
 
+    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
+
     word divKScheme = "div(phi,k)";
     word divOmegaScheme = "div(phi,omega)";
 
@@ -774,20 +776,16 @@ void DAkOmegaSST::calcResiduals(const dictionary& options)
         if (solveTurbState_)
         {
 
-            const scalar& deltaT = mesh_.time().deltaT().value();
-            const scalar t = mesh_.time().timeOutputValue();
-            label nSolverIters = round(t / deltaT);
-
             // get the solver performance info such as initial
             // and final residuals
             SolverPerformance<scalar> solverOmega = solve(omegaEqn);
-            if (nSolverIters % printInterval_ == 0 || nSolverIters == 1)
+            if (printToScreen)
             {
                 Info << "omega Initial residual: " << solverOmega.initialResidual() << endl
                      << "        Final residual: " << solverOmega.finalResidual() << endl;
             }
 
-            DAUtility::boundVar(allOptions_, omega_);
+            DAUtility::boundVar(allOptions_, omega_, printToScreen);
         }
         else
         {
@@ -818,20 +816,16 @@ void DAkOmegaSST::calcResiduals(const dictionary& options)
     if (solveTurbState_)
     {
 
-        const scalar& deltaT = mesh_.time().deltaT().value();
-        const scalar t = mesh_.time().timeOutputValue();
-        label nSolverIters = round(t / deltaT);
-
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverK = solve(kEqn);
-        if (nSolverIters % printInterval_ == 0 || nSolverIters == 1)
+        if (printToScreen)
         {
             Info << "k Initial residual: " << solverK.initialResidual() << endl
                  << "    Final residual: " << solverK.finalResidual() << endl;
         }
 
-        DAUtility::boundVar(allOptions_, k_);
+        DAUtility::boundVar(allOptions_, k_, printToScreen);
 
         this->correctNut();
     }

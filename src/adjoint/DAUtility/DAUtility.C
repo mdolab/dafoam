@@ -417,7 +417,8 @@ void DAUtility::writeMatrixASCII(
 
 void DAUtility::boundVar(
     const dictionary& allOptions,
-    volScalarField& var)
+    volScalarField& var,
+    const label printToScreen)
 {
     /*
     Description:
@@ -486,7 +487,7 @@ void DAUtility::boundVar(
         }
     }
 
-    if (allOptions.lookupOrDefault<label>("debug", 0))
+    if (printToScreen)
     {
         if (useUpperBound)
         {
@@ -503,7 +504,8 @@ void DAUtility::boundVar(
 
 void DAUtility::boundVar(
     const dictionary& allOptions,
-    volVectorField& var)
+    volVectorField& var,
+    const label printToScreen)
 {
     /*
     Description:
@@ -578,7 +580,7 @@ void DAUtility::boundVar(
         }
     }
 
-    if (allOptions.lookupOrDefault<label>("debug", 0))
+    if (printToScreen)
     {
         if (useUpperBound)
         {

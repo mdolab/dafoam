@@ -415,6 +415,8 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
 
     // Copy and modify based on the "correct" function
 
+    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
+
     word divNuTildaScheme = "div(phi,nuTilda)";
 
     label isPC = 0;
@@ -446,20 +448,17 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
 
     if (solveTurbState_)
     {
-        const scalar& deltaT = mesh_.time().deltaT().value();
-        const scalar t = mesh_.time().timeOutputValue();
-        label nSolverIters = round(t / deltaT);
 
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverNuTilda = solve(nuTildaEqn);
-        if (nSolverIters % printInterval_ == 0 || nSolverIters == 1)
+        if (printToScreen)
         {
             Info << "nuTilda Initial residual: " << solverNuTilda.initialResidual() << endl
                  << "          Final residual: " << solverNuTilda.finalResidual() << endl;
         }
 
-        DAUtility::boundVar(allOptions_, nuTilda_);
+        DAUtility::boundVar(allOptions_, nuTilda_, printToScreen);
         nuTilda_.correctBoundaryConditions();
 
         // ***************** NOTE*****************
