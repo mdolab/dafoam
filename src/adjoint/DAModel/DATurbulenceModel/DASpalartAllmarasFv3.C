@@ -420,10 +420,6 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
 
     if (!solveTurbState_)
     {
-        // we need to bound nuTilda before computing residuals
-        // this will avoid having NaN residuals
-        DAUtility::boundVar(allOptions_, nuTilda_);
-
         isPC = options.getLabel("isPC");
 
         if (isPC)

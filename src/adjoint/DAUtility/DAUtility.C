@@ -428,17 +428,17 @@ void DAUtility::boundVar(
         allOptions: a dictionary that has upper and lower bound values
         We need to give specific name for the bounds, i.e.,
         
-        variable name + UpperBound   -> setting upper bound
+        variable name + Max   -> setting upper bound
 
-        variable name + LowerBound   -> setting lower bound
+        variable name + Min   -> setting lower bound
     
     Input & Output:
         var: an OpenFOAM field variable to be bounded
 
     Example:
         dictionary allOptions;
-        allOptions.set("pUpperBound", 120000.0);
-        allOptions.set("pLowerBound", 80000.0);
+        allOptions.set("pMax", 120000.0);
+        allOptions.set("pMin", 80000.0);
         DAUtility daUtil;
         volScalarField p = .... // initialize p
         daUtil.boundVar(allOptions, p);
@@ -449,8 +449,8 @@ void DAUtility::boundVar(
 
     dictionary varBoundsDict = allOptions.subDict("primalVarBounds");
 
-    word lowerBoundName = var.name() + "LowerBound";
-    word upperBoundName = var.name() + "UpperBound";
+    word lowerBoundName = var.name() + "Min";
+    word upperBoundName = var.name() + "Max";
 
     scalar varMin = varBoundsDict.lookupOrDefault<scalar>(lowerBoundName, -vGreat);
     scalar varMax = varBoundsDict.lookupOrDefault<scalar>(upperBoundName, vGreat);
@@ -514,17 +514,17 @@ void DAUtility::boundVar(
         allOptions: a dictionary that has upper and lower bound values
         We need to give specific name for the bounds, i.e.,
         
-        variable name + UpperBound   -> setting upper bound
+        variable name + Max   -> setting upper bound
 
-        variable name + LowerBound   -> setting lower bound
+        variable name + Min   -> setting lower bound
     
     Input & Output:
         var: an OpenFOAM field variable to be bounded
 
     Example:
         dictionary allOptions;
-        allOptions.set("pUpperBound", 120000.0);
-        allOptions.set("pLowerBound", 80000.0);
+        allOptions.set("pMax", 120000.0);
+        allOptions.set("pMin", 80000.0);
         DAUtility daUtil;
         volScalarField p = .... // initialize p
         daUtil.boundVar(allOptions, p);
@@ -535,8 +535,8 @@ void DAUtility::boundVar(
 
     dictionary varBoundsDict = allOptions.subDict("primalVarBounds");
 
-    word lowerBoundName = var.name() + "LowerBound";
-    word upperBoundName = var.name() + "UpperBound";
+    word lowerBoundName = var.name() + "Min";
+    word upperBoundName = var.name() + "Max";
 
     scalar varMin = varBoundsDict.lookupOrDefault<scalar>(lowerBoundName, -vGreat);
     scalar varMax = varBoundsDict.lookupOrDefault<scalar>(upperBoundName, vGreat);

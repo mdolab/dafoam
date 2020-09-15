@@ -50,14 +50,14 @@ aeroOptions = {
     "designSurfaces": ["blade"],
     "primalMinResTol": 1e-12,
     "primalVarBounds": {
-        "UUpperBound": 800.0,
-        "ULowerBound": -800.0,
-        "pUpperBound": 1000000.0,
-        "pLowerBound": 20000.0,
-        "hUpperBound": 500000.0,
-        "hLowerBound": 50000.0,
-        "rhoUpperBound": 10.0,
-        "rhoLowerBound": 0.2,
+        "UMax": 1000.0,
+        "UMin": -1000.0,
+        "pMax": 500000.0,
+        "pMin": 20000.0,
+        "eMax": 500000.0,
+        "eMin": 100000.0,
+        "rhoMax": 5.0,
+        "rhoMin": 0.2,
     },
     "objFunc": {
         "CMZ": {

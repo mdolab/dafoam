@@ -4,8 +4,8 @@ Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: VMS
 Dictionary Key: shapex
-@value    5115.765662739592 1e-06 1e-08
+@value    5187.078889687735 1e-06 1e-08
 Dictionary Key: shapey
-@value    11995.16147580095 1e-06 1e-08
+@value    11997.46157399985 1e-06 1e-08
 Dictionary Key: fail
 @value                    0 1e-06 1e-08

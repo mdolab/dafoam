@@ -56,14 +56,14 @@ aeroOptions = {
         "useWallFunction": True,
     },
     "primalVarBounds": {
-        "UUpperBound": 1000.0,
-        "ULowerBound": -1000.0,
-        "pUpperBound": 500000.0,
-        "pLowerBound": 20000.0,
-        "eUpperBound": 500000.0,
-        "eLowerBound": 100000.0,
-        "rhoUpperBound": 5.0,
-        "rhoLowerBound": 0.2,
+        "UMax": 1000.0,
+        "UMin": -1000.0,
+        "pMax": 500000.0,
+        "pMin": 20000.0,
+        "eMax": 500000.0,
+        "eMin": 100000.0,
+        "rhoMax": 5.0,
+        "rhoMin": 0.2,
     },
     "objFunc": {
         "CD": {

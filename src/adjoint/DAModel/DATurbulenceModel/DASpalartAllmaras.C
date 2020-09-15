@@ -56,7 +56,6 @@ DASpalartAllmaras::DASpalartAllmaras(
           "Cs",
           this->coeffDict_,
           0.3)),
-
       // Augmented variables
       nuTilda_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("nuTilda"))),
@@ -86,7 +85,7 @@ DASpalartAllmaras::DASpalartAllmaras(
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 
-    // initialize printInterval_ we need to check whether it is a steady state 
+    // initialize printInterval_ we need to check whether it is a steady state
     // or unsteady primal solver
     IOdictionary fvSchemes(
         IOobject(
@@ -422,10 +421,6 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
 
     if (!solveTurbState_)
     {
-        // we need to bound nuTilda before computing residuals
-        // this will avoid having NaN residuals
-        DAUtility::boundVar(allOptions_, nuTilda_);
-
         isPC = options.getLabel("isPC");
 
         if (isPC)

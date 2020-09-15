@@ -201,11 +201,37 @@ class DAOPTION(object):
     ## },
     fvSource = {}
 
-    ## The variable upper and lower bounds for primal solution. The key is variable+"UpperBound".
+    ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
     ## Setting the bounds increases the robustness of primal solution for compressible solvers.
+    ## Also, we set lower bounds for turbulence variables to ensure they are physical
     ## Example
-    ##     primalValBounds = {"UUpperBound": 1000, "ULowerBound": -1000, "pUpperBound": 1000000}
-    primalVarBounds = {}
+    ##     primalValBounds = {"UMax": 1000, "UMin": -1000, "pMax": 1000000}
+    primalVarBounds = {
+        "UMax": 1e16,
+        "UMin": -1e16,
+        "pMax": 1e16,
+        "pMin": -1e16,
+        "p_rghMax": 1e16,
+        "p_rghMin": -1e16,
+        "eMax": 1e16,
+        "eMin": -1e16,
+        "TMax": 1e16,
+        "TMin": -1e16,
+        "hMax": 1e16,
+        "hMin": -1e16,
+        "DMax": 1e16,
+        "DMin": -1e16,
+        "rhoMax": 1e16,
+        "rhoMin": -1e16,
+        "nuTildaMax": 1e16,
+        "nuTildaMin": 1e-16,
+        "kMax": 1e16,
+        "kMin": 1e-16,
+        "omegaMax": 1e16,
+        "omegaMin": 1e-16,
+        "epsilonMax": 1e16,
+        "epsilonMin": 1e-16,
+    }
 
     ## Whether to perform multipoint optimization.
     multiPoint = False
@@ -277,7 +303,18 @@ class DAOPTION(object):
     }
 
     ## Normalization for residuals. We should normalize all residuals!
-    normalizeResiduals = ["URes", "pRes", "nuTildaRes", "phiRes", "TRes"]
+    normalizeResiduals = [
+        "URes",
+        "pRes",
+        "p_rghRes",
+        "nuTildaRes",
+        "phiRes",
+        "TRes",
+        "DRes",
+        "kRes",
+        "omegaRes",
+        "epsilonRes",
+    ]
 
     ## The maximal connectivity level for the dRdWTPC matrix. Reducing the connectivity level
     ## reduce the memory usage, however, it may slow down the adjoint equation convergence.
