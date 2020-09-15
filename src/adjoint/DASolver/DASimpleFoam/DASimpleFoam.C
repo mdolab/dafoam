@@ -53,12 +53,12 @@ void DASimpleFoam::initSolver()
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)
     {
-        Info << "Computing fvSource" << endl;
+        hasFvSource_ = 1;
+        Info << "Initializing DASource" << endl;
         word sourceName = allOptions.subDict("fvSource").toc()[0];
         word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
         daFvSourcePtr_.reset(DAFvSource::New(
             fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
-        daFvSourcePtr_->calcFvSource(fvSource);
     }
 }
 
@@ -78,6 +78,9 @@ label DASimpleFoam::solvePrimal(
     */
 
 #include "createRefsSimple.H"
+
+    // change the run status
+    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
     // first check if we need to change the boundary conditions based on
     // the primalBC dict in DAOption. NOTE: this will overwrite whatever

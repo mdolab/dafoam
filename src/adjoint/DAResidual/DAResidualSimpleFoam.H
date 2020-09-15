@@ -44,6 +44,9 @@ protected:
     surfaceScalarField phiResPartDeriv_;
     //@}
 
+    /// DASource
+    autoPtr<DAFvSource> daFvSourcePtr_;
+
     /// fvSource term
     volVectorField& fvSource_;
 
@@ -52,6 +55,9 @@ protected:
 
     /// simpleControl object which will be initialized in this class
     simpleControl simple_;
+
+    /// whether to have fvSource term
+    label hasFvSource_ = 0;
 
 public:
     TypeName("DASimpleFoam");

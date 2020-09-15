@@ -20,6 +20,7 @@
 #include "DAUtility.H"
 #include "DAIndex.H"
 #include "DAField.H"
+#include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

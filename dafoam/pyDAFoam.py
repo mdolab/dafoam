@@ -228,6 +228,10 @@ class DAOPTION(object):
     ## The root directory is usually ./
     rootDir = "./"
 
+    ## The run status which can be solvePrimal, solveAdjoint, or calcTotalDeriv. This parameter is
+    ## used internally, so users should never change this option in the Python layer.
+    runStatus = "None"
+
     ## Whether to print all options to screen before optimization. Needed only for debugging.
     printAllOptions = False
 

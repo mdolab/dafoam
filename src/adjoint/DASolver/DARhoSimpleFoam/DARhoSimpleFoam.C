@@ -29,6 +29,9 @@ DARhoSimpleFoam::DARhoSimpleFoam(
       pressureControlPtr_(nullptr),
       turbulencePtr_(nullptr),
       daTurbulenceModelPtr_(nullptr),
+      daFvSourcePtr_(nullptr),
+      fvSourcePtr_(nullptr),
+      fvSourceEnergyPtr_(nullptr),
       initialMass_(dimensionedScalar("initialMass", dimensionSet(1, 0, 0, 0, 0, 0, 0), 0.0))
 {
 }
@@ -50,6 +53,18 @@ void DARhoSimpleFoam::initSolver()
 #include "createAdjointCompressible.H"
     // initialize checkMesh
     daCheckMeshPtr_.reset(new DACheckMesh(runTime, mesh));
+
+    // initialize fvSource and compute the source term
+    const dictionary& allOptions = daOptionPtr_->getAllOptions();
+    if (allOptions.subDict("fvSource").toc().size() != 0)
+    {
+        hasFvSource_ = 1;
+        Info << "Initializing DASource" << endl;
+        word sourceName = allOptions.subDict("fvSource").toc()[0];
+        word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
+        daFvSourcePtr_.reset(DAFvSource::New(
+            fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
+    }
 }
 
 label DARhoSimpleFoam::solvePrimal(
@@ -68,6 +83,9 @@ label DARhoSimpleFoam::solvePrimal(
     */
 
 #include "createRefsRhoSimple.H"
+
+    // change the run status
+    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
     // first check if we need to change the boundary conditions based on
     // the primalBC dict in DAOption. NOTE: this will overwrite whatever

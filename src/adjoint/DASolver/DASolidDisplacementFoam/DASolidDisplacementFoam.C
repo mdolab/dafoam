@@ -68,6 +68,9 @@ label DASolidDisplacementFoam::solvePrimal(
 
 #include "createRefsSolidDisplacement.H"
 
+    // change the run status
+    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
+
     // first check if we need to change the boundary conditions based on
     // the primalBC dict in DAOption. NOTE: this will overwrite whatever
     // boundary conditions defined in the "0" folder

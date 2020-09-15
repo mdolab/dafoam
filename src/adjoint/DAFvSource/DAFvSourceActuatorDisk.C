@@ -27,6 +27,8 @@ DAFvSourceActuatorDisk::DAFvSourceActuatorDisk(
     const dictionary& allOptions = daOption_.getAllOptions();
     fvSourceSubDict_ = allOptions.subDict("fvSource");
     this->calcFvSourceCellIndices(fvSourceCellIndices_);
+
+    printInterval_ = daOption.getOption<label>("printInterval");
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -175,8 +177,14 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
         reduce(thrustSourceSum, sumOp<scalar>());
         reduce(torqueSourceSum, sumOp<scalar>());
 
-        Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
-        Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
+        if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+        {
+            if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
+            {
+                Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
+                Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
+            }
+        }
     }
 }
 
