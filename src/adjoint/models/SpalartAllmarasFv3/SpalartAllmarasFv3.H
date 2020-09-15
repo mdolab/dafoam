@@ -4,8 +4,7 @@
     Version : v2
 
     Description:
-        SpalartAllmaras turbulence model with Fv3 term. This model was used in 
-        OpenFOAM-2.4 and was found to converge better than without the Fv3 term
+    SpalartAllmaras turbulence model with Fv3 term
 
 \*---------------------------------------------------------------------------*/
 
@@ -123,9 +122,6 @@ public:
 
     //- Solve the turbulence equations and correct the turbulence viscosity
     virtual void correct();
-
-    /// bound the turbulence vars
-    void boundVar(volScalarField& var);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -160,7 +160,6 @@ SpalartAllmarasFv3<BasicTurbulenceModel>::SpalartAllmarasFv3(
               "nuTildaMin",
               this->coeffDict_,
               SMALL)),
-
       nuTilda_(
           IOobject(
               "nuTilda",
@@ -250,39 +249,6 @@ tmp<volScalarField> SpalartAllmarasFv3<BasicTurbulenceModel>::epsilon() const
 }
 
 template<class BasicTurbulenceModel>
-void SpalartAllmarasFv3<BasicTurbulenceModel>::boundVar(volScalarField& var)
-{
-    const scalar vGreat = 1e200;
-    label useUpperBound = 0, useLowerBound = 0;
-
-    const dictionary& simple = this->mesh_.solutionDict().subDict("SIMPLE");
-
-    scalar varMin = simple.lookupOrDefault<scalar>(var.name() + "LowerBound", -vGreat);
-    scalar varMax = simple.lookupOrDefault<scalar>(var.name() + "UpperBound", vGreat);
-
-    forAll(var, cellI)
-    {
-        if (var[cellI] <= varMin)
-        {
-            var[cellI] = varMin;
-            useLowerBound = 1;
-        }
-        if (var[cellI] >= varMax)
-        {
-            var[cellI] = varMax;
-            useUpperBound = 1;
-        }
-    }
-
-    if (useUpperBound)
-        Info << "Bounding " << var.name() << "<" << varMax << endl;
-    if (useLowerBound)
-        Info << "Bounding " << var.name() << ">" << varMin << endl;
-
-    return;
-}
-
-template<class BasicTurbulenceModel>
 void SpalartAllmarasFv3<BasicTurbulenceModel>::correct()
 {
     if (!this->turbulence_)
@@ -319,7 +285,6 @@ void SpalartAllmarasFv3<BasicTurbulenceModel>::correct()
     solve(nuTildaEqn);
     fvOptions.correct(nuTilda_);
     bound(nuTilda_, dimensionedScalar("0", nuTilda_.dimensions(), nuTildaMin_.value()));
-    boundVar(nuTilda_);
     nuTilda_.correctBoundaryConditions();
 
     correctNut(fv1);

@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DASpalartAllmaras.H"
+#include "DASpalartAllmarasFv3.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DASpalartAllmaras, 0);
-addToRunTimeSelectionTable(DATurbulenceModel, DASpalartAllmaras, dictionary);
+defineTypeNameAndDebug(DASpalartAllmarasFv3, 0);
+addToRunTimeSelectionTable(DATurbulenceModel, DASpalartAllmarasFv3, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DASpalartAllmaras::DASpalartAllmaras(
+DASpalartAllmarasFv3::DASpalartAllmarasFv3(
     const word modelType,
     const fvMesh& mesh,
     const DAOption& daOption)
@@ -52,11 +52,10 @@ DASpalartAllmaras::DASpalartAllmaras(
           "Cv1",
           this->coeffDict_,
           7.1)),
-      Cs_(dimensioned<scalar>::lookupOrAddToDict(
-          "Cs",
+      Cv2_(dimensioned<scalar>::lookupOrAddToDict(
+          "Cv2",
           this->coeffDict_,
-          0.3)),
-
+          5.0)),
       // Augmented variables
       nuTilda_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("nuTilda"))),
@@ -86,7 +85,7 @@ DASpalartAllmaras::DASpalartAllmaras(
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 
-    // initialize printInterval_ we need to check whether it is a steady state 
+    // initialize printInterval_ we need to check whether it is a steady state
     // or unsteady primal solver
     IOdictionary fvSchemes(
         IOobject(
@@ -112,40 +111,39 @@ DASpalartAllmaras::DASpalartAllmaras(
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // SA member functions. these functions are copied from
-// src/TurbulenceModels/turbulenceModels/RAS/SpalartAllmaras/SpalartAllmaras.C
-tmp<volScalarField> DASpalartAllmaras::chi() const
+tmp<volScalarField> DASpalartAllmarasFv3::chi() const
 {
     return nuTilda_ / this->nu();
 }
 
-tmp<volScalarField> DASpalartAllmaras::fv1(
+tmp<volScalarField> DASpalartAllmarasFv3::fv1(
     const volScalarField& chi) const
 {
     const volScalarField chi3(pow3(chi));
     return chi3 / (chi3 + pow3(Cv1_));
 }
 
-tmp<volScalarField> DASpalartAllmaras::fv2(
+tmp<volScalarField> DASpalartAllmarasFv3::fv2(
     const volScalarField& chi,
     const volScalarField& fv1) const
 {
-    return 1.0 - chi / (1.0 + chi * fv1);
+    return 1.0 / pow3(scalar(1) + chi / Cv2_);
 }
 
-tmp<volScalarField> DASpalartAllmaras::Stilda(
+tmp<volScalarField> DASpalartAllmarasFv3::fv3(
     const volScalarField& chi,
     const volScalarField& fv1) const
 {
-    volScalarField Omega(::sqrt(2.0) * mag(skew(fvc::grad(U_))));
 
-    return (
-        max(
-            Omega
-                + fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_),
-            Cs_ * Omega));
+    const volScalarField chiByCv2((1 / Cv2_) * chi);
+
+    return (scalar(1) + chi * fv1)
+        * (1 / Cv2_)
+        * (3 * (scalar(1) + chiByCv2) + sqr(chiByCv2))
+        / pow3(scalar(1) + chiByCv2);
 }
 
-tmp<volScalarField> DASpalartAllmaras::fw(
+tmp<volScalarField> DASpalartAllmarasFv3::fw(
     const volScalarField& Stilda) const
 {
     volScalarField r(
@@ -163,14 +161,14 @@ tmp<volScalarField> DASpalartAllmaras::fw(
     return g * pow((1.0 + pow6(Cw3_)) / (pow6(g) + pow6(Cw3_)), 1.0 / 6.0);
 }
 
-tmp<volScalarField> DASpalartAllmaras::DnuTildaEff() const
+tmp<volScalarField> DASpalartAllmarasFv3::DnuTildaEff() const
 {
     return tmp<volScalarField>(
         new volScalarField("DnuTildaEff", (nuTilda_ + this->nu()) / sigmaNut_));
 }
 
 // Augmented functions
-void DASpalartAllmaras::correctModelStates(wordList& modelStates) const
+void DASpalartAllmarasFv3::correctModelStates(wordList& modelStates) const
 {
     /*
     Description:
@@ -204,7 +202,7 @@ void DASpalartAllmaras::correctModelStates(wordList& modelStates) const
     }
 }
 
-void DASpalartAllmaras::correctNut()
+void DASpalartAllmarasFv3::correctNut()
 {
     /*
     Description:
@@ -224,7 +222,7 @@ void DASpalartAllmaras::correctNut()
     return;
 }
 
-void DASpalartAllmaras::correctBoundaryConditions()
+void DASpalartAllmarasFv3::correctBoundaryConditions()
 {
     /*
     Description:
@@ -235,7 +233,7 @@ void DASpalartAllmaras::correctBoundaryConditions()
     nuTilda_.correctBoundaryConditions();
 }
 
-void DASpalartAllmaras::updateIntermediateVariables()
+void DASpalartAllmarasFv3::updateIntermediateVariables()
 {
     /*
     Description:
@@ -246,7 +244,7 @@ void DASpalartAllmaras::updateIntermediateVariables()
     this->correctNut();
 }
 
-void DASpalartAllmaras::correctStateResidualModelCon(List<List<word>>& stateCon) const
+void DASpalartAllmarasFv3::correctStateResidualModelCon(List<List<word>>& stateCon) const
 {
     /*
     Description:
@@ -296,7 +294,7 @@ void DASpalartAllmaras::correctStateResidualModelCon(List<List<word>>& stateCon)
     }
 }
 
-void DASpalartAllmaras::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
+void DASpalartAllmarasFv3::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
 {
     /*
     Description:
@@ -374,7 +372,7 @@ void DASpalartAllmaras::addModelResidualCon(HashTable<List<List<word>>>& allCon)
 #endif
 }
 
-void DASpalartAllmaras::correct()
+void DASpalartAllmarasFv3::correct()
 {
     /*
     Descroption:
@@ -394,7 +392,7 @@ void DASpalartAllmaras::correct()
     solveTurbState_ = 0;
 }
 
-void DASpalartAllmaras::calcResiduals(const dictionary& options)
+void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
 {
     /*
     Descroption:
@@ -437,7 +435,9 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
     const volScalarField chi(this->chi());
     const volScalarField fv1(this->fv1(chi));
 
-    const volScalarField Stilda(this->Stilda(chi, fv1));
+    const volScalarField Stilda(
+        this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
+        + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
 
     tmp<fvScalarMatrix> nuTildaEqn(
         fvm::ddt(phase_, rho_, nuTilda_)
