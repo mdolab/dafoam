@@ -19,6 +19,7 @@
 #include "pressureControl.H"
 #include "DARegDbFluidThermo.H"
 #include "DARegDbTurbulenceModelCompressible.H"
+#include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -61,6 +62,18 @@ protected:
 
     /// DATurbulenceModel pointer
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+
+    /// DASource pointer
+    autoPtr<DAFvSource> daFvSourcePtr_;
+
+    /// fvSource term 
+    autoPtr<volVectorField> fvSourcePtr_;
+
+    /// fvSource term for the energy equation
+    autoPtr<volScalarField> fvSourceEnergyPtr_;
+
+    /// whether to have fvSource term
+    label hasFvSource_ = 0;
 
     /// initial mass
     dimensionedScalar initialMass_;

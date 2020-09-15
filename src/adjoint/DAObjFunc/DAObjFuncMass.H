@@ -4,14 +4,14 @@
     Version : v2
 
     Description:
-        Child class for ActuatorDisk disk source
+        Child class for mass
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAFvSourceActuatorDisk_H
-#define DAFvSourceActuatorDisk_H
+#ifndef DAObjFuncMass_H
+#define DAObjFuncMass_H
 
-#include "DAFvSource.H"
+#include "DAObjFunc.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,46 +20,40 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAFvSourceActuatorDisk Declaration
+      Class DAObjFuncMass Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAFvSourceActuatorDisk
-    : public DAFvSource
+class DAObjFuncMass
+    : public DAObjFunc
 {
 
-protected:
-
-    /// HashTable that contains lists of cell indices that are within the actuator disk space
-    HashTable<labelList> fvSourceCellIndices_;
-
-    /// calculate DAFvSourceActuatorDisk::fvSourceCellIndices_
-    void calcFvSourceCellIndices(HashTable<labelList>& fvSourceCellIndices);
-
-    /// the subDict of fvSource in DAOption
-    dictionary fvSourceSubDict_;
-
-    /// print interval for primal and adjoint
-    label printInterval_;
-
 public:
-    TypeName("actuatorDisk");
+    TypeName("mass");
     // Constructors
 
     //- Construct from components
-    DAFvSourceActuatorDisk(
-        const word modelType,
+    DAObjFuncMass(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
-        const DAIndex& daIndex);
+        const DAIndex& daIndex,
+        const DAResidual& daResidual,
+        const word objFuncName,
+        const word objFuncPart,
+        const dictionary& objFuncDict);
 
     //- Destructor
-    virtual ~DAFvSourceActuatorDisk()
+    virtual ~DAObjFuncMass()
     {
     }
 
-    /// compute the FvSource term
-    virtual void calcFvSource(volVectorField& fvSource);
+    /// calculate the value of objective function
+    virtual void calcObjFunc(
+        const labelList& objFuncFaceSources,
+        const labelList& objFuncCellSources,
+        scalarList& objFuncFaceValues,
+        scalarList& objFuncCellValues,
+        scalar& objFuncValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

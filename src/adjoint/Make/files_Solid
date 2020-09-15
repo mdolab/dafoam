@@ -16,6 +16,7 @@ DAField/DAField.C
 
 DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncVonMisesStressKS.C
+DAObjFunc/DAObjFuncMass.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C

@@ -28,6 +28,11 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
       setResidualClassMemberScalar(p, dimensionSet(1, -3, -1, 0, 0, 0, 0)),
       setResidualClassMemberScalar(T, dimensionSet(1, -1, -3, 0, 0, 0, 0)),
       setResidualClassMemberPhi(phi),
+      daFvSourcePtr_(nullptr),
+      fvSource_(const_cast<volVectorField&>(
+          mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
+      fvSourceEnergy_(const_cast<volScalarField&>(
+          mesh_.thisDb().lookupObject<volScalarField>("fvSourceEnergy"))),
       thermo_(const_cast<fluidThermo&>(daModel.getThermo())),
       he_(thermo_.he()),
       rho_(const_cast<volScalarField&>(
@@ -41,6 +46,18 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
       simple_(const_cast<fvMesh&>(mesh)),
       pressureControl_(p_, rho_, simple_.dict())
 {
+
+    // initialize fvSource
+    const dictionary& allOptions = daOption.getAllOptions();
+    if (allOptions.subDict("fvSource").toc().size() != 0)
+    {
+        hasFvSource_ = 1;
+        Info << "Initializing DASource" << endl;
+        word sourceName = allOptions.subDict("fvSource").toc()[0];
+        word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
+        daFvSourcePtr_.reset(DAFvSource::New(
+            fvSourceType, mesh, daOption, daModel, daIndex));
+    }
 
     // get molWeight and Cp from thermophysicalProperties
     const IOdictionary& thermoDict = mesh.thisDb().lookupObject<IOdictionary>("thermophysicalProperties");
@@ -114,9 +131,15 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
     // ******** U Residuals **********
     // copied and modified from UEqn.H
 
+    if (hasFvSource_)
+    {
+        daFvSourcePtr_->calcFvSource(fvSource_);
+    }
+
     tmp<fvVectorMatrix> tUEqn(
         fvm::div(phi_, U_, divUScheme)
-        + daTurb_.divDevRhoReff(U_));
+        + daTurb_.divDevRhoReff(U_)
+        - fvSource_);
     fvVectorMatrix& UEqn = tUEqn.ref();
 
     UEqn.relax();
@@ -128,12 +151,18 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
     // copied and modified from EEqn.H
     volScalarField alphaEff("alphaEff", thermo_.alphaEff(alphat_));
 
+    if (hasFvSource_)
+    {
+        fvSourceEnergy_ = fvSource_ & U_;
+    }
+
     fvScalarMatrix EEqn(
         fvm::div(phi_, he_, divHEScheme)
         + (he_.name() == "e"
                ? fvc::div(phi_, volScalarField("Ekp", 0.5 * magSqr(U_) + p_ / rho_))
                : fvc::div(phi_, volScalarField("K", 0.5 * magSqr(U_))))
-        - fvm::laplacian(alphaEff, he_));
+        - fvm::laplacian(alphaEff, he_)
+        - fvSourceEnergy_);
 
     EEqn.relax();
 
@@ -147,7 +176,7 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
     //volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
     //***************** NOTE *******************
     // constrainHbyA has been used since OpenFOAM-v1606; however, We do NOT use the constrainHbyA
-    // function in DAFoam because we found it significantly degrades the accuracy of shape derivatives. 
+    // function in DAFoam because we found it significantly degrades the accuracy of shape derivatives.
     // Basically, we should not constrain any variable because it will create discontinuity.
     // Instead, we use the old implementation used in OpenFOAM-3.0+ and before
     volVectorField HbyA("HbyA", U_);

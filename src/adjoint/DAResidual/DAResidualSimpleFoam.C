@@ -27,12 +27,24 @@ DAResidualSimpleFoam::DAResidualSimpleFoam(
       setResidualClassMemberVector(U, dimensionSet(0, 1, -2, 0, 0, 0, 0)),
       setResidualClassMemberScalar(p, dimensionSet(0, 0, -1, 0, 0, 0, 0)),
       setResidualClassMemberPhi(phi),
+      daFvSourcePtr_(nullptr),
       fvSource_(const_cast<volVectorField&>(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
       // create simpleControl
       simple_(const_cast<fvMesh&>(mesh))
 {
+    // initialize fvSource
+    const dictionary& allOptions = daOption.getAllOptions();
+    if (allOptions.subDict("fvSource").toc().size() != 0)
+    {
+        hasFvSource_ = 1;
+        Info << "Initializing DASource" << endl;
+        word sourceName = allOptions.subDict("fvSource").toc()[0];
+        word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
+        daFvSourcePtr_.reset(DAFvSource::New(
+            fvSourceType, mesh, daOption, daModel, daIndex));
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -82,6 +94,11 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
     if (isPC)
     {
         divUScheme = "div(pc)";
+    }
+
+    if (hasFvSource_)
+    {
+        daFvSourcePtr_->calcFvSource(fvSource_);
     }
 
     tmp<fvVectorMatrix> tUEqn(
@@ -149,7 +166,6 @@ void DAResidualSimpleFoam::updateIntermediateVariables()
     */
 
     // nothing to update for DASimpleFoam
-    
 }
 
 void DAResidualSimpleFoam::correctBoundaryConditions()
