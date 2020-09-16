@@ -827,6 +827,147 @@ void DAField::setPrimalBoundaryConditions()
                 }
             }
         }
+
+        // ------ k ----------
+        if (db.foundObject<volScalarField>("k"))
+        {
+
+            volScalarField& k(const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("k")));
+
+            forAll(k.boundaryField(), patchI)
+            {
+                if (mesh_.boundaryMesh()[patchI].type() == "wall")
+                {
+                    Info << "Setting k wall BC for "
+                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+
+                    if (useWallFunction)
+                    {
+                        // wall function for SA
+                        k.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New("kqRWallFunction", mesh_.boundary()[patchI], k));
+                        Info << "BCType=kqRWallFunction" << endl;
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            scalar wallVal = k[0];
+                            forAll(k.boundaryFieldRef()[patchI], faceI)
+                            {
+                                k.boundaryFieldRef()[patchI][faceI] = wallVal; // assign uniform field
+                            }
+                        }
+                    }
+                    else
+                    {
+                        k.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New("fixedValue", mesh_.boundary()[patchI], k));
+                        Info << "BCType=fixedValue" << endl;
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            forAll(k.boundaryFieldRef()[patchI], faceI)
+                            {
+                                k.boundaryFieldRef()[patchI][faceI] = 1e-14; // assign uniform field
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ------ omega ----------
+        if (db.foundObject<volScalarField>("omega"))
+        {
+
+            volScalarField& omega(const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("omega")));
+
+            forAll(omega.boundaryField(), patchI)
+            {
+                if (mesh_.boundaryMesh()[patchI].type() == "wall")
+                {
+                    Info << "Setting omega wall BC for "
+                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+
+                    // always use omegaWallFunction
+                    omega.boundaryFieldRef().set(
+                        patchI,
+                        fvPatchField<scalar>::New("omegaWallFunction", mesh_.boundary()[patchI], omega));
+                    Info << "BCType=omegaWallFunction" << endl;
+
+                    // set boundary values
+                    // for decomposed domain, don't set BC if the patch is empty
+                    if (mesh_.boundaryMesh()[patchI].size() > 0)
+                    {
+                        scalar wallVal = omega[0];
+                        forAll(omega.boundaryFieldRef()[patchI], faceI)
+                        {
+                            omega.boundaryFieldRef()[patchI][faceI] = wallVal; // assign uniform field
+                        }
+                    }
+                }
+            }
+        }
+
+        // ------ epsilon ----------
+        if (db.foundObject<volScalarField>("epsilon"))
+        {
+
+            volScalarField& epsilon(const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("epsilon")));
+
+            forAll(epsilon.boundaryField(), patchI)
+            {
+                if (mesh_.boundaryMesh()[patchI].type() == "wall")
+                {
+                    Info << "Setting epsilon wall BC for "
+                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+
+                    if (useWallFunction)
+                    {
+                        epsilon.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New("epsilonWallFunction", mesh_.boundary()[patchI], epsilon));
+                        Info << "BCType=epsilonWallFunction" << endl;
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            scalar wallVal = epsilon[0];
+                            forAll(epsilon.boundaryFieldRef()[patchI], faceI)
+                            {
+                                epsilon.boundaryFieldRef()[patchI][faceI] = wallVal; // assign uniform field
+                            }
+                        }
+                    }
+                    else
+                    {
+                        epsilon.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New("fixedValue", mesh_.boundary()[patchI], epsilon));
+                        Info << "BCType=fixedValue" << endl;
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            forAll(epsilon.boundaryFieldRef()[patchI], faceI)
+                            {
+                                epsilon.boundaryFieldRef()[patchI][faceI] = 1e-14; // assign uniform field
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
