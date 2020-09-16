@@ -12,6 +12,7 @@ DAModel/DATurbulenceModel/DATurbulenceModel.C
 DAModel/DATurbulenceModel/DASpalartAllmaras.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
+DAModel/DATurbulenceModel/DAkEpsilon.C
 DAModel/DATurbulenceModel/DADummyTurbulenceModel.C
 
 DAModel/DARadiationModel/DARadiationModel.C
