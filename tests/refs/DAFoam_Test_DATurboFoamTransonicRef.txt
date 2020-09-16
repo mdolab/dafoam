@@ -4,6 +4,8 @@ Dictionary Key: MFR
 @value     1.40813011236033 1e-08 1e-10
 Dictionary Key: TPR
 @value    1.146079464635395 1e-08 1e-10
+Dictionary Key: TTR
+@value    1.054678499298539 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: CMZ
