@@ -40,6 +40,7 @@ if gcomm.rank == 0:
     os.system("cp -r constant/MRFProperties.subsonic constant/MRFProperties")
     os.system("cp -r system/fvSolution.subsonic system/fvSolution")
     os.system("cp -r system/fvSchemes.subsonic system/fvSchemes")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
 
 # test incompressible solvers
 aeroOptions = {
@@ -65,6 +66,37 @@ aeroOptions = {
         "rhoMin": 0.2,
     },
     "objFunc": {
+        "TPR": {
+            "part1": {
+                "type": "totalPressureRatio",
+                "source": "patchToFace",
+                "patches": ["inlet", "outlet"],
+                "inletPatches": ["inlet"],
+                "outletPatches": ["outlet"],
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
+        "TTR": {
+            "part1": {
+                "type": "totalTemperatureRatio",
+                "source": "patchToFace",
+                "patches": ["inlet", "outlet"],
+                "inletPatches": ["inlet"],
+                "outletPatches": ["outlet"],
+                "scale": 1.0,
+                "addToAdjoint": False,
+            }
+        },
+        "MFR": {
+            "part1": {
+                "type": "massFlowRate",
+                "source": "patchToFace",
+                "patches": ["inlet"],
+                "scale": -1.0,
+                "addToAdjoint": True,
+            }
+        },
         "CMZ": {
             "part1": {
                 "type": "moment",

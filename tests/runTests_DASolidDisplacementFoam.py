@@ -34,11 +34,12 @@ os.chdir("./input/PlateHole")
 # test incompressible solvers
 aeroOptions = {
     "debug": True,
-    "maxTractionBCIters": 50,
+    "maxTractionBCIters": 20,
     "solverName": "DASolidDisplacementFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["hole"],
-    "primalMinResTol": 1e-4,
+    "primalMinResTol": 1e-10,
+    "primalMinResTolDiff": 1e10,
     "objFunc": {
         "VMS": {
             "part1": {
@@ -47,13 +48,23 @@ aeroOptions = {
                 "min": [-10.0, -10.0, -10.0],
                 "max": [10.0, 10.0, 10.0],
                 "scale": 1.0,
-                "coeffKS": 1.0e-3,
+                "coeffKS": 2.0e-3,
+                "addToAdjoint": True,
+            }
+        },
+        "M": {
+            "part1": {
+                "type": "mass",
+                "source": "boxToCell",
+                "min": [-10.0, -10.0, -10.0],
+                "max": [10.0, 10.0, 10.0],
+                "scale": 1.0,
                 "addToAdjoint": True,
             }
         },
     },
     "normalizeStates": {"D": 1.0e-7},
-    "adjPartDerivFDStep": {"State": 1e-4, "FFD": 1e-3},
+    "adjPartDerivFDStep": {"State": 1e-5, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-15, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
     "designVar": {
@@ -75,10 +86,10 @@ FFDFile = "./FFD/plateFFD.xyz"
 DVGeo = DVGeometry(FFDFile)
 # select points
 pts = DVGeo.getLocalIndex(0)
-indexList = pts[1, 0, 0].flatten()
+indexList = pts[2:5, 2, 0].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
-indexList = pts[0, 1, 0].flatten()
+indexList = pts[4, 2:5, 0].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 DVGeo.addGeoDVLocal("shapex", lower=-1.0, upper=1.0, axis="x", scale=1.0, pointSelect=PS)
 

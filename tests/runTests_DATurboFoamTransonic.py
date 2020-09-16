@@ -40,6 +40,7 @@ if gcomm.rank == 0:
     os.system("cp -r constant/MRFProperties.transonic constant/MRFProperties")
     os.system("cp -r system/fvSolution.transonic system/fvSolution")
     os.system("cp -r system/fvSchemes.transonic system/fvSchemes")
+    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
 
 # test incompressible solvers
 aeroOptions = {
@@ -58,17 +59,6 @@ aeroOptions = {
         "rhoMin": 0.2,
     },
     "objFunc": {
-        "CMZ": {
-            "part1": {
-                "type": "moment",
-                "source": "patchToFace",
-                "patches": ["blade"],
-                "axis": [0.0, 0.0, 1.0],
-                "center": [0.0, 0.0, 0.0],
-                "scale": 1.0 / (0.5 * 10.0 * 10.0 * 1.0 * 1.0),
-                "addToAdjoint": True,
-            }
-        },
         "TPR": {
             "part1": {
                 "type": "totalPressureRatio",
@@ -88,7 +78,7 @@ aeroOptions = {
                 "inletPatches": ["inlet"],
                 "outletPatches": ["outlet"],
                 "scale": 1.0,
-                "addToAdjoint": True,
+                "addToAdjoint": False,
             }
         },
         "MFR": {
@@ -96,7 +86,18 @@ aeroOptions = {
                 "type": "massFlowRate",
                 "source": "patchToFace",
                 "patches": ["inlet"],
-                "scale": 1.0,
+                "scale": -1.0,
+                "addToAdjoint": True,
+            }
+        },
+        "CMZ": {
+            "part1": {
+                "type": "moment",
+                "source": "patchToFace",
+                "patches": ["blade"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.0, 0.0, 0.0],
+                "scale": 1.0 / (0.5 * 10.0 * 10.0 * 1.0 * 1.0),
                 "addToAdjoint": True,
             }
         },

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Run Python tests for DASimpleFoam
+Run Python tests for optimization integration
 """
 
 from mpi4py import MPI
@@ -31,15 +31,16 @@ if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.incompressible 0")
     os.system("cp -r system.incompressible system")
-    os.system("cp -r constant/turbulenceProperties.sst constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
 
 U0 = 10.0
 p0 = 0.0
-k0 = 0.18
-omega0 = 1225.0
+nuTilda0 = 4.5e-5
 A0 = 0.1
 alpha0 = 5.0
 LRef = 1.0
+CL_target = 0.5
+CM_target = 0.0
 
 # test incompressible solvers
 aeroOptions = {
@@ -47,36 +48,14 @@ aeroOptions = {
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
+    "multiPoint": True,
+    "nMultiPoints": 1,
+    "printAllOptions": True,
     "primalBC": {
-        "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
-        "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
-        "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},
+        "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
         "useWallFunction": False,
-    },
-    "fvSource": {
-        "disk1": {
-            "type": "actuatorDisk",
-            "source": "cylinderAnnulusToCell",
-            "p1": [-0.4, -0.1, 0.05],  # p1 and p2 define the axis and width
-            "p2": [-0.1, -0.1, 0.05],  # p2-p1 should be streamwise
-            "innerRadius": 0.01,
-            "outerRadius": 0.5,
-            "rotDir": "left",
-            "scale": 50.0,
-            "POD": 0.7,
-        },
-        "disk2": {
-            "type": "actuatorDisk",
-            "source": "cylinderAnnulusToCell",
-            "p1": [-0.4, 0.1, 0.05],
-            "p2": [-0.1, 0.1, 0.05],
-            "innerRadius": 0.01,
-            "outerRadius": 0.5,
-            "rotDir": "right",
-            "scale": 25.0,
-            "POD": 1.0,
-        },
     },
     "objFunc": {
         "CD": {
@@ -113,9 +92,9 @@ aeroOptions = {
             }
         },
     },
-    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
+    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "nuTilda": nuTilda0 * 10.0, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
-    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "natural"},
+    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
     "designVar": {
         "shapey": {"designVarType": "FFD"},
@@ -129,6 +108,12 @@ meshOptions = {
     "fileType": "openfoam",
     # point and normal for the symmetry plane
     "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], [[0.0, 0.0, 0.1], [0.0, 0.0, 1.0]]],
+}
+
+optOptions = {
+    "ACC": 1.0e-5,  # convergence accuracy
+    "MAXIT": 2,  # max optimization iterations
+    "IFILE": "opt_SLSQP.out",
 }
 
 # DVGeo
@@ -148,7 +133,7 @@ def alpha(val, geo):
 
 # select points
 pts = DVGeo.getLocalIndex(0)
-indexList = pts[1:4, 1, 0].flatten()
+indexList = pts[:, :, :].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
 DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
@@ -171,22 +156,83 @@ DVCon.setDVGeo(DVGeo)
 surf = [p0, v1, v2]
 DVCon.setSurface(surf)
 
+leList = [[1e-4, 0.0, 1e-4], [1e-4, 0.0, 0.1 - 1e-4]]
+teList = [[0.998 - 1e-4, 0.0, 1e-4], [0.998 - 1e-4, 0.0, 0.1 - 1e-4]]
+
+DVCon.addVolumeConstraint(leList, teList, nSpan=2, nChord=10, lower=1.0, upper=3, scaled=True)
+DVCon.addThicknessConstraints2D(leList, teList, nSpan=2, nChord=10, lower=0.8, upper=3.0, scaled=True)
+
+# Create a linear constraint so that the curvature at the symmetry plane is zero
+nFFDs_x = 5
+pts1 = DVGeo.getLocalIndex(0)
+indSetA = []
+indSetB = []
+for i in range(nFFDs_x):
+    for j in [0, 1]:
+        indSetA.append(pts1[i, j, 1])
+        indSetB.append(pts1[i, j, 0])
+DVCon.addLinearConstraintsShape(indSetA, indSetB, factorA=1.0, factorB=-1.0, lower=0.0, upper=0.0)
+
+# Create a linear constraint so that the leading and trailing edges do not change
+pts1 = DVGeo.getLocalIndex(0)
+indSetA = []
+indSetB = []
+for i in [0, nFFDs_x - 1]:
+    for k in [0]:  # do not constrain k=1 because it is linked in the above symmetry constraint
+        indSetA.append(pts1[i, 0, k])
+        indSetB.append(pts1[i, 1, k])
+DVCon.addLinearConstraintsShape(indSetA, indSetB, factorA=1.0, factorB=1.0, lower=0.0, upper=0.0)
+
 # optFuncs
+# provide a function to set primal conditions
+def setMultiPointCondition(xDV, index):
+    pass
+
+
+# provide a function to assemble the funcs from MP
+def setMultiPointObjFuncs(funcs, funcsMP, index):
+    for key in funcs:
+        funcsMP[key] = funcs[key]
+    return
+
+
+# provide a function to assemble the funcs from MP
+def setMultiPointObjFuncsSens(xDVs, funcsMP, funcsSens, funcsSensMP, index):
+    for key in funcsSens:
+        funcsSensMP[key] = funcsSens[key]
+    return
+
 optFuncs.DASolver = DASolver
 optFuncs.DVGeo = DVGeo
 optFuncs.DVCon = DVCon
 optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
+optFuncs.setMultiPointCondition = setMultiPointCondition
+optFuncs.setMultiPointObjFuncs = setMultiPointObjFuncs
+optFuncs.setMultiPointObjFuncsSens = setMultiPointObjFuncsSens
 
-# Run
+# Optimize
 DASolver.runColoring()
-xDV = DVGeo.getValues()
-funcs = {}
-funcs, fail = optFuncs.calcObjFuncValues(xDV)
-funcsSens = {}
-funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
+optProb = Optimization("opt", optFuncs.calcObjFuncValuesMP, comm=gcomm)
+DVGeo.addVariablesPyOpt(optProb)
+DVCon.addConstraintsPyOpt(optProb)
+# Add objective
+optProb.addObj("CD", scale=1)
+# Add physical constraints
+optProb.addCon("CL", lower=CL_target, upper=CL_target, scale=1)
+optProb.addCon("CMZ", lower=CM_target, upper=CM_target, scale=1)
+
+if gcomm.rank == 0:
+    print(optProb)
+
+opt = OPT("slsqp", options=optOptions)
+histFile = os.path.join("./", "slsqp_hist.hst")
+sol = opt(optProb, sens=optFuncs.calcObjFuncSensMP, storeHistory=histFile)
+
+if gcomm.rank == 0:
+    print(sol)
 
 if checkRegVal:
+    xDVs = DVGeo.getValues()
     if gcomm.rank == 0:
-        reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-6, 1e-8)
+        reg_write_dict(xDVs, 1e-6, 1e-8)

@@ -31,10 +31,12 @@ if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.compressible 0")
     os.system("cp -r system.transonic system")
+    os.system("cp -r constant/turbulenceProperties.sst constant/turbulenceProperties")
 
 U0 = 238.0
 p0 = 101325.0
-nuTilda0 = 4.5e-5
+k0 = 0.33
+omega0 = 2171.0
 T0 = 300.0
 A0 = 0.1
 alpha0 = 2.7
@@ -50,7 +52,8 @@ aeroOptions = {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
         "T0": {"variable": "T", "patches": ["inout"], "value": [T0]},
-        "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
+        "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
+        "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},
         "useWallFunction": True,
     },
     "primalVarBounds": {
@@ -87,9 +90,11 @@ aeroOptions = {
             }
         },
     },
-    "normalizeStates": {"U": U0, "p": p0, "nuTilda": nuTilda0 * 10.0, "phi": 1.0},
+    "normalizeStates": {"U": U0, "p": p0, "k": 1.0, "omega": 1.0, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
-    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
+    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "nd"},
+    "adjStateOrdering": "cell",
+    "transonicPCOption": 1,
     # Design variable setup
     "designVar": {
         "shapey": {"designVarType": "FFD"},
@@ -122,7 +127,7 @@ def alpha(val, geo):
 
 # select points
 pts = DVGeo.getLocalIndex(0)
-indexList = pts[:, :, :].flatten()
+indexList = pts[1:4, 1, 0].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
 DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
