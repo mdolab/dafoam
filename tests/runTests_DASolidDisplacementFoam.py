@@ -36,7 +36,6 @@ aeroOptions = {
     "debug": True,
     "maxTractionBCIters": 50,
     "solverName": "DASolidDisplacementFoam",
-    "flowCondition": "Solid",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["hole"],
     "primalMinResTol": 1e-4,

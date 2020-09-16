@@ -38,8 +38,6 @@ nuTilda0 = 1.5e-4
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleTFoam",
-    "flowCondition": "Incompressible",
-    "turbulenceModel": "SpalartAllmaras",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["ubend"],
     "primalMinResTol": 1e-5,

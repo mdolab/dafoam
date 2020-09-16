@@ -583,7 +583,7 @@ class PYDAFOAM(object):
 
         self.solverRegistry = {
             "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam"],
-            "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurbFoam"],
+            "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam"],
             "Solid": ["DASolidDisplacementFoam"],
         }
 

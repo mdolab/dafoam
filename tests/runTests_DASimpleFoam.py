@@ -44,8 +44,6 @@ CM_target = 0.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleFoam",
-    "flowCondition": "Incompressible",
-    "turbulenceModel": "SpalartAllmaras",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
