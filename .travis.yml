@@ -53,6 +53,7 @@ jobs:
         # compile and run the tests
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DASimpleFoam.py noCheckVal"
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DASimpleTFoam.py noCheckVal"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DAPisoFoam.py noCheckVal"
         # run coveralls, the -lp option is for inline functions in C++
         - docker exec -it -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/src/adjoint && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && COVERALLS_PARALLEL=true coveralls --gcov-options '\-lp'"
 
@@ -91,9 +92,9 @@ jobs:
         # install coveralls and coverage
         - docker exec -it regtest /bin/bash -c "pip install coveralls --user && pip install coverage --user"
         # serial test
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && coverage run --include=$DOCKER_PIP_INSTALL_PATH/dafoam/pyDAFoam.py runTests_DASimpleFoam.py noCheckVal"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && coverage run --include=$DOCKER_PIP_INSTALL_PATH/dafoam/pyDAFoam.py runTests_Integration.py noCheckVal"
         # parallel test
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 coverage run --include=$DOCKER_PIP_INSTALL_PATH/dafoam/pyDAFoam.py runTests_DASimpleFoam.py noCheckVal"  
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 coverage run --include=$DOCKER_PIP_INSTALL_PATH/dafoam/pyDAFoam.py runTests_Integration.py noCheckVal"  
         # combine and run coveralls
         - docker exec -it -e TRAVIS="$TRAVIS" -e TRAVIS_JOB_ID="$TRAVIS_JOB_ID" -e TRAVIS_BRANCH="$TRAVIS_BRANCH" regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && coverage combine && COVERALLS_PARALLEL=true coveralls"
 
