@@ -481,9 +481,6 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
                         fOut.flush()
             fOut.close()
 
-def checkAPI():
-    pass
-
 class Info(object):
     """
     Print information and flush to screen for parallel cases
