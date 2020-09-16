@@ -14,14 +14,10 @@ from pyoptsparse import Optimization, OPT
 import numpy as np
 from testFuncs import *
 
-checkRegVal = 1
-if len(sys.argv) == 1:
-    checkRegVal = 1
-elif sys.argv[1] == "noCheckVal":
-    checkRegVal = 0
-else:
-    print("sys.argv %s not valid!" % sys.argv[1])
-    exit(1)
+calcFDSens = 0
+if len(sys.argv) != 1:
+    if sys.argv[1] == "calcFDSens":
+        calcFDSens = 1
 
 gcomm = MPI.COMM_WORLD
 
@@ -51,7 +47,7 @@ aeroOptions = {
             "thrustDirIdx": 0,
             "periodicity": 1.0,
             "eps": 10.0,
-            "scale": 10.0  # scale the source such the integral equals desired thrust
+            "scale": 10.0,  # scale the source such the integral equals desired thrust
         },
     },
     "objFunc": {
@@ -83,9 +79,7 @@ aeroOptions = {
     "adjPartDerivFDStep": {"State": 1e-7, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
-    "designVar": {
-        "shapey": {"designVarType": "FFD"},
-    },
+    "designVar": {"shapey": {"designVarType": "FFD"},},
 }
 
 # mesh warping parameters, users need to manually specify the symmetry plane
@@ -168,14 +162,15 @@ optFuncs.setHybridAdjointObjFuncs = setHybridAdjointObjFuncs
 optFuncs.setHybridAdjointObjFuncsSens = setHybridAdjointObjFuncsSens
 
 # Run
-DASolver.runColoring()
-xDV = DVGeo.getValues()
-funcs = {}
-funcs, fail = optFuncs.calcObjFuncValuesHybridAdjoint(xDV)
-funcsSens = {}
-funcsSens, fail = optFuncs.calcObjFuncSensHybridAdjoint(xDV, funcs)
-
-if checkRegVal:
+if calcFDSens == 1:
+    optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValuesHybridAdjoint, fileName="sensFD.txt")
+else:
+    DASolver.runColoring()
+    xDV = DVGeo.getValues()
+    funcs = {}
+    funcs, fail = optFuncs.calcObjFuncValuesHybridAdjoint(xDV)
+    funcsSens = {}
+    funcsSens, fail = optFuncs.calcObjFuncSensHybridAdjoint(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-6, 1e-8)

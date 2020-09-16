@@ -303,7 +303,7 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
 
     # Setup an empty dictionary for the evaluated derivative values
     funcsSensCombined = {}
-    
+
     funcsSensAllInstances = []
 
     nTimeInstances = DASolver.getOption("hybridAdjoint")["nTimeInstances"]
@@ -334,7 +334,7 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
             with np.printoptions(precision=16, threshold=5, suppress=True):
                 Info("Objective Function Sensitivity: ")
                 Info(funcsSens)
-            
+
         funcsSensAllInstances.append(funcsSens)
 
     setHybridAdjointObjFuncsSens(funcsSensAllInstances, funcsSensCombined)
@@ -352,7 +352,17 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
     return funcsSensCombined, fail
 
 
-def run():
+def runPrimal(objFun=calcObjFuncValues):
+    """
+    Just run the primal
+    """
+
+    xDV = DVGeo.getValues()
+    funcs = {}
+    funcs, fail = objFun(xDV)
+
+
+def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None):
     """
     Just run the primal and adjoint
     """
@@ -360,9 +370,26 @@ def run():
     DASolver.runColoring()
     xDV = DVGeo.getValues()
     funcs = {}
-    funcs, fail = calcObjFuncValues(xDV)
+    funcs, fail = objFun(xDV)
     funcsSens = {}
-    funcsSens, fail = calcObjFuncSens(xDV, funcs)
+    funcsSens, fail = sensFun(xDV, funcs)
+
+    # Optionally, we can write the sensitivity to a file if fileName is provided
+    if fileName is not None:
+        if gcomm.rank == 0:
+            fOut = open(fileName, "w")
+            for funcName in evalFuncs:
+                for shapeVar in xDV:
+                    fOut.write(funcName + " " + shapeVar + "\n")
+                    try:
+                        nDVs = len(funcsSens[funcName][shapeVar])
+                    except Exception:
+                        nDVs = 1
+                    for n in range(nDVs):
+                        line = str(funcsSens[funcName][shapeVar][n]) + "\n"
+                        fOut.write(line)
+                        fOut.flush()
+            fOut.close()
 
 
 def solveCL(CL_star, alphaName, liftName):
@@ -393,36 +420,21 @@ def solveCL(CL_star, alphaName, liftName):
         alpha += deltaAlpha
 
 
-def testSensShape(objFun=calcObjFuncValues, sensFun=calcObjFuncSens):
+def verifySens(objFun=calcObjFuncValues, sensFun=calcObjFuncSens):
     """
     Verify the FFD sensitivity against finite-difference references
     """
 
-    DASolver.runColoring()
+    runAdjoint(objFun, sensFun, "sensAdjoint.txt")
+    calcFDSens(objFun, "sensFD.txt")
+
+
+def calcFDSens(objFun=calcObjFuncValues, fileName=None):
+    """
+    Compute finite-difference sensitivity
+    """
 
     xDV = DVGeo.getValues()
-
-    if gcomm.rank == 0:
-        fOut = open("./testFFDSens.txt", "w")
-
-    # gradAdj
-
-    funcs = {}
-    funcsSens = {}
-    funcs, fail = objFun(xDV)
-    funcsSens, fail = sensFun(xDV, funcs)
-    if gcomm.rank == 0:
-        for funcName in evalFuncs:
-            for shapeVar in xDV:
-                fOut.write(funcName + " " + shapeVar + "\n")
-                try:
-                    nDVs = len(funcsSens[funcName][shapeVar])
-                except Exception:
-                    nDVs = 1
-                for n in range(nDVs):
-                    line = str(funcsSens[funcName][shapeVar][n]) + "\n"
-                    fOut.write(line)
-                    fOut.flush()
 
     # gradFD
     deltaX = DASolver.getOption("adjPartDerivFDStep")["FFD"]
@@ -434,7 +446,7 @@ def testSensShape(objFun=calcObjFuncValues, sensFun=calcObjFuncSens):
             gradFD[funcName][shapeVar] = np.zeros(len(xDV[shapeVar]))
     if gcomm.rank == 0:
         print("-------FD----------", deltaX, flush=True)
-        fOut.write("DeltaX: " + str(deltaX) + "\n")
+            
     for shapeVar in xDV:
         try:
             nDVs = len(xDV[shapeVar])
@@ -452,22 +464,25 @@ def testSensShape(objFun=calcObjFuncValues, sensFun=calcObjFuncSens):
                 gradFD[funcName][shapeVar][i] = (funcp[funcName] - funcm[funcName]) / (2.0 * deltaX)
             Info(gradFD)
     # write FD results
-    if gcomm.rank == 0:
-        for funcName in evalFuncs:
-            for shapeVar in xDV:
-                fOut.write(funcName + " " + shapeVar + "\n")
-                try:
-                    nDVs = len(gradFD[funcName][shapeVar])
-                except Exception:
-                    nDVs = 1
-                for n in range(nDVs):
-                    line = str(gradFD[funcName][shapeVar][n]) + "\n"
-                    fOut.write(line)
-                    fOut.flush()
+    if fileName is not None:
+        if gcomm.rank == 0:
+            fOut = open(fileName, "w")
+            fOut.write("DeltaX: " + str(deltaX) + "\n")
+            for funcName in evalFuncs:
+                for shapeVar in xDV:
+                    fOut.write(funcName + " " + shapeVar + "\n")
+                    try:
+                        nDVs = len(gradFD[funcName][shapeVar])
+                    except Exception:
+                        nDVs = 1
+                    for n in range(nDVs):
+                        line = str(gradFD[funcName][shapeVar][n]) + "\n"
+                        fOut.write(line)
+                        fOut.flush()
+            fOut.close()
 
-    if gcomm.rank == 0:
-        fOut.close()
-
+def checkAPI():
+    pass
 
 class Info(object):
     """

@@ -17,7 +17,7 @@ function runTests()
 {
   rm -rf input DAFoam_Test_${1}.txt
   tar -zxf input.tar.gz
-  mpirun -np 4 python runTests_${1}.py | tee DAFoam_Test_${1}.txt 
+  mpirun -np 4 python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
     echo "${1}: Failed!"
     exit 1

@@ -14,15 +14,6 @@ from pyoptsparse import Optimization, OPT
 import numpy as np
 from testFuncs import *
 
-checkRegVal = 1
-if len(sys.argv) == 1:
-    checkRegVal = 1
-elif sys.argv[1] == "noCheckVal":
-    checkRegVal = 0
-else:
-    print("sys.argv %s not valid!" % sys.argv[1])
-    exit(1)
-
 gcomm = MPI.COMM_WORLD
 
 os.chdir("./input/NACA0012")
@@ -232,7 +223,6 @@ sol = opt(optProb, sens=optFuncs.calcObjFuncSensMP, storeHistory=histFile)
 if gcomm.rank == 0:
     print(sol)
 
-if checkRegVal:
-    xDVs = DVGeo.getValues()
-    if gcomm.rank == 0:
-        reg_write_dict(xDVs, 1e-6, 1e-8)
+xDVs = DVGeo.getValues()
+if gcomm.rank == 0:
+    reg_write_dict(xDVs, 1e-6, 1e-8)

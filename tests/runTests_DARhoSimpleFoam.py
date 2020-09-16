@@ -18,14 +18,10 @@ from petsc4py import PETSc
 
 petsc4py.init(sys.argv)
 
-checkRegVal = 1
-if len(sys.argv) == 1:
-    checkRegVal = 1
-elif sys.argv[1] == "noCheckVal":
-    checkRegVal = 0
-else:
-    print("sys.argv %s not valid!" % sys.argv[1])
-    exit(1)
+calcFDSens = 0
+if len(sys.argv) != 1:
+    if sys.argv[1] == "calcFDSens":
+        calcFDSens = 1
 
 gcomm = MPI.COMM_WORLD
 
@@ -178,14 +174,16 @@ optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
 
 # Run
-DASolver.runColoring()
-xDV = DVGeo.getValues()
-funcs = {}
-funcs, fail = optFuncs.calcObjFuncValues(xDV)
-funcsSens = {}
-funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
-
-if checkRegVal:
+if calcFDSens == 1:
+    optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValues, fileName="sensFD.txt")
+    exit(0)
+else:
+    DASolver.runColoring()
+    xDV = DVGeo.getValues()
+    funcs = {}
+    funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    funcsSens = {}
+    funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-6, 1e-8)
@@ -201,10 +199,9 @@ xDV["shapey"][0] = 1000.0
 funcs1 = {}
 funcs1, fail1 = optFuncs.calcObjFuncValues(xDV)
 
-if checkRegVal:
-    # the checkMesh utility should detect failed mesh
-    if fail1 is False:
-        exit(1)
+# the checkMesh utility should detect failed mesh
+if fail1 is False:
+    exit(1)
 
 # test point2Vec functions
 xvSize = len(DASolver.xv) * 3
@@ -218,9 +215,8 @@ DASolver.solver.pointVec2OFMesh(xvVec)
 DASolver.solver.ofMesh2PointVec(xvVec)
 xvVecNorm1 = xvVec.norm(1)
 
-if checkRegVal:
-    if xvVecNorm != xvVecNorm1:
-        exit(1)
+if xvVecNorm != xvVecNorm1:
+    exit(1)
 
 # test res2Vec functions
 rSize = DASolver.solver.getNLocalAdjointStates()
@@ -234,9 +230,8 @@ DASolver.solver.resVec2OFResField(rVec)
 DASolver.solver.ofResField2ResVec(rVec)
 rVecNorm1 = rVec.norm(1)
 
-if checkRegVal:
-    if rVecNorm != rVecNorm1:
-        exit(1)
+if rVecNorm != rVecNorm1:
+    exit(1)
 
 # Test vector IO functions
 DASolver.solver.writeVectorASCII(rVec, b"rVecRead")
@@ -247,9 +242,8 @@ rVecRead.setFromOptions()
 DASolver.solver.readVectorBinary(rVecRead, b"rVecRead")
 rVecNormRead = rVecRead.norm(1)
 
-if checkRegVal:
-    if rVecNorm != rVecNormRead:
-        exit(1)
+if rVecNorm != rVecNormRead:
+    exit(1)
 
 # Test matrix IO functions
 lRow = gcomm.rank + 1
@@ -275,6 +269,5 @@ testMat1.setUp()
 DASolver.solver.readMatrixBinary(testMat1, b"testMat")
 testMatNorm1 = testMat1.norm(0)
 
-if checkRegVal:
-    if testMatNorm != testMatNorm1:
-        exit(1)
+if testMatNorm != testMatNorm1:
+    exit(1)
