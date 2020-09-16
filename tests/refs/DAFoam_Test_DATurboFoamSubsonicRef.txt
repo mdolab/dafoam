@@ -1,7 +1,5 @@
 Dictionary Key: CMZ
 @value   0.1430241062895427 1e-08 1e-10
-Dictionary Key: MFR
-@value    1.053611213057479 1e-08 1e-10
 Dictionary Key: TPR
 @value    1.027591736890468 1e-08 1e-10
 Dictionary Key: fail
@@ -17,17 +15,6 @@ Dictionary Key: shapez
 @value  -0.1668372689661463 1e-06 1e-08
 @value  -0.1865409331445353 1e-06 1e-08
 @value  -0.2092364378494078 1e-06 1e-08
-Dictionary Key: MFR
-Dictionary Key: shapey
-@value -0.0001648509055929281 1e-06 1e-08
-@value 6.154416265502505e-05 1e-06 1e-08
-@value -0.0004428430424585628 1e-06 1e-08
-@value -0.0004310605581370197 1e-06 1e-08
-Dictionary Key: shapez
-@value -5.863897722946376e-05 1e-06 1e-08
-@value -0.0003547700631045814 1e-06 1e-08
-@value 0.0001519191186183377 1e-06 1e-08
-@value 4.665139874404645e-05 1e-06 1e-08
 Dictionary Key: TPR
 Dictionary Key: shapey
 @value  0.08984178060879607 1e-06 1e-08

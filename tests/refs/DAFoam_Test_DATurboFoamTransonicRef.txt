@@ -39,5 +39,16 @@ Dictionary Key: shapez
 @value  -0.1591277492045404 1e-06 1e-08
 @value  -0.1547827142144216 1e-06 1e-08
 @value  -0.2571254833694371 1e-06 1e-08
+Dictionary Key: TTR
+Dictionary Key: shapey
+@value  0.06423922290933609 1e-06 1e-08
+@value    0.167684266522984 1e-06 1e-08
+@value  0.06517581885047612 1e-06 1e-08
+@value   0.1859748534532155 1e-06 1e-08
+Dictionary Key: shapez
+@value -0.02270256867201838 1e-06 1e-08
+@value -0.06914072490572683 1e-06 1e-08
+@value -0.03549867558355561 1e-06 1e-08
+@value  -0.1125887416832533 1e-06 1e-08
 Dictionary Key: fail
 @value                    0 1e-06 1e-08

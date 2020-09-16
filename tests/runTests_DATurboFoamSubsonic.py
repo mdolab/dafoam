@@ -69,26 +69,6 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
-        "TTR": {
-            "part1": {
-                "type": "totalTemperatureRatio",
-                "source": "patchToFace",
-                "patches": ["inlet", "outlet"],
-                "inletPatches": ["inlet"],
-                "outletPatches": ["outlet"],
-                "scale": 1.0,
-                "addToAdjoint": False,
-            }
-        },
-        "MFR": {
-            "part1": {
-                "type": "massFlowRate",
-                "source": "patchToFace",
-                "patches": ["inlet"],
-                "scale": -1.0,
-                "addToAdjoint": True,
-            }
-        },
         "CMZ": {
             "part1": {
                 "type": "moment",

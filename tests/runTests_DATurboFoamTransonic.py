@@ -70,7 +70,7 @@ aeroOptions = {
                 "inletPatches": ["inlet"],
                 "outletPatches": ["outlet"],
                 "scale": 1.0,
-                "addToAdjoint": False,
+                "addToAdjoint": True,
             }
         },
         "MFR": {
