@@ -1857,16 +1857,27 @@ void DASolver::writeObjFuncHistFile()
         This is only used for unsteady primal solvers
     */
 
-    Ostream& f1 = objFuncHistFilePtr_();
+    label myProc = Pstream::myProcNo();
     scalar t = runTimePtr_->timeOutputValue();
-    f1 << t << " ";
+
+    if (myProc == 0)
+    {
+        objFuncHistFilePtr_() << t << " ";
+    }
     forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
     {
         word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
         scalar objFuncVal = this->getObjFuncValue(objFuncName);
-        f1 << objFuncVal << " ";
+        if (myProc == 0)
+        {
+            objFuncHistFilePtr_() << objFuncVal << " ";
+        }
     }
-    f1 << endl;
+
+    if (myProc == 0)
+    {
+        objFuncHistFilePtr_() << endl;
+    }
     return;
 }
 
