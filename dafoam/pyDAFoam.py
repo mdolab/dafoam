@@ -30,7 +30,7 @@ class DAOPTION(object):
     Define a set of options to use in PYDAFOAM and set their initial values.
     This class will be used by PYDAFOAM._getDefOptions()
 
-    NOTE: Give an initial value for a new option, this help PYDAFOAM determine the type of this 
+    NOTE: Give an initial value for a new option, this help PYDAFOAM determine the type of this
     option. If it is a list, give at least one default value. If it is a dict, you can leave it
     blank, e.g., {}. Also, use ## to add comments before the new option such that these comments
     will be  picked up by Doxygen. If possible, give examples.
@@ -50,16 +50,16 @@ class DAOPTION(object):
     # *********************************************************************************************
 
     ## The name of the DASolver to use for primal and adjoint computation.
-    ## See dafoam/src/adjoint/DASolver for all avaiable solvers
+    ## See dafoam/src/adjoint/DASolver for more details
+    ## Currently support:
+    ## - DASimpleFoam:            Incompressible steady-state flow solver for Navier-Stokes equations
+    ## - DASimpleTFoam:           Incompressible steady-state flow solver for Navier-Stokes equations with temperature
+    ## - DAPisoFoam:              Incompressible transient flow solver for Navier-Stokes equations
+    ## - DARhoSimpleFoam:         Compressible steady-state flow solver for Navier-Stokes equations (subsonic)
+    ## - DARhoSimpleCFoam:        Compressible steady-state flow solver for Navier-Stokes equations (transonic)
+    ## - DATurboFoam:             Compressible steady-state flow solver for Navier-Stokes equations (turbomachinery)
+    ## - DASolidDisplacementFoam: Steady-state structural solver for linear elastic equations
     solverName = "DASimpleFoam"
-
-    ## The flow condition, which needs to be consistant with the "solverName".
-    ## For example, DASimpleFoam <-> Incompressible, DARhoSimpleFoam <-> Compressible
-    flowCondition = "Incompressible"
-
-    ## The name of turbulene model to use. This needs to be consistant with the value in
-    ## constant/turbulenceProperties
-    turbulenceModel = "SpalartAllmaras"
 
     ## The convergence tolerance for the primal solver. If the primal can not converge to 2 orders
     ## of magnitude (default) higher than this tolerance, the primal solution will return fail=True
@@ -80,17 +80,17 @@ class DAOPTION(object):
 
     ## State normalization for dRdWT computation. Typically, we set far field value for each state
     ## variable. NOTE: If you forget to set normalization value for a state variable, the adjoint
-    ## may not converge! For "phi", use 1.0 to normalization
+    ## may not converge or it may be inaccurate! For "phi", use 1.0 to normalization
     ## Example
     ##     normalizeStates = {"U": 10.0, "p": 101325.0, "phi": 1.0, "nuTilda": 1.e-4}
     normalizeStates = {}
 
-    ## Information on objective function. Each objective function requries a different input forma
+    ## Information on objective function. Each objective function requires a different input forma
     ## But for all objectives, we need to give a name to the objective function, e.g., CD or any
-    ## other prefered name, and the information for each part of the objective function. Most of
+    ## other preferred name, and the information for each part of the objective function. Most of
     ## the time, the objective has only one part (in this case part1), but one can also combine two
     ## parts of objectives, e.g., we can define a new objective that is the sum of force and moment.
-    ## For each part, we need to define the type of obejective (e.g., force, moment; we need to use
+    ## For each part, we need to define the type of objective (e.g., force, moment; we need to use
     ## the reserved type names), how to select the discrete mesh faces to compute the objective
     ## (e.g., we select them from the name of a patch patchToFace), the name of the patch (wing)
     ## for patchToFace, the scaling factor "scale", and whether to compute adjoint for this
@@ -138,6 +138,83 @@ class DAOPTION(object):
     ##                 "addToAdjoint": True,
     ##             }
     ##         },
+    ##         "TPR": {
+    ##             "part1": {
+    ##                 "type": "totalPressureRatio",
+    ##                 "source": "patchToFace",
+    ##                 "patches": ["inlet", "outlet"],
+    ##                 "inletPatches": ["inlet"],
+    ##                 "outletPatches": ["outlet"],
+    ##                 "scale": 1.0,
+    ##                 "addToAdjoint": True,
+    ##             }
+    ##         },
+    ##         "TTR": {
+    ##             "part1": {
+    ##                 "type": "totalTemperatureRatio",
+    ##                 "source": "patchToFace",
+    ##                 "patches": ["inlet", "outlet"],
+    ##                 "inletPatches": ["inlet"],
+    ##                 "outletPatches": ["outlet"],
+    ##                 "scale": 1.0,
+    ##                 "addToAdjoint": False,
+    ##             }
+    ##         },
+    ##         "MFR": {
+    ##             "part1": {
+    ##                 "type": "massFlowRate",
+    ##                 "source": "patchToFace",
+    ##                 "patches": ["inlet"],
+    ##                 "scale": -1.0,
+    ##                 "addToAdjoint": True,
+    ##             }
+    ##         },
+    ##        "PL": {
+    ##            "part1": {
+    ##                "type": "totalPressure",
+    ##                "source": "patchToFace",
+    ##                "patches": ["inlet"],
+    ##                "scale": 1.0 / (0.5 * U0 * U0),
+    ##                "addToAdjoint": True,
+    ##            },
+    ##            "part2": {
+    ##                "type": "totalPressure",
+    ##                "source": "patchToFace",
+    ##                "patches": ["outlet"],
+    ##                "scale": -1.0 / (0.5 * U0 * U0),
+    ##                "addToAdjoint": True,
+    ##            }
+    ##        },
+    ##        "NU": {
+    ##            "part1": {
+    ##                "type": "wallHeatFlux",
+    ##                "source": "patchToFace",
+    ##                "patches": ["ubend"],
+    ##                "scale": 1.0,
+    ##                "addToAdjoint": True,
+    ##            }
+    ##        },
+    ##        "VMS": {
+    ##            "part1": {
+    ##                "type": "vonMisesStressKS",
+    ##                "source": "boxToCell",
+    ##                "min": [-10.0, -10.0, -10.0],
+    ##                "max": [10.0, 10.0, 10.0],
+    ##                "scale": 1.0,
+    ##                "coeffKS": 2.0e-3,
+    ##                "addToAdjoint": True,
+    ##            }
+    ##        },
+    ##        "M": {
+    ##            "part1": {
+    ##                "type": "mass",
+    ##                "source": "boxToCell",
+    ##                "min": [-10.0, -10.0, -10.0],
+    ##                "max": [10.0, 10.0, 10.0],
+    ##                "scale": 1.0,
+    ##                "addToAdjoint": True,
+    ##            }
+    ##        },
     ##     },
     objFunc = {}
 
@@ -173,7 +250,7 @@ class DAOPTION(object):
     # *********************************************************************************************
 
     ## Information for the finite volume source term, which will be added in the momentum equation
-    ## We support multiple soure terms
+    ## We support multiple source terms
     ## Example
     ## "fvSource": {
     ##     "disk1": {
@@ -195,9 +272,21 @@ class DAOPTION(object):
     ##         "innerRadius": 0.01,
     ##         "outerRadius": 0.5,
     ##         "rotDir": "right",
-    ##         "scale": 25.0,
+    ##         "scale": 25.0,  # scale the source such the integral equals desired thrust
     ##         "POD": 1.0,
     ##     },
+    ##    "line1":
+    ##    {
+    ##        "type": "actuatorPoint",
+    ##        "smoothFunction": "hyperbolic", # or gaussian
+    ##        "center": [-0.55, 0.0, 0.05],  # center and size define a rectangular
+    ##        "size": [0.2, 0.2, 0.1],
+    ##        "amplitude": [0.0, 0.2, 0.0],
+    ##        "thrustDirIdx": 0,
+    ##        "periodicity": 0.1,
+    ##        "eps": 10.0,
+    ##        "scale": 10.0  # scale the source such the integral equals desired thrust
+    ##    },
     ## },
     fvSource = {}
 
@@ -236,7 +325,7 @@ class DAOPTION(object):
     ## Whether to perform multipoint optimization.
     multiPoint = False
 
-    ## If multiPoint = True, how many primal configuartions for the multipoint optimization.
+    ## If multiPoint = True, how many primal configurations for the multipoint optimization.
     nMultiPoints = 1
 
     ## The step size for finite-difference computation of partial derivatives. The default values
@@ -423,6 +512,9 @@ class PYDAFOAM(object):
         # run decomposePar for parallel runs
         self.runDecomposePar()
 
+        # register solver names and set their types
+        self._solverRegistry()
+
         # initialize the pySolvers
         self.solverInitialized = 0
         self._initSolver()
@@ -482,6 +574,18 @@ class PYDAFOAM(object):
         Info("pyDAFoam initialization done!")
 
         return
+
+    def _solverRegistry(self):
+        """
+        Register solver names and set their types. For a new solver, first identify its
+        type and add their names to the following dict
+        """
+
+        self.solverRegistry = {
+            "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam"],
+            "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurbFoam"],
+            "Solid": ["DASolidDisplacementFoam"],
+        }
 
     def __call__(self):
         """
@@ -597,9 +701,9 @@ class PYDAFOAM(object):
         """
         Evaluate the desired functions given in iterable object,
         'evalFuncs' and add them to the dictionary 'funcs'. The keys
-        in the funcs dictioary will be have an _<ap.name> appended to
+        in the funcs dictionary will be have an _<ap.name> appended to
         them. Additionally, information regarding whether or not the
-        last analysis with the solvePrimal was sucessful is
+        last analysis with the solvePrimal was successful is
         included. This information is included as "funcs['fail']". If
         the 'fail' entry already exits in the dictionary the following
         operation is performed:
@@ -619,7 +723,7 @@ class PYDAFOAM(object):
           If not None, use these functions to evaluate.
 
         ignoreMissing : bool
-            Flag to supress checking for a valid function. Please use
+            Flag to suppress checking for a valid function. Please use
             this option with caution.
 
         Examples
@@ -749,7 +853,7 @@ class PYDAFOAM(object):
             indices.extend(self.families[fam])
 
         # It is very important that the list of families is sorted
-        # becuase in fortran we always use a binary search to check if
+        # because in fortran we always use a binary search to check if
         # a famID is in the list.
         self.families[groupName] = sorted(np.unique(indices))
 
@@ -1086,23 +1190,23 @@ class PYDAFOAM(object):
 
         solverName = self.getOption("solverName")
         solverArg = solverName + " -python " + self.parallelFlag
-        if self.getOption("flowCondition") == "Incompressible":
+        if solverName in self.solverRegistry["Incompressible"]:
 
             from .pyDASolverIncompressible import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
-        elif self.getOption("flowCondition") == "Compressible":
+        elif solverName in self.solverRegistry["Compressible"]:
 
             from .pyDASolverCompressible import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
-        elif self.getOption("flowCondition") == "Solid":
+        elif solverName in self.solverRegistry["Solid"]:
 
             from .pyDASolverSolid import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
         else:
-            raise Error("pyDAFoam: flowCondition %s: not valid!" % self.getOption("flowCondition"))
+            raise Error("pyDAFoam: %s not registered! Check _solverRegistry(self)." % solverName)
 
         self.solver.initSolver()
 
@@ -1122,26 +1226,27 @@ class PYDAFOAM(object):
         Info("|                       Running Coloring Solver                            |")
         Info("+--------------------------------------------------------------------------+")
 
-        if self.getOption("flowCondition") == "Incompressible":
+        solverName = self.getOption("solverName")
+        if solverName in self.solverRegistry["Incompressible"]:
 
             from .pyColoringIncompressible import pyColoringIncompressible
 
             solverArg = "ColoringIncompressible -python " + self.parallelFlag
             solver = pyColoringIncompressible(solverArg.encode(), self.options)
-        elif self.getOption("flowCondition") == "Compressible":
+        elif solverName in self.solverRegistry["Compressible"]:
 
             from .pyColoringCompressible import pyColoringCompressible
 
             solverArg = "ColoringCompressible -python " + self.parallelFlag
             solver = pyColoringCompressible(solverArg.encode(), self.options)
-        elif self.getOption("flowCondition") == "Solid":
+        elif solverName in self.solverRegistry["Solid"]:
 
             from .pyColoringSolid import pyColoringSolid
 
             solverArg = "ColoringSolid -python " + self.parallelFlag
             solver = pyColoringSolid(solverArg.encode(), self.options)
         else:
-            raise Error("pyDAFoam: flowCondition %s: not valid!" % self.getOption("flowCondition"))
+            raise Error("pyDAFoam: %s not registered! Check _solverRegistry(self)." % solverName)
         solver.run()
 
         solver = None
@@ -1274,7 +1379,7 @@ class PYDAFOAM(object):
         # get eps
         epsFFD = self.getOption("adjPartDerivFDStep")["FFD"]
 
-        Info("Caclculating the dXvdFFD matrix with epsFFD: " + str(epsFFD))
+        Info("Calculating the dXvdFFD matrix with epsFFD: " + str(epsFFD))
 
         dXvdFFDMat = PETSc.Mat().create(PETSc.COMM_WORLD)
         dXvdFFDMat.setSizes(((nXvs, None), (None, nDVs)))
@@ -1586,7 +1691,7 @@ class PYDAFOAM(object):
         Returns
         -------
         vec2 : Numpy array
-            The input vector maped to the families defined in groupName2.
+            The input vector mapped to the families defined in groupName2.
         """
         if groupName1 not in self.families or groupName2 not in self.families:
             raise Error(

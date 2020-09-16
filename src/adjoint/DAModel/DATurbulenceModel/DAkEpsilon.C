@@ -353,7 +353,6 @@ void DAkEpsilon::correctStateResidualModelCon(List<List<word>>& stateCon) const
         related to grad(U), k, and omega in SST!
     */
 
-    label stateConSize = stateCon.size();
     forAll(stateCon, idxI)
     {
         forAll(stateCon[idxI], idxJ)
