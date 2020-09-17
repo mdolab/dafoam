@@ -45,6 +45,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void writeVectorASCII(PetscVec, char *)
         void readVectorBinary(PetscVec, char *)
         void writeVectorBinary(PetscVec, char *)
+        void setTimeInstanceField(int)
+        double getTimeInstanceObjFunc(int, char *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -159,3 +161,9 @@ cdef class pyDASolvers:
     
     def writeVectorBinary(self, Vec vecIn, prefix):
         self._thisptr.writeVectorBinary(vecIn.vec, prefix)
+    
+    def setTimeInstanceField(self, instanceI):
+        self._thisptr.setTimeInstanceField(instanceI)
+    
+    def getTimeInstanceObjFunc(self, instanceI, objFuncName):
+        return self._thisptr.getTimeInstanceObjFunc(instanceI, objFuncName)

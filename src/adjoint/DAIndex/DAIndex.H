@@ -147,6 +147,9 @@ public:
     /// number of global adjoint states (including all cells and faces)
     label nGlobalAdjointStates;
 
+    /// local adjoint boundary states that do not contain phis
+    label nLocalAdjointBoundaryStates;
+
     /// number of state variables for volScalarField
     label nVolScalarStates;
 

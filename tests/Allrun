@@ -13,137 +13,93 @@ else
   wget https://github.com/dafoam/files/releases/download/v1.0.0/input.tar.gz --no-check-certificate
 fi
 
-# test DASimpleFoam
-rm -rf input DAFoam_Test_DASimpleFoam.txt
-tar -zxf input.tar.gz
-mpirun -np 4 python runTests_DASimpleFoam.py $@ | tee DAFoam_Test_DASimpleFoam.txt 
-if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-  echo "DASimpleFoam: Failed!"
-  exit 1
-fi
-python testFuncs.py refs/DAFoam_Test_DASimpleFoamRef.txt DAFoam_Test_DASimpleFoam.txt
-if [ "$?" -ne "0" ]; then 
-  echo "DASimpleFoam: Failed!"
-  exit 1
+if [ -z "$1" ]; then
+  echo "Argument not found. Using the default value: all"
+  argm="all"
 else
-  echo "DASimpleFoam: Success!"
+  argm="$1"
 fi
 
-# test DASimpleTFoam
-rm -rf input DAFoam_Test_DASimpleTFoam.txt
-tar -zxf input.tar.gz
-mpirun -np 4 python runTests_DASimpleTFoam.py $@ | tee DAFoam_Test_DASimpleTFoam.txt 
-if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-  echo "DASimpleTFoam: Failed!"
-  exit 1
-fi
-python testFuncs.py refs/DAFoam_Test_DASimpleTFoamRef.txt DAFoam_Test_DASimpleTFoam.txt
-if [ "$?" -ne "0" ]; then 
-  echo "DASimpleTFoam: Failed!"
-  exit 1
-else
-  echo "DASimpleTFoam: Success!"
-fi
+function runTests() 
+{
+  rm -rf input DAFoam_Test_${1}.txt
+  tar -zxf input.tar.gz
+  mpirun -np 4 python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+  if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+    echo "${1}: Failed!"
+    exit 1
+  fi
+  python testFuncs.py refs/DAFoam_Test_${1}Ref.txt DAFoam_Test_${1}.txt
+  if [ "$?" -ne "0" ]; then 
+    echo "${1}: Failed!"
+    exit 1
+  else
+    echo "${1}: Success!"
+  fi
+}
 
-# test DARhoSimpleFoam
-rm -rf input DAFoam_Test_DARhoSimpleFoam.txt
-tar -zxf input.tar.gz
-mpirun -np 4 python runTests_DARhoSimpleFoam.py $@ | tee DAFoam_Test_DARhoSimpleFoam.txt
-if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-  echo "DARhoSimpleFoam: Failed!"
-  exit 1
-fi
-python testFuncs.py refs/DAFoam_Test_DARhoSimpleFoamRef.txt DAFoam_Test_DARhoSimpleFoam.txt
-if [ "$?" -ne "0" ]; then 
-  echo "DARhoSimpleFoam: Failed!"
-  exit 1
-else
-  echo "DARhoSimpleFoam: Success!"
-fi
-
-# test DARhoSimpleFoamUBend
-rm -rf input DAFoam_Test_DARhoSimpleFoamUBend.txt
-tar -zxf input.tar.gz
-mpirun -np 4 python runTests_DARhoSimpleFoamUBend.py $@ | tee DAFoam_Test_DARhoSimpleFoamUBend.txt
-if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-  echo "DARhoSimpleFoamUBend: Failed!"
-  exit 1
-fi
-python testFuncs.py refs/DAFoam_Test_DARhoSimpleFoamUBendRef.txt DAFoam_Test_DARhoSimpleFoamUBend.txt
-if [ "$?" -ne "0" ]; then 
-  echo "DARhoSimpleFoamUBend: Failed!"
-  exit 1
-else
-  echo "DARhoSimpleFoamUBend: Success!"
-fi
-
-# test DARhoSimpleCFoam
-rm -rf input DAFoam_Test_DARhoSimpleCFoam.txt
-tar -zxf input.tar.gz
-mpirun -np 4 python runTests_DARhoSimpleCFoam.py $@ | tee DAFoam_Test_DARhoSimpleCFoam.txt
-if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-  echo "DARhoSimpleCFoam: Failed!"
-  exit 1
-fi
-python testFuncs.py refs/DAFoam_Test_DARhoSimpleCFoamRef.txt DAFoam_Test_DARhoSimpleCFoam.txt
-if [ "$?" -ne "0" ]; then 
-  echo "DARhoSimpleCFoam: Failed!"
-  exit 1
-else
-  echo "DARhoSimpleCFoam: Success!"
-fi
-
-# test DATurboFoamSubsonic
-rm -rf input DAFoam_Test_DATurboFoamSubsonic.txt
-tar -zxf input.tar.gz
-mpirun -np 4 python runTests_DATurboFoamSubsonic.py $@ | tee DAFoam_Test_DATurboFoamSubsonic.txt
-if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-  echo "DATurboFoamSubsonic: Failed!"
-  exit 1
-fi
-python testFuncs.py refs/DAFoam_Test_DATurboFoamSubsonicRef.txt DAFoam_Test_DATurboFoamSubsonic.txt
-if [ "$?" -ne "0" ]; then 
-  echo "DATurboFoamSubsonic: Failed!"
-  exit 1
-else
-  echo "DATurboFoamSubsonic: Success!"
-fi
-
-# test DATurboFoamTransonic
-rm -rf input DAFoam_Test_DATurboFoamTransonic.txt
-tar -zxf input.tar.gz
-mpirun -np 4 python runTests_DATurboFoamTransonic.py $@ | tee DAFoam_Test_DATurboFoamTransonic.txt
-if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-  echo "DATurboFoamTransonic: Failed!"
-  exit 1
-fi
-python testFuncs.py refs/DAFoam_Test_DATurboFoamTransonicRef.txt DAFoam_Test_DATurboFoamTransonic.txt
-if [ "$?" -ne "0" ]; then 
-  echo "DATurboFoamTransonic: Failed!"
-  exit 1
-else
-  echo "DATurboFoamTransonic: Success!"
-fi
-
-# test DASolidDisplacementFoam
-rm -rf input DAFoam_Test_DASolidDisplacementFoam.txt
-tar -zxf input.tar.gz
-mpirun -np 4 python runTests_DASolidDisplacementFoam.py $@ | tee DAFoam_Test_DASolidDisplacementFoam.txt
-if [ "${PIPESTATUS[0]}" -ne "0" ]; then
-  echo "DASolidDisplacementFoam: Failed!"
-  exit 1
-fi
-python testFuncs.py refs/DAFoam_Test_DASolidDisplacementFoamRef.txt DAFoam_Test_DASolidDisplacementFoam.txt
-if [ "$?" -ne "0" ]; then
-  echo "DASolidDisplacementFoam: Failed!"
-  exit 1
-else
-  echo "DASolidDisplacementFoam: Success!"
-fi
+case $argm in
+  "all")
+    echo "Running all tests...."
+    sleep 3
+    runTests Integration
+    runTests DASimpleFoam
+    runTests DASimpleTFoam
+    runTests DAPisoFoam
+    runTests DARhoSimpleFoam
+    runTests DARhoSimpleFoamUBend
+    runTests DARhoSimpleCFoam
+    runTests DATurboFoamSubsonic
+    runTests DATurboFoamTransonic
+    runTests DASolidDisplacementFoam
+    echo " "
+    echo "************************************************************"
+    echo "**************** All DAFoam tests passed! ******************"
+    echo "************************************************************"
+    echo " "
+    ;;
+  "incompressible")
+    echo "Running incompressible tests...."
+    sleep 3
+    runTests Integration
+    runTests DASimpleFoam
+    runTests DASimpleTFoam
+    runTests DAPisoFoam
+    echo " "
+    echo "************************************************************"
+    echo "************** Incompressible tests passed! ****************"
+    echo "************************************************************"
+    echo " "
+    ;;
+  "compressible")
+    echo "Running compressible tests...."
+    sleep 3
+    runTests DARhoSimpleFoam
+    runTests DARhoSimpleFoamUBend
+    runTests DARhoSimpleCFoam
+    runTests DATurboFoamSubsonic
+    runTests DATurboFoamTransonic
+    echo " "
+    echo "************************************************************"
+    echo "*************** Compressible tests passed! *****************"
+    echo "************************************************************"
+    echo " "
+    ;;
+  "solid")
+    echo "Running solid tests...."
+    sleep 3
+    runTests DASolidDisplacementFoam
+    echo " "
+    echo "************************************************************"
+    echo "******************* Solid tests passed! ********************"
+    echo "************************************************************"
+    echo " "
+    ;;
+  *)
+    echo "Argument not valid! Options are: all, incompressible, compressible, or solid"
+    echo "Example: ./Allrun all"
+    exit 1
+    ;;
+esac
 
 
-echo " "
-echo "************************************************************"
-echo "**************** All DAFoam tests passed! ******************"
-echo "************************************************************"
-echo " "

@@ -39,4 +39,3 @@ setup(
     ],
     classifiers=["Operating System :: Linux", "Programming Language :: Cython, C++"],
 )
-

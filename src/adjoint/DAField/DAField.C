@@ -827,6 +827,409 @@ void DAField::setPrimalBoundaryConditions()
                 }
             }
         }
+
+        // ------ k ----------
+        if (db.foundObject<volScalarField>("k"))
+        {
+
+            volScalarField& k(const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("k")));
+
+            forAll(k.boundaryField(), patchI)
+            {
+                if (mesh_.boundaryMesh()[patchI].type() == "wall")
+                {
+                    Info << "Setting k wall BC for "
+                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+
+                    if (useWallFunction)
+                    {
+                        // wall function for SA
+                        k.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New("kqRWallFunction", mesh_.boundary()[patchI], k));
+                        Info << "BCType=kqRWallFunction" << endl;
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            scalar wallVal = k[0];
+                            forAll(k.boundaryFieldRef()[patchI], faceI)
+                            {
+                                k.boundaryFieldRef()[patchI][faceI] = wallVal; // assign uniform field
+                            }
+                        }
+                    }
+                    else
+                    {
+                        k.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New("fixedValue", mesh_.boundary()[patchI], k));
+                        Info << "BCType=fixedValue" << endl;
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            forAll(k.boundaryFieldRef()[patchI], faceI)
+                            {
+                                k.boundaryFieldRef()[patchI][faceI] = 1e-14; // assign uniform field
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ------ omega ----------
+        if (db.foundObject<volScalarField>("omega"))
+        {
+
+            volScalarField& omega(const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("omega")));
+
+            forAll(omega.boundaryField(), patchI)
+            {
+                if (mesh_.boundaryMesh()[patchI].type() == "wall")
+                {
+                    Info << "Setting omega wall BC for "
+                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+
+                    // always use omegaWallFunction
+                    omega.boundaryFieldRef().set(
+                        patchI,
+                        fvPatchField<scalar>::New("omegaWallFunction", mesh_.boundary()[patchI], omega));
+                    Info << "BCType=omegaWallFunction" << endl;
+
+                    // set boundary values
+                    // for decomposed domain, don't set BC if the patch is empty
+                    if (mesh_.boundaryMesh()[patchI].size() > 0)
+                    {
+                        scalar wallVal = omega[0];
+                        forAll(omega.boundaryFieldRef()[patchI], faceI)
+                        {
+                            omega.boundaryFieldRef()[patchI][faceI] = wallVal; // assign uniform field
+                        }
+                    }
+                }
+            }
+        }
+
+        // ------ epsilon ----------
+        if (db.foundObject<volScalarField>("epsilon"))
+        {
+
+            volScalarField& epsilon(const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("epsilon")));
+
+            forAll(epsilon.boundaryField(), patchI)
+            {
+                if (mesh_.boundaryMesh()[patchI].type() == "wall")
+                {
+                    Info << "Setting epsilon wall BC for "
+                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+
+                    if (useWallFunction)
+                    {
+                        epsilon.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New("epsilonWallFunction", mesh_.boundary()[patchI], epsilon));
+                        Info << "BCType=epsilonWallFunction" << endl;
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            scalar wallVal = epsilon[0];
+                            forAll(epsilon.boundaryFieldRef()[patchI], faceI)
+                            {
+                                epsilon.boundaryFieldRef()[patchI][faceI] = wallVal; // assign uniform field
+                            }
+                        }
+                    }
+                    else
+                    {
+                        epsilon.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New("fixedValue", mesh_.boundary()[patchI], epsilon));
+                        Info << "BCType=fixedValue" << endl;
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            forAll(epsilon.boundaryFieldRef()[patchI], faceI)
+                            {
+                                epsilon.boundaryFieldRef()[patchI][faceI] = 1e-14; // assign uniform field
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void DAField::ofField2List(
+    scalarList& stateList,
+    scalarList& stateBoundaryList) const
+{
+    /*
+    Description:
+        Assign values for the scalar list of states based on the latest OpenFOAM field values. 
+        This function is similar to DAField::ofField2StateVec except that the output are 
+        scalarLists instead of a Petsc vector
+
+    Input:
+        OpenFOAM field variables
+
+    Output:
+        stateList: scalar list of states
+        stateBoundaryList: scalar list of boundary states
+
+    Example:
+        Image we have two state variables (p,T) and five cells, running on two CPU
+        processors, the proc0 owns two cells and the proc1 owns three cells,
+        then calling this function gives the scalar list of states (state-by-state ordering):
+    
+        scalarList = [p0, p1, T0, T1 | p0, p1, p2, T0, T1, T2] <- p0 means p for the 0th cell on local processor
+                       0   1   2   3 |  4   5   6   7   8   9  <- global state index
+                     ---- proc0 -----|--------- proc1 ------- 
+    */
+
+    const objectRegistry& db = mesh_.thisDb();
+
+    label localBFaceI = 0;
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volVectorStates"][idxI], volVectorField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
+                stateList[localIdx] = state[cellI][comp];
+            }
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    for (label comp = 0; comp < 3; comp++)
+                    {
+                        stateBoundaryList[localBFaceI] = state.boundaryField()[patchI][faceI][comp];
+                        localBFaceI++;
+                    }
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volScalarStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            stateList[localIdx] = state[cellI];
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    stateBoundaryList[localBFaceI] = state.boundaryField()[patchI][faceI];
+                    localBFaceI++;
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["modelStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            stateList[localIdx] = state[cellI];
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    stateBoundaryList[localBFaceI] = state.boundaryField()[patchI][faceI];
+                    localBFaceI++;
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["surfaceScalarStates"][idxI], surfaceScalarField, db);
+
+        forAll(mesh_.faces(), faceI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
+            if (faceI < daIndex_.nLocalInternalFaces)
+            {
+                stateList[localIdx] = state[faceI];
+            }
+            else
+            {
+                label relIdx = faceI - daIndex_.nLocalInternalFaces;
+                const label& patchIdx = daIndex_.bFacePatchI[relIdx];
+                const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
+                stateList[localIdx] = state.boundaryField()[patchIdx][faceIdx];
+            }
+        }
+    }
+}
+
+void DAField::list2OFField(
+    const scalarList& stateList,
+    const scalarList& stateBoundaryList) const
+{
+    /*
+    Description:
+        Assign values OpenFOAM field values based on the scalar list of states
+    
+    Input:
+    stateList: scalar list of states
+    stateBoundaryList: scalar list of boundary states
+
+    Output:
+    OpenFoam field variables
+
+    Example:
+        Image we have two state variables (p,T) and five cells, running on two CPU
+        processors, the proc0 owns two cells and the proc1 owns three cells,
+        then calling this function gives the scalar list of states (state-by-state ordering):
+    
+        scalarList = [p0, p1, T0, T1 | p0, p1, p2, T0, T1, T2] <- p0 means p for the 0th cell on local processor
+                       0   1   2   3 |  4   5   6   7   8   9  <- global state index
+                     ---- proc0 -----|--------- proc1 ------- 
+    */
+
+    const objectRegistry& db = mesh_.thisDb();
+
+    label localBFaceI = 0;
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volVectorStates"][idxI], volVectorField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
+                state[cellI][comp] = stateList[localIdx];
+            }
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    for (label comp = 0; comp < 3; comp++)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI][comp] = stateBoundaryList[localBFaceI];
+                        localBFaceI++;
+                    }
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volScalarStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            state[cellI] = stateList[localIdx];
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    state.boundaryFieldRef()[patchI][faceI] = stateBoundaryList[localBFaceI];
+                    localBFaceI++;
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["modelStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            state[cellI] = stateList[localIdx];
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    state.boundaryFieldRef()[patchI][faceI] = stateBoundaryList[localBFaceI];
+                    localBFaceI++;
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["surfaceScalarStates"][idxI], surfaceScalarField, db);
+
+        forAll(mesh_.faces(), faceI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
+            if (faceI < daIndex_.nLocalInternalFaces)
+            {
+                state[faceI] = stateList[localIdx];
+            }
+            else
+            {
+                label relIdx = faceI - daIndex_.nLocalInternalFaces;
+                const label& patchIdx = daIndex_.bFacePatchI[relIdx];
+                const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
+                state.boundaryFieldRef()[patchIdx][faceIdx] = stateList[localIdx];
+            }
+        }
     }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

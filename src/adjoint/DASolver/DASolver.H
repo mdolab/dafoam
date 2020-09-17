@@ -16,6 +16,7 @@
 #include "Python.h"
 #include "fvCFD.H"
 #include "runTimeSelectionTables.H"
+#include "OFstream.H"
 #include "DAUtility.H"
 #include "DACheckMesh.H"
 #include "DAOption.H"
@@ -101,6 +102,9 @@ protected:
     /// the dictionary that stores the total derivatives reduced from processors
     dictionary totalDerivDict_;
 
+    /// pointer to the objective function file used in unsteady primal solvers
+    autoPtr<OFstream> objFuncHistFilePtr_;
+
     /// assign the psiVec to psiVecArray_
     void setPsiVecDict(
         const word objFuncName,
@@ -117,7 +121,7 @@ protected:
     Mat dXvdFFDMat_;
 
     /// the maximal residual for primal solution
-    scalar primalMinRes_;
+    scalar primalMinRes_ = 1e10;
 
     /// the solution time for the previous primal solution
     scalar prevPrimalSolTime_ = -1e10;
@@ -126,12 +130,27 @@ protected:
     template<class classType>
     void primalResidualControl(
         const SolverPerformance<classType>& solverP,
-        const label nSolverIters,
+        const label printToScreen,
         const label printInterval,
         const word varName);
 
+    label isPrintTime(
+        const Time& runTime,
+        const label printInterval) const;
+
     /// check whether the min residual in primal satisfy the prescribed tolerance
     label checkResidualTol();
+
+    /// reduce the connectivity level for Jacobian connectivity mat
+    void reduceStateResConLevel(
+        const dictionary& maxResConLv4JacPCMat,
+        HashTable<List<List<word>>>& stateResConInfo) const;
+
+    /// initialize objFuncHistFilePtr_
+    void initializeObjFuncHistFilePtr(const word fileName);
+
+    /// write objective functions values to the objFuncHistFile
+    void writeObjFuncHistFile();
 
 public:
     /// Runtime type information
@@ -175,6 +194,14 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec) = 0;
+
+    /// assign primal variables based on the current time instance
+    virtual void setTimeInstanceField(const label instanceI);
+
+    /// return the value of objective function at the given time instance and name
+    virtual scalar getTimeInstanceObjFunc(
+        const label instanceI,
+        const word objFuncName);
 
     /// solve the adjoint linear equations
     label solveAdjoint(
@@ -310,11 +337,6 @@ public:
         Info << daOptionPtr_->getAllOptions() << endl;
     }
 
-    /// reduce the connectivity level for Jacobian connectivity mat
-    void reduceStateResConLevel(
-        const dictionary& maxResConLv4JacPCMat,
-        HashTable<List<List<word>>>& stateResConInfo) const;
-
     /// calculate the norms of all residuals and print to screen
     void calcPrimalResidualStatistics(
         const word mode,
@@ -352,7 +374,7 @@ public:
 template<class classType>
 void DASolver::primalResidualControl(
     const SolverPerformance<classType>& solverP,
-    const label nSolverIters,
+    const label printToScreen,
     const label printInterval,
     const word varName)
 {
@@ -364,7 +386,7 @@ void DASolver::primalResidualControl(
     {
         primalMinRes_ = mag(solverP.initialResidual());
     }
-    if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+    if (printToScreen)
     {
         Info << varName << " Initial residual: " << solverP.initialResidual() << endl
              << varName << "   Final residual: " << solverP.finalResidual() << endl;

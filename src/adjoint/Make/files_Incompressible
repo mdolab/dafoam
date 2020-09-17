@@ -10,6 +10,9 @@ DARegDb/DARegDbTurbulenceModelIncompressible.C
 
 DAModel/DATurbulenceModel/DATurbulenceModel.C
 DAModel/DATurbulenceModel/DASpalartAllmaras.C
+DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
+DAModel/DATurbulenceModel/DAkOmegaSST.C
+DAModel/DATurbulenceModel/DAkEpsilon.C
 DAModel/DATurbulenceModel/DADummyTurbulenceModel.C
 
 DAModel/DARadiationModel/DARadiationModel.C
@@ -19,6 +22,7 @@ DAModel/DAModel.C
 
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoSimpleFoam.C
+DAStateInfo/DAStateInfoPisoFoam.C
 DAStateInfo/DAStateInfoSimpleTFoam.C
 
 DAIndex/DAIndex.C
@@ -33,10 +37,12 @@ DAObjFunc/DAObjFuncTotalPressure.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
+DAFvSource/DAFvSourceActuatorPoint.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C
 DAResidual/DAResidualSimpleFoam.C
+DAResidual/DAResidualPisoFoam.C
 DAResidual/DAResidualSimpleTFoam.C
 
 DAColoring/DAColoring.C
@@ -60,6 +66,12 @@ DALinearEqn/DALinearEqn.C
 
 DASolver/DASolver.C
 DASolver/DASimpleFoam/DASimpleFoam.C
+DASolver/DAPisoFoam/DAPisoFoam.C
 DASolver/DASimpleTFoam/DASimpleTFoam.C
+
+boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
+boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
+models/dummyTurbulenceModel/makeDummyTurbulenceModelIncompressible.C
+models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Incompressible.C
 
 LIB = $(FOAM_USER_LIBBIN)/libDAFoamIncompressible

@@ -10,6 +10,9 @@ DARegDb/DARegDbTurbulenceModelCompressible.C
 
 DAModel/DATurbulenceModel/DATurbulenceModel.C
 DAModel/DATurbulenceModel/DASpalartAllmaras.C
+DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
+DAModel/DATurbulenceModel/DAkOmegaSST.C
+DAModel/DATurbulenceModel/DAkEpsilon.C
 DAModel/DATurbulenceModel/DADummyTurbulenceModel.C
 
 DAModel/DARadiationModel/DARadiationModel.C
@@ -63,10 +66,14 @@ DAPartDeriv/DAPartDerivdRdAOA.C
 
 DALinearEqn/DALinearEqn.C
 
-
 DASolver/DASolver.C
 DASolver/DARhoSimpleFoam/DARhoSimpleFoam.C
 DASolver/DARhoSimpleCFoam/DARhoSimpleCFoam.C
 DASolver/DATurboFoam/DATurboFoam.C
+
+boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
+boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
+models/dummyTurbulenceModel/makeDummyTurbulenceModelCompressible.C
+models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Compressible.C
 
 LIB = $(FOAM_USER_LIBBIN)/libDAFoamCompressible

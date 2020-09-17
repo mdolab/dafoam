@@ -461,6 +461,25 @@ void DATurbulenceModel::printYPlus() const
          << " mean: " << avgYplus << endl;
 }
 
+label DATurbulenceModel::isPrintTime(
+    const Time& runTime,
+    const label printInterval) const
+{
+    /*
+    Description:
+        Check if it is print time
+    */
+
+    if (runTime.timeIndex() % printInterval == 0 || runTime.timeIndex() == 1)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

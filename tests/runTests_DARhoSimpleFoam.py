@@ -18,14 +18,10 @@ from petsc4py import PETSc
 
 petsc4py.init(sys.argv)
 
-checkRegVal = 1
-if len(sys.argv) == 1:
-    checkRegVal = 1
-elif sys.argv[1] == "noCheckVal":
-    checkRegVal = 0
-else:
-    print("sys.argv %s not valid!" % sys.argv[1])
-    exit(1)
+calcFDSens = 0
+if len(sys.argv) != 1:
+    if sys.argv[1] == "calcFDSens":
+        calcFDSens = 1
 
 gcomm = MPI.COMM_WORLD
 
@@ -34,10 +30,12 @@ os.chdir("./input/CurvedCubeSnappyHexMesh")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.compressible 0")
+    os.system("cp -r constant/turbulenceProperties.ke constant/turbulenceProperties")
 
 U0 = 50.0
 p0 = 101325.0
-nuTilda0 = 4.5e-5
+k0 = 0.06
+epsilon0 = 2.16
 T0 = 300.0
 A0 = 1.0
 rho0 = 1.0
@@ -45,8 +43,6 @@ rho0 = 1.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DARhoSimpleFoam",
-    "flowCondition": "Compressible",
-    "turbulenceModel": "SpalartAllmaras",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
     "primalMinResTol": 1e-12,
@@ -54,18 +50,32 @@ aeroOptions = {
         "UIn": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
         "T0": {"variable": "T", "patches": ["inlet"], "value": [T0]},
-        "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [nuTilda0]},
+        "k0": {"variable": "k", "patches": ["inlet"], "value": [k0]},
+        "epsilon0": {"variable": "epsilon", "patches": ["inlet"], "value": [epsilon0]},
         "useWallFunction": False,
     },
     "primalVarBounds": {
-        "UUpperBound": 1000.0,
-        "ULowerBound": -1000.0,
-        "pUpperBound": 500000.0,
-        "pLowerBound": 20000.0,
-        "eUpperBound": 500000.0,
-        "eLowerBound": 100000.0,
-        "rhoUpperBound": 5.0,
-        "rhoLowerBound": 0.2,
+        "UMax": 1000.0,
+        "UMin": -1000.0,
+        "pMax": 500000.0,
+        "pMin": 20000.0,
+        "eMax": 500000.0,
+        "eMin": 100000.0,
+        "rhoMax": 5.0,
+        "rhoMin": 0.2,
+    },
+    "fvSource": {
+        "disk1": {
+            "type": "actuatorDisk",
+            "source": "cylinderAnnulusToCell",
+            "p1": [0.3, 0.5, 0.5],  # p1 and p2 define the axis and width
+            "p2": [0.7, 0.5, 0.5],  # p2-p1 should be streamwise
+            "innerRadius": 0.01,
+            "outerRadius": 0.6,
+            "rotDir": "left",
+            "scale": 10.0,
+            "POD": 0.7,
+        },
     },
     "objFunc": {
         "CD": {
@@ -102,7 +112,7 @@ aeroOptions = {
     },
     "adjStateOrdering": "cell",
     "debug": True,
-    "normalizeStates": {"U": U0, "p": p0, "nuTilda": nuTilda0 * 10.0, "phi": 1.0, "T": T0},
+    "normalizeStates": {"U": U0, "p": p0, "k": k0, "epsilon": epsilon0, "phi": 1.0, "T": T0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
@@ -117,7 +127,7 @@ meshOptions = {
     "gridFile": os.getcwd(),
     "fileType": "openfoam",
     # point and normal for the symmetry plane
-    "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], [[0.0, 0.0, 0.1], [0.0, 0.0, 1.0]]],
+    "symmetryPlanes": [],
 }
 
 # DVGeo
@@ -164,14 +174,16 @@ optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
 
 # Run
-DASolver.runColoring()
-xDV = DVGeo.getValues()
-funcs = {}
-funcs, fail = optFuncs.calcObjFuncValues(xDV)
-funcsSens = {}
-funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
-
-if checkRegVal:
+if calcFDSens == 1:
+    optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValues, fileName="sensFD.txt")
+    exit(0)
+else:
+    DASolver.runColoring()
+    xDV = DVGeo.getValues()
+    funcs = {}
+    funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    funcsSens = {}
+    funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-6, 1e-8)
@@ -187,10 +199,9 @@ xDV["shapey"][0] = 1000.0
 funcs1 = {}
 funcs1, fail1 = optFuncs.calcObjFuncValues(xDV)
 
-if checkRegVal:
-    # the checkMesh utility should detect failed mesh
-    if fail1 is False:
-        exit(1)
+# the checkMesh utility should detect failed mesh
+if fail1 is False:
+    exit(1)
 
 # test point2Vec functions
 xvSize = len(DASolver.xv) * 3
@@ -204,9 +215,8 @@ DASolver.solver.pointVec2OFMesh(xvVec)
 DASolver.solver.ofMesh2PointVec(xvVec)
 xvVecNorm1 = xvVec.norm(1)
 
-if checkRegVal:
-    if xvVecNorm != xvVecNorm1:
-        exit(1)
+if xvVecNorm != xvVecNorm1:
+    exit(1)
 
 # test res2Vec functions
 rSize = DASolver.solver.getNLocalAdjointStates()
@@ -220,9 +230,8 @@ DASolver.solver.resVec2OFResField(rVec)
 DASolver.solver.ofResField2ResVec(rVec)
 rVecNorm1 = rVec.norm(1)
 
-if checkRegVal:
-    if rVecNorm != rVecNorm1:
-        exit(1)
+if rVecNorm != rVecNorm1:
+    exit(1)
 
 # Test vector IO functions
 DASolver.solver.writeVectorASCII(rVec, b"rVecRead")
@@ -233,9 +242,8 @@ rVecRead.setFromOptions()
 DASolver.solver.readVectorBinary(rVecRead, b"rVecRead")
 rVecNormRead = rVecRead.norm(1)
 
-if checkRegVal:
-    if rVecNorm != rVecNormRead:
-        exit(1)
+if rVecNorm != rVecNormRead:
+    exit(1)
 
 # Test matrix IO functions
 lRow = gcomm.rank + 1
@@ -261,6 +269,5 @@ testMat1.setUp()
 DASolver.solver.readMatrixBinary(testMat1, b"testMat")
 testMatNorm1 = testMat1.norm(0)
 
-if checkRegVal:
-    if testMatNorm != testMatNorm1:
-        exit(1)
+if testMatNorm != testMatNorm1:
+    exit(1)

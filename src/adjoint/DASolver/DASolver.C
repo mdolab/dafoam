@@ -32,7 +32,8 @@ DASolver::DASolver(
       daIndexPtr_(nullptr),
       daFieldPtr_(nullptr),
       daCheckMeshPtr_(nullptr),
-      daResidualPtr_(nullptr)
+      daResidualPtr_(nullptr),
+      objFuncHistFilePtr_(nullptr)
 {
     // initialize fvMesh and Time object pointer
 #include "setArgs.H"
@@ -627,23 +628,19 @@ label DASolver::solveAdjoint(
     // where we need to set different boundary conditions for different points
     if (daOptionPtr_->getOption<label>("multiPoint"))
     {
-        dictionary bcDict = daOptionPtr_->getAllOptions().subDict("primalBC");
-        if (bcDict.toc().size() != 0)
-        {
-            Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
-            daFieldPtr_->setPrimalBoundaryConditions();
 
-            daFieldPtr_->stateVec2OFField(wVec);
-            // We need to call correctBC multiple times to reproduce
-            // the exact residual for mulitpoint, this is needed for some boundary conditions
-            // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
-            for (label i = 0; i < 10; i++)
-            {
-                daResidualPtr_->correctBoundaryConditions();
-                daResidualPtr_->updateIntermediateVariables();
-                daModelPtr_->correctBoundaryConditions();
-                daModelPtr_->updateIntermediateVariables();
-            }
+        Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
+        daFieldPtr_->setPrimalBoundaryConditions();
+        daFieldPtr_->stateVec2OFField(wVec);
+        // We need to call correctBC multiple times to reproduce
+        // the exact residual for mulitpoint, this is needed for some boundary conditions
+        // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
+        for (label i = 0; i < 10; i++)
+        {
+            daResidualPtr_->correctBoundaryConditions();
+            daResidualPtr_->updateIntermediateVariables();
+            daModelPtr_->correctBoundaryConditions();
+            daModelPtr_->updateIntermediateVariables();
         }
     }
 
@@ -1833,6 +1830,98 @@ label DASolver::checkResidualTol()
     }
 
     return 1;
+}
+
+void DASolver::initializeObjFuncHistFilePtr(const word fileName)
+{
+    /*
+    Description:
+        Initialize the log file to store objective function
+        values for each step. This is only used for unsteady
+        primal solvers
+    */
+
+    label myProc = Pstream::myProcNo();
+    if (myProc == 0)
+    {
+        objFuncHistFilePtr_.reset(new OFstream(fileName));
+    }
+    return;
+}
+
+void DASolver::writeObjFuncHistFile()
+{
+    /*
+    Description:
+        Write objective function values to the log file  for each step. 
+        This is only used for unsteady primal solvers
+    */
+
+    label myProc = Pstream::myProcNo();
+    scalar t = runTimePtr_->timeOutputValue();
+
+    if (myProc == 0)
+    {
+        objFuncHistFilePtr_() << t << " ";
+    }
+    forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
+    {
+        word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
+        scalar objFuncVal = this->getObjFuncValue(objFuncName);
+        if (myProc == 0)
+        {
+            objFuncHistFilePtr_() << objFuncVal << " ";
+        }
+    }
+
+    if (myProc == 0)
+    {
+        objFuncHistFilePtr_() << endl;
+    }
+    return;
+}
+
+void DASolver::setTimeInstanceField(const label instanceI)
+{
+    /*
+    Description:
+        Assign primal variables based on the current time instance
+    */
+
+    FatalErrorIn("") << "setTimeInstanceField should be implemented in child classes!"
+                     << abort(FatalError);
+}
+
+scalar DASolver::getTimeInstanceObjFunc(
+    const label instanceI,
+    const word objFuncName)
+{
+    /*
+    Description:
+        Return the value of objective function at the given time instance and name
+    */
+    FatalErrorIn("") << "getTimeInstanceObjFunc should be implemented in child classes!"
+                     << abort(FatalError);
+
+    return 0.0;
+}
+
+label DASolver::isPrintTime(
+    const Time& runTime,
+    const label printInterval) const
+{
+    /*
+    Description:
+        Check if it is print time
+    */
+    if (runTime.timeIndex() % printInterval == 0 || runTime.timeIndex() == 1)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -18,6 +18,3 @@ fi
 cd src/adjoint && ./Allmake $argm && cd -
 cd src/pyDASolvers && ./Allmake $argm && cd -
 cd src/utilities && ./Allmake $argm && cd -
-if [ "$argm" != "solid" ]; then
-  cd src/models && ./Allmake && cd -
-fi

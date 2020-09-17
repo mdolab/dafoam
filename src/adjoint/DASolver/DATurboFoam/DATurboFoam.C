@@ -84,7 +84,8 @@ label DATurboFoam::solvePrimal(
         daFieldPtr_->setPrimalBoundaryConditions();
     }
 
-    turbulencePtr_->validate();
+    // call correctNut, this is equivalent to turbulence->validate();
+    daTurbulenceModelPtr_->updateIntermediateVariables();
 
     Info << "\nStarting time loop\n"
          << endl;
@@ -103,12 +104,15 @@ label DATurboFoam::solvePrimal(
     // set the rotating wall velocity after the mesh is updated
     this->setRotingWallVelocity();
 
-    label nSolverIters = 1;
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
+    label printToScreen = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+
+        printToScreen = this->isPrintTime(runTime, printInterval);
+
+        if (printToScreen)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
@@ -123,7 +127,7 @@ label DATurboFoam::solvePrimal(
 
         daTurbulenceModelPtr_->correct();
 
-        if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+        if (printToScreen)
         {
             daTurbulenceModelPtr_->printYPlus();
 
@@ -136,7 +140,6 @@ label DATurboFoam::solvePrimal(
 
         runTime.write();
 
-        nSolverIters++;
     }
 
     this->calcPrimalResidualStatistics("print");

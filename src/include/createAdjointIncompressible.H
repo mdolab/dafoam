@@ -6,7 +6,18 @@ daOptionPtr_.reset(new DAOption(mesh, pyOptions_));
 DARegDbSinglePhaseTransportModel regDbTransport(mesh, laminarTransport);
 DARegDbTurbulenceModelIncompressible regDbTurbulence(mesh, turbulencePtr_());
 
-word turbModelName = daOptionPtr_->getOption<word>("turbulenceModel");
+// read the RAS model from constant/turbulenceProperties
+const word turbModelName(
+    IOdictionary(
+        IOobject(
+            "turbulenceProperties",
+            mesh.time().constant(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false))
+        .subDict("RAS")
+        .lookup("RASModel"));
 daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
 
 daModelPtr_.reset(new DAModel(mesh, daOptionPtr_()));

@@ -13,19 +13,11 @@ from idwarp import *
 from pyoptsparse import Optimization, OPT
 import numpy as np
 from testFuncs import *
-import petsc4py
-from petsc4py import PETSc
 
-petsc4py.init(sys.argv)
-
-checkRegVal = 1
-if len(sys.argv) == 1:
-    checkRegVal = 1
-elif sys.argv[1] == "noCheckVal":
-    checkRegVal = 0
-else:
-    print("sys.argv %s not valid!" % sys.argv[1])
-    exit(1)
+calcFDSens = 0
+if len(sys.argv) != 1:
+    if sys.argv[1] == "calcFDSens":
+        calcFDSens = 1
 
 gcomm = MPI.COMM_WORLD
 
@@ -40,37 +32,25 @@ if gcomm.rank == 0:
     os.system("cp -r constant/MRFProperties.transonic constant/MRFProperties")
     os.system("cp -r system/fvSolution.transonic system/fvSolution")
     os.system("cp -r system/fvSchemes.transonic system/fvSchemes")
+    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
 
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DATurboFoam",
-    "flowCondition": "Compressible",
-    "turbulenceModel": "SpalartAllmaras",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["blade"],
     "primalMinResTol": 1e-12,
     "primalVarBounds": {
-        "UUpperBound": 800.0,
-        "ULowerBound": -800.0,
-        "pUpperBound": 1000000.0,
-        "pLowerBound": 20000.0,
-        "hUpperBound": 500000.0,
-        "hLowerBound": 50000.0,
-        "rhoUpperBound": 10.0,
-        "rhoLowerBound": 0.2,
+        "UMax": 1000.0,
+        "UMin": -1000.0,
+        "pMax": 500000.0,
+        "pMin": 20000.0,
+        "eMax": 500000.0,
+        "eMin": 100000.0,
+        "rhoMax": 5.0,
+        "rhoMin": 0.2,
     },
     "objFunc": {
-        "CMZ": {
-            "part1": {
-                "type": "moment",
-                "source": "patchToFace",
-                "patches": ["blade"],
-                "axis": [0.0, 0.0, 1.0],
-                "center": [0.0, 0.0, 0.0],
-                "scale": 1.0 / (0.5 * 10.0 * 10.0 * 1.0 * 1.0),
-                "addToAdjoint": True,
-            }
-        },
         "TPR": {
             "part1": {
                 "type": "totalPressureRatio",
@@ -98,7 +78,18 @@ aeroOptions = {
                 "type": "massFlowRate",
                 "source": "patchToFace",
                 "patches": ["inlet"],
-                "scale": 1.0,
+                "scale": -1.0,
+                "addToAdjoint": True,
+            }
+        },
+        "CMZ": {
+            "part1": {
+                "type": "moment",
+                "source": "patchToFace",
+                "patches": ["blade"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.0, 0.0, 0.0],
+                "scale": 1.0 / (0.5 * 10.0 * 10.0 * 1.0 * 1.0),
                 "addToAdjoint": True,
             }
         },
@@ -159,16 +150,15 @@ optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
 
 # Run
-DASolver.runColoring()
-xDV = DVGeo.getValues()
-funcs = {}
-funcs, fail = optFuncs.calcObjFuncValues(xDV)
-funcsSens = {}
-funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
-
-if checkRegVal:
+if calcFDSens == 1:
+    optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValues, fileName="sensFD.txt")
+else:
+    DASolver.runColoring()
+    xDV = DVGeo.getValues()
+    funcs = {}
+    funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    funcsSens = {}
+    funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-6, 1e-8)
-
-

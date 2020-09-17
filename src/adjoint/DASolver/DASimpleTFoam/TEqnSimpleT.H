@@ -15,5 +15,5 @@
     // and final residuals
     SolverPerformance<scalar> solverT = TEqn.solve();
 
-    this->primalResidualControl<scalar>(solverT, nSolverIters, printInterval, "T");
+    this->primalResidualControl<scalar>(solverT, printToScreen, printInterval, "T");
 }

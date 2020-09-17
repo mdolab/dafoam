@@ -227,6 +227,20 @@ public:
     {
         DASolverPtr_->writeVectorBinary(vecIn, prefix);
     }
+
+    /// assign primal variables based on the current time instance
+    void setTimeInstanceField(const label instanceI)
+    {
+        DASolverPtr_->setTimeInstanceField(instanceI);
+    }
+
+    /// return the value of objective function at the given time instance and name
+    scalar getTimeInstanceObjFunc(
+        const label instanceI,
+        const word objFuncName)
+    {
+        return DASolverPtr_->getTimeInstanceObjFunc(instanceI, objFuncName);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -56,7 +56,6 @@ DASpalartAllmaras::DASpalartAllmaras(
           "Cs",
           this->coeffDict_,
           0.3)),
-
       // Augmented variables
       nuTilda_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("nuTilda"))),
@@ -85,7 +84,28 @@ DASpalartAllmaras::DASpalartAllmaras(
           nuTildaRes_),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
-    printInterval_ = daOption.getAllOptions().lookupOrDefault<label>("printInterval", 100);
+
+    // initialize printInterval_ we need to check whether it is a steady state
+    // or unsteady primal solver
+    IOdictionary fvSchemes(
+        IOobject(
+            "fvSchemes",
+            mesh.time().system(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false));
+    word ddtScheme = word(fvSchemes.subDict("ddtSchemes").lookup("default"));
+    if (ddtScheme == "steadyState")
+    {
+        printInterval_ =
+            daOption.getAllOptions().lookupOrDefault<label>("printInterval", 100);
+    }
+    else
+    {
+        printInterval_ =
+            daOption.getAllOptions().lookupOrDefault<label>("printIntervalUnsteady", 500);
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -395,16 +415,14 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
 
     // Copy and modify based on the "correct" function
 
+    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
+
     word divNuTildaScheme = "div(phi,nuTilda)";
 
     label isPC = 0;
 
     if (!solveTurbState_)
     {
-        // we need to bound nuTilda before computing residuals
-        // this will avoid having NaN residuals
-        DAUtility::boundVar(allOptions_, nuTilda_);
-
         isPC = options.getLabel("isPC");
 
         if (isPC)
@@ -412,8 +430,6 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
             divNuTildaScheme = "div(pc)";
         }
     }
-
-    //eddyViscosity<RASModelAugmented<BasicTurbulenceModel> >::correct();
 
     const volScalarField chi(this->chi());
     const volScalarField fv1(this->fv1(chi));
@@ -432,20 +448,17 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
 
     if (solveTurbState_)
     {
-        const scalar& deltaT = mesh_.time().deltaT().value();
-        const scalar t = mesh_.time().timeOutputValue();
-        label nSolverIters = round(t / deltaT);
 
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverNuTilda = solve(nuTildaEqn);
-        if (nSolverIters % printInterval_ == 0 || nSolverIters == 1)
+        if (printToScreen)
         {
             Info << "nuTilda Initial residual: " << solverNuTilda.initialResidual() << endl
                  << "          Final residual: " << solverNuTilda.finalResidual() << endl;
         }
 
-        DAUtility::boundVar(allOptions_, nuTilda_);
+        DAUtility::boundVar(allOptions_, nuTilda_, printToScreen);
         nuTilda_.correctBoundaryConditions();
 
         // ***************** NOTE*****************

@@ -100,12 +100,14 @@ public:
     /// bound a volScalar variable based on parametes defined in DAOption::allOptions_
     static void boundVar(
         const dictionary& allOptions,
-        volScalarField& var);
+        volScalarField& var,
+        const label printToScreen);
 
     /// bound a volVector variable based on parametes defined in DAOption::allOptions_
     static void boundVar(
         const dictionary& allOptions,
-        volVectorField& var);
+        volVectorField& var,
+        const label printToScreen);
 
     /// check whether a value is close to a reference value by a tolerance
     static label isValueCloseToRef(
@@ -230,7 +232,6 @@ label DAUtility::listDeleteVal(
 
     return foundVal;
 }
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

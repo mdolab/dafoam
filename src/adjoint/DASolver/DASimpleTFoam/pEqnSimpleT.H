@@ -38,7 +38,7 @@
         // and final residuals
         SolverPerformance<scalar> solverP = pEqn.solve();
 
-        this->primalResidualControl<scalar>(solverP, nSolverIters, printInterval, "p");
+        this->primalResidualControl<scalar>(solverP, printToScreen, printInterval, "p");
 
         if (simple.finalNonOrthogonalIter())
         {
@@ -46,7 +46,7 @@
         }
     }
 
-    if (nSolverIters % printInterval == 0 || nSolverIters == 1)
+    if (printToScreen)
     {
 #include "continuityErrsPython.H"
     }

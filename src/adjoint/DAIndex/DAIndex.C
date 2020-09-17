@@ -102,6 +102,10 @@ DAIndex::DAIndex(
     nSurfaceScalarStates = stateInfo_["surfaceScalarStates"].size();
     nModelStates = stateInfo_["modelStates"].size();
 
+    // number of boundary states, NOTE: this does not contain boundary phis becaues
+    // phi state already contains boundary phis
+    nLocalAdjointBoundaryStates = (nVolVectorStates * 3 + nVolScalarStates + nModelStates) * nLocalBoundaryFaces;
+
     // we can now calculate adjoint state size
     label nLocalCellStates = (nVolVectorStates * 3 + nVolScalarStates + nModelStates) * nLocalCells;
     label nLocalFaceStates = nSurfaceScalarStates * nLocalFaces;

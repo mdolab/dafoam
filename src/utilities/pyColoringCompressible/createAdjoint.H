@@ -9,7 +9,18 @@ DAOption daOption(mesh, pyOptions_);
 DARegDbFluidThermo regDbThermo(mesh, thermo);
 DARegDbTurbulenceModelCompressible regDbTurbulence(mesh, turbulence());
 
-word turbModelName = daOption.getOption<word>("turbulenceModel");
+// read the RAS model from constant/turbulenceProperties
+const word turbModelName(
+    IOdictionary(
+        IOobject(
+            "turbulenceProperties",
+            mesh.time().constant(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false))
+        .subDict("RAS")
+        .lookup("RASModel"));
 autoPtr<DATurbulenceModel> daTurbulenceModel(DATurbulenceModel::New(turbModelName, mesh, daOption));
 
 DAModel daModel(mesh, daOption);
