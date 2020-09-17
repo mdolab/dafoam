@@ -4,7 +4,10 @@
     Version : v2
 
     Description:
-    SpalartAllmaras turbulence model with Fv3 term
+    SpalartAllmaras turbulence model with Fv3 term.
+    NOTE: this is just a dummy turbulence model implementation, just to 
+    create the variable nuTilda. We shouldn't call any function in this class
+    Instead, we should call the correct function in DAModel/DATurbulenceModel
 
 \*---------------------------------------------------------------------------*/
 
@@ -38,20 +41,6 @@ class SpalartAllmarasFv3
 protected:
     // Protected data
 
-    // Model coefficients
-
-    dimensionedScalar sigmaNut_;
-    dimensionedScalar kappa_;
-
-    dimensionedScalar Cb1_;
-    dimensionedScalar Cb2_;
-    dimensionedScalar Cw1_;
-    dimensionedScalar Cw2_;
-    dimensionedScalar Cw3_;
-    dimensionedScalar Cv1_;
-    dimensionedScalar Cv2_;
-    dimensionedScalar nuTildaMin_;
-
     // Fields
 
     volScalarField nuTilda_;
@@ -61,23 +50,6 @@ protected:
     //  which is for near-wall cells only
     const volScalarField& y_;
 
-    // Protected Member Functions
-
-    tmp<volScalarField> chi() const;
-
-    tmp<volScalarField> fv1(const volScalarField& chi) const;
-
-    tmp<volScalarField> fv2(
-        const volScalarField& chi,
-        const volScalarField& fv1) const;
-
-    tmp<volScalarField> fv3(
-        const volScalarField& chi,
-        const volScalarField& fv1) const;
-
-    tmp<volScalarField> fw(const volScalarField& Stilda) const;
-
-    void correctNut(const volScalarField& fv1);
     virtual void correctNut();
 
 public:
@@ -110,9 +82,6 @@ public:
 
     //- Re-read model coefficients if they have changed
     virtual bool read();
-
-    //- Return the effective diffusivity for nuTilda
-    tmp<volScalarField> DnuTildaEff() const;
 
     //- Return the turbulence kinetic energy
     virtual tmp<volScalarField> k() const;

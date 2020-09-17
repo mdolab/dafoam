@@ -97,7 +97,8 @@ label DARhoSimpleFoam::solvePrimal(
         daFieldPtr_->setPrimalBoundaryConditions();
     }
 
-    turbulencePtr_->validate();
+    // call correctNut, this is equivalent to turbulence->validate();
+    daTurbulenceModelPtr_->updateIntermediateVariables();
 
     Info << "\nStarting time loop\n"
          << endl;

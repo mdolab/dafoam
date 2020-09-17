@@ -37,12 +37,26 @@ install:
 
 jobs:
   include:
-    - stage: runTests # just run the tests
+    - stage: runTests # run the incompressible tests
       script:
         # compile all components
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake && rm -rf $DOCKER_PIP_INSTALL_PATH/dafoam* && pip install ."
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake incompressible && rm -rf $DOCKER_PIP_INSTALL_PATH/dafoam* && pip install ."
         # just run the tests
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && ./Allrun"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && ./Allrun incompressible"
+
+    - stage: runTests # run the compressible tests
+      script:
+        # compile all components
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake compressible && rm -rf $DOCKER_PIP_INSTALL_PATH/dafoam* && pip install ."
+        # just run the tests
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && ./Allrun compressible"
+
+    - stage: runTests # run the solid tests
+      script:
+        # compile all components
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake solid && rm -rf $DOCKER_PIP_INSTALL_PATH/dafoam* && pip install ."
+        # just run the tests
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && ./Allrun solid"
 
     - stage: runTests # coverage for incompressible
       script:

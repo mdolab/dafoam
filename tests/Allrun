@@ -13,6 +13,13 @@ else
   wget https://github.com/dafoam/files/releases/download/v1.0.0/input.tar.gz --no-check-certificate
 fi
 
+if [ -z "$1" ]; then
+  echo "Argument not found. Using the default value: all"
+  argm="all"
+else
+  argm="$1"
+fi
+
 function runTests() 
 {
   rm -rf input DAFoam_Test_${1}.txt
@@ -31,19 +38,68 @@ function runTests()
   fi
 }
 
-runTests Integration
-runTests DASimpleFoam
-runTests DASimpleTFoam
-runTests DAPisoFoam
-runTests DARhoSimpleFoam
-runTests DARhoSimpleFoamUBend
-runTests DARhoSimpleCFoam
-runTests DATurboFoamSubsonic
-runTests DATurboFoamTransonic
-runTests DASolidDisplacementFoam
+case $argm in
+  "all")
+    echo "Running all tests...."
+    sleep 3
+    runTests Integration
+    runTests DASimpleFoam
+    runTests DASimpleTFoam
+    runTests DAPisoFoam
+    runTests DARhoSimpleFoam
+    runTests DARhoSimpleFoamUBend
+    runTests DARhoSimpleCFoam
+    runTests DATurboFoamSubsonic
+    runTests DATurboFoamTransonic
+    runTests DASolidDisplacementFoam
+    echo " "
+    echo "************************************************************"
+    echo "**************** All DAFoam tests passed! ******************"
+    echo "************************************************************"
+    echo " "
+    ;;
+  "incompressible")
+    echo "Running incompressible tests...."
+    sleep 3
+    runTests Integration
+    runTests DASimpleFoam
+    runTests DASimpleTFoam
+    runTests DAPisoFoam
+    echo " "
+    echo "************************************************************"
+    echo "************** Incompressible tests passed! ****************"
+    echo "************************************************************"
+    echo " "
+    ;;
+  "compressible")
+    echo "Running compressible tests...."
+    sleep 3
+    runTests DARhoSimpleFoam
+    runTests DARhoSimpleFoamUBend
+    runTests DARhoSimpleCFoam
+    runTests DATurboFoamSubsonic
+    runTests DATurboFoamTransonic
+    echo " "
+    echo "************************************************************"
+    echo "*************** Compressible tests passed! *****************"
+    echo "************************************************************"
+    echo " "
+    ;;
+  "solid")
+    echo "Running solid tests...."
+    sleep 3
+    runTests DASolidDisplacementFoam
+    echo " "
+    echo "************************************************************"
+    echo "******************* Solid tests passed! ********************"
+    echo "************************************************************"
+    echo " "
+    ;;
+  *)
+    echo "Argument not valid! Options are: all, incompressible, compressible, or solid"
+    echo "Example: ./Allrun all"
+    exit 1
+    ;;
+esac
 
-echo " "
-echo "************************************************************"
-echo "**************** All DAFoam tests passed! ******************"
-echo "************************************************************"
-echo " "
+
