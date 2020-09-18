@@ -152,7 +152,7 @@ label DAPisoFoam::solvePrimal(
     mesh.moving(false);
 
     // create a file to store the objective values
-    this->initializeObjFuncHistFilePtr("objFuncHist.txt");
+    this->initializeObjFuncHistFilePtr("objFuncHist");
 
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");

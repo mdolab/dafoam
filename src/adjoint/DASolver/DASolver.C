@@ -1853,7 +1853,8 @@ void DASolver::initializeObjFuncHistFilePtr(const word fileName)
     label myProc = Pstream::myProcNo();
     if (myProc == 0)
     {
-        objFuncHistFilePtr_.reset(new OFstream(fileName));
+        objFuncHistFilePtr_.reset(new OFstream(fileName+".txt"));
+        objFuncAvgHistFilePtr_.reset(new OFstream(fileName+"Avg.txt"));
     }
     return;
 }
@@ -1869,23 +1870,53 @@ void DASolver::writeObjFuncHistFile()
     label myProc = Pstream::myProcNo();
     scalar t = runTimePtr_->timeOutputValue();
 
+    // we start averaging after objFuncAvgStart
+    if (runTimePtr_->timeIndex() == daOptionPtr_->getOption<label>("objFuncAvgStart"))
+    {
+        nItersObjFuncAvg_ = 1;
+        // initialize avgObjFuncValues_
+        avgObjFuncValues_.setSize(daOptionPtr_->getAllOptions().subDict("objFunc").toc().size());
+        forAll(avgObjFuncValues_, idxI)
+        {
+            avgObjFuncValues_[idxI] = 0.0;
+        }
+    }
+
     if (myProc == 0)
     {
         objFuncHistFilePtr_() << t << " ";
+        if (nItersObjFuncAvg_ > 0)
+        {
+            objFuncAvgHistFilePtr_() << t << " ";
+        }
     }
     forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
     {
         word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
         scalar objFuncVal = this->getObjFuncValue(objFuncName);
+        if (nItersObjFuncAvg_ > 0)
+        {
+            avgObjFuncValues_[idxI] =
+                objFuncVal / nItersObjFuncAvg_ + (nItersObjFuncAvg_ - 1.0) / nItersObjFuncAvg_ * avgObjFuncValues_[idxI];
+            nItersObjFuncAvg_++;
+        }
         if (myProc == 0)
         {
             objFuncHistFilePtr_() << objFuncVal << " ";
+            if (nItersObjFuncAvg_ > 0)
+            {
+                objFuncAvgHistFilePtr_() << avgObjFuncValues_[idxI] << " ";
+            }
         }
     }
 
     if (myProc == 0)
     {
         objFuncHistFilePtr_() << endl;
+        if (nItersObjFuncAvg_ > 0)
+        {
+            objFuncAvgHistFilePtr_() << endl;
+        }
     }
     return;
 }
