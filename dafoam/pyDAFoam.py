@@ -340,6 +340,14 @@ class DAOPTION(object):
     ## periodicity is the periodicity of flow oscillation
     hybridAdjoint = {"active": False, "nTimeInstances": -1, "periodicity": -1.0}
 
+    ## The interval of recomputing the pre-conditioner matrix dRdWTPC for solveAdjoint
+    ## By default, dRdWTPC will be re-computed each time the solveAdjoint function is called
+    ## However, one can increase the lag to skip it and reuse the dRdWTPC computed previously.
+    ## This obviously increses the speed because the dRdWTPC computation takes about 30% of
+    ## the adjoint total runtime. However, setting a too large lag value will decreases the speed
+    ## of solving the adjoint equations. One needs to balance these factors
+    adjPCLag = 1
+
     # *********************************************************************************************
     # ************************************ Advance Options ****************************************
     # *********************************************************************************************

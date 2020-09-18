@@ -105,6 +105,12 @@ protected:
     /// pointer to the objective function file used in unsteady primal solvers
     autoPtr<OFstream> objFuncHistFilePtr_;
 
+    /// the preconditioner matrix for the adjoint linear equation solution
+    Mat dRdWTPC_;
+
+    /// how many times the DASolver::solveAdjoint function is called
+    label nSolveAdjointCalls_ = 0;
+
     /// assign the psiVec to psiVecArray_
     void setPsiVecDict(
         const word objFuncName,

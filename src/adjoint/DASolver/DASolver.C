@@ -721,7 +721,8 @@ label DASolver::solveAdjoint(
     }
 
     // ********************** compute dRdWTPC **********************
-    Mat dRdWTPC;
+    label adjPCLag = daOptionPtr_->getOption<label>("adjPCLag");
+    if (nSolveAdjointCalls_ == 0 || nSolveAdjointCalls_ % adjPCLag == 0)
     {
 
         Info << "Initializing dRdWCon. " << runTimePtr_->elapsedClockTime() << " s" << endl;
@@ -779,10 +780,10 @@ label DASolver::solveAdjoint(
         options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdWPC"));
 
         // initilalize dRdWT matrix
-        daPartDeriv->initializePartDerivMat(options1, &dRdWTPC);
+        daPartDeriv->initializePartDerivMat(options1, &dRdWTPC_);
 
         // calculate dRdWT
-        daPartDeriv->calcPartDerivMat(options1, xvVec, wVec, dRdWTPC);
+        daPartDeriv->calcPartDerivMat(options1, xvVec, wVec, dRdWTPC_);
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
@@ -790,7 +791,7 @@ label DASolver::solveAdjoint(
         }
         if (daOptionPtr_->getOption<label>("writeJacobians"))
         {
-            DAUtility::writeMatrixBinary(dRdWTPC, "dRdWTPC");
+            DAUtility::writeMatrixBinary(dRdWTPC_, "dRdWTPC");
         }
 
         // clear up
@@ -831,7 +832,7 @@ label DASolver::solveAdjoint(
     kspOptions.add("printInfo", 1);
     // create the multi-level Richardson KSP
     KSP ksp;
-    daLinearEqn.createMLRKSP(kspOptions, dRdWT, dRdWTPC, &ksp);
+    daLinearEqn.createMLRKSP(kspOptions, dRdWT, dRdWTPC_, &ksp);
 
     // ********************** compute dFdW **********************
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -1006,7 +1007,15 @@ label DASolver::solveAdjoint(
 
     KSPDestroy(&ksp);
     MatDestroy(&dRdWT);
-    MatDestroy(&dRdWTPC);
+
+    // increment nSolveAdjointCalls_
+    nSolveAdjointCalls_++;
+
+    // we destroy dRdWTPC only when we need to recompute it next time
+    if (nSolveAdjointCalls_ % adjPCLag == 0)
+    {
+        MatDestroy(&dRdWTPC_);
+    }
 
     return solveAdjointFail;
 }
