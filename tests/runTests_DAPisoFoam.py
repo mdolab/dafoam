@@ -130,7 +130,7 @@ def setHybridAdjointObjFuncs(DASolver, funcs, evalFuncs):
     funcs["fail"] = False
 
 
-def setHybridAdjointObjFuncsSens(funcsSensAllTimeInstances, funcsSensCombined):
+def setHybridAdjointObjFuncsSens(CFDSolver, funcs, funcsSensAllTimeInstances, funcsSensCombined):
 
     nTimeInstances = 1.0 * len(funcsSensAllTimeInstances)
     for funcsSens in funcsSensAllTimeInstances:
