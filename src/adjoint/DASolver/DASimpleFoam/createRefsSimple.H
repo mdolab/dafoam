@@ -12,4 +12,7 @@ label& pRefCell = pRefCell_;
 scalar& pRefValue = pRefValue_;
 volVectorField& fvSource = fvSourcePtr_();
 
+// create a file to store the objective values
+this->initializeObjFuncHistFilePtr("objFuncHist");
+
 this->setDAObjFuncList();
