@@ -392,7 +392,7 @@ def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None)
             fOut.close()
 
 
-def solveCL(CL_star, alphaName, liftName):
+def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues):
 
     DASolver.setOption("adjUseColoring", False)
 
@@ -403,7 +403,7 @@ def solveCL(CL_star, alphaName, liftName):
         # Solve the CFD problem
         xDVs[alphaName] = alpha
         funcs = {}
-        funcs, fail = calcObjFuncValues(xDVs)
+        funcs, fail = objFun(xDVs)
         CL0 = funcs[liftName]
         Info("alpha: %f, CL: %f" % (alpha.real, CL0))
         if abs(CL0 - CL_star) / CL_star < 1e-5:
@@ -414,7 +414,7 @@ def solveCL(CL_star, alphaName, liftName):
         alphaVal = alpha + eps
         xDVs[alphaName] = alphaVal
         funcsP = {}
-        funcsP, fail = calcObjFuncValues(xDVs)
+        funcsP, fail = objFun(xDVs)
         CLP = funcsP[liftName]
         deltaAlpha = (CL_star - CL0) * eps / (CLP - CL0)
         alpha += deltaAlpha

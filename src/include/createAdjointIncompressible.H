@@ -33,3 +33,6 @@ daIndexPtr_->printIndices();
 daFieldPtr_.reset(new DAField(mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
 
 daResidualPtr_.reset(DAResidual::New(solverName, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
+
+// create a file to store the objective values
+this->initializeObjFuncHistFilePtr("objFuncHist");

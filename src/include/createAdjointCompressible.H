@@ -2,7 +2,7 @@
 
 daOptionPtr_.reset(new DAOption(mesh, pyOptions_));
 
-// need to register thermo and turbulence to mesh 
+// need to register thermo and turbulence to mesh
 // before initializing DATurbulenceModel
 DARegDbFluidThermo regDbThermo(mesh, thermo);
 DARegDbTurbulenceModelCompressible regDbTurbulence(mesh, turbulencePtr_());
@@ -34,3 +34,6 @@ daIndexPtr_->printIndices();
 daFieldPtr_.reset(new DAField(mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
 
 daResidualPtr_.reset(DAResidual::New(solverName, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
+
+// create a file to store the objective values
+this->initializeObjFuncHistFilePtr("objFuncHist");

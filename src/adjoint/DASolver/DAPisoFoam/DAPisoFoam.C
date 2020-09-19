@@ -151,9 +151,6 @@ label DAPisoFoam::solvePrimal(
     // Need to dig into this issue later
     mesh.moving(false);
 
-    // create a file to store the objective values
-    this->initializeObjFuncHistFilePtr("objFuncHist");
-
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
@@ -193,9 +190,6 @@ label DAPisoFoam::solvePrimal(
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                  << nl << endl;
         }
-
-        // we write the objective function to file at every step
-        this->writeObjFuncHistFile();
 
         runTime.write();
 

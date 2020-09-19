@@ -344,12 +344,6 @@ class DAOPTION(object):
     ## This is only used for unsteady solvers
     objFuncAvgStart = 1
 
-    ## The Cauchy convergence criteria. We will take objective values for every nSamples samples
-    ## and if the absolute difference between the maximal value and the mean value is less than
-    ## eps, the simulation converges. By default, this criteria is off and we will use the residual
-    ## as the criteria for convergence
-    cauchyConvCriteria = {"active": False, "nSamples": 100, "eps": 1e-6}
-
     ## The interval of recomputing the pre-conditioner matrix dRdWTPC for solveAdjoint
     ## By default, dRdWTPC will be re-computed each time the solveAdjoint function is called
     ## However, one can increase the lag to skip it and reuse the dRdWTPC computed previously.
