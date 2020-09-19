@@ -337,7 +337,7 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
 
         funcsSensAllInstances.append(funcsSens)
 
-    setHybridAdjointObjFuncsSens(funcsSensAllInstances, funcsSensCombined)
+    setHybridAdjointObjFuncsSens(DASolver, funcs, funcsSensAllInstances, funcsSensCombined)
 
     funcsSensCombined["fail"] = fail
 
