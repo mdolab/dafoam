@@ -11,6 +11,8 @@
 
 """
 
+__version__ = '2.1.0'
+
 import subprocess
 import os
 import sys
@@ -492,9 +494,13 @@ class PYDAFOAM(object):
 
         assert not os.getenv("WM_PROJECT") is None, "$WM_PROJECT not found. Please source OpenFOAM-v1812/etc/bashrc"
 
-        Info("---------------------------------------------------")
-        Info("|                   DAFoam v2.0                   |")
-        Info("---------------------------------------------------")
+        self.version = __version__
+
+        Info(" ")
+        Info("-------------------------------------------------------------------------------")
+        Info("|                               DAFoam v%s                                 |" % self.version)
+        Info("-------------------------------------------------------------------------------")
+        Info(" ")
 
         # name
         self.name = "PYDAFOAM"

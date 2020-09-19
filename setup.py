@@ -2,7 +2,7 @@ from setuptools import setup
 import re
 
 __version__ = re.findall(
-    r"""__version__ = ["']+([0-9\.]*)["']+""", open("dafoam/__init__.py").read(),
+    r"""__version__ = ["']+([0-9\.]*)["']+""", open("dafoam/pyDAFoam.py").read(),
 )[0]
 
 setup(
