@@ -88,7 +88,7 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
         fvSource[idxI] = vector::zero;
     }
 
-    // loop over all the cell indices for all actuator disks
+    // loop over all the cell indices for all actuator points
     forAll(fvSourceSubDict_.toc(), idxI)
     {
 
@@ -130,7 +130,8 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
                 zTerm = (tanh(eps * (meshC[2] + 0.5 * size[2] - center[2])) - tanh(eps * (meshC[2] - 0.5 * size[2] - center[2])));
 
                 s = xTerm * yTerm * zTerm;
-                fvSource[cellI][thrustDirIdx] = s * scale;
+                // here we need to use += for multiple actuator points
+                fvSource[cellI][thrustDirIdx] += s * scale;
 
                 thrustTotal += s * scale * mesh_.V()[cellI];
             }
@@ -168,7 +169,8 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
                 const vector& meshC = mesh_.C()[cellI];
                 scalar d = mag(meshC - center);
                 scalar s = coeff * Foam::exp(-d * d / 2.0 / eps / eps);
-                fvSource[cellI][thrustDirIdx] = s * scale;
+                // here we need to use += for multiple actuator points
+                fvSource[cellI][thrustDirIdx] += s * scale;
                 thrustTotal += s * scale * mesh_.V()[cellI];
             }
             reduce(thrustTotal, sumOp<scalar>());
