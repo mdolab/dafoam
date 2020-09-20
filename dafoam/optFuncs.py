@@ -343,7 +343,7 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
 
     # Print the current solution to the screen
     with np.printoptions(precision=16, threshold=5, suppress=True):
-        Info("Objective Function Sensitivity MultiPoiint: ")
+        Info("Objective Function Sensitivity Hybrid Adjoint: ")
         Info(funcsSensCombined)
 
     b = time.time()

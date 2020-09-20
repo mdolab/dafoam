@@ -44,6 +44,7 @@ aeroOptions = {
             "center": [0.5, 0.5, 0.5],  # center and size define a rectangular
             "size": [0.2, 0.2, 0.2],
             "amplitude": [0.0, 0.2, 0.0],
+            "phase": 0.0,
             "thrustDirIdx": 0,
             "periodicity": 1.0,
             "eps": 10.0,
