@@ -50,6 +50,17 @@ aeroOptions = {
             "eps": 10.0,
             "scale": 10.0,  # scale the source such the integral equals desired thrust
         },
+        "line2": {
+            "type": "actuatorPoint",
+            "smoothFunction": "gaussian",
+            "center": [0.5, 0.5, 0.5],  # center and size define a rectangular
+            "amplitude": [0.0, 0.2, 0.0],
+            "phase": 3.1415926,
+            "thrustDirIdx": 0,
+            "periodicity": 1.0,
+            "eps": 0.1,
+            "scale": 10.0,  # scale the source such the integral equals desired thrust
+        },
     },
     "objFunc": {
         "CD": {
