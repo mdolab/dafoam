@@ -16,4 +16,7 @@ const dictionary& allOptions = daOptionPtr_->getAllOptions();
 volVectorField& fvSource = fvSourcePtr_();
 volScalarField& fvSourceEnergy = fvSourceEnergyPtr_();
 
+// create a file to store the objective values
+this->initializeObjFuncHistFilePtr("objFuncHist");
+
 this->setDAObjFuncList();

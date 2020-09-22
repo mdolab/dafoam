@@ -105,6 +105,21 @@ protected:
     /// pointer to the objective function file used in unsteady primal solvers
     autoPtr<OFstream> objFuncHistFilePtr_;
 
+    /// pointer to the objective function file used in unsteady primal solvers
+    autoPtr<OFstream> objFuncAvgHistFilePtr_;
+
+    /// number of iterations since the start of objFunc averaging 
+    label nItersObjFuncAvg_ = -9999;
+
+    /// the averaged objective function values used in unsteady flow
+    scalarList avgObjFuncValues_;
+
+    /// the preconditioner matrix for the adjoint linear equation solution
+    Mat dRdWTPC_;
+
+    /// how many times the DASolver::solveAdjoint function is called
+    label nSolveAdjointCalls_ = 0;
+
     /// assign the psiVec to psiVecArray_
     void setPsiVecDict(
         const word objFuncName,

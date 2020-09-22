@@ -16,4 +16,7 @@ const volScalarField& psi = thermo.psi();
 const dictionary& allOptions = daOptionPtr_->getAllOptions();
 IOMRFZoneList& MRF = MRFPtr_();
 
+// create a file to store the objective values
+this->initializeObjFuncHistFilePtr("objFuncHist");
+
 this->setDAObjFuncList();

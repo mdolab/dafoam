@@ -11,6 +11,8 @@
 
 """
 
+__version__ = '2.1.0'
+
 import subprocess
 import os
 import sys
@@ -340,6 +342,18 @@ class DAOPTION(object):
     ## periodicity is the periodicity of flow oscillation
     hybridAdjoint = {"active": False, "nTimeInstances": -1, "periodicity": -1.0}
 
+    ## At which iteration should we start the averaging of objective functions.
+    ## This is only used for unsteady solvers
+    objFuncAvgStart = 1
+
+    ## The interval of recomputing the pre-conditioner matrix dRdWTPC for solveAdjoint
+    ## By default, dRdWTPC will be re-computed each time the solveAdjoint function is called
+    ## However, one can increase the lag to skip it and reuse the dRdWTPC computed previously.
+    ## This obviously increses the speed because the dRdWTPC computation takes about 30% of
+    ## the adjoint total runtime. However, setting a too large lag value will decreases the speed
+    ## of solving the adjoint equations. One needs to balance these factors
+    adjPCLag = 1
+
     # *********************************************************************************************
     # ************************************ Advance Options ****************************************
     # *********************************************************************************************
@@ -480,9 +494,13 @@ class PYDAFOAM(object):
 
         assert not os.getenv("WM_PROJECT") is None, "$WM_PROJECT not found. Please source OpenFOAM-v1812/etc/bashrc"
 
-        Info("---------------------------------------------------")
-        Info("|                   DAFoam v2.0                   |")
-        Info("---------------------------------------------------")
+        self.version = __version__
+
+        Info(" ")
+        Info("-------------------------------------------------------------------------------")
+        Info("|                               DAFoam v%s                                 |" % self.version)
+        Info("-------------------------------------------------------------------------------")
+        Info(" ")
 
         # name
         self.name = "PYDAFOAM"

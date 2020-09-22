@@ -95,6 +95,10 @@ label DASolver::loop(Time& runTime)
         The loop method to increment the runtime. The reason we implent this is
         because the runTime.loop() and simple.loop() give us seg fault...
     */
+
+    // we write the objective function to file at every step
+    this->writeObjFuncHistFile();
+
     scalar endTime = runTime.endTime().value();
     scalar deltaT = runTime.deltaT().value();
     scalar t = runTime.timeOutputValue();
@@ -721,7 +725,8 @@ label DASolver::solveAdjoint(
     }
 
     // ********************** compute dRdWTPC **********************
-    Mat dRdWTPC;
+    label adjPCLag = daOptionPtr_->getOption<label>("adjPCLag");
+    if (nSolveAdjointCalls_ == 0 || nSolveAdjointCalls_ % adjPCLag == 0)
     {
 
         Info << "Initializing dRdWCon. " << runTimePtr_->elapsedClockTime() << " s" << endl;
@@ -779,10 +784,10 @@ label DASolver::solveAdjoint(
         options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdWPC"));
 
         // initilalize dRdWT matrix
-        daPartDeriv->initializePartDerivMat(options1, &dRdWTPC);
+        daPartDeriv->initializePartDerivMat(options1, &dRdWTPC_);
 
         // calculate dRdWT
-        daPartDeriv->calcPartDerivMat(options1, xvVec, wVec, dRdWTPC);
+        daPartDeriv->calcPartDerivMat(options1, xvVec, wVec, dRdWTPC_);
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
@@ -790,7 +795,7 @@ label DASolver::solveAdjoint(
         }
         if (daOptionPtr_->getOption<label>("writeJacobians"))
         {
-            DAUtility::writeMatrixBinary(dRdWTPC, "dRdWTPC");
+            DAUtility::writeMatrixBinary(dRdWTPC_, "dRdWTPC");
         }
 
         // clear up
@@ -831,7 +836,7 @@ label DASolver::solveAdjoint(
     kspOptions.add("printInfo", 1);
     // create the multi-level Richardson KSP
     KSP ksp;
-    daLinearEqn.createMLRKSP(kspOptions, dRdWT, dRdWTPC, &ksp);
+    daLinearEqn.createMLRKSP(kspOptions, dRdWT, dRdWTPC_, &ksp);
 
     // ********************** compute dFdW **********************
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -1006,7 +1011,15 @@ label DASolver::solveAdjoint(
 
     KSPDestroy(&ksp);
     MatDestroy(&dRdWT);
-    MatDestroy(&dRdWTPC);
+
+    // increment nSolveAdjointCalls_
+    nSolveAdjointCalls_++;
+
+    // we destroy dRdWTPC only when we need to recompute it next time
+    if (nSolveAdjointCalls_ % adjPCLag == 0)
+    {
+        MatDestroy(&dRdWTPC_);
+    }
 
     return solveAdjointFail;
 }
@@ -1844,7 +1857,8 @@ void DASolver::initializeObjFuncHistFilePtr(const word fileName)
     label myProc = Pstream::myProcNo();
     if (myProc == 0)
     {
-        objFuncHistFilePtr_.reset(new OFstream(fileName));
+        objFuncHistFilePtr_.reset(new OFstream(fileName + ".txt"));
+        objFuncAvgHistFilePtr_.reset(new OFstream(fileName + "Avg.txt"));
     }
     return;
 }
@@ -1860,24 +1874,70 @@ void DASolver::writeObjFuncHistFile()
     label myProc = Pstream::myProcNo();
     scalar t = runTimePtr_->timeOutputValue();
 
-    if (myProc == 0)
+    // we start averaging after objFuncAvgStart
+    if (runTimePtr_->timeIndex() == daOptionPtr_->getOption<label>("objFuncAvgStart"))
     {
-        objFuncHistFilePtr_() << t << " ";
-    }
-    forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
-    {
-        word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
-        scalar objFuncVal = this->getObjFuncValue(objFuncName);
-        if (myProc == 0)
+        // set nItersObjFuncAvg_ to 1 to start averaging
+        nItersObjFuncAvg_ = 1;
+        // initialize avgObjFuncValues_
+        avgObjFuncValues_.setSize(daOptionPtr_->getAllOptions().subDict("objFunc").toc().size());
+        forAll(avgObjFuncValues_, idxI)
         {
-            objFuncHistFilePtr_() << objFuncVal << " ";
+            avgObjFuncValues_[idxI] = 0.0;
         }
     }
 
+    // write to files using proc0 only 
+    if (myProc == 0)
+    {
+        objFuncHistFilePtr_() << t << " ";
+        if (nItersObjFuncAvg_ > 0)
+        {
+            objFuncAvgHistFilePtr_() << t << " ";
+        }
+    }
+
+    // loop over all objs
+    forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
+    {
+        word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
+        // this is instantaneous value
+        scalar objFuncVal = this->getObjFuncValue(objFuncName);
+
+        // if nItersObjFuncAvg_ > 0, compute averaged obj values
+        if (nItersObjFuncAvg_ > 0)
+        {
+            avgObjFuncValues_[idxI] =
+                objFuncVal / nItersObjFuncAvg_ + (nItersObjFuncAvg_ - 1.0) / nItersObjFuncAvg_ * avgObjFuncValues_[idxI];
+        }
+
+        // write to files using proc0 only 
+        if (myProc == 0)
+        {
+            objFuncHistFilePtr_() << objFuncVal << " ";
+            if (nItersObjFuncAvg_ > 0)
+            {
+                objFuncAvgHistFilePtr_() << avgObjFuncValues_[idxI] << " ";
+            }
+        }
+    }
+
+    // increment nItersObjFuncAvg_
+    if (nItersObjFuncAvg_ > 0)
+    {
+        nItersObjFuncAvg_++;
+    }
+
+    // write to files using proc0 only 
     if (myProc == 0)
     {
         objFuncHistFilePtr_() << endl;
+        if (nItersObjFuncAvg_ > 0)
+        {
+            objFuncAvgHistFilePtr_() << endl;
+        }
     }
+    
     return;
 }
 

@@ -44,9 +44,21 @@ aeroOptions = {
             "center": [0.5, 0.5, 0.5],  # center and size define a rectangular
             "size": [0.2, 0.2, 0.2],
             "amplitude": [0.0, 0.2, 0.0],
+            "phase": 0.0,
             "thrustDirIdx": 0,
             "periodicity": 1.0,
             "eps": 10.0,
+            "scale": 10.0,  # scale the source such the integral equals desired thrust
+        },
+        "line2": {
+            "type": "actuatorPoint",
+            "smoothFunction": "gaussian",
+            "center": [0.5, 0.5, 0.5],  # center and size define a rectangular
+            "amplitude": [0.0, 0.2, 0.0],
+            "phase": 3.1415926,
+            "thrustDirIdx": 0,
+            "periodicity": 1.0,
+            "eps": 0.1,
             "scale": 10.0,  # scale the source such the integral equals desired thrust
         },
     },
@@ -130,7 +142,7 @@ def setHybridAdjointObjFuncs(DASolver, funcs, evalFuncs):
     funcs["fail"] = False
 
 
-def setHybridAdjointObjFuncsSens(funcsSensAllTimeInstances, funcsSensCombined):
+def setHybridAdjointObjFuncsSens(CFDSolver, funcs, funcsSensAllTimeInstances, funcsSensCombined):
 
     nTimeInstances = 1.0 * len(funcsSensAllTimeInstances)
     for funcsSens in funcsSensAllTimeInstances:
