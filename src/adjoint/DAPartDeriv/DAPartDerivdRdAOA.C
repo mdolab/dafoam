@@ -66,7 +66,7 @@ void DAPartDerivdRdAOA::initializePartDerivMat(
     //MatSetOption(jacMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(*jacMat);
     MatZeroEntries(*jacMat);
-    Info << "Partial deriative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
+    Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
 }
 
 void DAPartDerivdRdAOA::calcPartDerivMat(
