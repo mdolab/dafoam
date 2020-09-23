@@ -342,7 +342,7 @@ label DALinearEqn::solveLinearEqn(
     VecAssemblyBegin(solVec);
     VecAssemblyEnd(solVec);
 
-    Info << "Solving Lineq Equation... Completed! "
+    Info << "Solving Linear Equation... Completed! "
          << this->getRunTime() << " s" << endl;
 
     // now we need to check if the linear equation solution is successful
