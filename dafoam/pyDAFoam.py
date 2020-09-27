@@ -85,7 +85,18 @@ class DAOPTION(object):
     ## may not converge or it may be inaccurate! For "phi", use 1.0 to normalization
     ## Example
     ##     normalizeStates = {"U": 10.0, "p": 101325.0, "phi": 1.0, "nuTilda": 1.e-4}
-    normalizeStates = {}
+    normalizeStates = {
+        "p": 1.0,
+        "phi": 1.0,
+        "U": 1.0,
+        "T": 1.0,
+        "nuTilda": 1.0,
+        "k": 1.0,
+        "epsilon": 1.0,
+        "omega": 1.0,
+        "p_rgh": 1.0,
+        "D": 1.0,
+    }
 
     ## Information on objective function. Each objective function requires a different input forma
     ## But for all objectives, we need to give a name to the objective function, e.g., CD or any
