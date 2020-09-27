@@ -9,7 +9,7 @@ DAFoam implements an efficient discrete adjoint method to perform high-fidelity 
 - It uses a popular open-source package [OpenFOAM](https://www.openfoam.com) for multiphysics analysis.
 - It implements an efficient discrete adjoint approach with competitive speed, scalability, accuracy, and compatibility.
 - It allows rapid discrete adjoint development for any steady and unsteady OpenFOAM primal solvers with modifying only a few hundred lines of source codes.
-- It supports design optimizations for a wide range of disciplines such as aerodynamics, heat transfer, structures, hydrodynamics, and radiation.
+- It supports design optimizations for a wide range of disciplines such as aerodynamics, heat transfer, solid mechanics, hydrodynamics, and radiation.
 
 ![](cover.png)
 
