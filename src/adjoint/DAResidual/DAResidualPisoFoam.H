@@ -45,9 +45,6 @@ protected:
     surfaceScalarField phiResPartDeriv_;
     //@}
 
-    /// DASource
-    autoPtr<DAFvSource> daFvSourcePtr_;
-
     /// fvSource term
     volVectorField& fvSource_;
 

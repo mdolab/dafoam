@@ -4,14 +4,14 @@
     Version : v2
 
     Description:
-        Child class for ActuatorPoint source
+        Child class for dFdACTP
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAFvSourceActuatorPoint_H
-#define DAFvSourceActuatorPoint_H
+#ifndef DAPartDerivdFdACTP_H
+#define DAPartDerivdFdACTP_H
 
-#include "DAFvSource.H"
+#include "DAPartDeriv.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,37 +20,52 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAFvSourceActuatorPoint Declaration
+      Class DAPartDerivdFdACTP Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAFvSourceActuatorPoint
-    : public DAFvSource
+class DAPartDerivdFdACTP
+    : public DAPartDeriv
 {
 
 protected:
+    /// the number of objFunc discrete elements for local procs
+    label nLocalObjFuncGeoElements_;
 
-    /// print interval 
-    label printIntervalUnsteady_;
+    /// number of design variables for actuator points
+    label nActPointDVs_ = 9;
 
 public:
-    TypeName("actuatorPoint");
+    TypeName("dFdACTP");
     // Constructors
 
     //- Construct from components
-    DAFvSourceActuatorPoint(
+    DAPartDerivdFdACTP(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
-        const DAIndex& daIndex);
+        const DAIndex& daIndex,
+        const DAJacCon& daJacCon,
+        const DAResidual& daResidual);
 
     //- Destructor
-    virtual ~DAFvSourceActuatorPoint()
+    virtual ~DAPartDerivdFdACTP()
     {
     }
 
-    /// compute the FvSource term
-    virtual void calcFvSource(volVectorField& fvSource);
+    // Member functions
+
+    /// initialize partial derivative matrix
+    virtual void initializePartDerivMat(
+        const dictionary& options,
+        Mat* jacMat);
+
+    /// compute the partial derivative matrix
+    virtual void calcPartDerivMat(
+        const dictionary& options,
+        const Vec xvVec,
+        const Vec wVec,
+        Mat jacMat);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -25,7 +25,16 @@ DAFvSource::DAFvSource(
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex)
-    : modelType_(modelType),
+    : regIOobject(
+        IOobject(
+            "DAFvSource", // always use DAFvSource for the db name
+            mesh.time().timeName(),
+            mesh, // register to mesh
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            true // always register object
+            )),
+      modelType_(modelType),
       mesh_(mesh),
       daOption_(daOption),
       daModel_(daModel),
@@ -89,6 +98,17 @@ void DAFvSource::calcFvSource(volVectorField& fvSource)
     FatalErrorIn("") << "calcFvSource not implemented " << endl
                      << " in the child class for " << modelType_
                      << abort(FatalError);
+}
+
+
+bool DAFvSource::writeData(Ostream& os) const
+{
+    /*
+    Description:
+        This is a virtual function for regIOobject
+    */
+    // do nothing
+    return true;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
