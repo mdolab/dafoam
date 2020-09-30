@@ -35,9 +35,6 @@ protected:
     /// calculate DAFvSourceActuatorDisk::fvSourceCellIndices_
     void calcFvSourceCellIndices(HashTable<labelList>& fvSourceCellIndices);
 
-    /// the subDict of fvSource in DAOption
-    dictionary fvSourceSubDict_;
-
     /// print interval for primal and adjoint
     label printInterval_;
 

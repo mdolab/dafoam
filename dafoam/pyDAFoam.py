@@ -11,7 +11,7 @@
 
 """
 
-__version__ = '2.1.1'
+__version__ = '2.1.2'
 
 import subprocess
 import os
@@ -343,7 +343,7 @@ class DAOPTION(object):
 
     ## The step size for finite-difference computation of partial derivatives. The default values
     ## will work for most of the case.
-    adjPartDerivFDStep = {"State": 1.0e-6, "FFD": 1.0e-3, "BC": 1.0e-2, "AOA": 1.0e-3, "ACTP": 1.0e-2}
+    adjPartDerivFDStep = {"State": 1.0e-6, "FFD": 1.0e-3, "BC": 1.0e-2, "AOA": 1.0e-3, "ACTP": 1.0e-2, "ACTD": 1.0e-2}
 
     ## Which options to use to improve the adjoint equation convergence of transonic conditions
     ## This is used only for transonic solvers such as DARhoSimpleCFoam

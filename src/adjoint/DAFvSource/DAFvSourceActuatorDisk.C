@@ -24,8 +24,6 @@ DAFvSourceActuatorDisk::DAFvSourceActuatorDisk(
     const DAIndex& daIndex)
     : DAFvSource(modelType, mesh, daOption, daModel, daIndex)
 {
-    const dictionary& allOptions = daOption_.getAllOptions();
-    fvSourceSubDict_ = allOptions.subDict("fvSource");
     this->calcFvSourceCellIndices(fvSourceCellIndices_);
 
     printInterval_ = daOption.getOption<label>("printInterval");
@@ -42,7 +40,14 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
         source = rStar * Foam::sqrt(1.0 - rStar) * scale
         where rStar is the normalized radial location and scale is used to 
         make sure the integral force equals the desired total thrust
-    
+
+        There are two options to assign the source term:
+        1. cylinderAnnulusToCell. Users prescribe a cylinderAnnulus and the fvSource will be
+        added to all the cells inside this cylinderAnnulus
+        2. cylinderAnnulusSmooth. Users prescribe the cylinderAnnulus and the Gaussian function
+        will be used to smoothly assign fvSource term. This allows us to use the actuatorDisk 
+        parameters as design variables and move the actuator during optimization
+
     Example:
         An example of the fvSource in pyOptions in pyDAFoam can be
         defOptions = 
@@ -52,7 +57,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 "disk1"
                 {
                     "type": "actuatorDisk",
-                    "source": cylinderAnnulusToCell,
+                    "source": "cylinderAnnulusToCell",
                     "p1": [0.5, 0.3, 0.1], # p1 and p2 define the axis and width
                     "p2": [0.5, 0.3, 0.5], # p2-p1 should be streamwise
                     "innerRadius": 0.1,
@@ -64,14 +69,17 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 "disk2"
                 {
                     "type": "actuatorDisk",
-                    "source": cylinderAnnulusToCell,
-                    "p1": [0.0, 0.0, 0.1],
-                    "p2": [0.0, 0.0, 0.5],
+                    "source": "cylinderAnnulusSmooth",
+                    "center": [0.0, 0.0, 0.0],
+                    "direction": [1.0, 0.0, 0.0],
                     "innerRadius": 0.1,
                     "outerRadius": 0.8,
                     "rotDir": "right",
                     "scale": 0.1,
-                    "POD": 1.0
+                    "POD": 1.0,
+                    "eps": 0.05  # eps should be of cell size
+                    "expM": 1.0,
+                    "expN": 0.5,
                 }
             }
         }
@@ -82,107 +90,246 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
         fvSource[idxI] = vector::zero;
     }
 
-    // loop over all the cell indices for all actuator disks
-    forAll(fvSourceCellIndices_.toc(), idxI)
+    const dictionary& allOptions = daOption_.getAllOptions();
+
+    dictionary fvSourceSubDict = allOptions.subDict("fvSource");
+
+    word diskName0 = fvSourceSubDict.toc()[0];
+    word source0 = fvSourceSubDict.subDict(diskName0).getWord("source");
+
+    if (source0 == "cylinderAnnulusToCell")
     {
 
-        // name of this disk
-        word diskName = fvSourceCellIndices_.toc()[idxI];
-
-        // sub dictionary with all parameters for this disk
-        dictionary diskSubDict = fvSourceSubDict_.subDict(diskName);
-
-        // now read in all parameters for this actuator disk
-        scalarList point1;
-        scalarList point2;
-        diskSubDict.readEntry<scalarList>("p1", point1);
-        diskSubDict.readEntry<scalarList>("p2", point2);
-        vector p1 = {point1[0], point1[1], point1[2]};
-        vector p2 = {point2[0], point2[1], point2[2]};
-        vector diskCenter = (p1 + p2) / 2.0;
-        vector diskDir = p2 - p1; // NOTE: p2 - p1 should be streamwise
-        vector diskDirNorm = diskDir / mag(diskDir);
-        scalar outerRadius = diskSubDict.getScalar("outerRadius");
-        scalar innerRadius = diskSubDict.getScalar("innerRadius");
-        word rotDir = diskSubDict.getWord("rotDir");
-        scalar scale = diskSubDict.getScalar("scale");
-        scalar POD = diskSubDict.getScalar("POD");
-
-        // loop over all cell indices for this disk and computer the source term
-        scalar thrustSourceSum = 0.0;
-        scalar torqueSourceSum = 0.0;
-        forAll(fvSourceCellIndices_[diskName], idxJ)
+        // loop over all the cell indices for all actuator disks
+        forAll(fvSourceCellIndices_.toc(), idxI)
         {
-            // cell index
-            label cellI = fvSourceCellIndices_[diskName][idxJ];
 
-            // the cell center coordinates of this cellI
-            vector cellC = mesh_.C()[cellI];
-            // cell center to disk center vector
-            vector cellC2AVec = cellC - diskCenter;
-            // tmp tensor for calculating the axial/radial components of cellC2AVec
-            tensor cellC2AVecE(tensor::zero);
-            cellC2AVecE.xx() = cellC2AVec.x();
-            cellC2AVecE.yy() = cellC2AVec.y();
-            cellC2AVecE.zz() = cellC2AVec.z();
+            // name of this disk
+            word diskName = fvSourceCellIndices_.toc()[idxI];
 
-            // now we need to decompose cellC2AVec into axial and radial components
-            // the axial component of cellC2AVec vector
-            vector cellC2AVecA = cellC2AVecE & diskDirNorm;
-            // the radial component of cellC2AVec vector
-            vector cellC2AVecR = cellC2AVec - cellC2AVecA;
+            // sub dictionary with all parameters for this disk
+            dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
 
-            // now we can use the cross product to compute the tangential
-            // (circ) direction of cellI
-            vector cellC2AVecC(vector::zero);
-            if (rotDir == "left")
+            // now read in all parameters for this actuator disk
+            scalarList point1;
+            scalarList point2;
+            diskSubDict.readEntry<scalarList>("p1", point1);
+            diskSubDict.readEntry<scalarList>("p2", point2);
+            vector p1 = {point1[0], point1[1], point1[2]};
+            vector p2 = {point2[0], point2[1], point2[2]};
+            vector diskCenter = (p1 + p2) / 2.0;
+            vector diskDir = p2 - p1; // NOTE: p2 - p1 should be streamwise
+            vector diskDirNorm = diskDir / mag(diskDir);
+            scalar outerRadius = diskSubDict.getScalar("outerRadius");
+            scalar innerRadius = diskSubDict.getScalar("innerRadius");
+            word rotDir = diskSubDict.getWord("rotDir");
+            scalar scale = diskSubDict.getScalar("scale");
+            scalar POD = diskSubDict.getScalar("POD");
+
+            // loop over all cell indices for this disk and computer the source term
+            scalar thrustSourceSum = 0.0;
+            scalar torqueSourceSum = 0.0;
+            forAll(fvSourceCellIndices_[diskName], idxJ)
             {
-                // this assumes right hand rotation of propellers
-                cellC2AVecC = cellC2AVecR ^ cellC2AVecA; // circ
-            }
-            else if (rotDir == "right")
-            {
-                // this assumes left hand rotation of propellers
-                cellC2AVecC = cellC2AVecA ^ cellC2AVecR; // circ
-            }
-            else
-            {
-                FatalErrorIn(" ") << "rotDir not valid" << abort(FatalError);
+                // cell index
+                label cellI = fvSourceCellIndices_[diskName][idxJ];
+
+                // the cell center coordinates of this cellI
+                vector cellC = mesh_.C()[cellI];
+                // cell center to disk center vector
+                vector cellC2AVec = cellC - diskCenter;
+                // tmp tensor for calculating the axial/radial components of cellC2AVec
+                tensor cellC2AVecE(tensor::zero);
+                cellC2AVecE.xx() = cellC2AVec.x();
+                cellC2AVecE.yy() = cellC2AVec.y();
+                cellC2AVecE.zz() = cellC2AVec.z();
+
+                // now we need to decompose cellC2AVec into axial and radial components
+                // the axial component of cellC2AVec vector
+                vector cellC2AVecA = cellC2AVecE & diskDirNorm;
+                // the radial component of cellC2AVec vector
+                vector cellC2AVecR = cellC2AVec - cellC2AVecA;
+
+                // now we can use the cross product to compute the tangential
+                // (circ) direction of cellI
+                vector cellC2AVecC(vector::zero);
+                if (rotDir == "left")
+                {
+                    // this assumes right hand rotation of propellers
+                    cellC2AVecC = cellC2AVecR ^ cellC2AVecA; // circ
+                }
+                else if (rotDir == "right")
+                {
+                    // this assumes left hand rotation of propellers
+                    cellC2AVecC = cellC2AVecA ^ cellC2AVecR; // circ
+                }
+                else
+                {
+                    FatalErrorIn(" ") << "rotDir not valid" << abort(FatalError);
+                }
+
+                // the magnitude of radial component of cellC2AVecR
+                scalar cellC2AVecRLen = mag(cellC2AVecR);
+                // the magnitude of tangential component of cellC2AVecR
+                scalar cellC2AVecCLen = mag(cellC2AVecC);
+                // the normalized cellC2AVecC (tangential) vector
+                vector cellC2AVecCNorm = cellC2AVecC / cellC2AVecCLen;
+
+                // now we can use Hoekstra's formulation to compute source
+                scalar rPrime = cellC2AVecRLen / outerRadius;
+                scalar rPrimeHub = innerRadius / outerRadius;
+                // rStar is normalized radial location
+                scalar rStar = (rPrime - rPrimeHub) / (1.0 - rPrimeHub);
+                // axial force, NOTE: user need to prescribe "scale" such that the integrated
+                // axial force matches the desired thrust
+                scalar fAxial = rStar * Foam::sqrt(1.0 - rStar) * scale;
+                // we use Hoekstra's method to calculate the fCirc based on fAxial
+                scalar fCirc = fAxial * POD / constant::mathematical::pi / rPrime;
+                vector sourceVec = (fAxial * diskDirNorm + fCirc * cellC2AVecCNorm);
+                // the source is the force normalized by the cell volume
+                fvSource[cellI] += sourceVec;
+                thrustSourceSum += fAxial * mesh_.V()[cellI];
+                torqueSourceSum += fCirc * mesh_.V()[cellI];
             }
 
-            // the magnigude of radial compoent of cellC2AVecR
-            scalar cellC2AVecRLen = mag(cellC2AVecR);
-            // the magnigude of tangential compoent of cellC2AVecR
-            scalar cellC2AVecCLen = mag(cellC2AVecC);
-            // the normalized cellC2AVecC (tangential) vector
-            vector cellC2AVecCNorm = cellC2AVecC / cellC2AVecCLen;
+            reduce(thrustSourceSum, sumOp<scalar>());
+            reduce(torqueSourceSum, sumOp<scalar>());
 
-            // now we can use Hoekstra's formulation to compute source
-            scalar rPrime = cellC2AVecRLen / outerRadius;
-            scalar rPrimeHub = innerRadius / outerRadius;
-            // rStar is normalized radial location
-            scalar rStar = (rPrime - rPrimeHub) / (1.0 - rPrimeHub);
-            // axial force, NOTE: user need to prescribe "scale" such that the integraged
-            // axial force matches the desired thrust
-            scalar fAxial = rStar * Foam::sqrt(1.0 - rStar) * scale;
-            // we use Hoekstra's method to calculate the fCirc based on fAxial
-            scalar fCirc = fAxial * POD / constant::mathematical::pi / rPrime;
-            vector sourceVec = (fAxial * diskDirNorm + fCirc * cellC2AVecCNorm);
-            // the source is the force normalized by the cell volume
-            fvSource[cellI] += sourceVec;
-            thrustSourceSum += fAxial * mesh_.V()[cellI];
-            torqueSourceSum += fCirc * mesh_.V()[cellI];
+            if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+            {
+                if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
+                {
+                    Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
+                    Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
+                }
+            }
         }
+    }
+    else if (source0 == "cylinderSmooth")
+    {
 
-        reduce(thrustSourceSum, sumOp<scalar>());
-        reduce(torqueSourceSum, sumOp<scalar>());
-
-        if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+        forAll(fvSourceSubDict.toc(), idxI)
         {
-            if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
+            word diskName = fvSourceSubDict.toc()[idxI];
+            dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
+
+            scalarList centerList;
+            scalarList direction;
+            diskSubDict.readEntry<scalarList>("center", centerList);
+            diskSubDict.readEntry<scalarList>("direction", direction);
+            vector center = {centerList[0], centerList[1], centerList[2]};
+            vector dirNorm = {direction[0], direction[1], direction[2]};
+            dirNorm = dirNorm / mag(dirNorm);
+            scalar outerRadius = diskSubDict.getScalar("outerRadius");
+            scalar innerRadius = diskSubDict.getScalar("innerRadius");
+            word rotDir = diskSubDict.getWord("rotDir");
+            scalar scale = diskSubDict.getScalar("scale");
+            scalar POD = diskSubDict.getScalar("POD");
+            scalar eps = diskSubDict.getScalar("eps");
+            scalar expM = diskSubDict.getScalar("expM");
+            scalar expN = diskSubDict.getScalar("expN");
+            scalar rStarMin = diskSubDict.lookupOrDefault<scalar>("rStarMin", 0.02);
+            scalar rStarMax = diskSubDict.lookupOrDefault<scalar>("rStarMax", 0.98);
+            scalar fRMin = Foam::pow(rStarMin, expM) * Foam::pow(1.0 - rStarMin, expN) * scale;
+            scalar fRMax = Foam::pow(rStarMax, expM) * Foam::pow(1.0 - rStarMax, expN) * scale;
+
+            scalar thrustSourceSum = 0.0;
+            scalar torqueSourceSum = 0.0;
+            forAll(mesh_.cells(), cellI)
             {
-                Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
-                Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
+                // the cell center coordinates of this cellI
+                vector cellC = mesh_.C()[cellI];
+                // cell center to disk center vector
+                vector cellC2AVec = cellC - center;
+                // tmp tensor for calculating the axial/radial components of cellC2AVec
+                tensor cellC2AVecE(tensor::zero);
+                cellC2AVecE.xx() = cellC2AVec.x();
+                cellC2AVecE.yy() = cellC2AVec.y();
+                cellC2AVecE.zz() = cellC2AVec.z();
+
+                // now we need to decompose cellC2AVec into axial and radial components
+                // the axial component of cellC2AVec vector
+                vector cellC2AVecA = cellC2AVecE & dirNorm;
+                // the radial component of cellC2AVec vector
+                vector cellC2AVecR = cellC2AVec - cellC2AVecA;
+
+                // now we can use the cross product to compute the tangential
+                // (circ) direction of cellI
+                vector cellC2AVecC(vector::zero);
+                if (rotDir == "left")
+                {
+                    // this assumes right hand rotation of propellers
+                    cellC2AVecC = cellC2AVecR ^ cellC2AVecA; // circ
+                }
+                else if (rotDir == "right")
+                {
+                    // this assumes left hand rotation of propellers
+                    cellC2AVecC = cellC2AVecA ^ cellC2AVecR; // circ
+                }
+                else
+                {
+                    FatalErrorIn(" ") << "rotDir not valid" << abort(FatalError);
+                }
+
+                // the magnitude of radial component of cellC2AVecR
+                scalar cellC2AVecRLen = mag(cellC2AVecR);
+                // the magnitude of tangential component of cellC2AVecR
+                scalar cellC2AVecCLen = mag(cellC2AVecC);
+                // the magnitude of axial component of cellC2AVecR
+                scalar cellC2AVecALen = mag(cellC2AVecA);
+                // the normalized cellC2AVecC (tangential) vector
+                vector cellC2AVecCNorm = cellC2AVecC / cellC2AVecCLen;
+
+                // now we can use the smoothed formulation to compute source
+                scalar rPrime = cellC2AVecRLen / outerRadius;
+                scalar rPrimeHub = innerRadius / outerRadius;
+                // rStar is normalized radial location
+                scalar rStar = (rPrime - rPrimeHub) / (1.0 - rPrimeHub);
+
+                scalar fAxial = 0.0;
+                scalar fCirc = 0.0;
+
+                scalar dA2 = cellC2AVecALen * cellC2AVecALen;
+
+                if (rStar < rStarMin)
+                {
+                    scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
+                    scalar fR = fRMin * Foam::exp(-dR2 / eps / eps) / Foam::exp(0.0);
+                    fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
+                    fCirc = fAxial * POD / constant::mathematical::pi / rPrimeHub;
+                }
+                else if (rStar >= rStarMin && rStar <= rStarMax)
+                {
+                    scalar fR = Foam::pow(rStar, expM) * Foam::pow(1.0 - rStar, expN) * scale;
+                    fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
+                    // we use Hoekstra's method to calculate the fCirc based on fAxial
+                    fCirc = fAxial * POD / constant::mathematical::pi / rPrime;
+                }
+                else
+                {
+                    scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
+                    scalar fR = fRMax * Foam::exp(-dR2 / eps / eps) / Foam::exp(0.0);
+                    fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
+                    fCirc = fAxial * POD / constant::mathematical::pi;
+                }
+
+                vector sourceVec = (fAxial * dirNorm + fCirc * cellC2AVecCNorm);
+                // the source is the force normalized by the cell volume
+                fvSource[cellI] += sourceVec;
+                thrustSourceSum += fAxial * mesh_.V()[cellI];
+                torqueSourceSum += fCirc * mesh_.V()[cellI];
+            }
+
+            reduce(thrustSourceSum, sumOp<scalar>());
+            reduce(torqueSourceSum, sumOp<scalar>());
+
+            if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+            {
+                if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
+                {
+                    Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
+                    Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
+                }
             }
         }
     }
@@ -240,20 +387,24 @@ void DAFvSourceActuatorDisk::calcFvSourceCellIndices(HashTable<labelList>& fvSou
         }
     */
 
-    if (fvSourceSubDict_.toc().size() == 0)
+    const dictionary& allOptions = daOption_.getAllOptions();
+
+    dictionary fvSourceSubDict = allOptions.subDict("fvSource");
+
+    if (fvSourceSubDict.toc().size() == 0)
     {
         FatalErrorIn("calcSourceCells") << "actuatorDisk is selected as fvSource "
                                         << " but the options are empty!"
                                         << abort(FatalError);
     }
 
-    forAll(fvSourceSubDict_.toc(), idxI)
+    forAll(fvSourceSubDict.toc(), idxI)
     {
-        word diskName = fvSourceSubDict_.toc()[idxI];
+        word diskName = fvSourceSubDict.toc()[idxI];
 
         fvSourceCellIndices.set(diskName, {});
 
-        dictionary diskSubDict = fvSourceSubDict_.subDict(diskName);
+        dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
         word sourceType = diskSubDict.getWord("source");
         // all avaiable source type are in src/meshTools/sets/cellSources
         // Example of IO parameters os in applications/utilities/mesh/manipulation/topoSet
@@ -305,6 +456,12 @@ void DAFvSourceActuatorDisk::calcFvSourceCellIndices(HashTable<labelList>& fvSou
             {
                 fvSourceCellIndices[diskName].append(i);
             }
+        }
+        else if (sourceType == "cylinderSmooth")
+        {
+            // do nothing, no need to compute the cell indices since
+            // we are using Gaussian function to compute a smooth
+            // distribution of fvSource term
         }
         else
         {
