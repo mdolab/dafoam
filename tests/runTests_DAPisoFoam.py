@@ -152,7 +152,6 @@ DVGeo.addGeoDVGlobal(
     upper=100.0,
     scale=1.0,
 )
-daOptions["designVar"]["actuator"] = 
 
 # DAFoam
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
