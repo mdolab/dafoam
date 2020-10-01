@@ -205,7 +205,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             }
         }
     }
-    else if (source0 == "cylinderSmooth")
+    else if (source0 == "cylinderAnnulusSmooth")
     {
 
         forAll(fvSourceSubDict.toc(), idxI)
@@ -230,6 +230,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             scalar expN = diskSubDict.getScalar("expN");
             scalar rStarMin = diskSubDict.lookupOrDefault<scalar>("rStarMin", 0.02);
             scalar rStarMax = diskSubDict.lookupOrDefault<scalar>("rStarMax", 0.98);
+            scalar epsR = diskSubDict.lookupOrDefault<scalar>("epsR", 0.02);
             scalar fRMin = Foam::pow(rStarMin, expM) * Foam::pow(1.0 - rStarMin, expN) * scale;
             scalar fRMax = Foam::pow(rStarMax, expM) * Foam::pow(1.0 - rStarMax, expN) * scale;
 
@@ -294,7 +295,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 if (rStar < rStarMin)
                 {
                     scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
-                    scalar fR = fRMin * Foam::exp(-dR2 / eps / eps) / Foam::exp(0.0);
+                    scalar fR = fRMin * Foam::exp(-dR2 / epsR / epsR) / Foam::exp(0.0);
                     fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
                     fCirc = fAxial * POD / constant::mathematical::pi / rPrimeHub;
                 }
@@ -308,7 +309,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 else
                 {
                     scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
-                    scalar fR = fRMax * Foam::exp(-dR2 / eps / eps) / Foam::exp(0.0);
+                    scalar fR = fRMax * Foam::exp(-dR2 / epsR / epsR) / Foam::exp(0.0);
                     fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
                     fCirc = fAxial * POD / constant::mathematical::pi;
                 }
@@ -332,6 +333,12 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 }
             }
         }
+    }
+    else
+    {
+        FatalErrorIn("calcFvSourceCells") << "source: " << source0 << " not supported!"
+                                          << "Options are: cylinderAnnulusToCell and cylinderAnnulusSmooth!"
+                                          << abort(FatalError);
     }
 }
 
@@ -457,7 +464,7 @@ void DAFvSourceActuatorDisk::calcFvSourceCellIndices(HashTable<labelList>& fvSou
                 fvSourceCellIndices[diskName].append(i);
             }
         }
-        else if (sourceType == "cylinderSmooth")
+        else if (sourceType == "cylinderAnnulusSmooth")
         {
             // do nothing, no need to compute the cell indices since
             // we are using Gaussian function to compute a smooth
@@ -466,7 +473,7 @@ void DAFvSourceActuatorDisk::calcFvSourceCellIndices(HashTable<labelList>& fvSou
         else
         {
             FatalErrorIn("calcFvSourceCells") << "source: " << sourceType << " not supported!"
-                                              << "Options are: cylinderAnnulusToCell!"
+                                              << "Options are: cylinderAnnulusToCell and cylinderAnnulusSmooth!"
                                               << abort(FatalError);
         }
     }
