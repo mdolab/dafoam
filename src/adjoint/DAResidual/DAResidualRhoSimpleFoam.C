@@ -28,7 +28,6 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
       setResidualClassMemberScalar(p, dimensionSet(1, -3, -1, 0, 0, 0, 0)),
       setResidualClassMemberScalar(T, dimensionSet(1, -1, -3, 0, 0, 0, 0)),
       setResidualClassMemberPhi(phi),
-      daFvSourcePtr_(nullptr),
       fvSource_(const_cast<volVectorField&>(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       fvSourceEnergy_(const_cast<volScalarField&>(
@@ -52,11 +51,6 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
     if (allOptions.subDict("fvSource").toc().size() != 0)
     {
         hasFvSource_ = 1;
-        Info << "Initializing DASource" << endl;
-        word sourceName = allOptions.subDict("fvSource").toc()[0];
-        word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
-        daFvSourcePtr_.reset(DAFvSource::New(
-            fvSourceType, mesh, daOption, daModel, daIndex));
     }
 
     // get molWeight and Cp from thermophysicalProperties
@@ -133,7 +127,9 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
 
     if (hasFvSource_)
     {
-        daFvSourcePtr_->calcFvSource(fvSource_);
+        DAFvSource& daFvSource(const_cast<DAFvSource&>(
+          mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
+        daFvSource.calcFvSource(fvSource_);
     }
 
     tmp<fvVectorMatrix> tUEqn(
