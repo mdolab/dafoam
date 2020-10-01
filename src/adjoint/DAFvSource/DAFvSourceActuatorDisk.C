@@ -297,7 +297,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                     scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
                     scalar fR = fRMin * Foam::exp(-dR2 / epsR / epsR) / Foam::exp(0.0);
                     fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
-                    fCirc = fAxial * POD / constant::mathematical::pi / rPrimeHub;
+                    fCirc = fAxial * POD / constant::mathematical::pi / rStarMin;
                 }
                 else if (rStar >= rStarMin && rStar <= rStarMax)
                 {
@@ -311,7 +311,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                     scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
                     scalar fR = fRMax * Foam::exp(-dR2 / epsR / epsR) / Foam::exp(0.0);
                     fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
-                    fCirc = fAxial * POD / constant::mathematical::pi;
+                    fCirc = fAxial * POD / constant::mathematical::pi / rStarMax;
                 }
 
                 vector sourceVec = (fAxial * dirNorm + fCirc * cellC2AVecCNorm);
