@@ -475,6 +475,13 @@ class DAOPTION(object):
     ## Default name for the design surface family. Users typically don't need to change
     designSurfaceFamily = "designSurfaces"
 
+    ## The threshold for check mesh call
+    checkMeshThreshold = {
+        "maxAspectRatio": 1000.0,
+        "maxNonOrth": 70.0,
+        "maxSkewness": 4.0,
+    }
+
     def __init__(self):
         """
         Nothing needs to be done for initializing DAOPTION

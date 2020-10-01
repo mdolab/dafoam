@@ -51,7 +51,7 @@ void DATurboFoam::initSolver()
 #include "createFieldsTurbo.H"
 #include "createAdjointCompressible.H"
     // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(runTime, mesh));
+    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 }
 
 label DATurboFoam::solvePrimal(

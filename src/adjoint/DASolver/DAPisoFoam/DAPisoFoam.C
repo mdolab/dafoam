@@ -47,7 +47,7 @@ void DAPisoFoam::initSolver()
 #include "createFieldsPiso.H"
 #include "createAdjointIncompressible.H"
     // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(runTime, mesh));
+    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
     label active = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
 
@@ -158,7 +158,7 @@ label DAPisoFoam::solvePrimal(
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
         printToScreen = this->isPrintTime(runTime, printInterval);
-        
+
         if (printToScreen)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
@@ -194,7 +194,6 @@ label DAPisoFoam::solvePrimal(
         runTime.write();
 
         this->saveTimeInstanceField(timeInstanceI);
-
     }
 
     this->calcPrimalResidualStatistics("print");

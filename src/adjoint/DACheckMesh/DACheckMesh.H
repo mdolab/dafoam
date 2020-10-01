@@ -35,17 +35,30 @@ private:
     /// Disallow default bitwise assignment
     void operator=(const DACheckMesh&);
 
+    /// DAOption object
+    const DAOption& daOption_;
+
     /// Time object
     const Time& runTime;
     
     /// fvMesh object
     const fvMesh& mesh;
+    
+    /// max aspect ratio
+    scalar maxAspectRatio_ = 1000.0;
+
+    /// max face non orthogonal angle in degree
+    scalar maxNonOrth_ = 70.0;
+
+    /// max skewness
+    scalar maxSkewness_ = 4.0;
 
 public:
     // Constructors
 
     /// Construct from components
     DACheckMesh(
+        const DAOption& daOption,
         const Time& runTime1,
         const fvMesh& mesh1);
 
