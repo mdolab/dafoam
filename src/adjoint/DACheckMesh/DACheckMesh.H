@@ -11,6 +11,7 @@
 #ifndef DACheckMesh_H
 #define DACheckMesh_H
 
+#include "DAOption.H"
 #include "Time.H"
 #include "fvMesh.H"
 #include "IOdictionary.H"
