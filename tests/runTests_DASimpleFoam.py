@@ -53,25 +53,17 @@ aeroOptions = {
     "fvSource": {
         "disk1": {
             "type": "actuatorDisk",
-            "source": "cylinderAnnulusToCell",
-            "p1": [-0.4, -0.1, 0.05],  # p1 and p2 define the axis and width
-            "p2": [-0.1, -0.1, 0.05],  # p2-p1 should be streamwise
+            "source": "cylinderAnnulusSmooth",
+            "center": [-0.55, 0.0, 0.05],
+            "direction": [1.0, 0.0, 0.0],
             "innerRadius": 0.01,
-            "outerRadius": 0.5,
-            "rotDir": "left",
-            "scale": 50.0,
-            "POD": 0.7,
-        },
-        "disk2": {
-            "type": "actuatorDisk",
-            "source": "cylinderAnnulusToCell",
-            "p1": [-0.4, 0.1, 0.05],
-            "p2": [-0.1, 0.1, 0.05],
-            "innerRadius": 0.01,
-            "outerRadius": 0.5,
+            "outerRadius": 0.4,
             "rotDir": "right",
-            "scale": 25.0,
-            "POD": 1.0,
+            "scale": 100.0,
+            "POD": 0.0,
+            "eps": 0.1,  # eps should be of cell size
+            "expM": 1.0,
+            "expN": 0.5,
         },
     },
     "objFunc": {
@@ -110,12 +102,13 @@ aeroOptions = {
         },
     },
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
-    "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
+    "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3, "ACTD": 1.0e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "natural"},
     # Design variable setup
     "designVar": {
         "shapey": {"designVarType": "FFD"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+        "actuator": {"actuatorDiskName": "disk1", "designVarType": "ACTD"},
     },
 }
 
@@ -142,12 +135,53 @@ def alpha(val, geo):
     DASolver.updateDAOption()
 
 
+def actuator(val, geo):
+    actX = float(val[0])
+    actY = float(val[1])
+    actZ = float(val[2])
+    actR1 = float(val[3])
+    actR2 = float(val[4])
+    actScale = float(val[5])
+    actPOD = float(val[6])
+    actExpM = float(val[7])
+    actExpN = float(val[8])
+    DASolver.setOption(
+        "fvSource",
+        {
+            "disk1": {
+                "type": "actuatorDisk",
+                "source": "cylinderAnnulusSmooth",
+                "center": [actX, actY, actZ],
+                "direction": [1.0, 0.0, 0.0],
+                "innerRadius": actR1,
+                "outerRadius": actR2,
+                "rotDir": "right",
+                "scale": actScale,
+                "POD": actPOD,
+                "eps": 0.1,  # eps should be of cell size
+                "expM": actExpM,
+                "expN": actExpN,
+            },
+        },
+    )
+    DASolver.updateDAOption()
+
+
 # select points
 pts = DVGeo.getLocalIndex(0)
 indexList = pts[1:4, 1, 0].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
 DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
+# actuator
+DVGeo.addGeoDVGlobal(
+    "actuator",
+    value=[-0.55, 0.0, 0.05, 0.01, 0.4, 100.0, 0.0, 1.0, 0.5],
+    func=actuator,
+    lower=-100.0,
+    upper=100.0,
+    scale=1.0,
+)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
