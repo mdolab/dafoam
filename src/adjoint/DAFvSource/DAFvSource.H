@@ -20,6 +20,7 @@
 #include "DAIndex.H"
 #include "topoSetSource.H"
 #include "topoSet.H"
+#include "regIOobject.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -31,6 +32,8 @@ namespace Foam
 \*---------------------------------------------------------------------------*/
 
 class DAFvSource
+:
+    public regIOobject
 {
 
 private:
@@ -100,6 +103,9 @@ public:
 
     /// compute the FvSource term
     virtual void calcFvSource(volVectorField& fvSource);
+
+    /// virtual function for regIOobject
+    bool writeData(Ostream& os) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

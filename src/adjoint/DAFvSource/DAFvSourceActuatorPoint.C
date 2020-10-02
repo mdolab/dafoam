@@ -24,9 +24,6 @@ DAFvSourceActuatorPoint::DAFvSourceActuatorPoint(
     const DAIndex& daIndex)
     : DAFvSource(modelType, mesh, daOption, daModel, daIndex)
 {
-    const dictionary& allOptions = daOption_.getAllOptions();
-    fvSourceSubDict_ = allOptions.subDict("fvSource");
-
     printIntervalUnsteady_ = daOption.getOption<label>("printIntervalUnsteady");
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -90,15 +87,17 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
         fvSource[idxI] = vector::zero;
     }
 
+    dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
+
     // loop over all the cell indices for all actuator points
-    forAll(fvSourceSubDict_.toc(), idxI)
+    forAll(fvSourceSubDict.toc(), idxI)
     {
 
         // name of this point model
-        word pointName = fvSourceSubDict_.toc()[idxI];
+        word pointName = fvSourceSubDict.toc()[idxI];
 
         // sub dictionary with all parameters for this disk
-        dictionary pointSubDict = fvSourceSubDict_.subDict(pointName);
+        dictionary pointSubDict = fvSourceSubDict.subDict(pointName);
 
         word smoothFunction = pointSubDict.get<word>("smoothFunction");
 

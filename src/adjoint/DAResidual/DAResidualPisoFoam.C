@@ -27,7 +27,6 @@ DAResidualPisoFoam::DAResidualPisoFoam(
       setResidualClassMemberVector(U, dimensionSet(0, 1, -2, 0, 0, 0, 0)),
       setResidualClassMemberScalar(p, dimensionSet(0, 0, -1, 0, 0, 0, 0)),
       setResidualClassMemberPhi(phi),
-      daFvSourcePtr_(nullptr),
       fvSource_(const_cast<volVectorField&>(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
@@ -39,11 +38,6 @@ DAResidualPisoFoam::DAResidualPisoFoam(
     if (allOptions.subDict("fvSource").toc().size() != 0)
     {
         hasFvSource_ = 1;
-        Info << "Computing fvSource" << endl;
-        word sourceName = allOptions.subDict("fvSource").toc()[0];
-        word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
-        daFvSourcePtr_.reset(DAFvSource::New(
-            fvSourceType, mesh, daOption, daModel, daIndex));
     }
 }
 
@@ -98,8 +92,10 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
 
     if (hasFvSource_)
     {
+        DAFvSource& daFvSource(const_cast<DAFvSource&>(
+          mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
         // update the actuator source term
-        daFvSourcePtr_->calcFvSource(fvSource_);
+        daFvSource.calcFvSource(fvSource_);
     }
 
     fvVectorMatrix UEqn(

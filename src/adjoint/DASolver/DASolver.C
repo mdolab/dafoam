@@ -1638,6 +1638,229 @@ label DASolver::calcTotalDeriv(
         MatDestroy(&dXvdFFDMat_);
         MatDestroy(&dRdFFD);
     }
+    // *****************************************************************************
+    // ******************************** ACTP dvType ********************************
+    // *****************************************************************************
+    // actuator point parameters as the design variable
+    else if (designVarType == "ACTP")
+    {
+        // get info from dvSubDict. This needs to be defined in the pyDAFoam
+        // name of the boundary patch
+        word actuatorPointName = dvSubDict.getWord("actuatorPointName");
+
+        // no coloring is need for ACTP, so we create a dummy DAJacCon
+        word dummyType = "dummy";
+        autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+            dummyType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_()));
+
+        // ********************** compute dRdACTP **********************
+        Mat dRdACTP;
+        {
+            // create DAPartDeriv object
+            word modelType = "dRdACTP";
+            autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+                modelType,
+                meshPtr_(),
+                daOptionPtr_(),
+                daModelPtr_(),
+                daIndexPtr_(),
+                daJacCon(),
+                daResidualPtr_()));
+
+            // setup options to compute dRdACTP
+            dictionary options;
+            options.set("actuatorPointName", actuatorPointName);
+            options.set("isPC", 0);
+
+            // initialize the dRdACTP matrix
+            daPartDeriv->initializePartDerivMat(options, &dRdACTP);
+
+            // compute it using brute force finite-difference
+            daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdACTP);
+
+            if (daOptionPtr_->getOption<label>("debug"))
+            {
+                this->calcPrimalResidualStatistics("print");
+            }
+
+            if (daOptionPtr_->getOption<label>("writeJacobians"))
+            {
+                word outputName = "dRdACTP_" + designVarName;
+                DAUtility::writeMatrixBinary(dRdACTP, outputName);
+                DAUtility::writeMatrixASCII(dRdACTP, outputName);
+            }
+        }
+
+        // ********************** compute dFdACTP **********************
+        dictionary objFuncDict = allOptions.subDict("objFunc");
+
+        label nActDVs = 9;
+
+        // loop over all objFuncName in the objFunc dict
+        forAll(objFuncDict.toc(), idxJ)
+        {
+
+            word objFuncName = objFuncDict.toc()[idxJ];
+
+            // we only solve adjoint for objectives that have addToAdjoint = True
+            if (DAUtility::isInList<word>(objFuncName, objFuncNames4Adj_))
+            {
+                // dFdACTP should be all zeros
+                Vec dFdACTPVecAllParts;
+                VecCreate(PETSC_COMM_WORLD, &dFdACTPVecAllParts);
+                VecSetSizes(dFdACTPVecAllParts, PETSC_DETERMINE, nActDVs);
+                VecSetFromOptions(dFdACTPVecAllParts);
+                VecZeroEntries(dFdACTPVecAllParts);
+
+                // now we can compute totalDeriv = dFdACTPVecAllParts - psiVec * dRdACTP
+                Vec psiVec, totalDerivVec;
+                VecDuplicate(dFdACTPVecAllParts, &totalDerivVec);
+                VecZeroEntries(totalDerivVec);
+                VecDuplicate(wVec, &psiVec);
+                VecZeroEntries(psiVec);
+
+                // now we can assign DASolver::psiVecDict_ to psiVec for this objFuncName
+                // NOTE: DASolver::psiVecDict_ should be set in the DASolver::solveAdjoint
+                // function. i.e., we need to call solveAdjoint before calling calcTotalDeriv
+                this->getPsiVec(objFuncName, psiVec);
+
+                // totalDeriv = dFdACTPVecAllParts - psiVec * dRdACTP
+                MatMultTranspose(dRdACTP, psiVec, totalDerivVec);
+                VecAXPY(totalDerivVec, -1.0, dFdACTPVecAllParts);
+                VecScale(totalDerivVec, -1.0);
+
+                // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
+                // get the totalDeriv in the python layer later
+                this->setTotalDerivDict(objFuncName, designVarName, totalDerivVec, totalDerivDict_);
+
+                if (daOptionPtr_->getOption<label>("writeJacobians"))
+                {
+                    word outputName = "dFdACTPTotal_" + objFuncName + "_" + designVarName;
+                    DAUtility::writeVectorBinary(totalDerivVec, outputName);
+                    DAUtility::writeVectorASCII(totalDerivVec, outputName);
+                }
+            }
+        }
+
+        MatDestroy(&dRdACTP);
+
+    }
+    // *****************************************************************************
+    // ******************************** ACTD dvType ********************************
+    // *****************************************************************************
+    // actuator point parameters as the design variable
+    else if (designVarType == "ACTD")
+    {
+        // get info from dvSubDict. This needs to be defined in the pyDAFoam
+        // name of the boundary patch
+        word actuatorDiskName = dvSubDict.getWord("actuatorDiskName");
+
+        // no coloring is need for ACTD, so we create a dummy DAJacCon
+        word dummyType = "dummy";
+        autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+            dummyType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_()));
+
+        // ********************** compute dRdACTD **********************
+        Mat dRdACTD;
+        {
+            // create DAPartDeriv object
+            word modelType = "dRdACTD";
+            autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+                modelType,
+                meshPtr_(),
+                daOptionPtr_(),
+                daModelPtr_(),
+                daIndexPtr_(),
+                daJacCon(),
+                daResidualPtr_()));
+
+            // setup options to compute dRdACTD
+            dictionary options;
+            options.set("actuatorDiskName", actuatorDiskName);
+            options.set("isPC", 0);
+
+            // initialize the dRdACTD matrix
+            daPartDeriv->initializePartDerivMat(options, &dRdACTD);
+
+            // compute it using brute force finite-difference
+            daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdACTD);
+
+            if (daOptionPtr_->getOption<label>("debug"))
+            {
+                this->calcPrimalResidualStatistics("print");
+            }
+
+            if (daOptionPtr_->getOption<label>("writeJacobians"))
+            {
+                word outputName = "dRdACTD_" + designVarName;
+                DAUtility::writeMatrixBinary(dRdACTD, outputName);
+                DAUtility::writeMatrixASCII(dRdACTD, outputName);
+            }
+        }
+
+        // ********************** compute dFdACTD **********************
+        // NOTE: they should be all zeros
+        dictionary objFuncDict = allOptions.subDict("objFunc");
+
+        label nActDVs = 9;
+
+        // loop over all objFuncName in the objFunc dict
+        forAll(objFuncDict.toc(), idxJ)
+        {
+
+            word objFuncName = objFuncDict.toc()[idxJ];
+
+            // we only solve adjoint for objectives that have addToAdjoint = True
+            if (DAUtility::isInList<word>(objFuncName, objFuncNames4Adj_))
+            {
+                // dFdACD should be all zeros
+                Vec dFdACTDVecAllParts;
+                VecCreate(PETSC_COMM_WORLD, &dFdACTDVecAllParts);
+                VecSetSizes(dFdACTDVecAllParts, PETSC_DETERMINE, nActDVs);
+                VecSetFromOptions(dFdACTDVecAllParts);
+                VecZeroEntries(dFdACTDVecAllParts);
+
+                // now we can compute totalDeriv = dFdACTDVecAllParts - psiVec * dRdACTD
+                Vec psiVec, totalDerivVec;
+                VecDuplicate(dFdACTDVecAllParts, &totalDerivVec);
+                VecZeroEntries(totalDerivVec);
+                VecDuplicate(wVec, &psiVec);
+                VecZeroEntries(psiVec);
+
+                // now we can assign DASolver::psiVecDict_ to psiVec for this objFuncName
+                // NOTE: DASolver::psiVecDict_ should be set in the DASolver::solveAdjoint
+                // function. i.e., we need to call solveAdjoint before calling calcTotalDeriv
+                this->getPsiVec(objFuncName, psiVec);
+
+                // totalDeriv = dFdACTDVecAllParts - psiVec * dRdACTD
+                MatMultTranspose(dRdACTD, psiVec, totalDerivVec);
+                VecAXPY(totalDerivVec, -1.0, dFdACTDVecAllParts);
+                VecScale(totalDerivVec, -1.0);
+
+                // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
+                // get the totalDeriv in the python layer later
+                this->setTotalDerivDict(objFuncName, designVarName, totalDerivVec, totalDerivDict_);
+
+                if (daOptionPtr_->getOption<label>("writeJacobians"))
+                {
+                    word outputName = "dFdACTDTotal_" + objFuncName + "_" + designVarName;
+                    DAUtility::writeVectorBinary(totalDerivVec, outputName);
+                    DAUtility::writeVectorASCII(totalDerivVec, outputName);
+                }
+            }
+        }
+
+        MatDestroy(&dRdACTD);
+
+    }
     else
     {
         FatalErrorIn("") << "designVarType: " << designVarType << " not valid!" << abort(FatalError);

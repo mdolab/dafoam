@@ -49,7 +49,7 @@ void DASimpleTFoam::initSolver()
 #include "createFieldsSimpleT.H"
 #include "createAdjointIncompressible.H"
     // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(runTime, mesh));
+    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
 }
 

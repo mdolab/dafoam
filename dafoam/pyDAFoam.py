@@ -11,7 +11,7 @@
 
 """
 
-__version__ = '2.1.1'
+__version__ = '2.1.2'
 
 import subprocess
 import os
@@ -85,7 +85,18 @@ class DAOPTION(object):
     ## may not converge or it may be inaccurate! For "phi", use 1.0 to normalization
     ## Example
     ##     normalizeStates = {"U": 10.0, "p": 101325.0, "phi": 1.0, "nuTilda": 1.e-4}
-    normalizeStates = {}
+    normalizeStates = {
+        "p": 1.0,
+        "phi": 1.0,
+        "U": 1.0,
+        "T": 1.0,
+        "nuTilda": 1.0,
+        "k": 1.0,
+        "epsilon": 1.0,
+        "omega": 1.0,
+        "p_rgh": 1.0,
+        "D": 1.0,
+    }
 
     ## Information on objective function. Each objective function requires a different input forma
     ## But for all objectives, we need to give a name to the objective function, e.g., CD or any
@@ -332,7 +343,7 @@ class DAOPTION(object):
 
     ## The step size for finite-difference computation of partial derivatives. The default values
     ## will work for most of the case.
-    adjPartDerivFDStep = {"State": 1.0e-6, "FFD": 1.0e-3, "BC": 1.0e-2, "AOA": 1.0e-3}
+    adjPartDerivFDStep = {"State": 1.0e-6, "FFD": 1.0e-3, "BC": 1.0e-2, "AOA": 1.0e-3, "ACTP": 1.0e-2, "ACTD": 1.0e-2}
 
     ## Which options to use to improve the adjoint equation convergence of transonic conditions
     ## This is used only for transonic solvers such as DARhoSimpleCFoam
@@ -463,6 +474,13 @@ class DAOPTION(object):
 
     ## Default name for the design surface family. Users typically don't need to change
     designSurfaceFamily = "designSurfaces"
+
+    ## The threshold for check mesh call
+    checkMeshThreshold = {
+        "maxAspectRatio": 1000.0,
+        "maxNonOrth": 70.0,
+        "maxSkewness": 4.0,
+    }
 
     def __init__(self):
         """
