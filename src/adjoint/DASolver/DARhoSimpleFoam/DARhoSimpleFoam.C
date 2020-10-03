@@ -32,7 +32,8 @@ DARhoSimpleFoam::DARhoSimpleFoam(
       daFvSourcePtr_(nullptr),
       fvSourcePtr_(nullptr),
       fvSourceEnergyPtr_(nullptr),
-      initialMass_(dimensionedScalar("initialMass", dimensionSet(1, 0, 0, 0, 0, 0, 0), 0.0))
+      initialMass_(dimensionedScalar("initialMass", dimensionSet(1, 0, 0, 0, 0, 0, 0), 0.0)),
+      MRFPtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -114,6 +115,9 @@ label DARhoSimpleFoam::solvePrimal(
         return 1;
     }
 
+    // set the rotating wall velocity after the mesh is updated (if MRF is active)
+    this->setRotingWallVelocity();
+
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
@@ -152,6 +156,8 @@ label DARhoSimpleFoam::solvePrimal(
 
     }
 
+    this->writeAssociatedFields();
+    
     this->calcPrimalResidualStatistics("print");
 
     // primal converged, assign the OpenFoam fields to the state vec wVec

@@ -14,6 +14,11 @@ bool closedVolume = false;
 
 surfaceScalarField phiHbyA("phiHbyA", fvc::interpolate(rho) * fvc::flux(HbyA));
 
+MRF.makeRelative(fvc::interpolate(rho), phiHbyA);
+
+// Update the pressure BCs to ensure flux consistency
+constrainPressure(p, rho, U, phiHbyA, rhorAUf, MRF);
+
 // NOTE: we don't support transonic = true
 
 closedVolume = adjustPhi(phiHbyA, U, p);

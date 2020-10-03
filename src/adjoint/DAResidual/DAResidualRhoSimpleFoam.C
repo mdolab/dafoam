@@ -43,7 +43,8 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
       // create simpleControl
       simple_(const_cast<fvMesh&>(mesh)),
-      pressureControl_(p_, rho_, simple_.dict())
+      pressureControl_(p_, rho_, simple_.dict()),
+      MRF_(mesh)
 {
 
     // initialize fvSource
@@ -134,6 +135,7 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
 
     tmp<fvVectorMatrix> tUEqn(
         fvm::div(phi_, U_, divUScheme)
+        + MRF_.DDt(rho_, U_)
         + daTurb_.divDevRhoReff(U_)
         - fvSource_);
     fvVectorMatrix& UEqn = tUEqn.ref();
@@ -181,6 +183,11 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
 
     surfaceScalarField phiHbyA("phiHbyA", fvc::interpolate(rho_) * fvc::flux(HbyA));
 
+    MRF_.makeRelative(fvc::interpolate(rho_), phiHbyA);
+
+    // Update the pressure BCs to ensure flux consistency
+    constrainPressure(p_, rho_, U_, phiHbyA, rhorAUf, MRF_);
+
     // NOTE: we don't support transonic = true
 
     adjustPhi(phiHbyA, U_, p_);
@@ -214,7 +221,7 @@ void DAResidualRhoSimpleFoam::updateIntermediateVariables()
         1, update psi based on T, psi=1/(R*T)
         2, update rho based on p and psi, rho=psi*p
         3, update E based on T, p and rho, E=Cp*T-p/rho
-        4, update velocity boundary based on MRF (not yet implemented)
+        4, update velocity boundary based on MRF
     */
 
     // 8314.4700665  gas constant in OpenFOAM
@@ -272,6 +279,8 @@ void DAResidualRhoSimpleFoam::updateIntermediateVariables()
     he_.correctBoundaryConditions();
 
     // NOTE: alphat is updated in the correctNut function in DATurbulenceModel child classes
+
+    MRF_.correctBoundaryVelocity(U_);
 }
 
 void DAResidualRhoSimpleFoam::correctBoundaryConditions()
