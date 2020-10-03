@@ -28,7 +28,8 @@ DASimpleFoam::DASimpleFoam(
       turbulencePtr_(nullptr),
       daTurbulenceModelPtr_(nullptr),
       daFvSourcePtr_(nullptr),
-      fvSourcePtr_(nullptr)
+      fvSourcePtr_(nullptr),
+      MRFPtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -109,6 +110,9 @@ label DASimpleFoam::solvePrimal(
         return 1;
     }
 
+    // set the rotating wall velocity after the mesh is updated (if MRF is active)
+    this->setRotingWallVelocity();
+
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
@@ -146,6 +150,8 @@ label DASimpleFoam::solvePrimal(
 
         runTime.write();
     }
+
+    this->writeAssociatedFields();
 
     this->calcPrimalResidualStatistics("print");
 

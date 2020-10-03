@@ -108,7 +108,7 @@ protected:
     /// pointer to the objective function file used in unsteady primal solvers
     autoPtr<OFstream> objFuncAvgHistFilePtr_;
 
-    /// number of iterations since the start of objFunc averaging 
+    /// number of iterations since the start of objFunc averaging
     label nItersObjFuncAvg_ = -9999;
 
     /// the averaged objective function values used in unsteady flow
@@ -166,6 +166,12 @@ protected:
 
     /// write objective functions values to the objFuncHistFile
     void writeObjFuncHistFile();
+
+    /// set velocity boundary condition for rotating walls
+    void setRotingWallVelocity();
+
+    /// write associated fields such as relative velocity
+    void writeAssociatedFields();
 
 public:
     /// Runtime type information

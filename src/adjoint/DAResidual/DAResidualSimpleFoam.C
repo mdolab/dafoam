@@ -31,7 +31,8 @@ DAResidualSimpleFoam::DAResidualSimpleFoam(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
       // create simpleControl
-      simple_(const_cast<fvMesh&>(mesh))
+      simple_(const_cast<fvMesh&>(mesh)),
+      MRF_(mesh)
 {
     // initialize fvSource
     const dictionary& allOptions = daOption.getAllOptions();
@@ -99,6 +100,7 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
 
     tmp<fvVectorMatrix> tUEqn(
         fvm::div(phi_, U_, divUScheme)
+        + MRF_.DDt(U_)
         + daTurb_.divDevReff(U_)
         - fvSource_);
     fvVectorMatrix& UEqn = tUEqn.ref();
@@ -126,6 +128,8 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
 
     surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
 
+    MRF_.makeRelative(phiHbyA);
+
     adjustPhi(phiHbyA, U_, p_);
 
     tmp<volScalarField> rAtU(rAU);
@@ -138,6 +142,9 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
     }
 
     tUEqn.clear();
+
+    // Update the pressure BCs to ensure flux consistency
+    constrainPressure(p_, U_, phiHbyA, rAtU(), MRF_);
 
     fvScalarMatrix pEqn(
         fvm::laplacian(rAtU(), p_)
@@ -161,7 +168,7 @@ void DAResidualSimpleFoam::updateIntermediateVariables()
         Update the intermediate variables that depend on the state variables
     */
 
-    // nothing to update for DASimpleFoam
+    MRF_.correctBoundaryVelocity(U_);
 }
 
 void DAResidualSimpleFoam::correctBoundaryConditions()
