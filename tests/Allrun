@@ -44,9 +44,11 @@ case $argm in
     sleep 3
     runTests Integration
     runTests DASimpleFoam
+    runTests DASimpleFoamMRF
     runTests DASimpleTFoam
     runTests DAPisoFoam
     runTests DARhoSimpleFoam
+    runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
     runTests DATurboFoamSubsonic
@@ -63,6 +65,7 @@ case $argm in
     sleep 3
     runTests Integration
     runTests DASimpleFoam
+    runTests DASimpleFoamMRF
     runTests DASimpleTFoam
     runTests DAPisoFoam
     echo " "
@@ -75,6 +78,7 @@ case $argm in
     echo "Running compressible tests...."
     sleep 3
     runTests DARhoSimpleFoam
+    runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
     runTests DATurboFoamSubsonic
