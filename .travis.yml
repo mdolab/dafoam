@@ -66,6 +66,7 @@ jobs:
         - docker exec -it regtest /bin/bash -c "pip install cpp-coveralls --user && pip install coverage --user"
         # compile and run the tests
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DASimpleFoam.py"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DASimpleFoamMRF.py"
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DASimpleTFoam.py"
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DAPisoFoam.py"
         # run coveralls, the -lp option is for inline functions in C++
@@ -79,6 +80,7 @@ jobs:
         - docker exec -it regtest /bin/bash -c "pip install cpp-coveralls --user && pip install coverage --user"
         # compile and run the tests
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DARhoSimpleFoam.py"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DARhoSimpleFoamMRF.py"
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DARhoSimpleFoamUBend.py"
         - docker exec -it regtest /bin/bash -c "cd $DOCKER_WORKING_DIR/tests && rm -rf input && tar -xzf input.tar.gz"
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR/tests && mpirun -np 4 python runTests_DARhoSimpleCFoam.py"
