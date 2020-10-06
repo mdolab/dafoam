@@ -151,14 +151,17 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             for (label bb = 0; bb < nBlades; bb++)
             {
                 scalar thetaBlade = bb * 2.0 * pi / nBlades + radPerS * t + phase;
-                if (cellI == 0)
+                if (daOption_.getOption<word>("runStatus") == "solvePrimal")
                 {
-                    if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0
-                        || mesh_.time().timeIndex() == 1)
+                    if (cellI == 0)
                     {
-                        Info << "blade " << bb << " theta: "
-                             << fmod(thetaBlade, 2.0 * pi) * 180.0 / pi
-                             << " deg" << endl;
+                        if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0
+                            || mesh_.time().timeIndex() == 1)
+                        {
+                            Info << "blade " << bb << " theta: "
+                                 << fmod(thetaBlade, 2.0 * pi) * 180.0 / pi
+                                 << " deg" << endl;
+                        }
                     }
                 }
                 // compute the rotated vector of initial by thetaBlade degree

@@ -4,12 +4,12 @@
     Version : v2
 
     Description:
-        Child class for dRdACTP
+        Child class for dRdACTL
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAPartDerivdRdACTP_H
-#define DAPartDerivdRdACTP_H
+#ifndef DAPartDerivdRdACTL_H
+#define DAPartDerivdRdACTL_H
 
 #include "DAPartDeriv.H"
 #include "addToRunTimeSelectionTable.H"
@@ -20,24 +20,24 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAPartDerivdRdACTP Declaration
+      Class DAPartDerivdRdACTL Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAPartDerivdRdACTP
+class DAPartDerivdRdACTL
     : public DAPartDeriv
 {
 
 protected:
 
     /// number of design variables for actuator points
-    label nActDVs_ = 9;
+    label nActDVs_ = 11;
 
 public:
-    TypeName("dRdACTP");
+    TypeName("dRdACTL");
     // Constructors
 
     //- Construct from components
-    DAPartDerivdRdACTP(
+    DAPartDerivdRdACTL(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption,
@@ -47,7 +47,7 @@ public:
         const DAResidual& daResidual);
 
     //- Destructor
-    virtual ~DAPartDerivdRdACTP()
+    virtual ~DAPartDerivdRdACTL()
     {
     }
 

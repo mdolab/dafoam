@@ -91,7 +91,7 @@ daOptions = {
     "adjPartDerivFDStep": {"State": 1e-7, "FFD": 1e-3, "ACTP": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
-    "designVar": {"shapey": {"designVarType": "FFD"}, "actuator": {"actuatorPointName": "point2", "designVarType": "ACTP"}},
+    "designVar": {"shapey": {"designVarType": "FFD"}, "actuator": {"actuatorName": "point2", "designVarType": "ACTP"}},
 }
 
 # mesh warping parameters, users need to manually specify the symmetry plane

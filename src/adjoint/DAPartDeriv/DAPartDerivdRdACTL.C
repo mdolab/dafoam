@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAPartDerivdRdACTP.H"
+#include "DAPartDerivdRdACTL.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAPartDerivdRdACTP, 0);
-addToRunTimeSelectionTable(DAPartDeriv, DAPartDerivdRdACTP, dictionary);
+defineTypeNameAndDebug(DAPartDerivdRdACTL, 0);
+addToRunTimeSelectionTable(DAPartDeriv, DAPartDerivdRdACTL, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAPartDerivdRdACTP::DAPartDerivdRdACTP(
+DAPartDerivdRdACTL::DAPartDerivdRdACTL(
     const word modelType,
     const fvMesh& mesh,
     const DAOption& daOption,
@@ -37,7 +37,7 @@ DAPartDerivdRdACTP::DAPartDerivdRdACTP(
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void DAPartDerivdRdACTP::initializePartDerivMat(
+void DAPartDerivdRdACTL::initializePartDerivMat(
     const dictionary& options,
     Mat* jacMat)
 {
@@ -49,7 +49,7 @@ void DAPartDerivdRdACTP::initializePartDerivMat(
     // now initialize the memory for the jacobian itself
     label localSize = daIndex_.nLocalAdjointStates;
 
-    // create dRdACTPT
+    // create dRdACTLT
     MatCreate(PETSC_COMM_WORLD, jacMat);
     MatSetSizes(
         *jacMat,
@@ -66,7 +66,7 @@ void DAPartDerivdRdACTP::initializePartDerivMat(
     Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
 }
 
-void DAPartDerivdRdACTP::calcPartDerivMat(
+void DAPartDerivdRdACTL::calcPartDerivMat(
     const dictionary& options,
     const Vec xvVec,
     const Vec wVec,
@@ -85,7 +85,7 @@ void DAPartDerivdRdACTP::calcPartDerivMat(
         wVec: the state variable vector
     
     Output:
-        jacMat: the partial derivative matrix dRdACTP to compute
+        jacMat: the partial derivative matrix dRdACTL to compute
     */
 
     word actuatorName = options.getWord("actuatorName");
@@ -109,7 +109,7 @@ void DAPartDerivdRdACTP::calcPartDerivMat(
     mOptions.set("isPC", options.getLabel("isPC"));
     daResidual.masterFunction(mOptions, xvVec, wVec, resVecRef);
 
-    scalar delta = daOption_.getSubDictOption<scalar>("adjPartDerivFDStep", "ACTP");
+    scalar delta = daOption_.getSubDictOption<scalar>("adjPartDerivFDStep", "ACTL");
     scalar rDelta = 1.0 / delta;
 
     Vec xvVecNew;
@@ -119,17 +119,21 @@ void DAPartDerivdRdACTP::calcPartDerivMat(
     dictionary& pointModelSubDict = const_cast<dictionary&>(
         daOption_.getAllOptions().subDict("fvSource").subDict(actuatorName));
 
-    scalarList center, amplitude;
+    scalarList center;
     pointModelSubDict.readEntry<scalarList>("center", center);
-    pointModelSubDict.readEntry<scalarList>("amplitude", amplitude);
-    scalar periodicity = pointModelSubDict.getScalar("periodicity");
+    scalar innerRadius = pointModelSubDict.getScalar("innerRadius");
+    scalar outerRadius = pointModelSubDict.getScalar("outerRadius");
+    scalar rpm = pointModelSubDict.getScalar("rpm");
     scalar phase = pointModelSubDict.getScalar("phase");
     scalar scale = pointModelSubDict.getScalar("scale");
+    scalar POD = pointModelSubDict.getScalar("POD");
+    scalar expM = pointModelSubDict.getScalar("expM");
+    scalar expN = pointModelSubDict.getScalar("expN");
 
     for (label i = 0; i < nActDVs_; i++)
     {
 
-        // perturb ACTP
+        // perturb ACTL
         if (i == 0)
         {
             // perturb x
@@ -150,39 +154,51 @@ void DAPartDerivdRdACTP::calcPartDerivMat(
         }
         else if (i == 3)
         {
-            // perturb amplitude x
-            amplitude[0] += delta;
-            pointModelSubDict.set("amplitude", amplitude);
+            // perturb innerRadius
+            innerRadius += delta;
+            pointModelSubDict.set("innerRadius", innerRadius);
         }
         else if (i == 4)
         {
-            // perturb amplitude y
-            amplitude[1] += delta;
-            pointModelSubDict.set("amplitude", amplitude);
+            // perturb outerRadius
+            outerRadius += delta;
+            pointModelSubDict.set("outerRadius", outerRadius);
         }
         else if (i == 5)
         {
-            // perturb amplitude z
-            amplitude[2] += delta;
-            pointModelSubDict.set("amplitude", amplitude);
+            // perturb rpm
+            rpm += delta;
+            pointModelSubDict.set("rpm", rpm);
         }
         else if (i == 6)
-        {
-            // perturb periodicity
-            periodicity += delta;
-            pointModelSubDict.set("periodicity", periodicity);
-        }
-        else if (i == 7)
         {
             // perturb phase
             phase += delta;
             pointModelSubDict.set("phase", phase);
         }
-        else if (i == 8)
+        else if (i == 7)
         {
             // perturb scale
             scale += delta;
             pointModelSubDict.set("scale", scale);
+        }
+        else if (i == 8)
+        {
+            // perturb POD
+            POD += delta;
+            pointModelSubDict.set("POD", POD);
+        }
+        else if (i == 9)
+        {
+            // perturb expM
+            expM += delta;
+            pointModelSubDict.set("expM", expM);
+        }
+        else if (i == 10)
+        {
+            // perturb expN
+            expN += delta;
+            pointModelSubDict.set("expN", expN);
         }
 
         // Info<<daOption_.getAllOptions().subDict("fvSource")<<endl;
@@ -211,39 +227,51 @@ void DAPartDerivdRdACTP::calcPartDerivMat(
         }
         else if (i == 3)
         {
-            // reset amplitude x
-            amplitude[0] -= delta;
-            pointModelSubDict.set("amplitude", amplitude);
+            // reset innerRadius
+            innerRadius -= delta;
+            pointModelSubDict.set("innerRadius", innerRadius);
         }
         else if (i == 4)
         {
-            // reset amplitude y
-            amplitude[1] -= delta;
-            pointModelSubDict.set("amplitude", amplitude);
+            // reset outerRadius
+            outerRadius -= delta;
+            pointModelSubDict.set("outerRadius", outerRadius);
         }
         else if (i == 5)
         {
-            // reset amplitude z
-            amplitude[2] -= delta;
-            pointModelSubDict.set("amplitude", amplitude);
+            // reset rpm
+            rpm -= delta;
+            pointModelSubDict.set("rpm", rpm);
         }
         else if (i == 6)
-        {
-            // reset periodicity
-            periodicity -= delta;
-            pointModelSubDict.set("periodicity", periodicity);
-        }
-        else if (i == 7)
         {
             // reset phase
             phase -= delta;
             pointModelSubDict.set("phase", phase);
         }
-        else if (i == 8)
+        else if (i == 7)
         {
             // reset scale
             scale -= delta;
             pointModelSubDict.set("scale", scale);
+        }
+        else if (i == 8)
+        {
+            // reset POD
+            POD -= delta;
+            pointModelSubDict.set("POD", POD);
+        }
+        else if (i == 9)
+        {
+            // reset expM
+            expM -= delta;
+            pointModelSubDict.set("expM", expM);
+        }
+        else if (i == 10)
+        {
+            // reset expN
+            expN -= delta;
+            pointModelSubDict.set("expN", expN);
         }
 
         // Info<<daOption_.getAllOptions().subDict("fvSource")<<endl;
