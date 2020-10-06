@@ -47,6 +47,7 @@ case $argm in
     runTests DASimpleFoamMRF
     runTests DASimpleTFoam
     runTests DAPisoFoam
+    runTests DAPisoFoamACTL
     runTests DARhoSimpleFoam
     runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
@@ -68,6 +69,7 @@ case $argm in
     runTests DASimpleFoamMRF
     runTests DASimpleTFoam
     runTests DAPisoFoam
+    runTests DAPisoFoamACTL
     echo " "
     echo "************************************************************"
     echo "************** Incompressible tests passed! ****************"
