@@ -143,7 +143,7 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             // the magnitude of axial component of cellC2AVecA
             scalar cellC2AVecALen = mag(cellC2AVecA);
             // the normalized cellC2AVecC (tangential) vector
-            vector cellC2AVecCNorm = cellC2AVecC / cellC2AVecCLen;
+            vector cellC2AVecCNorm = cellC2AVecC / (cellC2AVecCLen + SMALL);
             // smooth coefficient in the axial direction
             scalar etaAxial = Foam::exp(-Foam::sqr(cellC2AVecALen / eps)) / Foam::exp(0.0);
 
