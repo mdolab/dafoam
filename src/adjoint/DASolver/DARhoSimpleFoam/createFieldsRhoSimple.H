@@ -75,3 +75,5 @@ turbulencePtr_.reset(
         thermo));
 
 initialMass_ = fvc::domainIntegrate(rho);
+
+#include "createMRFPython.H"

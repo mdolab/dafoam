@@ -25,7 +25,7 @@ os.chdir("./input/CurvedCubeHexMesh")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
-    os.system("cp -r 0.unsteady 0")
+    os.system("cp -r 0.incompressible 0")
     os.system("cp -r system/controlDict.unsteady system/controlDict")
     os.system("cp -r system/fvSchemes.unsteady system/fvSchemes")
     os.system("cp -r system/fvSolution.unsteady system/fvSolution")
@@ -36,30 +36,25 @@ daOptions = {
     "solverName": "DAPisoFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
+    "adjPCLag": 3,
     "hybridAdjoint": {"active": True, "nTimeInstances": 3, "periodicity": 1.0},
     "fvSource": {
-        "point1": {
-            "type": "actuatorPoint",
-            "smoothFunction": "hyperbolic",
-            "center": [0.5, 0.5, 0.5],  # center and size define a rectangular
-            "size": [0.2, 0.2, 0.2],
-            "amplitude": [0.0, 0.2, 0.0],
-            "phase": 0.0,
-            "thrustDirIdx": 0,
-            "periodicity": 1.0,
-            "eps": 10.0,
-            "scale": 10.0,  # scale the source such the integral equals desired thrust
-        },
-        "point2": {
-            "type": "actuatorPoint",
-            "smoothFunction": "gaussian",
-            "center": [0.5, 0.5, 0.5],  # center and size define a rectangular
-            "amplitude": [0.0, 0.2, 0.0],
-            "phase": 3.1415926,
-            "thrustDirIdx": 0,
-            "periodicity": 1.0,
-            "eps": 0.1,
-            "scale": 10.0,  # scale the source such the integral equals desired thrust
+        "line1": {
+            "type": "actuatorLine",
+            "center": [0.5, 0.5, 0.5],
+            "direction": [1.0, 0.0, 0.0],
+            "initial": [0.0, 1.0, 0.0],
+            "rotDir": "right",
+            "innerRadius": 0.05,
+            "outerRadius": 0.4,
+            "rpm": 60.0,
+            "phase": 0.5,
+            "eps": 0.2,
+            "nBlades": 3,
+            "POD": 1.0,
+            "expM": 1.0,
+            "expN": 0.5,
+            "scale": 50.0,  # scale the source such the integral equals desired thrust
         },
     },
     "objFunc": {
@@ -88,10 +83,10 @@ daOptions = {
     },
     "primalMinResTol": 1e-16,
     "normalizeStates": {"U": 1.0, "p": 1.0, "nuTilda": 0.1, "phi": 1.0},
-    "adjPartDerivFDStep": {"State": 1e-7, "FFD": 1e-3, "ACTP": 1e-3},
+    "adjPartDerivFDStep": {"State": 1e-7, "FFD": 1e-3, "ACTL": 1e-2},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
-    "designVar": {"shapey": {"designVarType": "FFD"}, "actuator": {"actuatorName": "point2", "designVarType": "ACTP"}},
+    "designVar": {"shapey": {"designVarType": "FFD"}, "actuator": {"actuatorName": "line1", "designVarType": "ACTL"}},
 }
 
 # mesh warping parameters, users need to manually specify the symmetry plane
@@ -112,25 +107,33 @@ def actuator(val, geo):
     actX = float(val[0])
     actY = float(val[1])
     actZ = float(val[2])
-    actAx = float(val[3])
-    actAy = float(val[4])
-    actAz = float(val[5])
-    actT = float(val[6])
-    actPhase = float(val[7])
-    actScale = float(val[8])
+    r1 = float(val[3])
+    r2 = float(val[4])
+    rpm = float(val[5])
+    phase = float(val[6])
+    scale = float(val[7])
+    pod = float(val[8])
+    expM = float(val[9])
+    expN = float(val[10])
     DASolver.setOption(
         "fvSource",
         {
-            "point2": {
-                "type": "actuatorPoint",
-                "smoothFunction": "gaussian",
+            "line1": {
+                "type": "actuatorLine",
                 "center": [actX, actY, actZ],
-                "amplitude": [actAx, actAy, actAz],
-                "phase": actPhase,
-                "thrustDirIdx": 0,
-                "periodicity": actT,
-                "eps": 0.1,
-                "scale": actScale,
+                "direction": [1.0, 0.0, 0.0],
+                "initial": [0.0, 1.0, 0.0],
+                "rotDir": "right",
+                "innerRadius": r1,
+                "outerRadius": r2,
+                "rpm": rpm,
+                "phase": phase,
+                "eps": 0.2,
+                "nBlades": 3,
+                "POD": pod,
+                "expM": expM,
+                "expN": expN,
+                "scale": scale,
             },
         },
     )
@@ -146,7 +149,7 @@ DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointS
 # actuator point parameter
 DVGeo.addGeoDVGlobal(
     "actuator",
-    value=[0.5, 0.5, 0.5, 0.0, 0.2, 0.0, 1.0, 3.1415926, 10.0],
+    value=[0.5, 0.5, 0.5, 0.05, 0.4, 60.0, 0.5, 50.0, 1.0, 1.0, 0.5],
     func=actuator,
     lower=-100.0,
     upper=100.0,

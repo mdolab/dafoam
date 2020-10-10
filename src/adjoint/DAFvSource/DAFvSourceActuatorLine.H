@@ -4,14 +4,14 @@
     Version : v2
 
     Description:
-        Child class for dRdACTP
+        Child class for ActuatorLine source
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAPartDerivdRdACTP_H
-#define DAPartDerivdRdACTP_H
+#ifndef DAFvSourceActuatorLine_H
+#define DAFvSourceActuatorLine_H
 
-#include "DAPartDeriv.H"
+#include "DAFvSource.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,50 +20,37 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAPartDerivdRdACTP Declaration
+      Class DAFvSourceActuatorLine Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAPartDerivdRdACTP
-    : public DAPartDeriv
+class DAFvSourceActuatorLine
+    : public DAFvSource
 {
 
 protected:
 
-    /// number of design variables for actuator points
-    label nActDVs_ = 9;
+    /// print interval 
+    label printIntervalUnsteady_;
 
 public:
-    TypeName("dRdACTP");
+    TypeName("actuatorLine");
     // Constructors
 
     //- Construct from components
-    DAPartDerivdRdACTP(
+    DAFvSourceActuatorLine(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
-        const DAIndex& daIndex,
-        const DAJacCon& daJacCon,
-        const DAResidual& daResidual);
+        const DAIndex& daIndex);
 
     //- Destructor
-    virtual ~DAPartDerivdRdACTP()
+    virtual ~DAFvSourceActuatorLine()
     {
     }
 
-    // Member functions
-
-    /// initialize partial derivative matrix
-    virtual void initializePartDerivMat(
-        const dictionary& options,
-        Mat* jacMat);
-
-    /// compute the partial derivative matrix
-    virtual void calcPartDerivMat(
-        const dictionary& options,
-        const Vec xvVec,
-        const Vec wVec,
-        Mat jacMat);
+    /// compute the FvSource term
+    virtual void calcFvSource(volVectorField& fvSource);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

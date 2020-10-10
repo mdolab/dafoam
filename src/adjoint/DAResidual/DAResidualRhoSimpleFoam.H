@@ -17,6 +17,8 @@
 #include "adjustPhi.H"
 #include "thermodynamicConstants.H"
 #include "pressureControl.H"
+#include "IOMRFZoneList.H"
+#include "constrainPressure.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -76,6 +78,9 @@ protected:
 
     /// pressureControl object to set ref pressure
     pressureControl pressureControl_;
+
+    /// Multiple Reference Frame 
+    IOMRFZoneList MRF_;
 
     /// \name These are constants to update the intermediate variables
     //@{

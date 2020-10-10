@@ -36,7 +36,6 @@ class DATurboFoam
 {
 
 protected:
-
     /// simple pointer
     autoPtr<simpleControl> simplePtr_;
 
@@ -76,9 +75,6 @@ protected:
     /// continuity error
     scalar cumulativeContErr_ = 0.0;
 
-    /// set velocity boundary condition for rotating walls
-    void setRotingWallVelocity();
-
 public:
     TypeName("DATurboFoam");
     // Constructors
@@ -100,7 +96,6 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec);
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

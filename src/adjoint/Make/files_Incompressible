@@ -38,6 +38,7 @@ DAObjFunc/DAObjFuncTotalPressure.C
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
 DAFvSource/DAFvSourceActuatorPoint.C
+DAFvSource/DAFvSourceActuatorLine.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C
@@ -63,6 +64,7 @@ DAPartDeriv/DAPartDerivdFdAOA.C
 DAPartDeriv/DAPartDerivdRdAOA.C
 DAPartDeriv/DAPartDerivdRdACTP.C
 DAPartDeriv/DAPartDerivdRdACTD.C
+DAPartDeriv/DAPartDerivdRdACTL.C
 
 DALinearEqn/DALinearEqn.C
 

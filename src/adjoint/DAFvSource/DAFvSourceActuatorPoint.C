@@ -181,7 +181,7 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
 
             if (daOption_.getOption<word>("runStatus") == "solvePrimal")
             {
-                if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0 || mesh_.time().timeIndex() == 0)
+                if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0 || mesh_.time().timeIndex() == 1)
                 {
                     Info << "Actuator point source: " << pointName << endl;
                     Info << "Total thrust source: " << thrustTotal << endl;

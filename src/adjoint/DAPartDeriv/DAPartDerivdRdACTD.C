@@ -88,7 +88,7 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
         jacMat: the partial derivative matrix dRdACTD to compute
     */
 
-    word actuatorDiskName = options.getWord("actuatorDiskName");
+    word actuatorName = options.getWord("actuatorName");
 
     DAResidual& daResidual = const_cast<DAResidual&>(daResidual_);
 
@@ -117,7 +117,7 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
     VecZeroEntries(xvVecNew);
 
     dictionary& diskModelSubDict = const_cast<dictionary&>(
-        daOption_.getAllOptions().subDict("fvSource").subDict(actuatorDiskName));
+        daOption_.getAllOptions().subDict("fvSource").subDict(actuatorName));
 
     scalarList center;
     diskModelSubDict.readEntry<scalarList>("center", center);

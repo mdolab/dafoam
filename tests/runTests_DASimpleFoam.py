@@ -108,7 +108,7 @@ aeroOptions = {
     "designVar": {
         "shapey": {"designVarType": "FFD"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
-        "actuator": {"actuatorDiskName": "disk1", "designVarType": "ACTD"},
+        "actuator": {"actuatorName": "disk1", "designVarType": "ACTD"},
     },
 }
 

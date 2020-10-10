@@ -246,7 +246,7 @@ void DAResidualTurboFoam::updateIntermediateVariables()
         1, update psi based on T, psi=1/(R*T)
         2, update rho based on p and psi, rho=psi*p
         3, update E based on T, p and rho, E=Cp*T-p/rho
-        4, update velocity boundary based on MRF (not yet implemented)
+        4, update velocity boundary based on MRF
     */
 
     // 8314.4700665  gas constant in OpenFOAM
