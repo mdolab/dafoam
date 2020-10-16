@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "2.1.3"
+__version__ = "2.1.4"
 
 import subprocess
 import os
@@ -489,6 +489,18 @@ class DAOPTION(object):
         "maxNonOrth": 70.0,
         "maxSkewness": 4.0,
     }
+
+    ## Compute intermediate variables such as the mean fields
+    ## Example:
+    ## "intmdVar" : {
+    ##     "UMean" : {
+    ##         "operation": "Mean",
+    ##         "fieldType": "volVectorField",
+    ##         "baseField": "U",
+    ##         "restartSteps": 1000
+    ##      }
+    ## }
+    intmdVar = {}
 
     def __init__(self):
         """
