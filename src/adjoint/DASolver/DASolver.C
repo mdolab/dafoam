@@ -1074,17 +1074,223 @@ void DASolver::calcdFdBC(
             this->calcPrimalResidualStatistics("print");
         }
 
-        if (daOptionPtr_->getOption<label>("writeJacobians"))
-        {
-            word outputName = "dFdBCPart_" + designVarName + "_" + objFuncPart;
-            DAUtility::writeVectorBinary(dFdBCPart, outputName);
-            DAUtility::writeVectorASCII(dFdBCPart, outputName);
-        }
-
         // clear up
         MatDestroy(&dFdBCMat);
         VecDestroy(&dFdBCPart);
         VecDestroy(&oneVec);
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dFdBC_" + designVarName;
+        DAUtility::writeVectorBinary(dFdBC, outputName);
+        DAUtility::writeVectorASCII(dFdBC, outputName);
+    }
+}
+
+void DASolver::calcdRdAOA(
+    const Vec xvVec,
+    const Vec wVec,
+    const word designVarName,
+    Mat dRdAOA)
+{
+    /*
+    Description:
+        This function computes partials derivatives dRdAOA
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dRdAOA: the partial derivative matrix dR/dAOA
+        NOTE: You need to call MatCreate for the dRdAOA matrix before calling this function.
+        No need to call MatSetSize etc because they will be done in this function
+    */
+
+    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = designVarDict.subDict(designVarName);
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
+    word flowAxis = dvSubDict.getWord("flowAxis");
+    word normalAxis = dvSubDict.getWord("normalAxis");
+
+    // no coloring is need for BC, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // ********************** compute dRdAOA **********************
+
+    // create DAPartDeriv object
+    word modelType = "dRdAOA";
+    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+        modelType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_(),
+        daJacCon(),
+        daResidualPtr_()));
+
+    // setup options to compute dRdAOA
+    dictionary options;
+    options.set("patches", patches);
+    options.set("flowAxis", flowAxis);
+    options.set("normalAxis", normalAxis);
+    options.set("isPC", 0);
+
+    // initialize the dRdAOA matrix
+    daPartDeriv->initializePartDerivMat(options, dRdAOA);
+
+    // compute it using brute force finite-difference
+    daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdAOA);
+
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        this->calcPrimalResidualStatistics("print");
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdAOA_" + designVarName;
+        DAUtility::writeMatrixBinary(dRdAOA, outputName);
+        DAUtility::writeMatrixASCII(dRdAOA, outputName);
+    }
+}
+
+void DASolver::calcdFdAOA(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdAOA)
+{
+    /*
+    Description:
+        This function computes partials derivatives dFdAOA
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: name of the objective function F
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dFdAOA: the partial derivative vector dF/dAOA
+        NOTE: You need to fully initialize the dFdAOA vec before calliing this function,
+        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
+    */
+
+    VecZeroEntries(dFdAOA);
+
+    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = designVarDict.subDict(designVarName);
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
+    word flowAxis = dvSubDict.getWord("flowAxis");
+    word normalAxis = dvSubDict.getWord("normalAxis");
+
+    // no coloring is need for BC, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+
+    // loop over all parts of this objFuncName
+    forAll(objFuncSubDict.toc(), idxK)
+    {
+        word objFuncPart = objFuncSubDict.toc()[idxK];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+        Mat dFdAOAMat;
+        MatCreate(PETSC_COMM_WORLD, &dFdAOAMat);
+
+        // initialize DAPartDeriv for dFdAOAMat
+        word modelType = "dFdAOA";
+        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+            modelType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daJacCon(),
+            daResidualPtr_()));
+
+        // initialize options
+        dictionary options;
+        options.set("objFuncName", objFuncName);
+        options.set("objFuncPart", objFuncPart);
+        options.set("objFuncSubDictPart", objFuncSubDictPart);
+        options.set("patches", patches);
+        options.set("flowAxis", flowAxis);
+        options.set("normalAxis", normalAxis);
+
+        // initialize dFdAOA
+        daPartDeriv->initializePartDerivMat(options, dFdAOAMat);
+
+        // calculate it
+        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdAOAMat);
+
+        // NOTE: dFdAOAMat is a 1 by 1 matrix but we just do a matrix-vector product
+        // to convert dFdAOAMat from a matrix to a vector
+        Vec dFdAOAPart, oneVec;
+        VecDuplicate(dFdAOA, &oneVec);
+        VecSet(oneVec, 1.0);
+        VecDuplicate(dFdAOA, &dFdAOAPart);
+        VecZeroEntries(dFdAOAPart);
+        // dFdAOAPart = dFdAOAMat * oneVec
+        MatMult(dFdAOAMat, oneVec, dFdAOAPart);
+
+        // we need to add dFdAOAVec to dFdAOAVecAllParts because we want to sum
+        // all dFdAOAVec for all parts of this objFuncName.
+        VecAXPY(dFdAOA, 1.0, dFdAOAPart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            this->calcPrimalResidualStatistics("print");
+        }
+
+        // clear up
+        MatDestroy(&dFdAOAMat);
+        VecDestroy(&dFdAOAPart);
+        VecDestroy(&oneVec);
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dFdAOA_" + designVarName;
+        DAUtility::writeVectorBinary(dFdAOA, outputName);
+        DAUtility::writeVectorASCII(dFdAOA, outputName);
     }
 }
 
@@ -1370,13 +1576,6 @@ label DASolver::calcTotalDeriv(
                 // get the totalDeriv in the python layer later
                 this->setTotalDerivDict(objFuncName, designVarName, totalDerivVec, totalDerivDict_);
 
-                if (daOptionPtr_->getOption<label>("writeJacobians"))
-                {
-                    word outputName = "dFdBCTotal_" + objFuncName + "_" + designVarName;
-                    DAUtility::writeVectorBinary(totalDerivVec, outputName);
-                    DAUtility::writeVectorASCII(totalDerivVec, outputName);
-                }
-
                 VecDestroy(&psiVec);
                 VecDestroy(&totalDerivVec);
                 VecDestroy(&dFdBC);
@@ -1390,63 +1589,11 @@ label DASolver::calcTotalDeriv(
     // angle of attack as the design variable
     else if (designVarType == "AOA")
     {
-        // get info from dvSubDict. This needs to be defined in the pyDAFoam
-        // name of the boundary patch
-        wordList patches;
-        dvSubDict.readEntry<wordList>("patches", patches);
-        // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
-        word flowAxis = dvSubDict.getWord("flowAxis");
-        word normalAxis = dvSubDict.getWord("normalAxis");
-
-        // no coloring is need for BC, so we create a dummy DAJacCon
-        word dummyType = "dummy";
-        autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-            dummyType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_()));
 
         // ********************** compute dRdAOA **********************
         Mat dRdAOA;
         MatCreate(PETSC_COMM_WORLD, &dRdAOA);
-        {
-            // create DAPartDeriv object
-            word modelType = "dRdAOA";
-            autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-                modelType,
-                meshPtr_(),
-                daOptionPtr_(),
-                daModelPtr_(),
-                daIndexPtr_(),
-                daJacCon(),
-                daResidualPtr_()));
-
-            // setup options to compute dRdAOA
-            dictionary options;
-            options.set("patches", patches);
-            options.set("flowAxis", flowAxis);
-            options.set("normalAxis", normalAxis);
-            options.set("isPC", 0);
-
-            // initialize the dRdAOA matrix
-            daPartDeriv->initializePartDerivMat(options, dRdAOA);
-
-            // compute it using brute force finite-difference
-            daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdAOA);
-
-            if (daOptionPtr_->getOption<label>("debug"))
-            {
-                this->calcPrimalResidualStatistics("print");
-            }
-
-            if (daOptionPtr_->getOption<label>("writeJacobians"))
-            {
-                word outputName = "dRdAOA_" + designVarName;
-                DAUtility::writeMatrixBinary(dRdAOA, outputName);
-                DAUtility::writeMatrixASCII(dRdAOA, outputName);
-            }
-        }
+        this->calcdRdAOA(xvVec, wVec, designVarName, dRdAOA);
 
         // ********************** compute dFdAOA **********************
         dictionary objFuncDict = allOptions.subDict("objFunc");
@@ -1458,91 +1605,19 @@ label DASolver::calcTotalDeriv(
             word objFuncName = objFuncDict.toc()[idxJ];
 
             // we only solve adjoint for objectives that have addToAdjoint = True
-            if (DAUtility::isInList<word>(objFuncName, objFuncNames4Adj_))
+            if (objFuncNames4Adj_.found(objFuncName))
             {
                 // the dFdAOAVecAllParts vector contains the sum of dFdAOAVec from all parts for this objFuncName
-                Vec dFdAOAVecAllParts;
-                VecCreate(PETSC_COMM_WORLD, &dFdAOAVecAllParts);
-                VecSetSizes(dFdAOAVecAllParts, PETSC_DETERMINE, 1);
-                VecSetFromOptions(dFdAOAVecAllParts);
-                VecZeroEntries(dFdAOAVecAllParts);
-
-                dictionary objFuncSubDict = objFuncDict.subDict(objFuncName);
-                // loop over all parts of this objFuncName
-                forAll(objFuncSubDict.toc(), idxK)
-                {
-                    word objFuncPart = objFuncSubDict.toc()[idxK];
-                    dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-
-                    // we only compute total derivative for objFuncs with addToAdjoint = True
-                    label addToAdjoint = objFuncSubDictPart.getLabel("addToAdjoint");
-                    if (addToAdjoint)
-                    {
-
-                        Mat dFdAOA;
-                        MatCreate(PETSC_COMM_WORLD, &dFdAOA);
-
-                        // initialize DAPartDeriv for dFdAOA
-                        word modelType = "dFdAOA";
-                        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-                            modelType,
-                            meshPtr_(),
-                            daOptionPtr_(),
-                            daModelPtr_(),
-                            daIndexPtr_(),
-                            daJacCon(),
-                            daResidualPtr_()));
-
-                        // initialize options
-                        dictionary options;
-                        options.set("objFuncName", objFuncName);
-                        options.set("objFuncPart", objFuncPart);
-                        options.set("objFuncSubDictPart", objFuncSubDictPart);
-                        options.set("patches", patches);
-                        options.set("flowAxis", flowAxis);
-                        options.set("normalAxis", normalAxis);
-
-                        // initialize dFdAOA
-                        daPartDeriv->initializePartDerivMat(options, dFdAOA);
-
-                        // calculate it
-                        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdAOA);
-
-                        // now we need to add all the rows of dFdAOA together to get dFdAOAVec
-                        // NOTE: dFdAOA is a 1 by 1 matrix but we just do a matrix-vector product
-                        // to convert dFdAOA from a matrix to a vector
-                        Vec dFdAOAVec, oneVec;
-                        VecDuplicate(dFdAOAVecAllParts, &oneVec);
-                        VecSet(oneVec, 1.0);
-                        VecDuplicate(dFdAOAVecAllParts, &dFdAOAVec);
-                        VecZeroEntries(dFdAOAVec);
-                        // dFdAOAVec = dFdAOA * oneVec
-                        MatMult(dFdAOA, oneVec, dFdAOAVec);
-
-                        // we need to add dFdAOAVec to dFdAOAVecAllParts because we want to sum
-                        // all dFdAOAVec for all parts of this objFuncName.
-                        VecAXPY(dFdAOAVecAllParts, 1.0, dFdAOAVec);
-
-                        if (daOptionPtr_->getOption<label>("debug"))
-                        {
-                            this->calcPrimalResidualStatistics("print");
-                        }
-
-                        if (daOptionPtr_->getOption<label>("writeJacobians"))
-                        {
-                            word outputName = "dFdAOAVec_" + designVarName;
-                            DAUtility::writeVectorBinary(dFdAOAVec, outputName);
-                            DAUtility::writeVectorASCII(dFdAOAVec, outputName);
-                        }
-
-                        // clear up
-                        MatDestroy(&dFdAOA);
-                    }
-                }
+                Vec dFdAOA;
+                VecCreate(PETSC_COMM_WORLD, &dFdAOA);
+                VecSetSizes(dFdAOA, PETSC_DETERMINE, 1);
+                VecSetFromOptions(dFdAOA);
+                VecZeroEntries(dFdAOA);
+                this->calcdFdAOA(xvVec, wVec, objFuncName, designVarName, dFdAOA);
 
                 // now we can compute totalDeriv = dFdAOAVecAllParts - psiVec * dRdAOA
                 Vec psiVec, totalDerivVec;
-                VecDuplicate(dFdAOAVecAllParts, &totalDerivVec);
+                VecDuplicate(dFdAOA, &totalDerivVec);
                 VecZeroEntries(totalDerivVec);
                 VecDuplicate(wVec, &psiVec);
                 VecZeroEntries(psiVec);
@@ -1552,21 +1627,18 @@ label DASolver::calcTotalDeriv(
                 // function. i.e., we need to call solveAdjoint before calling calcTotalDeriv
                 this->getPsiVec(objFuncName, psiVec);
 
-                // totalDeriv = dFdAOAVecAllParts - psiVec * dRdAOA
+                // totalDeriv = dFdAOA - psiVec * dRdAOA
                 MatMultTranspose(dRdAOA, psiVec, totalDerivVec);
-                VecAXPY(totalDerivVec, -1.0, dFdAOAVecAllParts);
+                VecAXPY(totalDerivVec, -1.0, dFdAOA);
                 VecScale(totalDerivVec, -1.0);
 
                 // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
                 // get the totalDeriv in the python layer later
                 this->setTotalDerivDict(objFuncName, designVarName, totalDerivVec, totalDerivDict_);
 
-                if (daOptionPtr_->getOption<label>("writeJacobians"))
-                {
-                    word outputName = "dFdAOATotal_" + objFuncName + "_" + designVarName;
-                    DAUtility::writeVectorBinary(totalDerivVec, outputName);
-                    DAUtility::writeVectorASCII(totalDerivVec, outputName);
-                }
+                VecDestroy(&dFdAOA);
+                VecDestroy(&psiVec);
+                VecDestroy(&totalDerivVec);
             }
         }
         MatDestroy(&dRdAOA);

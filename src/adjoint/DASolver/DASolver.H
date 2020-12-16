@@ -257,6 +257,21 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdBC);
+    
+    /// compute dRdAOA
+    void calcdRdAOA(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdAOA);
+    
+    /// compute dFdAOA
+    void calcdFdAOA(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdAOA);
 
     /// compute the total derivatives
     label calcTotalDeriv(
