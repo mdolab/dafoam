@@ -243,6 +243,21 @@ public:
         const Vec xvVec,
         const Vec wVec);
 
+    /// compute dRdBC
+    void calcdRdBC(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdBC);
+    
+    /// compute dFdBC
+    void calcdFdBC(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdBC);
+
     /// compute the total derivatives
     label calcTotalDeriv(
         const Vec xvVec,

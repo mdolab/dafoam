@@ -756,6 +756,8 @@ void DASolver::calcdFdW(
         i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
     */
 
+    VecZeroEntries(dFdW);
+
     // get the subDict for this objective function
     dictionary objFuncSubDict =
         daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
@@ -876,6 +878,213 @@ void DASolver::calcdFdW(
         word outputName = "dFdW_" + objFuncName;
         DAUtility::writeVectorBinary(dFdW, outputName);
         DAUtility::writeVectorASCII(dFdW, outputName);
+    }
+}
+
+void DASolver::calcdRdBC(
+    const Vec xvVec,
+    const Vec wVec,
+    const word designVarName,
+    Mat dRdBC)
+{
+    /*
+    Description:
+        This function computes partials derivatives dRdBC
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dRdBC: the partial derivative matrix dR/dBC
+        NOTE: You need to call MatCreate for the dRdBC matrix before calling this function.
+        No need to call MatSetSize etc because they will be done in this function
+    */
+
+    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = designVarDict.subDict(designVarName);
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the variable for changing the boundary condition
+    word varName = dvSubDict.getWord("variable");
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the compoent of a vector variable, ignore when it is a scalar
+    label comp = dvSubDict.getLabel("comp");
+
+    // no coloring is need for BC, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // ********************** compute dRdBC **********************
+
+    // create DAPartDeriv object
+    word modelType = "dRdBC";
+    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+        modelType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_(),
+        daJacCon(),
+        daResidualPtr_()));
+
+    // setup options to compute dRdBC
+    dictionary options;
+    options.set("variable", varName);
+    options.set("patches", patches);
+    options.set("comp", comp);
+    options.set("isPC", 0);
+
+    // initialize the dRdBC matrix
+    daPartDeriv->initializePartDerivMat(options, dRdBC);
+
+    // compute it using brute force finite-difference
+    daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdBC);
+
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        this->calcPrimalResidualStatistics("print");
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdBC_" + designVarName;
+        DAUtility::writeMatrixBinary(dRdBC, outputName);
+        DAUtility::writeMatrixASCII(dRdBC, outputName);
+    }
+}
+
+void DASolver::calcdFdBC(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdBC)
+{
+    /*
+    Description:
+        This function computes partials derivatives dFdW
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: name of the objective function F
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dFdBC: the partial derivative vector dF/dBC
+        NOTE: You need to fully initialize the dFdBC vec before calliing this function,
+        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
+    */
+
+    VecZeroEntries(dFdBC);
+
+    // no coloring is need for BC, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the variable for changing the boundary condition
+    word varName = dvSubDict.getWord("variable");
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the compoent of a vector variable, ignore when it is a scalar
+    label comp = dvSubDict.getLabel("comp");
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+
+    // loop over all parts of this objFuncName
+    forAll(objFuncSubDict.toc(), idxK)
+    {
+        word objFuncPart = objFuncSubDict.toc()[idxK];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+        Mat dFdBCMat;
+        MatCreate(PETSC_COMM_WORLD, &dFdBCMat);
+
+        // initialize DAPartDeriv for dFdBC
+        word modelType = "dFdBC";
+        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+            modelType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daJacCon(),
+            daResidualPtr_()));
+
+        // initialize options
+        dictionary options;
+        options.set("objFuncName", objFuncName);
+        options.set("objFuncPart", objFuncPart);
+        options.set("objFuncSubDictPart", objFuncSubDictPart);
+        options.set("variable", varName);
+        options.set("patches", patches);
+        options.set("comp", comp);
+
+        // initialize dFdBC
+        daPartDeriv->initializePartDerivMat(options, dFdBCMat);
+
+        // calculate it
+        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdBCMat);
+
+        // now we need to add all the rows of dFdBCMat together to get dFdBC
+        // NOTE: dFdBCMat is a 1 by 1 matrix but we just do a matrix-vector product
+        // to convert dFdBCMat from a matrix to a vector
+        Vec dFdBCPart, oneVec;
+        VecDuplicate(dFdBC, &oneVec);
+        VecSet(oneVec, 1.0);
+        VecDuplicate(dFdBC, &dFdBCPart);
+        VecZeroEntries(dFdBCPart);
+        // dFdBCPart = dFdBCMat * oneVec
+        MatMult(dFdBCMat, oneVec, dFdBCPart);
+
+        // we need to add dFdBCPart to dFdBC because we want to sum
+        // all parts of this objFuncName.
+        VecAXPY(dFdBC, 1.0, dFdBCPart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            this->calcPrimalResidualStatistics("print");
+        }
+
+        if (daOptionPtr_->getOption<label>("writeJacobians"))
+        {
+            word outputName = "dFdBCPart_" + designVarName + "_" + objFuncPart;
+            DAUtility::writeVectorBinary(dFdBCPart, outputName);
+            DAUtility::writeVectorASCII(dFdBCPart, outputName);
+        }
+
+        // clear up
+        MatDestroy(&dFdBCMat);
+        VecDestroy(&dFdBCPart);
+        VecDestroy(&oneVec);
     }
 }
 
@@ -1116,64 +1325,10 @@ label DASolver::calcTotalDeriv(
     // boundary condition as the design variable, e.g., the inlet velocity
     if (designVarType == "BC")
     {
-        // get info from dvSubDict. This needs to be defined in the pyDAFoam
-        // name of the variable for changing the boundary condition
-        word varName = dvSubDict.getWord("variable");
-        // name of the boundary patch
-        wordList patches;
-        dvSubDict.readEntry<wordList>("patches", patches);
-        // the compoent of a vector variable, ignore when it is a scalar
-        label comp = dvSubDict.getLabel("comp");
-
-        // no coloring is need for BC, so we create a dummy DAJacCon
-        word dummyType = "dummy";
-        autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-            dummyType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_()));
-
         // ********************** compute dRdBC **********************
         Mat dRdBC;
         MatCreate(PETSC_COMM_WORLD, &dRdBC);
-        {
-            // create DAPartDeriv object
-            word modelType = "dRdBC";
-            autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-                modelType,
-                meshPtr_(),
-                daOptionPtr_(),
-                daModelPtr_(),
-                daIndexPtr_(),
-                daJacCon(),
-                daResidualPtr_()));
-
-            // setup options to compute dRdBC
-            dictionary options;
-            options.set("variable", varName);
-            options.set("patches", patches);
-            options.set("comp", comp);
-            options.set("isPC", 0);
-
-            // initialize the dRdBC matrix
-            daPartDeriv->initializePartDerivMat(options, dRdBC);
-
-            // compute it using brute force finite-difference
-            daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdBC);
-
-            if (daOptionPtr_->getOption<label>("debug"))
-            {
-                this->calcPrimalResidualStatistics("print");
-            }
-
-            if (daOptionPtr_->getOption<label>("writeJacobians"))
-            {
-                word outputName = "dRdBC_" + designVarName;
-                DAUtility::writeMatrixBinary(dRdBC, outputName);
-                DAUtility::writeMatrixASCII(dRdBC, outputName);
-            }
-        }
+        this->calcdRdBC(xvVec, wVec, designVarName, dRdBC);
 
         // ********************** compute dFdBC **********************
         dictionary objFuncDict = allOptions.subDict("objFunc");
@@ -1185,91 +1340,18 @@ label DASolver::calcTotalDeriv(
             word objFuncName = objFuncDict.toc()[idxJ];
 
             // we only solve adjoint for objectives that have addToAdjoint = True
-            if (DAUtility::isInList<word>(objFuncName, objFuncNames4Adj_))
+            if (objFuncNames4Adj_.found(objFuncName))
             {
-                // the dFdBCVecAllParts vector contains the sum of dFdBCVec from all parts for this objFuncName
-                Vec dFdBCVecAllParts;
-                VecCreate(PETSC_COMM_WORLD, &dFdBCVecAllParts);
-                VecSetSizes(dFdBCVecAllParts, PETSC_DETERMINE, 1);
-                VecSetFromOptions(dFdBCVecAllParts);
-                VecZeroEntries(dFdBCVecAllParts);
+                Vec dFdBC;
+                VecCreate(PETSC_COMM_WORLD, &dFdBC);
+                VecSetSizes(dFdBC, PETSC_DETERMINE, 1);
+                VecSetFromOptions(dFdBC);
+                VecZeroEntries(dFdBC);
+                this->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
 
-                dictionary objFuncSubDict = objFuncDict.subDict(objFuncName);
-                // loop over all parts of this objFuncName
-                forAll(objFuncSubDict.toc(), idxK)
-                {
-                    word objFuncPart = objFuncSubDict.toc()[idxK];
-                    dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-
-                    // we only compute total derivative for objFuncs with addToAdjoint = True
-                    label addToAdjoint = objFuncSubDictPart.getLabel("addToAdjoint");
-                    if (addToAdjoint)
-                    {
-
-                        Mat dFdBC;
-                        MatCreate(PETSC_COMM_WORLD, &dFdBC);
-
-                        // initialize DAPartDeriv for dFdBC
-                        word modelType = "dFdBC";
-                        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-                            modelType,
-                            meshPtr_(),
-                            daOptionPtr_(),
-                            daModelPtr_(),
-                            daIndexPtr_(),
-                            daJacCon(),
-                            daResidualPtr_()));
-
-                        // initialize options
-                        dictionary options;
-                        options.set("objFuncName", objFuncName);
-                        options.set("objFuncPart", objFuncPart);
-                        options.set("objFuncSubDictPart", objFuncSubDictPart);
-                        options.set("variable", varName);
-                        options.set("patches", patches);
-                        options.set("comp", comp);
-
-                        // initialize dFdBC
-                        daPartDeriv->initializePartDerivMat(options, dFdBC);
-
-                        // calculate it
-                        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdBC);
-
-                        // now we need to add all the rows of dFdBC together to get dFdBCVec
-                        // NOTE: dFdBC is a 1 by 1 matrix but we just do a matrix-vector product
-                        // to convert dFdBC from a matrix to a vector
-                        Vec dFdBCVec, oneVec;
-                        VecDuplicate(dFdBCVecAllParts, &oneVec);
-                        VecSet(oneVec, 1.0);
-                        VecDuplicate(dFdBCVecAllParts, &dFdBCVec);
-                        VecZeroEntries(dFdBCVec);
-                        // dFdBCVec = dFdBC * oneVec
-                        MatMult(dFdBC, oneVec, dFdBCVec);
-
-                        // we need to add dFdBCVec to dFdBCVecAllParts because we want to sum
-                        // all dFdBCVec for all parts of this objFuncName.
-                        VecAXPY(dFdBCVecAllParts, 1.0, dFdBCVec);
-
-                        if (daOptionPtr_->getOption<label>("debug"))
-                        {
-                            this->calcPrimalResidualStatistics("print");
-                        }
-
-                        if (daOptionPtr_->getOption<label>("writeJacobians"))
-                        {
-                            word outputName = "dFdBCVec_" + designVarName;
-                            DAUtility::writeVectorBinary(dFdBCVec, outputName);
-                            DAUtility::writeVectorASCII(dFdBCVec, outputName);
-                        }
-
-                        // clear up
-                        MatDestroy(&dFdBC);
-                    }
-                }
-
-                // now we can compute totalDeriv = dFdBCVecAllParts - psiVec * dRdBC
+                // now we can compute totalDeriv = dFdBC - psiVec * dRdBC
                 Vec psiVec, totalDerivVec;
-                VecDuplicate(dFdBCVecAllParts, &totalDerivVec);
+                VecDuplicate(dFdBC, &totalDerivVec);
                 VecZeroEntries(totalDerivVec);
                 VecDuplicate(wVec, &psiVec);
                 VecZeroEntries(psiVec);
@@ -1281,7 +1363,7 @@ label DASolver::calcTotalDeriv(
 
                 // totalDeriv = dFdBCVecAllParts - psiVec * dRdBC
                 MatMultTranspose(dRdBC, psiVec, totalDerivVec);
-                VecAXPY(totalDerivVec, -1.0, dFdBCVecAllParts);
+                VecAXPY(totalDerivVec, -1.0, dFdBC);
                 VecScale(totalDerivVec, -1.0);
 
                 // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
@@ -1294,6 +1376,10 @@ label DASolver::calcTotalDeriv(
                     DAUtility::writeVectorBinary(totalDerivVec, outputName);
                     DAUtility::writeVectorASCII(totalDerivVec, outputName);
                 }
+
+                VecDestroy(&psiVec);
+                VecDestroy(&totalDerivVec);
+                VecDestroy(&dFdBC);
             }
         }
         MatDestroy(&dRdBC);
