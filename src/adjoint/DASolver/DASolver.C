@@ -1294,6 +1294,211 @@ void DASolver::calcdFdAOA(
     }
 }
 
+void DASolver::calcdRdFFD(
+    const Vec xvVec,
+    const Vec wVec,
+    const word designVarName,
+    Mat dRdFFD)
+{
+    /*
+    Description:
+        This function computes partials derivatives dRdFFD
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dRdFFD: the partial derivative matrix dR/dFFD
+        NOTE: You need to call MatCreate for the dRdFFD matrix before calling this function.
+        No need to call MatSetSize etc because they will be done in this function
+    */
+
+    // get the size of dXvdFFDMat_, nCols will be the number of FFD points
+    // for this design variable
+    // NOTE: dXvdFFDMat_ needs to be assigned by calling DASolver::setdXvdFFDMat in
+    // the python layer
+    label nDesignVars = -9999;
+    MatGetSize(dXvdFFDMat_, NULL, &nDesignVars);
+
+    // no coloring is need for FFD, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // ********************** compute dRdFFD **********************
+
+    // create DAPartDeriv object
+    word modelType = "dRdFFD";
+    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+        modelType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_(),
+        daJacCon(),
+        daResidualPtr_()));
+
+    // setup options
+    dictionary options;
+    options.set("nDesignVars", nDesignVars);
+    options.set("isPC", 0);
+
+    // for FFD, we need to first assign dXvdFFDMat to daPartDeriv
+    daPartDeriv->setdXvdFFDMat(dXvdFFDMat_);
+
+    // initialize the dRdFFD matrix
+    daPartDeriv->initializePartDerivMat(options, dRdFFD);
+
+    // compute it using brute force finite-difference
+    daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdFFD);
+
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        this->calcPrimalResidualStatistics("print");
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdFFD_" + designVarName;
+        DAUtility::writeMatrixBinary(dRdFFD, outputName);
+        DAUtility::writeMatrixASCII(dRdFFD, outputName);
+    }
+
+    // clear up dXvdFFD Mat in daPartDeriv
+    daPartDeriv->clear();
+}
+
+void DASolver::calcdFdFFD(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdFFD)
+{
+    /*
+    Description:
+        This function computes partials derivatives dFdFFD
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: name of the objective function F
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dFdFFD: the partial derivative vector dF/dFFD
+        NOTE: You need to fully initialize the dFdFFD vec before calliing this function,
+        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
+    */
+
+    VecZeroEntries(dFdFFD);
+
+    // get the size of dXvdFFDMat_, nCols will be the number of FFD points
+    // for this design variable
+    // NOTE: dXvdFFDMat_ needs to be assigned by calling DASolver::setdXvdFFDMat in
+    // the python layer
+    label nDesignVars = -9999;
+    MatGetSize(dXvdFFDMat_, NULL, &nDesignVars);
+
+    // no coloring is need for FFD, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+
+    // loop over all parts of this objFuncName
+    forAll(objFuncSubDict.toc(), idxK)
+    {
+        word objFuncPart = objFuncSubDict.toc()[idxK];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+        Mat dFdFFDMat;
+        MatCreate(PETSC_COMM_WORLD, &dFdFFDMat);
+
+        // initialize DAPartDeriv for dFdFFD
+        word modelType = "dFdFFD";
+        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+            modelType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daJacCon(),
+            daResidualPtr_()));
+
+        // initialize options
+        dictionary options;
+        options.set("objFuncName", objFuncName);
+        options.set("objFuncPart", objFuncPart);
+        options.set("objFuncSubDictPart", objFuncSubDictPart);
+        options.set("nDesignVars", nDesignVars);
+
+        // for FFD, we need to first assign dXvdFFDMat to daPartDeriv
+        daPartDeriv->setdXvdFFDMat(dXvdFFDMat_);
+
+        // initialize dFdFFD
+        daPartDeriv->initializePartDerivMat(options, dFdFFDMat);
+
+        // calculate it
+        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdFFDMat);
+
+        // now we need to convert the dFdFFD mat to dFdFFDPart
+        // NOTE: dFdFFDMat is a 1 by nDesignVars matrix but dFdFFDPart is
+        // a nDesignVars by 1 vector, we need to do
+        // dFdFFDPart = (dFdFFDMat)^T * oneVec
+        Vec dFdFFDPart, oneVec;
+        VecCreate(PETSC_COMM_WORLD, &oneVec);
+        VecSetSizes(oneVec, PETSC_DETERMINE, 1);
+        VecSetFromOptions(oneVec);
+        VecSet(oneVec, 1.0);
+        VecDuplicate(dFdFFD, &dFdFFDPart);
+        VecZeroEntries(dFdFFDPart);
+        // dFdFFDVec = oneVec*dFdFFD
+        MatMultTranspose(dFdFFDMat, oneVec, dFdFFDPart);
+
+        // we need to add dFdFFDPart to dFdFFD because we want to sum
+        // all dFdFFDPart for all parts of this objFuncName.
+        VecAXPY(dFdFFD, 1.0, dFdFFDPart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            this->calcPrimalResidualStatistics("print");
+        }
+
+        MatDestroy(&dFdFFDMat);
+        VecDestroy(&dFdFFDPart);
+        VecDestroy(&oneVec);
+
+        // clear up dXvdFFD Mat in daPartDeriv
+        daPartDeriv->clear();
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dFdFFD_" + designVarName;
+        DAUtility::writeVectorBinary(dFdFFD, outputName);
+        DAUtility::writeVectorASCII(dFdFFD, outputName);
+    }
+}
+
 label DASolver::solveAdjoint(
     const Vec xvVec,
     const Vec wVec)
@@ -1657,59 +1862,10 @@ label DASolver::calcTotalDeriv(
         label nDesignVars = -9999;
         MatGetSize(dXvdFFDMat_, NULL, &nDesignVars);
 
-        // no coloring is need for FFD, so we create a dummy DAJacCon
-        word dummyType = "dummy";
-        autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-            dummyType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_()));
-
         // ********************** compute dRdFFD **********************
         Mat dRdFFD;
         MatCreate(PETSC_COMM_WORLD, &dRdFFD);
-        {
-            // create DAPartDeriv object
-            word modelType = "dRdFFD";
-            autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-                modelType,
-                meshPtr_(),
-                daOptionPtr_(),
-                daModelPtr_(),
-                daIndexPtr_(),
-                daJacCon(),
-                daResidualPtr_()));
-
-            // setup options
-            dictionary options;
-            options.set("nDesignVars", nDesignVars);
-            options.set("isPC", 0);
-
-            // for FFD, we need to first assign dXvdFFDMat to daPartDeriv
-            daPartDeriv->setdXvdFFDMat(dXvdFFDMat_);
-
-            // initialize the dRdFFD matrix
-            daPartDeriv->initializePartDerivMat(options, dRdFFD);
-
-            // compute it using brute force finite-difference
-            daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdFFD);
-
-            if (daOptionPtr_->getOption<label>("debug"))
-            {
-                this->calcPrimalResidualStatistics("print");
-            }
-
-            if (daOptionPtr_->getOption<label>("writeJacobians"))
-            {
-                word outputName = "dRdFFD_" + designVarName;
-                DAUtility::writeMatrixBinary(dRdFFD, outputName);
-                DAUtility::writeMatrixASCII(dRdFFD, outputName);
-            }
-
-            // clear up dXvdFFD Mat in daPartDeriv
-            daPartDeriv->clear();
-        }
+        this->calcdRdFFD(xvVec, wVec, designVarName, dRdFFD);
 
         // ********************** compute dFdFFD **********************
         dictionary objFuncDict = allOptions.subDict("objFunc");
@@ -1721,97 +1877,20 @@ label DASolver::calcTotalDeriv(
             word objFuncName = objFuncDict.toc()[idxJ];
 
             // we only solve adjoint for objectives that have addToAdjoint = True
-            if (DAUtility::isInList<word>(objFuncName, objFuncNames4Adj_))
+            if (objFuncNames4Adj_.found(objFuncName))
             {
                 // the dFdFFDVecAllParts vector contains the sum of dFdFFDVec from all parts for this objFuncName
-                Vec dFdFFDVecAllParts;
-                VecCreate(PETSC_COMM_WORLD, &dFdFFDVecAllParts);
-                VecSetSizes(dFdFFDVecAllParts, PETSC_DETERMINE, nDesignVars);
-                VecSetFromOptions(dFdFFDVecAllParts);
-                VecZeroEntries(dFdFFDVecAllParts);
+                Vec dFdFFD;
+                VecCreate(PETSC_COMM_WORLD, &dFdFFD);
+                VecSetSizes(dFdFFD, PETSC_DETERMINE, nDesignVars);
+                VecSetFromOptions(dFdFFD);
+                VecZeroEntries(dFdFFD);
 
-                dictionary objFuncSubDict = objFuncDict.subDict(objFuncName);
-                // loop over all parts of this objFuncName
-                forAll(objFuncSubDict.toc(), idxK)
-                {
-                    word objFuncPart = objFuncSubDict.toc()[idxK];
-                    dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+                this->calcdFdFFD(xvVec, wVec, objFuncName, designVarName, dFdFFD);
 
-                    // we only compute total derivative for objFuncs with addToAdjoint = True
-                    label addToAdjoint = objFuncSubDictPart.getLabel("addToAdjoint");
-                    if (addToAdjoint)
-                    {
-
-                        Mat dFdFFD;
-                        MatCreate(PETSC_COMM_WORLD, &dFdFFD);
-
-                        // initialize DAPartDeriv for dFdFFD
-                        word modelType = "dFdFFD";
-                        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-                            modelType,
-                            meshPtr_(),
-                            daOptionPtr_(),
-                            daModelPtr_(),
-                            daIndexPtr_(),
-                            daJacCon(),
-                            daResidualPtr_()));
-
-                        // initialize options
-                        dictionary options;
-                        options.set("objFuncName", objFuncName);
-                        options.set("objFuncPart", objFuncPart);
-                        options.set("objFuncSubDictPart", objFuncSubDictPart);
-                        options.set("nDesignVars", nDesignVars);
-
-                        // for FFD, we need to first assign dXvdFFDMat to daPartDeriv
-                        daPartDeriv->setdXvdFFDMat(dXvdFFDMat_);
-
-                        // initialize dFdFFD
-                        daPartDeriv->initializePartDerivMat(options, dFdFFD);
-
-                        // calculate it
-                        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdFFD);
-
-                        // now we need to convert the dFdFFD mat to dFdFFDVec
-                        // NOTE: dFdFFD is a 1 by nDesignVars matrix but dFdFFDVec is
-                        // a nDesignVars by 1 vector, we need to do
-                        // dFdFFDVec = (dFdFFD)^T * oneVec
-                        Vec dFdFFDVec, oneVec;
-                        VecCreate(PETSC_COMM_WORLD, &oneVec);
-                        VecSetSizes(oneVec, PETSC_DETERMINE, 1);
-                        VecSetFromOptions(oneVec);
-                        VecSet(oneVec, 1.0);
-                        VecDuplicate(dFdFFDVecAllParts, &dFdFFDVec);
-                        VecZeroEntries(dFdFFDVec);
-                        // dFdFFDVec = oneVec*dFdFFD
-                        MatMultTranspose(dFdFFD, oneVec, dFdFFDVec);
-
-                        // we need to add dFdFFDVec to dFdFFDVecAllParts because we want to sum
-                        // all dFdFFDVec for all parts of this objFuncName.
-                        VecAXPY(dFdFFDVecAllParts, 1.0, dFdFFDVec);
-
-                        if (daOptionPtr_->getOption<label>("debug"))
-                        {
-                            this->calcPrimalResidualStatistics("print");
-                        }
-
-                        if (daOptionPtr_->getOption<label>("writeJacobians"))
-                        {
-                            word outputName = "dFdFFDVec_" + designVarName;
-                            DAUtility::writeVectorBinary(dFdFFDVec, outputName);
-                            DAUtility::writeVectorASCII(dFdFFDVec, outputName);
-                        }
-
-                        MatDestroy(&dFdFFD);
-
-                        // clear up dXvdFFD Mat in daPartDeriv
-                        daPartDeriv->clear();
-                    }
-                }
-
-                // now we can compute totalDeriv = dFdFFDVecAllParts - psiVec * dRdFFD
+                // now we can compute totalDeriv = dFdFFD - psiVec * dRdFFD
                 Vec psiVec, totalDerivVec;
-                VecDuplicate(dFdFFDVecAllParts, &totalDerivVec);
+                VecDuplicate(dFdFFD, &totalDerivVec);
                 VecZeroEntries(totalDerivVec);
                 VecDuplicate(wVec, &psiVec);
                 VecZeroEntries(psiVec);
@@ -1821,21 +1900,18 @@ label DASolver::calcTotalDeriv(
                 // function. i.e., we need to call solveAdjoint before calling calcTotalDeriv
                 this->getPsiVec(objFuncName, psiVec);
 
-                // totalDeriv = dFdFFDVecAllParts - psiVec * dRdFFD
+                // totalDeriv = dFdFFD - psiVec * dRdFFD
                 MatMultTranspose(dRdFFD, psiVec, totalDerivVec);
-                VecAXPY(totalDerivVec, -1.0, dFdFFDVecAllParts);
+                VecAXPY(totalDerivVec, -1.0, dFdFFD);
                 VecScale(totalDerivVec, -1.0);
 
                 // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
                 // get the totalDeriv in the python layer later
                 this->setTotalDerivDict(objFuncName, designVarName, totalDerivVec, totalDerivDict_);
 
-                if (daOptionPtr_->getOption<label>("writeJacobians"))
-                {
-                    word outputName = "dFdFFDTotal_" + objFuncName + "_" + designVarName;
-                    DAUtility::writeVectorBinary(totalDerivVec, outputName);
-                    DAUtility::writeVectorASCII(totalDerivVec, outputName);
-                }
+                VecDestroy(&dFdFFD);
+                VecDestroy(&psiVec);
+                VecDestroy(&totalDerivVec);
             }
         }
 
