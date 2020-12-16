@@ -601,6 +601,137 @@ void DASolver::calcPrimalResidualStatistics(
     return;
 }
 
+void DASolver::calcdRdWT(
+    const Vec xvVec,
+    const Vec wVec,
+    const label isPC,
+    Mat dRdWT)
+{
+    /*
+    Description:
+        This function computes partials derivatives dRdWT or dRdWTPC.
+        PC means preconditioner matrix
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        isPC: isPC=1 computes dRdWTPC, isPC=0 computes dRdWT
+    
+    Output:
+        dRdWT: the partial derivative matrix [dR/dW]^T
+    */
+
+    word matName;
+    if (isPC == 0)
+    {
+        matName = "dRdWT";
+    }
+    else if (isPC == 1)
+    {
+        matName = "dRdWTPC";
+    }
+    else
+    {
+        FatalErrorIn("") << "isPC " << isPC << " not supported! "
+                         << "Options are: 0 (for dRdWT) and 1 (for dRdWTPC)." << abort(FatalError);
+    }
+
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        this->calcPrimalResidualStatistics("print");
+    }
+
+    Info << "Computing " << matName << " " << runTimePtr_->elapsedClockTime() << " s" << endl;
+    Info << "Initializing dRdWCon. " << runTimePtr_->elapsedClockTime() << " s" << endl;
+
+    // initialize DAJacCon object
+    word modelType = "dRdW";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        modelType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    dictionary options;
+    const HashTable<List<List<word>>>& stateResConInfo = daStateInfoPtr_->getStateResConInfo();
+
+    if (isPC == 1)
+    {
+        // need to reduce the JacCon for PC to reduce memory usage
+        HashTable<List<List<word>>> stateResConInfoReduced = stateResConInfo;
+
+        dictionary maxResConLv4JacPCMat = daOptionPtr_->getAllOptions().subDict("maxResConLv4JacPCMat");
+
+        this->reduceStateResConLevel(maxResConLv4JacPCMat, stateResConInfoReduced);
+        options.set("stateResConInfo", stateResConInfoReduced);
+    }
+    else
+    {
+        options.set("stateResConInfo", stateResConInfo);
+    }
+
+    // need to first setup preallocation vectors for the dRdWCon matrix
+    // because directly initializing the dRdWCon matrix will use too much memory
+    daJacCon->setupJacConPreallocation(options);
+
+    // now we can initialize dRdWCon
+    daJacCon->initializeJacCon(options);
+
+    // setup dRdWCon
+    daJacCon->setupJacCon(options);
+    Info << "dRdWCon Created. " << runTimePtr_->elapsedClockTime() << " s" << endl;
+
+    // read the coloring
+    daJacCon->readJacConColoring();
+
+    // initialize partDeriv object
+    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+        modelType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_(),
+        daJacCon(),
+        daResidualPtr_()));
+
+    // we want transposed dRdW
+    dictionary options1;
+    options1.set("transposed", 1);
+    options1.set("isPC", isPC);
+    // we can set lower bounds for the Jacobians to save memory
+    if (isPC == 1)
+    {
+        options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdWPC"));
+    }
+    else
+    {
+        options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdW"));
+    }
+
+    // initialize dRdWT matrix
+    daPartDeriv->initializePartDerivMat(options1, dRdWT);
+
+    // calculate dRdWT
+    daPartDeriv->calcPartDerivMat(options1, xvVec, wVec, dRdWT);
+
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        this->calcPrimalResidualStatistics("print");
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        DAUtility::writeMatrixBinary(dRdWT, matName);
+    }
+
+    // clear up
+    daJacCon->clear();
+
+}
+
 label DASolver::solveAdjoint(
     const Vec xvVec,
     const Vec wVec)
@@ -654,152 +785,15 @@ label DASolver::solveAdjoint(
 
     // ********************** compute dRdWT **********************
     Mat dRdWT;
-    {
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-
-        Info << "Initializing dRdWCon. " << runTimePtr_->elapsedClockTime() << " s" << endl;
-
-        // initialize DAJacCon object
-        word modelType = "dRdW";
-        autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_()));
-
-        dictionary options;
-        const HashTable<List<List<word>>>& stateResConInfo = daStateInfoPtr_->getStateResConInfo();
-        options.set("stateResConInfo", stateResConInfo);
-
-        // need to first setup preallocation vectors for the dRdWCon matrix
-        // because directly initializing the dRdWCon matrix will use too much memory
-        daJacCon->setupJacConPreallocation(options);
-
-        // now we can initilaize dRdWCon
-        daJacCon->initializeJacCon(options);
-
-        // setup dRdWCon
-        daJacCon->setupJacCon(options);
-        Info << "dRdWCon Created. " << runTimePtr_->elapsedClockTime() << " s" << endl;
-
-        // read the coloring
-        daJacCon->readJacConColoring();
-
-        // initialize partDeriv object
-        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daJacCon(),
-            daResidualPtr_()));
-
-        // we want transposed dRdW
-        dictionary options1;
-        options1.set("transposed", 1);
-        options1.set("isPC", 0);
-        options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdW"));
-
-        // initilalize dRdWT matrix
-        daPartDeriv->initializePartDerivMat(options1, &dRdWT);
-
-        // calculate dRdWT
-        daPartDeriv->calcPartDerivMat(options1, xvVec, wVec, dRdWT);
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-        if (daOptionPtr_->getOption<label>("writeJacobians"))
-        {
-            DAUtility::writeMatrixBinary(dRdWT, "dRdWT");
-        }
-
-        // clear up
-        daJacCon->clear();
-    }
+    MatCreate(PETSC_COMM_WORLD, &dRdWT);
+    this->calcdRdWT(xvVec, wVec, 0, dRdWT);
 
     // ********************** compute dRdWTPC **********************
     label adjPCLag = daOptionPtr_->getOption<label>("adjPCLag");
     if (nSolveAdjointCalls_ == 0 || nSolveAdjointCalls_ % adjPCLag == 0)
     {
-
-        Info << "Initializing dRdWCon. " << runTimePtr_->elapsedClockTime() << " s" << endl;
-
-        // initialize DAJacCon object
-        word modelType = "dRdW";
-        autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_()));
-
-        // need to reduce the JacCon for PC to reduce memory usage
-        const HashTable<List<List<word>>>& stateResConInfo = daStateInfoPtr_->getStateResConInfo();
-
-        HashTable<List<List<word>>> stateResConInfoReduced = stateResConInfo;
-
-        dictionary maxResConLv4JacPCMat = daOptionPtr_->getAllOptions().subDict("maxResConLv4JacPCMat");
-
-        this->reduceStateResConLevel(maxResConLv4JacPCMat, stateResConInfoReduced);
-
-        // Note we set stateResConInfoReduced for dRdWTPC
-        dictionary options;
-        options.set("stateResConInfo", stateResConInfoReduced);
-
-        // need to first setup preallocation vectors for the dRdWCon matrix
-        // because directly initializing the dRdWCon matrix will use too much memory
-        daJacCon->setupJacConPreallocation(options);
-
-        // now we can initilaize dRdWCon
-        daJacCon->initializeJacCon(options);
-
-        // setup dRdWCon
-        daJacCon->setupJacCon(options);
-        Info << "dRdWCon Created. " << runTimePtr_->elapsedClockTime() << " s" << endl;
-
-        // read the coloring
-        daJacCon->readJacConColoring();
-
-        // initialize partDeriv object
-        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daJacCon(),
-            daResidualPtr_()));
-
-        // we want transposed dRdW
-        dictionary options1;
-        options1.set("transposed", 1);
-        options1.set("isPC", 1);
-        options1.set("lowerBound", daOptionPtr_->getSubDictOption<scalar>("jacLowerBounds", "dRdWPC"));
-
-        // initilalize dRdWT matrix
-        daPartDeriv->initializePartDerivMat(options1, &dRdWTPC_);
-
-        // calculate dRdWT
-        daPartDeriv->calcPartDerivMat(options1, xvVec, wVec, dRdWTPC_);
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-        if (daOptionPtr_->getOption<label>("writeJacobians"))
-        {
-            DAUtility::writeMatrixBinary(dRdWTPC_, "dRdWTPC");
-        }
-
-        // clear up
-        daJacCon->clear();
+        MatCreate(PETSC_COMM_WORLD, &dRdWTPC_);
+        this->calcdRdWT(xvVec, wVec, 1, dRdWTPC_);
     }
 
     // ********************** Set up KSP **********************
@@ -869,6 +863,7 @@ label DASolver::solveAdjoint(
 
                 // NOTE: dFdW is a matrix here and it has nObjFuncCellSources+nObjFuncFaceSources rows
                 Mat dFdW;
+                MatCreate(PETSC_COMM_WORLD, &dFdW);
 
                 // initialize DAJacCon object
                 word modelType = "dFdW";
@@ -924,7 +919,7 @@ label DASolver::solveAdjoint(
                     daResidualPtr_()));
 
                 // initialize dFdWMat
-                daPartDeriv->initializePartDerivMat(options, &dFdW);
+                daPartDeriv->initializePartDerivMat(options, dFdW);
 
                 // compute it
                 daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdW);
@@ -1095,6 +1090,7 @@ label DASolver::calcTotalDeriv(
 
         // ********************** compute dRdBC **********************
         Mat dRdBC;
+        MatCreate(PETSC_COMM_WORLD, &dRdBC);
         {
             // create DAPartDeriv object
             word modelType = "dRdBC";
@@ -1115,7 +1111,7 @@ label DASolver::calcTotalDeriv(
             options.set("isPC", 0);
 
             // initialize the dRdBC matrix
-            daPartDeriv->initializePartDerivMat(options, &dRdBC);
+            daPartDeriv->initializePartDerivMat(options, dRdBC);
 
             // compute it using brute force finite-difference
             daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdBC);
@@ -1165,6 +1161,7 @@ label DASolver::calcTotalDeriv(
                     {
 
                         Mat dFdBC;
+                        MatCreate(PETSC_COMM_WORLD, &dFdBC);
 
                         // initialize DAPartDeriv for dFdBC
                         word modelType = "dFdBC";
@@ -1187,7 +1184,7 @@ label DASolver::calcTotalDeriv(
                         options.set("comp", comp);
 
                         // initialize dFdBC
-                        daPartDeriv->initializePartDerivMat(options, &dFdBC);
+                        daPartDeriv->initializePartDerivMat(options, dFdBC);
 
                         // calculate it
                         daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdBC);
@@ -1280,6 +1277,7 @@ label DASolver::calcTotalDeriv(
 
         // ********************** compute dRdAOA **********************
         Mat dRdAOA;
+        MatCreate(PETSC_COMM_WORLD, &dRdAOA);
         {
             // create DAPartDeriv object
             word modelType = "dRdAOA";
@@ -1300,7 +1298,7 @@ label DASolver::calcTotalDeriv(
             options.set("isPC", 0);
 
             // initialize the dRdAOA matrix
-            daPartDeriv->initializePartDerivMat(options, &dRdAOA);
+            daPartDeriv->initializePartDerivMat(options, dRdAOA);
 
             // compute it using brute force finite-difference
             daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdAOA);
@@ -1350,6 +1348,7 @@ label DASolver::calcTotalDeriv(
                     {
 
                         Mat dFdAOA;
+                        MatCreate(PETSC_COMM_WORLD, &dFdAOA);
 
                         // initialize DAPartDeriv for dFdAOA
                         word modelType = "dFdAOA";
@@ -1372,7 +1371,7 @@ label DASolver::calcTotalDeriv(
                         options.set("normalAxis", normalAxis);
 
                         // initialize dFdAOA
-                        daPartDeriv->initializePartDerivMat(options, &dFdAOA);
+                        daPartDeriv->initializePartDerivMat(options, dFdAOA);
 
                         // calculate it
                         daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdAOA);
@@ -1465,6 +1464,7 @@ label DASolver::calcTotalDeriv(
 
         // ********************** compute dRdFFD **********************
         Mat dRdFFD;
+        MatCreate(PETSC_COMM_WORLD, &dRdFFD);
         {
             // create DAPartDeriv object
             word modelType = "dRdFFD";
@@ -1486,7 +1486,7 @@ label DASolver::calcTotalDeriv(
             daPartDeriv->setdXvdFFDMat(dXvdFFDMat_);
 
             // initialize the dRdFFD matrix
-            daPartDeriv->initializePartDerivMat(options, &dRdFFD);
+            daPartDeriv->initializePartDerivMat(options, dRdFFD);
 
             // compute it using brute force finite-difference
             daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdFFD);
@@ -1539,6 +1539,7 @@ label DASolver::calcTotalDeriv(
                     {
 
                         Mat dFdFFD;
+                        MatCreate(PETSC_COMM_WORLD, &dFdFFD);
 
                         // initialize DAPartDeriv for dFdFFD
                         word modelType = "dFdFFD";
@@ -1562,7 +1563,7 @@ label DASolver::calcTotalDeriv(
                         daPartDeriv->setdXvdFFDMat(dXvdFFDMat_);
 
                         // initialize dFdFFD
-                        daPartDeriv->initializePartDerivMat(options, &dFdFFD);
+                        daPartDeriv->initializePartDerivMat(options, dFdFFD);
 
                         // calculate it
                         daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdFFD);
@@ -1665,6 +1666,7 @@ label DASolver::calcTotalDeriv(
 
         // ********************** compute dRdACT **********************
         Mat dRdACT;
+        MatCreate(PETSC_COMM_WORLD, &dRdACT);
         {
             // create DAPartDeriv object
             word modelType = "dRd" + designVarType;
@@ -1683,7 +1685,7 @@ label DASolver::calcTotalDeriv(
             options.set("isPC", 0);
 
             // initialize the dRdACT* matrix
-            daPartDeriv->initializePartDerivMat(options, &dRdACT);
+            daPartDeriv->initializePartDerivMat(options, dRdACT);
 
             // compute it using brute force finite-difference
             daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdACT);

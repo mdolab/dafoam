@@ -39,7 +39,7 @@ DAPartDerivdRdW::DAPartDerivdRdW(
 
 void DAPartDerivdRdW::initializePartDerivMat(
     const dictionary& options,
-    Mat* jacMat)
+    Mat jacMat)
 {
     /*
     Description:
@@ -55,18 +55,18 @@ void DAPartDerivdRdW::initializePartDerivMat(
     label localSize = daIndex_.nLocalAdjointStates;
 
     // create dRdWT
-    MatCreate(PETSC_COMM_WORLD, jacMat);
+    //MatCreate(PETSC_COMM_WORLD, jacMat);
     MatSetSizes(
-        *jacMat,
+        jacMat,
         localSize,
         localSize,
         PETSC_DETERMINE,
         PETSC_DETERMINE);
-    MatSetFromOptions(*jacMat);
-    daJacCon_.preallocatedRdW(*jacMat, transposed);
+    MatSetFromOptions(jacMat);
+    daJacCon_.preallocatedRdW(jacMat, transposed);
     //MatSetOption(jacMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    MatSetUp(*jacMat);
-    MatZeroEntries(*jacMat);
+    MatSetUp(jacMat);
+    MatZeroEntries(jacMat);
     Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
 }
 

@@ -224,6 +224,13 @@ public:
         const label instanceI,
         const word objFuncName);
 
+    /// compute the partial derivatives
+    void calcdRdWT(
+        const Vec xvVec,
+        const Vec wVec,
+        const label isPC,
+        Mat dRdWT);
+
     /// solve the adjoint linear equations
     label solveAdjoint(
         const Vec xvVec,

@@ -39,7 +39,7 @@ DAPartDerivdFdFFD::DAPartDerivdFdFFD(
 
 void DAPartDerivdFdFFD::initializePartDerivMat(
     const dictionary& options,
-    Mat* jacMat)
+    Mat jacMat)
 {
     /*
     Description:
@@ -52,19 +52,19 @@ void DAPartDerivdFdFFD::initializePartDerivMat(
     label nDesignVars = options.getLabel("nDesignVars");
 
     // create dFdFFD
-    MatCreate(PETSC_COMM_WORLD, jacMat);
+    //MatCreate(PETSC_COMM_WORLD, jacMat);
     MatSetSizes(
-        *jacMat,
+        jacMat,
         PETSC_DECIDE,
         PETSC_DECIDE,
         1,
         nDesignVars);
-    MatSetFromOptions(*jacMat);
-    MatMPIAIJSetPreallocation(*jacMat, nDesignVars, NULL, nDesignVars, NULL);
-    MatSeqAIJSetPreallocation(*jacMat, nDesignVars, NULL);
+    MatSetFromOptions(jacMat);
+    MatMPIAIJSetPreallocation(jacMat, nDesignVars, NULL, nDesignVars, NULL);
+    MatSeqAIJSetPreallocation(jacMat, nDesignVars, NULL);
     //MatSetOption(jacMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    MatSetUp(*jacMat);
-    MatZeroEntries(*jacMat);
+    MatSetUp(jacMat);
+    MatZeroEntries(jacMat);
     Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
 }
 

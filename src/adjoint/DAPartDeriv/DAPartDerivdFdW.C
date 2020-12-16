@@ -39,7 +39,7 @@ DAPartDerivdFdW::DAPartDerivdFdW(
 
 void DAPartDerivdFdW::initializePartDerivMat(
     const dictionary& options,
-    Mat* jacMat)
+    Mat jacMat)
 {
     /*
     Description:
@@ -60,19 +60,19 @@ void DAPartDerivdFdW::initializePartDerivMat(
     nLocalObjFuncGeoElements_ = objFuncFaceSources.size() + objFuncCellSources.size();
 
     // create dFdW
-    MatCreate(PETSC_COMM_WORLD, jacMat);
+    //MatCreate(PETSC_COMM_WORLD, jacMat);
     MatSetSizes(
-        *jacMat,
+        jacMat,
         nLocalObjFuncGeoElements_,
         daIndex_.nLocalAdjointStates,
         PETSC_DETERMINE,
         PETSC_DETERMINE);
-    MatSetFromOptions(*jacMat);
-    MatMPIAIJSetPreallocation(*jacMat, 200, NULL, 200, NULL);
-    MatSeqAIJSetPreallocation(*jacMat, 200, NULL);
+    MatSetFromOptions(jacMat);
+    MatMPIAIJSetPreallocation(jacMat, 200, NULL, 200, NULL);
+    MatSeqAIJSetPreallocation(jacMat, 200, NULL);
     //MatSetOption(jacMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    MatSetUp(*jacMat);
-    MatZeroEntries(*jacMat);
+    MatSetUp(jacMat);
+    MatZeroEntries(jacMat);
     Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
 }
 
