@@ -1499,6 +1499,80 @@ void DASolver::calcdFdFFD(
     }
 }
 
+void DASolver::calcdRdACT(
+    const Vec xvVec,
+    const Vec wVec,
+    const word designVarName,
+    const word designVarType,
+    Mat dRdACT)
+{
+    /*
+    Description:
+        This function computes partials derivatives dRdACT
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        designVarName: the name of the design variable
+
+        designVarName: the type of the design variable: ACTP, ACTL, ACTD
+    
+    Output:
+        dRdACT: the partial derivative matrix dR/dACT
+        NOTE: You need to call MatCreate for the dRdACT matrix before calling this function.
+        No need to call MatSetSize etc because they will be done in this function
+    */
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+    word actuatorName = dvSubDict.getWord("actuatorName");
+
+    // no coloring is need for actuator, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // create DAPartDeriv object
+    word modelType = "dRd" + designVarType;
+    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+        modelType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_(),
+        daJacCon(),
+        daResidualPtr_()));
+
+    // setup options to compute dRdACT*
+    dictionary options;
+    options.set("actuatorName", actuatorName);
+    options.set("isPC", 0);
+
+    // initialize the dRdACT* matrix
+    daPartDeriv->initializePartDerivMat(options, dRdACT);
+
+    // compute it using brute force finite-difference
+    daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdACT);
+
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        this->calcPrimalResidualStatistics("print");
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRd" + designVarType + "_" + designVarName;
+        DAUtility::writeMatrixBinary(dRdACT, outputName);
+        DAUtility::writeMatrixASCII(dRdACT, outputName);
+    }
+}
+
 label DASolver::solveAdjoint(
     const Vec xvVec,
     const Vec wVec)
@@ -1516,7 +1590,7 @@ label DASolver::solveAdjoint(
         wVec: the staate variable vector
     
     Output:
-        Return 0 means the solveAdjoint is sucessful, 1 means failure
+        Return 0 means the solveAdjoint is successful, 1 means failure
 
         psiVecDict_: Once the adjoint vector is computed we assign their values
         to this list
@@ -1932,56 +2006,10 @@ label DASolver::calcTotalDeriv(
         nDVTable.set("ACTL", 11);
         label nActDVs = nDVTable[designVarType];
 
-        // get info from dvSubDict. This needs to be defined in fvSource
-        word actuatorName = dvSubDict.getWord("actuatorName");
-
-        // no coloring is need for actuator, so we create a dummy DAJacCon
-        word dummyType = "dummy";
-        autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-            dummyType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_()));
-
         // ********************** compute dRdACT **********************
         Mat dRdACT;
         MatCreate(PETSC_COMM_WORLD, &dRdACT);
-        {
-            // create DAPartDeriv object
-            word modelType = "dRd" + designVarType;
-            autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-                modelType,
-                meshPtr_(),
-                daOptionPtr_(),
-                daModelPtr_(),
-                daIndexPtr_(),
-                daJacCon(),
-                daResidualPtr_()));
-
-            // setup options to compute dRdACT*
-            dictionary options;
-            options.set("actuatorName", actuatorName);
-            options.set("isPC", 0);
-
-            // initialize the dRdACT* matrix
-            daPartDeriv->initializePartDerivMat(options, dRdACT);
-
-            // compute it using brute force finite-difference
-            daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdACT);
-
-            if (daOptionPtr_->getOption<label>("debug"))
-            {
-                this->calcPrimalResidualStatistics("print");
-            }
-
-            if (daOptionPtr_->getOption<label>("writeJacobians"))
-            {
-                word outputName = "dRd" + designVarType + "_" + designVarName;
-                DAUtility::writeMatrixBinary(dRdACT, outputName);
-                DAUtility::writeMatrixASCII(dRdACT, outputName);
-            }
-        }
+        this->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
 
         // ********************** compute dFdACT **********************
         dictionary objFuncDict = allOptions.subDict("objFunc");
@@ -1993,18 +2021,18 @@ label DASolver::calcTotalDeriv(
             word objFuncName = objFuncDict.toc()[idxJ];
 
             // we only solve adjoint for objectives that have addToAdjoint = True
-            if (DAUtility::isInList<word>(objFuncName, objFuncNames4Adj_))
+            if (objFuncNames4Adj_.found(objFuncName))
             {
                 // dFdACT should be all zeros
-                Vec dFdACTVecAllParts;
-                VecCreate(PETSC_COMM_WORLD, &dFdACTVecAllParts);
-                VecSetSizes(dFdACTVecAllParts, PETSC_DETERMINE, nActDVs);
-                VecSetFromOptions(dFdACTVecAllParts);
-                VecZeroEntries(dFdACTVecAllParts);
+                Vec dFdACT;
+                VecCreate(PETSC_COMM_WORLD, &dFdACT);
+                VecSetSizes(dFdACT, PETSC_DETERMINE, nActDVs);
+                VecSetFromOptions(dFdACT);
+                VecZeroEntries(dFdACT);
 
-                // now we can compute totalDeriv = dFdACTVecAllParts - psiVec * dRdACT
+                // now we can compute totalDeriv = dFdACT - psiVec * dRdACT
                 Vec psiVec, totalDerivVec;
-                VecDuplicate(dFdACTVecAllParts, &totalDerivVec);
+                VecDuplicate(dFdACT, &totalDerivVec);
                 VecZeroEntries(totalDerivVec);
                 VecDuplicate(wVec, &psiVec);
                 VecZeroEntries(psiVec);
@@ -2016,7 +2044,7 @@ label DASolver::calcTotalDeriv(
 
                 // totalDeriv = dFdACTVecAllParts - psiVec * dRdACT
                 MatMultTranspose(dRdACT, psiVec, totalDerivVec);
-                VecAXPY(totalDerivVec, -1.0, dFdACTVecAllParts);
+                VecAXPY(totalDerivVec, -1.0, dFdACT);
                 VecScale(totalDerivVec, -1.0);
 
                 // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
@@ -2029,6 +2057,10 @@ label DASolver::calcTotalDeriv(
                     DAUtility::writeVectorBinary(totalDerivVec, outputName);
                     DAUtility::writeVectorASCII(totalDerivVec, outputName);
                 }
+
+                VecDestroy(&dFdACT);
+                VecDestroy(&psiVec);
+                VecDestroy(&totalDerivVec);
             }
         }
 
