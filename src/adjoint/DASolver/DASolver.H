@@ -237,11 +237,26 @@ public:
         const Vec wVec,
         const word objFuncName,
         Vec dFdW);
+    
+    /// create a multi-level, Richardson KSP object
+    void createMLRKSP(
+        const Mat jacMat,
+        const Mat jacPCMat,
+        KSP ksp);
+    
+    /// solve the linear equation given a ksp and right-hand-side vector
+    label solveLinearEqn(
+        const KSP ksp,
+        const Vec rhsVec,
+        Vec solVec);
 
     /// solve the adjoint linear equations
     label solveAdjoint(
         const Vec xvVec,
         const Vec wVec);
+
+    /// special treatment for multipoint optimization cases
+    void multiPointTreatment(const Vec wVec);
 
     /// compute dRdBC
     void calcdRdBC(

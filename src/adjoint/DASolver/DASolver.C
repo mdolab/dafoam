@@ -1573,6 +1573,64 @@ void DASolver::calcdRdACT(
     }
 }
 
+void DASolver::createMLRKSP(
+    const Mat jacMat,
+    const Mat jacPCMat,
+    KSP ksp)
+{
+    /*
+    Description:
+        Call createMLRKSP from DALinearEqn
+        This is the main function we need to call to initialize the KSP and set
+        up parameters for solving the linear equations
+    */
+
+    DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
+    daLinearEqn.createMLRKSP(jacMat, jacPCMat, ksp);
+}
+
+label DASolver::solveLinearEqn(
+    const KSP ksp,
+    const Vec rhsVec,
+    Vec solVec)
+{
+    /*
+    Description:
+        Call solveLinearEqn from DALinearEqn to solve a linear equation.
+    
+    Input:
+        ksp: the KSP object, obtained from calling Foam::createMLRKSP
+
+        rhsVec: the right-hand-side petsc vector
+
+    Output:
+        solVec: the solution vector
+
+        Return 0 if the linear equation solution finished successfully otherwise return 1
+    */
+
+    DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
+    label error = daLinearEqn.solveLinearEqn(ksp, rhsVec, solVec);
+    return error;
+}
+
+void DASolver::multiPointTreatment(const Vec wVec)
+{
+    Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
+    daFieldPtr_->setPrimalBoundaryConditions();
+    daFieldPtr_->stateVec2OFField(wVec);
+    // We need to call correctBC multiple times to reproduce
+    // the exact residual for mulitpoint, this is needed for some boundary conditions
+    // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
+    for (label i = 0; i < 10; i++)
+    {
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+    }
+}
+
 label DASolver::solveAdjoint(
     const Vec xvVec,
     const Vec wVec)
@@ -1604,25 +1662,12 @@ label DASolver::solveAdjoint(
     // where we need to set different boundary conditions for different points
     if (daOptionPtr_->getOption<label>("multiPoint"))
     {
-
-        Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
-        daFieldPtr_->setPrimalBoundaryConditions();
-        daFieldPtr_->stateVec2OFField(wVec);
-        // We need to call correctBC multiple times to reproduce
-        // the exact residual for mulitpoint, this is needed for some boundary conditions
-        // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
-        for (label i = 0; i < 10; i++)
-        {
-            daResidualPtr_->correctBoundaryConditions();
-            daResidualPtr_->updateIntermediateVariables();
-            daModelPtr_->correctBoundaryConditions();
-            daModelPtr_->updateIntermediateVariables();
-        }
+        this->multiPointTreatment(wVec);
     }
 
     label solveAdjointFail = 0;
 
-    DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
+    //DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
 
     // ********************** compute dRdWT **********************
     Mat dRdWT;
@@ -1639,39 +1684,10 @@ label DASolver::solveAdjoint(
 
     // ********************** Set up KSP **********************
     // We will reuse the ksp to solve for all objectives
-    // first setup KSP options
-    dictionary kspOptions;
-    kspOptions.add(
-        "gmresRestart",
-        daOptionPtr_->getSubDictOption<label>("adjEqnOption", "gmresRestart"));
-    kspOptions.add(
-        "globalPCIters",
-        daOptionPtr_->getSubDictOption<label>("adjEqnOption", "globalPCIters"));
-    kspOptions.add(
-        "asmOverlap",
-        daOptionPtr_->getSubDictOption<label>("adjEqnOption", "asmOverlap"));
-    kspOptions.add(
-        "localPCIters",
-        daOptionPtr_->getSubDictOption<label>("adjEqnOption", "localPCIters"));
-    kspOptions.add(
-        "jacMatReOrdering",
-        daOptionPtr_->getSubDictOption<word>("adjEqnOption", "jacMatReOrdering"));
-    kspOptions.add(
-        "pcFillLevel",
-        daOptionPtr_->getSubDictOption<label>("adjEqnOption", "pcFillLevel"));
-    kspOptions.add(
-        "gmresMaxIters",
-        daOptionPtr_->getSubDictOption<label>("adjEqnOption", "gmresMaxIters"));
-    kspOptions.add(
-        "gmresRelTol",
-        daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "gmresRelTol"));
-    kspOptions.add(
-        "gmresAbsTol",
-        daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "gmresAbsTol"));
-    kspOptions.add("printInfo", 1);
     // create the multi-level Richardson KSP
     KSP ksp;
-    daLinearEqn.createMLRKSP(kspOptions, dRdWT, dRdWTPC_, &ksp);
+    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    this->createMLRKSP(dRdWT, dRdWTPC_, ksp);
 
     // ********************** compute dFdW **********************
     dictionary objFuncDict = daOptionPtr_->getAllOptions().subDict("objFunc");
@@ -1721,7 +1737,7 @@ label DASolver::solveAdjoint(
             VecZeroEntries(psiVec);
 
             // solve the linear equation and get psiVec
-            label solError = daLinearEqn.solveLinearEqn(ksp, dFdW, psiVec);
+            label solError = this->solveLinearEqn(ksp, dFdW, psiVec);
 
             if (solError)
             {

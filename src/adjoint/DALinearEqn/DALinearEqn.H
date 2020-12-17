@@ -60,12 +60,11 @@ public:
 
     /// create a multi-level, Richardson KSP object
     void createMLRKSP(
-        const dictionary options,
         const Mat jacMat,
         const Mat jacPCMat,
-        KSP* genksp);
+        KSP ksp);
 
-    /// solve the linear euqation given a ksp and right-hand-side vector
+    /// solve the linear equation given a ksp and right-hand-side vector
     label solveLinearEqn(
         const KSP ksp,
         const Vec rhsVec,

@@ -85,6 +85,123 @@ public:
         return DASolverPtr_->calcTotalDeriv(xvVec, wVec, designVarName);
     }
 
+    /// compute dRdWT
+    void calcdRdWT(
+        const Vec xvVec,
+        const Vec wVec,
+        const label isPC,
+        Mat dRdWT)
+    {
+        DASolverPtr_->calcdRdWT(xvVec, wVec, isPC, dRdWT);
+    }
+
+    /// compute dFdW
+    void calcdFdW(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        Vec dFdW)
+    {
+        DASolverPtr_->calcdFdW(xvVec, wVec, objFuncName, dFdW);
+    }
+
+    /// create the multi-level Richardson KSP for solving linear equation
+    void createMLRKSP(
+        const Mat jacMat,
+        const Mat jacPCMat,
+        KSP ksp)
+    {
+        DASolverPtr_->createMLRKSP(jacMat, jacPCMat, ksp);
+    }
+
+    /// solve the linear equation
+    void solveLinearEqn(
+        const KSP ksp,
+        const Vec rhsVec,
+        Vec solVec)
+    {
+        DASolverPtr_->solveLinearEqn(ksp, rhsVec, solVec);
+    }
+
+    /// compute dRdBC
+    void calcdRdBC(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdBC)
+    {
+        DASolverPtr_->calcdRdBC(xvVec, wVec, designVarName, dRdBC);
+    }
+
+    /// compute dFdBC
+    void calcdFdBC(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdBC)
+    {
+        DASolverPtr_->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
+    }
+
+    /// compute dRdAOA
+    void calcdRdAOA(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdAOA)
+    {
+        DASolverPtr_->calcdRdAOA(xvVec, wVec, designVarName, dRdAOA);
+    }
+
+    /// compute dFdAOA
+    void calcdFdAOA(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdAOA)
+    {
+        DASolverPtr_->calcdFdAOA(xvVec, wVec, objFuncName, designVarName, dFdAOA);
+    }
+
+    /// compute dRdFFD
+    void calcdRdFFD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdFFD)
+    {
+        DASolverPtr_->calcdRdFFD(xvVec, wVec, designVarName, dRdFFD);
+    }
+
+    /// compute dFdFFD
+    void calcdFdFFD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdFFD)
+    {
+        DASolverPtr_->calcdFdFFD(xvVec, wVec, objFuncName, designVarName, dFdFFD);
+    }
+
+    /// compute dRdACT
+    void calcdRdACT(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        const word designVarType,
+        Mat dRdACT)
+    {
+        DASolverPtr_->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
+    }
+
+    void multiPointTreatment(const Vec wVec)
+    {
+        DASolverPtr_->multiPointTreatment(wVec);
+    }
+
     /// basically, we call DAIndex::getGlobalXvIndex
     label getGlobalXvIndex(
         const label idxPoint,

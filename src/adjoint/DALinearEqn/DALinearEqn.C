@@ -25,10 +25,9 @@ DALinearEqn::DALinearEqn(
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 void DALinearEqn::createMLRKSP(
-    const dictionary options,
     const Mat jacMat,
     const Mat jacPCMat,
-    KSP* genksp)
+    KSP ksp)
 {
     /*
     Description:
@@ -36,32 +35,32 @@ void DALinearEqn::createMLRKSP(
         up parameters for solving the linear equations
     
     Input:
-        options.gmresRestart: how many Krylov spaces to keep before resetting them.
+        gmresRestart: how many Krylov spaces to keep before resetting them.
         Usually, this is set to the gmresMaxIters
 
-        options.gmresMaxIters: how many GMRES iteration to run at most
+        gmresMaxIters: how many GMRES iteration to run at most
 
-        options.gmresRelTol: the relative tolerance for GMRES
+        gmresRelTol: the relative tolerance for GMRES
 
-        options.gmresAbsTol: the absolute tolerance for GMRES
+        gmresAbsTol: the absolute tolerance for GMRES
 
-        options.globalPCIters: globa iteration for PC, usually set it to 0
+        globalPCIters: globa iteration for PC, usually set it to 0
 
-        options.asmOverlap: ASM overlap for solving the linearEqn in parallel. 
+        asmOverlap: ASM overlap for solving the linearEqn in parallel. 
         Usually set it to 1. Setting a higher number increases the convergence but
         significantly increase the memory usage
 
-        options.localPCIters: local iteraction for PC. usually set it to 1
+        localPCIters: local iteraction for PC. usually set it to 1
         
-        options.jacMatReOrdering: re-order the lhs matrix to reduce memory usage.
+        jacMatReOrdering: re-order the lhs matrix to reduce memory usage.
         Usually we use nd, rcm, or natural (not re-ordered)
     
-        options.pcFillLevel: how many leve fill-in to use for PC. This is a critical
+        pcFillLevel: how many leve fill-in to use for PC. This is a critical
         parameters for convergence rate. Usually set it to 1. Setting it to a higher
         number increase the convergence, however, the memory usage generally grows 
         exponetially. We rarely set it more than 2.
 
-        options.printInfo: whether to print summary information before solving 
+        printInfo: whether to print summary information before solving 
 
         jacMat: the right-hand-side petsc matrix 
 
@@ -70,6 +69,26 @@ void DALinearEqn::createMLRKSP(
     Output:
         genksp: the set KSP object 
     */
+
+    label gmresRestart =
+        daOption_.getSubDictOption<label>("adjEqnOption", "gmresRestart");
+    label globalPCIters =
+        daOption_.getSubDictOption<label>("adjEqnOption", "globalPCIters");
+    label asmOverlap =
+        daOption_.getSubDictOption<label>("adjEqnOption", "asmOverlap");
+    label localPCIters =
+        daOption_.getSubDictOption<label>("adjEqnOption", "localPCIters");
+    word jacMatReOrdering =
+        daOption_.getSubDictOption<word>("adjEqnOption", "jacMatReOrdering");
+    label pcFillLevel =
+        daOption_.getSubDictOption<label>("adjEqnOption", "pcFillLevel");
+    label gmresMaxIters =
+        daOption_.getSubDictOption<label>("adjEqnOption", "gmresMaxIters");
+    scalar gmresRelTol =
+        daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresRelTol");
+    scalar gmresAbsTol =
+        daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresAbsTol");
+    label printInfo = 1;
 
     PC MLRMasterPC, MLRGlobalPC;
     PC MLRsubpc;
@@ -80,11 +99,11 @@ void DALinearEqn::createMLRKSP(
     PetscInt MLRnlocal, MLRfirst; // number of local subblocks, first local subblock
 
     // Create linear solver context
-    KSPCreate(PETSC_COMM_WORLD, genksp);
+    //KSPCreate(PETSC_COMM_WORLD, &ksp);
 
     // Set operators. Here the matrix that defines the linear
     // system also serves as the preconditioning matrix.
-    KSPSetOperators(*genksp, jacMat, jacPCMat);
+    KSPSetOperators(ksp, jacMat, jacPCMat);
 
     // This code sets up the supplied kspObject in the following
     // specific fashion.
@@ -110,25 +129,25 @@ void DALinearEqn::createMLRKSP(
     // and if localPreConIts=1 then subKSP is set to preOnly.
 
     // First, KSPSetFromOptions MUST be called
-    KSPSetFromOptions(*genksp);
+    KSPSetFromOptions(ksp);
 
     // Set GMRES
     // Set the type of solver to GMRES
     KSPType kspObjectType = KSPGMRES;
 
-    KSPSetType(*genksp, kspObjectType);
+    KSPSetType(ksp, kspObjectType);
     // Set the gmres restart
-    PetscInt restartGMRES = readLabel(options.lookup("gmresRestart"));
+    PetscInt restartGMRES = gmresRestart;
 
-    KSPGMRESSetRestart(*genksp, restartGMRES);
+    KSPGMRESSetRestart(ksp, restartGMRES);
     // Set the GMRES refinement type
-    KSPGMRESSetCGSRefinementType(*genksp, KSP_GMRES_CGS_REFINE_IFNEEDED);
+    KSPGMRESSetCGSRefinementType(ksp, KSP_GMRES_CGS_REFINE_IFNEEDED);
 
     // Set the preconditioner side
-    KSPSetPCSide(*genksp, PC_RIGHT);
+    KSPSetPCSide(ksp, PC_RIGHT);
 
     // Set global and local PC iters
-    PetscInt globalPreConIts = readLabel(options.lookup("globalPCIters"));
+    PetscInt globalPreConIts = globalPCIters;
 
     // Since there is an extraneous matMult required when using the
     // richardson precondtiter with only 1 iteration, only use it when we need
@@ -136,7 +155,7 @@ void DALinearEqn::createMLRKSP(
     if (globalPreConIts > 1)
     {
         // Extract preconditioning context for main KSP solver: (MLRMasterPC)
-        KSPGetPC(*genksp, &MLRMasterPC);
+        KSPGetPC(ksp, &MLRMasterPC);
 
         // Set the type of MLRMasterPC to ksp. This lets us do multiple
         // iterations of preconditioner application
@@ -163,14 +182,14 @@ void DALinearEqn::createMLRKSP(
     else
     {
         // Just pull out the pc-object if we are not using kspRichardson
-        KSPGetPC(*genksp, &MLRGlobalPC);
+        KSPGetPC(ksp, &MLRGlobalPC);
     }
 
     // Set the type of 'MLRGlobalPC'. This will almost always be additive schwartz
     PCSetType(MLRGlobalPC, PCASM);
 
     // Set the overlap required
-    MLRoverlap = readLabel(options.lookup("asmOverlap"));
+    MLRoverlap = asmOverlap;
     PCASMSetOverlap(MLRGlobalPC, MLRoverlap);
 
     //label KSPCalcEigen = readLabel(options.lookup("KSPCalcEigen"));
@@ -180,16 +199,16 @@ void DALinearEqn::createMLRKSP(
     //}
 
     //Setup the main ksp context before extracting the subdomains
-    KSPSetUp(*genksp);
+    KSPSetUp(ksp);
 
     // Extract the ksp objects for each subdomain
     PCASMGetSubKSP(MLRGlobalPC, &MLRnlocal, &MLRfirst, &MLRsubksp);
 
     //Loop over the local blocks, setting various KSP options
     //for each block.
-    PetscInt localPreConIts = readLabel(options.lookup("localPCIters"));
-    word matOrdering = word(options.lookup("jacMatReOrdering"));
-    PetscInt localFillLevel = readLabel(options.lookup("pcFillLevel"));
+    PetscInt localPreConIts = localPCIters;
+    word matOrdering = jacMatReOrdering;
+    PetscInt localFillLevel = pcFillLevel;
     for (PetscInt i = 0; i < MLRnlocal; i++)
     {
         // Since there is an extraneous matMult required when using the
@@ -263,20 +282,20 @@ void DALinearEqn::createMLRKSP(
     }
 
     // Set the norm to unpreconditioned
-    KSPSetNormType(*genksp, KSP_NORM_UNPRECONDITIONED);
+    KSPSetNormType(ksp, KSP_NORM_UNPRECONDITIONED);
     // Setup monitor if necessary:
-    if (readLabel(options.lookup("printInfo")))
+    if (printInfo)
     {
-        KSPMonitorSet(*genksp, myKSPMonitor, this, 0);
+        KSPMonitorSet(ksp, myKSPMonitor, this, 0);
     }
 
-    PetscInt maxIts = readLabel(options.lookup("gmresMaxIters"));
+    PetscInt maxIts = gmresMaxIters;
     PetscScalar rtol, atol;
-    rtol = readScalar(options.lookup("gmresRelTol"));
-    atol = readScalar(options.lookup("gmresAbsTol"));
-    KSPSetTolerances(*genksp, rtol, atol, PETSC_DEFAULT, maxIts);
+    rtol = gmresRelTol;
+    atol = gmresAbsTol;
+    KSPSetTolerances(ksp, rtol, atol, PETSC_DEFAULT, maxIts);
 
-    if (readLabel(options.lookup("printInfo")))
+    if (printInfo)
     {
         Info << "Solver Type: " << kspObjectType << endl;
         Info << "GMRES Restart: " << restartGMRES << endl;
@@ -298,7 +317,7 @@ label DALinearEqn::solveLinearEqn(
 {
     /*
     Description:
-        Solve a linear euqation.
+        Solve a linear equation.
     
     Input:
         ksp: the KSP object, obtained from calling Foam::createMLRKSP
@@ -319,8 +338,8 @@ label DALinearEqn::solveLinearEqn(
     // set up rGMRESHist to save the tolerance history for the GMRES solution
     // these vars are for store the tolerance for GMRES linear solution
     label gmresMaxIters = daOption_.getSubDictOption<label>("adjEqnOption", "gmresMaxIters");
-    scalar rGMRESHist[gmresMaxIters+1];
-    label nGMRESIters=gmresMaxIters+1;
+    scalar rGMRESHist[gmresMaxIters + 1];
+    label nGMRESIters = gmresMaxIters + 1;
     KSPSetResidualHistory(ksp, rGMRESHist, nGMRESIters, PETSC_TRUE);
 
     // solve KSP
@@ -346,7 +365,7 @@ label DALinearEqn::solveLinearEqn(
          << this->getRunTime() << " s" << endl;
 
     // now we need to check if the linear equation solution is successful
-    
+
     scalar absResRatio = finalResNorm / daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresAbsTol");
     scalar relResRatio = finalResNorm / initResNorm / daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresRelTol");
     scalar resDiff = daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresTolDiff");
