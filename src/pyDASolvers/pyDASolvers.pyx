@@ -34,6 +34,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdFFD(PetscVec, PetscVec, char *, PetscMat)
         void calcdFdFFD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
+        void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void multiPointTreatment(PetscVec)
         void setdXvdFFDMat(PetscMat)
         int getGlobalXvIndex(int, int)
@@ -143,7 +144,10 @@ cdef class pyDASolvers:
 
     def calcdRdACT(self, Vec xvVec, Vec wVec, designVarName, designVarType, Mat dRdACT):
         self._thisptr.calcdRdACT(xvVec.vec, wVec.vec, designVarName, designVarType, dRdACT.mat)
-    
+
+    def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
+        self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
+
     def multiPointTreatment(self, Vec wVec):
         self._thisptr.multiPointTreatment(wVec.vec)
 

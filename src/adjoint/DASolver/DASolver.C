@@ -2092,6 +2092,47 @@ label DASolver::calcTotalDeriv(
     return 0;
 }
 
+void DASolver::convertMPIVec2SeqVec(
+    const Vec mpiVec,
+    Vec seqVec)
+{
+    /*
+    Description: 
+        Convert a MPI vec to a seq vec by using VecScatter
+    
+    Input:
+        mpiVec: the MPI vector in parallel
+
+    Output:
+        seqVec: the seq vector in serial
+    */
+    label vecSize;
+    VecGetSize(mpiVec, &vecSize);
+
+    // scatter colors to local array for all procs
+    Vec vout;
+    VecScatter ctx;
+    VecScatterCreateToAll(mpiVec, &ctx, &vout);
+    VecScatterBegin(ctx, mpiVec, vout, INSERT_VALUES, SCATTER_FORWARD);
+    VecScatterEnd(ctx, mpiVec, vout, INSERT_VALUES, SCATTER_FORWARD);
+
+    PetscScalar* voutArray;
+    VecGetArray(vout, &voutArray);
+
+    PetscScalar* seqVecArray;
+    VecGetArray(seqVec, &seqVecArray);
+
+    for (label i = 0; i < vecSize; i++)
+    {
+        seqVecArray[i] = voutArray[i];
+    }
+    VecRestoreArray(vout, &voutArray);
+    VecRestoreArray(seqVec, &seqVecArray);
+    VecScatterDestroy(&ctx);
+    VecDestroy(&vout);
+
+}
+
 void DASolver::setPsiVecDict(
     const word objFuncName,
     const Vec psiVec,

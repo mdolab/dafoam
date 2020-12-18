@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 
     DAFoam  : Discrete Adjoint with OpenFOAM
@@ -615,6 +613,16 @@ class PYDAFOAM(object):
         # value from self.objFuncValuePreIter
         self.objFuncValuePrevIter = {}
 
+        # compute the objective function names for which we solve the adjoint equation
+        self.objFuncNames4Adj = self._calcObjFuncNames4Adj()
+
+        # dictionary to save the total derivative vectors
+        # NOTE: this function need to be called after initializing self.objFuncNames4Adj
+        self.adjTotalDeriv = self._initializeAdjTotalDeriv()
+
+        # preconditioner matrix
+        self.dRdWTPC = None
+
         Info("pyDAFoam initialization done!")
 
         return
@@ -693,6 +701,56 @@ class PYDAFOAM(object):
                 defOpts[key] = [type(value), value]
 
         return defOpts
+
+    def _initializeAdjTotalDeriv(self):
+        """
+        Initialize the adjoint total derivative dict
+        NOTE: this function need to be called after initializing self.objFuncNames4Adj
+
+        Returns
+        -------
+
+        adjTotalDeriv : dict
+            An empty dict that contains total derivative of objective function with respect design variables
+        """
+
+        designVarDict = self.getOption("designVar")
+        objFuncDict = self.getOption("objFunc")
+
+        adjTotalDeriv = {}
+        for objFuncName in objFuncDict:
+            if objFuncName in self.objFuncNames4Adj:
+                adjTotalDeriv[objFuncName] = {}
+                for designVarName in designVarDict:
+                    adjTotalDeriv[objFuncName][designVarName] = None
+
+        return adjTotalDeriv
+
+    def _calcObjFuncNames4Adj(self):
+        """
+        Compute the objective function names for which we solve the adjoint equation
+
+        Returns
+        -------
+
+        objFuncNames4Adj : list
+            A list of objective function names we will solve the adjoint for
+        """
+
+        objFuncList = []
+        objFuncDict = self.getOption("objFunc")
+        for objFuncName in objFuncDict:
+            objFuncSubDict = objFuncDict[objFuncName]
+            for objFuncPart in objFuncSubDict:
+                objFuncSubDictPart = objFuncSubDict[objFuncPart]
+                if objFuncSubDictPart["addToAdjoint"] is True:
+                    if objFuncName not in objFuncList:
+                        objFuncList.append(objFuncName)
+                elif objFuncSubDictPart["addToAdjoint"] is False:
+                    pass
+                else:
+                    raise Error("addToAdjoint can be either True or False")
+        return objFuncList
 
     def saveMultiPointField(self, indexMP):
         """
@@ -833,8 +891,11 @@ class PYDAFOAM(object):
             for dvName in dvs:
                 nDVs = len(dvs[dvName])
                 funcsSens[funcName][dvName] = np.zeros(nDVs, self.dtype)
+                totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                totalDerivMPI = self.adjTotalDeriv[funcName][dvName]
+                self.solver.convertMPIVec2SeqVec(totalDerivMPI, totalDerivSeq)
                 for i in range(nDVs):
-                    sensVal = self.solver.getTotalDerivVal(funcName.encode(), dvName.encode(), i)
+                    sensVal = totalDerivSeq[i]
                     funcsSens[funcName][dvName][i] = sensVal
 
         if self.adjointFail:
@@ -1169,9 +1230,9 @@ class PYDAFOAM(object):
 
         Output:
         -------
-        psiVec: the adjoint vector
+        self.adjTotalDeriv: the dict contains all the total derivative vectors
 
-        self.adjointFail: if the primal solution fails, assigns 1, otherwise 0
+        self.adjointFail: if the adjoint solution fails, assigns 1, otherwise 0
         """
 
         # save the point vector and state vector to disk
@@ -1188,41 +1249,185 @@ class PYDAFOAM(object):
 
         Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
 
+        self.setOption("runStatus", "solveAdjoint")
+        self.updateDAOption()
+
+        if self.getOption("multiPoint"):
+            self.solver.multiPointTreatment(self.wVec)
+
         self.adjointFail = 0
-        self.adjointFail = self.solver.solveAdjoint(self.xvVec, self.wVec)
+
+        # calculate dRdWT
+        dRdWT = PETSc.Mat().create(PETSc.COMM_WORLD)
+        self.solver.calcdRdWT(self.xvVec, self.wVec, 0, dRdWT)
+
+        # calculate dRdWTPC
+        adjPCLag = self.getOption("adjPCLag")
+        if self.nSolveAdjoints == 0 or self.nSolveAdjoints % adjPCLag == 0:
+            self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+            self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
+
+        # Initialize the KSP object
+        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
+        self.solver.createMLRKSP(dRdWT, self.dRdWTPC, ksp)
+
+        # initialize adjoint vector dict
+        adjVectors = {}
+
+        # loop over all objFunc, calculate dFdW, and solve the adjoint
+        objFuncDict = self.getOption("objFunc")
+        wSize = self.solver.getNLocalAdjointStates()
+        for objFuncName in objFuncDict:
+            if objFuncName in self.objFuncNames4Adj:
+                dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
+                dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
+                dFdW.setFromOptions()
+                self.solver.calcdFdW(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
+
+                # Initialize the adjoint vector psi and solve for it
+                psi = PETSc.Vec().create(PETSc.COMM_WORLD)
+                psi.setSizes((wSize, PETSc.DECIDE), bsize=1)
+                psi.setFromOptions()
+                self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, psi)
+
+                adjVectors[objFuncName] = psi
+
+                dFdW.destroy()
+
+        ksp.destroy()
+        dRdWT.destroy()
+        # we destroy dRdWTPC only when we need to recompute it next time
+        # see the bottom of this function
+
+        # Now compute the total derivatives
+        Info("Computing total derivatives....")
+
+        designVarDict = self.getOption("designVar")
+        for designVarName in designVarDict:
+            Info("Computing total derivatives for %s" % designVarName)
+            ###################### BC: boundary condition as design variable ###################
+            if designVarDict[designVarName]["designVarType"] == "BC":
+                # calculate dRdBC
+                dRdBC = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdBC(self.xvVec, self.wVec, designVarName.encode(), dRdBC)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdBC
+                        dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdBC.setSizes((PETSc.DECIDE, 1), bsize=1)
+                        dFdBC.setFromOptions()
+                        self.solver.calcdFdBC(
+                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
+                        )
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((PETSc.DECIDE, 1), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdBC, dFdBC, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = totalDeriv
+                        dFdBC.destroy()
+                dRdBC.destroy()
+            ###################### AOA: angle of attack as design variable ###################
+            elif designVarDict[designVarName]["designVarType"] == "AOA":
+                # calculate dRdAOA
+                dRdAOA = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdAOA(self.xvVec, self.wVec, designVarName.encode(), dRdAOA)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdAOA
+                        dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdAOA.setSizes((PETSc.DECIDE, 1), bsize=1)
+                        dFdAOA.setFromOptions()
+                        self.solver.calcdFdAOA(
+                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdAOA
+                        )
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((PETSc.DECIDE, 1), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdAOA, dFdAOA, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = totalDeriv
+                        dFdAOA.destroy()
+                dRdAOA.destroy()
+            ################### FFD: FFD points as design variable ###################
+            elif designVarDict[designVarName]["designVarType"] == "FFD":
+                nDVs = self.setdXvdFFDMat(designVarName)
+                # calculate dRdFFD
+                dRdFFD = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdFFD(self.xvVec, self.wVec, designVarName.encode(), dRdFFD)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdFFD
+                        dFdFFD = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdFFD.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        dFdFFD.setFromOptions()
+                        self.solver.calcdFdFFD(
+                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdFFD
+                        )
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdFFD, dFdFFD, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = totalDeriv
+                        dFdFFD.destroy()
+                dRdFFD.destroy()
+            ################### ACT: actuator models as design variable ###################
+            elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
+                designVarType = designVarDict[designVarName]["designVarType"]
+                nDVTable = {"ACTP": 9, "ACTD": 9, "ACTL": 11}
+                nActDVs = nDVTable[designVarType]
+                # calculate dRdACT
+                dRdACT = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdACT(self.xvVec, self.wVec, designVarName.encode(), designVarType.encode(), dRdACT)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdACT
+                        dFdACT = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdACT.setSizes((PETSc.DECIDE, nActDVs), bsize=1)
+                        dFdACT.setFromOptions()
+                        dFdACT.zeroEntries()  # dFdACT assumes to be zeros
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((PETSc.DECIDE, nActDVs), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdACT, dFdACT, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = totalDeriv
+                        dFdACT.destroy()
+                dRdACT.destroy()
 
         self.nSolveAdjoints += 1
 
+        # we destroy dRdWTPC only when we need to recompute it next time
+        if self.nSolveAdjoints % adjPCLag == 0:
+            self.dRdWTPC.destroy()
+
         return
 
-    def calcTotalDeriv(self):
+    def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
         Compute total derivative
 
         Input:
         ------
-        xvVec: vector that contains all the mesh point coordinates
-
-        wVec: vector that contains all the state variables
-
-        psiVec: the adjoint vector
+        dRdX, dFdX, and psi
 
         Output:
-        -------
-        totalDerivVec: the total derivative vector
-
-        self.adjointFail: if the total derivative computation fails, assigns 1, otherwise 0
+        ------
+        totalDeriv = dFdX - [dRdX]^T * psi
         """
 
-        Info("Computing total derivatives....")
-
-        designVarDict = self.getOption("designVar")
-        for key in designVarDict:
-            if designVarDict[key]["designVarType"] == "FFD":
-                self.setdXvdFFDMat(key)
-            self.solver.calcTotalDeriv(self.xvVec, self.wVec, key.encode())
-
-        return
+        dRdX.multTranspose(psi, totalDeriv)
+        totalDeriv.scale(-1.0)
+        totalDeriv.axpy(1.0, dFdX)
 
     def _initSolver(self):
         """
@@ -1464,7 +1669,9 @@ class PYDAFOAM(object):
 
         self.solver.setdXvdFFDMat(dXvdFFDMat)
 
-        return
+        dXvdFFDMat.destroy()
+
+        return nDVs
 
     def updateVolumePoints(self):
         """

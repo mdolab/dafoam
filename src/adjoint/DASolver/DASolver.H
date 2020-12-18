@@ -237,13 +237,13 @@ public:
         const Vec wVec,
         const word objFuncName,
         Vec dFdW);
-    
+
     /// create a multi-level, Richardson KSP object
     void createMLRKSP(
         const Mat jacMat,
         const Mat jacPCMat,
         KSP ksp);
-    
+
     /// solve the linear equation given a ksp and right-hand-side vector
     label solveLinearEqn(
         const KSP ksp,
@@ -255,6 +255,11 @@ public:
         const Vec xvVec,
         const Vec wVec);
 
+    /// convert the mpi vec to a seq vec
+    void convertMPIVec2SeqVec(
+        const Vec mpiVec,
+        Vec seqVec);
+
     /// special treatment for multipoint optimization cases
     void multiPointTreatment(const Vec wVec);
 
@@ -264,7 +269,7 @@ public:
         const Vec wVec,
         const word designVarName,
         Mat dRdBC);
-    
+
     /// compute dFdBC
     void calcdFdBC(
         const Vec xvVec,
@@ -272,14 +277,14 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdBC);
-    
+
     /// compute dRdAOA
     void calcdRdAOA(
         const Vec xvVec,
         const Vec wVec,
         const word designVarName,
         Mat dRdAOA);
-    
+
     /// compute dFdAOA
     void calcdFdAOA(
         const Vec xvVec,
@@ -287,14 +292,14 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdAOA);
-    
+
     /// compute dRdFFD
     void calcdRdFFD(
         const Vec xvVec,
         const Vec wVec,
         const word designVarName,
         Mat dRdFFD);
-    
+
     /// compute dFdFFD
     void calcdFdFFD(
         const Vec xvVec,
@@ -302,7 +307,7 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdFFD);
-    
+
     /// compute dRdACT
     void calcdRdACT(
         const Vec xvVec,

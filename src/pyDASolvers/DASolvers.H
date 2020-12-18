@@ -123,6 +123,14 @@ public:
         DASolverPtr_->solveLinearEqn(ksp, rhsVec, solVec);
     }
 
+    /// convert the mpi vec to a seq vec
+    void convertMPIVec2SeqVec(
+        const Vec mpiVec,
+        Vec seqVec)
+    {
+        DASolverPtr_->convertMPIVec2SeqVec(mpiVec, seqVec);
+    }
+
     /// compute dRdBC
     void calcdRdBC(
         const Vec xvVec,
