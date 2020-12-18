@@ -127,8 +127,10 @@ void DAPartDerivdFdBC::calcPartDerivMat(
     scalar fNew = daObjFunc->masterFunction(mOptions, xvVec, wVec);
 
     scalar partDeriv = (fNew - fRef) * rDelta;
+    PetscScalar partDerivValue = 0.0;
+    assignValueCheckAD(partDerivValue, partDeriv);
 
-    MatSetValue(jacMat, 0, 0, partDeriv, INSERT_VALUES);
+    MatSetValue(jacMat, 0, 0, partDerivValue, INSERT_VALUES);
 
     // reset perturbation
     this->perturbBC(options, -1.0 * delta);

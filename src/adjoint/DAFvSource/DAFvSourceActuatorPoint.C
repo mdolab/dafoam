@@ -116,7 +116,7 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
             scalar period = pointSubDict.get<scalar>("periodicity");
             scalar eps = pointSubDict.get<scalar>("eps");
             scalar scale = pointSubDict.get<scalar>("scale");
-            scalar thrustDirIdx = pointSubDict.get<label>("thrustDirIdx");
+            label thrustDirIdx = pointSubDict.get<label>("thrustDirIdx");
             scalar phase = pointSubDict.get<scalar>("phase");
 
             scalar t = mesh_.time().timeOutputValue();
@@ -160,7 +160,7 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
             scalar period = pointSubDict.get<scalar>("periodicity");
             scalar eps = pointSubDict.get<scalar>("eps");
             scalar scale = pointSubDict.get<scalar>("scale");
-            scalar thrustDirIdx = pointSubDict.get<label>("thrustDirIdx");
+            label thrustDirIdx = pointSubDict.get<label>("thrustDirIdx");
             scalar phase = pointSubDict.get<scalar>("phase");
 
             scalar t = mesh_.time().timeOutputValue();
@@ -172,7 +172,7 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
             {
                 const vector& meshC = mesh_.C()[cellI];
                 scalar d = mag(meshC - center);
-                scalar s = coeff * Foam::exp(-d * d / 2.0 / eps / eps);
+                scalar s = coeff * exp(-d * d / 2.0 / eps / eps);
                 // here we need to use += for multiple actuator points
                 fvSource[cellI][thrustDirIdx] += s * scale;
                 thrustTotal += s * scale * mesh_.V()[cellI];

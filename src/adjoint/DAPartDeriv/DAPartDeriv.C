@@ -142,13 +142,16 @@ void DAPartDeriv::perturbStates(
     PetscScalar* wVecArray;
     VecGetArray(wVec, &wVecArray);
 
+    PetscScalar deltaVal = 0.0;
+    assignValueCheckAD(deltaVal, delta);
+
     for (label i = Istart; i < Iend; i++)
     {
         label relIdx = i - Istart;
         label colorJ = colorArray[relIdx];
         if (colorI == colorJ)
         {
-            wVecArray[relIdx] += delta * normStateArray[relIdx];
+            wVecArray[relIdx] += deltaVal * normStateArray[relIdx];
         }
     }
 
@@ -218,7 +221,7 @@ void DAPartDeriv::setPartDerivMat(
     */
 
     label rowI, colI;
-    scalar val;
+    PetscScalar val;
     PetscInt Istart, Iend;
     const PetscScalar* resVecArray;
     const PetscScalar* coloredColumnArray;
@@ -436,12 +439,14 @@ void DAPartDeriv::perturbAOA(
                     scalar UmagIn = mag(state.boundaryField()[patchI][0]);
                     scalar Uratio =
                         state.boundaryField()[patchI][0][normalAxisIndex] / state.boundaryField()[patchI][0][flowAxisIndex];
-                    scalar aoa = Foam::radToDeg(Foam::atan(Uratio)); // we want the partials in degree
+                    //scalar aoa = Foam::radToDeg(atan(Uratio)); // we want the partials in degree
+                    scalar aoa = atan(Uratio) * 180.0 / constant::mathematical::pi;
                     scalar aoaNew = aoa + delta;
-                    scalar aoaNewArc = Foam::degToRad(aoaNew);
+                    //scalar aoaNewArc = Foam::degToRad(aoaNew);
+                    scalar aoaNewArc = aoaNew * constant::mathematical::pi / 180.0;
 
-                    scalar UxNew = UmagIn / Foam::sqrt(1 + Foam::tan(aoaNewArc) * Foam::tan(aoaNewArc));
-                    scalar UyNew = UxNew * Foam::tan(aoaNewArc);
+                    scalar UxNew = UmagIn / sqrt(1 + tan(aoaNewArc) * tan(aoaNewArc));
+                    scalar UyNew = UxNew * tan(aoaNewArc);
 
                     forAll(state.boundaryField()[patchI], faceI)
                     {
@@ -458,12 +463,14 @@ void DAPartDeriv::perturbAOA(
 
                     scalar Uratio =
                         inletOutletPatch.refValue()[0][normalAxisIndex] / inletOutletPatch.refValue()[0][flowAxisIndex];
-                    scalar aoa = Foam::radToDeg(Foam::atan(Uratio)); // we want the partials in degree
+                    //scalar aoa = Foam::radToDeg(atan(Uratio)); // we want the partials in degree
+                    scalar aoa = atan(Uratio) * 180.0 / constant::mathematical::pi;
                     scalar aoaNew = aoa + delta;
-                    scalar aoaNewArc = Foam::degToRad(aoaNew);
+                    //scalar aoaNewArc = Foam::degToRad(aoaNew);
+                    scalar aoaNewArc = aoaNew * constant::mathematical::pi / 180.0;
 
-                    scalar UxNew = UmagIn / Foam::sqrt(1 + Foam::tan(aoaNewArc) * Foam::tan(aoaNewArc));
-                    scalar UyNew = UxNew * Foam::tan(aoaNewArc);
+                    scalar UxNew = UmagIn / sqrt(1 + tan(aoaNewArc) * tan(aoaNewArc));
+                    scalar UyNew = UxNew * tan(aoaNewArc);
 
                     vector UNew = vector::zero;
                     UNew[flowAxisIndex] = UxNew;
@@ -529,12 +536,14 @@ void DAPartDeriv::setNormStatePerturbVec(Vec* normStatePerturbVec)
         if (DAUtility::isInList<word>(stateName, normStateNames))
         {
             scalar scale = normStateDict.getScalar(stateName);
+            PetscScalar scaleValue = 0.0;
+            assignValueCheckAD(scaleValue, scale);
             forAll(mesh_.cells(), idxI)
             {
                 for (label comp = 0; comp < 3; comp++)
                 {
                     label glbIdx = daIndex_.getGlobalAdjointStateIndex(stateName, idxI, comp);
-                    VecSetValue(*normStatePerturbVec, glbIdx, scale, INSERT_VALUES);
+                    VecSetValue(*normStatePerturbVec, glbIdx, scaleValue, INSERT_VALUES);
                 }
             }
         }
@@ -546,10 +555,12 @@ void DAPartDeriv::setNormStatePerturbVec(Vec* normStatePerturbVec)
         if (DAUtility::isInList<word>(stateName, normStateNames))
         {
             scalar scale = normStateDict.getScalar(stateName);
+            PetscScalar scaleValue = 0.0;
+            assignValueCheckAD(scaleValue, scale);
             forAll(mesh_.cells(), idxI)
             {
                 label glbIdx = daIndex_.getGlobalAdjointStateIndex(stateName, idxI);
-                VecSetValue(*normStatePerturbVec, glbIdx, scale, INSERT_VALUES);
+                VecSetValue(*normStatePerturbVec, glbIdx, scaleValue, INSERT_VALUES);
             }
         }
     }
@@ -560,10 +571,12 @@ void DAPartDeriv::setNormStatePerturbVec(Vec* normStatePerturbVec)
         if (DAUtility::isInList<word>(stateName, normStateNames))
         {
             scalar scale = normStateDict.getScalar(stateName);
+            PetscScalar scaleValue = 0.0;
+            assignValueCheckAD(scaleValue, scale);
             forAll(mesh_.cells(), idxI)
             {
                 label glbIdx = daIndex_.getGlobalAdjointStateIndex(stateName, idxI);
-                VecSetValue(*normStatePerturbVec, glbIdx, scale, INSERT_VALUES);
+                VecSetValue(*normStatePerturbVec, glbIdx, scaleValue, INSERT_VALUES);
             }
         }
     }
@@ -574,12 +587,14 @@ void DAPartDeriv::setNormStatePerturbVec(Vec* normStatePerturbVec)
         if (DAUtility::isInList<word>(stateName, normStateNames))
         {
             scalar scale = normStateDict.getScalar(stateName);
+            PetscScalar scaleValue = 0.0;
 
             forAll(mesh_.faces(), faceI)
             {
                 if (faceI < daIndex_.nLocalInternalFaces)
                 {
                     scale = mesh_.magSf()[faceI];
+                    assignValueCheckAD(scaleValue, scale);
                 }
                 else
                 {
@@ -587,10 +602,11 @@ void DAPartDeriv::setNormStatePerturbVec(Vec* normStatePerturbVec)
                     label patchIdx = daIndex_.bFacePatchI[relIdx];
                     label faceIdx = daIndex_.bFaceFaceI[relIdx];
                     scale = mesh_.magSf().boundaryField()[patchIdx][faceIdx];
+                    assignValueCheckAD(scaleValue, scale);
                 }
 
                 label glbIdx = daIndex_.getGlobalAdjointStateIndex(stateName, faceI);
-                VecSetValue(*normStatePerturbVec, glbIdx, scale, INSERT_VALUES);
+                VecSetValue(*normStatePerturbVec, glbIdx, scaleValue, INSERT_VALUES);
             }
         }
     }

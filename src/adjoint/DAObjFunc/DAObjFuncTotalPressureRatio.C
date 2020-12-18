@@ -161,8 +161,8 @@ void DAObjFuncTotalPressureRatio::calcObjFunc(
         scalar TS = TBf[patchI][faceI];
         scalar UMag = mag(UBf[patchI][faceI]);
         scalar SfX = mesh_.magSf().boundaryField()[patchI][faceI];
-        scalar Ma2 = Foam::sqr(UMag / Foam::sqrt(gamma_ * R * TS));
-        scalar pT = pS * Foam::pow(1.0 + 0.5 * (gamma_ - 1.0) * Ma2, expCoeff);
+        scalar Ma2 = sqr(UMag / sqrt(gamma_ * R * TS));
+        scalar pT = pS * pow(1.0 + 0.5 * (gamma_ - 1.0) * Ma2, expCoeff);
 
         word patchName = mesh_.boundaryMesh()[patchI].name();
         if (DAUtility::isInList<word>(patchName, inletPatches_))
@@ -202,8 +202,8 @@ void DAObjFuncTotalPressureRatio::calcObjFunc(
         scalar TS = TBf[patchI][faceI];
         scalar UMag = mag(UBf[patchI][faceI]);
         scalar SfX = mesh_.magSf().boundaryField()[patchI][faceI];
-        scalar Ma2 = Foam::sqr(UMag / Foam::sqrt(gamma_ * R * TS));
-        scalar pT = pS * Foam::pow(1.0 + 0.5 * (gamma_ - 1.0) * Ma2, expCoeff);
+        scalar Ma2 = sqr(UMag / sqrt(gamma_ * R * TS));
+        scalar pT = pS * pow(1.0 + 0.5 * (gamma_ - 1.0) * Ma2, expCoeff);
 
         word patchName = mesh_.boundaryMesh()[patchI].name();
         if (DAUtility::isInList<word>(patchName, inletPatches_))

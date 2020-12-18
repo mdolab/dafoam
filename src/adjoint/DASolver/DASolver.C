@@ -448,9 +448,9 @@ void DASolver::calcPrimalResidualStatistics(
         vector vecResMean(0, 0, 0);
         forAll(stateRes, cellI)
         {
-            vecResNorm2.x() += Foam::pow(stateRes[cellI].x(), 2.0);
-            vecResNorm2.y() += Foam::pow(stateRes[cellI].y(), 2.0);
-            vecResNorm2.z() += Foam::pow(stateRes[cellI].z(), 2.0);
+            vecResNorm2.x() += pow(stateRes[cellI].x(), 2.0);
+            vecResNorm2.y() += pow(stateRes[cellI].y(), 2.0);
+            vecResNorm2.z() += pow(stateRes[cellI].z(), 2.0);
             vecResMean.x() += fabs(stateRes[cellI].x());
             vecResMean.y() += fabs(stateRes[cellI].y());
             vecResMean.z() += fabs(stateRes[cellI].z());
@@ -472,9 +472,9 @@ void DASolver::calcPrimalResidualStatistics(
         vecResMean = vecResMean / Pstream::nProcs();
         reduce(vecResNorm2, sumOp<vector>());
         reduce(vecResMax, maxOp<vector>());
-        vecResNorm2.x() = Foam::pow(vecResNorm2.x(), 0.5);
-        vecResNorm2.y() = Foam::pow(vecResNorm2.y(), 0.5);
-        vecResNorm2.z() = Foam::pow(vecResNorm2.z(), 0.5);
+        vecResNorm2.x() = pow(vecResNorm2.x(), 0.5);
+        vecResNorm2.y() = pow(vecResNorm2.y(), 0.5);
+        vecResNorm2.z() = pow(vecResNorm2.z(), 0.5);
         if (mode == "print")
         {
             Info << stateName << " Residual Norm2: " << vecResNorm2 << endl;
@@ -497,7 +497,7 @@ void DASolver::calcPrimalResidualStatistics(
         scalar scalarResMax = 0, scalarResNorm2 = 0, scalarResMean = 0;
         forAll(stateRes, cellI)
         {
-            scalarResNorm2 += Foam::pow(stateRes[cellI], 2.0);
+            scalarResNorm2 += pow(stateRes[cellI], 2.0);
             scalarResMean += fabs(stateRes[cellI]);
             if (fabs(stateRes[cellI]) > scalarResMax)
                 scalarResMax = fabs(stateRes[cellI]);
@@ -507,7 +507,7 @@ void DASolver::calcPrimalResidualStatistics(
         scalarResMean = scalarResMean / Pstream::nProcs();
         reduce(scalarResNorm2, sumOp<scalar>());
         reduce(scalarResMax, maxOp<scalar>());
-        scalarResNorm2 = Foam::pow(scalarResNorm2, 0.5);
+        scalarResNorm2 = pow(scalarResNorm2, 0.5);
         if (mode == "print")
         {
             Info << stateName << " Residual Norm2: " << scalarResNorm2 << endl;
@@ -530,7 +530,7 @@ void DASolver::calcPrimalResidualStatistics(
         scalar scalarResMax = 0, scalarResNorm2 = 0, scalarResMean = 0;
         forAll(stateRes, cellI)
         {
-            scalarResNorm2 += Foam::pow(stateRes[cellI], 2.0);
+            scalarResNorm2 += pow(stateRes[cellI], 2.0);
             scalarResMean += fabs(stateRes[cellI]);
             if (fabs(stateRes[cellI]) > scalarResMax)
                 scalarResMax = fabs(stateRes[cellI]);
@@ -540,7 +540,7 @@ void DASolver::calcPrimalResidualStatistics(
         scalarResMean = scalarResMean / Pstream::nProcs();
         reduce(scalarResNorm2, sumOp<scalar>());
         reduce(scalarResMax, maxOp<scalar>());
-        scalarResNorm2 = Foam::pow(scalarResNorm2, 0.5);
+        scalarResNorm2 = pow(scalarResNorm2, 0.5);
         if (mode == "print")
         {
             Info << stateName << " Residual Norm2: " << scalarResNorm2 << endl;
@@ -563,7 +563,7 @@ void DASolver::calcPrimalResidualStatistics(
         scalar phiResMax = 0, phiResNorm2 = 0, phiResMean = 0;
         forAll(stateRes, faceI)
         {
-            phiResNorm2 += Foam::pow(stateRes[faceI], 2.0);
+            phiResNorm2 += pow(stateRes[faceI], 2.0);
             phiResMean += fabs(stateRes[faceI]);
             if (fabs(stateRes[faceI]) > phiResMax)
                 phiResMax = fabs(stateRes[faceI]);
@@ -573,7 +573,7 @@ void DASolver::calcPrimalResidualStatistics(
             forAll(stateRes.boundaryField()[patchI], faceI)
             {
                 scalar bPhiRes = stateRes.boundaryField()[patchI][faceI];
-                phiResNorm2 += Foam::pow(bPhiRes, 2.0);
+                phiResNorm2 += pow(bPhiRes, 2.0);
                 phiResMean += fabs(bPhiRes);
                 if (fabs(bPhiRes) > phiResMax)
                     phiResMax = fabs(bPhiRes);
@@ -584,7 +584,7 @@ void DASolver::calcPrimalResidualStatistics(
         phiResMean = phiResMean / Pstream::nProcs();
         reduce(phiResNorm2, sumOp<scalar>());
         reduce(phiResMax, maxOp<scalar>());
-        phiResNorm2 = Foam::pow(phiResNorm2, 0.5);
+        phiResNorm2 = pow(phiResNorm2, 0.5);
         if (mode == "print")
         {
             Info << stateName << " Residual Norm2: " << phiResNorm2 << endl;
@@ -2197,7 +2197,7 @@ void DASolver::getPsiVec(
     for (label i = Istart; i < Iend; i++)
     {
         label relIdx = i - Istart;
-        psiVecArray[relIdx] = psiList[relIdx];
+        assignValueCheckAD(psiVecArray[relIdx], psiList[relIdx]);
     }
     VecRestoreArray(psiVec, &psiVecArray);
 }

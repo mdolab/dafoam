@@ -111,6 +111,8 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
 
     scalar delta = daOption_.getSubDictOption<scalar>("adjPartDerivFDStep", "ACTD");
     scalar rDelta = 1.0 / delta;
+    PetscScalar rDeltaValue = 0.0;
+    assignValueCheckAD(rDeltaValue, rDelta);
 
     Vec xvVecNew;
     VecDuplicate(xvVec, &xvVecNew);
@@ -252,7 +254,8 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
 
         // compute residual partial using finite-difference
         VecAXPY(resVec, -1.0, resVecRef);
-        VecScale(resVec, rDelta);
+        VecScale(resVec, rDeltaValue);
+
 
         // assign resVec to jacMat
         PetscInt Istart, Iend;
@@ -263,7 +266,7 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
         for (label j = Istart; j < Iend; j++)
         {
             label relIdx = j - Istart;
-            scalar val = resVecArray[relIdx];
+            PetscScalar val = resVecArray[relIdx];
             MatSetValue(jacMat, j, i, val, INSERT_VALUES);
         }
         VecRestoreArrayRead(resVec, &resVecArray);

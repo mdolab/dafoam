@@ -134,6 +134,8 @@ void DAPartDerivdRdW::calcPartDerivMat(
 
     scalar delta = daOption_.getSubDictOption<scalar>("adjPartDerivFDStep", "State");
     scalar rDelta = 1.0 / delta;
+    PetscScalar rDeltaValue = 0.0;
+    assignValueCheckAD(rDeltaValue, rDelta);
 
     label nColors = daJacCon_.getNJacConColors();
 
@@ -174,7 +176,7 @@ void DAPartDerivdRdW::calcPartDerivMat(
 
         // compute residual partial using finite-difference
         VecAXPY(resVec, -1.0, resVecRef);
-        VecScale(resVec, rDelta);
+        VecScale(resVec, rDeltaValue);
 
         // compute the colored coloumn and assign resVec to jacMat
         daJacCon_.calcColoredColumns(color, coloredColumn);

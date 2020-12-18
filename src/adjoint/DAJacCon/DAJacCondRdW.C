@@ -813,10 +813,10 @@ void DAJacCondRdW::preallocateJacobianMatrix(
         dRMat: matrix to preallocate memory for
     */
 
-    scalar normOn, normOff;
+    PetscScalar normOn, normOff;
     VecNorm(preallocOnProc, NORM_2, &normOn);
     VecNorm(preallocOffProc, NORM_2, &normOff);
-    scalar normSum = normOn + normOff;
+    PetscScalar normSum = normOn + normOff;
     if (normSum < 1.0e-10)
     {
         FatalErrorIn("preallocateJacobianMatrix")

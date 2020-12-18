@@ -243,18 +243,22 @@ public:
     }
 
     /// return the value of objective
-    scalar getObjFuncValue(const word objFuncName)
+    double getObjFuncValue(const word objFuncName)
     {
-        return DASolverPtr_->getObjFuncValue(objFuncName);
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValue(objFuncName));
+        return returnVal;
     }
 
     /// basically, we call DASolver::getTotalDerivVal
-    scalar getTotalDerivVal(
+    double getTotalDerivVal(
         const word objFuncName,
         const word designVarName,
         const label idxI) const
     {
-        return DASolverPtr_->getTotalDerivVal(objFuncName, designVarName, idxI);
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getTotalDerivVal(objFuncName, designVarName, idxI));
+        return returnVal;
     }
 
     /// call DASolver::printAllOptions
@@ -276,9 +280,11 @@ public:
     }
 
     /// get the solution time folder for previous primal solution
-    scalar getPrevPrimalSolTime()
+    double getPrevPrimalSolTime()
     {
-        return DASolverPtr_->getPrevPrimalSolTime();
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getPrevPrimalSolTime());
+        return returnVal;
     }
 
     /// assign the points in fvMesh of OpenFOAM based on the point vector
@@ -360,11 +366,13 @@ public:
     }
 
     /// return the value of objective function at the given time instance and name
-    scalar getTimeInstanceObjFunc(
+    double getTimeInstanceObjFunc(
         const label instanceI,
         const word objFuncName)
     {
-        return DASolverPtr_->getTimeInstanceObjFunc(instanceI, objFuncName);
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getTimeInstanceObjFunc(instanceI, objFuncName));
+        return returnVal;
     }
 };
 

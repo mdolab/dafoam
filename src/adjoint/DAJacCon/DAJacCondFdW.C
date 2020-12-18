@@ -429,16 +429,14 @@ void DAJacCondFdW::setObjFuncVec(
 
     forAll(objFuncFaceValues, idxI)
     {
-        scalar val = objFuncFaceValues[idxI];
         label localIdx = getLocalObjFuncGeoIndex("face", idxI);
-        objFuncVecArray[localIdx] = val;
+        assignValueCheckAD(objFuncVecArray[localIdx], objFuncFaceValues[idxI]);
     }
 
     forAll(objFuncCellValues, idxI)
     {
-        scalar val = objFuncCellValues[idxI];
         label localIdx = getLocalObjFuncGeoIndex("cell", idxI);
-        objFuncVecArray[localIdx] = val;
+        assignValueCheckAD(objFuncVecArray[localIdx], objFuncCellValues[idxI]);
     }
 
     VecRestoreArray(objFuncVec, &objFuncVecArray);

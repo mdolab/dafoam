@@ -133,7 +133,7 @@ protected:
         const label gRow,
         const label cellI,
         const word stateName,
-        const scalar val);
+        const PetscScalar val);
 
     /// add val to gRow row in conMat, column indice are the neighbouring states (given by stateName) for a given cellI
     void addConMatNeighbourCells(
@@ -141,7 +141,7 @@ protected:
         const label gRow,
         const label cellI,
         const word stateName,
-        const scalar val);
+        const PetscScalar val);
 
     /// add val to gRow row in conMat, column indice are the faces (given by stateName) for a given cellI
     void addConMatCellFaces(
@@ -149,7 +149,7 @@ protected:
         const label gRow,
         const label cellI,
         const word stateName,
-        const scalar val);
+        const PetscScalar val);
 
     /// add the column index of the (iner-proc) connected states and faces to conMat, given a local face index
     void addBoundaryFaceConnections(

@@ -152,8 +152,10 @@ void DAPartDerivdFdFFD::calcPartDerivMat(
         // no need to reset FFD here
 
         scalar partDeriv = (fNew - fRef) * rDelta;
+        PetscScalar partDerivValue = 0.0;
+        assignValueCheckAD(partDerivValue, partDeriv);
 
-        MatSetValue(jacMat, 0, i, partDeriv, INSERT_VALUES);
+        MatSetValue(jacMat, 0, i, partDerivValue, INSERT_VALUES);
     }
 
     // call the master function again to reset xvVec and wVec to OpenFOAM fields and points

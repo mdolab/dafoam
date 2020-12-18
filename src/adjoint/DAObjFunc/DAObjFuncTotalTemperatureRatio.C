@@ -152,7 +152,7 @@ void DAObjFuncTotalTemperatureRatio::calcObjFunc(
         scalar TS = TBf[patchI][faceI];
         scalar UMag = mag(UBf[patchI][faceI]);
         scalar SfX = mesh_.magSf().boundaryField()[patchI][faceI];
-        scalar Ma2 = Foam::sqr(UMag / Foam::sqrt(gamma_ * R * TS));
+        scalar Ma2 = sqr(UMag / sqrt(gamma_ * R * TS));
         scalar TT = TS * (1.0 + 0.5 * (gamma_ - 1.0) * Ma2);
 
         word patchName = mesh_.boundaryMesh()[patchI].name();
@@ -192,7 +192,7 @@ void DAObjFuncTotalTemperatureRatio::calcObjFunc(
         scalar TS = TBf[patchI][faceI];
         scalar UMag = mag(UBf[patchI][faceI]);
         scalar SfX = mesh_.magSf().boundaryField()[patchI][faceI];
-        scalar Ma2 = Foam::sqr(UMag / Foam::sqrt(gamma_ * R * TS));
+        scalar Ma2 = sqr(UMag / sqrt(gamma_ * R * TS));
         scalar TT = TS * (1.0 + 0.5 * (gamma_ - 1.0) * Ma2);
 
         word patchName = mesh_.boundaryMesh()[patchI].name();

@@ -291,8 +291,8 @@ void DALinearEqn::createMLRKSP(
 
     PetscInt maxIts = gmresMaxIters;
     PetscScalar rtol, atol;
-    rtol = gmresRelTol;
-    atol = gmresAbsTol;
+    assignValueCheckAD(rtol, gmresRelTol);
+    assignValueCheckAD(atol, gmresAbsTol);
     KSPSetTolerances(ksp, rtol, atol, PETSC_DEFAULT, maxIts);
 
     if (printInfo)
@@ -338,7 +338,7 @@ label DALinearEqn::solveLinearEqn(
     // set up rGMRESHist to save the tolerance history for the GMRES solution
     // these vars are for store the tolerance for GMRES linear solution
     label gmresMaxIters = daOption_.getSubDictOption<label>("adjEqnOption", "gmresMaxIters");
-    scalar rGMRESHist[gmresMaxIters + 1];
+    PetscScalar rGMRESHist[gmresMaxIters + 1];
     label nGMRESIters = gmresMaxIters + 1;
     KSPSetResidualHistory(ksp, rGMRESHist, nGMRESIters, PETSC_TRUE);
 
@@ -348,8 +348,8 @@ label DALinearEqn::solveLinearEqn(
     //Print convergence information
     label its;
     KSPGetIterationNumber(ksp, &its);
-    scalar initResNorm = rGMRESHist[0];
-    scalar finalResNorm = rGMRESHist[its];
+    PetscScalar initResNorm = rGMRESHist[0];
+    PetscScalar finalResNorm = rGMRESHist[its];
     PetscPrintf(
         PETSC_COMM_WORLD,
         "Main iteration %D KSP Residual norm %14.12e %d s \n",

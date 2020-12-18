@@ -21,6 +21,11 @@ libName = "pyColoringCompressible"
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpicxx"
 
+if os.getenv("WM_CODI_AD_MODE") is None:
+    codiADMode = "CODI_AD_NONE"
+else:
+    codiADMode = os.getenv("WM_CODI_AD_MODE")
+
 # These setup should reproduce calling wmake to compile OpenFOAM libraries and solvers
 ext = [
     Extension(
@@ -45,7 +50,10 @@ ext = [
             os.getenv("FOAM_SRC") + "/OpenFOAM/lnInclude",
             os.getenv("FOAM_SRC") + "/OSspecific/POSIX/lnInclude",
             os.getenv("FOAM_LIBBIN"),
-            # DAFoam include
+            # CoDiPack and MeDiPack
+            os.getenv("FOAM_SRC") + "/codipack/include",
+            os.getenv("FOAM_SRC") + "/medipack/include",
+            os.getenv("FOAM_SRC") + "/medipack/src",
             # DAFoam include
             os.getenv("PETSC_DIR") + "/include",
             petsc4py.get_include(),
@@ -95,6 +103,7 @@ ext = [
             "-ftemplate-depth-100",
             "-fPIC",
             "-c",
+            "-D" + codiADMode,
         ],
         # Extra link flags for OpenFOAM, users don't need to touch this
         extra_link_args=["-Xlinker", "--add-needed", "-Xlinker", "--no-as-needed"],

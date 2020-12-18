@@ -102,7 +102,7 @@ void DAObjFuncVonMisesStressKS::calcObjFunc(
     {
         const label& cellI = objFuncCellSources[idxI];
 
-        objFuncCellValues[idxI] = Foam::exp(coeffKS_ * vonMises[cellI]);
+        objFuncCellValues[idxI] = exp(coeffKS_ * vonMises[cellI]);
 
         objValTmp += objFuncCellValues[idxI];
 

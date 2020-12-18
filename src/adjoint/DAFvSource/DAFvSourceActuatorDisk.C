@@ -37,7 +37,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
         Compute the actuator disk source term.
         We follow: Hoekstra, A RANS-based analysis tool for ducted propeller systems 
         in open water condition, International Shipbuilding Progress
-        source = rStar * Foam::sqrt(1.0 - rStar) * scale
+        source = rStar * sqrt(1.0 - rStar) * scale
         where rStar is the normalized radial location and scale is used to 
         make sure the integral force equals the desired total thrust
 
@@ -182,7 +182,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 scalar rStar = (rPrime - rPrimeHub) / (1.0 - rPrimeHub);
                 // axial force, NOTE: user need to prescribe "scale" such that the integrated
                 // axial force matches the desired thrust
-                scalar fAxial = rStar * Foam::sqrt(1.0 - rStar) * scale;
+                scalar fAxial = rStar * sqrt(1.0 - rStar) * scale;
                 // we use Hoekstra's method to calculate the fCirc based on fAxial
                 scalar fCirc = fAxial * POD / constant::mathematical::pi / rPrime;
                 vector sourceVec = (fAxial * diskDirNorm + fCirc * cellC2AVecCNorm);
@@ -231,8 +231,8 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             scalar rStarMin = diskSubDict.lookupOrDefault<scalar>("rStarMin", 0.02);
             scalar rStarMax = diskSubDict.lookupOrDefault<scalar>("rStarMax", 0.98);
             scalar epsR = diskSubDict.lookupOrDefault<scalar>("epsR", 0.02);
-            scalar fRMin = Foam::pow(rStarMin, expM) * Foam::pow(1.0 - rStarMin, expN) * scale;
-            scalar fRMax = Foam::pow(rStarMax, expM) * Foam::pow(1.0 - rStarMax, expN) * scale;
+            scalar fRMin = pow(rStarMin, expM) * pow(1.0 - rStarMin, expN) * scale;
+            scalar fRMax = pow(rStarMax, expM) * pow(1.0 - rStarMax, expN) * scale;
 
             scalar thrustSourceSum = 0.0;
             scalar torqueSourceSum = 0.0;
@@ -295,22 +295,22 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 if (rStar < rStarMin)
                 {
                     scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
-                    scalar fR = fRMin * Foam::exp(-dR2 / epsR / epsR) / Foam::exp(0.0);
-                    fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
+                    scalar fR = fRMin * exp(-dR2 / epsR / epsR) ;
+                    fAxial = fR * exp(-dA2 / eps / eps) ;
                     fCirc = fAxial * POD / constant::mathematical::pi / rStarMin;
                 }
                 else if (rStar >= rStarMin && rStar <= rStarMax)
                 {
-                    scalar fR = Foam::pow(rStar, expM) * Foam::pow(1.0 - rStar, expN) * scale;
-                    fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
+                    scalar fR = pow(rStar, expM) * pow(1.0 - rStar, expN) * scale;
+                    fAxial = fR * exp(-dA2 / eps / eps) ;
                     // we use Hoekstra's method to calculate the fCirc based on fAxial
                     fCirc = fAxial * POD / constant::mathematical::pi / rPrime;
                 }
                 else
                 {
                     scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
-                    scalar fR = fRMax * Foam::exp(-dR2 / epsR / epsR) / Foam::exp(0.0);
-                    fAxial = fR * Foam::exp(-dA2 / eps / eps) / Foam::exp(0.0);
+                    scalar fR = fRMax * exp(-dR2 / epsR / epsR) ;
+                    fAxial = fR * exp(-dA2 / eps / eps) ;
                     fCirc = fAxial * POD / constant::mathematical::pi / rStarMax;
                 }
 
