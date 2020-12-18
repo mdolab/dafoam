@@ -120,18 +120,6 @@ protected:
     /// how many times the DASolver::solveAdjoint function is called
     label nSolveAdjointCalls_ = 0;
 
-    /// assign the psiVec to psiVecArray_
-    void setPsiVecDict(
-        const word objFuncName,
-        const Vec psiVec,
-        dictionary& psiVecDict);
-
-    void setTotalDerivDict(
-        const word objFuncName,
-        const word designVarName,
-        const Vec totalDerivVec,
-        dictionary& totalDerivDict);
-
     /// the matrix that stores the partials dXv/dFFD computed from the idwarp and pygeo in the pyDAFoam.py
     Mat dXvdFFDMat_;
 
@@ -250,11 +238,6 @@ public:
         const Vec rhsVec,
         Vec solVec);
 
-    /// solve the adjoint linear equations
-    label solveAdjoint(
-        const Vec xvVec,
-        const Vec wVec);
-
     /// convert the mpi vec to a seq vec
     void convertMPIVec2SeqVec(
         const Vec mpiVec,
@@ -316,11 +299,25 @@ public:
         const word designVarType,
         Mat dRdACT);
 
-    /// compute the total derivatives
-    label calcTotalDeriv(
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+
+    /// global tape for reverse-mode AD
+    codi::RealReverse::TapeType& globalADTape_;
+
+    /// compute dFdW using AD
+    void calcdFdWAD(
         const Vec xvVec,
         const Vec wVec,
-        const word designVarName);
+        const word objFuncName,
+        Vec dFdW);
+
+    /// register all state variables as the input for AD
+    void registerStateVariableInput4AD();
+
+    /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
+    void assignStateGradient2Vec(Vec vecY);
+
+#endif
 
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);
@@ -449,17 +446,6 @@ public:
     void calcPrimalResidualStatistics(
         const word mode,
         const label writeRes = 0);
-
-    /// assign the psiVecDict_ to psiVec
-    void getPsiVec(
-        const word objFuncName,
-        Vec psiVec);
-
-    /// get the value of totoal derivative that is stored in DASolver::totalDerivDict_
-    scalar getTotalDerivVal(
-        const word objFuncName,
-        const word designVarName,
-        const label idxI) const;
 
     /// set the value for DASolver::dXvdFFDMat_
     void setdXvdFFDMat(const Mat dXvdFFDMat);

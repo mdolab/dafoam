@@ -21,8 +21,6 @@ cdef extern from "DASolvers.H" namespace "Foam":
         DASolvers(char *, object) except +
         void initSolver()
         int solvePrimal(PetscVec, PetscVec)
-        int solveAdjoint(PetscVec, PetscVec)
-        int calcTotalDeriv(PetscVec, PetscVec, char *)
         void calcdRdWT(PetscVec, PetscVec, int, PetscMat)
         void calcdFdW(PetscVec, PetscVec, char *, PetscVec)
         void createMLRKSP(PetscMat, PetscMat, PetscKSP)
@@ -44,7 +42,6 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int checkMesh()
         double getObjFuncValue(char *)
         void printAllOptions()
-        double getTotalDerivVal(char *, char *, int)
         void updateDAOption(object)
         double getPrevPrimalSolTime()
         # functions for unit tests
@@ -105,12 +102,6 @@ cdef class pyDASolvers:
 
     def solvePrimal(self, Vec xvVec, Vec wVec):
         return self._thisptr.solvePrimal(xvVec.vec, wVec.vec)
-    
-    def solveAdjoint(self, Vec xvVec, Vec wVec):
-        return self._thisptr.solveAdjoint(xvVec.vec, wVec.vec)
-    
-    def calcTotalDeriv(self, Vec xvVec, Vec wVec, designVarName):
-        return self._thisptr.calcTotalDeriv(xvVec.vec, wVec.vec, designVarName)
     
     def calcdRdWT(self, Vec xvVec, Vec wVec, isPC, Mat dRdWT):
         self._thisptr.calcdRdWT(xvVec.vec, wVec.vec, isPC, dRdWT.mat)
@@ -183,9 +174,6 @@ cdef class pyDASolvers:
     
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
-    
-    def getTotalDerivVal(self, objFuncName, designVarName, idxI):
-        return self._thisptr.getTotalDerivVal(objFuncName, designVarName, idxI)
 
     def printAllOptions(self):
         self._thisptr.printAllOptions()

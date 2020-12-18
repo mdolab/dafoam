@@ -68,23 +68,6 @@ public:
         return DASolverPtr_->solvePrimal(xvVec, wVec);
     }
 
-    /// solve the adjoint linear equations
-    label solveAdjoint(
-        const Vec xvVec,
-        const Vec wVec)
-    {
-        return DASolverPtr_->solveAdjoint(xvVec, wVec);
-    }
-
-    /// compute the total derivatives
-    label calcTotalDeriv(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName)
-    {
-        return DASolverPtr_->calcTotalDeriv(xvVec, wVec, designVarName);
-    }
-
     /// compute dRdWT
     void calcdRdWT(
         const Vec xvVec,
@@ -247,17 +230,6 @@ public:
     {
         double returnVal = 0.0;
         assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValue(objFuncName));
-        return returnVal;
-    }
-
-    /// basically, we call DASolver::getTotalDerivVal
-    double getTotalDerivVal(
-        const word objFuncName,
-        const word designVarName,
-        const label idxI) const
-    {
-        double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getTotalDerivVal(objFuncName, designVarName, idxI));
         return returnVal;
     }
 

@@ -34,6 +34,10 @@ DASolver::DASolver(
       daCheckMeshPtr_(nullptr),
       daResidualPtr_(nullptr),
       objFuncHistFilePtr_(nullptr)
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+      ,
+      globalADTape_(codi::RealReverse::getGlobalTape())
+#endif
 {
     // initialize fvMesh and Time object pointer
 #include "setArgs.H"
@@ -1631,466 +1635,264 @@ void DASolver::multiPointTreatment(const Vec wVec)
     }
 }
 
-label DASolver::solveAdjoint(
-    const Vec xvVec,
-    const Vec wVec)
-{
-    /*
-    Description:
-        This function computes partials derivaties dRdWT and dFdW and 
-        solve the adjoint equations for the adjoint vector psiVec.
-        NOTE: this function should be called after calling DASolver::solvePrimal
-        and before calling DASolver::calcTotalDeriv
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
 
-        wVec: the staate variable vector
-    
-    Output:
-        Return 0 means the solveAdjoint is successful, 1 means failure
-
-        psiVecDict_: Once the adjoint vector is computed we assign their values
-        to this list
-    */
-
-    // Change the run status
-    daOptionPtr_->setOption<word>("runStatus", "solveAdjoint");
-
-    // first check if we need to change the boundary conditions based on
-    // the primalBC dict in DAOption. This is needed for multipoint cases
-    // where we need to set different boundary conditions for different points
-    if (daOptionPtr_->getOption<label>("multiPoint"))
-    {
-        this->multiPointTreatment(wVec);
-    }
-
-    label solveAdjointFail = 0;
-
-    //DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
-
-    // ********************** compute dRdWT **********************
-    Mat dRdWT;
-    MatCreate(PETSC_COMM_WORLD, &dRdWT);
-    this->calcdRdWT(xvVec, wVec, 0, dRdWT);
-
-    // ********************** compute dRdWTPC **********************
-    label adjPCLag = daOptionPtr_->getOption<label>("adjPCLag");
-    if (nSolveAdjointCalls_ == 0 || nSolveAdjointCalls_ % adjPCLag == 0)
-    {
-        MatCreate(PETSC_COMM_WORLD, &dRdWTPC_);
-        this->calcdRdWT(xvVec, wVec, 1, dRdWTPC_);
-    }
-
-    // ********************** Set up KSP **********************
-    // We will reuse the ksp to solve for all objectives
-    // create the multi-level Richardson KSP
-    KSP ksp;
-    KSPCreate(PETSC_COMM_WORLD, &ksp);
-    this->createMLRKSP(dRdWT, dRdWTPC_, ksp);
-
-    // ********************** compute dFdW **********************
-    dictionary objFuncDict = daOptionPtr_->getAllOptions().subDict("objFunc");
-
-    // first compute objFuncNames4Adj_ which contains objFuncName with addToAdjoint = True
-    // we only solve adjoint for objectives that have addToAdjoint = True
-    forAll(objFuncDict.toc(), idxI)
-    {
-        word objFuncName = objFuncDict.toc()[idxI];
-        // get the subDict for this objective function
-        dictionary objFuncSubDict = objFuncDict.subDict(objFuncName);
-        // loop over all parts for this objFuncName
-        forAll(objFuncSubDict.toc(), idxJ)
-        {
-            // get the subDict for this part
-            word objFuncPart = objFuncSubDict.toc()[idxJ];
-            dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-            // we only solve adjoint for objFuncs with addToAdjoint = True
-            label addToAdjoint = objFuncSubDictPart.getLabel("addToAdjoint");
-            if (addToAdjoint)
-            {
-                if (!objFuncNames4Adj_.found(objFuncName))
-                {
-                    objFuncNames4Adj_.append(objFuncName);
-                }
-            }
-        }
-    }
-
-    // loop over all the objFuncName in the objFunc dictionary, compute dFdW and solve the adjoint
-    forAll(objFuncDict.toc(), idxI)
-    {
-        word objFuncName = objFuncDict.toc()[idxI];
-
-        // we only solve adjoint for objectives that have addToAdjoint = True
-        if (objFuncNames4Adj_.found(objFuncName))
-        {
-            Vec dFdW;
-            VecDuplicate(wVec, &dFdW);
-            VecZeroEntries(dFdW);
-            this->calcdFdW(xvVec, wVec, objFuncName, dFdW);
-
-            // NOTE: we use dFdW for adjoint
-            // psi is the adjoint vector; the solution
-            Vec psiVec;
-            VecDuplicate(wVec, &psiVec);
-            VecZeroEntries(psiVec);
-
-            // solve the linear equation and get psiVec
-            label solError = this->solveLinearEqn(ksp, dFdW, psiVec);
-
-            if (solError)
-            {
-                solveAdjointFail = 1;
-            }
-
-            // assign the psiVec to psiVecDict_ for all objFuncName such that we can
-            // call getPsiVec later in DASolver::calcTotalDeriv
-            this->setPsiVecDict(objFuncName, psiVec, psiVecDict_);
-
-            if (daOptionPtr_->getOption<label>("writeJacobians"))
-            {
-                word outputName = "psi_" + objFuncName;
-                DAUtility::writeVectorASCII(psiVec, outputName);
-                DAUtility::writeVectorBinary(psiVec, outputName);
-            }
-
-            VecDestroy(&psiVec);
-            VecDestroy(&dFdW);
-        }
-    }
-
-    KSPDestroy(&ksp);
-    MatDestroy(&dRdWT);
-
-    // increment nSolveAdjointCalls_
-    nSolveAdjointCalls_++;
-
-    // we destroy dRdWTPC only when we need to recompute it next time
-    if (nSolveAdjointCalls_ % adjPCLag == 0)
-    {
-        MatDestroy(&dRdWTPC_);
-    }
-
-    return solveAdjointFail;
-}
-
-label DASolver::calcTotalDeriv(
+void DASolver::calcdFdWAD(
     const Vec xvVec,
     const Vec wVec,
-    const word designVarName)
+    const word objFuncName,
+    Vec dFdW)
 {
     /*
     Description:
-        This function computes the total derivative for a given design variable name
-        NOTE: this function should be called after calling DASolver::solveAdjoint
+        This function computes partials derivatives dFdW using AD
     
     Input:
         xvVec: the volume mesh coordinate vector
 
-        wVec: the staate variable vector
+        wVec: the state variable vector
 
-        designVarName: the name of the design variable for the total derivative
+        objFuncName: name of the objective function F
     
     Output:
-        Return 0 means the calcTotalDeriv is sucessful, 1 means failure
-
-        totalDerivDict_: Once the total derivative vector is computed we assign their 
-        values to this list. Note: this list store derivative wrt all the design 
-        variables and is reduced across all processors. This is necessary because
-        the pyDAFoam.py will get the total derivative from totalDerivDict_ and ask for
-        totalDeriv for all design variables, not just for the design variable stored in
-        in the local totalDerivVec. See DASolver::setTotalDerivDict for details. We need
-        to scatter the totalDerivVec and gather all the values
+        dFdW: the partial derivative vector dF/dW
+        NOTE: You need to fully initialize the dFdW vec before calliing this function,
+        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
     */
 
-    // change the run status
-    daOptionPtr_->setOption<word>("runStatus", "calcTotalDeriv");
+    VecZeroEntries(dFdW);
 
-    // compute the total derivatives
-    Info << "Computing total derivatives for " << designVarName << endl;
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
 
-    const dictionary& allOptions = daOptionPtr_->getAllOptions();
-
-    dictionary designVarDict = allOptions.subDict("designVar");
-
-    // get the subDict for this dvName
-    dictionary dvSubDict = designVarDict.subDict(designVarName);
-
-    // get the type of design variable
-    word designVarType = dvSubDict.getWord("designVarType");
-
-    // *****************************************************************************
-    // ********************************* BC dvType *********************************
-    // *****************************************************************************
-    // boundary condition as the design variable, e.g., the inlet velocity
-    if (designVarType == "BC")
+    // loop over all parts for this objFuncName
+    forAll(objFuncSubDict.toc(), idxJ)
     {
-        // ********************** compute dRdBC **********************
-        Mat dRdBC;
-        MatCreate(PETSC_COMM_WORLD, &dRdBC);
-        this->calcdRdBC(xvVec, wVec, designVarName, dRdBC);
+        // get the subDict for this part
+        word objFuncPart = objFuncSubDict.toc()[idxJ];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
-        // ********************** compute dFdBC **********************
-        dictionary objFuncDict = allOptions.subDict("objFunc");
+        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
+        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            objFuncName,
+            objFuncPart,
+            objFuncSubDictPart));
 
-        // loop over all objFuncName in the objFunc dict
-        forAll(objFuncDict.toc(), idxJ)
+        // reset tape
+        this->globalADTape_.reset();
+        // activate tape, start recording
+        this->globalADTape_.setActive();
+        // register states as the input
+        this->registerStateVariableInput4AD();
+        // update all intermediate variables and boundary conditions
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+        // compute the objective function
+        scalar fRef = daObjFunc->getObjFuncValue();
+        // register f as the output
+        this->globalADTape_.registerOutput(fRef);
+        // stop recording
+        this->globalADTape_.setPassive();
+
+        // Note: since we used reduced objFunc, we only need to
+        // assign the seed for master proc
+        if (Pstream::master())
         {
-
-            word objFuncName = objFuncDict.toc()[idxJ];
-
-            // we only solve adjoint for objectives that have addToAdjoint = True
-            if (objFuncNames4Adj_.found(objFuncName))
-            {
-                Vec dFdBC;
-                VecCreate(PETSC_COMM_WORLD, &dFdBC);
-                VecSetSizes(dFdBC, PETSC_DETERMINE, 1);
-                VecSetFromOptions(dFdBC);
-                VecZeroEntries(dFdBC);
-                this->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
-
-                // now we can compute totalDeriv = dFdBC - psiVec * dRdBC
-                Vec psiVec, totalDerivVec;
-                VecDuplicate(dFdBC, &totalDerivVec);
-                VecZeroEntries(totalDerivVec);
-                VecDuplicate(wVec, &psiVec);
-                VecZeroEntries(psiVec);
-
-                // now we can assign DASolver::psiVecDict_ to psiVec for this objFuncName
-                // NOTE: DASolver::psiVecDict_ should be set in the DASolver::solveAdjoint
-                // function. i.e., we need to call solveAdjoint before calling calcTotalDeriv
-                this->getPsiVec(objFuncName, psiVec);
-
-                // totalDeriv = dFdBCVecAllParts - psiVec * dRdBC
-                MatMultTranspose(dRdBC, psiVec, totalDerivVec);
-                VecAXPY(totalDerivVec, -1.0, dFdBC);
-                VecScale(totalDerivVec, -1.0);
-
-                // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
-                // get the totalDeriv in the python layer later
-                this->setTotalDerivDict(objFuncName, designVarName, totalDerivVec, totalDerivDict_);
-
-                VecDestroy(&psiVec);
-                VecDestroy(&totalDerivVec);
-                VecDestroy(&dFdBC);
-            }
+            fRef.setGradient(1.0);
         }
-        MatDestroy(&dRdBC);
-    }
-    // *****************************************************************************
-    // ********************************* AOA dvType ********************************
-    // *****************************************************************************
-    // angle of attack as the design variable
-    else if (designVarType == "AOA")
-    {
+        // evaluate tape to compute derivative
+        this->globalADTape_.evaluate();
 
-        // ********************** compute dRdAOA **********************
-        Mat dRdAOA;
-        MatCreate(PETSC_COMM_WORLD, &dRdAOA);
-        this->calcdRdAOA(xvVec, wVec, designVarName, dRdAOA);
+        // assign the computed derivatives from the OpenFOAM variable to dFdWPart
+        Vec dFdWPart;
+        VecDuplicate(dFdW, &dFdWPart);
+        VecZeroEntries(dFdWPart);
+        this->assignStateGradient2Vec(dFdWPart);
 
-        // ********************** compute dFdAOA **********************
-        dictionary objFuncDict = allOptions.subDict("objFunc");
+        // need to clear adjoint and tape after the computation is done!
+        this->globalADTape_.clearAdjoints();
+        this->globalADTape_.reset();
 
-        // loop over all objFuncName in the objFunc dict
-        forAll(objFuncDict.toc(), idxJ)
+        // we need to add dFdWPart to dFdW because we want to sum
+        // all dFdWPart for all parts of this objFuncName.
+        VecAXPY(dFdW, 1.0, dFdWPart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
         {
-
-            word objFuncName = objFuncDict.toc()[idxJ];
-
-            // we only solve adjoint for objectives that have addToAdjoint = True
-            if (objFuncNames4Adj_.found(objFuncName))
-            {
-                // the dFdAOAVecAllParts vector contains the sum of dFdAOAVec from all parts for this objFuncName
-                Vec dFdAOA;
-                VecCreate(PETSC_COMM_WORLD, &dFdAOA);
-                VecSetSizes(dFdAOA, PETSC_DETERMINE, 1);
-                VecSetFromOptions(dFdAOA);
-                VecZeroEntries(dFdAOA);
-                this->calcdFdAOA(xvVec, wVec, objFuncName, designVarName, dFdAOA);
-
-                // now we can compute totalDeriv = dFdAOAVecAllParts - psiVec * dRdAOA
-                Vec psiVec, totalDerivVec;
-                VecDuplicate(dFdAOA, &totalDerivVec);
-                VecZeroEntries(totalDerivVec);
-                VecDuplicate(wVec, &psiVec);
-                VecZeroEntries(psiVec);
-
-                // now we can assign DASolver::psiVecDict_ to psiVec for this objFuncName
-                // NOTE: DASolver::psiVecDict_ should be set in the DASolver::solveAdjoint
-                // function. i.e., we need to call solveAdjoint before calling calcTotalDeriv
-                this->getPsiVec(objFuncName, psiVec);
-
-                // totalDeriv = dFdAOA - psiVec * dRdAOA
-                MatMultTranspose(dRdAOA, psiVec, totalDerivVec);
-                VecAXPY(totalDerivVec, -1.0, dFdAOA);
-                VecScale(totalDerivVec, -1.0);
-
-                // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
-                // get the totalDeriv in the python layer later
-                this->setTotalDerivDict(objFuncName, designVarName, totalDerivVec, totalDerivDict_);
-
-                VecDestroy(&dFdAOA);
-                VecDestroy(&psiVec);
-                VecDestroy(&totalDerivVec);
-            }
-        }
-        MatDestroy(&dRdAOA);
-    }
-    // *****************************************************************************
-    // ********************************* FFD dvType ********************************
-    // *****************************************************************************
-    // FFD movement as the design variable
-    else if (designVarType == "FFD")
-    {
-
-        // get the size of dXvdFFDMat_, nCols will be the number of FFD poinsts
-        // for this design variable
-        // NOTE: dXvdFFDMat_ needs to be assigned by calling DASolver::setdXvdFFDMat in
-        // the python layer
-        label nDesignVars = -9999;
-        MatGetSize(dXvdFFDMat_, NULL, &nDesignVars);
-
-        // ********************** compute dRdFFD **********************
-        Mat dRdFFD;
-        MatCreate(PETSC_COMM_WORLD, &dRdFFD);
-        this->calcdRdFFD(xvVec, wVec, designVarName, dRdFFD);
-
-        // ********************** compute dFdFFD **********************
-        dictionary objFuncDict = allOptions.subDict("objFunc");
-
-        // loop over all objFuncName in the objFunc dict
-        forAll(objFuncDict.toc(), idxJ)
-        {
-
-            word objFuncName = objFuncDict.toc()[idxJ];
-
-            // we only solve adjoint for objectives that have addToAdjoint = True
-            if (objFuncNames4Adj_.found(objFuncName))
-            {
-                // the dFdFFDVecAllParts vector contains the sum of dFdFFDVec from all parts for this objFuncName
-                Vec dFdFFD;
-                VecCreate(PETSC_COMM_WORLD, &dFdFFD);
-                VecSetSizes(dFdFFD, PETSC_DETERMINE, nDesignVars);
-                VecSetFromOptions(dFdFFD);
-                VecZeroEntries(dFdFFD);
-
-                this->calcdFdFFD(xvVec, wVec, objFuncName, designVarName, dFdFFD);
-
-                // now we can compute totalDeriv = dFdFFD - psiVec * dRdFFD
-                Vec psiVec, totalDerivVec;
-                VecDuplicate(dFdFFD, &totalDerivVec);
-                VecZeroEntries(totalDerivVec);
-                VecDuplicate(wVec, &psiVec);
-                VecZeroEntries(psiVec);
-
-                // now we can assign DASolver::psiVecDict_ to psiVec for this objFuncName
-                // NOTE: DASolver::psiVecDict_ should be set in the DASolver::solveAdjoint
-                // function. i.e., we need to call solveAdjoint before calling calcTotalDeriv
-                this->getPsiVec(objFuncName, psiVec);
-
-                // totalDeriv = dFdFFD - psiVec * dRdFFD
-                MatMultTranspose(dRdFFD, psiVec, totalDerivVec);
-                VecAXPY(totalDerivVec, -1.0, dFdFFD);
-                VecScale(totalDerivVec, -1.0);
-
-                // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
-                // get the totalDeriv in the python layer later
-                this->setTotalDerivDict(objFuncName, designVarName, totalDerivVec, totalDerivDict_);
-
-                VecDestroy(&dFdFFD);
-                VecDestroy(&psiVec);
-                VecDestroy(&totalDerivVec);
-            }
+            this->calcPrimalResidualStatistics("print");
         }
 
-        // need to destroy dXvdFFDMat_ to free memory
-        MatDestroy(&dXvdFFDMat_);
-        MatDestroy(&dRdFFD);
+        VecDestroy(&dFdWPart);
     }
-    // *****************************************************************************
-    // ******************************** ACT* dvType ********************************
-    // *****************************************************************************
-    // actuator point parameters as the design variable
-    else if (designVarType == "ACTP" || designVarType == "ACTD" || designVarType == "ACTL")
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
     {
-        // determine the number of design variables for the actuator models
-        HashTable<label> nDVTable;
-        nDVTable.set("ACTP", 9);
-        nDVTable.set("ACTD", 9);
-        nDVTable.set("ACTL", 11);
-        label nActDVs = nDVTable[designVarType];
-
-        // ********************** compute dRdACT **********************
-        Mat dRdACT;
-        MatCreate(PETSC_COMM_WORLD, &dRdACT);
-        this->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
-
-        // ********************** compute dFdACT **********************
-        dictionary objFuncDict = allOptions.subDict("objFunc");
-
-        // loop over all objFuncName in the objFunc dict
-        forAll(objFuncDict.toc(), idxJ)
-        {
-
-            word objFuncName = objFuncDict.toc()[idxJ];
-
-            // we only solve adjoint for objectives that have addToAdjoint = True
-            if (objFuncNames4Adj_.found(objFuncName))
-            {
-                // dFdACT should be all zeros
-                Vec dFdACT;
-                VecCreate(PETSC_COMM_WORLD, &dFdACT);
-                VecSetSizes(dFdACT, PETSC_DETERMINE, nActDVs);
-                VecSetFromOptions(dFdACT);
-                VecZeroEntries(dFdACT);
-
-                // now we can compute totalDeriv = dFdACT - psiVec * dRdACT
-                Vec psiVec, totalDerivVec;
-                VecDuplicate(dFdACT, &totalDerivVec);
-                VecZeroEntries(totalDerivVec);
-                VecDuplicate(wVec, &psiVec);
-                VecZeroEntries(psiVec);
-
-                // now we can assign DASolver::psiVecDict_ to psiVec for this objFuncName
-                // NOTE: DASolver::psiVecDict_ should be set in the DASolver::solveAdjoint
-                // function. i.e., we need to call solveAdjoint before calling calcTotalDeriv
-                this->getPsiVec(objFuncName, psiVec);
-
-                // totalDeriv = dFdACTVecAllParts - psiVec * dRdACT
-                MatMultTranspose(dRdACT, psiVec, totalDerivVec);
-                VecAXPY(totalDerivVec, -1.0, dFdACT);
-                VecScale(totalDerivVec, -1.0);
-
-                // assign totalDerivVec to DASolver::totalDerivDict_ such that we can
-                // get the totalDeriv in the python layer later
-                this->setTotalDerivDict(objFuncName, designVarName, totalDerivVec, totalDerivDict_);
-
-                if (daOptionPtr_->getOption<label>("writeJacobians"))
-                {
-                    word outputName = "dFd" + designVarType + "Total_" + objFuncName + "_" + designVarName;
-                    DAUtility::writeVectorBinary(totalDerivVec, outputName);
-                    DAUtility::writeVectorASCII(totalDerivVec, outputName);
-                }
-
-                VecDestroy(&dFdACT);
-                VecDestroy(&psiVec);
-                VecDestroy(&totalDerivVec);
-            }
-        }
-
-        MatDestroy(&dRdACT);
+        word outputName = "dFdW_" + objFuncName;
+        DAUtility::writeVectorBinary(dFdW, outputName);
+        DAUtility::writeVectorASCII(dFdW, outputName);
     }
-    else
-    {
-        FatalErrorIn("") << "designVarType: " << designVarType << " not valid!" << abort(FatalError);
-    }
-
-    //Info << totalDerivDict_ << endl;
-
-    return 0;
 }
+
+void DASolver::registerStateVariableInput4AD()
+{
+    /*
+    Description:
+        Register all state variables as the input for AD
+    */
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                this->globalADTape_.registerInput(state[cellI][i]);
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            this->globalADTape_.registerInput(state[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            this->globalADTape_.registerInput(state[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+
+        forAll(state, faceI)
+        {
+            this->globalADTape_.registerInput(state[faceI]);
+        }
+        forAll(state.boundaryField(), patchI)
+        {
+            forAll(state.boundaryField()[patchI], faceI)
+            {
+                this->globalADTape_.registerInput(state.boundaryFieldRef()[patchI][faceI]);
+            }
+        }
+    }
+}
+
+void DASolver::assignStateGradient2Vec(Vec vecY)
+{
+    /*
+    Description:
+        Set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
+    
+    Input:
+        OpenFOAM state variables that contain the reverse-mode derivative 
+    
+    Output:
+        vecY: a vector to store the derivatives. The order of this vector is 
+        the same as the state variable vector
+    */
+    PetscScalar* vecArray;
+    VecGetArray(vecY, &vecArray);
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                vecArray[localIdx] = state[cellI][i].getGradient();
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            vecArray[localIdx] = state[cellI].getGradient();
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            vecArray[localIdx] = state[cellI].getGradient();
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                vecArray[localIdx] = state[faceI].getGradient();
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                vecArray[localIdx] = state.boundaryField()[patchIdx][faceIdx].getGradient();
+            }
+        }
+    }
+
+    VecRestoreArray(vecY, &vecArray);
+}
+
+#endif
 
 void DASolver::convertMPIVec2SeqVec(
     const Vec mpiVec,
@@ -2130,164 +1932,6 @@ void DASolver::convertMPIVec2SeqVec(
     VecRestoreArray(seqVec, &seqVecArray);
     VecScatterDestroy(&ctx);
     VecDestroy(&vout);
-
-}
-
-void DASolver::setPsiVecDict(
-    const word objFuncName,
-    const Vec psiVec,
-    dictionary& psiVecDict)
-{
-    /*
-    Description: 
-        Assign the psiVec to psiVecDict_ for a given objFuncName such that
-        we can get the psi value later when calling DASolver::calcTotalDeriv
-    
-    Input:
-        objFuncName: the name of the objective function
-
-        psiVec: the adjoint vector obtained from solving the adjoint equations
-
-    Output:
-        psiVecDict: the dictionary that store the psi value for this objFuncName
-        NOTE: psiVecDict only store values on local vector
-    */
-    scalarList psiList;
-    const PetscScalar* psiVecArray;
-    VecGetArrayRead(psiVec, &psiVecArray);
-    label Istart, Iend;
-    VecGetOwnershipRange(psiVec, &Istart, &Iend);
-    for (label i = Istart; i < Iend; i++)
-    {
-        label relIdx = i - Istart;
-        psiList.append(psiVecArray[relIdx]);
-    }
-    VecRestoreArrayRead(psiVec, &psiVecArray);
-
-    psiVecDict.set(objFuncName, psiList);
-}
-
-void DASolver::getPsiVec(
-    const word objFuncName,
-    Vec psiVec)
-{
-    /*
-    Description: 
-        Assign the psiVecDict_ to psiVec for a given objFuncName such that
-        we can get the psi value later when calling DASolver::calcTotalDeriv
-    
-    Input:
-        objFuncName: the name of the objective function
-
-        psiVecDict: the dictionary that store the psi value for this objFuncName
-        NOTE: psiVecDict only store values on local vector
-
-    Output:
-        psiVec: the adjoint vector
-    */
-    VecZeroEntries(psiVec);
-
-    scalarList psiList;
-    psiVecDict_.readEntry<scalarList>(objFuncName, psiList);
-
-    PetscScalar* psiVecArray;
-    VecGetArray(psiVec, &psiVecArray);
-    label Istart, Iend;
-    VecGetOwnershipRange(psiVec, &Istart, &Iend);
-    for (label i = Istart; i < Iend; i++)
-    {
-        label relIdx = i - Istart;
-        assignValueCheckAD(psiVecArray[relIdx], psiList[relIdx]);
-    }
-    VecRestoreArray(psiVec, &psiVecArray);
-}
-
-void DASolver::setTotalDerivDict(
-    const word objFuncName,
-    const word designVarName,
-    const Vec totalDerivVec,
-    dictionary& totalDerivDict)
-{
-    /*
-    Description: 
-        Assign the totalDerivVec to totalDerivDict for a given objFuncName and 
-        designVariableName, such that we can get the total derivatives from
-        the pyDAFoam.py for optimization
-    
-    Input:
-        objFuncName: the name of the objective function
-
-        designVarName: the name of the design variable
-
-        totalDerivVec: the total derivative vector obtained from DASolver::calcTotalDeriv
-
-    Output:
-        totalDerivDict: the dictionary to store the total derivative values.
-        Note: this list store derivative wrt all the design  variables and is reduced 
-        across all processors. This is necessary because the pyDAFoam.py will get the total 
-        derivative from totalDerivDict_ and ask for totalDeriv for all design variables, 
-        not just for the design variable stored in the local totalDerivVec. We need
-        to scatter the totalDerivVec and gather all the values
-
-    */
-
-    label vecSize;
-    VecGetSize(totalDerivVec, &vecSize);
-
-    // scatter colors to local array for all procs
-    Vec vout;
-    VecScatter ctx;
-    VecScatterCreateToAll(totalDerivVec, &ctx, &vout);
-    VecScatterBegin(ctx, totalDerivVec, vout, INSERT_VALUES, SCATTER_FORWARD);
-    VecScatterEnd(ctx, totalDerivVec, vout, INSERT_VALUES, SCATTER_FORWARD);
-
-    PetscScalar* voutArray;
-    VecGetArray(vout, &voutArray);
-
-    scalarList totalDerivList;
-
-    for (label i = 0; i < vecSize; i++)
-    {
-        totalDerivList.append(voutArray[i]);
-    }
-    VecRestoreArray(vout, &voutArray);
-    VecScatterDestroy(&ctx);
-    VecDestroy(&vout);
-
-    if (!totalDerivDict.found(objFuncName))
-    {
-        dictionary emptyDict;
-        totalDerivDict.set(objFuncName, emptyDict);
-    }
-    dictionary& objFuncSubDict = totalDerivDict.subDict(objFuncName);
-    objFuncSubDict.set(designVarName, totalDerivList);
-}
-
-scalar DASolver::getTotalDerivVal(
-    const word objFuncName,
-    const word designVarName,
-    const label idxI) const
-{
-    /*
-    Description: 
-        Get the total derivative value for a given objFuncName, designVariableName, and an index
-    
-    Input:
-        objFuncName: the name of the objective function
-
-        designVarName: the name of the design variable
-
-        idxI: the design variable index for the total derivative value
-
-    Output:
-        Return the total derivative value
-
-    */
-
-    dictionary subDict = totalDerivDict_.subDict(objFuncName);
-    scalarList valList;
-    subDict.readEntry<scalarList>(designVarName, valList);
-    return valList[idxI];
 }
 
 void DASolver::setdXvdFFDMat(const Mat dXvdFFDMat)
