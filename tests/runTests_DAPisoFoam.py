@@ -37,6 +37,20 @@ daOptions = {
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
     "hybridAdjoint": {"active": True, "nTimeInstances": 3, "periodicity": 1.0},
+    "intmdVar" : {
+         "UMean" : {
+             "operation": "Mean",
+             "fieldType": "volVectorField",
+             "baseField": "U",
+             "restartSteps": 1000
+         },
+         "pMean" : {
+             "operation": "Mean",
+             "fieldType": "volScalarField",
+             "baseField": "p",
+             "restartSteps": 1000
+          },
+    },
     "fvSource": {
         "point1": {
             "type": "actuatorPoint",

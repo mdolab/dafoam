@@ -29,6 +29,8 @@ DAIndex/DAIndex.C
 
 DAField/DAField.C
 
+DAIntmdVar/DAIntmdVar.C
+
 DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncForce.C
 DAObjFunc/DAObjFuncMoment.C
