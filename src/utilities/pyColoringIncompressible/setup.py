@@ -16,20 +16,22 @@ from Cython.Build import cythonize
 import os
 import petsc4py
 
-libName = "pyColoringIncompressible"
-
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpicxx"
 
 if os.getenv("WM_CODI_AD_MODE") is None:
+    solverName = "pyColoringIncompressible"
+    libName = "DAFoamIncompressible"
     codiADMode = "CODI_AD_NONE"
 else:
+    solverName = "pyColoringIncompressibleAD"
+    libName = "DAFoamIncompressibleAD"
     codiADMode = os.getenv("WM_CODI_AD_MODE")
 
 # These setup should reproduce calling wmake to compile OpenFOAM libraries and solvers
 ext = [
     Extension(
-        "pyColoringIncompressible",
+        solverName,
         # All source files, taken from Make/files
         sources=[
             "pyColoringIncompressible.pyx",
@@ -70,7 +72,7 @@ ext = [
             "fvOptions",
             "sampling",
             "petsc",
-            "DAFoamIncompressible",
+            libName,
             ],
         # These are pathes of linked libraries
         library_dirs=[
@@ -108,8 +110,8 @@ ext = [
 ]
 
 setup(
-    name=libName,
-    packages=[libName],  # this must be the same as the name above
+    name=solverName,
+    packages=[solverName],  # this must be the same as the name above
     description="Cython wrapper for OpenFOAM",
     long_description="Cython wrapper for OpenFOAM",
     ext_modules=cythonize(ext, language_level=3),

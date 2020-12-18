@@ -9,4 +9,3 @@ cd src/adjoint && ./Allclean && cd -
 cd src/pyDASolvers && ./Allclean && cd -
 cd src/utilities && ./Allclean && cd -
 cd tests && ./Allclean && cd -
-rm -rf dafoam/*.so

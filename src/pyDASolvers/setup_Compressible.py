@@ -16,20 +16,22 @@ from Cython.Build import cythonize
 import os
 import petsc4py
 
-libName = "pyDASolverCompressible"
-
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpicxx"
 
 if os.getenv("WM_CODI_AD_MODE") is None:
+    solverName = "pyDASolverCompressible"
+    libName = "DAFoamCompressible"
     codiADMode = "CODI_AD_NONE"
 else:
+    solverName = "pyDASolverCompressibleAD"
+    libName = "DAFoamCompressibleAD"
     codiADMode = os.getenv("WM_CODI_AD_MODE")
 
 # These setup should reproduce calling wmake to compile OpenFOAM libraries and solvers
 ext = [
     Extension(
-        libName,
+        solverName,
         # All source files, taken from Make/files
         sources=["pyDASolvers.pyx", "DASolvers.C"],
         # All include dirs, refer to Make/options in OpenFOAM
@@ -70,7 +72,7 @@ ext = [
             "sampling",
             "meshTools",
             "fvOptions",
-            "DAFoamCompressible",
+            libName,
             "petsc",
         ],
         # These are pathes of linked libraries
@@ -110,8 +112,8 @@ ext = [
 
 
 setup(
-    name=libName,
-    packages=[libName],
+    name=solverName,
+    packages=[solverName],
     description="Cython wrapper for OpenFOAM",
     long_description="Cython wrapper for OpenFOAM",
     ext_modules=cythonize(ext, language_level=3),

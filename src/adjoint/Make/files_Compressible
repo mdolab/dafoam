@@ -79,4 +79,4 @@ boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchSca
 models/dummyTurbulenceModel/makeDummyTurbulenceModelCompressible.C
 models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Compressible.C
 
-LIB = $(FOAM_USER_LIBBIN)/libDAFoamCompressible
+LIB = $(FOAM_USER_LIBBIN)/$(DAFOAM_COMP_LIB_NAME)

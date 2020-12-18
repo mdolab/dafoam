@@ -5,6 +5,16 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
+if [ -z "$WM_CODI_AD_MODE" ]; then
+  export DAFOAM_INCOMP_LIB_NAME="libDAFoamIncompressible"
+  export DAFOAM_COMP_LIB_NAME="libDAFoamCompressible"
+  export DAFOAM_SOLID_LIB_NAME="libDAFoamSolid"
+else
+  export DAFOAM_INCOMP_LIB_NAME="libDAFoamIncompressibleAD"
+  export DAFOAM_COMP_LIB_NAME="libDAFoamCompressibleAD"
+  export DAFOAM_SOLID_LIB_NAME="libDAFoamSolidAD"
+fi
+
 case $1 in
   "opt")
     cp Make/files_Incompressible Make/files
