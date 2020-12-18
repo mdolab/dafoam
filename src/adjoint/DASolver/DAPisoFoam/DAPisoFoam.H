@@ -19,6 +19,7 @@
 #include "DARegDbSinglePhaseTransportModel.H"
 #include "DARegDbTurbulenceModelIncompressible.H"
 #include "DAFvSource.H"
+#include "DAIntmdVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -54,6 +55,9 @@ protected:
 
     /// DATurbulenceModel pointer
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+
+    /// DAIntmVar pointer
+    autoPtr<DAIntmdVar> daIntmdVarPtr_;
 
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;
