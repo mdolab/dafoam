@@ -15,7 +15,7 @@
 # for using Petsc
 from petsc4py.PETSc cimport Vec, PetscVec, Mat, PetscMat, KSP, PetscKSP
 
-# declear cpp functions
+# declare cpp functions
 cdef extern from "DASolvers.H" namespace "Foam":
     cppclass DASolvers:
         DASolvers(char *, object) except +
@@ -23,6 +23,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int solvePrimal(PetscVec, PetscVec)
         void calcdRdWT(PetscVec, PetscVec, int, PetscMat)
         void calcdFdW(PetscVec, PetscVec, char *, PetscVec)
+        void calcdFdWAD(PetscVec, PetscVec, char *, PetscVec)
         void createMLRKSP(PetscMat, PetscMat, PetscKSP)
         void solveLinearEqn(PetscKSP, PetscVec, PetscVec)
         void calcdRdBC(PetscVec, PetscVec, char *, PetscMat)
@@ -96,7 +97,7 @@ cdef class pyDASolvers:
         """
         self._thisptr = new DASolvers(argsAll, pyOptions)
 
-    # wrap all the other memeber functions in the cpp class
+    # wrap all the other member functions in the cpp class
     def initSolver(self):
         self._thisptr.initSolver()
 
@@ -108,6 +109,9 @@ cdef class pyDASolvers:
     
     def calcdFdW(self, Vec xvVec, Vec wVec, objFuncName, Vec dFdW):
         self._thisptr.calcdFdW(xvVec.vec, wVec.vec, objFuncName, dFdW.vec)
+    
+    def calcdFdWAD(self, Vec xvVec, Vec wVec, objFuncName, Vec dFdW):
+        self._thisptr.calcdFdWAD(xvVec.vec, wVec.vec, objFuncName, dFdW.vec)
     
     def createMLRKSP(self, Mat jacMat, Mat jacPCMat, KSP myKSP):
         self._thisptr.createMLRKSP(jacMat.mat, jacPCMat.mat, myKSP.ksp)

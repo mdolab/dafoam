@@ -88,6 +88,16 @@ public:
         DASolverPtr_->calcdFdW(xvVec, wVec, objFuncName, dFdW);
     }
 
+    /// compute dFdW using reverse-mode AD
+    void calcdFdWAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        Vec dFdW)
+    {
+        DASolverPtr_->calcdFdWAD(xvVec, wVec, objFuncName, dFdW);
+    }
+
     /// create the multi-level Richardson KSP for solving linear equation
     void createMLRKSP(
         const Mat jacMat,

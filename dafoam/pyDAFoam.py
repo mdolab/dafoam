@@ -1300,7 +1300,15 @@ class PYDAFOAM(object):
                 dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
                 dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
                 dFdW.setFromOptions()
-                self.solver.calcdFdW(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
+                if self.getOption("adjJacobianOption") == "JacobianFD":
+                    self.solver.calcdFdW(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
+                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                    self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
+                else:
+                    raise Error(
+                        "adjJacobianOption: %s not valid! Options: JacobianFD and JacobianFree"
+                        % self.getOption("adjJacobianOption")
+                    )
 
                 # Initialize the adjoint vector psi and solve for it
                 psi = PETSc.Vec().create(PETSc.COMM_WORLD)
@@ -1462,20 +1470,42 @@ class PYDAFOAM(object):
             from .pyDASolverIncompressible import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
+
+            if self.getOption("adjJacobianOption") == "JacobianFree":
+
+                from .pyDASolverIncompressibleAD import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
         elif solverName in self.solverRegistry["Compressible"]:
 
             from .pyDASolverCompressible import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
+
+            if self.getOption("adjJacobianOption") == "JacobianFree":
+
+                from .pyDASolverCompressibleAD import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
         elif solverName in self.solverRegistry["Solid"]:
 
             from .pyDASolverSolid import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
+
+            if self.getOption("adjJacobianOption") == "JacobianFree":
+
+                from .pyDASolverSolidAD import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
         else:
             raise Error("pyDAFoam: %s not registered! Check _solverRegistry(self)." % solverName)
 
         self.solver.initSolver()
+
+        if self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.initSolver()
 
         self.solver.printAllOptions()
 

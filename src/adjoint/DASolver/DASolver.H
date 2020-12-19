@@ -304,6 +304,7 @@ public:
     /// global tape for reverse-mode AD
     codi::RealReverse::TapeType& globalADTape_;
 
+#endif
     /// compute dFdW using AD
     void calcdFdWAD(
         const Vec xvVec,
@@ -316,8 +317,6 @@ public:
 
     /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
     void assignStateGradient2Vec(Vec vecY);
-
-#endif
 
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);

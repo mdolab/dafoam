@@ -1635,14 +1635,13 @@ void DASolver::multiPointTreatment(const Vec wVec)
     }
 }
 
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
-
 void DASolver::calcdFdWAD(
     const Vec xvVec,
     const Vec wVec,
     const word objFuncName,
     Vec dFdW)
 {
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
     Description:
         This function computes partials derivatives dFdW using AD
@@ -1739,10 +1738,13 @@ void DASolver::calcdFdWAD(
         DAUtility::writeVectorBinary(dFdW, outputName);
         DAUtility::writeVectorASCII(dFdW, outputName);
     }
+
+#endif
 }
 
 void DASolver::registerStateVariableInput4AD()
 {
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
     Description:
         Register all state variables as the input for AD
@@ -1805,10 +1807,13 @@ void DASolver::registerStateVariableInput4AD()
             }
         }
     }
+
+#endif
 }
 
 void DASolver::assignStateGradient2Vec(Vec vecY)
 {
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
     Description:
         Set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
@@ -1820,6 +1825,7 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
         vecY: a vector to store the derivatives. The order of this vector is 
         the same as the state variable vector
     */
+
     PetscScalar* vecArray;
     VecGetArray(vecY, &vecArray);
 
@@ -1890,9 +1896,9 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
     }
 
     VecRestoreArray(vecY, &vecArray);
-}
 
 #endif
+}
 
 void DASolver::convertMPIVec2SeqVec(
     const Vec mpiVec,
