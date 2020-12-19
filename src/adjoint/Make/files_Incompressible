@@ -80,4 +80,4 @@ boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchSca
 models/dummyTurbulenceModel/makeDummyTurbulenceModelIncompressible.C
 models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Incompressible.C
 
-LIB = $(FOAM_USER_LIBBIN)/$(DAFOAM_INCOMP_LIB_NAME)
+LIB = $(FOAM_USER_LIBBIN)/libDAFoamIncompressible$(DF_LIB_SUFFIX)

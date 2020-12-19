@@ -19,19 +19,19 @@ import petsc4py
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpicxx"
 
+solverName = "pyDASolverIncompressible"
+
 if os.getenv("WM_CODI_AD_MODE") is None:
-    solverName = "pyDASolverIncompressible"
-    libName = "DAFoamIncompressible"
+    libSuffix = ""
     codiADMode = "CODI_AD_NONE"
 else:
-    solverName = "pyDASolverIncompressibleAD"
-    libName = "DAFoamIncompressibleAD"
+    libSuffix = "AD"
     codiADMode = os.getenv("WM_CODI_AD_MODE")
 
 # These setup should reproduce calling wmake to compile OpenFOAM libraries and solvers
 ext = [
     Extension(
-        solverName,
+        solverName + libSuffix,
         # All source files, taken from Make/files
         sources=["pyDASolvers.pyx", "DASolvers.C"],
         # All include dirs, refer to Make/options in OpenFOAM
@@ -62,14 +62,14 @@ ext = [
         ],
         # These are from Make/options:EXE_LIBS
         libraries=[
-            "turbulenceModels",
-            "incompressibleTurbulenceModels",
-            "incompressibleTransportModels",
-            "finiteVolume",
-            "sampling",
-            "meshTools",
-            "fvOptions",
-            libName,
+            "turbulenceModels" + libSuffix,
+            "incompressibleTurbulenceModels" + libSuffix,
+            "incompressibleTransportModels" + libSuffix,
+            "finiteVolume" + libSuffix,
+            "sampling" + libSuffix,
+            "meshTools" + libSuffix,
+            "fvOptions" + libSuffix,
+            "DAFoamIncompressible" + libSuffix,
             "petsc",
         ],
         # These are pathes of linked libraries
@@ -109,8 +109,8 @@ ext = [
 
 
 setup(
-    name=solverName,
-    packages=[solverName],
+    name=solverName + libSuffix,
+    packages=[solverName + libSuffix],
     description="Cython wrapper for OpenFOAM",
     long_description="Cython wrapper for OpenFOAM",
     ext_modules=cythonize(ext, language_level=3),

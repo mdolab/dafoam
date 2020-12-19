@@ -44,4 +44,4 @@ DASolver/DASolidDisplacementFoam/DASolidDisplacementFoam.C
 
 boundaryConditions/tractionDisplacement/tractionDisplacementFvPatchVectorField.C
 
-LIB = $(FOAM_USER_LIBBIN)/$(DAFOAM_SOLID_LIB_NAME)
+LIB = $(FOAM_USER_LIBBIN)/libDAFoamSolid$(DF_LIB_SUFFIX)

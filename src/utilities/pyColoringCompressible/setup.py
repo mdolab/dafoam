@@ -19,19 +19,19 @@ import petsc4py
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpicxx"
 
+solverName = "pyColoringCompressible"
+
 if os.getenv("WM_CODI_AD_MODE") is None:
-    solverName = "pyColoringCompressible"
-    libName = "DAFoamCompressible"
+    libSuffix = ""
     codiADMode = "CODI_AD_NONE"
 else:
-    solverName = "pyColoringCompressibleAD"
-    libName = "DAFoamCompressibleAD"
+    libSuffix = "AD"
     codiADMode = os.getenv("WM_CODI_AD_MODE")
 
 # These setup should reproduce calling wmake to compile OpenFOAM libraries and solvers
 ext = [
     Extension(
-        solverName,
+        solverName + libSuffix,
         # All source files, taken from Make/files
         sources=[
             "pyColoringCompressible.pyx",
@@ -65,17 +65,17 @@ ext = [
         ],
         # These are from Make/options:EXE_LIBS
         libraries=[
-            "compressibleTransportModels",
-            "fluidThermophysicalModels",
-            "specie",
-            "turbulenceModels",
-            "compressibleTurbulenceModels",
-            "finiteVolume",
-            "meshTools",
-            "fvOptions",
-            "sampling",
+            "compressibleTransportModels" + libSuffix,
+            "fluidThermophysicalModels" + libSuffix,
+            "specie" + libSuffix,
+            "turbulenceModels" + libSuffix,
+            "compressibleTurbulenceModels" + libSuffix,
+            "finiteVolume" + libSuffix,
+            "meshTools" + libSuffix,
+            "fvOptions" + libSuffix,
+            "sampling" + libSuffix,
+            "DAFoamCompressible" + libSuffix,
             "petsc",
-            libName,
             ],
         # These are pathes of linked libraries
         library_dirs=[
@@ -113,8 +113,8 @@ ext = [
 ]
 
 setup(
-    name=solverName,
-    packages=[solverName],  # this must be the same as the name above
+    name=solverName + libSuffix,
+    packages=[solverName + libSuffix],  # this must be the same as the name above
     description="Cython wrapper for OpenFOAM",
     long_description="Cython wrapper for OpenFOAM",
     ext_modules=cythonize(ext, language_level=3),

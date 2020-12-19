@@ -19,19 +19,19 @@ import petsc4py
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpicxx"
 
+solverName = "pyDASolverCompressible"
+
 if os.getenv("WM_CODI_AD_MODE") is None:
-    solverName = "pyDASolverCompressible"
-    libName = "DAFoamCompressible"
+    libSuffix = ""
     codiADMode = "CODI_AD_NONE"
 else:
-    solverName = "pyDASolverCompressibleAD"
-    libName = "DAFoamCompressibleAD"
+    libSuffix = "AD"
     codiADMode = os.getenv("WM_CODI_AD_MODE")
 
 # These setup should reproduce calling wmake to compile OpenFOAM libraries and solvers
 ext = [
     Extension(
-        solverName,
+        solverName + libSuffix,
         # All source files, taken from Make/files
         sources=["pyDASolvers.pyx", "DASolvers.C"],
         # All include dirs, refer to Make/options in OpenFOAM
@@ -63,16 +63,16 @@ ext = [
         ],
         # These are from Make/options:EXE_LIBS
         libraries=[
-            "compressibleTransportModels",
-            "fluidThermophysicalModels",
-            "specie",
-            "turbulenceModels",
-            "compressibleTurbulenceModels",
-            "finiteVolume",
-            "sampling",
-            "meshTools",
-            "fvOptions",
-            libName,
+            "compressibleTransportModels" + libSuffix,
+            "fluidThermophysicalModels" + libSuffix,
+            "specie" + libSuffix,
+            "turbulenceModels" + libSuffix,
+            "compressibleTurbulenceModels" + libSuffix,
+            "finiteVolume" + libSuffix,
+            "sampling" + libSuffix,
+            "meshTools" + libSuffix,
+            "fvOptions" + libSuffix,
+            "DAFoamCompressible" + libSuffix,
             "petsc",
         ],
         # These are pathes of linked libraries
@@ -112,8 +112,8 @@ ext = [
 
 
 setup(
-    name=solverName,
-    packages=[solverName],
+    name=solverName + libSuffix,
+    packages=[solverName + libSuffix],
     description="Cython wrapper for OpenFOAM",
     long_description="Cython wrapper for OpenFOAM",
     ext_modules=cythonize(ext, language_level=3),
