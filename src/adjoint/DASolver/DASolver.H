@@ -84,6 +84,9 @@ protected:
     /// DACheckMesh object pointer
     autoPtr<DACheckMesh> daCheckMeshPtr_;
 
+    /// DALinearEqn pointer
+    autoPtr<DALinearEqn> daLinearEqnPtr_;
+
     /// DAResidual pointer
     autoPtr<DAResidual> daResidualPtr_;
 
@@ -256,8 +259,8 @@ public:
         const Vec mpiVec,
         Vec seqVec);
 
-    /// special treatment for multipoint optimization cases
-    void multiPointTreatment(const Vec wVec);
+    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
+    void updateOFField(const Vec wVec);
 
     /// compute dRdBC
     void calcdRdBC(

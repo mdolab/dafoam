@@ -32,6 +32,7 @@ DASolver::DASolver(
       daIndexPtr_(nullptr),
       daFieldPtr_(nullptr),
       daCheckMeshPtr_(nullptr),
+      daLinearEqnPtr_(nullptr),
       daResidualPtr_(nullptr),
       objFuncHistFilePtr_(nullptr)
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
@@ -1589,8 +1590,7 @@ void DASolver::createMLRKSP(
         up parameters for solving the linear equations
     */
 
-    DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
-    daLinearEqn.createMLRKSP(jacMat, jacPCMat, ksp);
+    daLinearEqnPtr_->createMLRKSP(jacMat, jacPCMat, ksp);
 }
 
 void DASolver::createMLRKSPMatrixFree(
@@ -1608,8 +1608,7 @@ void DASolver::createMLRKSPMatrixFree(
         matrix-free state Jacobian matrix
     */
 
-    DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
-    daLinearEqn.createMLRKSP(dRdWTMF_, jacPCMat, ksp);
+    daLinearEqnPtr_->createMLRKSP(dRdWTMF_, jacPCMat, ksp);
 #endif
 }
 
@@ -1633,8 +1632,7 @@ label DASolver::solveLinearEqn(
         Return 0 if the linear equation solution finished successfully otherwise return 1
     */
 
-    DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
-    label error = daLinearEqn.solveLinearEqn(ksp, rhsVec, solVec);
+    label error = daLinearEqnPtr_->solveLinearEqn(ksp, rhsVec, solVec);
 
     // need to reset globalADTapeInitialized to 0 because every matrix-free
     // adjoint solution need to re-initialize the AD tape
@@ -1643,13 +1641,25 @@ label DASolver::solveLinearEqn(
     return error;
 }
 
-void DASolver::multiPointTreatment(const Vec wVec)
+void DASolver::updateOFField(const Vec wVec)
 {
-    Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
+    /*
+    Description:
+        Update the OpenFOAM field values (including both internal
+        and boundary fields) based on the state vector wVec
+
+    Input:
+        wVec: state variable vector
+
+    Output:
+        OpenFoam flow fields (internal and boundary)
+    */
+    Info << "Updating the OpenFOAM fields..." << endl;
+    //Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
     daFieldPtr_->setPrimalBoundaryConditions();
     daFieldPtr_->stateVec2OFField(wVec);
     // We need to call correctBC multiple times to reproduce
-    // the exact residual for mulitpoint, this is needed for some boundary conditions
+    // the exact residual, this is needed for some boundary conditions
     // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
     for (label i = 0; i < 10; i++)
     {
@@ -1673,6 +1683,11 @@ void DASolver::initializedRdWTMatrixFree()
     MatShellSetOperation(dRdWTMF_, MATOP_MULT, (void (*)(void))dRdWTMatVecMultFunction);
     MatSetUp(dRdWTMF_);
     Info << "dRdWT Jacobian Free created!" << endl;
+
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        this->calcPrimalResidualStatistics("print");
+    }
 #endif
 }
 
@@ -1838,6 +1853,7 @@ void DASolver::calcdFdWAD(
         if (daOptionPtr_->getOption<label>("debug"))
         {
             this->calcPrimalResidualStatistics("print");
+            Info << objFuncName << ": " << fRef << endl;
         }
 
         VecDestroy(&dFdWPart);

@@ -49,6 +49,8 @@ void DASolidDisplacementFoam::initSolver()
 #include "createAdjointSolid.H"
     // initialize checkMesh
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
+
+    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 }
 
 label DASolidDisplacementFoam::solvePrimal(

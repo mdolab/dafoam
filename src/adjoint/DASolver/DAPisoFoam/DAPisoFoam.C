@@ -50,6 +50,8 @@ void DAPisoFoam::initSolver()
     // initialize checkMesh
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
+    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+
     label active = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
 
     nTimeInstances_ =

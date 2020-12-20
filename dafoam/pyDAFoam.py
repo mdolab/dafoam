@@ -1271,7 +1271,11 @@ class PYDAFOAM(object):
         self.updateDAOption()
 
         if self.getOption("multiPoint"):
-            self.solver.multiPointTreatment(self.wVec)
+            self.solver.updateOFField(self.wVec)
+            self.solverAD.updateOFField(self.wVec)
+        
+        if self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.updateOFField(self.wVec)
 
         self.adjointFail = 0
 
@@ -2276,6 +2280,9 @@ class PYDAFOAM(object):
             raise Error("self._initSolver not called!")
 
         self.solver.updateDAOption(self.options)
+
+        if self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.updateDAOption(self.options)
 
     def _printCurrentOptions(self):
         """

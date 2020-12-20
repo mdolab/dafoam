@@ -218,9 +218,10 @@ public:
         DASolverPtr_->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
     }
 
-    void multiPointTreatment(const Vec wVec)
+    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
+    void updateOFField(const Vec wVec)
     {
-        DASolverPtr_->multiPointTreatment(wVec);
+        DASolverPtr_->updateOFField(wVec);
     }
 
     /// basically, we call DAIndex::getGlobalXvIndex
