@@ -107,6 +107,26 @@ public:
         DASolverPtr_->createMLRKSP(jacMat, jacPCMat, ksp);
     }
 
+    /// create a multi-level, Richardson KSP object with matrix-free Jacobians
+    void createMLRKSPMatrixFree(
+        const Mat jacPCMat,
+        KSP ksp)
+    {
+        DASolverPtr_->createMLRKSPMatrixFree(jacPCMat, ksp);
+    }
+
+    /// initialize matrix free dRdWT
+    void initializedRdWTMatrixFree()
+    {
+        DASolverPtr_->initializedRdWTMatrixFree();
+    }
+
+    /// destroy matrix free dRdWT
+    void destroydRdWTMatrixFree()
+    {
+        DASolverPtr_->destroydRdWTMatrixFree();
+    }
+
     /// solve the linear equation
     void solveLinearEqn(
         const KSP ksp,

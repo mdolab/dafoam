@@ -1276,8 +1276,11 @@ class PYDAFOAM(object):
         self.adjointFail = 0
 
         # calculate dRdWT
-        dRdWT = PETSc.Mat().create(PETSc.COMM_WORLD)
-        self.solver.calcdRdWT(self.xvVec, self.wVec, 0, dRdWT)
+        if self.getOption("adjJacobianOption") == "JacobianFD":
+            dRdWT = PETSc.Mat().create(PETSc.COMM_WORLD)
+            self.solver.calcdRdWT(self.xvVec, self.wVec, 0, dRdWT)
+        elif self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.initializedRdWTMatrixFree()
 
         # calculate dRdWTPC
         adjPCLag = self.getOption("adjPCLag")
@@ -1287,7 +1290,10 @@ class PYDAFOAM(object):
 
         # Initialize the KSP object
         ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-        self.solver.createMLRKSP(dRdWT, self.dRdWTPC, ksp)
+        if self.getOption("adjJacobianOption") == "JacobianFD":
+            self.solver.createMLRKSP(dRdWT, self.dRdWTPC, ksp)
+        elif self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
 
         # initialize adjoint vector dict
         adjVectors = {}
@@ -1304,24 +1310,25 @@ class PYDAFOAM(object):
                     self.solver.calcdFdW(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
                 elif self.getOption("adjJacobianOption") == "JacobianFree":
                     self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
-                else:
-                    raise Error(
-                        "adjJacobianOption: %s not valid! Options: JacobianFD and JacobianFree"
-                        % self.getOption("adjJacobianOption")
-                    )
 
                 # Initialize the adjoint vector psi and solve for it
                 psi = PETSc.Vec().create(PETSc.COMM_WORLD)
                 psi.setSizes((wSize, PETSc.DECIDE), bsize=1)
                 psi.setFromOptions()
-                self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, psi)
+                if self.getOption("adjJacobianOption") == "JacobianFD":
+                    self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, psi)
+                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, psi)
 
                 adjVectors[objFuncName] = psi
 
                 dFdW.destroy()
 
         ksp.destroy()
-        dRdWT.destroy()
+        if self.getOption("adjJacobianOption") == "JacobianFD":
+            dRdWT.destroy()
+        elif self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.destroydRdWTMatrixFree()
         # we destroy dRdWTPC only when we need to recompute it next time
         # see the bottom of this function
 

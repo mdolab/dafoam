@@ -161,6 +161,19 @@ protected:
     /// write associated fields such as relative velocity
     void writeAssociatedFields();
 
+    /// matrix-free dRdWT matrix used in GMRES solution
+    Mat dRdWTMF_;
+
+    /// a flag in dRdWTMatVecMultFunction to determine if the global tap is initialized
+    label globalADTape4dRdWTInitialized = 0;
+
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+
+    /// global tape for reverse-mode AD
+    codi::RealReverse::TapeType& globalADTape_;
+
+#endif
+
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -299,12 +312,11 @@ public:
         const word designVarType,
         Mat dRdACT);
 
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /// create a multi-level, Richardson KSP object with matrix-free Jacobians
+    void createMLRKSPMatrixFree(
+        const Mat jacPCMat,
+        KSP ksp);
 
-    /// global tape for reverse-mode AD
-    codi::RealReverse::TapeType& globalADTape_;
-
-#endif
     /// compute dFdW using AD
     void calcdFdWAD(
         const Vec xvVec,
@@ -312,11 +324,32 @@ public:
         const word objFuncName,
         Vec dFdW);
 
-    /// register all state variables as the input for AD
+    /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
+    static PetscErrorCode dRdWTMatVecMultFunction(Mat dRdWT, Vec vecX, Vec vecY);
+    
+    /// initialize matrix free dRdWT
+    void initializedRdWTMatrixFree();
+
+    /// destroy the matrix free dRdWT
+    void destroydRdWTMatrixFree();
+
+    /// register all state variables as the input for reverse-mode AD
     void registerStateVariableInput4AD();
+
+    /// register all residuals as the output for reverse-mode AD
+    void registerResidualOutput4AD();
+
+    /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
+    void assignVec2ResidualGradient(Vec vecX);
 
     /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
     void assignStateGradient2Vec(Vec vecY);
+
+    /// normalize the reverse-mode AD derivatives stored in vecY
+    void normalizeGradientVec(Vec vecY);
+
+    /// initialize the CoDiPack reverse-mode AD global tape for computing dRdWT*psi
+    void initializeGlobalADTape4dRdWT();
 
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);

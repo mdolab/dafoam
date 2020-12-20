@@ -22,9 +22,12 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initSolver()
         int solvePrimal(PetscVec, PetscVec)
         void calcdRdWT(PetscVec, PetscVec, int, PetscMat)
+        void initializedRdWTMatrixFree()
+        void destroydRdWTMatrixFree()
         void calcdFdW(PetscVec, PetscVec, char *, PetscVec)
         void calcdFdWAD(PetscVec, PetscVec, char *, PetscVec)
         void createMLRKSP(PetscMat, PetscMat, PetscKSP)
+        void createMLRKSPMatrixFree(PetscMat, PetscKSP)
         void solveLinearEqn(PetscKSP, PetscVec, PetscVec)
         void calcdRdBC(PetscVec, PetscVec, char *, PetscMat)
         void calcdFdBC(PetscVec, PetscVec, char *, char *, PetscVec)
@@ -107,6 +110,12 @@ cdef class pyDASolvers:
     def calcdRdWT(self, Vec xvVec, Vec wVec, isPC, Mat dRdWT):
         self._thisptr.calcdRdWT(xvVec.vec, wVec.vec, isPC, dRdWT.mat)
     
+    def initializedRdWTMatrixFree(self):
+        self._thisptr.initializedRdWTMatrixFree()
+    
+    def destroydRdWTMatrixFree(self):
+        self._thisptr.destroydRdWTMatrixFree()
+    
     def calcdFdW(self, Vec xvVec, Vec wVec, objFuncName, Vec dFdW):
         self._thisptr.calcdFdW(xvVec.vec, wVec.vec, objFuncName, dFdW.vec)
     
@@ -115,6 +124,9 @@ cdef class pyDASolvers:
     
     def createMLRKSP(self, Mat jacMat, Mat jacPCMat, KSP myKSP):
         self._thisptr.createMLRKSP(jacMat.mat, jacPCMat.mat, myKSP.ksp)
+    
+    def createMLRKSPMatrixFree(self, Mat jacPCMat, KSP myKSP):
+        self._thisptr.createMLRKSPMatrixFree(jacPCMat.mat, myKSP.ksp)
     
     def solveLinearEqn(self, KSP myKSP, Vec rhsVec, Vec solVec):
         self._thisptr.solveLinearEqn(myKSP.ksp, rhsVec.vec, solVec.vec)

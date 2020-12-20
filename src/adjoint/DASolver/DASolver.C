@@ -1593,6 +1593,26 @@ void DASolver::createMLRKSP(
     daLinearEqn.createMLRKSP(jacMat, jacPCMat, ksp);
 }
 
+void DASolver::createMLRKSPMatrixFree(
+    const Mat jacPCMat,
+    KSP ksp)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Call createMLRKSP from DALinearEqn
+        This is the main function we need to call to initialize the KSP and set
+        up parameters for solving the linear equations
+        NOTE: this is the matrix-free version of the createMLRKSP function.
+        We dont need to input the jacMat because we will use dRdWTMF_: the
+        matrix-free state Jacobian matrix
+    */
+
+    DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
+    daLinearEqn.createMLRKSP(dRdWTMF_, jacPCMat, ksp);
+#endif
+}
+
 label DASolver::solveLinearEqn(
     const KSP ksp,
     const Vec rhsVec,
@@ -1615,6 +1635,11 @@ label DASolver::solveLinearEqn(
 
     DALinearEqn daLinearEqn(meshPtr_(), daOptionPtr_());
     label error = daLinearEqn.solveLinearEqn(ksp, rhsVec, solVec);
+
+    // need to reset globalADTapeInitialized to 0 because every matrix-free
+    // adjoint solution need to re-initialize the AD tape
+    globalADTape4dRdWTInitialized = 0;
+
     return error;
 }
 
@@ -1633,6 +1658,90 @@ void DASolver::multiPointTreatment(const Vec wVec)
         daModelPtr_->correctBoundaryConditions();
         daModelPtr_->updateIntermediateVariables();
     }
+}
+
+void DASolver::initializedRdWTMatrixFree()
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        This function initialize the matrix-free dRdWT, which will be
+        used later in the adjoint solution
+    */
+    label localSize = daIndexPtr_->nLocalAdjointStates;
+    MatCreateShell(PETSC_COMM_WORLD, localSize, localSize, PETSC_DETERMINE, PETSC_DETERMINE, this, &dRdWTMF_);
+    MatShellSetOperation(dRdWTMF_, MATOP_MULT, (void (*)(void))dRdWTMatVecMultFunction);
+    MatSetUp(dRdWTMF_);
+    Info << "dRdWT Jacobian Free created!" << endl;
+#endif
+}
+
+void DASolver::destroydRdWTMatrixFree()
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Destroy dRdWTMF_
+    */
+    MatDestroy(&dRdWTMF_);
+#endif
+}
+
+PetscErrorCode DASolver::dRdWTMatVecMultFunction(Mat dRdWTMF, Vec vecX, Vec vecY)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        This function implements a way to compute matrix-vector products
+        associated with dRdWTMF matrix. 
+        Here we need to return vecY = dRdWTMF * vecX.
+        We use the reverse-mode AD to compute vecY in a matrix-free manner
+    */
+    DASolver* ctx;
+    MatShellGetContext(dRdWTMF, (void**)&ctx);
+
+    if (!ctx->globalADTape4dRdWTInitialized)
+    {
+        ctx->initializeGlobalADTape4dRdWT();
+        ctx->globalADTape4dRdWTInitialized = 1;
+    }
+
+    ctx->assignVec2ResidualGradient(vecX);
+    ctx->globalADTape_.evaluate();
+    ctx->assignStateGradient2Vec(vecY);
+    ctx->normalizeGradientVec(vecY);
+    ctx->globalADTape_.clearAdjoints();
+
+#endif
+
+    return 0;
+}
+
+void DASolver::initializeGlobalADTape4dRdWT()
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        This function implements a way to compute matrix-vector products
+        associated with dRdWTMF matrix. 
+        Here we need to return vecY = dRdWTMF * vecX.
+        We use the reverse-mode AD to compute vecY in a matrix-free manner
+    */
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    this->registerStateVariableInput4AD();
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+#endif
 }
 
 void DASolver::calcdFdWAD(
@@ -1658,6 +1767,8 @@ void DASolver::calcdFdWAD(
         NOTE: You need to fully initialize the dFdW vec before calliing this function,
         i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
     */
+
+    Info << "Calculating dFdW using reverse-mode AD" << endl;
 
     VecZeroEntries(dFdW);
 
@@ -1747,7 +1858,7 @@ void DASolver::registerStateVariableInput4AD()
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
     Description:
-        Register all state variables as the input for AD
+        Register all state variables as the input for reverse-mode AD
     */
 
     forAll(stateInfo_["volVectorStates"], idxI)
@@ -1808,6 +1919,257 @@ void DASolver::registerStateVariableInput4AD()
         }
     }
 
+#endif
+}
+
+void DASolver::registerResidualOutput4AD()
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Register all residuals as the output for reverse-mode AD
+    */
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const word stateResName = stateName + "Res";
+        volVectorField& stateRes = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(stateResName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                this->globalADTape_.registerOutput(stateRes[cellI][i]);
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const word stateResName = stateName + "Res";
+        volScalarField& stateRes = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateResName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            this->globalADTape_.registerOutput(stateRes[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const word stateResName = stateName + "Res";
+        volScalarField& stateRes = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateResName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            this->globalADTape_.registerOutput(stateRes[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const word stateResName = stateName + "Res";
+        surfaceScalarField& stateRes = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateResName));
+
+        forAll(stateRes, faceI)
+        {
+            this->globalADTape_.registerOutput(stateRes[faceI]);
+        }
+        forAll(stateRes.boundaryField(), patchI)
+        {
+            forAll(stateRes.boundaryField()[patchI], faceI)
+            {
+                this->globalADTape_.registerOutput(stateRes.boundaryFieldRef()[patchI][faceI]);
+            }
+        }
+    }
+#endif
+}
+
+void DASolver::normalizeGradientVec(Vec vecY)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Normalize the reverse-mode AD derivatives stored in vecY
+    
+    Input/Output:
+        vecY: vector to be normalized. vecY = vecY * scalingFactor
+        the scalingFactor depends on states.
+        This is needed for the matrix-vector products in matrix-free adjoint
+
+    */
+
+    dictionary normStateDict = daOptionPtr_->getAllOptions().subDict("normalizeStates");
+
+    PetscScalar* vecArray;
+    VecGetArray(vecY, &vecArray);
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        scalar scalingFactor = normStateDict.getScalar(stateName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                vecArray[localIdx] *= scalingFactor.getValue();
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        scalar scalingFactor = normStateDict.getScalar(stateName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            vecArray[localIdx] *= scalingFactor.getValue();
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        scalar scalingFactor = normStateDict.getScalar(stateName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            vecArray[localIdx] *= scalingFactor.getValue();
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        scalar scalingFactor = normStateDict.getScalar(stateName);
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                scalar meshSf = meshPtr_->magSf()[faceI];
+                vecArray[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                scalar meshSf = meshPtr_->magSf().boundaryField()[patchIdx][faceIdx];
+                vecArray[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+            }
+        }
+    }
+
+    VecRestoreArray(vecY, &vecArray);
+
+#endif
+}
+
+void DASolver::assignVec2ResidualGradient(Vec vecX)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
+    
+    Input:
+        vecX: vector storing the input seeds
+    
+    Output:
+        All residual variables in OpenFOAM will be set: stateRes[cellI].setGradient(vecX[localIdx])
+    */
+
+    const PetscScalar* vecArray;
+    VecGetArrayRead(vecX, &vecArray);
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const word resName = stateName + "Res";
+        volVectorField& stateRes = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(resName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                stateRes[cellI][i].setGradient(vecArray[localIdx]);
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        volScalarField& stateRes = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(resName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            stateRes[cellI].setGradient(vecArray[localIdx]);
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const word resName = stateName + "Res";
+        volScalarField& stateRes = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(resName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            stateRes[cellI].setGradient(vecArray[localIdx]);
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        surfaceScalarField& stateRes = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(resName));
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                stateRes[faceI].setGradient(vecArray[localIdx]);
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                stateRes.boundaryFieldRef()[patchIdx][faceIdx].setGradient(vecArray[localIdx]);
+            }
+        }
+    }
+
+    VecRestoreArrayRead(vecX, &vecArray);
 #endif
 }
 
