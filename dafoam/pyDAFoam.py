@@ -565,6 +565,9 @@ class PYDAFOAM(object):
         # write all the setup files
         self._writeOFCaseFiles()
 
+        # initialize point set name
+        self.ptSetName = self.getPointSetName("dummy")
+
         # Remind the user of all the DAFoam options:
         if self.getOption("printAllOptions"):
             self._printCurrentOptions()
@@ -664,12 +667,11 @@ class PYDAFOAM(object):
 
         # update the mesh coordinates if DVGeo is set
         # add point set and update the mesh based on the DV values
-        self.ptSetName = self.getPointSetName("dummy")
-        ptSetName = self.ptSetName
+
         if self.DVGeo is not None:
 
             # if the point set is not in DVGeo add it first
-            if ptSetName not in self.DVGeo.points:
+            if self.ptSetName not in self.DVGeo.points:
 
                 xs0 = self.mapVector(self.xs0, self.allFamilies, self.designFamilyGroup)
 
@@ -677,12 +679,12 @@ class PYDAFOAM(object):
                 self.pointsSet = True
 
             # set the surface coords xs
-            Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(ptSetName)))
-            if not self.DVGeo.pointSetUpToDate(ptSetName):
+            Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(self.ptSetName)))
+            if not self.DVGeo.pointSetUpToDate(self.ptSetName):
                 Info("Updating DVGeo PointSet....")
-                xs = self.DVGeo.update(ptSetName, config=None)
+                xs = self.DVGeo.update(self.ptSetName, config=None)
                 self.setSurfaceCoordinates(xs, self.designFamilyGroup)
-                Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(ptSetName)))
+                Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(self.ptSetName)))
 
                 # warp the mesh to get the new volume coordinates
                 Info("Warping the volume mesh....")
@@ -1461,13 +1463,11 @@ class PYDAFOAM(object):
                             for i in range(Istart, Iend):
                                 iRel = i - Istart
                                 dFdXvArray[iRel] = totalDeriv[i]
-                            
+
                             self.mesh.warpDeriv(dFdXvArray[:])
                             dFdXs = self.mesh.getdXs()
                             dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.designFamilyGroup)
-                            dFdFFDTotal = self.DVGeo.totalSensitivity(
-                                dFdXs, ptSetName=self.getPointSetName("dummy"), comm=self.comm
-                            )
+                            dFdFFDTotal = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
                             # assign the total derivative to self.adjTotalDeriv
                             self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
                             for i in range(nDVs):
@@ -1805,17 +1805,15 @@ class PYDAFOAM(object):
         """
 
         # update the CFD Coordinates
-        self.ptSetName = self.getPointSetName("dummy")
-        ptSetName = self.ptSetName
         if self.DVGeo is not None:
-            if ptSetName not in self.DVGeo.points:
+            if self.ptSetName not in self.DVGeo.points:
                 coords0 = self.mapVector(self.coords0, self.allFamilies, self.designFamilyGroup)
                 self.DVGeo.addPointSet(coords0, self.ptSetName)
                 self.pointsSet = True
 
             # set the surface coords
-            if not self.DVGeo.pointSetUpToDate(ptSetName):
-                coords = self.DVGeo.update(ptSetName, config=None)
+            if not self.DVGeo.pointSetUpToDate(self.ptSetName):
+                coords = self.DVGeo.update(self.ptSetName, config=None)
                 self.setSurfaceCoordinates(coords, self.designFamilyGroup)
 
             # warp the mesh
