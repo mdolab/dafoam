@@ -1654,7 +1654,7 @@ void DASolver::updateOFField(const Vec wVec)
     Output:
         OpenFoam flow fields (internal and boundary)
     */
-    Info << "Updating the OpenFOAM fields..." << endl;
+    Info << "Updating the OpenFOAM field..." << endl;
     //Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
     daFieldPtr_->setPrimalBoundaryConditions();
     daFieldPtr_->stateVec2OFField(wVec);
@@ -1668,6 +1668,22 @@ void DASolver::updateOFField(const Vec wVec)
         daModelPtr_->correctBoundaryConditions();
         daModelPtr_->updateIntermediateVariables();
     }
+}
+
+void DASolver::updateOFMesh(const Vec xvVec)
+{
+    /*
+    Description:
+        Update the OpenFOAM mesh based on the point vector xvVec
+
+    Input:
+        xvVec: point coordinate vector
+
+    Output:
+        OpenFoam flow fields (internal and boundary)
+    */
+    Info << "Updating the OpenFOAM mesh..." << endl;
+    daFieldPtr_->pointVec2OFMesh(xvVec);
 }
 
 void DASolver::initializedRdWTMatrixFree()
@@ -1787,6 +1803,9 @@ void DASolver::calcdFdWAD(
 
     VecZeroEntries(dFdW);
 
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
     // get the subDict for this objective function
     dictionary objFuncSubDict =
         daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
@@ -1866,6 +1885,216 @@ void DASolver::calcdFdWAD(
         DAUtility::writeVectorASCII(dFdW, outputName);
     }
 
+#endif
+}
+
+void DASolver::calcdFdXvAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdXv)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Compute dFdXv using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: the name of the objective function
+
+        designVarName: name of the design variable
+    
+    Output:
+        dFdXv: dF/dXv
+    */
+
+    Info << "Calculating dFdXv using reverse-mode AD" << endl;
+
+    VecZeroEntries(dFdXv);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+
+    // loop over all parts for this objFuncName
+    forAll(objFuncSubDict.toc(), idxJ)
+    {
+        // get the subDict for this part
+        word objFuncPart = objFuncSubDict.toc()[idxJ];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
+        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            objFuncName,
+            objFuncPart,
+            objFuncSubDictPart));
+
+        pointField meshPoints = meshPtr_->points();
+
+        // reset tape
+        this->globalADTape_.reset();
+        // activate tape, start recording
+        this->globalADTape_.setActive();
+        // register points as the input
+        forAll(meshPoints, i)
+        {
+            for (label j = 0; j < 3; j++)
+            {
+                this->globalADTape_.registerInput(meshPoints[i][j]);
+            }
+        }
+        meshPtr_->movePoints(meshPoints);
+        // update all intermediate variables and boundary conditions
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+        // compute the objective function
+        scalar fRef = daObjFunc->getObjFuncValue();
+        // register f as the output
+        this->globalADTape_.registerOutput(fRef);
+        // stop recording
+        this->globalADTape_.setPassive();
+
+        // Note: since we used reduced objFunc, we only need to
+        // assign the seed for master proc
+        if (Pstream::master())
+        {
+            fRef.setGradient(1.0);
+        }
+        // evaluate tape to compute derivative
+        this->globalADTape_.evaluate();
+
+        // assign the computed derivatives from the OpenFOAM variable to dFd*Part
+        Vec dFdXvPart;
+        VecDuplicate(dFdXv, &dFdXvPart);
+        VecZeroEntries(dFdXvPart);
+
+        forAll(meshPoints, i)
+        {
+            for (label j = 0; j < 3; j++)
+            {
+                label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
+                PetscScalar val = meshPoints[i][j].getGradient();
+                VecSetValue(dFdXvPart, rowI, val, INSERT_VALUES);
+            }
+        }
+        VecAssemblyBegin(dFdXvPart);
+        VecAssemblyEnd(dFdXvPart);
+
+        // need to clear adjoint and tape after the computation is done!
+        this->globalADTape_.clearAdjoints();
+        this->globalADTape_.reset();
+
+        // we need to add dFd*Part to dFd* because we want to sum
+        // all dFd*Part for all parts of this objFuncName.
+        VecAXPY(dFdXv, 1.0, dFdXvPart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            this->calcPrimalResidualStatistics("print");
+            Info << objFuncName << ": " << fRef << endl;
+        }
+
+        VecDestroy(&dFdXvPart);
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dFdXv_" + objFuncName + "_" + designVarName;
+        DAUtility::writeVectorBinary(dFdXv, outputName);
+        DAUtility::writeVectorASCII(dFdXv, outputName);
+    }
+#endif
+}
+
+void DASolver::calcdRdXvTPsiAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    Vec dRdXvTPsi)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Compute the matrix-vector products dRdXv^T*Psi using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdXv
+    
+    Output:
+        dRdXvTPsi: the matrix-vector products dRdXv^T * Psi
+    */
+
+    Info << "Calculating [dRdXv]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdXvTPsi);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    pointField meshPoints = meshPtr_->points();
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.registerInput(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
+            PetscScalar val = meshPoints[i][j].getGradient();
+            VecSetValue(dRdXvTPsi, rowI, val, INSERT_VALUES);
+        }
+    }
+
+    VecAssemblyBegin(dRdXvTPsi);
+    VecAssemblyEnd(dRdXvTPsi);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
 #endif
 }
 

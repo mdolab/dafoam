@@ -34,10 +34,13 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdAOA(PetscVec, PetscVec, char *, PetscMat)
         void calcdFdAOA(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdFFD(PetscVec, PetscVec, char *, PetscMat)
+        void calcdRdXvTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdFdFFD(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdFdXvAD(PetscVec, PetscVec, char *, char*, PetscVec)
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void updateOFField(PetscVec)
+        void updateOFMesh(PetscVec)
         void setdXvdFFDMat(PetscMat)
         int getGlobalXvIndex(int, int)
         void ofField2StateVec(PetscVec)
@@ -145,9 +148,15 @@ cdef class pyDASolvers:
 
     def calcdRdFFD(self, Vec xvVec, Vec wVec, designVarName, Mat dRdFFD):
         self._thisptr.calcdRdFFD(xvVec.vec, wVec.vec, designVarName, dRdFFD.mat)
+    
+    def calcdRdXvTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdXvTPsi):
+        self._thisptr.calcdRdXvTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdXvTPsi.vec)
 
     def calcdFdFFD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdFFD):
         self._thisptr.calcdFdFFD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdFFD.vec)
+
+    def calcdFdXvAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdXv):
+        self._thisptr.calcdFdXvAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdXv.vec)
 
     def calcdRdACT(self, Vec xvVec, Vec wVec, designVarName, designVarType, Mat dRdACT):
         self._thisptr.calcdRdACT(xvVec.vec, wVec.vec, designVarName, designVarType, dRdACT.mat)
@@ -157,6 +166,9 @@ cdef class pyDASolvers:
 
     def updateOFField(self, Vec wVec):
         self._thisptr.updateOFField(wVec.vec)
+    
+    def updateOFMesh(self, Vec xvVec):
+        self._thisptr.updateOFMesh(xvVec.vec)
 
     def setdXvdFFDMat(self, Mat dXvdFFDMat):
         self._thisptr.setdXvdFFDMat(dXvdFFDMat.mat)

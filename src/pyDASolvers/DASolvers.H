@@ -98,6 +98,27 @@ public:
         DASolverPtr_->calcdFdWAD(xvVec, wVec, objFuncName, dFdW);
     }
 
+    /// compute dFdXv using reverse-mode AD
+    void calcdFdXvAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdXv)
+    {
+        DASolverPtr_->calcdFdXvAD(xvVec, wVec, objFuncName, designVarName, dFdXv);
+    }
+
+    /// compute dRdXv^T*Psi
+    void calcdRdXvTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        Vec dRdXvTPsi)
+    {
+        DASolverPtr_->calcdRdXvTPsiAD(xvVec, wVec, psi, dRdXvTPsi);
+    }
+
     /// create the multi-level Richardson KSP for solving linear equation
     void createMLRKSP(
         const Mat jacMat,
@@ -222,6 +243,12 @@ public:
     void updateOFField(const Vec wVec)
     {
         DASolverPtr_->updateOFField(wVec);
+    }
+
+    /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
+    void updateOFMesh(const Vec xvVec)
+    {
+        DASolverPtr_->updateOFMesh(xvVec);
     }
 
     /// basically, we call DAIndex::getGlobalXvIndex

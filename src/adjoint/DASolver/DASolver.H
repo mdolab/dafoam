@@ -262,6 +262,9 @@ public:
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
     void updateOFField(const Vec wVec);
 
+    /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
+    void updateOFMesh(const Vec xvVec);
+
     /// compute dRdBC
     void calcdRdBC(
         const Vec xvVec,
@@ -326,6 +329,21 @@ public:
         const Vec wVec,
         const word objFuncName,
         Vec dFdW);
+    
+    /// compute dRdXv^T*Psi
+    void calcdRdXvTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        Vec dRdXvTPsi);
+
+    /// compute dFdXv AD
+    void calcdFdXvAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdXv);
 
     /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
     static PetscErrorCode dRdWTMatVecMultFunction(Mat dRdWT, Vec vecX, Vec vecY);
