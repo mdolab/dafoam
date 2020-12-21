@@ -1280,7 +1280,7 @@ class PYDAFOAM(object):
             dRdWT = PETSc.Mat().create(PETSc.COMM_WORLD)
             self.solver.calcdRdWT(self.xvVec, self.wVec, 0, dRdWT)
         elif self.getOption("adjJacobianOption") == "JacobianFree":
-            self.solverAD.initializedRdWTMatrixFree()
+            self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
 
         # calculate dRdWTPC
         adjPCLag = self.getOption("adjPCLag")

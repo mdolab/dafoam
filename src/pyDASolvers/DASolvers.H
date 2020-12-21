@@ -137,9 +137,11 @@ public:
     }
 
     /// initialize matrix free dRdWT
-    void initializedRdWTMatrixFree()
+    void initializedRdWTMatrixFree(
+        const Vec xvVec,
+        const Vec wVec)
     {
-        DASolverPtr_->initializedRdWTMatrixFree();
+        DASolverPtr_->initializedRdWTMatrixFree(xvVec, wVec);
     }
 
     /// destroy matrix free dRdWT

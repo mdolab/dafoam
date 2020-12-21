@@ -1686,7 +1686,9 @@ void DASolver::updateOFMesh(const Vec xvVec)
     daFieldPtr_->pointVec2OFMesh(xvVec);
 }
 
-void DASolver::initializedRdWTMatrixFree()
+void DASolver::initializedRdWTMatrixFree(
+    const Vec xvVec,
+    const Vec wVec)
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
@@ -1694,6 +1696,10 @@ void DASolver::initializedRdWTMatrixFree()
         This function initialize the matrix-free dRdWT, which will be
         used later in the adjoint solution
     */
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
     label localSize = daIndexPtr_->nLocalAdjointStates;
     MatCreateShell(PETSC_COMM_WORLD, localSize, localSize, PETSC_DETERMINE, PETSC_DETERMINE, this, &dRdWTMF_);
     MatShellSetOperation(dRdWTMF_, MATOP_MULT, (void (*)(void))dRdWTMatVecMultFunction);

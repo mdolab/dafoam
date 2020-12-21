@@ -329,7 +329,7 @@ public:
         const Vec wVec,
         const word objFuncName,
         Vec dFdW);
-    
+
     /// compute dRdXv^T*Psi
     void calcdRdXvTPsiAD(
         const Vec xvVec,
@@ -346,10 +346,15 @@ public:
         Vec dFdXv);
 
     /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
-    static PetscErrorCode dRdWTMatVecMultFunction(Mat dRdWT, Vec vecX, Vec vecY);
-    
+    static PetscErrorCode dRdWTMatVecMultFunction(
+        Mat dRdWT,
+        Vec vecX,
+        Vec vecY);
+
     /// initialize matrix free dRdWT
-    void initializedRdWTMatrixFree();
+    void initializedRdWTMatrixFree(
+        const Vec xvVec,
+        const Vec wVec);
 
     /// destroy the matrix free dRdWT
     void destroydRdWTMatrixFree();
