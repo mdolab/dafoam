@@ -1700,16 +1700,18 @@ void DASolver::initializedRdWTMatrixFree(
     this->updateOFField(wVec);
     this->updateOFMesh(xvVec);
 
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        Info << "In initializedRdWTMatrixFree" << endl;
+        this->calcPrimalResidualStatistics("print");
+    }
+
     label localSize = daIndexPtr_->nLocalAdjointStates;
     MatCreateShell(PETSC_COMM_WORLD, localSize, localSize, PETSC_DETERMINE, PETSC_DETERMINE, this, &dRdWTMF_);
     MatShellSetOperation(dRdWTMF_, MATOP_MULT, (void (*)(void))dRdWTMatVecMultFunction);
     MatSetUp(dRdWTMF_);
     Info << "dRdWT Jacobian Free created!" << endl;
 
-    if (daOptionPtr_->getOption<label>("debug"))
-    {
-        this->calcPrimalResidualStatistics("print");
-    }
 #endif
 }
 
@@ -1877,12 +1879,16 @@ void DASolver::calcdFdWAD(
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
+            Info << "In calcdFdWAD" << endl;
             this->calcPrimalResidualStatistics("print");
             Info << objFuncName << ": " << fRef << endl;
         }
 
         VecDestroy(&dFdWPart);
     }
+
+    // NOTE: we need to normalize dFdW!
+    this->normalizeGradientVec(dFdW);
 
     if (daOptionPtr_->getOption<label>("writeJacobians"))
     {
@@ -2118,7 +2124,7 @@ void DASolver::registerStateVariableInput4AD()
         volVectorField& state = const_cast<volVectorField&>(
             meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
 
-        forAll(meshPtr_->cells(), cellI)
+        forAll(state, cellI)
         {
             for (label i = 0; i < 3; i++)
             {
@@ -2133,7 +2139,7 @@ void DASolver::registerStateVariableInput4AD()
         volScalarField& state = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        forAll(meshPtr_->cells(), cellI)
+        forAll(state, cellI)
         {
             this->globalADTape_.registerInput(state[cellI]);
         }
@@ -2145,7 +2151,7 @@ void DASolver::registerStateVariableInput4AD()
         volScalarField& state = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        forAll(meshPtr_->cells(), cellI)
+        forAll(state, cellI)
         {
             this->globalADTape_.registerInput(state[cellI]);
         }
@@ -2188,7 +2194,7 @@ void DASolver::registerResidualOutput4AD()
         volVectorField& stateRes = const_cast<volVectorField&>(
             meshPtr_->thisDb().lookupObject<volVectorField>(stateResName));
 
-        forAll(meshPtr_->cells(), cellI)
+        forAll(stateRes, cellI)
         {
             for (label i = 0; i < 3; i++)
             {
@@ -2204,7 +2210,7 @@ void DASolver::registerResidualOutput4AD()
         volScalarField& stateRes = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateResName));
 
-        forAll(meshPtr_->cells(), cellI)
+        forAll(stateRes, cellI)
         {
             this->globalADTape_.registerOutput(stateRes[cellI]);
         }
@@ -2217,7 +2223,7 @@ void DASolver::registerResidualOutput4AD()
         volScalarField& stateRes = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateResName));
 
-        forAll(meshPtr_->cells(), cellI)
+        forAll(stateRes, cellI)
         {
             this->globalADTape_.registerOutput(stateRes[cellI]);
         }
