@@ -300,7 +300,7 @@ void DAJacCondFdW::setupJacCon(const dictionary& options)
                 addFace);
         }
 
-        label glbRowI = this->getGlobalObjFuncGeoIndex("cell", cellI);
+        label glbRowI = this->getGlobalObjFuncGeoIndex("cell", idxI);
 
         this->setupJacobianConnections(jacCon_, connectedStatesP, glbRowI);
     }
