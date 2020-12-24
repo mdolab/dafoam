@@ -1520,7 +1520,7 @@ void DASolver::calcdRdACT(
 
         designVarName: the name of the design variable
 
-        designVarName: the type of the design variable: ACTP, ACTL, ACTD
+        designVarType: the type of the design variable: ACTP, ACTL, ACTD
     
     Output:
         dRdACT: the partial derivative matrix dR/dACT
@@ -1573,6 +1573,183 @@ void DASolver::calcdRdACT(
         word outputName = "dRd" + designVarType + "_" + designVarName;
         DAUtility::writeMatrixBinary(dRdACT, outputName);
         DAUtility::writeMatrixASCII(dRdACT, outputName);
+    }
+}
+
+void DASolver::calcdRdState(
+    const Vec xvVec,
+    const Vec wVec,
+    const word designVarName,
+    Mat dRdState)
+{
+    /*
+    Description:
+        This function computes partials derivatives dRdState
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dRdState: the partial derivative matrix dR/dState
+        NOTE: You need to call MatCreate for the dRdState matrix before calling this function.
+        No need to call MatSetSize etc because they will be done in this function
+    */
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+
+    // no coloring is need for actuator, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // create DAPartDeriv object
+    word modelType = "dRdState";
+    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+        modelType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_(),
+        daJacCon(),
+        daResidualPtr_()));
+
+    // setup options to compute dRdState*
+    dictionary options;
+    options.set("stateName", dvSubDict.getWord("stateName"));
+
+    // initialize the dRdState* matrix
+    daPartDeriv->initializePartDerivMat(options, dRdState);
+
+    // compute it using brute force finite-difference
+    daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdState);
+
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        this->calcPrimalResidualStatistics("print");
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdState_" + designVarName;
+        DAUtility::writeMatrixBinary(dRdState, outputName);
+        DAUtility::writeMatrixASCII(dRdState, outputName);
+    }
+}
+
+void DASolver::calcdFdState(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdState)
+{
+    /*
+    Description:
+        This function computes partials derivatives dFdState
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: name of the objective function F
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dFdState: the partial derivative vector dF/dState
+        NOTE: You need to fully initialize the dF vec before calliing this function,
+        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
+    */
+
+    VecZeroEntries(dFdState);
+
+    // no coloring is need for State, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+
+    // loop over all parts of this objFuncName
+    forAll(objFuncSubDict.toc(), idxK)
+    {
+        word objFuncPart = objFuncSubDict.toc()[idxK];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+        Mat dFdStateMat;
+        MatCreate(PETSC_COMM_WORLD, &dFdStateMat);
+
+        // initialize DAPartDeriv for dFdState
+        word modelType = "dFdState";
+        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+            modelType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daJacCon(),
+            daResidualPtr_()));
+
+        // initialize options
+        dictionary options;
+        options.set("stateName", dvSubDict.getWord("stateName"));
+        options.set("objFuncSubDictPart", objFuncSubDictPart);
+
+        // initialize dFdState
+        daPartDeriv->initializePartDerivMat(options, dFdStateMat);
+        // calculate it
+        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdStateMat);
+
+        // now we need to convert the dFdState mat to dFdStatePart
+        // NOTE: dFdStateMat is a nCells by 1 matrix, we need to do
+        // dFdStatePart = (dFdStateMat) * oneVec
+        Vec dFdStatePart, oneVec;
+        VecCreate(PETSC_COMM_WORLD, &oneVec);
+        VecSetSizes(oneVec, PETSC_DETERMINE, 1);
+        VecSetFromOptions(oneVec);
+        VecSet(oneVec, 1.0);
+        VecDuplicate(dFdState, &dFdStatePart);
+        VecZeroEntries(dFdStatePart);
+        // dFdStateVec = oneVec*dFdState
+        MatMult(dFdStateMat, oneVec, dFdStatePart);
+        
+        // we need to add dFdStatePart to dFdState because we want to sum
+        // all dFdStatePart for all parts of this objFuncName.
+        VecAXPY(dFdState, 1.0, dFdStatePart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            this->calcPrimalResidualStatistics("print");
+        }
+
+        MatDestroy(&dFdStateMat);
+        VecDestroy(&dFdStatePart);
+        VecDestroy(&oneVec);
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dFdState_" + designVarName;
+        DAUtility::writeVectorBinary(dFdState, outputName);
+        DAUtility::writeVectorASCII(dFdState, outputName);
     }
 }
 
@@ -1743,10 +1920,10 @@ PetscErrorCode DASolver::dRdWTMatVecMultFunction(Mat dRdWTMF, Vec vecX, Vec vecY
     MatShellGetContext(dRdWTMF, (void**)&ctx);
 
     // Need to re-initialize the tape, setup inputs and outputs,
-    // and run the forward computation and save the intermediate 
+    // and run the forward computation and save the intermediate
     // variables in the tape, such that we don't re-compute them
-    // for each GMRES iteration. This initialization needs to 
-    // happen for each adjoint solution. We will reset 
+    // for each GMRES iteration. This initialization needs to
+    // happen for each adjoint solution. We will reset
     // globalADTape4dRdWTInitialized = 0 in DASolver::solveLinearEqn function
     if (!ctx->globalADTape4dRdWTInitialized)
     {
@@ -2856,6 +3033,55 @@ void DASolver::writeAssociatedFields()
             IOMRFZoneList MRF(meshPtr_());
             MRF.makeRelative(URel);
             URel.write();
+        }
+    }
+}
+
+void DASolver::setFieldValue4GlobalCellI(
+    const word fieldName,
+    const scalar val,
+    const label globalCellI,
+    const label compI)
+{
+    /*
+    Description:
+        Set the field value based on the global cellI. This is usually
+        used if the state variables are design variables, e.g., betaSA
+        The reason to use global cell index, instead of local one, is 
+        because this index is usually provided by the optimizer. Optimizer
+        uses global cell index as the design variable
+    
+    Input:
+        fieldName: the name of the field to set
+
+        val: the value to set
+
+        globalCellI: the global cell index
+
+        compI: which component to set (only for vectors such as U)
+    */
+
+    if (daIndexPtr_->globalCellNumbering.isLocal(globalCellI))
+    {
+
+        if (meshPtr_->thisDb().foundObject<volVectorField>(fieldName))
+        {
+            volVectorField& field =
+                const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(fieldName));
+            label localCellI = daIndexPtr_->globalCellNumbering.toLocal(globalCellI);
+            field[localCellI][compI] = val;
+        }
+        else if (meshPtr_->thisDb().foundObject<volScalarField>(fieldName))
+        {
+            volScalarField& field =
+                const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
+            label localCellI = daIndexPtr_->globalCellNumbering.toLocal(globalCellI);
+            field[localCellI] = val;
+        }
+        else
+        {
+            FatalErrorIn("") << fieldName << " not found in volScalar and volVector Fields "
+                             << abort(FatalError);
         }
     }
 }

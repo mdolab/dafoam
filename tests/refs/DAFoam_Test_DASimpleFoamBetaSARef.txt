@@ -1,0 +1,11 @@
+Dictionary Key: FI
+@value     5.67958608369146 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10
+Dictionary Key: FI
+Dictionary Key: alpha
+@value    81.03149571342921 1e-04 1e-06
+Dictionary Key: beta
+@value    2.496818813650052 1e-04 1e-06
+Dictionary Key: fail
+@value                    0 1e-04 1e-06

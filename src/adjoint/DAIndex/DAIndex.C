@@ -740,6 +740,31 @@ label DAIndex::getLocalXvIndex(
     return localXvIdx;
 }
 
+label DAIndex::getGlobalCellIndex(const label cellI) const
+{
+    /*
+    Description:
+        Returns the global cell index for a given local cell index
+
+    Input:
+        cellI: local cell index
+
+    Example:
+        Image we have nine cells, running on two CPU cores, and the proc0 owns
+        three cell and proc1 owns six cell, and the cell vector reads
+    
+        Xv = [c0, c1, c2 | c0, c1, c2, c3, c4, c5] <- c0 means the 0th cell
+               0   1   2    3   4   5   6   7   8  <- global cell index
+              -- proc0 --|--------- proc1 ------- 
+        Then, on proc0, getGlobalCellIndex(1) returns 1
+          and on proc1, getGlobalCellIndex(1) returns 4
+
+    */
+
+    label globalCellIdx = globalCellNumbering.toGlobal(cellI);
+    return globalCellIdx;
+}
+
 void DAIndex::calcAdjStateID4GlobalAdjIdx(labelList& adjStateID4GlobalAdjIdx) const
 {
     /*

@@ -241,6 +241,27 @@ public:
         DASolverPtr_->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
     }
 
+    /// compute dRdState
+    void calcdRdState(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdState)
+    {
+        DASolverPtr_->calcdRdState(xvVec, wVec, designVarName, dRdState);
+    }
+
+    /// compute dFdState
+    void calcdFdState(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdState)
+    {
+        DASolverPtr_->calcdFdState(xvVec, wVec, objFuncName, designVarName, dFdState);
+    }
+
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
     void updateOFField(const Vec wVec)
     {
@@ -283,6 +304,12 @@ public:
     label getNLocalAdjointStates() const
     {
         return DASolverPtr_->getNLocalAdjointStates();
+    }
+
+    /// return the number of local cells
+    label getNLocalCells() const
+    {
+        return DASolverPtr_->getNLocalCells();
     }
 
     /// return the value of objective
@@ -405,6 +432,16 @@ public:
         double returnVal = 0.0;
         assignValueCheckAD(returnVal, DASolverPtr_->getTimeInstanceObjFunc(instanceI, objFuncName));
         return returnVal;
+    }
+
+    /// set the field value
+    void setFieldValue4GlobalCellI(
+        const word fieldName,
+        const scalar val,
+        const label globalCellI,
+        const label compI = 0)
+    {
+        DASolverPtr_->setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI);
     }
 };
 

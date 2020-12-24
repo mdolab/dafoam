@@ -46,6 +46,7 @@ case $argm in
     runTests DASimpleFoam
     runTests DASimpleFoamAD
     runTests DASimpleFoamMRF
+    runTests DASimpleFoamBetaSA
     runTests DASimpleTFoam
     runTests DAPisoFoam
     runTests DAPisoFoamACTL
@@ -69,6 +70,7 @@ case $argm in
     runTests DASimpleFoam
     runTests DASimpleFoamAD
     runTests DASimpleFoamMRF
+    runTests DASimpleFoamBetaSA
     runTests DASimpleTFoam
     runTests DAPisoFoam
     runTests DAPisoFoamACTL

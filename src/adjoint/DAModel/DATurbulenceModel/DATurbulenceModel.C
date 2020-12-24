@@ -480,6 +480,18 @@ label DATurbulenceModel::isPrintTime(
     }
 }
 
+void DATurbulenceModel::getTurbProdTerm(scalarList& prodTerm) const
+{
+    /*
+    Description:
+        Return the value of the production term from the turbulence model 
+    */
+
+    FatalErrorIn("DATurbulenceModel::getSAProdTerm")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

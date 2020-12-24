@@ -317,6 +317,21 @@ public:
         const word designVarName,
         const word designVarType,
         Mat dRdACT);
+    
+    /// compute dRdState
+    void calcdRdState(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdState);
+
+    /// compute dFdState
+    void calcdFdState(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdState);
 
     /// create a multi-level, Richardson KSP object with matrix-free Jacobians
     void createMLRKSPMatrixFree(
@@ -478,6 +493,12 @@ public:
         return daIndexPtr_->nLocalAdjointStates;
     }
 
+    /// return the number of local cells
+    label getNLocalCells() const
+    {
+        return meshPtr_->nCells();
+    }
+
     /// initialize DASolver::daObjFuncPtrList_ one needs to call this before calling printAllObjFuncs
     void setDAObjFuncList();
 
@@ -519,6 +540,13 @@ public:
     {
         return prevPrimalSolTime_;
     }
+
+    /// set the field value
+    void setFieldValue4GlobalCellI(
+        const word fieldName,
+        const scalar val,
+        const label globalCellI,
+        const label compI = 0);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

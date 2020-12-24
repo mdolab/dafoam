@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 
     DAFoam  : Discrete Adjoint with OpenFOAM
@@ -226,7 +228,31 @@ class DAOPTION(object):
     ##                "addToAdjoint": True,
     ##            }
     ##        },
-    ##     },
+    ##        "FI": {
+    ##            "part1": {
+    ##                "type": "stateErrorNorm",
+    ##                "source": "boxToCell",
+    ##                "min": [-100.0, -100.0, -100.0],
+    ##                "max": [100.0, 100.0, 100.0],
+    ##                "stateName": "U",
+    ##                "stateRefName": "UTrue",
+    ##                "stateType": "vector",
+    ##                "scale": 1.0,
+    ##                "addToAdjoint": True,
+    ##            },
+    ##            "part2": {
+    ##                "type": "stateErrorNorm",
+    ##                "source": "boxToCell",
+    ##                "min": [-100.0, -100.0, -100.0],
+    ##                "max": [100.0, 100.0, 100.0],
+    ##                "stateName": "betaSA",
+    ##                "stateRefName": "betaSATrue",
+    ##                "stateType": "scalar",
+    ##                "scale": 0.01,
+    ##                "addToAdjoint": True,
+    ##            },
+    ##        },
+    ##    },
     objFunc = {}
 
     ## Design variable information. Different type of design variables require different keys
@@ -297,6 +323,12 @@ class DAOPTION(object):
     ##        "periodicity": 0.1,
     ##        "eps": 10.0,
     ##        "scale": 10.0  # scale the source such the integral equals desired thrust
+    ##    },
+    ##    "gradP"
+    ##    {
+    ##        "type": "uniformPressureGradient",
+    ##        "value": 1e-3,
+    ##        "direction": [1.0, 0.0, 0.0],
     ##    },
     ## },
     fvSource = {}
@@ -1468,6 +1500,42 @@ class PYDAFOAM(object):
                         totalDerivSeq.destroy()
                         dFdACT.destroy()
                 dRdACT.destroy()
+            ################### State: State variables (e.g., betaSA) as design variable ###################
+            elif designVarDict[designVarName]["designVarType"] == "State":
+                xDV = self.DVGeo.getValues()
+                nDVs = len(xDV[designVarName])
+                nLocalCells = self.solver.getNLocalCells()
+                # calculate dRdState
+                dRdState = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdState(self.xvVec, self.wVec, designVarName.encode(), dRdState)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdState
+                        dFdState = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdState.setSizes((nLocalCells, PETSc.DECIDE), bsize=1)
+                        dFdState.setFromOptions()
+                        self.solver.calcdFdState(
+                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdState
+                        )
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((nLocalCells, PETSc.DECIDE), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdState, dFdState, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                        # we need to convert the parallel vec to seq vec
+                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                        for i in range(nDVs):
+                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                        totalDeriv.destroy()
+                        totalDerivSeq.destroy()
+                        dFdState.destroy()
+                dRdState.destroy()
+            else:
+                raise Error("designVarType %s not supported!" % designVarDict[designVarName]["designVarType"])
 
         self.nSolveAdjoints += 1
 
@@ -2273,6 +2341,29 @@ class PYDAFOAM(object):
                 "Expected data type is %-47s \n "
                 "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
             )
+
+    def setFieldValue4GlobalCellI(self, fieldName, val, globalCellI, compI=0):
+        """
+        Set the field value based on the global cellI. This is usually
+        used if the state variables are design variables, e.g., betaSA
+        The reason to use global cell index, instead of local one, is 
+        because this index is usually provided by the optimizer. Optimizer
+        uses global cell index as the design variable
+
+        Parameters
+        ----------
+        fieldName : str
+           Name of the flow field to set, e.g., U, p, nuTilda
+        val : float
+           The value to set
+        globalCellI : int
+           The global cell index to set the value
+        compI : int
+           The component index to set the value (for vectorField only)
+
+        """
+
+        self.solver.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
 
     def getOption(self, name):
         """
