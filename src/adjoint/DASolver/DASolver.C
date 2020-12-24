@@ -1761,10 +1761,12 @@ void DASolver::initializeGlobalADTape4dRdWT()
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
     Description:
-        This function implements a way to compute matrix-vector products
-        associated with dRdWTMF matrix. 
-        Here we need to return vecY = dRdWTMF * vecX.
-        We use the reverse-mode AD to compute vecY in a matrix-free manner
+        Initialize the global tape for computing dRdWT*psi
+        using revere-mode AD. Here we need to register inputs
+        and outputs, compute the residuals, and record all the
+        intermediate variables in the tape. Then in the 
+        dRdWTMatVecMultFunction function, we can assign gradients
+        and call tape.evaluate multiple times 
     */
     this->globalADTape_.reset();
     this->globalADTape_.setActive();

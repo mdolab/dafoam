@@ -1332,7 +1332,9 @@ class PYDAFOAM(object):
         # we destroy dRdWTPC only when we need to recompute it next time
         # see the bottom of this function
 
-        # Now compute the total derivatives
+        # ************ Now compute the total derivatives **********************
+        # NOTE: the JacobianFree is not implemented yet because the dRdXv is not accurate in
+        # parallel. Need to fix it in OpenFOAM-v1812-AD
         Info("Computing total derivatives....")
 
         designVarDict = self.getOption("designVar")
@@ -1404,77 +1406,36 @@ class PYDAFOAM(object):
                 dRdAOA.destroy()
             ################### FFD: FFD points as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "FFD":
-                if self.getOption("adjJacobianOption") == "JacobianFD":
-                    nDVs = self.setdXvdFFDMat(designVarName)
-                    # calculate dRdFFD
-                    dRdFFD = PETSc.Mat().create(PETSc.COMM_WORLD)
-                    self.solver.calcdRdFFD(self.xvVec, self.wVec, designVarName.encode(), dRdFFD)
-                    # loop over all objectives
-                    for objFuncName in objFuncDict:
-                        if objFuncName in self.objFuncNames4Adj:
-                            # calculate dFdFFD
-                            dFdFFD = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdFFD.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            dFdFFD.setFromOptions()
-                            self.solver.calcdFdFFD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdFFD
-                            )
-                            # call the total deriv
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            totalDeriv.setFromOptions()
-                            self.calcTotalDeriv(dRdFFD, dFdFFD, adjVectors[objFuncName], totalDeriv)
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdFFD.destroy()
-                    dRdFFD.destroy()
-                elif self.getOption("adjJacobianOption") == "JacobianFree":
-                    nDVs = len(self.DVGeo.getValues()[designVarName])
-                    xvSize = len(self.xv) * 3
-                    # loop over all objectives
-                    for objFuncName in objFuncDict:
-                        if objFuncName in self.objFuncNames4Adj:
-                            # calculate dFdXv
-                            dFdXv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
-                            dFdXv.setFromOptions()
-                            self.solverAD.calcdFdXvAD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdXv
-                            )
-                            # Initialize the total deriv vec
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
-                            totalDeriv.setFromOptions()
-                            # calculate dRXv^T * psi
-                            self.solverAD.calcdRdXvTPsiAD(self.xvVec, self.wVec, adjVectors[objFuncName], totalDeriv)
-                            # Add dFdXv
-                            totalDeriv.scale(-1.0)
-                            totalDeriv.axpy(1.0, dFdXv)
-                            # Now we need to map dFdXvTotal to dFdFFD
-                            Istart, Iend = totalDeriv.getOwnershipRange()
-                            dFdXvArray = np.zeros(xvSize, self.dtype)
-                            for i in range(Istart, Iend):
-                                iRel = i - Istart
-                                dFdXvArray[iRel] = totalDeriv[i]
-
-                            self.mesh.warpDeriv(dFdXvArray[:])
-                            dFdXs = self.mesh.getdXs()
-                            dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.designFamilyGroup)
-                            dFdFFDTotal = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] = dFdFFDTotal[designVarName][0][i]
-                            totalDeriv.destroy()
-                            dFdXv.destroy()
-
+                nDVs = self.setdXvdFFDMat(designVarName)
+                # calculate dRdFFD
+                dRdFFD = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdFFD(self.xvVec, self.wVec, designVarName.encode(), dRdFFD)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdFFD
+                        dFdFFD = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdFFD.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        dFdFFD.setFromOptions()
+                        self.solver.calcdFdFFD(
+                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdFFD
+                        )
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdFFD, dFdFFD, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                        # we need to convert the parallel vec to seq vec
+                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                        for i in range(nDVs):
+                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                        totalDeriv.destroy()
+                        totalDerivSeq.destroy()
+                        dFdFFD.destroy()
+                dRdFFD.destroy()
             ################### ACT: actuator models as design variable ###################
             elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
                 designVarType = designVarDict[designVarName]["designVarType"]
