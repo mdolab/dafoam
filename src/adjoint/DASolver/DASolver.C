@@ -1338,8 +1338,6 @@ void DASolver::calcdRdFFD(
         daModelPtr_(),
         daIndexPtr_()));
 
-    // ********************** compute dRdFFD **********************
-
     // create DAPartDeriv object
     word modelType = "dRdFFD";
     autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
@@ -1697,6 +1695,9 @@ void DASolver::initializedRdWTMatrixFree(
         used later in the adjoint solution
     */
 
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
     this->updateOFField(wVec);
     this->updateOFMesh(xvVec);
 
@@ -1706,6 +1707,8 @@ void DASolver::initializedRdWTMatrixFree(
         this->calcPrimalResidualStatistics("print");
     }
 
+    // No need to set the size, instead, we need to provide a function to compute
+    // matrix-vector product, i.e., the dRdWTMatVecMultFunction function
     label localSize = daIndexPtr_->nLocalAdjointStates;
     MatCreateShell(PETSC_COMM_WORLD, localSize, localSize, PETSC_DETERMINE, PETSC_DETERMINE, this, &dRdWTMF_);
     MatShellSetOperation(dRdWTMF_, MATOP_MULT, (void (*)(void))dRdWTMatVecMultFunction);
@@ -1739,16 +1742,27 @@ PetscErrorCode DASolver::dRdWTMatVecMultFunction(Mat dRdWTMF, Vec vecX, Vec vecY
     DASolver* ctx;
     MatShellGetContext(dRdWTMF, (void**)&ctx);
 
+    // Need to re-initialize the tape, setup inputs and outputs,
+    // and run the forward computation and save the intermediate 
+    // variables in the tape, such that we don't re-compute them
+    // for each GMRES iteration. This initialization needs to 
+    // happen for each adjoint solution. We will reset 
+    // globalADTape4dRdWTInitialized = 0 in DASolver::solveLinearEqn function
     if (!ctx->globalADTape4dRdWTInitialized)
     {
         ctx->initializeGlobalADTape4dRdWT();
         ctx->globalADTape4dRdWTInitialized = 1;
     }
 
+    // assign the variable in vecX as the residual gradient for reverse AD
     ctx->assignVec2ResidualGradient(vecX);
+    // do the backward computation to propagate the derivatives to the states
     ctx->globalADTape_.evaluate();
+    // assign the derivatives stored in the states to the vecY vector
     ctx->assignStateGradient2Vec(vecY);
+    // NOTE: we need to normalize the vecY vector.
     ctx->normalizeGradientVec(vecY);
+    // clear the adjoint to prepare the next matrix-free GMRES iteration
     ctx->globalADTape_.clearAdjoints();
 
 #endif
@@ -1768,20 +1782,30 @@ void DASolver::initializeGlobalADTape4dRdWT()
         dRdWTMatVecMultFunction function, we can assign gradients
         and call tape.evaluate multiple times 
     */
+
+    // always reset the tape before recording
     this->globalADTape_.reset();
+    // set the tape to active and start recording intermediate variables
     this->globalADTape_.setActive();
+    // register state variables as the inputs
     this->registerStateVariableInput4AD();
+    // need to correct BC and update all intermediate variables
     daResidualPtr_->correctBoundaryConditions();
     daResidualPtr_->updateIntermediateVariables();
     daModelPtr_->correctBoundaryConditions();
     daModelPtr_->updateIntermediateVariables();
+    // Now we can compute the residuals
     label isPC = 0;
     dictionary options;
     options.set("isPC", isPC);
     daResidualPtr_->calcResiduals(options);
     daModelPtr_->calcResiduals(options);
+    // Set the residual as the output
     this->registerResidualOutput4AD();
+    // All done, set the tape to passive
     this->globalADTape_.setPassive();
+
+    // Now the tape is ready to use in the matrix-free GMRES solution
 #endif
 }
 
@@ -1813,6 +1837,9 @@ void DASolver::calcdFdWAD(
 
     VecZeroEntries(dFdW);
 
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
     this->updateOFField(wVec);
     this->updateOFMesh(xvVec);
 
