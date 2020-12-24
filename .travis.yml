@@ -40,7 +40,7 @@ jobs:
       script:
         # compile all components
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake incompressible"
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && source /home/dafoamuser/OpenFOAM/OpenFOAM-v1812-AD/etc/bashrc && cd $DOCKER_WORKING_DIR && ./Allmake incompressible"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && source /home/dafoamuser/OpenFOAM/OpenFOAM-v1812-AD/etc/bashrc && cd $DOCKER_WORKING_DIR && ./Allmake incompressible &> makeLog.txt"
         - docker exec -it regtest /bin/bash -c "cp /home/dafoamuser/OpenFOAM/dafoamuser-v1812-AD/platforms/linux64GccDPInt32Opt/lib/*.so /home/dafoamuser/OpenFOAM/dafoamuser-v1812/platforms/linux64GccDPInt32Opt/lib/"
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && pip install ."
         # just run the tests
@@ -64,7 +64,7 @@ jobs:
       script:
         # compile incompressible solvers
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake incompressible && pip install ."
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && source /home/dafoamuser/OpenFOAM/OpenFOAM-v1812-AD/etc/bashrc && cd $DOCKER_WORKING_DIR && ./Allmake incompressible"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && source /home/dafoamuser/OpenFOAM/OpenFOAM-v1812-AD/etc/bashrc && cd $DOCKER_WORKING_DIR && ./Allmake incompressible &> makeLog.txt"
         - docker exec -it regtest /bin/bash -c "cp /home/dafoamuser/OpenFOAM/dafoamuser-v1812-AD/platforms/linux64GccDPInt32Opt/lib/*.so /home/dafoamuser/OpenFOAM/dafoamuser-v1812/platforms/linux64GccDPInt32Opt/lib/"
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && pip install ."
         # install cpp-coveralls and coverage
