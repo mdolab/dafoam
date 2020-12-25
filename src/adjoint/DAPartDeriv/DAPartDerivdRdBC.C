@@ -39,7 +39,7 @@ DAPartDerivdRdBC::DAPartDerivdRdBC(
 
 void DAPartDerivdRdBC::initializePartDerivMat(
     const dictionary& options,
-    Mat* jacMat)
+    Mat jacMat)
 {
     /*
     Description:
@@ -53,19 +53,19 @@ void DAPartDerivdRdBC::initializePartDerivMat(
     label localSize = daIndex_.nLocalAdjointStates;
 
     // create dRdBCT
-    MatCreate(PETSC_COMM_WORLD, jacMat);
+    //MatCreate(PETSC_COMM_WORLD, jacMat);
     MatSetSizes(
-        *jacMat,
+        jacMat,
         localSize,
         PETSC_DECIDE,
         PETSC_DETERMINE,
         1);
-    MatSetFromOptions(*jacMat);
-    MatMPIAIJSetPreallocation(*jacMat, 1, NULL, 1, NULL);
-    MatSeqAIJSetPreallocation(*jacMat, 1, NULL);
+    MatSetFromOptions(jacMat);
+    MatMPIAIJSetPreallocation(jacMat, 1, NULL, 1, NULL);
+    MatSeqAIJSetPreallocation(jacMat, 1, NULL);
     //MatSetOption(jacMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    MatSetUp(*jacMat);
-    MatZeroEntries(*jacMat);
+    MatSetUp(jacMat);
+    MatZeroEntries(jacMat);
     Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
 }
 
@@ -112,6 +112,8 @@ void DAPartDerivdRdBC::calcPartDerivMat(
 
     scalar delta = daOption_.getSubDictOption<scalar>("adjPartDerivFDStep", "BC");
     scalar rDelta = 1.0 / delta;
+    PetscScalar rDeltaValue = 0.0;
+    assignValueCheckAD(rDeltaValue, rDelta);
 
     // perturb BC
     this->perturbBC(options, delta);
@@ -121,7 +123,7 @@ void DAPartDerivdRdBC::calcPartDerivMat(
 
     // compute residual partial using finite-difference
     VecAXPY(resVec, -1.0, resVecRef);
-    VecScale(resVec, rDelta);
+    VecScale(resVec, rDeltaValue);
 
     // assign resVec to jacMat
     PetscInt Istart, Iend;
@@ -132,7 +134,7 @@ void DAPartDerivdRdBC::calcPartDerivMat(
     for (label i = Istart; i < Iend; i++)
     {
         label relIdx = i - Istart;
-        scalar val = resVecArray[relIdx];
+        PetscScalar val = resVecArray[relIdx];
         MatSetValue(jacMat, i, 0, val, INSERT_VALUES);
     }
     VecRestoreArrayRead(resVec, &resVecArray);

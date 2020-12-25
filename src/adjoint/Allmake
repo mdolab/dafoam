@@ -5,6 +5,12 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
+if [ -z "$WM_CODI_AD_MODE" ]; then
+  export DF_LIB_SUFFIX=""
+else
+  export DF_LIB_SUFFIX="AD"
+fi
+
 case $1 in
   "opt")
     cp Make/files_Incompressible Make/files

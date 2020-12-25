@@ -12,7 +12,7 @@
         add "py" before the C++ class name
 '''
 
-# declear cpp functions
+# declare cpp functions
 cdef extern from "ColoringCompressible.H" namespace "Foam":
     cppclass ColoringCompressible:
         ColoringCompressible(char *, object) except +
@@ -52,6 +52,6 @@ cdef class pyColoringCompressible:
         '''
         self._thisptr = new ColoringCompressible(argsAll, pyOptions)
 
-    # wrap all the other memeber functions in the cpp class
+    # wrap all the other member functions in the cpp class
     def run(self):
         self._thisptr.run()

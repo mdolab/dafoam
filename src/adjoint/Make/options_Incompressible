@@ -23,15 +23,15 @@ EXE_INC = \
     
 
 LIB_LIBS = \
-    -lturbulenceModels \
-    -lOpenFOAM \
-    -lincompressibleTurbulenceModels \
-    -lincompressibleTransportModels \
-    -lradiationModels \
-    -lfluidThermophysicalModels \
-    -lfiniteVolume \
-    -lmeshTools \
-    -lfvOptions \
+    -lturbulenceModels$(DF_LIB_SUFFIX) \
+    -lOpenFOAM$(DF_LIB_SUFFIX) \
+    -lincompressibleTurbulenceModels$(DF_LIB_SUFFIX) \
+    -lincompressibleTransportModels$(DF_LIB_SUFFIX) \
+    -lradiationModels$(DF_LIB_SUFFIX) \
+    -lfluidThermophysicalModels$(DF_LIB_SUFFIX) \
+    -lfiniteVolume$(DF_LIB_SUFFIX) \
+    -lmeshTools$(DF_LIB_SUFFIX) \
+    -lfvOptions$(DF_LIB_SUFFIX) \
     -L$(PETSC_LIB) -lpetsc \
     -L$(MPI_ARCH_PATH)/lib \
     -L$(MPI_ARCH_PATH)/lib64 \

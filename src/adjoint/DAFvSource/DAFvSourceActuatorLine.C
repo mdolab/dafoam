@@ -98,8 +98,8 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
         scalar rStarMin = lineSubDict.lookupOrDefault<scalar>("rStarMin", 0.02);
         scalar rStarMax = lineSubDict.lookupOrDefault<scalar>("rStarMax", 0.98);
         scalar epsR = lineSubDict.lookupOrDefault<scalar>("epsR", 0.02);
-        scalar fRMin = Foam::pow(rStarMin, expM) * Foam::pow(1.0 - rStarMin, expN);
-        scalar fRMax = Foam::pow(rStarMax, expM) * Foam::pow(1.0 - rStarMax, expN);
+        scalar fRMin = pow(rStarMin, expM) * pow(1.0 - rStarMin, expN);
+        scalar fRMax = pow(rStarMax, expM) * pow(1.0 - rStarMax, expN);
 
         scalar thrustTotal = 0.0;
         scalar torqueTotal = 0.0;
@@ -145,7 +145,7 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             // the normalized cellC2AVecC (tangential) vector
             vector cellC2AVecCNorm = cellC2AVecC / (cellC2AVecCLen + SMALL);
             // smooth coefficient in the axial direction
-            scalar etaAxial = Foam::exp(-Foam::sqr(cellC2AVecALen / eps)) / Foam::exp(0.0);
+            scalar etaAxial = exp(-sqr(cellC2AVecALen / eps));
 
             scalar etaTheta = 0.0;
             for (label bb = 0; bb < nBlades; bb++)
@@ -158,8 +158,13 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
                         if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0
                             || mesh_.time().timeIndex() == 1)
                         {
+                            scalar twoPi = 2.0 * pi;
                             Info << "blade " << bb << " theta: "
-                                 << fmod(thetaBlade, 2.0 * pi) * 180.0 / pi
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+                                 << fmod(thetaBlade.getValue(), twoPi.getValue()) * 180.0 / pi.getValue()
+#else
+                                 << fmod(thetaBlade, twoPi) * 180.0 / pi
+#endif
                                  << " deg" << endl;
                         }
                     }
@@ -169,13 +174,13 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
                 vector rotatedVec = vector::zero;
                 if (rotDir == "right")
                 {
-                    rotatedVec = initial * Foam::cos(thetaBlade)
-                        + (direction ^ initial) * Foam::sin(thetaBlade);
+                    rotatedVec = initial * cos(thetaBlade)
+                        + (direction ^ initial) * sin(thetaBlade);
                 }
                 else if (rotDir == "left")
                 {
-                    rotatedVec = initial * Foam::cos(thetaBlade)
-                        + (initial ^ direction) * Foam::sin(thetaBlade);
+                    rotatedVec = initial * cos(thetaBlade)
+                        + (initial ^ direction) * sin(thetaBlade);
                 }
                 else
                 {
@@ -186,7 +191,7 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
                 // now we can compute the distance between the cellC2AVecR and the rotatedVec
                 scalar dS_Theta = mag(cellC2AVecR - rotatedVec);
                 // smooth coefficient in the theta direction
-                etaTheta += Foam::exp(-Foam::sqr(dS_Theta / eps)) / Foam::exp(0.0);
+                etaTheta += exp(-sqr(dS_Theta / eps));
             }
 
             // now we can use Hoekstra's formulation to compute radial thrust distribution
@@ -202,19 +207,19 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             if (rStar < rStarMin)
             {
                 scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
-                fAxial = fRMin * Foam::exp(-dR2 / epsR / epsR) / Foam::exp(0.0);
+                fAxial = fRMin * exp(-dR2 / epsR / epsR);
                 fCirc = fAxial * POD / pi / rPrimeMin;
             }
             else if (rStar >= rStarMin && rStar <= rStarMax)
             {
-                fAxial = Foam::pow(rStar, expM) * Foam::pow(1.0 - rStar, expN);
+                fAxial = pow(rStar, expM) * pow(1.0 - rStar, expN);
                 // we use Hoekstra's method to calculate the fCirc based on fAxial
                 fCirc = fAxial * POD / pi / rPrime;
             }
             else
             {
                 scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
-                fAxial = fRMax * Foam::exp(-dR2 / epsR / epsR) / Foam::exp(0.0);
+                fAxial = fRMax * exp(-dR2 / epsR / epsR);
                 fCirc = fAxial * POD / pi / rPrimeMax;
             }
 

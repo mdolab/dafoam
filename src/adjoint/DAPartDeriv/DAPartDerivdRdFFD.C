@@ -39,7 +39,7 @@ DAPartDerivdRdFFD::DAPartDerivdRdFFD(
 
 void DAPartDerivdRdFFD::initializePartDerivMat(
     const dictionary& options,
-    Mat* jacMat)
+    Mat jacMat)
 {
     /*
     Description:
@@ -55,19 +55,19 @@ void DAPartDerivdRdFFD::initializePartDerivMat(
     label localSize = daIndex_.nLocalAdjointStates;
 
     // create dRdFFDT
-    MatCreate(PETSC_COMM_WORLD, jacMat);
+    //MatCreate(PETSC_COMM_WORLD, jacMat);
     MatSetSizes(
-        *jacMat,
+        jacMat,
         localSize,
         PETSC_DECIDE,
         PETSC_DETERMINE,
         nDesignVars);
-    MatSetFromOptions(*jacMat);
-    MatMPIAIJSetPreallocation(*jacMat, nDesignVars, NULL, nDesignVars, NULL);
-    MatSeqAIJSetPreallocation(*jacMat, nDesignVars, NULL);
+    MatSetFromOptions(jacMat);
+    MatMPIAIJSetPreallocation(jacMat, nDesignVars, NULL, nDesignVars, NULL);
+    MatSeqAIJSetPreallocation(jacMat, nDesignVars, NULL);
     //MatSetOption(jacMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    MatSetUp(*jacMat);
-    MatZeroEntries(*jacMat);
+    MatSetUp(jacMat);
+    MatZeroEntries(jacMat);
     Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
 }
 
@@ -118,6 +118,8 @@ void DAPartDerivdRdFFD::calcPartDerivMat(
 
     scalar delta = daOption_.getSubDictOption<scalar>("adjPartDerivFDStep", "FFD");
     scalar rDelta = 1.0 / delta;
+    PetscScalar rDeltaValue = 0.0;
+    assignValueCheckAD(rDeltaValue, rDelta);
 
     Vec xvVecNew;
     VecDuplicate(xvVec, &xvVecNew);
@@ -146,7 +148,7 @@ void DAPartDerivdRdFFD::calcPartDerivMat(
 
         // compute residual partial using finite-difference
         VecAXPY(resVec, -1.0, resVecRef);
-        VecScale(resVec, rDelta);
+        VecScale(resVec, rDeltaValue);
 
         // assign resVec to jacMat
         PetscInt Istart, Iend;
@@ -157,7 +159,7 @@ void DAPartDerivdRdFFD::calcPartDerivMat(
         for (label j = Istart; j < Iend; j++)
         {
             label relIdx = j - Istart;
-            scalar val = resVecArray[relIdx];
+            PetscScalar val = resVecArray[relIdx];
             MatSetValue(jacMat, j, i, val, INSERT_VALUES);
         }
         VecRestoreArrayRead(resVec, &resVecArray);

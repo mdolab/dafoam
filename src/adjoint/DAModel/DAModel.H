@@ -105,6 +105,9 @@ public:
     /// update intermediate variables that are dependent on the model states
     void updateIntermediateVariables();
 
+    /// return the value of the production term from the turbulence model 
+    void getTurbProdTerm(scalarList& prodTerm) const;
+
 #ifndef SolidDASolver
     /// get a reference to DATurbulenceModel
     const DATurbulenceModel& getDATurbulenceModel() const;

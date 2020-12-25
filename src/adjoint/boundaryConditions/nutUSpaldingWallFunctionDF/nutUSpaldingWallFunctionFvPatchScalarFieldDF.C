@@ -89,7 +89,7 @@ tmp<scalarField> nutUSpaldingWallFunctionFvPatchScalarFieldDF::calcUTau(
 
     const scalarField& nutw = *this;
 
-    tmp<scalarField> tuTau(new scalarField(patch().size(), Zero));
+    tmp<scalarField> tuTau(new scalarField(patch().size(), pTraits<scalar>::zero));
     scalarField& uTau = tuTau.ref();
 
     err.setSize(uTau.size());

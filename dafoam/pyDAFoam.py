@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "2.1.4"
+__version__ = "2.2.0"
 
 import subprocess
 import os
@@ -228,7 +228,31 @@ class DAOPTION(object):
     ##                "addToAdjoint": True,
     ##            }
     ##        },
-    ##     },
+    ##        "FI": {
+    ##            "part1": {
+    ##                "type": "stateErrorNorm",
+    ##                "source": "boxToCell",
+    ##                "min": [-100.0, -100.0, -100.0],
+    ##                "max": [100.0, 100.0, 100.0],
+    ##                "stateName": "U",
+    ##                "stateRefName": "UTrue",
+    ##                "stateType": "vector",
+    ##                "scale": 1.0,
+    ##                "addToAdjoint": True,
+    ##            },
+    ##            "part2": {
+    ##                "type": "stateErrorNorm",
+    ##                "source": "boxToCell",
+    ##                "min": [-100.0, -100.0, -100.0],
+    ##                "max": [100.0, 100.0, 100.0],
+    ##                "stateName": "betaSA",
+    ##                "stateRefName": "betaSATrue",
+    ##                "stateType": "scalar",
+    ##                "scale": 0.01,
+    ##                "addToAdjoint": True,
+    ##            },
+    ##        },
+    ##    },
     objFunc = {}
 
     ## Design variable information. Different type of design variables require different keys
@@ -300,8 +324,20 @@ class DAOPTION(object):
     ##        "eps": 10.0,
     ##        "scale": 10.0  # scale the source such the integral equals desired thrust
     ##    },
+    ##    "gradP"
+    ##    {
+    ##        "type": "uniformPressureGradient",
+    ##        "value": 1e-3,
+    ##        "direction": [1.0, 0.0, 0.0],
+    ##    },
     ## },
     fvSource = {}
+
+    ## Adjoint solution option.
+    ## JacobianFD: Using finite-difference method to compute the partials
+    ## JacobianFree: Using the matrix-free GMRES to solve the adjoint equation without computing
+    ## the state Jacobians.
+    adjJacobianOption = "JacobianFD"
 
     ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
     ## Setting the bounds increases the robustness of primal solution for compressible solvers.
@@ -561,6 +597,9 @@ class PYDAFOAM(object):
         # write all the setup files
         self._writeOFCaseFiles()
 
+        # initialize point set name
+        self.ptSetName = self.getPointSetName("dummy")
+
         # Remind the user of all the DAFoam options:
         if self.getOption("printAllOptions"):
             self._printCurrentOptions()
@@ -627,6 +666,16 @@ class PYDAFOAM(object):
         # value from self.objFuncValuePreIter
         self.objFuncValuePrevIter = {}
 
+        # compute the objective function names for which we solve the adjoint equation
+        self.objFuncNames4Adj = self._calcObjFuncNames4Adj()
+
+        # dictionary to save the total derivative vectors
+        # NOTE: this function need to be called after initializing self.objFuncNames4Adj
+        self.adjTotalDeriv = self._initializeAdjTotalDeriv()
+
+        # preconditioner matrix
+        self.dRdWTPC = None
+
         Info("pyDAFoam initialization done!")
 
         return
@@ -650,12 +699,11 @@ class PYDAFOAM(object):
 
         # update the mesh coordinates if DVGeo is set
         # add point set and update the mesh based on the DV values
-        self.ptSetName = self.getPointSetName("dummy")
-        ptSetName = self.ptSetName
+
         if self.DVGeo is not None:
 
             # if the point set is not in DVGeo add it first
-            if ptSetName not in self.DVGeo.points:
+            if self.ptSetName not in self.DVGeo.points:
 
                 xs0 = self.mapVector(self.xs0, self.allFamilies, self.designFamilyGroup)
 
@@ -663,12 +711,12 @@ class PYDAFOAM(object):
                 self.pointsSet = True
 
             # set the surface coords xs
-            Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(ptSetName)))
-            if not self.DVGeo.pointSetUpToDate(ptSetName):
+            Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(self.ptSetName)))
+            if not self.DVGeo.pointSetUpToDate(self.ptSetName):
                 Info("Updating DVGeo PointSet....")
-                xs = self.DVGeo.update(ptSetName, config=None)
+                xs = self.DVGeo.update(self.ptSetName, config=None)
                 self.setSurfaceCoordinates(xs, self.designFamilyGroup)
-                Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(ptSetName)))
+                Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(self.ptSetName)))
 
                 # warp the mesh to get the new volume coordinates
                 Info("Warping the volume mesh....")
@@ -705,6 +753,56 @@ class PYDAFOAM(object):
                 defOpts[key] = [type(value), value]
 
         return defOpts
+
+    def _initializeAdjTotalDeriv(self):
+        """
+        Initialize the adjoint total derivative dict
+        NOTE: this function need to be called after initializing self.objFuncNames4Adj
+
+        Returns
+        -------
+
+        adjTotalDeriv : dict
+            An empty dict that contains total derivative of objective function with respect design variables
+        """
+
+        designVarDict = self.getOption("designVar")
+        objFuncDict = self.getOption("objFunc")
+
+        adjTotalDeriv = {}
+        for objFuncName in objFuncDict:
+            if objFuncName in self.objFuncNames4Adj:
+                adjTotalDeriv[objFuncName] = {}
+                for designVarName in designVarDict:
+                    adjTotalDeriv[objFuncName][designVarName] = None
+
+        return adjTotalDeriv
+
+    def _calcObjFuncNames4Adj(self):
+        """
+        Compute the objective function names for which we solve the adjoint equation
+
+        Returns
+        -------
+
+        objFuncNames4Adj : list
+            A list of objective function names we will solve the adjoint for
+        """
+
+        objFuncList = []
+        objFuncDict = self.getOption("objFunc")
+        for objFuncName in objFuncDict:
+            objFuncSubDict = objFuncDict[objFuncName]
+            for objFuncPart in objFuncSubDict:
+                objFuncSubDictPart = objFuncSubDict[objFuncPart]
+                if objFuncSubDictPart["addToAdjoint"] is True:
+                    if objFuncName not in objFuncList:
+                        objFuncList.append(objFuncName)
+                elif objFuncSubDictPart["addToAdjoint"] is False:
+                    pass
+                else:
+                    raise Error("addToAdjoint can be either True or False")
+        return objFuncList
 
     def saveMultiPointField(self, indexMP):
         """
@@ -846,8 +944,7 @@ class PYDAFOAM(object):
                 nDVs = len(dvs[dvName])
                 funcsSens[funcName][dvName] = np.zeros(nDVs, self.dtype)
                 for i in range(nDVs):
-                    sensVal = self.solver.getTotalDerivVal(funcName.encode(), dvName.encode(), i)
-                    funcsSens[funcName][dvName][i] = sensVal
+                    funcsSens[funcName][dvName][i] = self.adjTotalDeriv[funcName][dvName][i]
 
         if self.adjointFail:
             funcsSens["fail"] = True
@@ -1181,9 +1278,9 @@ class PYDAFOAM(object):
 
         Output:
         -------
-        psiVec: the adjoint vector
+        self.adjTotalDeriv: the dict contains all the total derivative vectors
 
-        self.adjointFail: if the primal solution fails, assigns 1, otherwise 0
+        self.adjointFail: if the adjoint solution fails, assigns 1, otherwise 0
         """
 
         # save the point vector and state vector to disk
@@ -1200,41 +1297,270 @@ class PYDAFOAM(object):
 
         Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
 
+        self.setOption("runStatus", "solveAdjoint")
+        self.updateDAOption()
+
+        if self.getOption("multiPoint"):
+            self.solver.updateOFField(self.wVec)
+            if self.getOption("adjJacobianOption") == "JacobianFree":
+                self.solverAD.updateOFField(self.wVec)
+
         self.adjointFail = 0
-        self.adjointFail = self.solver.solveAdjoint(self.xvVec, self.wVec)
+
+        # calculate dRdWT
+        if self.getOption("adjJacobianOption") == "JacobianFD":
+            dRdWT = PETSc.Mat().create(PETSc.COMM_WORLD)
+            self.solver.calcdRdWT(self.xvVec, self.wVec, 0, dRdWT)
+        elif self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
+
+        # calculate dRdWTPC
+        adjPCLag = self.getOption("adjPCLag")
+        if self.nSolveAdjoints == 0 or self.nSolveAdjoints % adjPCLag == 0:
+            self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+            self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
+
+        # Initialize the KSP object
+        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
+        if self.getOption("adjJacobianOption") == "JacobianFD":
+            self.solver.createMLRKSP(dRdWT, self.dRdWTPC, ksp)
+        elif self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
+
+        # initialize adjoint vector dict
+        adjVectors = {}
+
+        # loop over all objFunc, calculate dFdW, and solve the adjoint
+        objFuncDict = self.getOption("objFunc")
+        wSize = self.solver.getNLocalAdjointStates()
+        for objFuncName in objFuncDict:
+            if objFuncName in self.objFuncNames4Adj:
+                dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
+                dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
+                dFdW.setFromOptions()
+                if self.getOption("adjJacobianOption") == "JacobianFD":
+                    self.solver.calcdFdW(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
+                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                    self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
+
+                # Initialize the adjoint vector psi and solve for it
+                psi = PETSc.Vec().create(PETSc.COMM_WORLD)
+                psi.setSizes((wSize, PETSc.DECIDE), bsize=1)
+                psi.setFromOptions()
+                if self.getOption("adjJacobianOption") == "JacobianFD":
+                    self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, psi)
+                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, psi)
+
+                adjVectors[objFuncName] = psi
+
+                dFdW.destroy()
+
+        ksp.destroy()
+        if self.getOption("adjJacobianOption") == "JacobianFD":
+            dRdWT.destroy()
+        elif self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.destroydRdWTMatrixFree()
+        # we destroy dRdWTPC only when we need to recompute it next time
+        # see the bottom of this function
+
+        # ************ Now compute the total derivatives **********************
+        # NOTE: the JacobianFree is not implemented yet because the dRdXv is not accurate in
+        # parallel. Need to fix it in OpenFOAM-v1812-AD
+        Info("Computing total derivatives....")
+
+        designVarDict = self.getOption("designVar")
+        for designVarName in designVarDict:
+            Info("Computing total derivatives for %s" % designVarName)
+            ###################### BC: boundary condition as design variable ###################
+            if designVarDict[designVarName]["designVarType"] == "BC":
+                nDVs = 1
+                # calculate dRdBC
+                dRdBC = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdBC(self.xvVec, self.wVec, designVarName.encode(), dRdBC)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdBC
+                        dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        dFdBC.setFromOptions()
+                        self.solver.calcdFdBC(
+                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
+                        )
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdBC, dFdBC, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                        # we need to convert the parallel vec to seq vec
+                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                        for i in range(nDVs):
+                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                        totalDeriv.destroy()
+                        totalDerivSeq.destroy()
+                        dFdBC.destroy()
+                dRdBC.destroy()
+            ###################### AOA: angle of attack as design variable ###################
+            elif designVarDict[designVarName]["designVarType"] == "AOA":
+                nDVs = 1
+                # calculate dRdAOA
+                dRdAOA = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdAOA(self.xvVec, self.wVec, designVarName.encode(), dRdAOA)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdAOA
+                        dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        dFdAOA.setFromOptions()
+                        self.solver.calcdFdAOA(
+                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdAOA
+                        )
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdAOA, dFdAOA, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                        # we need to convert the parallel vec to seq vec
+                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                        for i in range(nDVs):
+                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                        totalDeriv.destroy()
+                        totalDerivSeq.destroy()
+                        dFdAOA.destroy()
+                dRdAOA.destroy()
+            ################### FFD: FFD points as design variable ###################
+            elif designVarDict[designVarName]["designVarType"] == "FFD":
+                nDVs = self.setdXvdFFDMat(designVarName)
+                # calculate dRdFFD
+                dRdFFD = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdFFD(self.xvVec, self.wVec, designVarName.encode(), dRdFFD)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdFFD
+                        dFdFFD = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdFFD.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        dFdFFD.setFromOptions()
+                        self.solver.calcdFdFFD(
+                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdFFD
+                        )
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdFFD, dFdFFD, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                        # we need to convert the parallel vec to seq vec
+                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                        for i in range(nDVs):
+                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                        totalDeriv.destroy()
+                        totalDerivSeq.destroy()
+                        dFdFFD.destroy()
+                dRdFFD.destroy()
+            ################### ACT: actuator models as design variable ###################
+            elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
+                designVarType = designVarDict[designVarName]["designVarType"]
+                nDVTable = {"ACTP": 9, "ACTD": 9, "ACTL": 11}
+                nDVs = nDVTable[designVarType]
+                # calculate dRdACT
+                dRdACT = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdACT(self.xvVec, self.wVec, designVarName.encode(), designVarType.encode(), dRdACT)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdACT
+                        dFdACT = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdACT.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        dFdACT.setFromOptions()
+                        dFdACT.zeroEntries()  # dFdACT assumes to be zeros
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdACT, dFdACT, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                        # we need to convert the parallel vec to seq vec
+                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                        for i in range(nDVs):
+                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                        totalDeriv.destroy()
+                        totalDerivSeq.destroy()
+                        dFdACT.destroy()
+                dRdACT.destroy()
+            ################### State: State variables (e.g., betaSA) as design variable ###################
+            elif designVarDict[designVarName]["designVarType"] == "State":
+                xDV = self.DVGeo.getValues()
+                nDVs = len(xDV[designVarName])
+                nLocalCells = self.solver.getNLocalCells()
+                # calculate dRdState
+                dRdState = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdState(self.xvVec, self.wVec, designVarName.encode(), dRdState)
+                # loop over all objectives
+                for objFuncName in objFuncDict:
+                    if objFuncName in self.objFuncNames4Adj:
+                        # calculate dFdState
+                        dFdState = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        dFdState.setSizes((nLocalCells, PETSc.DECIDE), bsize=1)
+                        dFdState.setFromOptions()
+                        self.solver.calcdFdState(
+                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdState
+                        )
+                        # call the total deriv
+                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                        totalDeriv.setSizes((nLocalCells, PETSc.DECIDE), bsize=1)
+                        totalDeriv.setFromOptions()
+                        self.calcTotalDeriv(dRdState, dFdState, adjVectors[objFuncName], totalDeriv)
+                        # assign the total derivative to self.adjTotalDeriv
+                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                        # we need to convert the parallel vec to seq vec
+                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                        for i in range(nDVs):
+                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                        totalDeriv.destroy()
+                        totalDerivSeq.destroy()
+                        dFdState.destroy()
+                dRdState.destroy()
+            else:
+                raise Error("designVarType %s not supported!" % designVarDict[designVarName]["designVarType"])
 
         self.nSolveAdjoints += 1
 
+        # we destroy dRdWTPC only when we need to recompute it next time
+        if self.nSolveAdjoints % adjPCLag == 0:
+            self.dRdWTPC.destroy()
+
         return
 
-    def calcTotalDeriv(self):
+    def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
         Compute total derivative
 
         Input:
         ------
-        xvVec: vector that contains all the mesh point coordinates
-
-        wVec: vector that contains all the state variables
-
-        psiVec: the adjoint vector
+        dRdX, dFdX, and psi
 
         Output:
-        -------
-        totalDerivVec: the total derivative vector
-
-        self.adjointFail: if the total derivative computation fails, assigns 1, otherwise 0
+        ------
+        totalDeriv = dFdX - [dRdX]^T * psi
         """
 
-        Info("Computing total derivatives....")
-
-        designVarDict = self.getOption("designVar")
-        for key in designVarDict:
-            if designVarDict[key]["designVarType"] == "FFD":
-                self.setdXvdFFDMat(key)
-            self.solver.calcTotalDeriv(self.xvVec, self.wVec, key.encode())
-
-        return
+        dRdX.multTranspose(psi, totalDeriv)
+        totalDeriv.scale(-1.0)
+        totalDeriv.axpy(1.0, dFdX)
 
     def _initSolver(self):
         """
@@ -1251,20 +1577,42 @@ class PYDAFOAM(object):
             from .pyDASolverIncompressible import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
+
+            if self.getOption("adjJacobianOption") == "JacobianFree":
+
+                from .pyDASolverIncompressibleAD import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
         elif solverName in self.solverRegistry["Compressible"]:
 
             from .pyDASolverCompressible import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
+
+            if self.getOption("adjJacobianOption") == "JacobianFree":
+
+                from .pyDASolverCompressibleAD import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
         elif solverName in self.solverRegistry["Solid"]:
 
             from .pyDASolverSolid import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
+
+            if self.getOption("adjJacobianOption") == "JacobianFree":
+
+                from .pyDASolverSolidAD import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
         else:
             raise Error("pyDAFoam: %s not registered! Check _solverRegistry(self)." % solverName)
 
         self.solver.initSolver()
+
+        if self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.initSolver()
 
         self.solver.printAllOptions()
 
@@ -1476,7 +1824,9 @@ class PYDAFOAM(object):
 
         self.solver.setdXvdFFDMat(dXvdFFDMat)
 
-        return
+        dXvdFFDMat.destroy()
+
+        return nDVs
 
     def updateVolumePoints(self):
         """
@@ -1484,17 +1834,15 @@ class PYDAFOAM(object):
         """
 
         # update the CFD Coordinates
-        self.ptSetName = self.getPointSetName("dummy")
-        ptSetName = self.ptSetName
         if self.DVGeo is not None:
-            if ptSetName not in self.DVGeo.points:
+            if self.ptSetName not in self.DVGeo.points:
                 coords0 = self.mapVector(self.coords0, self.allFamilies, self.designFamilyGroup)
                 self.DVGeo.addPointSet(coords0, self.ptSetName)
                 self.pointsSet = True
 
             # set the surface coords
-            if not self.DVGeo.pointSetUpToDate(ptSetName):
-                coords = self.DVGeo.update(ptSetName, config=None)
+            if not self.DVGeo.pointSetUpToDate(self.ptSetName):
+                coords = self.DVGeo.update(self.ptSetName, config=None)
                 self.setSurfaceCoordinates(coords, self.designFamilyGroup)
 
             # warp the mesh
@@ -1994,6 +2342,29 @@ class PYDAFOAM(object):
                 "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
             )
 
+    def setFieldValue4GlobalCellI(self, fieldName, val, globalCellI, compI=0):
+        """
+        Set the field value based on the global cellI. This is usually
+        used if the state variables are design variables, e.g., betaSA
+        The reason to use global cell index, instead of local one, is 
+        because this index is usually provided by the optimizer. Optimizer
+        uses global cell index as the design variable
+
+        Parameters
+        ----------
+        fieldName : str
+           Name of the flow field to set, e.g., U, p, nuTilda
+        val : float
+           The value to set
+        globalCellI : int
+           The global cell index to set the value
+        compI : int
+           The component index to set the value (for vectorField only)
+
+        """
+
+        self.solver.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
+
     def getOption(self, name):
         """
         Get a value from options
@@ -2026,6 +2397,9 @@ class PYDAFOAM(object):
             raise Error("self._initSolver not called!")
 
         self.solver.updateDAOption(self.options)
+
+        if self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.updateDAOption(self.options)
 
     def _printCurrentOptions(self):
         """

@@ -16,15 +16,22 @@ from Cython.Build import cythonize
 import os
 import petsc4py
 
-libName = "pyColoringSolid"
-
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpicxx"
+
+solverName = "pyColoringSolid"
+
+if os.getenv("WM_CODI_AD_MODE") is None:
+    libSuffix = ""
+    codiADMode = "CODI_AD_NONE"
+else:
+    libSuffix = "AD"
+    codiADMode = os.getenv("WM_CODI_AD_MODE")
 
 # These setup should reproduce calling wmake to compile OpenFOAM libraries and solvers
 ext = [
     Extension(
-        "pyColoringSolid",
+        solverName + libSuffix,
         # All source files, taken from Make/files
         sources=[
             "pyColoringSolid.pyx",
@@ -40,7 +47,10 @@ ext = [
             os.getenv("FOAM_SRC") + "/OpenFOAM/lnInclude",
             os.getenv("FOAM_SRC") + "/OSspecific/POSIX/lnInclude",
             os.getenv("FOAM_LIBBIN"),
-            # DAFoam include
+            # CoDiPack and MeDiPack
+            os.getenv("FOAM_SRC") + "/codipack/include",
+            os.getenv("FOAM_SRC") + "/medipack/include",
+            os.getenv("FOAM_SRC") + "/medipack/src",
             # DAFoam include
             os.getenv("PETSC_DIR") + "/include",
             petsc4py.get_include(),
@@ -50,10 +60,10 @@ ext = [
         ],
         # These are from Make/options:EXE_LIBS
         libraries=[
-            "finiteVolume",
-            "meshTools",
+            "finiteVolume" + libSuffix,
+            "meshTools" + libSuffix,
+            "DAFoamSolid" + libSuffix,
             "petsc",
-            "DAFoamSolid",
             ],
         # These are pathes of linked libraries
         library_dirs=[
@@ -83,6 +93,7 @@ ext = [
             "-ftemplate-depth-100",
             "-fPIC",
             "-c",
+            "-D" + codiADMode,
         ],
         # Extra link flags for OpenFOAM, users don't need to touch this
         extra_link_args=["-Xlinker", "--add-needed", "-Xlinker", "--no-as-needed"],
@@ -90,8 +101,8 @@ ext = [
 ]
 
 setup(
-    name=libName,
-    packages=[libName],  # this must be the same as the name above
+    name=solverName + libSuffix,
+    packages=[solverName + libSuffix],  # this must be the same as the name above
     description="Cython wrapper for OpenFOAM",
     long_description="Cython wrapper for OpenFOAM",
     ext_modules=cythonize(ext, language_level=3),

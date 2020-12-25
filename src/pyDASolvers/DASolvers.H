@@ -68,21 +68,210 @@ public:
         return DASolverPtr_->solvePrimal(xvVec, wVec);
     }
 
-    /// solve the adjoint linear equations
-    label solveAdjoint(
+    /// compute dRdWT
+    void calcdRdWT(
+        const Vec xvVec,
+        const Vec wVec,
+        const label isPC,
+        Mat dRdWT)
+    {
+        DASolverPtr_->calcdRdWT(xvVec, wVec, isPC, dRdWT);
+    }
+
+    /// compute dFdW
+    void calcdFdW(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        Vec dFdW)
+    {
+        DASolverPtr_->calcdFdW(xvVec, wVec, objFuncName, dFdW);
+    }
+
+    /// compute dFdW using reverse-mode AD
+    void calcdFdWAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        Vec dFdW)
+    {
+        DASolverPtr_->calcdFdWAD(xvVec, wVec, objFuncName, dFdW);
+    }
+
+    /// compute dFdXv using reverse-mode AD
+    void calcdFdXvAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdXv)
+    {
+        DASolverPtr_->calcdFdXvAD(xvVec, wVec, objFuncName, designVarName, dFdXv);
+    }
+
+    /// compute dRdXv^T*Psi
+    void calcdRdXvTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        Vec dRdXvTPsi)
+    {
+        DASolverPtr_->calcdRdXvTPsiAD(xvVec, wVec, psi, dRdXvTPsi);
+    }
+
+    /// create the multi-level Richardson KSP for solving linear equation
+    void createMLRKSP(
+        const Mat jacMat,
+        const Mat jacPCMat,
+        KSP ksp)
+    {
+        DASolverPtr_->createMLRKSP(jacMat, jacPCMat, ksp);
+    }
+
+    /// create a multi-level, Richardson KSP object with matrix-free Jacobians
+    void createMLRKSPMatrixFree(
+        const Mat jacPCMat,
+        KSP ksp)
+    {
+        DASolverPtr_->createMLRKSPMatrixFree(jacPCMat, ksp);
+    }
+
+    /// initialize matrix free dRdWT
+    void initializedRdWTMatrixFree(
         const Vec xvVec,
         const Vec wVec)
     {
-        return DASolverPtr_->solveAdjoint(xvVec, wVec);
+        DASolverPtr_->initializedRdWTMatrixFree(xvVec, wVec);
     }
 
-    /// compute the total derivatives
-    label calcTotalDeriv(
+    /// destroy matrix free dRdWT
+    void destroydRdWTMatrixFree()
+    {
+        DASolverPtr_->destroydRdWTMatrixFree();
+    }
+
+    /// solve the linear equation
+    void solveLinearEqn(
+        const KSP ksp,
+        const Vec rhsVec,
+        Vec solVec)
+    {
+        DASolverPtr_->solveLinearEqn(ksp, rhsVec, solVec);
+    }
+
+    /// convert the mpi vec to a seq vec
+    void convertMPIVec2SeqVec(
+        const Vec mpiVec,
+        Vec seqVec)
+    {
+        DASolverPtr_->convertMPIVec2SeqVec(mpiVec, seqVec);
+    }
+
+    /// compute dRdBC
+    void calcdRdBC(
         const Vec xvVec,
         const Vec wVec,
-        const word designVarName)
+        const word designVarName,
+        Mat dRdBC)
     {
-        return DASolverPtr_->calcTotalDeriv(xvVec, wVec, designVarName);
+        DASolverPtr_->calcdRdBC(xvVec, wVec, designVarName, dRdBC);
+    }
+
+    /// compute dFdBC
+    void calcdFdBC(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdBC)
+    {
+        DASolverPtr_->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
+    }
+
+    /// compute dRdAOA
+    void calcdRdAOA(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdAOA)
+    {
+        DASolverPtr_->calcdRdAOA(xvVec, wVec, designVarName, dRdAOA);
+    }
+
+    /// compute dFdAOA
+    void calcdFdAOA(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdAOA)
+    {
+        DASolverPtr_->calcdFdAOA(xvVec, wVec, objFuncName, designVarName, dFdAOA);
+    }
+
+    /// compute dRdFFD
+    void calcdRdFFD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdFFD)
+    {
+        DASolverPtr_->calcdRdFFD(xvVec, wVec, designVarName, dRdFFD);
+    }
+
+    /// compute dFdFFD
+    void calcdFdFFD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdFFD)
+    {
+        DASolverPtr_->calcdFdFFD(xvVec, wVec, objFuncName, designVarName, dFdFFD);
+    }
+
+    /// compute dRdACT
+    void calcdRdACT(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        const word designVarType,
+        Mat dRdACT)
+    {
+        DASolverPtr_->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
+    }
+
+    /// compute dRdState
+    void calcdRdState(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdState)
+    {
+        DASolverPtr_->calcdRdState(xvVec, wVec, designVarName, dRdState);
+    }
+
+    /// compute dFdState
+    void calcdFdState(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdState)
+    {
+        DASolverPtr_->calcdFdState(xvVec, wVec, objFuncName, designVarName, dFdState);
+    }
+
+    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
+    void updateOFField(const Vec wVec)
+    {
+        DASolverPtr_->updateOFField(wVec);
+    }
+
+    /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
+    void updateOFMesh(const Vec xvVec)
+    {
+        DASolverPtr_->updateOFMesh(xvVec);
     }
 
     /// basically, we call DAIndex::getGlobalXvIndex
@@ -117,19 +306,18 @@ public:
         return DASolverPtr_->getNLocalAdjointStates();
     }
 
-    /// return the value of objective
-    scalar getObjFuncValue(const word objFuncName)
+    /// return the number of local cells
+    label getNLocalCells() const
     {
-        return DASolverPtr_->getObjFuncValue(objFuncName);
+        return DASolverPtr_->getNLocalCells();
     }
 
-    /// basically, we call DASolver::getTotalDerivVal
-    scalar getTotalDerivVal(
-        const word objFuncName,
-        const word designVarName,
-        const label idxI) const
+    /// return the value of objective
+    double getObjFuncValue(const word objFuncName)
     {
-        return DASolverPtr_->getTotalDerivVal(objFuncName, designVarName, idxI);
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValue(objFuncName));
+        return returnVal;
     }
 
     /// call DASolver::printAllOptions
@@ -151,9 +339,11 @@ public:
     }
 
     /// get the solution time folder for previous primal solution
-    scalar getPrevPrimalSolTime()
+    double getPrevPrimalSolTime()
     {
-        return DASolverPtr_->getPrevPrimalSolTime();
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getPrevPrimalSolTime());
+        return returnVal;
     }
 
     /// assign the points in fvMesh of OpenFOAM based on the point vector
@@ -235,11 +425,23 @@ public:
     }
 
     /// return the value of objective function at the given time instance and name
-    scalar getTimeInstanceObjFunc(
+    double getTimeInstanceObjFunc(
         const label instanceI,
         const word objFuncName)
     {
-        return DASolverPtr_->getTimeInstanceObjFunc(instanceI, objFuncName);
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getTimeInstanceObjFunc(instanceI, objFuncName));
+        return returnVal;
+    }
+
+    /// set the field value
+    void setFieldValue4GlobalCellI(
+        const word fieldName,
+        const scalar val,
+        const label globalCellI,
+        const label compI = 0)
+    {
+        DASolverPtr_->setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI);
     }
 };
 

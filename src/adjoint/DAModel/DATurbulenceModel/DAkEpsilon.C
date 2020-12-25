@@ -548,7 +548,7 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
             + fvm::div(phaseRhoPhi_, epsilon_)
             - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
         == C1_ * phase_() * rho_() * G * epsilon_() / k_()
-            - fvm::SuSp(((2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
+            - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
             - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
             + epsilonSource());
 

@@ -39,7 +39,7 @@ DAPartDerivdFdW::DAPartDerivdFdW(
 
 void DAPartDerivdFdW::initializePartDerivMat(
     const dictionary& options,
-    Mat* jacMat)
+    Mat jacMat)
 {
     /*
     Description:
@@ -60,19 +60,19 @@ void DAPartDerivdFdW::initializePartDerivMat(
     nLocalObjFuncGeoElements_ = objFuncFaceSources.size() + objFuncCellSources.size();
 
     // create dFdW
-    MatCreate(PETSC_COMM_WORLD, jacMat);
+    //MatCreate(PETSC_COMM_WORLD, jacMat);
     MatSetSizes(
-        *jacMat,
+        jacMat,
         nLocalObjFuncGeoElements_,
         daIndex_.nLocalAdjointStates,
         PETSC_DETERMINE,
         PETSC_DETERMINE);
-    MatSetFromOptions(*jacMat);
-    MatMPIAIJSetPreallocation(*jacMat, 200, NULL, 200, NULL);
-    MatSeqAIJSetPreallocation(*jacMat, 200, NULL);
+    MatSetFromOptions(jacMat);
+    MatMPIAIJSetPreallocation(jacMat, 200, NULL, 200, NULL);
+    MatSeqAIJSetPreallocation(jacMat, 200, NULL);
     //MatSetOption(jacMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    MatSetUp(*jacMat);
-    MatZeroEntries(*jacMat);
+    MatSetUp(jacMat);
+    MatZeroEntries(jacMat);
     Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
 }
 
@@ -165,6 +165,7 @@ void DAPartDerivdFdW::calcPartDerivMat(
     // NOTE: for some objectives, we need to scale dFdW so we first fetch their
     // scaling before perturbing W and after computing the reference objFunc
     scalar scalingKS = 1.0;
+    PetscScalar scalingKSValue = 0.0;
     if (objFuncSubDictPart.getWord("type") == "vonMisesStressKS")
     {
         scalar coeffKS = objFuncSubDictPart.getScalar("coeffKS");
@@ -172,9 +173,12 @@ void DAPartDerivdFdW::calcPartDerivMat(
         // based on unperturbed W
         scalingKS = 1.0 / daObjFunc->expSumKS / coeffKS;
     }
+    assignValueCheckAD(scalingKSValue, scalingKS);
 
     scalar delta = daOption_.getSubDictOption<scalar>("adjPartDerivFDStep", "State");
     scalar rDelta = 1.0 / delta;
+    PetscScalar rDeltaValue = 0.0;
+    assignValueCheckAD(rDeltaValue, rDelta);
 
     label nColors = daJacCon_.getNJacConColors();
 
@@ -206,10 +210,10 @@ void DAPartDerivdFdW::calcPartDerivMat(
 
         // compute residual partial using finite-difference
         VecAXPY(fVec, -1.0, fVecRef);
-        VecScale(fVec, rDelta);
+        VecScale(fVec, rDeltaValue);
         // NOTE: need to further scale fVec by scalingKS for KS objectives
         // If no KS objectives are used, scalingKS=1
-        VecScale(fVec, scalingKS);
+        VecScale(fVec, scalingKSValue);
 
         // compute the colored coloumn and assign resVec to jacMat
         daJacCon_.calcColoredColumns(color, coloredColumn);

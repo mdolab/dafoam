@@ -84,6 +84,9 @@ protected:
     /// DACheckMesh object pointer
     autoPtr<DACheckMesh> daCheckMeshPtr_;
 
+    /// DALinearEqn pointer
+    autoPtr<DALinearEqn> daLinearEqnPtr_;
+
     /// DAResidual pointer
     autoPtr<DAResidual> daResidualPtr_;
 
@@ -119,18 +122,6 @@ protected:
 
     /// how many times the DASolver::solveAdjoint function is called
     label nSolveAdjointCalls_ = 0;
-
-    /// assign the psiVec to psiVecArray_
-    void setPsiVecDict(
-        const word objFuncName,
-        const Vec psiVec,
-        dictionary& psiVecDict);
-
-    void setTotalDerivDict(
-        const word objFuncName,
-        const word designVarName,
-        const Vec totalDerivVec,
-        dictionary& totalDerivDict);
 
     /// the matrix that stores the partials dXv/dFFD computed from the idwarp and pygeo in the pyDAFoam.py
     Mat dXvdFFDMat_;
@@ -172,6 +163,19 @@ protected:
 
     /// write associated fields such as relative velocity
     void writeAssociatedFields();
+
+    /// matrix-free dRdWT matrix used in GMRES solution
+    Mat dRdWTMF_;
+
+    /// a flag in dRdWTMatVecMultFunction to determine if the global tap is initialized
+    label globalADTape4dRdWTInitialized = 0;
+
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+
+    /// global tape for reverse-mode AD
+    codi::RealReverse::TapeType& globalADTape_;
+
+#endif
 
 public:
     /// Runtime type information
@@ -224,16 +228,169 @@ public:
         const label instanceI,
         const word objFuncName);
 
-    /// solve the adjoint linear equations
-    label solveAdjoint(
+    /// compute dRdWT
+    void calcdRdWT(
+        const Vec xvVec,
+        const Vec wVec,
+        const label isPC,
+        Mat dRdWT);
+
+    /// compute dFdW
+    void calcdFdW(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        Vec dFdW);
+
+    /// create a multi-level, Richardson KSP object
+    void createMLRKSP(
+        const Mat jacMat,
+        const Mat jacPCMat,
+        KSP ksp);
+
+    /// solve the linear equation given a ksp and right-hand-side vector
+    label solveLinearEqn(
+        const KSP ksp,
+        const Vec rhsVec,
+        Vec solVec);
+
+    /// convert the mpi vec to a seq vec
+    void convertMPIVec2SeqVec(
+        const Vec mpiVec,
+        Vec seqVec);
+
+    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
+    void updateOFField(const Vec wVec);
+
+    /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
+    void updateOFMesh(const Vec xvVec);
+
+    /// compute dRdBC
+    void calcdRdBC(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdBC);
+
+    /// compute dFdBC
+    void calcdFdBC(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdBC);
+
+    /// compute dRdAOA
+    void calcdRdAOA(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdAOA);
+
+    /// compute dFdAOA
+    void calcdFdAOA(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdAOA);
+
+    /// compute dRdFFD
+    void calcdRdFFD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdFFD);
+
+    /// compute dFdFFD
+    void calcdFdFFD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdFFD);
+
+    /// compute dRdACT
+    void calcdRdACT(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        const word designVarType,
+        Mat dRdACT);
+    
+    /// compute dRdState
+    void calcdRdState(
+        const Vec xvVec,
+        const Vec wVec,
+        const word designVarName,
+        Mat dRdState);
+
+    /// compute dFdState
+    void calcdFdState(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdState);
+
+    /// create a multi-level, Richardson KSP object with matrix-free Jacobians
+    void createMLRKSPMatrixFree(
+        const Mat jacPCMat,
+        KSP ksp);
+
+    /// compute dFdW using AD
+    void calcdFdWAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        Vec dFdW);
+
+    /// compute dRdXv^T*Psi
+    void calcdRdXvTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        Vec dRdXvTPsi);
+
+    /// compute dFdXv AD
+    void calcdFdXvAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdXv);
+
+    /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
+    static PetscErrorCode dRdWTMatVecMultFunction(
+        Mat dRdWT,
+        Vec vecX,
+        Vec vecY);
+
+    /// initialize matrix free dRdWT
+    void initializedRdWTMatrixFree(
         const Vec xvVec,
         const Vec wVec);
 
-    /// compute the total derivatives
-    label calcTotalDeriv(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName);
+    /// destroy the matrix free dRdWT
+    void destroydRdWTMatrixFree();
+
+    /// register all state variables as the input for reverse-mode AD
+    void registerStateVariableInput4AD();
+
+    /// register all residuals as the output for reverse-mode AD
+    void registerResidualOutput4AD();
+
+    /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
+    void assignVec2ResidualGradient(Vec vecX);
+
+    /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
+    void assignStateGradient2Vec(Vec vecY);
+
+    /// normalize the reverse-mode AD derivatives stored in vecY
+    void normalizeGradientVec(Vec vecY);
+
+    /// initialize the CoDiPack reverse-mode AD global tape for computing dRdWT*psi
+    void initializeGlobalADTape4dRdWT();
 
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);
@@ -336,6 +493,12 @@ public:
         return daIndexPtr_->nLocalAdjointStates;
     }
 
+    /// return the number of local cells
+    label getNLocalCells() const
+    {
+        return meshPtr_->nCells();
+    }
+
     /// initialize DASolver::daObjFuncPtrList_ one needs to call this before calling printAllObjFuncs
     void setDAObjFuncList();
 
@@ -363,17 +526,6 @@ public:
         const word mode,
         const label writeRes = 0);
 
-    /// assign the psiVecDict_ to psiVec
-    void getPsiVec(
-        const word objFuncName,
-        Vec psiVec);
-
-    /// get the value of totoal derivative that is stored in DASolver::totalDerivDict_
-    scalar getTotalDerivVal(
-        const word objFuncName,
-        const word designVarName,
-        const label idxI) const;
-
     /// set the value for DASolver::dXvdFFDMat_
     void setdXvdFFDMat(const Mat dXvdFFDMat);
 
@@ -388,6 +540,13 @@ public:
     {
         return prevPrimalSolTime_;
     }
+
+    /// set the field value
+    void setFieldValue4GlobalCellI(
+        const word fieldName,
+        const scalar val,
+        const label globalCellI,
+        const label compI = 0);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

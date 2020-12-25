@@ -56,7 +56,7 @@ public:
     /// initialize partial derivative matrix
     virtual void initializePartDerivMat(
         const dictionary& options,
-        Mat* jacMat);
+        Mat jacMat);
 
     /// compute the partial derivative matrix
     virtual void calcPartDerivMat(

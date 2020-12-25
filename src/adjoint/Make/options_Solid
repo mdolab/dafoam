@@ -15,9 +15,9 @@ EXE_INC = \
     
 
 LIB_LIBS = \
-    -lOpenFOAM \
-    -lfiniteVolume \
-    -lmeshTools \
+    -lOpenFOAM$(DF_LIB_SUFFIX) \
+    -lfiniteVolume$(DF_LIB_SUFFIX) \
+    -lmeshTools$(DF_LIB_SUFFIX) \
     -L$(PETSC_LIB) -lpetsc \
     -L$(MPI_ARCH_PATH)/lib \
     -L$(MPI_ARCH_PATH)/lib64 \

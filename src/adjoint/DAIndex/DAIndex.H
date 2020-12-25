@@ -232,6 +232,9 @@ public:
         const label idxPoint,
         const label idxCoord) const;
 
+    /// get global cell index for a local cell index
+    label getGlobalCellIndex(const label cellI) const;
+
     /// compute global list adjStateID4GlobalAdjIdx that stores the stateID for a given globalAdjIndx
     void calcAdjStateID4GlobalAdjIdx(labelList& adjStateID4GlobalAdjIdx) const;
 

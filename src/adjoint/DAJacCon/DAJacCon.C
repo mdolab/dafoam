@@ -2070,7 +2070,7 @@ void DAJacCon::calcColoredColumns(
     else
     {
         // uncolored case, we just set all elements to colorI
-        scalar val = colorI * 1.0;
+        PetscScalar val = colorI * 1.0;
         VecSet(coloredColumn, val);
 
         VecAssemblyBegin(coloredColumn);

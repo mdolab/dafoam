@@ -13,25 +13,45 @@
 """
 
 # for using Petsc
-from petsc4py.PETSc cimport Vec, PetscVec, Mat, PetscMat
+from petsc4py.PETSc cimport Vec, PetscVec, Mat, PetscMat, KSP, PetscKSP
 
-# declear cpp functions
+# declare cpp functions
 cdef extern from "DASolvers.H" namespace "Foam":
     cppclass DASolvers:
         DASolvers(char *, object) except +
         void initSolver()
         int solvePrimal(PetscVec, PetscVec)
-        int solveAdjoint(PetscVec, PetscVec)
-        int calcTotalDeriv(PetscVec, PetscVec, char *)
+        void calcdRdWT(PetscVec, PetscVec, int, PetscMat)
+        void initializedRdWTMatrixFree(PetscVec, PetscVec)
+        void destroydRdWTMatrixFree()
+        void calcdFdW(PetscVec, PetscVec, char *, PetscVec)
+        void calcdFdWAD(PetscVec, PetscVec, char *, PetscVec)
+        void createMLRKSP(PetscMat, PetscMat, PetscKSP)
+        void createMLRKSPMatrixFree(PetscMat, PetscKSP)
+        void solveLinearEqn(PetscKSP, PetscVec, PetscVec)
+        void calcdRdBC(PetscVec, PetscVec, char *, PetscMat)
+        void calcdFdBC(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdRdAOA(PetscVec, PetscVec, char *, PetscMat)
+        void calcdFdAOA(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdRdFFD(PetscVec, PetscVec, char *, PetscMat)
+        void calcdRdXvTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdFdFFD(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdFdXvAD(PetscVec, PetscVec, char *, char*, PetscVec)
+        void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
+        void calcdRdState(PetscVec, PetscVec, char *, PetscMat)
+        void calcdFdState(PetscVec, PetscVec, char *, char *, PetscVec)
+        void convertMPIVec2SeqVec(PetscVec, PetscVec)
+        void updateOFField(PetscVec)
+        void updateOFMesh(PetscVec)
         void setdXvdFFDMat(PetscMat)
         int getGlobalXvIndex(int, int)
         void ofField2StateVec(PetscVec)
         void stateVec2OFField(PetscVec)
         int getNLocalAdjointStates()
+        int getNLocalCells()
         int checkMesh()
         double getObjFuncValue(char *)
         void printAllOptions()
-        double getTotalDerivVal(char *, char *, int)
         void updateDAOption(object)
         double getPrevPrimalSolTime()
         # functions for unit tests
@@ -47,6 +67,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void writeVectorBinary(PetscVec, char *)
         void setTimeInstanceField(int)
         double getTimeInstanceObjFunc(int, char *)
+        void setFieldValue4GlobalCellI(char *, double, int, int)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -86,19 +107,79 @@ cdef class pyDASolvers:
         """
         self._thisptr = new DASolvers(argsAll, pyOptions)
 
-    # wrap all the other memeber functions in the cpp class
+    # wrap all the other member functions in the cpp class
     def initSolver(self):
         self._thisptr.initSolver()
 
     def solvePrimal(self, Vec xvVec, Vec wVec):
         return self._thisptr.solvePrimal(xvVec.vec, wVec.vec)
     
-    def solveAdjoint(self, Vec xvVec, Vec wVec):
-        return self._thisptr.solveAdjoint(xvVec.vec, wVec.vec)
+    def calcdRdWT(self, Vec xvVec, Vec wVec, isPC, Mat dRdWT):
+        self._thisptr.calcdRdWT(xvVec.vec, wVec.vec, isPC, dRdWT.mat)
     
-    def calcTotalDeriv(self, Vec xvVec, Vec wVec, designVarName):
-        return self._thisptr.calcTotalDeriv(xvVec.vec, wVec.vec, designVarName)
+    def initializedRdWTMatrixFree(self, Vec xvVec, Vec wVec):
+        self._thisptr.initializedRdWTMatrixFree(xvVec.vec, wVec.vec)
     
+    def destroydRdWTMatrixFree(self):
+        self._thisptr.destroydRdWTMatrixFree()
+    
+    def calcdFdW(self, Vec xvVec, Vec wVec, objFuncName, Vec dFdW):
+        self._thisptr.calcdFdW(xvVec.vec, wVec.vec, objFuncName, dFdW.vec)
+    
+    def calcdFdWAD(self, Vec xvVec, Vec wVec, objFuncName, Vec dFdW):
+        self._thisptr.calcdFdWAD(xvVec.vec, wVec.vec, objFuncName, dFdW.vec)
+    
+    def createMLRKSP(self, Mat jacMat, Mat jacPCMat, KSP myKSP):
+        self._thisptr.createMLRKSP(jacMat.mat, jacPCMat.mat, myKSP.ksp)
+    
+    def createMLRKSPMatrixFree(self, Mat jacPCMat, KSP myKSP):
+        self._thisptr.createMLRKSPMatrixFree(jacPCMat.mat, myKSP.ksp)
+    
+    def solveLinearEqn(self, KSP myKSP, Vec rhsVec, Vec solVec):
+        self._thisptr.solveLinearEqn(myKSP.ksp, rhsVec.vec, solVec.vec)
+
+    def calcdRdBC(self, Vec xvVec, Vec wVec, designVarName, Mat dRdBC):
+        self._thisptr.calcdRdBC(xvVec.vec, wVec.vec, designVarName, dRdBC.mat)
+    
+    def calcdFdBC(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdBC):
+        self._thisptr.calcdFdBC(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdBC.vec)
+
+    def calcdRdAOA(self, Vec xvVec, Vec wVec, designVarName, Mat dRdAOA):
+        self._thisptr.calcdRdAOA(xvVec.vec, wVec.vec, designVarName, dRdAOA.mat)
+
+    def calcdFdAOA(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdAOA):
+        self._thisptr.calcdFdAOA(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdAOA.vec)
+
+    def calcdRdFFD(self, Vec xvVec, Vec wVec, designVarName, Mat dRdFFD):
+        self._thisptr.calcdRdFFD(xvVec.vec, wVec.vec, designVarName, dRdFFD.mat)
+    
+    def calcdRdXvTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdXvTPsi):
+        self._thisptr.calcdRdXvTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdXvTPsi.vec)
+
+    def calcdFdFFD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdFFD):
+        self._thisptr.calcdFdFFD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdFFD.vec)
+
+    def calcdFdXvAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdXv):
+        self._thisptr.calcdFdXvAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdXv.vec)
+
+    def calcdRdACT(self, Vec xvVec, Vec wVec, designVarName, designVarType, Mat dRdACT):
+        self._thisptr.calcdRdACT(xvVec.vec, wVec.vec, designVarName, designVarType, dRdACT.mat)
+
+    def calcdRdState(self, Vec xvVec, Vec wVec, designVarName, Mat dRdACT):
+        self._thisptr.calcdRdState(xvVec.vec, wVec.vec, designVarName, dRdACT.mat)
+
+    def calcdFdState(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdState):
+        self._thisptr.calcdFdState(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdState.vec)
+
+    def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
+        self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
+
+    def updateOFField(self, Vec wVec):
+        self._thisptr.updateOFField(wVec.vec)
+    
+    def updateOFMesh(self, Vec xvVec):
+        self._thisptr.updateOFMesh(xvVec.vec)
+
     def setdXvdFFDMat(self, Mat dXvdFFDMat):
         self._thisptr.setdXvdFFDMat(dXvdFFDMat.mat)
     
@@ -126,14 +207,14 @@ cdef class pyDASolvers:
     def getNLocalAdjointStates(self):
         return self._thisptr.getNLocalAdjointStates()
     
+    def getNLocalCells(self):
+        return self._thisptr.getNLocalCells()
+    
     def checkMesh(self):
         return self._thisptr.checkMesh()
     
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
-    
-    def getTotalDerivVal(self, objFuncName, designVarName, idxI):
-        return self._thisptr.getTotalDerivVal(objFuncName, designVarName, idxI)
 
     def printAllOptions(self):
         self._thisptr.printAllOptions()
@@ -167,3 +248,6 @@ cdef class pyDASolvers:
     
     def getTimeInstanceObjFunc(self, instanceI, objFuncName):
         return self._thisptr.getTimeInstanceObjFunc(instanceI, objFuncName)
+
+    def setFieldValue4GlobalCellI(self, fieldName, val, globalCellI, compI = 0):
+        return self._thisptr.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)

@@ -200,7 +200,6 @@ def calcObjFuncSens(xDV, funcs):
 
     # Solve the adjoint
     DASolver.solveAdjoint()
-    DASolver.calcTotalDeriv()
 
     # Evaluate the CFD derivatives
     DASolver.evalFunctionsSens(funcsSens, evalFuncs=evalFuncs)
@@ -257,7 +256,6 @@ def calcObjFuncSensMP(xDV, funcs):
 
         # Solve the adjoint
         DASolver.solveAdjoint()
-        DASolver.calcTotalDeriv()
 
         # Evaluate the CFD derivatives
         DASolver.evalFunctionsSens(funcsSens, evalFuncs=evalFuncs)
@@ -322,7 +320,6 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
 
         # Solve the adjoint
         DASolver.solveAdjoint()
-        DASolver.calcTotalDeriv()
 
         # Evaluate the CFD derivatives
         DASolver.evalFunctionsSens(funcsSens, evalFuncs=evalFuncs)

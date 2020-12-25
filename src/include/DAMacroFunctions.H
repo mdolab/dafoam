@@ -125,3 +125,12 @@
             mesh.thisDb().lookupObject<surfaceScalarField>(#stateName))
 
 #endif
+
+// If AD is used, do valA=valB.getValue(), otherwise, do valA=valB
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#define assignValueCheckAD(valA, valB) \
+    valA = valB.getValue();
+#else
+#define assignValueCheckAD(valA, valB) \
+    valA = valB;
+#endif

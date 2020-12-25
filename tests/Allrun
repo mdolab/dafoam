@@ -44,7 +44,9 @@ case $argm in
     sleep 3
     runTests Integration
     runTests DASimpleFoam
+    runTests DASimpleFoamAD
     runTests DASimpleFoamMRF
+    runTests DASimpleFoamBetaSA
     runTests DASimpleTFoam
     runTests DAPisoFoam
     runTests DAPisoFoamACTL
@@ -66,7 +68,9 @@ case $argm in
     sleep 3
     runTests Integration
     runTests DASimpleFoam
+    runTests DASimpleFoamAD
     runTests DASimpleFoamMRF
+    runTests DASimpleFoamBetaSA
     runTests DASimpleTFoam
     runTests DAPisoFoam
     runTests DAPisoFoamACTL

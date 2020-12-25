@@ -39,7 +39,7 @@ DAPartDerivdFdFFD::DAPartDerivdFdFFD(
 
 void DAPartDerivdFdFFD::initializePartDerivMat(
     const dictionary& options,
-    Mat* jacMat)
+    Mat jacMat)
 {
     /*
     Description:
@@ -52,19 +52,19 @@ void DAPartDerivdFdFFD::initializePartDerivMat(
     label nDesignVars = options.getLabel("nDesignVars");
 
     // create dFdFFD
-    MatCreate(PETSC_COMM_WORLD, jacMat);
+    //MatCreate(PETSC_COMM_WORLD, jacMat);
     MatSetSizes(
-        *jacMat,
+        jacMat,
         PETSC_DECIDE,
         PETSC_DECIDE,
         1,
         nDesignVars);
-    MatSetFromOptions(*jacMat);
-    MatMPIAIJSetPreallocation(*jacMat, nDesignVars, NULL, nDesignVars, NULL);
-    MatSeqAIJSetPreallocation(*jacMat, nDesignVars, NULL);
+    MatSetFromOptions(jacMat);
+    MatMPIAIJSetPreallocation(jacMat, nDesignVars, NULL, nDesignVars, NULL);
+    MatSeqAIJSetPreallocation(jacMat, nDesignVars, NULL);
     //MatSetOption(jacMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    MatSetUp(*jacMat);
-    MatZeroEntries(*jacMat);
+    MatSetUp(jacMat);
+    MatZeroEntries(jacMat);
     Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
 }
 
@@ -152,8 +152,10 @@ void DAPartDerivdFdFFD::calcPartDerivMat(
         // no need to reset FFD here
 
         scalar partDeriv = (fNew - fRef) * rDelta;
+        PetscScalar partDerivValue = 0.0;
+        assignValueCheckAD(partDerivValue, partDeriv);
 
-        MatSetValue(jacMat, 0, i, partDeriv, INSERT_VALUES);
+        MatSetValue(jacMat, 0, i, partDerivValue, INSERT_VALUES);
     }
 
     // call the master function again to reset xvVec and wVec to OpenFOAM fields and points

@@ -70,7 +70,7 @@ void DAField::ofField2StateVec(Vec stateVec) const
             for (label comp = 0; comp < 3; comp++)
             {
                 label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
-                stateVecArray[localIdx] = state[cellI][comp];
+                assignValueCheckAD(stateVecArray[localIdx], state[cellI][comp]);
             }
         }
     }
@@ -83,7 +83,7 @@ void DAField::ofField2StateVec(Vec stateVec) const
         forAll(mesh_.cells(), cellI)
         {
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-            stateVecArray[localIdx] = state[cellI];
+            assignValueCheckAD(stateVecArray[localIdx], state[cellI]);
         }
     }
 
@@ -95,7 +95,7 @@ void DAField::ofField2StateVec(Vec stateVec) const
         forAll(mesh_.cells(), cellI)
         {
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-            stateVecArray[localIdx] = state[cellI];
+            assignValueCheckAD(stateVecArray[localIdx], state[cellI]);
         }
     }
 
@@ -109,14 +109,14 @@ void DAField::ofField2StateVec(Vec stateVec) const
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
             if (faceI < daIndex_.nLocalInternalFaces)
             {
-                stateVecArray[localIdx] = state[faceI];
+                assignValueCheckAD(stateVecArray[localIdx], state[faceI]);
             }
             else
             {
                 label relIdx = faceI - daIndex_.nLocalInternalFaces;
                 const label& patchIdx = daIndex_.bFacePatchI[relIdx];
                 const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
-                stateVecArray[localIdx] = state.boundaryField()[patchIdx][faceIdx];
+                assignValueCheckAD(stateVecArray[localIdx], state.boundaryField()[patchIdx][faceIdx]);
             }
         }
     }
@@ -290,7 +290,7 @@ void DAField::ofMesh2PointVec(Vec xvVec) const
         for (label comp = 0; comp < 3; comp++)
         {
             label localIdx = daIndex_.getLocalXvIndex(pointI, comp);
-            xvVecArray[localIdx] = mesh_.points()[pointI][comp];
+            assignValueCheckAD(xvVecArray[localIdx], mesh_.points()[pointI][comp]);
         }
     }
 
@@ -335,7 +335,7 @@ void DAField::ofResField2ResVec(Vec resVec) const
             for (label comp = 0; comp < 3; comp++)
             {
                 label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
-                stateResVecArray[localIdx] = stateRes[cellI][comp];
+                assignValueCheckAD(stateResVecArray[localIdx], stateRes[cellI][comp]);
             }
         }
     }
@@ -348,7 +348,7 @@ void DAField::ofResField2ResVec(Vec resVec) const
         forAll(mesh_.cells(), cellI)
         {
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-            stateResVecArray[localIdx] = stateRes[cellI];
+            assignValueCheckAD(stateResVecArray[localIdx], stateRes[cellI]);
         }
     }
 
@@ -360,7 +360,7 @@ void DAField::ofResField2ResVec(Vec resVec) const
         forAll(mesh_.cells(), cellI)
         {
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-            stateResVecArray[localIdx] = stateRes[cellI];
+            assignValueCheckAD(stateResVecArray[localIdx], stateRes[cellI]);
         }
     }
 
@@ -374,14 +374,14 @@ void DAField::ofResField2ResVec(Vec resVec) const
             label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
             if (faceI < daIndex_.nLocalInternalFaces)
             {
-                stateResVecArray[localIdx] = stateRes[faceI];
+                assignValueCheckAD(stateResVecArray[localIdx], stateRes[faceI]);
             }
             else
             {
                 label relIdx = faceI - daIndex_.nLocalInternalFaces;
                 const label& patchIdx = daIndex_.bFacePatchI[relIdx];
                 const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
-                stateResVecArray[localIdx] = stateRes.boundaryField()[patchIdx][faceIdx];
+                assignValueCheckAD(stateResVecArray[localIdx], stateRes.boundaryField()[patchIdx][faceIdx]);
             }
         }
     }
