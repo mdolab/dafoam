@@ -40,7 +40,7 @@ jobs:
       script:
         # compile all components
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && ./Allmake incompressible"
-        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoamAD.sh && cd $DOCKER_WORKING_DIR && ./Allmake incompressible 2> makeWarnings.txt"
+        - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoamAD.sh && cd $DOCKER_WORKING_DIR && ./Allclean && ./Allmake incompressible 2> makeWarnings.txt"
         - docker exec -it regtest /bin/bash -c "cp /home/dafoamuser/OpenFOAM/-v1812-AD/platforms/linux64GccDPInt32Opt/lib/*.so /home/dafoamuser/OpenFOAM/-v1812/platforms/linux64GccDPInt32Opt/lib/"
         - docker exec -it regtest /bin/bash -c ". /home/dafoamuser/setupDAFoam.sh && cd $DOCKER_WORKING_DIR && pip install ."
         # just run the tests

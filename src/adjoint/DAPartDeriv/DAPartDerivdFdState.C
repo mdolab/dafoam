@@ -117,8 +117,10 @@ void DAPartDerivdFdState::calcPartDerivMat(
                 forAll(mesh_.cells(), cellI)
                 {
                     label globalCellI = daIndex_.getGlobalCellIndex(cellI);
-                    PetscScalar partDeriv = 2.0 * scale * (state[cellI] - stateRef[cellI]);
-                    MatSetValue(jacMat, globalCellI, 0, partDeriv, INSERT_VALUES);
+                    scalar partDeriv = 2.0 * scale * (state[cellI] - stateRef[cellI]);
+                    PetscScalar partDerivValue = 0.0;
+                    assignValueCheckAD(partDerivValue, partDeriv);
+                    MatSetValue(jacMat, globalCellI, 0, partDerivValue, INSERT_VALUES);
                 }
 
             }

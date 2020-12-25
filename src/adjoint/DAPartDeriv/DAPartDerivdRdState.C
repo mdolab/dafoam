@@ -110,8 +110,10 @@ void DAPartDerivdRdState::calcPartDerivMat(
             label globalCellIndex = daIndex_.getGlobalCellIndex(cellI);
             // note the dR/dBetaSA is the negative of the prod term because
             // the prod term shows up on the right hand side of the residual equation
-            scalar val = -prodTerm[cellI];
-            MatSetValue(jacMat, globalIndex, globalCellIndex, val, INSERT_VALUES);
+            scalar prodT = -prodTerm[cellI];
+            PetscScalar prodTermValue = 0.0;
+            assignValueCheckAD(prodTermValue, prodT);
+            MatSetValue(jacMat, globalIndex, globalCellIndex, prodTermValue, INSERT_VALUES);
         }
     }
     else
