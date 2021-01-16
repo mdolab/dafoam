@@ -86,4 +86,4 @@ models/dummyTurbulenceModel/makeDummyTurbulenceModelIncompressible.C
 models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Incompressible.C
 models/SpalartAllmarasFv3Beta/makeSpalartAllmarasFv3BetaIncompressible.C
 
-LIB = $(FOAM_USER_LIBBIN)/libDAFoamIncompressible$(DF_LIB_SUFFIX)
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFoamIncompressible$(DF_LIB_SUFFIX)
