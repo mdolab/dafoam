@@ -44,7 +44,9 @@ case $argm in
     sleep 3
     runTests Integration
     runTests DASimpleFoam
-    runTests DASimpleFoamAD
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleAD.so" ]; then
+      runTests DASimpleFoamAD
+    fi
     runTests DASimpleFoamMRF
     runTests DASimpleFoamBetaSA
     runTests DASimpleTFoam
@@ -68,7 +70,9 @@ case $argm in
     sleep 3
     runTests Integration
     runTests DASimpleFoam
-    runTests DASimpleFoamAD
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleAD.so" ]; then
+      runTests DASimpleFoamAD
+    fi
     runTests DASimpleFoamMRF
     runTests DASimpleFoamBetaSA
     runTests DASimpleTFoam
