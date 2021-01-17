@@ -38,8 +38,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdFdFFD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdFdXvAD(PetscVec, PetscVec, char *, char*, PetscVec)
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
-        void calcdRdState(PetscVec, PetscVec, char *, PetscMat)
-        void calcdFdState(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
+        void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void updateOFField(PetscVec)
         void updateOFMesh(PetscVec)
@@ -166,11 +166,11 @@ cdef class pyDASolvers:
     def calcdRdACT(self, Vec xvVec, Vec wVec, designVarName, designVarType, Mat dRdACT):
         self._thisptr.calcdRdACT(xvVec.vec, wVec.vec, designVarName, designVarType, dRdACT.mat)
 
-    def calcdRdState(self, Vec xvVec, Vec wVec, designVarName, Mat dRdACT):
-        self._thisptr.calcdRdState(xvVec.vec, wVec.vec, designVarName, dRdACT.mat)
+    def calcdRdFieldTPsiAD(self, Vec xvVec, Vec wVec, Vec psiVec, designVarName, Vec dRdFieldTPsi):
+        self._thisptr.calcdRdFieldTPsiAD(xvVec.vec, wVec.vec, psiVec.vec, designVarName, dRdFieldTPsi.vec)
 
-    def calcdFdState(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdState):
-        self._thisptr.calcdFdState(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdState.vec)
+    def calcdFdFieldAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdField):
+        self._thisptr.calcdFdFieldAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdField.vec)
 
     def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
         self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
