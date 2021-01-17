@@ -134,8 +134,8 @@ def betaSA(val, geo):
 
 def alphaPorosity(val, geo):
     for idxI, v in enumerate(val):
-        DASolver.setFieldValue4GlobalCellI(b"alphaPoristy", v, idxI)
-        DASolver.updateBoundaryConditions(b"alphaPoristy", b"scalar")
+        DASolver.setFieldValue4GlobalCellI(b"alphaPorosity", v, idxI)
+        DASolver.updateBoundaryConditions(b"alphaPorosity", b"scalar")
 
 # select points
 DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
@@ -187,9 +187,9 @@ else:
     funcsSens["FI"]["beta"] = np.zeros(1, "d")
     funcsSens["FI"]["beta"][0] = np.linalg.norm(betaSens)
 
-    alphaPoristySens = funcsSens["FI"]["alphaPorosity"]
+    alphaPorositySens = funcsSens["FI"]["alphaPorosity"]
     funcsSens["FI"]["alphaPorosity"] = np.zeros(1, "d")
-    funcsSens["FI"]["alphaPorosity"][0] = np.linalg.norm(alphaPoristySens)
+    funcsSens["FI"]["alphaPorosity"][0] = np.linalg.norm(alphaPorositySens)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-4, 1e-6)
