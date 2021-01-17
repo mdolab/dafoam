@@ -317,21 +317,22 @@ public:
         const word designVarName,
         const word designVarType,
         Mat dRdACT);
-    
-    /// compute dRdState
-    void calcdRdState(
+
+    /// compute dRdField^T*Psi
+    void calcdRdFieldTPsiAD(
         const Vec xvVec,
         const Vec wVec,
+        const Vec psi,
         const word designVarName,
-        Mat dRdState);
+        Vec dRdFieldTPsi);
 
-    /// compute dFdState
-    void calcdFdState(
+    /// compute dFdField
+    void calcdFdFieldAD(
         const Vec xvVec,
         const Vec wVec,
         const word objFuncName,
         const word designVarName,
-        Vec dFdState);
+        Vec dFdField);
 
     /// create a multi-level, Richardson KSP object with matrix-free Jacobians
     void createMLRKSPMatrixFree(
@@ -377,6 +378,11 @@ public:
     /// register all state variables as the input for reverse-mode AD
     void registerStateVariableInput4AD();
 
+    /// register field variables as the input for reverse-mode AD
+    void registerFieldVariableInput4AD(
+        const word fieldName,
+        const word fieldType);
+
     /// register all residuals as the output for reverse-mode AD
     void registerResidualOutput4AD();
 
@@ -385,6 +391,12 @@ public:
 
     /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
     void assignStateGradient2Vec(Vec vecY);
+
+    /// set the reverse-mode AD derivatives from the field variables in OpenFOAM to vecY
+    void assignFieldGradient2Vec(
+        const word fieldName,
+        const word fieldType,
+        Vec vecY);
 
     /// normalize the reverse-mode AD derivatives stored in vecY
     void normalizeGradientVec(Vec vecY);
@@ -547,6 +559,11 @@ public:
         const scalar val,
         const label globalCellI,
         const label compI = 0);
+
+    /// update the boundary condition for a field
+    void updateBoundaryConditions(
+        const word fieldName,
+        const word fieldType);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

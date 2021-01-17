@@ -241,25 +241,26 @@ public:
         DASolverPtr_->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
     }
 
-    /// compute dRdState
-    void calcdRdState(
+    /// compute dRdField
+    void calcdRdFieldTPsiAD(
         const Vec xvVec,
         const Vec wVec,
+        const Vec psi,
         const word designVarName,
-        Mat dRdState)
+        Vec dRdFieldTPsi)
     {
-        DASolverPtr_->calcdRdState(xvVec, wVec, designVarName, dRdState);
+        DASolverPtr_->calcdRdFieldTPsiAD(xvVec, wVec, psi, designVarName, dRdFieldTPsi);
     }
 
-    /// compute dFdState
-    void calcdFdState(
+    /// compute dFdField
+    void calcdFdFieldAD(
         const Vec xvVec,
         const Vec wVec,
         const word objFuncName,
         const word designVarName,
-        Vec dFdState)
+        Vec dFdField)
     {
-        DASolverPtr_->calcdFdState(xvVec, wVec, objFuncName, designVarName, dFdState);
+        DASolverPtr_->calcdFdFieldAD(xvVec, wVec, objFuncName, designVarName, dFdField);
     }
 
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
@@ -442,6 +443,14 @@ public:
         const label compI = 0)
     {
         DASolverPtr_->setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI);
+    }
+
+    /// update the boundary condition for a field
+    void updateBoundaryConditions(
+        const word fieldName,
+        const word fieldType)
+    {
+        DASolverPtr_->updateBoundaryConditions(fieldName, fieldType);
     }
 };
 

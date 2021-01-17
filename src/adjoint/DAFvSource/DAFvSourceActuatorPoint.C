@@ -193,6 +193,8 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
             FatalErrorIn("") << "smoothFunction should be either hyperbolic or gaussian" << abort(FatalError);
         }
     }
+
+    fvSource.correctBoundaryConditions();
 }
 
 } // End namespace Foam

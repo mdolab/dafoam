@@ -77,7 +77,7 @@ ext = [
         # These are pathes of linked libraries
         library_dirs=[
             os.getenv("FOAM_LIBBIN"),
-            os.getenv("FOAM_USER_LIBBIN"),
+            os.getenv("DAFOAM_ROOT_PATH") + "/OpenFOAM/sharedLibs",
             os.getenv("PETSC_DIR") + "/lib",
             petsc4py.get_include(),
             os.getenv("PETSC_DIR") + "/" + os.getenv("PETSC_ARCH") + "/lib",

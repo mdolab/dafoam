@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "2.2.0"
+__version__ = "2.2.1"
 
 import subprocess
 import os
@@ -458,6 +458,7 @@ class DAOPTION(object):
         "gmresRelTol": 1.0e-6,
         "gmresAbsTol": 1.0e-14,
         "gmresTolDiff": 1.0e2,
+        "useNonZeroInitGuess": False,
     }
 
     ## Normalization for residuals. We should normalize all residuals!
@@ -676,6 +677,9 @@ class PYDAFOAM(object):
         # preconditioner matrix
         self.dRdWTPC = None
 
+        # initialize the adjoint vector dict
+        self.adjVectors = self._initializeAdjVectors()
+
         Info("pyDAFoam initialization done!")
 
         return
@@ -753,6 +757,32 @@ class PYDAFOAM(object):
                 defOpts[key] = [type(value), value]
 
         return defOpts
+
+    def _initializeAdjVectors(self):
+        """
+        Initialize the adjoint vector dict
+
+        Returns
+        -------
+
+        adjAdjVectors : dict
+            A dict that contains adjoint vectors, stored in Petsc format
+        """
+
+        wSize = self.solver.getNLocalAdjointStates()
+
+        objFuncDict = self.getOption("objFunc")
+
+        adjVectors = {}
+        for objFuncName in objFuncDict:
+            if objFuncName in self.objFuncNames4Adj:
+                psi = PETSc.Vec().create(PETSc.COMM_WORLD)
+                psi.setSizes((wSize, PETSc.DECIDE), bsize=1)
+                psi.setFromOptions()
+                psi.zeroEntries()
+                adjVectors[objFuncName] = psi
+
+        return adjVectors
 
     def _initializeAdjTotalDeriv(self):
         """
@@ -1327,9 +1357,6 @@ class PYDAFOAM(object):
         elif self.getOption("adjJacobianOption") == "JacobianFree":
             self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
 
-        # initialize adjoint vector dict
-        adjVectors = {}
-
         # loop over all objFunc, calculate dFdW, and solve the adjoint
         objFuncDict = self.getOption("objFunc")
         wSize = self.solver.getNLocalAdjointStates()
@@ -1344,15 +1371,10 @@ class PYDAFOAM(object):
                     self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
 
                 # Initialize the adjoint vector psi and solve for it
-                psi = PETSc.Vec().create(PETSc.COMM_WORLD)
-                psi.setSizes((wSize, PETSc.DECIDE), bsize=1)
-                psi.setFromOptions()
                 if self.getOption("adjJacobianOption") == "JacobianFD":
-                    self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, psi)
+                    self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
                 elif self.getOption("adjJacobianOption") == "JacobianFree":
-                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, psi)
-
-                adjVectors[objFuncName] = psi
+                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
 
                 dFdW.destroy()
 
@@ -1392,7 +1414,7 @@ class PYDAFOAM(object):
                         totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                         totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                         totalDeriv.setFromOptions()
-                        self.calcTotalDeriv(dRdBC, dFdBC, adjVectors[objFuncName], totalDeriv)
+                        self.calcTotalDeriv(dRdBC, dFdBC, self.adjVectors[objFuncName], totalDeriv)
                         # assign the total derivative to self.adjTotalDeriv
                         self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
                         # we need to convert the parallel vec to seq vec
@@ -1424,7 +1446,7 @@ class PYDAFOAM(object):
                         totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                         totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                         totalDeriv.setFromOptions()
-                        self.calcTotalDeriv(dRdAOA, dFdAOA, adjVectors[objFuncName], totalDeriv)
+                        self.calcTotalDeriv(dRdAOA, dFdAOA, self.adjVectors[objFuncName], totalDeriv)
                         # assign the total derivative to self.adjTotalDeriv
                         self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
                         # we need to convert the parallel vec to seq vec
@@ -1456,7 +1478,7 @@ class PYDAFOAM(object):
                         totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                         totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                         totalDeriv.setFromOptions()
-                        self.calcTotalDeriv(dRdFFD, dFdFFD, adjVectors[objFuncName], totalDeriv)
+                        self.calcTotalDeriv(dRdFFD, dFdFFD, self.adjVectors[objFuncName], totalDeriv)
                         # assign the total derivative to self.adjTotalDeriv
                         self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
                         # we need to convert the parallel vec to seq vec
@@ -1488,7 +1510,7 @@ class PYDAFOAM(object):
                         totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                         totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                         totalDeriv.setFromOptions()
-                        self.calcTotalDeriv(dRdACT, dFdACT, adjVectors[objFuncName], totalDeriv)
+                        self.calcTotalDeriv(dRdACT, dFdACT, self.adjVectors[objFuncName], totalDeriv)
                         # assign the total derivative to self.adjTotalDeriv
                         self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
                         # we need to convert the parallel vec to seq vec
@@ -1500,40 +1522,56 @@ class PYDAFOAM(object):
                         totalDerivSeq.destroy()
                         dFdACT.destroy()
                 dRdACT.destroy()
-            ################### State: State variables (e.g., betaSA) as design variable ###################
-            elif designVarDict[designVarName]["designVarType"] == "State":
-                xDV = self.DVGeo.getValues()
-                nDVs = len(xDV[designVarName])
-                nLocalCells = self.solver.getNLocalCells()
-                # calculate dRdState
-                dRdState = PETSc.Mat().create(PETSc.COMM_WORLD)
-                self.solver.calcdRdState(self.xvVec, self.wVec, designVarName.encode(), dRdState)
-                # loop over all objectives
-                for objFuncName in objFuncDict:
-                    if objFuncName in self.objFuncNames4Adj:
-                        # calculate dFdState
-                        dFdState = PETSc.Vec().create(PETSc.COMM_WORLD)
-                        dFdState.setSizes((nLocalCells, PETSc.DECIDE), bsize=1)
-                        dFdState.setFromOptions()
-                        self.solver.calcdFdState(
-                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdState
-                        )
-                        # call the total deriv
-                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                        totalDeriv.setSizes((nLocalCells, PETSc.DECIDE), bsize=1)
-                        totalDeriv.setFromOptions()
-                        self.calcTotalDeriv(dRdState, dFdState, adjVectors[objFuncName], totalDeriv)
-                        # assign the total derivative to self.adjTotalDeriv
-                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                        # we need to convert the parallel vec to seq vec
-                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                        for i in range(nDVs):
-                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
-                        totalDeriv.destroy()
-                        totalDerivSeq.destroy()
-                        dFdState.destroy()
-                dRdState.destroy()
+            ################### Field: field variables (e.g., alphaPorosity, betaSA) as design variable ###################
+            elif designVarDict[designVarName]["designVarType"] == "Field":
+                if self.getOption("adjJacobianOption") == "JacobianFree":
+                    
+                    xDV = self.DVGeo.getValues()
+                    nDVs = len(xDV[designVarName])
+                    fieldType = designVarDict[designVarName]["fieldType"]
+                    if fieldType == "scalar":
+                        fieldComp = 1
+                    elif fieldType == "vector":
+                        fieldComp = 3
+                    nLocalCells = self.solver.getNLocalCells()
+    
+                    # loop over all objectives
+                    for objFuncName in objFuncDict:
+                        if objFuncName in self.objFuncNames4Adj:
+    
+                            # calculate dFdField
+                            dFdField = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            dFdField.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
+                            dFdField.setFromOptions()
+                            self.solverAD.calcdFdFieldAD(
+                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdField
+                            )
+
+                            # call the total deriv
+                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            totalDeriv.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
+                            totalDeriv.setFromOptions()
+                            # calculate dRdFieldT*Psi and save it to totalDeriv
+                            self.solverAD.calcdRdFieldTPsiAD(
+                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+                            )
+
+                            # totalDeriv = dFdField - dRdFieldT*psi
+                            totalDeriv.scale(-1.0)
+                            totalDeriv.axpy(1.0, dFdField)
+                            
+                            # assign the total derivative to self.adjTotalDeriv
+                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                            # we need to convert the parallel vec to seq vec
+                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                            for i in range(nDVs):
+                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                            totalDeriv.destroy()
+                            totalDerivSeq.destroy()
+                            dFdField.destroy()
+                else:
+                    raise Error("For Field design variable type, we only support adjJacobianOption=JacobianFree")
             else:
                 raise Error("designVarType %s not supported!" % designVarDict[designVarName]["designVarType"])
 
@@ -2346,7 +2384,7 @@ class PYDAFOAM(object):
         """
         Set the field value based on the global cellI. This is usually
         used if the state variables are design variables, e.g., betaSA
-        The reason to use global cell index, instead of local one, is 
+        The reason to use global cell index, instead of local one, is
         because this index is usually provided by the optimizer. Optimizer
         uses global cell index as the design variable
 
@@ -2364,6 +2402,21 @@ class PYDAFOAM(object):
         """
 
         self.solver.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
+
+    def updateBoundaryConditions(self, fieldName, fieldType):
+        """
+        Update the boundary condition for a field
+
+        Parameters
+        ----------
+        fieldName : str
+           Name of the flow field to update, e.g., U, p, nuTilda
+        fieldType : str
+           Type of the flow field: scalar or vector
+
+        """
+
+        self.solver.updateBoundaryConditions(fieldName, fieldType)
 
     def getOption(self, name):
         """

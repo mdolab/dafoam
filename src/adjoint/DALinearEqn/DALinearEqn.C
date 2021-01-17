@@ -88,6 +88,8 @@ void DALinearEqn::createMLRKSP(
         daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresRelTol");
     scalar gmresAbsTol =
         daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresAbsTol");
+    label useNonZeroInitGuess =
+        daOption_.getSubDictOption<label>("adjEqnOption", "useNonZeroInitGuess");
     label printInfo = 1;
 
     PC MLRMasterPC, MLRGlobalPC;
@@ -138,6 +140,16 @@ void DALinearEqn::createMLRKSP(
     KSPSetType(ksp, kspObjectType);
     // Set the gmres restart
     PetscInt restartGMRES = gmresRestart;
+
+    // whether to use non-zero initial guess
+    if (useNonZeroInitGuess)
+    {
+        KSPSetInitialGuessNonzero(ksp, PETSC_TRUE);
+    }
+    else
+    {
+        KSPSetInitialGuessNonzero(ksp, PETSC_FALSE);
+    }
 
     KSPGMRESSetRestart(ksp, restartGMRES);
     // Set the GMRES refinement type
@@ -330,10 +342,10 @@ label DALinearEqn::solveLinearEqn(
         Return 0 if the linear equation solution finished successfully otherwise return 1
     */
 
-    Info << "Solving Linear Euqation... " << this->getRunTime() << " s" << endl;
+    Info << "Solving Linear Equation... " << this->getRunTime() << " s" << endl;
 
     //Solve adjoint
-    VecZeroEntries(solVec);
+    // VecZeroEntries(solVec);
 
     // set up rGMRESHist to save the tolerance history for the GMRES solution
     // these vars are for store the tolerance for GMRES linear solution

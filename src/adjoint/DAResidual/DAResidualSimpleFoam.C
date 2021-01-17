@@ -27,6 +27,8 @@ DAResidualSimpleFoam::DAResidualSimpleFoam(
       setResidualClassMemberVector(U, dimensionSet(0, 1, -2, 0, 0, 0, 0)),
       setResidualClassMemberScalar(p, dimensionSet(0, 0, -1, 0, 0, 0, 0)),
       setResidualClassMemberPhi(phi),
+      alphaPorosity_(const_cast<volScalarField&>(
+          mesh_.thisDb().lookupObject<volScalarField>("alphaPorosity"))),
       fvSource_(const_cast<volVectorField&>(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
@@ -100,6 +102,7 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
 
     tmp<fvVectorMatrix> tUEqn(
         fvm::div(phi_, U_, divUScheme)
+        + fvm::Sp(alphaPorosity_, U_)
         + MRF_.DDt(U_)
         + daTurb_.divDevReff(U_)
         - fvSource_);

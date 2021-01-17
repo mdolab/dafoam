@@ -243,6 +243,8 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             }
         }
     }
+
+    fvSource.correctBoundaryConditions();
 }
 
 } // End namespace Foam

@@ -37,6 +37,7 @@ LRef = 1.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleFoam",
+    "adjJacobianOption": "JacobianFree",
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
     "primalBC": {
@@ -98,7 +99,8 @@ aeroOptions = {
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
     "designVar": {
-        "beta": {"designVarType": "State", "stateName": "betaSA"},
+        "beta": {"designVarType": "Field", "fieldName": "betaSA", "fieldType": "scalar"},
+        "alphaPorosity": {"designVarType": "Field", "fieldName": "alphaPorosity", "fieldType": "scalar"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
     },
 }
@@ -128,12 +130,21 @@ def alpha(val, geo):
 def betaSA(val, geo):
     for idxI, v in enumerate(val):
         DASolver.setFieldValue4GlobalCellI(b"betaSA", v, idxI)
+        DASolver.updateBoundaryConditions(b"betaSA", b"scalar")
+
+def alphaPorosity(val, geo):
+    for idxI, v in enumerate(val):
+        DASolver.setFieldValue4GlobalCellI(b"alphaPorosity", v, idxI)
+        DASolver.updateBoundaryConditions(b"alphaPorosity", b"scalar")
 
 # select points
 DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
 nCells = 4032
 beta0 = np.ones(nCells, dtype="d")
 DVGeo.addGeoDVGlobal("beta", value=beta0, func=betaSA, lower=1e-5, upper=10.0, scale=1.0)
+
+alphaPorosity0 = np.zeros(nCells, dtype="d")
+DVGeo.addGeoDVGlobal("alphaPorosity", value=alphaPorosity0, func=alphaPorosity, lower=0, upper=100.0, scale=1.0)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
@@ -175,6 +186,10 @@ else:
     betaSens = funcsSens["FI"]["beta"]
     funcsSens["FI"]["beta"] = np.zeros(1, "d")
     funcsSens["FI"]["beta"][0] = np.linalg.norm(betaSens)
+
+    alphaPorositySens = funcsSens["FI"]["alphaPorosity"]
+    funcsSens["FI"]["alphaPorosity"] = np.zeros(1, "d")
+    funcsSens["FI"]["alphaPorosity"][0] = np.linalg.norm(alphaPorositySens)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-4, 1e-6)

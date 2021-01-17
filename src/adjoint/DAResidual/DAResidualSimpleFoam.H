@@ -46,6 +46,9 @@ protected:
     surfaceScalarField phiResPartDeriv_;
     //@}
 
+    /// alpha porosity term
+    volScalarField& alphaPorosity_;
+
     /// fvSource term
     volVectorField& fvSource_;
 
