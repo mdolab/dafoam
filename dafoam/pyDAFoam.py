@@ -757,7 +757,7 @@ class PYDAFOAM(object):
                 defOpts[key] = [type(value), value]
 
         return defOpts
-    
+
     def _initializeAdjVectors(self):
         """
         Initialize the adjoint vector dict
@@ -2368,7 +2368,7 @@ class PYDAFOAM(object):
         """
         Set the field value based on the global cellI. This is usually
         used if the state variables are design variables, e.g., betaSA
-        The reason to use global cell index, instead of local one, is 
+        The reason to use global cell index, instead of local one, is
         because this index is usually provided by the optimizer. Optimizer
         uses global cell index as the design variable
 
@@ -2386,6 +2386,21 @@ class PYDAFOAM(object):
         """
 
         self.solver.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
+
+    def updateBoundaryConditions(self, fieldName, fieldType):
+        """
+        Update the boundary condition for a field
+
+        Parameters
+        ----------
+        fieldName : str
+           Name of the flow field to update, e.g., U, p, nuTilda
+        fieldType : str
+           Type of the flow field: scalar or vector
+
+        """
+
+        self.solver.updateBoundaryConditions(fieldName, fieldType)
 
     def getOption(self, name):
         """

@@ -68,6 +68,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void setTimeInstanceField(int)
         double getTimeInstanceObjFunc(int, char *)
         void setFieldValue4GlobalCellI(char *, double, int, int)
+        void updateBoundaryConditions(char *, char *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -250,4 +251,7 @@ cdef class pyDASolvers:
         return self._thisptr.getTimeInstanceObjFunc(instanceI, objFuncName)
 
     def setFieldValue4GlobalCellI(self, fieldName, val, globalCellI, compI = 0):
-        return self._thisptr.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
+        self._thisptr.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
+    
+    def updateBoundaryConditions(self, fieldName, fieldType):
+        self._thisptr.updateBoundaryConditions(fieldName, fieldType)

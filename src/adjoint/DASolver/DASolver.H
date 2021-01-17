@@ -317,7 +317,7 @@ public:
         const word designVarName,
         const word designVarType,
         Mat dRdACT);
-    
+
     /// compute dRdState
     void calcdRdState(
         const Vec xvVec,
@@ -547,6 +547,11 @@ public:
         const scalar val,
         const label globalCellI,
         const label compI = 0);
+
+    /// update the boundary condition for a field
+    void updateBoundaryConditions(
+        const word fieldName,
+        const word fieldType);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

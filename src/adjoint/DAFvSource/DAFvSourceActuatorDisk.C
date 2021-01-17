@@ -340,6 +340,8 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                                           << "Options are: cylinderAnnulusToCell and cylinderAnnulusSmooth!"
                                           << abort(FatalError);
     }
+
+    fvSource.correctBoundaryConditions();
 }
 
 void DAFvSourceActuatorDisk::calcFvSourceCellIndices(HashTable<labelList>& fvSourceCellIndices)

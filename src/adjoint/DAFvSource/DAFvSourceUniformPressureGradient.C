@@ -69,6 +69,8 @@ void DAFvSourceUniformPressureGradient::calcFvSource(volVectorField& fvSource)
     {
         fvSource[idxI] = gradPValue * directionVec;
     }
+
+    fvSource.correctBoundaryConditions();
 }
 
 } // End namespace Foam

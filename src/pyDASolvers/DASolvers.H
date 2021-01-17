@@ -443,6 +443,14 @@ public:
     {
         DASolverPtr_->setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI);
     }
+
+    /// update the boundary condition for a field
+    void updateBoundaryConditions(
+        const word fieldName,
+        const word fieldType)
+    {
+        DASolverPtr_->updateBoundaryConditions(fieldName, fieldType);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

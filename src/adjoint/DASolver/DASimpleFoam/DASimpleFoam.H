@@ -47,6 +47,9 @@ protected:
     /// surface flux field pointer
     autoPtr<surfaceScalarField> phiPtr_;
 
+    /// alpha porosity
+    autoPtr<volScalarField> alphaPorosityPtr_;
+
     /// laminar transport properties pointer
     autoPtr<singlePhaseTransportModel> laminarTransportPtr_;
 

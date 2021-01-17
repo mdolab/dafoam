@@ -128,6 +128,7 @@ def alpha(val, geo):
 def betaSA(val, geo):
     for idxI, v in enumerate(val):
         DASolver.setFieldValue4GlobalCellI(b"betaSA", v, idxI)
+        DASolver.updateBoundaryConditions(b"betaSA", b"scalar")
 
 # select points
 DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)

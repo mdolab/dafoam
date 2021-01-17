@@ -1730,7 +1730,7 @@ void DASolver::calcdFdState(
         VecZeroEntries(dFdStatePart);
         // dFdStateVec = oneVec*dFdState
         MatMult(dFdStateMat, oneVec, dFdStatePart);
-        
+
         // we need to add dFdStatePart to dFdState because we want to sum
         // all dFdStatePart for all parts of this objFuncName.
         VecAXPY(dFdState, 1.0, dFdStatePart);
@@ -3083,6 +3083,39 @@ void DASolver::setFieldValue4GlobalCellI(
             FatalErrorIn("") << fieldName << " not found in volScalar and volVector Fields "
                              << abort(FatalError);
         }
+    }
+}
+
+void DASolver::updateBoundaryConditions(
+    const word fieldName,
+    const word fieldType)
+{
+    /*
+    Description:
+        Update the boundary condition for a field
+    
+    Input:
+        fieldName: the name of the field to update
+
+        fieldType: either scalar or vector
+    */
+
+    if (fieldType == "scalar")
+    {
+        volScalarField& field =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
+        field.correctBoundaryConditions();
+    }
+    else if (fieldType == "vector")
+    {
+        volVectorField& field =
+            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(fieldName));
+        field.correctBoundaryConditions();
+    }
+    else
+    {
+        FatalErrorIn("") << fieldType << " not support. Options are: vector or scalar "
+                         << abort(FatalError);
     }
 }
 
