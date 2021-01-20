@@ -125,7 +125,7 @@ aeroOptions = {
 # mesh warping parameters, users need to manually specify the symmetry plane
 meshOptions = {
     "gridFile": os.getcwd(),
-    "fileType": "openfoam",
+    "fileType": "OpenFOAM",
     # point and normal for the symmetry plane
     "symmetryPlanes": [],
 }
