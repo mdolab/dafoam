@@ -81,5 +81,6 @@ boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchSca
 models/dummyTurbulenceModel/makeDummyTurbulenceModelCompressible.C
 models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Compressible.C
 models/SpalartAllmarasFv3Beta/makeSpalartAllmarasFv3BetaCompressible.C
+models/kOmegaSSTfieldInversion/makekOmegaSSTfieldInversionCompressible.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFoamCompressible$(DF_LIB_SUFFIX)
