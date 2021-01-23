@@ -735,7 +735,7 @@ void DAkOmegaSSTfieldInversion::calcResiduals(const dictionary& options)
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField S2(2 * magSqr(symm(tgradU())));
     volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
-    volScalarField::Internal G("kOmegaSST:G", nut_ * GbyNu0);
+    volScalarField::Internal G("kOmegaSSTfieldInversion:G", nut_ * GbyNu0);
 
     if (solveTurbState_)
     {

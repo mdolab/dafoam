@@ -53,6 +53,14 @@ kOmegaSSTfieldInversion<BasicTurbulenceModel>::kOmegaSSTfieldInversion(
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
+      k_(
+          IOobject(
+              "k",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::MUST_READ,
+              IOobject::AUTO_WRITE),
+          this->mesh_),
       betaFieldInversion_(
           IOobject(
               "betaFieldInversion",

@@ -44,6 +44,8 @@ protected:
     /// turbulence variables for k-omega SST
     volScalarField omega_;
 
+    volScalarField k_; 
+
     /// beta field that will be multiplied to the omega production term
     volScalarField betaFieldInversion_;
 
