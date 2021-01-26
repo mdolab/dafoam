@@ -5,7 +5,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "kOmegaSSTfieldInversion.H"
+#include "kOmegaSSTFieldInversion.H"
 #include "fvOptions.H"
 #include "bound.H"
 #include "wallDist.H"
@@ -20,14 +20,14 @@ namespace RASModels
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-void kOmegaSSTfieldInversion<BasicTurbulenceModel>::correctNut()
+void kOmegaSSTFieldInversion<BasicTurbulenceModel>::correctNut()
 {
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-kOmegaSSTfieldInversion<BasicTurbulenceModel>::kOmegaSSTfieldInversion(
+kOmegaSSTFieldInversion<BasicTurbulenceModel>::kOmegaSSTFieldInversion(
     const alphaField& alpha,
     const rhoField& rho,
     const volVectorField& U,
@@ -93,26 +93,26 @@ kOmegaSSTfieldInversion<BasicTurbulenceModel>::kOmegaSSTfieldInversion(
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-bool kOmegaSSTfieldInversion<BasicTurbulenceModel>::read()
+bool kOmegaSSTFieldInversion<BasicTurbulenceModel>::read()
 {
 
     return true;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> kOmegaSSTfieldInversion<BasicTurbulenceModel>::k() const
+tmp<volScalarField> kOmegaSSTFieldInversion<BasicTurbulenceModel>::k() const
 {
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> kOmegaSSTfieldInversion<BasicTurbulenceModel>::epsilon() const
+tmp<volScalarField> kOmegaSSTFieldInversion<BasicTurbulenceModel>::epsilon() const
 {
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-void kOmegaSSTfieldInversion<BasicTurbulenceModel>::correct()
+void kOmegaSSTFieldInversion<BasicTurbulenceModel>::correct()
 {
 }
 

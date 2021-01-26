@@ -9,8 +9,8 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef kOmegaSSTfieldInversion_H
-#define kOmegaSSTfieldInversion_H
+#ifndef kOmegaSSTFieldInversion_H
+#define kOmegaSSTFieldInversion_H
 
 #include "RASModel.H"
 #include "eddyViscosity.H"
@@ -23,18 +23,18 @@ namespace RASModels
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class kOmegaSSTfieldInversion Declaration
+                      Class kOmegaSSTFieldInversion Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicTurbulenceModel>
-class kOmegaSSTfieldInversion
+class kOmegaSSTFieldInversion
     : public eddyViscosity<RASModel<BasicTurbulenceModel>>
 {
     // Private Member Functions
 
     // Disallow default bitwise copy construct and assignment
-    kOmegaSSTfieldInversion(const kOmegaSSTfieldInversion&);
-    void operator=(const kOmegaSSTfieldInversion&);
+    kOmegaSSTFieldInversion(const kOmegaSSTFieldInversion&);
+    void operator=(const kOmegaSSTFieldInversion&);
 
 protected:
     // Protected data
@@ -69,12 +69,12 @@ public:
     typedef typename BasicTurbulenceModel::transportModel transportModel;
 
     //- Runtime type information
-    TypeName("kOmegaSSTfieldInversion");
+    TypeName("kOmegaSSTFieldInversion");
 
     // Constructors
 
     //- Construct from components
-    kOmegaSSTfieldInversion(
+    kOmegaSSTFieldInversion(
         const alphaField& alpha,
         const rhoField& rho,
         const volVectorField& U,
@@ -85,7 +85,7 @@ public:
         const word& type = typeName);
 
     //- Destructor
-    virtual ~kOmegaSSTfieldInversion()
+    virtual ~kOmegaSSTFieldInversion()
     {
     }
 
@@ -112,7 +112,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-#include "kOmegaSSTfieldInversion.C"
+#include "kOmegaSSTFieldInversion.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

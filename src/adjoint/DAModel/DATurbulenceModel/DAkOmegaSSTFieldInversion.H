@@ -10,8 +10,8 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAkOmegaSSTfieldInversion_H
-#define DAkOmegaSSTfieldInversion_H
+#ifndef DAkOmegaSSTFieldInversion_H
+#define DAkOmegaSSTFieldInversion_H
 
 #include "DATurbulenceModel.H"
 #include "addToRunTimeSelectionTable.H"
@@ -22,10 +22,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class DAkOmegaSSTfieldInversion Declaration
+                       Class DAkOmegaSSTFieldInversion Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAkOmegaSSTfieldInversion
+class DAkOmegaSSTFieldInversion
     : public DATurbulenceModel
 {
 
@@ -178,17 +178,17 @@ protected:
     label printInterval_;
 
 public:
-    TypeName("kOmegaSSTfieldInversion");
+    TypeName("kOmegaSSTFieldInversion");
     // Constructors
 
     //- Construct from components
-    DAkOmegaSSTfieldInversion(
+    DAkOmegaSSTFieldInversion(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption);
 
     //- Destructor
-    virtual ~DAkOmegaSSTfieldInversion()
+    virtual ~DAkOmegaSSTFieldInversion()
     {
     }
 

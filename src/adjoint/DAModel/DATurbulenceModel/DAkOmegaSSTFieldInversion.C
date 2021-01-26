@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAkOmegaSSTfieldInversion.H"
+#include "DAkOmegaSSTFieldInversion.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAkOmegaSSTfieldInversion, 0);
-addToRunTimeSelectionTable(DATurbulenceModel, DAkOmegaSSTfieldInversion, dictionary);
+defineTypeNameAndDebug(DAkOmegaSSTFieldInversion, 0);
+addToRunTimeSelectionTable(DATurbulenceModel, DAkOmegaSSTFieldInversion, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAkOmegaSSTfieldInversion::DAkOmegaSSTfieldInversion(
+DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
     const word modelType,
     const fvMesh& mesh,
     const DAOption& daOption)
@@ -210,7 +210,7 @@ DAkOmegaSSTfieldInversion::DAkOmegaSSTfieldInversion(
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // SA member functions. these functions are copied from
-tmp<volScalarField> DAkOmegaSSTfieldInversion::F1(
+tmp<volScalarField> DAkOmegaSSTFieldInversion::F1(
     const volScalarField& CDkOmega) const
 {
 
@@ -229,7 +229,7 @@ tmp<volScalarField> DAkOmegaSSTfieldInversion::F1(
     return tanh(pow4(arg1));
 }
 
-tmp<volScalarField> DAkOmegaSSTfieldInversion::F2() const
+tmp<volScalarField> DAkOmegaSSTFieldInversion::F2() const
 {
 
     tmp<volScalarField> arg2 = min(
@@ -241,7 +241,7 @@ tmp<volScalarField> DAkOmegaSSTfieldInversion::F2() const
     return tanh(sqr(arg2));
 }
 
-tmp<volScalarField> DAkOmegaSSTfieldInversion::F3() const
+tmp<volScalarField> DAkOmegaSSTFieldInversion::F3() const
 {
 
     tmp<volScalarField> arg3 = min(
@@ -251,7 +251,7 @@ tmp<volScalarField> DAkOmegaSSTfieldInversion::F3() const
     return 1 - tanh(pow4(arg3));
 }
 
-tmp<volScalarField> DAkOmegaSSTfieldInversion::F23() const
+tmp<volScalarField> DAkOmegaSSTFieldInversion::F23() const
 {
     tmp<volScalarField> f23(F2());
 
@@ -263,7 +263,7 @@ tmp<volScalarField> DAkOmegaSSTfieldInversion::F23() const
     return f23;
 }
 
-tmp<volScalarField::Internal> DAkOmegaSSTfieldInversion::GbyNu(
+tmp<volScalarField::Internal> DAkOmegaSSTFieldInversion::GbyNu(
     const volScalarField::Internal& GbyNu0,
     const volScalarField::Internal& F2,
     const volScalarField::Internal& S2) const
@@ -274,20 +274,20 @@ tmp<volScalarField::Internal> DAkOmegaSSTfieldInversion::GbyNu(
             * max(a1_ * omega_(), b1_ * F2 * sqrt(S2)));
 }
 
-tmp<volScalarField::Internal> DAkOmegaSSTfieldInversion::Pk(
+tmp<volScalarField::Internal> DAkOmegaSSTFieldInversion::Pk(
     const volScalarField::Internal& G) const
 {
     return min(G, (c1_ * betaStar_) * k_() * omega_());
 }
 
-tmp<volScalarField::Internal> DAkOmegaSSTfieldInversion::epsilonByk(
+tmp<volScalarField::Internal> DAkOmegaSSTFieldInversion::epsilonByk(
     const volScalarField& F1,
     const volTensorField& gradU) const
 {
     return betaStar_ * omega_();
 }
 
-tmp<fvScalarMatrix> DAkOmegaSSTfieldInversion::kSource() const
+tmp<fvScalarMatrix> DAkOmegaSSTFieldInversion::kSource() const
 {
     const volScalarField& rho = rho_;
     return tmp<fvScalarMatrix>(
@@ -296,7 +296,7 @@ tmp<fvScalarMatrix> DAkOmegaSSTfieldInversion::kSource() const
             dimVolume * rho.dimensions() * k_.dimensions() / dimTime));
 }
 
-tmp<fvScalarMatrix> DAkOmegaSSTfieldInversion::omegaSource() const
+tmp<fvScalarMatrix> DAkOmegaSSTFieldInversion::omegaSource() const
 {
     const volScalarField& rho = rho_;
     return tmp<fvScalarMatrix>(
@@ -305,7 +305,7 @@ tmp<fvScalarMatrix> DAkOmegaSSTfieldInversion::omegaSource() const
             dimVolume * rho.dimensions() * omega_.dimensions() / dimTime));
 }
 
-tmp<fvScalarMatrix> DAkOmegaSSTfieldInversion::Qsas(
+tmp<fvScalarMatrix> DAkOmegaSSTFieldInversion::Qsas(
     const volScalarField::Internal& S2,
     const volScalarField::Internal& gamma,
     const volScalarField::Internal& beta) const
@@ -318,7 +318,7 @@ tmp<fvScalarMatrix> DAkOmegaSSTfieldInversion::Qsas(
 }
 
 // Augmented functions
-void DAkOmegaSSTfieldInversion::correctModelStates(wordList& modelStates) const
+void DAkOmegaSSTFieldInversion::correctModelStates(wordList& modelStates) const
 {
     /*
     Description:
@@ -354,7 +354,7 @@ void DAkOmegaSSTfieldInversion::correctModelStates(wordList& modelStates) const
     }
 }
 
-void DAkOmegaSSTfieldInversion::correctNut()
+void DAkOmegaSSTFieldInversion::correctNut()
 {
     /*
     Description:
@@ -376,7 +376,7 @@ void DAkOmegaSSTfieldInversion::correctNut()
     return;
 }
 
-void DAkOmegaSSTfieldInversion::correctBoundaryConditions()
+void DAkOmegaSSTFieldInversion::correctBoundaryConditions()
 {
     /*
     Description:
@@ -388,7 +388,7 @@ void DAkOmegaSSTfieldInversion::correctBoundaryConditions()
     k_.correctBoundaryConditions();
 }
 
-void DAkOmegaSSTfieldInversion::correctOmegaBoundaryConditions()
+void DAkOmegaSSTFieldInversion::correctOmegaBoundaryConditions()
 {
     /*
     Description:
@@ -415,7 +415,7 @@ void DAkOmegaSSTfieldInversion::correctOmegaBoundaryConditions()
     this->setOmegaNearWall();
 }
 
-void DAkOmegaSSTfieldInversion::saveOmegaNearWall()
+void DAkOmegaSSTFieldInversion::saveOmegaNearWall()
 {
     /*
     Description:
@@ -439,7 +439,7 @@ void DAkOmegaSSTfieldInversion::saveOmegaNearWall()
     return;
 }
 
-void DAkOmegaSSTfieldInversion::setOmegaNearWall()
+void DAkOmegaSSTFieldInversion::setOmegaNearWall()
 {
     /*
     Description:
@@ -465,7 +465,7 @@ void DAkOmegaSSTfieldInversion::setOmegaNearWall()
     return;
 }
 
-void DAkOmegaSSTfieldInversion::updateIntermediateVariables()
+void DAkOmegaSSTFieldInversion::updateIntermediateVariables()
 {
     /*
     Description:
@@ -476,7 +476,7 @@ void DAkOmegaSSTfieldInversion::updateIntermediateVariables()
     this->correctNut();
 }
 
-void DAkOmegaSSTfieldInversion::correctStateResidualModelCon(List<List<word>>& stateCon) const
+void DAkOmegaSSTFieldInversion::correctStateResidualModelCon(List<List<word>>& stateCon) const
 {
     /*
     Description:
@@ -575,7 +575,7 @@ void DAkOmegaSSTfieldInversion::correctStateResidualModelCon(List<List<word>>& s
     }
 }
 
-void DAkOmegaSSTfieldInversion::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
+void DAkOmegaSSTFieldInversion::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
 {
     /*
     Description:
@@ -667,7 +667,7 @@ void DAkOmegaSSTfieldInversion::addModelResidualCon(HashTable<List<List<word>>>&
 #endif
 }
 
-void DAkOmegaSSTfieldInversion::correct()
+void DAkOmegaSSTFieldInversion::correct()
 {
     /*
     Descroption:
@@ -687,7 +687,7 @@ void DAkOmegaSSTfieldInversion::correct()
     solveTurbState_ = 0;
 }
 
-void DAkOmegaSSTfieldInversion::calcResiduals(const dictionary& options)
+void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
 {
     /*
     Descroption:
@@ -735,7 +735,7 @@ void DAkOmegaSSTfieldInversion::calcResiduals(const dictionary& options)
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField S2(2 * magSqr(symm(tgradU())));
     volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
-    volScalarField::Internal G("kOmegaSSTfieldInversion:G", nut_ * GbyNu0);
+    volScalarField::Internal G("kOmegaSSTFieldInversion:G", nut_ * GbyNu0);
 
     if (solveTurbState_)
     {
@@ -765,7 +765,7 @@ void DAkOmegaSSTfieldInversion::calcResiduals(const dictionary& options)
             fvm::ddt(phase_, rho_, omega_)
                 + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
                 - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_) 
-            == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFieldInversion_
+            == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFieldInversion_()
                 - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
                 - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
                 - fvm::SuSp(
