@@ -5,7 +5,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "SpalartAllmarasFv3Beta.H"
+#include "SpalartAllmarasFv3FieldInversion.H"
 #include "fvOptions.H"
 #include "bound.H"
 #include "wallDist.H"
@@ -20,14 +20,14 @@ namespace RASModels
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-void SpalartAllmarasFv3Beta<BasicTurbulenceModel>::correctNut()
+void SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::correctNut()
 {
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-SpalartAllmarasFv3Beta<BasicTurbulenceModel>::SpalartAllmarasFv3Beta(
+SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::SpalartAllmarasFv3FieldInversion(
     const alphaField& alpha,
     const rhoField& rho,
     const volVectorField& U,
@@ -53,25 +53,25 @@ SpalartAllmarasFv3Beta<BasicTurbulenceModel>::SpalartAllmarasFv3Beta(
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
-      betaSA_(
+      betaFieldInversion_(
           IOobject(
-              "betaSA",
+              "betaFieldInversion",
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
-      betaSATrue_(
+      betaPrior_(
           IOobject(
-              "betaSATrue",
+              "betaPrior",
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
-      UTrue_(
+      varRefFieldInversion_(
           IOobject(
-              "UTrue",
+              "varRefFieldInversion",
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
@@ -84,26 +84,26 @@ SpalartAllmarasFv3Beta<BasicTurbulenceModel>::SpalartAllmarasFv3Beta(
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-bool SpalartAllmarasFv3Beta<BasicTurbulenceModel>::read()
+bool SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::read()
 {
     return true;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> SpalartAllmarasFv3Beta<BasicTurbulenceModel>::k() const
+tmp<volScalarField> SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::k() const
 {
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> SpalartAllmarasFv3Beta<BasicTurbulenceModel>::epsilon() const
+tmp<volScalarField> SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::epsilon() const
 {
 
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-void SpalartAllmarasFv3Beta<BasicTurbulenceModel>::correct()
+void SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::correct()
 {
 }
 

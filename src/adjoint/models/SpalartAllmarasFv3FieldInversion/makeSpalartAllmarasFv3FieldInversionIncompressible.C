@@ -32,7 +32,7 @@ createBaseTurbulenceModel(
 #define makeLESModel(Type) \
     makeTemplatedTurbulenceModel(transportModelIncompressibleTurbulenceModel, LES, Type)
 
-#include "SpalartAllmarasFv3Beta.H"
-makeRASModel(SpalartAllmarasFv3Beta);
+#include "SpalartAllmarasFv3FieldInversion.H"
+makeRASModel(SpalartAllmarasFv3FieldInversion);
 
 // ************************************************************************* //

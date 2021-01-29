@@ -4,14 +4,14 @@
     Version : v2
 
     Description:
-    Child class for the SpalartAllmarasFv3 model with a betaSA field multiplying 
-    to the production term. This betaSA term can then be trained to improve the
+    Child class for the SpalartAllmarasFv3 model with a betaFieldInversion field multiplying 
+    to the production term. This betaFieldInversion term can then be trained to improve the
     SA turbulence model.
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DASpalartAllmarasFv3Beta_H
-#define DASpalartAllmarasFv3Beta_H
+#ifndef DASpalartAllmarasFv3FieldInversion_H
+#define DASpalartAllmarasFv3FieldInversion_H
 
 #include "DATurbulenceModel.H"
 #include "addToRunTimeSelectionTable.H"
@@ -22,10 +22,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class DASpalartAllmarasFv3Beta Declaration
+                       Class DASpalartAllmarasFv3FieldInversion Declaration
 \*---------------------------------------------------------------------------*/
 
-class DASpalartAllmarasFv3Beta
+class DASpalartAllmarasFv3FieldInversion
     : public DATurbulenceModel
 {
 
@@ -69,13 +69,13 @@ protected:
     //@}
 
     /// A beta field multiplying to the production term
-    volScalarField& betaSA_; 
+    volScalarField& betaFieldInversion_; 
 
     /// a reference beta field
-    volScalarField& betaSATrue_; 
+    volScalarField& betaPrior_; 
 
-    /// reference velocity
-    volVectorField& UTrue_; 
+    /// reference field (e.g. velocity for DNS)
+    volVectorField& varRefFieldInversion_; 
 
     /// 3D wall distance
     const volScalarField& y_;
@@ -87,17 +87,17 @@ protected:
     label printInterval_;
 
 public:
-    TypeName("SpalartAllmarasFv3Beta");
+    TypeName("SpalartAllmarasFv3FieldInversion");
     // Constructors
 
     //- Construct from components
-    DASpalartAllmarasFv3Beta(
+    DASpalartAllmarasFv3FieldInversion(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption);
 
     //- Destructor
-    virtual ~DASpalartAllmarasFv3Beta()
+    virtual ~DASpalartAllmarasFv3FieldInversion()
     {
     }
 
