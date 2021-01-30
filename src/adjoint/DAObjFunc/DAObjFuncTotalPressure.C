@@ -42,20 +42,18 @@ DAObjFuncTotalPressure::DAObjFuncTotalPressure(
 
     // setup the connectivity for total pressure, this is needed in Foam::DAJacCondFdW
     // NOTE: for pressureInlet velocity, U depends on phi
-    if (mesh_.thisDb().foundObject<volScalarField>("T"))
-    {
-        // for compressible cases
-        objFuncConInfo_ = {
-            {"U", "T", "p", "phi"}, // level 0
-            {"U", "T", "p", "phi"}}; // level 1
-    }
-    else
-    {
-        // for incompressible cases
-        objFuncConInfo_ = {
-            {"U", "p", "phi"}, // level 0
-            {"U", "p", "phi"}}; // level 1
-    }
+#ifdef CompressibleFlow
+    // for compressible cases
+    objFuncConInfo_ = {
+        {"U", "T", "p", "phi"}, // level 0
+        {"U", "T", "p", "phi"}}; // level 1
+#endif
+#ifdef IncompressibleFlow
+    // for incompressible cases
+    objFuncConInfo_ = {
+        {"U", "p", "phi"}, // level 0
+        {"U", "p", "phi"}}; // level 1
+#endif
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
 }
