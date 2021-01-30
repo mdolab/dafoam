@@ -84,8 +84,8 @@ DASpalartAllmarasFv3FieldInversion::DASpalartAllmarasFv3FieldInversion(
           nuTildaRes_),
       betaFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("betaFieldInversion"))),
-      betaPrior_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("betaPrior"))),
+      betaRefFieldInversion_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("betaRefFieldInversion"))),
       varRefFieldInversion_(const_cast<volVectorField&>(
           mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))

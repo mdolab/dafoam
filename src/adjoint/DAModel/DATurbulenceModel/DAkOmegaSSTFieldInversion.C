@@ -161,8 +161,8 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
     /// field inversion variables
       betaFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("betaFieldInversion"))),
-      betaPrior_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("betaPrior"))),
+      betaRefFieldInversion_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("betaRefFieldInversion"))),
       UTrue_(const_cast<volVectorField&>(
           mesh.thisDb().lookupObject<volVectorField>("UTrue"))), 
       y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")) 

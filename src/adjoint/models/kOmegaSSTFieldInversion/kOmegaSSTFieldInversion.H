@@ -50,7 +50,7 @@ protected:
     volScalarField betaFieldInversion_;
 
     /// the prior beta field, usually 1
-    volScalarField betaPrior_;
+    volScalarField betaRefFieldInversion_;
 
     /// the reference velocity field, usually from experiment or higher fidelity sims
     volVectorField UTrue_;

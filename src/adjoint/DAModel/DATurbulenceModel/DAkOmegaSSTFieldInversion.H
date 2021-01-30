@@ -157,7 +157,7 @@ protected:
     volScalarField& betaFieldInversion_;
 
     /// A reference beta field
-    volScalarField& betaPrior_; 
+    volScalarField& betaRefFieldInversion_; 
 
     /// Reference velocity
     volVectorField& UTrue_; 

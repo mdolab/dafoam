@@ -1,5 +1,17 @@
 {
     "files.associations": {
-        "DAkOmegaSSTFieldInversion.H": "cpp"
+        "DAkOmegaSSTFieldInversion.H": "cpp",
+        "DAkOmegaSSTFieldInversion.C": "cpp",
+        "DATurbulenceModel.C": "cpp",
+        "DAObjFunc.H": "cpp",
+        "DAObjFunc.C": "cpp",
+        "DASpalartAllmarasFv3FieldInversion.C": "cpp",
+        "DASpalartAllmarasFv3FieldInversion.H": "cpp",
+        "SpalartAllmarasFv3FieldInversion.C": "cpp",
+        "makeSpalartAllmarasFv3FieldInversionIncompressible.C": "cpp",
+        "SpalartAllmarasFv3FieldInversion.H": "cpp",
+        "makeSpalartAllmarasFv3FieldInversionCompressible.C": "cpp",
+        "kOmegaSSTFieldInversion.C": "cpp",
+        "kOmegaSSTFieldInversion.H": "cpp"
     }
 }

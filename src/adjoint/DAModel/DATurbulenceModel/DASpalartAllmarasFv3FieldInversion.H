@@ -72,7 +72,7 @@ protected:
     volScalarField& betaFieldInversion_; 
 
     /// a reference beta field
-    volScalarField& betaPrior_; 
+    volScalarField& betaRefFieldInversion_; 
 
     /// reference field (e.g. velocity for DNS)
     volVectorField& varRefFieldInversion_; 

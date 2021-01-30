@@ -50,7 +50,7 @@ protected:
     volScalarField betaFieldInversion_;
 
     /// the reference betaFieldInversion, usually be 1
-    volScalarField betaPrior_;
+    volScalarField betaRefFieldInversion_;
 
     /// the reference field (e.g. velocity field from DNS)
     volVectorField varRefFieldInversion_;
