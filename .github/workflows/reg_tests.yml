@@ -1,4 +1,4 @@
-name: DAFoam Regression Test
+name: DAFoam
 
 on: push
 
@@ -12,7 +12,7 @@ jobs:
 
   regresstion_tests:
     runs-on: ubuntu-18.04
-    name: Run regression tests
+    name: Regression tests
     strategy:
       fail-fast: false
       matrix: 
