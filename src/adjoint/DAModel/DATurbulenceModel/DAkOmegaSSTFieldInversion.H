@@ -162,6 +162,15 @@ protected:
     /// Reference velocity
     volVectorField& UTrue_; 
 
+    /// Name of turbulent transport equation to modify: can be k, omega, or all
+    /// if k OR omega is selected the field inversion modification is: ProdTerm(k or omega)*betaFieldInversion
+    /// if all is selected the modification is: ProdTerm(k)*betaField, ProdTerm(omega)*(1.0/betaField)
+    /// in the second case this is because nut is proportional to k and inversely proportional to omega
+    word& eqnToModify_;
+
+    /// Weight of betaFieldInversion for the turbulent transport equations if both are modified
+    scalar& betaFieldInversionWeight_; 
+
     /// 3D wall distance
     const volScalarField& y_;
 
