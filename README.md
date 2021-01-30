@@ -1,7 +1,7 @@
 DAFoam: Discrete Adjoint with OpenFOAM
 ======================================
 
-![Build Status](https://github.com/actions/mdolab/dafoam/workflows/.github/workflows/reg_tests.yml/badge.svg)
+![Build Status](https://github.com/mdolab/dafoam/workflows/DAFoam/badge.svg)
 
 DAFoam implements an efficient discrete adjoint method to perform high-fidelity gradient-based design optimization with the [MACH-Aero](https://github.com/mdolab/MACH-Aero) framework. DAFoam has the following features:
 
