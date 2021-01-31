@@ -1,6 +1,6 @@
 name: DAFoam
 
-on: push
+on: [push, pull_request]
 
 env:
   REPO_NAME: 'dafoam'
