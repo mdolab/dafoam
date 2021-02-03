@@ -599,7 +599,7 @@ class PYDAFOAM(object):
         self._writeOFCaseFiles()
 
         # initialize point set name
-        self.ptSetName = self.getPointSetName("dummy")
+        self.ptSetName = self.getPointSetName()
 
         # Remind the user of all the DAFoam options:
         if self.getOption("printAllOptions"):
@@ -1006,7 +1006,7 @@ class PYDAFOAM(object):
         """
         Add a custom grouping of families called groupName. The groupName
         must be distinct from the existing families. All families must
-        in the 'families' list must be present in the CGNS file.
+        in the 'families' list must be present in the mesh file.
         Parameters
         ----------
         groupName : str
@@ -1018,7 +1018,7 @@ class PYDAFOAM(object):
         # Do some error checking
         if groupName in self.families:
             raise Error(
-                "The specified groupName '%s' already exists in the " "cgns file or has already been added." % groupName
+                "The specified groupName '%s' already exists in the mesh file or has already been added." % groupName
             )
 
         # We can actually allow for nested groups. That is, an entry
@@ -1028,7 +1028,7 @@ class PYDAFOAM(object):
             if fam not in self.families:
                 raise Error(
                     "The specified family '%s' for group '%s', does "
-                    "not exist in the cgns file or has "
+                    "not exist in the mesh file or has "
                     "not already been added. The current list of "
                     "families (original and grouped) is: %s" % (fam, groupName, repr(self.families.keys()))
                 )
@@ -2064,7 +2064,7 @@ class PYDAFOAM(object):
             # get the number of faces associated with this boundary
             nFace = len(bc["faces"])
 
-            # create the index list
+            # create the point index list
             indices = []
 
             # check that this isn't an empty boundary
@@ -2074,7 +2074,7 @@ class PYDAFOAM(object):
                     face = self.faces[iFace]
                     indices.extend(face)
 
-            # Get the unique entries
+            # Get the unique point entries for this boundary
             indices = np.unique(indices)
 
             # now create the reverse dictionary to connect the reduced set with the original
@@ -2083,6 +2083,12 @@ class PYDAFOAM(object):
                 inverseInd[indices[i]] = i
 
             # Now loop back over the faces and store the connectivity in terms of the reduces index set
+            # Here facesRed store the boundary face reduced-point-index
+            # For example,
+            # 'indicesRed': [0, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80] <- unique point index for this boundary
+            # 'facesRed': [0, 8, 9, 1], [1, 9, 10, 2] <- Here 0 means the 0th point index (0) in indicesRed, and 8 means the 8th
+            # point index (64) in incidexRed. So [0 8 9 1] corresponds to the face [0 64 72 8] in the original point index system.
+            # NOTE: using the reduce face indexing will faciliate the connectivity calls
             facesRed = []
             for iFace in bc["faces"]:
                 # get the node information for the current face
@@ -2110,7 +2116,7 @@ class PYDAFOAM(object):
 
         return
 
-    def getPointSetName(self, apName):
+    def getPointSetName(self):
         """
         Take the apName and return the mangled point set name.
         """
@@ -2184,7 +2190,7 @@ class PYDAFOAM(object):
         """
         if groupName1 not in self.families or groupName2 not in self.families:
             raise Error(
-                "'%s' or '%s' is not a family in the CGNS file or has not been added"
+                "'%s' or '%s' is not a family in the mesh file or has not been added"
                 " as a combination of families" % (groupName1, groupName2)
             )
 
