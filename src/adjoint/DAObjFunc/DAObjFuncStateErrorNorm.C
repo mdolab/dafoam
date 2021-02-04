@@ -46,7 +46,7 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
     stateType_ = objFuncDict_.getWord("stateType");
     scale_ = objFuncDict_.getScalar("scale");
     varTypeFieldInversion_ = objFuncDict_.getWord("varTypeFieldInversion"); 
-    patchNames_ = objFuncDict_.readEntry("patchNames"); 
+    objFuncDict_.readEntry<wordList>("patchNames", patchNames_); 
 
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
     // this objFunc only depends on the state variable at the zero level cell
@@ -126,24 +126,21 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
     
     else if (varTypeFieldInversion_ == "surface")
     {
-         if (stateType_="surfaceFriction")
+         if (stateType_ == "surfaceFriction")
          {
              
             const volScalarField& surfaceFriction = db.lookupObject<volScalarField>(stateName_);
 
-             // calculate the surface friction for the patches
-            const surfaceVectorField::Boundary& Sfp = db_.Sf().boundaryField();
-	        const surfaceScalarField::Boundary& magSfp = db_.magSf().boundaryField();
+            const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
+	        const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
 
-	        tmp<volSymmTensorField> Reff = daTurb_.devReff();
+	        tmp<volSymmTensorField> Reff = daTurb_.divReff();   // this is not correct
 	        const volSymmTensorField::Boundary& Reffp = Reff().boundaryField();
             
             forAll(patchNames_, cI)
             {
-                // get the patch id label
-                label patchI = db_.boundaryMesh().findPatchID(patchNames_[cI]);
-                // create a shorter handle for the boundary patch
-                const fvPatch& patch = db_.boundary()[patchI];
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
                 forAll(patch,faceI)
                 {
                     vector WSS = (-Sfp[patchI][faceI]/magSfp[patchI][faceI]) & Reffp[patchI][faceI];
@@ -163,9 +160,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
          }
     }
     
-   
-
-    // need to reduce the sum of force across all processors
+    // need to reduce the sum of all objectives across all processors
     reduce(objFuncValue, sumOp<scalar>());
 
     return;
