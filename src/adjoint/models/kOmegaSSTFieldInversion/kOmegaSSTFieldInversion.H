@@ -53,7 +53,7 @@ protected:
     volScalarField betaRefFieldInversion_;
 
     /// the reference velocity field, usually from experiment or higher fidelity sims
-    volVectorField UTrue_;
+    volVectorField varRefFieldInversion_;
 
     //- Wall distance
     //  Note: different to wall distance in parent RASModel
