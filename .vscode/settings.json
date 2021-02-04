@@ -12,6 +12,11 @@
         "SpalartAllmarasFv3FieldInversion.H": "cpp",
         "makeSpalartAllmarasFv3FieldInversionCompressible.C": "cpp",
         "kOmegaSSTFieldInversion.C": "cpp",
-        "kOmegaSSTFieldInversion.H": "cpp"
+        "kOmegaSSTFieldInversion.H": "cpp",
+        "DAObjFuncWallHeatFlux.C": "cpp",
+        "DAObjFuncStateErrorNorm.C": "cpp",
+        "DAObjFuncForce.C": "cpp",
+        "DAObjFuncStateErrorNorm.H": "cpp",
+        "DAObjFuncForce.H": "cpp"
     }
 }

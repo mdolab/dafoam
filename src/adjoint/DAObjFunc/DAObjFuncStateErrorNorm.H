@@ -38,8 +38,17 @@ protected:
     /// state variable type: can be either scalar or vector
     word stateType_;
 
-    /// scaling factor for the whole objective function
-    scalar scale_;
+    /// type of data available for training: can be surface or volume
+    word varTypeFieldInversion_;
+
+    /// scaling factor for the objective function
+    scalar scale_; 
+
+    /// list of pactches for computing varaibles such as skin friction if using surface data
+    wordList patchNames_; 
+
+    /// DATurbulenceModel object
+    const DATurbulenceModel& daTurb_;
 
 public:
     TypeName("stateErrorNorm");

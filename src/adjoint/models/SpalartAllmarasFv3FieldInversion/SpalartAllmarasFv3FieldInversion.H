@@ -55,6 +55,10 @@ protected:
     /// the reference field (e.g. velocity field from DNS)
     volVectorField varRefFieldInversion_;
 
+    volScalarField surfaceFriction_;
+
+    volScalarField surfaceFrictionRef_; 
+
     //- Wall distance
     //  Note: different to wall distance in parent RASModel
     //  which is for near-wall cells only

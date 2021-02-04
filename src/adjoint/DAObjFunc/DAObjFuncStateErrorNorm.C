@@ -33,7 +33,9 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
         daResidual,
         objFuncName,
         objFuncPart,
-        objFuncDict)
+        objFuncDict),
+    daTurb_(daModel.getDATurbulenceModel())
+
 {
 
     // Assign type, this is common for all objectives
@@ -43,6 +45,8 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
     stateRefName_ = objFuncDict_.getWord("stateRefName");
     stateType_ = objFuncDict_.getWord("stateType");
     scale_ = objFuncDict_.getScalar("scale");
+    varTypeFieldInversion_ = objFuncDict_.getWord("varTypeFieldInversion"); 
+    patchNames_ = objFuncDict_.readEntry("patchNames"); 
 
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
     // this objFunc only depends on the state variable at the zero level cell
@@ -93,28 +97,73 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
     objFuncValue = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
-    if (stateType_ == "scalar")
+
+    if (varTypeFieldInversion_ == "volume")
     {
-        const volScalarField& state = db.lookupObject<volScalarField>(stateName_);
-        const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
-        forAll(objFuncCellSources, idxI)
+         if (stateType_ == "scalar")
         {
-            const label& cellI = objFuncCellSources[idxI];
-            objFuncCellValues[idxI] = scale_ * (sqr(state[cellI] - stateRef[cellI]));
-            objFuncValue += objFuncCellValues[idxI];
+            const volScalarField& state = db.lookupObject<volScalarField>(stateName_);
+            const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
+            forAll(objFuncCellSources, idxI)
+            {
+                const label& cellI = objFuncCellSources[idxI];
+                objFuncCellValues[idxI] = scale_ * (sqr(state[cellI] - stateRef[cellI]));
+                objFuncValue += objFuncCellValues[idxI];
+            }
+        }
+        else if (stateType_ == "vector")
+        {
+            const volVectorField& state = db.lookupObject<volVectorField>(stateName_);
+            const volVectorField& stateRef = db.lookupObject<volVectorField>(stateRefName_);
+            forAll(objFuncCellSources, idxI)
+            {
+                const label& cellI = objFuncCellSources[idxI];
+                objFuncCellValues[idxI] = scale_ * (sqr(mag(state[cellI] - stateRef[cellI])));
+                objFuncValue += objFuncCellValues[idxI];
+            }
         }
     }
-    else if (stateType_ == "vector")
+    
+    else if (varTypeFieldInversion_ == "surface")
     {
-        const volVectorField& state = db.lookupObject<volVectorField>(stateName_);
-        const volVectorField& stateRef = db.lookupObject<volVectorField>(stateRefName_);
-        forAll(objFuncCellSources, idxI)
-        {
-            const label& cellI = objFuncCellSources[idxI];
-            objFuncCellValues[idxI] = scale_ * (sqr(mag(state[cellI] - stateRef[cellI])));
-            objFuncValue += objFuncCellValues[idxI];
-        }
+         if (stateType_="surfaceFriction")
+         {
+             
+            const volScalarField& surfaceFriction = db.lookupObject<volScalarField>(stateName_);
+
+             // calculate the surface friction for the patches
+            const surfaceVectorField::Boundary& Sfp = db_.Sf().boundaryField();
+	        const surfaceScalarField::Boundary& magSfp = db_.magSf().boundaryField();
+
+	        tmp<volSymmTensorField> Reff = daTurb_.devReff();
+	        const volSymmTensorField::Boundary& Reffp = Reff().boundaryField();
+            
+            forAll(patchNames_, cI)
+            {
+                // get the patch id label
+                label patchI = db_.boundaryMesh().findPatchID(patchNames_[cI]);
+                // create a shorter handle for the boundary patch
+                const fvPatch& patch = db_.boundary()[patchI];
+                forAll(patch,faceI)
+                {
+                    vector WSS = (-Sfp[patchI][faceI]/magSfp[patchI][faceI]) & Reffp[patchI][faceI];
+                    surfaceFriction.boundaryFieldRef()[patchI][faceI] = mag(WSS);
+                }
+            }
+
+             // compute the objective function 
+            const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
+            forAll(objFuncCellSources, idxI)
+            {
+                const label& cellI = objFuncCellSources[idxI];
+                objFuncCellValues[idxI] = sqr((scale_ * surfaceFriction[cellI]) - (scale_ * surfaceFrictionRef[cellI])); 
+                objFuncValue += objFuncCellValues[idxI];
+            }
+
+         }
     }
+    
+   
 
     // need to reduce the sum of force across all processors
     reduce(objFuncValue, sumOp<scalar>());

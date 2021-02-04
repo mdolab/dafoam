@@ -88,6 +88,30 @@ DASpalartAllmarasFv3FieldInversion::DASpalartAllmarasFv3FieldInversion(
           mesh.thisDb().lookupObject<volScalarField>("betaRefFieldInversion"))),
       varRefFieldInversion_(const_cast<volVectorField&>(
           mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))),
+      surfaceFriction_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFriction"))),
+      surfaceFrictionRef_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFrictionRef"))),
+      /*surfaceFriction_(
+          IOobject(
+              "surfaceFriction",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("surfaceFriction", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),*/
+      /*surfaceFrictionRef_(
+          IOobject(
+              "surfaceFrictionRef",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::NO_WRITE),
+          mesh,
+          dimensionedScalar("surfaceFrictionRef", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),*/
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 
