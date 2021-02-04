@@ -134,7 +134,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
 	        const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
 
-	        tmp<volSymmTensorField> Reff = daTurb_.divReff();   // this is not correct
+	        tmp<volSymmTensorField> Reff = daTurb_.devReff();   
 	        const volSymmTensorField::Boundary& Reffp = Reff().boundaryField();
             
             forAll(patchNames_, cI)
