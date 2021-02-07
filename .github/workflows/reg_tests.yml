@@ -32,7 +32,9 @@ jobs:
         docker run -i -d -u dafoamuser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
         docker exec -i regtest /bin/bash -c "rm -rf ${{ env.DOCKER_WORKING_DIR}} && cp -r ${{env.DOCKER_MOUNT_DIR}} ${{env.DOCKER_WORKING_DIR}}"
         docker exec -i regtest /bin/bash -c ". /home/dafoamuser/loadDAFoam.sh && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake ${{matrix.args}}"
-        if [ "${{matrix.args}}" = "incompressible" ]; then
+        if [ "${{matrix.args}}" = "solid" ]; then
+           echo "Skip building the AD version for solid"
+        else
            docker exec -i regtest /bin/bash -c ". /home/dafoamuser/loadDAFoam.sh && . /home/dafoamuser/OpenFOAM/OpenFOAM-v1812-AD/etc/bashrc && cd ${{env.DOCKER_WORKING_DIR}} && ./Allclean && ./Allmake ${{matrix.args}} 2> makeWarnings.txt"
         fi
         docker exec -i regtest /bin/bash -c ". /home/dafoamuser/loadDAFoam.sh && cd ${{env.DOCKER_WORKING_DIR}} && pip install ."

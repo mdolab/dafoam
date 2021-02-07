@@ -70,7 +70,7 @@ void DAUtility::pyDict2OFDict(
         // the ith key
         PyObject* keyI = PyList_GetItem(keys, i);
         // convert it to UTF8 such that we can use it in C++
-        char* keyUTF8 = PyUnicode_AsUTF8(keyI);
+        const char* keyUTF8 = PyUnicode_AsUTF8(keyI);
 
         //std::cout << "Key is "<<keyUTF8<<std::endl;
         // the actual value of this key, NOTE: it is a list
@@ -116,7 +116,7 @@ void DAUtility::pyDict2OFDict(
         const char* valueType = Py_TYPE(value1)->tp_name;
         if (word(valueType) == "str")
         {
-            char* valSet = PyUnicode_AsUTF8(value1);
+            const char* valSet = PyUnicode_AsUTF8(value1);
             ofDict.add(keyUTF8, word(valSet));
         }
         else if (word(valueType) == "int")
@@ -160,7 +160,7 @@ void DAUtility::pyDict2OFDict(
                 PyObject* valueListJ = PyList_GetItem(value1, j);
                 if (tmpTypeWord == "str")
                 {
-                    char* valSet = PyUnicode_AsUTF8(valueListJ);
+                    const char* valSet = PyUnicode_AsUTF8(valueListJ);
                     valSetWord[j] = word(valSet);
                 }
                 else if (tmpTypeWord == "int")

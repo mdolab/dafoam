@@ -543,7 +543,7 @@ void DAField::specialBCTreatment()
     // *******************************************************************
 }
 
-void DAField::setPrimalBoundaryConditions()
+void DAField::setPrimalBoundaryConditions(const label printInfo)
 {
     /*
     Description:
@@ -608,15 +608,21 @@ void DAField::setPrimalBoundaryConditions()
             {
                 if (!db.foundObject<volScalarField>(variable))
                 {
-                    Info << variable << " not found, skip it." << endl;
+                    if (printInfo)
+                    {
+                        Info << variable << " not found, skip it." << endl;
+                    }
                     continue;
                 }
                 // it is a scalar
                 volScalarField& state(const_cast<volScalarField&>(
                     db.lookupObject<volScalarField>(variable)));
 
-                Info << "Setting primal boundary conditions..." << endl;
-                Info << "Setting " << variable << " = " << value[0] << " at " << patch << endl;
+                if (printInfo)
+                {
+                    Info << "Setting primal boundary conditions..." << endl;
+                    Info << "Setting " << variable << " = " << value[0] << " at " << patch << endl;
+                }
 
                 label patchI = mesh_.boundaryMesh().findPatchID(patch);
 
@@ -665,7 +671,10 @@ void DAField::setPrimalBoundaryConditions()
             {
                 if (!db.foundObject<volVectorField>(variable))
                 {
-                    Info << variable << " not found, skip it." << endl;
+                    if (printInfo)
+                    {
+                        Info << variable << " not found, skip it." << endl;
+                    }
                     continue;
                 }
                 // it is a vector
@@ -673,10 +682,12 @@ void DAField::setPrimalBoundaryConditions()
                     db.lookupObject<volVectorField>(variable)));
 
                 vector valVec = {value[0], value[1], value[2]};
-
-                Info << "Setting primal boundary conditions..." << endl;
-                Info << "Setting " << variable << " = (" << value[0] << " "
-                     << value[1] << " " << value[2] << ") at " << patch << endl;
+                if (printInfo)
+                {
+                    Info << "Setting primal boundary conditions..." << endl;
+                    Info << "Setting " << variable << " = (" << value[0] << " "
+                         << value[1] << " " << value[2] << ") at " << patch << endl;
+                }
 
                 label patchI = mesh_.boundaryMesh().findPatchID(patch);
 
@@ -764,8 +775,11 @@ void DAField::setPrimalBoundaryConditions()
             {
                 if (mesh_.boundaryMesh()[patchI].type() == "wall")
                 {
-                    Info << "Setting nut wall BC for "
-                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+                    if (printInfo)
+                    {
+                        Info << "Setting nut wall BC for "
+                             << mesh_.boundaryMesh()[patchI].name() << ". ";
+                    }
 
                     if (useWallFunction)
                     {
@@ -778,7 +792,11 @@ void DAField::setPrimalBoundaryConditions()
                                     "nutUSpaldingWallFunction",
                                     mesh_.boundary()[patchI],
                                     nut));
-                            Info << "BCType=nutUSpaldingWallFunction" << endl;
+
+                            if (printInfo)
+                            {
+                                Info << "BCType=nutUSpaldingWallFunction" << endl;
+                            }
                         }
                         else // wall function for kOmega and kEpsilon
                         {
@@ -788,7 +806,11 @@ void DAField::setPrimalBoundaryConditions()
                                     "nutkWallFunction",
                                     mesh_.boundary()[patchI],
                                     nut));
-                            Info << "BCType=nutkWallFunction" << endl;
+
+                            if (printInfo)
+                            {
+                                Info << "BCType=nutkWallFunction" << endl;
+                            }
                         }
 
                         // set boundary values
@@ -811,7 +833,11 @@ void DAField::setPrimalBoundaryConditions()
                                 "nutLowReWallFunction",
                                 mesh_.boundary()[patchI],
                                 nut));
-                        Info << "BCType=nutLowReWallFunction" << endl;
+
+                        if (printInfo)
+                        {
+                            Info << "BCType=nutLowReWallFunction" << endl;
+                        }
 
                         // set boundary values
                         // for decomposed domain, don't set BC if the patch is empty
@@ -839,8 +865,11 @@ void DAField::setPrimalBoundaryConditions()
             {
                 if (mesh_.boundaryMesh()[patchI].type() == "wall")
                 {
-                    Info << "Setting k wall BC for "
-                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+                    if (printInfo)
+                    {
+                        Info << "Setting k wall BC for "
+                             << mesh_.boundaryMesh()[patchI].name() << ". ";
+                    }
 
                     if (useWallFunction)
                     {
@@ -848,7 +877,11 @@ void DAField::setPrimalBoundaryConditions()
                         k.boundaryFieldRef().set(
                             patchI,
                             fvPatchField<scalar>::New("kqRWallFunction", mesh_.boundary()[patchI], k));
-                        Info << "BCType=kqRWallFunction" << endl;
+
+                        if (printInfo)
+                        {
+                            Info << "BCType=kqRWallFunction" << endl;
+                        }
 
                         // set boundary values
                         // for decomposed domain, don't set BC if the patch is empty
@@ -866,7 +899,11 @@ void DAField::setPrimalBoundaryConditions()
                         k.boundaryFieldRef().set(
                             patchI,
                             fvPatchField<scalar>::New("fixedValue", mesh_.boundary()[patchI], k));
-                        Info << "BCType=fixedValue" << endl;
+
+                        if (printInfo)
+                        {
+                            Info << "BCType=fixedValue" << endl;
+                        }
 
                         // set boundary values
                         // for decomposed domain, don't set BC if the patch is empty
@@ -893,14 +930,21 @@ void DAField::setPrimalBoundaryConditions()
             {
                 if (mesh_.boundaryMesh()[patchI].type() == "wall")
                 {
-                    Info << "Setting omega wall BC for "
-                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+                    if (printInfo)
+                    {
+                        Info << "Setting omega wall BC for "
+                             << mesh_.boundaryMesh()[patchI].name() << ". ";
+                    }
 
                     // always use omegaWallFunction
                     omega.boundaryFieldRef().set(
                         patchI,
                         fvPatchField<scalar>::New("omegaWallFunction", mesh_.boundary()[patchI], omega));
-                    Info << "BCType=omegaWallFunction" << endl;
+
+                    if (printInfo)
+                    {
+                        Info << "BCType=omegaWallFunction" << endl;
+                    }
 
                     // set boundary values
                     // for decomposed domain, don't set BC if the patch is empty
@@ -927,15 +971,23 @@ void DAField::setPrimalBoundaryConditions()
             {
                 if (mesh_.boundaryMesh()[patchI].type() == "wall")
                 {
-                    Info << "Setting epsilon wall BC for "
-                         << mesh_.boundaryMesh()[patchI].name() << ". ";
+
+                    if (printInfo)
+                    {
+                        Info << "Setting epsilon wall BC for "
+                             << mesh_.boundaryMesh()[patchI].name() << ". ";
+                    }
 
                     if (useWallFunction)
                     {
                         epsilon.boundaryFieldRef().set(
                             patchI,
                             fvPatchField<scalar>::New("epsilonWallFunction", mesh_.boundary()[patchI], epsilon));
-                        Info << "BCType=epsilonWallFunction" << endl;
+
+                        if (printInfo)
+                        {
+                            Info << "BCType=epsilonWallFunction" << endl;
+                        }
 
                         // set boundary values
                         // for decomposed domain, don't set BC if the patch is empty
@@ -953,7 +1005,11 @@ void DAField::setPrimalBoundaryConditions()
                         epsilon.boundaryFieldRef().set(
                             patchI,
                             fvPatchField<scalar>::New("fixedValue", mesh_.boundary()[patchI], epsilon));
-                        Info << "BCType=fixedValue" << endl;
+
+                        if (printInfo)
+                        {
+                            Info << "BCType=fixedValue" << endl;
+                        }
 
                         // set boundary values
                         // for decomposed domain, don't set BC if the patch is empty

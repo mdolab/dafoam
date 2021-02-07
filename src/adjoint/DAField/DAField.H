@@ -103,7 +103,7 @@ public:
         const scalarList& stateBounaryList) const;
 
     /// set the boundary conditions based on parameters defined in DAOption
-    void setPrimalBoundaryConditions();
+    void setPrimalBoundaryConditions(const label printInfo = 1);
 
     /// apply special treatment for boundary conditions
     void specialBCTreatment();
@@ -113,7 +113,6 @@ public:
 
     /// a list that contains the names of detected special boundary conditions
     wordList specialBCs;
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

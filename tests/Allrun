@@ -56,6 +56,10 @@ case $argm in
     runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleAD.so" ]; then
+      runTests DARhoSimpleFoamAD
+      runTests DARhoSimpleCFoamAD
+    fi
     runTests DATurboFoamSubsonic
     runTests DATurboFoamTransonic
     runTests DASolidDisplacementFoam
@@ -91,6 +95,10 @@ case $argm in
     runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleAD.so" ]; then
+      runTests DARhoSimpleFoamAD
+      runTests DARhoSimpleCFoamAD
+    fi
     runTests DATurboFoamSubsonic
     runTests DATurboFoamTransonic
     echo " "

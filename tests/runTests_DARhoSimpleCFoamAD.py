@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Run Python tests for DASimpleFoam
+Run Python tests for DARhoSimpleCFoam
 """
 
 from mpi4py import MPI
@@ -25,21 +25,22 @@ os.chdir("./input/NACA0012")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
-    os.system("cp -r 0.incompressible 0")
-    os.system("cp -r system.incompressible system")
-    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
+    os.system("cp -r 0.compressible 0")
+    os.system("cp -r system.transonic system")
+    os.system("cp -r constant/turbulenceProperties.sst constant/turbulenceProperties")
 
-U0 = 10.0
-p0 = 0.0
-k0 = 0.18
-omega0 = 1225.0
+U0 = 238.0
+p0 = 101325.0
+k0 = 0.33
+omega0 = 2171.0
+T0 = 300.0
 A0 = 0.1
-alpha0 = 5.0
-LRef = 1.0
+alpha0 = 2.7
+rho0 = 1.0
 
 # test incompressible solvers
 aeroOptions = {
-    "solverName": "DASimpleFoam",
+    "solverName": "DARhoSimpleCFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "adjJacobianOption": "JacobianFree",
@@ -47,9 +48,20 @@ aeroOptions = {
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
+        "T0": {"variable": "T", "patches": ["inout"], "value": [T0]},
         "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
         "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},
         "useWallFunction": True,
+    },
+    "primalVarBounds": {
+        "UMax": 1000.0,
+        "UMin": -1000.0,
+        "pMax": 500000.0,
+        "pMin": 20000.0,
+        "eMax": 500000.0,
+        "eMin": 100000.0,
+        "rhoMax": 5.0,
+        "rhoMin": 0.2,
     },
     "objFunc": {
         "CD": {
@@ -59,7 +71,7 @@ aeroOptions = {
                 "patches": ["wing"],
                 "directionMode": "parallelToFlow",
                 "alphaName": "alpha",
-                "scale": 1.0 / (0.5 * U0 * U0 * A0),
+                "scale": 1.0 / (0.5 * rho0 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
         },
@@ -70,14 +82,16 @@ aeroOptions = {
                 "patches": ["wing"],
                 "directionMode": "normalToFlow",
                 "alphaName": "alpha",
-                "scale": 1.0 / (0.5 * U0 * U0 * A0),
+                "scale": 1.0 / (0.5 * rho0 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
         },
     },
-    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
-    "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3, "ACTD": 1.0e-3},
-    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
+    "normalizeStates": {"U": U0, "p": p0, "k": 1.0, "omega": 1.0, "phi": 1.0},
+    "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
+    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "nd"},
+    "adjStateOrdering": "cell",
+    "transonicPCOption": 1,
     # Design variable setup
     "designVar": {
         "shapey": {"designVarType": "FFD"},
@@ -104,8 +118,9 @@ nTwists = DVGeo.addRefAxis("bodyAxis", xFraction=0.25, alignIndex="k")
 def alpha(val, geo):
     aoa = val[0] * np.pi / 180.0
     inletU = [float(U0 * np.cos(aoa)), float(U0 * np.sin(aoa)), 0]
-    DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
+    DASolver.setOption("primalBC", {"UIn": {"variable": "U", "patches": ["inout"], "value": inletU}})
     DASolver.updateDAOption()
+
 
 # select points
 pts = DVGeo.getLocalIndex(0)
@@ -152,3 +167,4 @@ else:
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-6, 1e-8)
+
