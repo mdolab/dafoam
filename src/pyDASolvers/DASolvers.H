@@ -119,6 +119,28 @@ public:
         DASolverPtr_->calcdRdXvTPsiAD(xvVec, wVec, psi, dRdXvTPsi);
     }
 
+    /// compute dFdAOA using reverse-mode AD
+    void calcdFdAOAAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdAOA)
+    {
+        DASolverPtr_->calcdFdAOAAD(xvVec, wVec, objFuncName, designVarName, dFdAOA);
+    }
+
+    /// compute dRdAOA^T*Psi
+    void calcdRdAOATPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdAOATPsi)
+    {
+        DASolverPtr_->calcdRdAOATPsiAD(xvVec, wVec, psi, designVarName, dRdAOATPsi);
+    }
+
     /// create the multi-level Richardson KSP for solving linear equation
     void createMLRKSP(
         const Mat jacMat,

@@ -294,6 +294,22 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdAOA);
+    
+    /// compute dRdAOAAD
+    void calcdRdAOATPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdAOATPsi);
+
+    /// compute dFdAOAAD
+    void calcdFdAOAAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdAOA);
 
     /// compute dRdFFD
     void calcdRdFFD(

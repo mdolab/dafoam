@@ -1299,6 +1299,386 @@ void DASolver::calcdFdAOA(
     }
 }
 
+void DASolver::calcdFdAOAAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdAOA)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        This function computes partials derivatives dFdAlpha with alpha being the angle of attack (AOA) 
+        dFdAlpha = dF/dTan(Alpha) * dTan(Alpha)/dAlpha 
+                 = dF/d(Uy/Ux) / Cos(Alpha)^2 
+                 = dF/dUy * Ux / Cos(Alpha)^2
+        NOTE: the above sensitivity is for alpha in rad, so we need to convert to degree
+        
+        Here Ux and Uy are far field velocity in the x and y direction
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: name of the objective function F
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dFdAOA: the partial derivative vector dF/dAOA
+        NOTE: You need to fully initialize the dF vec before calliing this function,
+        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
+    */
+
+    Info << "Calculating dFdAOA using reverse-mode AD for " << designVarName << endl;
+
+    VecZeroEntries(dFdAOA);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = designVarDict.subDict(designVarName);
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
+    word flowAxis = dvSubDict.getWord("flowAxis");
+    word normalAxis = dvSubDict.getWord("normalAxis");
+
+    HashTable<label> axisIndices;
+    axisIndices.set("x", 0);
+    axisIndices.set("y", 1);
+    axisIndices.set("z", 2);
+    label flowAxisIndex = axisIndices[flowAxis];
+    label normalAxisIndex = axisIndices[normalAxis];
+
+    volVectorField& U = const_cast<volVectorField&>(
+        meshPtr_->thisDb().lookupObject<volVectorField>("U"));
+
+    // now we need to get the Ux, Uy values from the inout patches
+    scalar Ux = -9999, Uy = -9999;
+    forAll(patches, idxI)
+    {
+        word patchName = patches[idxI];
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+        if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+        {
+            if (U.boundaryField()[patchI].type() == "fixedValue")
+            {
+                Uy = U.boundaryField()[patchI][0][normalAxisIndex];
+                Ux = U.boundaryField()[patchI][0][flowAxisIndex];
+                break;
+            }
+            else if (U.boundaryField()[patchI].type() == "inletOutlet")
+            {
+                mixedFvPatchField<vector>& inletOutletPatch =
+                    refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
+                Uy = inletOutletPatch.refValue()[0][normalAxisIndex];
+                Ux = inletOutletPatch.refValue()[0][flowAxisIndex];
+                break;
+            }
+            else
+            {
+                FatalErrorIn("") << "boundaryType: " << U.boundaryFieldRef()[patchI].type()
+                                 << " not supported!"
+                                 << "Avaiable options are: fixedValue, inletOutlet"
+                                 << abort(FatalError);
+            }
+        }
+    }
+    if (Ux.getValue() == -9999)
+    {
+        FatalErrorIn("") << "Ux and Uy not found!" << abort(FatalError);
+    }
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+    // loop over all parts of this objFuncName
+    forAll(objFuncSubDict.toc(), idxK)
+    {
+        word objFuncPart = objFuncSubDict.toc()[idxK];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
+        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            objFuncName,
+            objFuncPart,
+            objFuncSubDictPart));
+
+        // reset tape
+        this->globalADTape_.reset();
+        // activate tape, start recording
+        this->globalADTape_.setActive();
+        // register Uy as the input
+        this->globalADTape_.registerInput(Uy);
+        // set far field Uy
+        forAll(patches, idxI)
+        {
+            word patchName = patches[idxI];
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (U.boundaryField()[patchI].type() == "fixedValue")
+                {
+                    forAll(U.boundaryField()[patchI], faceI)
+                    {
+                        U.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = Uy;
+                    }
+                }
+                else if (U.boundaryField()[patchI].type() == "inletOutlet")
+                {
+                    mixedFvPatchField<vector>& inletOutletPatch =
+                        refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
+
+                    forAll(U.boundaryField()[patchI], faceI)
+                    {
+                        inletOutletPatch.refValue()[faceI][normalAxisIndex] = Uy;
+                    }
+                }
+            }
+        }
+        // update all intermediate variables and boundary conditions
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+        // compute the objective function
+        scalar fRef = daObjFunc->getObjFuncValue();
+        // register f as the output
+        this->globalADTape_.registerOutput(fRef);
+        // stop recording
+        this->globalADTape_.setPassive();
+
+        // Note: since we used reduced objFunc, we only need to
+        // assign the seed for master proc
+        if (Pstream::master())
+        {
+            fRef.setGradient(1.0);
+        }
+        // evaluate tape to compute derivative
+        this->globalADTape_.evaluate();
+
+        // assign the computed derivatives from the OpenFOAM variable to dFdFieldPart
+        Vec dFdAOAPart;
+        VecDuplicate(dFdAOA, &dFdAOAPart);
+        VecZeroEntries(dFdAOAPart);
+        // we need to do dF/dAlpha = dF/dUy * Ux/cos(Alpha)^2
+        PetscScalar dFdUy = Uy.getGradient();
+        scalar cosSqr = Ux * Ux / (Ux * Ux + Uy * Uy);
+        PetscScalar derivVal = dFdUy * Ux.getValue() / cosSqr.getValue() * constant::mathematical::pi.getValue() / 180.0;
+        VecSetValue(dFdAOAPart, 0, derivVal, INSERT_VALUES);
+        VecAssemblyBegin(dFdAOAPart);
+        VecAssemblyEnd(dFdAOAPart);
+
+        // need to clear adjoint and tape after the computation is done!
+        this->globalADTape_.clearAdjoints();
+        this->globalADTape_.reset();
+
+        // we need to add dFdAOAPart to dFdAOA because we want to sum
+        // all dFdAOAPart for all parts of this objFuncName.
+        VecAXPY(dFdAOA, 1.0, dFdAOAPart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "In calcdFdAOAAD" << endl;
+            this->calcPrimalResidualStatistics("print");
+            Info << objFuncName << ": " << fRef << endl;
+        }
+
+        VecDestroy(&dFdAOAPart);
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dFdAOA_" + designVarName;
+        DAUtility::writeVectorBinary(dFdAOA, outputName);
+        DAUtility::writeVectorASCII(dFdAOA, outputName);
+    }
+#endif
+}
+
+void DASolver::calcdRdAOATPsiAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    const word designVarName,
+    Vec dRdAOATPsi)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Compute the matrix-vector products dRdAOA^T*Psi using reverse-mode AD
+        Similar to dF/dAlpha, here
+        dR/dAlpha = dR/dTan(Alpha) * dTan(Alpha)/dAlpha 
+                  = dR/d(Uy/Ux) / Cos(Alpha)^2 
+                  = dR/dUy * Ux / Cos(Alpha)^2
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdAOA
+
+        designVarName: name of the design variable
+    
+    Output:
+        dRdAOATPsi: the matrix-vector products dRdAOA^T * Psi
+    */
+
+    Info << "Calculating [dRdAOA]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdAOATPsi);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = designVarDict.subDict(designVarName);
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
+    word flowAxis = dvSubDict.getWord("flowAxis");
+    word normalAxis = dvSubDict.getWord("normalAxis");
+
+    HashTable<label> axisIndices;
+    axisIndices.set("x", 0);
+    axisIndices.set("y", 1);
+    axisIndices.set("z", 2);
+    label flowAxisIndex = axisIndices[flowAxis];
+    label normalAxisIndex = axisIndices[normalAxis];
+
+    volVectorField& U = const_cast<volVectorField&>(
+        meshPtr_->thisDb().lookupObject<volVectorField>("U"));
+
+    // now we need to get the Ux, Uy values from the inout patches
+    scalar Ux = -9999, Uy = -9999;
+    forAll(patches, idxI)
+    {
+        word patchName = patches[idxI];
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+        if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+        {
+            if (U.boundaryField()[patchI].type() == "fixedValue")
+            {
+                Uy = U.boundaryField()[patchI][0][normalAxisIndex];
+                Ux = U.boundaryField()[patchI][0][flowAxisIndex];
+                break;
+            }
+            else if (U.boundaryField()[patchI].type() == "inletOutlet")
+            {
+                mixedFvPatchField<vector>& inletOutletPatch =
+                    refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
+                Uy = inletOutletPatch.refValue()[0][normalAxisIndex];
+                Ux = inletOutletPatch.refValue()[0][flowAxisIndex];
+                break;
+            }
+            else
+            {
+                FatalErrorIn("") << "boundaryType: " << U.boundaryFieldRef()[patchI].type()
+                                 << " not supported!"
+                                 << "Avaiable options are: fixedValue, inletOutlet"
+                                 << abort(FatalError);
+            }
+        }
+    }
+    if (Ux.getValue() == -9999)
+    {
+        FatalErrorIn("") << "Ux and Uy not found!" << abort(FatalError);
+    }
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    // register Uy as the input
+    this->globalADTape_.registerInput(Uy);
+    // set far field Uy
+    forAll(patches, idxI)
+    {
+        word patchName = patches[idxI];
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+
+        if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+        {
+            if (U.boundaryField()[patchI].type() == "fixedValue")
+            {
+                forAll(U.boundaryField()[patchI], faceI)
+                {
+                    U.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = Uy;
+                }
+            }
+            else if (U.boundaryField()[patchI].type() == "inletOutlet")
+            {
+                mixedFvPatchField<vector>& inletOutletPatch =
+                    refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
+
+                forAll(U.boundaryField()[patchI], faceI)
+                {
+                    inletOutletPatch.refValue()[faceI][normalAxisIndex] = Uy;
+                }
+            }
+        }
+    }
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    // we need to do [dR/dAlpha]^T*Psi = [dR/dUy]^T*Psi * Ux/cos(Alpha)^2
+    PetscScalar dRdUyTPsi = Uy.getGradient();
+    scalar cosSqr = Ux * Ux / (Ux * Ux + Uy * Uy);
+    PetscScalar derivVal = dRdUyTPsi * Ux.getValue() / cosSqr.getValue() * constant::mathematical::pi.getValue() / 180.0;
+    VecSetValue(dRdAOATPsi, 0, derivVal, INSERT_VALUES);
+
+    VecAssemblyBegin(dRdAOATPsi);
+    VecAssemblyEnd(dRdAOATPsi);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdAOATPsi_" + designVarName;
+        DAUtility::writeVectorBinary(dRdAOATPsi, outputName);
+        DAUtility::writeVectorASCII(dRdAOATPsi, outputName);
+    }
+#endif
+}
+
 void DASolver::calcdRdFFD(
     const Vec xvVec,
     const Vec wVec,
