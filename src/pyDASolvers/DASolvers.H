@@ -210,6 +210,28 @@ public:
         DASolverPtr_->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
     }
 
+    /// compute dFdBC using reverse-mode AD
+    void calcdFdBCAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdBC)
+    {
+        DASolverPtr_->calcdFdBCAD(xvVec, wVec, objFuncName, designVarName, dFdBC);
+    }
+
+    /// compute dRdBC^T*Psi
+    void calcdRdBCTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdBCTPsi)
+    {
+        DASolverPtr_->calcdRdBCTPsiAD(xvVec, wVec, psi, designVarName, dRdBCTPsi);
+    }
+
     /// compute dRdAOA
     void calcdRdAOA(
         const Vec xvVec,

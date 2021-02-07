@@ -1177,6 +1177,432 @@ void DASolver::calcdRdAOA(
     }
 }
 
+void DASolver::calcdFdBCAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdBC)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        This function computes partials derivatives dFdBC
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: name of the objective function F
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dFdBC: the partial derivative vector dF/dBC
+        NOTE: You need to fully initialize the dF vec before calliing this function,
+        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
+    */
+
+    Info << "Calculating dFdBC using reverse-mode AD for " << designVarName << endl;
+
+    VecZeroEntries(dFdBC);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = designVarDict.subDict(designVarName);
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the variable for changing the boundary condition
+    word varName = dvSubDict.getWord("variable");
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the compoent of a vector variable, ignore when it is a scalar
+    label comp = dvSubDict.getLabel("comp");
+
+    // Now get the BC value
+    scalar BC = -9999;
+    forAll(patches, idxI)
+    {
+        word patchName = patches[idxI];
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+        if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+        {
+            volVectorField& state(const_cast<volVectorField&>(
+                meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    BC = state.boundaryFieldRef()[patchI][0][comp];
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<vector>& inletOutletPatch =
+                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                    BC = inletOutletPatch.refValue()[0][comp];
+                }
+            }
+        }
+        else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+        {
+            volScalarField& state(const_cast<volScalarField&>(
+                meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    BC = state.boundaryFieldRef()[patchI][0];
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<scalar>& inletOutletPatch =
+                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                    BC = inletOutletPatch.refValue()[0];
+                }
+            }
+        }
+    }
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+    // loop over all parts of this objFuncName
+    forAll(objFuncSubDict.toc(), idxK)
+    {
+        word objFuncPart = objFuncSubDict.toc()[idxK];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
+        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            objFuncName,
+            objFuncPart,
+            objFuncSubDictPart));
+
+        // reset tape
+        this->globalADTape_.reset();
+        // activate tape, start recording
+        this->globalADTape_.setActive();
+        // register BC as the input
+        this->globalADTape_.registerInput(BC);
+        // ******* now set BC ******
+        forAll(patches, idxI)
+        {
+            word patchName = patches[idxI];
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+            {
+                volVectorField& state(const_cast<volVectorField&>(
+                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+                // for decomposed domain, don't set BC if the patch is empty
+                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+                {
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                    {
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI][comp] = BC;
+                        }
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                    {
+                        mixedFvPatchField<vector>& inletOutletPatch =
+                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                        vector val = inletOutletPatch.refValue()[0];
+                        val[comp] = BC;
+                        inletOutletPatch.refValue() = val;
+                    }
+                }
+            }
+            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+            {
+                volScalarField& state(const_cast<volScalarField&>(
+                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+                // for decomposed domain, don't set BC if the patch is empty
+                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+                {
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                    {
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI] = BC;
+                        }
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                    {
+                        mixedFvPatchField<scalar>& inletOutletPatch =
+                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                        inletOutletPatch.refValue() = BC;
+                    }
+                }
+            }
+        }
+        // ******* now set BC done******
+        // update all intermediate variables and boundary conditions
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+        // compute the objective function
+        scalar fRef = daObjFunc->getObjFuncValue();
+        // register f as the output
+        this->globalADTape_.registerOutput(fRef);
+        // stop recording
+        this->globalADTape_.setPassive();
+
+        // Note: since we used reduced objFunc, we only need to
+        // assign the seed for master proc
+        if (Pstream::master())
+        {
+            fRef.setGradient(1.0);
+        }
+        // evaluate tape to compute derivative
+        this->globalADTape_.evaluate();
+
+        // assign the computed derivatives from the OpenFOAM variable to dFdFieldPart
+        Vec dFdBCPart;
+        VecDuplicate(dFdBC, &dFdBCPart);
+        VecZeroEntries(dFdBCPart);
+        PetscScalar derivVal = BC.getGradient();
+        VecSetValue(dFdBCPart, 0, derivVal, INSERT_VALUES);
+        VecAssemblyBegin(dFdBCPart);
+        VecAssemblyEnd(dFdBCPart);
+
+        // need to clear adjoint and tape after the computation is done!
+        this->globalADTape_.clearAdjoints();
+        this->globalADTape_.reset();
+
+        // we need to add dFdBCPart to dFdBC because we want to sum
+        // all dFdBCPart for all parts of this objFuncName.
+        VecAXPY(dFdBC, 1.0, dFdBCPart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "In calcdFdBCAD" << endl;
+            this->calcPrimalResidualStatistics("print");
+            Info << objFuncName << ": " << fRef << endl;
+        }
+
+        VecDestroy(&dFdBCPart);
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dFdBC_" + designVarName;
+        DAUtility::writeVectorBinary(dFdBC, outputName);
+        DAUtility::writeVectorASCII(dFdBC, outputName);
+    }
+#endif
+}
+
+void DASolver::calcdRdBCTPsiAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    const word designVarName,
+    Vec dRdBCTPsi)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Compute the matrix-vector products dRdBC^T*Psi using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdBC
+
+        designVarName: name of the design variable
+    
+    Output:
+        dRdBCTPsi: the matrix-vector products dRdBC^T * Psi
+    */
+
+    Info << "Calculating [dRdBC]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdBCTPsi);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = designVarDict.subDict(designVarName);
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the variable for changing the boundary condition
+    word varName = dvSubDict.getWord("variable");
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the compoent of a vector variable, ignore when it is a scalar
+    label comp = dvSubDict.getLabel("comp");
+
+    // Now get the BC value
+    scalar BC = -9999;
+    forAll(patches, idxI)
+    {
+        word patchName = patches[idxI];
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+        if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+        {
+            volVectorField& state(const_cast<volVectorField&>(
+                meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    BC = state.boundaryFieldRef()[patchI][0][comp];
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<vector>& inletOutletPatch =
+                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                    BC = inletOutletPatch.refValue()[0][comp];
+                }
+            }
+        }
+        else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+        {
+            volScalarField& state(const_cast<volScalarField&>(
+                meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    BC = state.boundaryFieldRef()[patchI][0];
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<scalar>& inletOutletPatch =
+                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                    BC = inletOutletPatch.refValue()[0];
+                }
+            }
+        }
+    }
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    // register BC as the input
+    this->globalADTape_.registerInput(BC);
+    // ******* now set BC ******
+    forAll(patches, idxI)
+    {
+        word patchName = patches[idxI];
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+        if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+        {
+            volVectorField& state(const_cast<volVectorField&>(
+                meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    forAll(state.boundaryFieldRef()[patchI], faceI)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI][comp] = BC;
+                    }
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<vector>& inletOutletPatch =
+                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                    vector val = inletOutletPatch.refValue()[0];
+                    val[comp] = BC;
+                    inletOutletPatch.refValue() = val;
+                }
+            }
+        }
+        else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+        {
+            volScalarField& state(const_cast<volScalarField&>(
+                meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    forAll(state.boundaryFieldRef()[patchI], faceI)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI] = BC;
+                    }
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<scalar>& inletOutletPatch =
+                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                    inletOutletPatch.refValue() = BC;
+                }
+            }
+        }
+    }
+    // ******* now set BC done******
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    PetscScalar derivVal = BC.getGradient();
+    VecSetValue(dRdBCTPsi, 0, derivVal, INSERT_VALUES);
+
+    VecAssemblyBegin(dRdBCTPsi);
+    VecAssemblyEnd(dRdBCTPsi);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdBCTPsi_" + designVarName;
+        DAUtility::writeVectorBinary(dRdBCTPsi, outputName);
+        DAUtility::writeVectorASCII(dRdBCTPsi, outputName);
+    }
+#endif
+}
+
 void DASolver::calcdFdAOA(
     const Vec xvVec,
     const Vec wVec,

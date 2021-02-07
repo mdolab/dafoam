@@ -1426,7 +1426,40 @@ class PYDAFOAM(object):
                             dFdBC.destroy()
                     dRdBC.destroy()
                 elif self.getOption("adjJacobianOption") == "JacobianFree":
-                    pass
+                    nDVs = 1
+                    # loop over all objectives
+                    for objFuncName in objFuncDict:
+                        if objFuncName in self.objFuncNames4Adj:
+                            # calculate dFdBC
+                            dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                            dFdBC.setFromOptions()
+                            self.solverAD.calcdFdBCAD(
+                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
+                            )
+
+                            # Calculate dRBCT^Psi
+                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                            totalDeriv.setFromOptions()
+                            self.solverAD.calcdRdBCTPsiAD(
+                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+                            )
+
+                            # totalDeriv = dFdBC - dRdBCT*psi
+                            totalDeriv.scale(-1.0)
+                            totalDeriv.axpy(1.0, dFdBC)
+
+                            # assign the total derivative to self.adjTotalDeriv
+                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                            # we need to convert the parallel vec to seq vec
+                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                            for i in range(nDVs):
+                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                            totalDeriv.destroy()
+                            totalDerivSeq.destroy()
+                            dFdBC.destroy()
             ###################### AOA: angle of attack as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "AOA":
                 if self.getOption("adjJacobianOption") == "JacobianFD":
