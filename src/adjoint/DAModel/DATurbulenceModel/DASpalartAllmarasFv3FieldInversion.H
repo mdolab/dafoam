@@ -78,10 +78,10 @@ protected:
     volVectorField& varRefFieldInversion_; 
 
     /// a surface friction 'field' when using skin friction data for field inversion
-    volScalarField& surfaceFriction_;
+    volScalarField surfaceFriction_;
 
     /// the reference field for surfaceFriction
-    volScalarField& surfaceFrictionRef_; 
+    volScalarField surfaceFrictionRef_; 
 
     /// 3D wall distance
     const volScalarField& y_;

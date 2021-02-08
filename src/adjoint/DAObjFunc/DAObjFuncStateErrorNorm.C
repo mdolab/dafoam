@@ -134,7 +134,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
 	        const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
 
-	        tmp<volSymmTensorField> Reff = daTurb_.divReff();   // this is not correct
+	        tmp<volSymmTensorField> Reff = daTurb_.devRhoReff();   
 	        const volSymmTensorField::Boundary& Reffp = Reff().boundaryField();
             
             forAll(patchNames_, cI)
@@ -144,7 +144,8 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 forAll(patch,faceI)
                 {
                     vector WSS = (-Sfp[patchI][faceI]/magSfp[patchI][faceI]) & Reffp[patchI][faceI];
-                    surfaceFriction.boundaryFieldRef()[patchI][faceI] = mag(WSS);
+                    // scale = 1 / (0.5 * rho * URef^2)
+                    surfaceFriction.boundaryFieldRef()[patchI][faceI] = scale_ * mag(WSS);
                 }
             }
 
@@ -153,7 +154,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             forAll(objFuncCellSources, idxI)
             {
                 const label& cellI = objFuncCellSources[idxI];
-                objFuncCellValues[idxI] = sqr((scale_ * surfaceFriction[cellI]) - (scale_ * surfaceFrictionRef[cellI])); 
+                objFuncCellValues[idxI] = sqr(surfaceFriction[cellI] - surfaceFrictionRef[cellI]); 
                 objFuncValue += objFuncCellValues[idxI];
             }
 
