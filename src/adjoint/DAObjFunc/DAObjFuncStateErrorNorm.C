@@ -45,7 +45,7 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
     stateRefName_ = objFuncDict_.getWord("stateRefName");
     stateType_ = objFuncDict_.getWord("stateType");
     scale_ = objFuncDict_.getScalar("scale");
-    varTypeFieldInversion_ = objFuncDict_.getWord("varTypeFieldInversion"); 
+    varTypeFieldInversion_ = objFuncDict_.getWord("varTypeFieldInversion");
     objFuncDict_.readEntry<wordList>("patchNames", patchNames_); 
 
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
@@ -129,7 +129,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
          if (stateType_ == "surfaceFriction")
          {
              
-            const volScalarField& surfaceFriction = db.lookupObject<volScalarField>(stateName_);
+            volScalarField surfaceFriction = db.lookupObject<volScalarField>(stateName_);
 
             const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
 	        const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
@@ -146,14 +146,17 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                     vector WSS = (-Sfp[patchI][faceI]/magSfp[patchI][faceI]) & Reffp[patchI][faceI];
                     // scale = 1 / (0.5 * rho * URef^2)
                     surfaceFriction.boundaryFieldRef()[patchI][faceI] = scale_ * mag(WSS);
+                    //Info<<surfaceFriction.boundaryFieldRef()[patchI][faceI]<<endl;
                 }
             }
-
              // compute the objective function 
             const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
-            forAll(objFuncCellSources, idxI)
+            
+            forAll(objFuncCellSources, idxI)  // at the moment surfaceFriction[cellI] and surfaceFrictionRef[cellI] are both zero
             {
                 const label& cellI = objFuncCellSources[idxI];
+               // Info<<surfaceFriction[cellI]<<endl; 
+               // Info<<surfaceFrictionRef[cellI]<<endl; 
                 objFuncCellValues[idxI] = sqr(surfaceFriction[cellI] - surfaceFrictionRef[cellI]); 
                 objFuncValue += objFuncCellValues[idxI];
             }
