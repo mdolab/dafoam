@@ -1590,11 +1590,6 @@ class PYDAFOAM(object):
                                 idxRel = idxI - Istart
                                 dFdXvTotalArray[idxRel] = totalDerivXv[idxI]
 
-                            fSens = open("dFdXvAdjoint_%d.txt" % self.comm.rank, "w")
-                            for valI in dFdXvTotalArray:
-                                fSens.write("%.15g\n" % valI)
-                            fSens.close()
-
                             if self.DVGeo is not None and self.DVGeo.getNDV() > 0:
                                 # Now get total derivative wrt surface coordinates
                                 self.mesh.warpDeriv(dFdXvTotalArray)
