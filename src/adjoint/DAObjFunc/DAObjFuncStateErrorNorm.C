@@ -88,7 +88,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
         objFuncValue: the sum of objective, reduced across all processors and scaled by "scale"
     */
 
-    // initialize to zero
+    // initialize cell values to zero
     forAll(objFuncCellValues, idxI)
     {
         objFuncCellValues[idxI] = 0.0;
@@ -130,6 +130,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
          {
              
             volScalarField surfaceFriction = db.lookupObject<volScalarField>(stateName_);
+            const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
 
             const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
 	        const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
@@ -143,22 +144,19 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 const fvPatch& patch = mesh_.boundary()[patchI];
                 forAll(patch,faceI)
                 {
-                    vector WSS = (-Sfp[patchI][faceI]/magSfp[patchI][faceI]) & Reffp[patchI][faceI];
-                    // scale = 1 / (0.5 * rho * URef^2)
-                    surfaceFriction.boundaryFieldRef()[patchI][faceI] = scale_ * mag(WSS);
-                    //Info<<surfaceFriction.boundaryFieldRef()[patchI][faceI]<<endl;
+                    // compute wall shear stress
+                    vector wallShearStress = (-Sfp[patchI][faceI]/magSfp[patchI][faceI]) & Reffp[patchI][faceI];
+                    // compute surface friction, scale = 1 / (0.5 * rho * URef^2)
+                    scalar bSurfaceFriction = scale_* mag(wallShearStress); 
+                    surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
+
+                    // calculate the objective function
+                    // extract the reference surface friction at the boundary
+                    scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
+
+                    objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
+
                 }
-            }
-             // compute the objective function 
-            const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
-            
-            forAll(objFuncCellSources, idxI)  // at the moment surfaceFriction[cellI] and surfaceFrictionRef[cellI] are both zero
-            {
-                const label& cellI = objFuncCellSources[idxI];
-               // Info<<surfaceFriction[cellI]<<endl; 
-               // Info<<surfaceFrictionRef[cellI]<<endl; 
-                objFuncCellValues[idxI] = sqr(surfaceFriction[cellI] - surfaceFrictionRef[cellI]); 
-                objFuncValue += objFuncCellValues[idxI];
             }
 
          }
