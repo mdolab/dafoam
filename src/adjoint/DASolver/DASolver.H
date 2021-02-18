@@ -596,6 +596,19 @@ public:
     void updateBoundaryConditions(
         const word fieldName,
         const word fieldType);
+
+    /// return the mesh object
+    const fvMesh& getMesh()
+    {
+        return meshPtr_();
+    }
+
+    /// return the runTime object
+    const Time& getRunRime()
+    {
+        return runTimePtr_();
+    }
+
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
