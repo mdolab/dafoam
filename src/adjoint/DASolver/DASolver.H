@@ -597,6 +597,7 @@ public:
         const word fieldName,
         const word fieldType);
 
+    /// Accessing members
     /// return the mesh object
     const fvMesh& getMesh()
     {
@@ -604,9 +605,33 @@ public:
     }
 
     /// return the runTime object
-    const Time& getRunRime()
+    const Time& getRunTime()
     {
         return runTimePtr_();
+    }
+
+    /// get DAStateInfo object
+    const DAStateInfo& getDAStateInfo()
+    {
+        return daStateInfoPtr_();
+    }
+
+    /// get DAIndex object
+    const DAIndex& getDAIndex()
+    {
+        return daIndexPtr_();
+    }
+
+    /// get DAModel object
+    const DAModel& getDAModel()
+    {
+        return daModelPtr_();
+    }
+
+    /// get DAResidual object
+    const DAResidual& getDAResidual()
+    {
+        return daResidualPtr_();
     }
 
 };
