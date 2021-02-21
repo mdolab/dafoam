@@ -128,15 +128,17 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
     {
          if (stateType_ == "surfaceFriction")
          {
-             
+            // get surface friction "fields" 
             volScalarField surfaceFriction = db.lookupObject<volScalarField>(stateName_);
             const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
 
+            // ingredients for surface friction computation
+            const volVectorField& U = db.lookupObject<volVectorField>("U");
+            tmp<volTensorField> gradU = fvc::grad(U);
+            volTensorField::Boundary bGradU = gradU().boundaryField(); 
+
             const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
 	        const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
-
-	        tmp<volSymmTensorField> Reff = daTurb_.devRhoReff();   
-	        const volSymmTensorField::Boundary& Reffp = Reff().boundaryField();
             
             forAll(patchNames_, cI)
             {
@@ -144,10 +146,34 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 const fvPatch& patch = mesh_.boundary()[patchI];
                 forAll(patch,faceI)
                 {
-                    // compute wall shear stress
-                    vector wallShearStress = (-Sfp[patchI][faceI]/magSfp[patchI][faceI]) & Reffp[patchI][faceI];
-                    // compute surface friction, scale = 1 / (0.5 * rho * URef^2)
-                    scalar bSurfaceFriction = scale_* mag(wallShearStress); 
+                    // normal vector at wall, use -ve sign to ensure vector pointing into the domain
+                    vector normal = -Sfp[patchI][faceI]/magSfp[patchI][faceI];
+
+                    // tangent vector, computed from normal: tangent = p x normal; where p is a unit vector perpidicular to the plane 
+                    vector tangent(normal.y(), -normal.x(), 0.0);
+
+                    // velocity gradient at wall
+                    tensor fGradU = bGradU[patchI][faceI];
+
+                    /* need to get transpose of fGradU as it is stored in the following form:
+                            fGradU = [ XX   XY  XZ  YX  YY  YZ  ZX  ZY  ZZ ]  (see slide 3 of: https://tinyurl.com/5ops2f5h)
+                        but by definition,
+                            grad(U) = [ XX  YX  ZX  XY  YY  ZY  XZ  YZ  ZZ]   
+                        where XX = partial(u1)/partial(x1), YX = partial(u2)/partial(x1) and so on.
+                            => grad(U) = transpose(fGradU)
+                    */
+                    tensor fGradUT = fGradU.T();             	
+
+                    /* compute the surface friction assuming incompressible flow and no wall functions! Add run time warning message 
+                    to reflect this later.
+                          Cf = tau_wall/dynPressure,
+                          tau_wall = rho * nu * tangent . (grad(U) . normal),
+                          dynPressue = 0.5 * rho * mag(U_bulk^2),
+                    incorporate rho, mu, and dynamic pressure in scale_ as follows,
+                          scale_ = nu / dynPressure,
+                          => Cf = scale_ * tangent . (grad(U) . normal) */
+                    scalar bSurfaceFriction = scale_ * (tangent & (fGradUT & normal)); 
+                    
                     surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
 
                     // calculate the objective function
@@ -158,6 +184,10 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
 
                 }
             }
+         }
+
+         else if (stateType_ == "liftCoeff")
+         {
 
          }
     }
