@@ -186,11 +186,57 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             }
          }
 
-         else if (stateType_ == "liftCoeff")
+         else if (stateType_ == "aeroCoeff") // based on calcLiftPerS* utility from DAFoam v1
          {
+             // error most likely due to the following, need to figure out how to get
+             // these from the runScript correctly.
+            wordList patches;
+            objFuncDict_.readEntry<wordList>("patchNames", patches); 
 
+            scalarList dir; // decides if computing lift or drag
+            objFuncDict_.readEntry<scalarList>("direction", dir);
+            vector forceDir_; 
+            forceDir_[0] = dir[0];
+            forceDir_[1] = dir[1];
+            forceDir_[2] = dir[2];
+            scalar aeroCoeffRef;
+            objFuncDict_.readEntry<scalar>("aeroCoeffRef", aeroCoeffRef);
+
+            // get the ingredients for computations
+            const volScalarField& p = db.lookupObject<volScalarField>("p");
+            const surfaceVectorField::Boundary& Sfb = mesh_.Sf().boundaryField(); 
+            tmp<volSymmTensorField> tdevRhoReff = daTurb_.devRhoReff();
+            const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
+
+            vector forces(vector::zero);
+            
+            forAll(patches, cI)
+            {
+                // get the patch id label
+                label patchI = mesh_.boundaryMesh().findPatchID( patches[cI] );
+
+                // create a shorter handle for the boundary patch
+                const fvPatch& patch = mesh_.boundary()[patchI];
+
+                // normal force
+                vectorField fN(Sfb[patchI]*p.boundaryField()[patchI]);
+
+                // tangential force
+                vectorField fT(Sfb[patchI] & devRhoReffb[patchI]);
+
+                forAll(patch,faceI)
+                {
+                    forces.x() = fN[faceI].x() + fT[faceI].x();
+                    forces.y() = fN[faceI].y() + fT[faceI].y();
+                    forces.z() = fN[faceI].z() + fT[faceI].z();
+                    scalar aeroCoeff = scale_ * (forces & forceDir_);
+
+                    objFuncValue += sqr(aeroCoeff - aeroCoeffRef);
+                }
+            }
          }
     }
+    
     
     // need to reduce the sum of all objectives across all processors
     reduce(objFuncValue, sumOp<scalar>());
