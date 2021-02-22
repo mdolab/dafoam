@@ -40,13 +40,24 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
 
     // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
-
+    varTypeFieldInversion_ = objFuncDict_.getWord("varTypeFieldInversion");
+    stateType_ = objFuncDict_.getWord("stateType");
     stateName_ = objFuncDict_.getWord("stateName");
     stateRefName_ = objFuncDict_.getWord("stateRefName");
-    stateType_ = objFuncDict_.getWord("stateType");
     scale_ = objFuncDict_.getScalar("scale");
-    varTypeFieldInversion_ = objFuncDict_.getWord("varTypeFieldInversion");
-    objFuncDict_.readEntry<wordList>("patchNames", patchNames_); 
+    if (varTypeFieldInversion_ == "surface")
+    {
+        objFuncDict_.readEntry<wordList>("patchNames", patchNames_); 
+    }
+    if (stateType_ == "aeroCoeff")
+    {
+        scalarList dir; // decides if computing lift or drag
+        objFuncDict_.readEntry<scalarList>("direction", dir);
+        forceDir_[0] = dir[0];
+        forceDir_[1] = dir[1];
+        forceDir_[2] = dir[2];
+        objFuncDict_.readEntry<scalar>("aeroCoeffRef", aeroCoeffRef_);
+    }
 
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
     // this objFunc only depends on the state variable at the zero level cell
@@ -188,20 +199,6 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
 
          else if (stateType_ == "aeroCoeff") // based on calcLiftPerS* utility from DAFoam v1
          {
-             // error most likely due to the following, need to figure out how to get
-             // these from the runScript correctly.
-            wordList patches;
-            objFuncDict_.readEntry<wordList>("patchNames", patches); 
-
-            scalarList dir; // decides if computing lift or drag
-            objFuncDict_.readEntry<scalarList>("direction", dir);
-            vector forceDir_; 
-            forceDir_[0] = dir[0];
-            forceDir_[1] = dir[1];
-            forceDir_[2] = dir[2];
-            scalar aeroCoeffRef;
-            objFuncDict_.readEntry<scalar>("aeroCoeffRef", aeroCoeffRef);
-
             // get the ingredients for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
             const surfaceVectorField::Boundary& Sfb = mesh_.Sf().boundaryField(); 
@@ -210,10 +207,10 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
 
             vector forces(vector::zero);
             
-            forAll(patches, cI)
+            forAll(patchNames_, cI)
             {
                 // get the patch id label
-                label patchI = mesh_.boundaryMesh().findPatchID( patches[cI] );
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
 
                 // create a shorter handle for the boundary patch
                 const fvPatch& patch = mesh_.boundary()[patchI];
@@ -231,7 +228,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                     forces.z() = fN[faceI].z() + fT[faceI].z();
                     scalar aeroCoeff = scale_ * (forces & forceDir_);
 
-                    objFuncValue += sqr(aeroCoeff - aeroCoeffRef);
+                    objFuncValue += sqr(aeroCoeff - aeroCoeffRef_);
                 }
             }
          }

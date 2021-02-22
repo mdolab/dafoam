@@ -46,6 +46,12 @@ protected:
 
     /// list of pactches for computing varaibles such as skin friction if using surface data
     wordList patchNames_; 
+    
+    /// direction vector if using aerodynamic coefficient data 
+    vector forceDir_;
+
+    /// the lift, or drag coefficient from data
+    scalar aeroCoeffRef_; 
 
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;
