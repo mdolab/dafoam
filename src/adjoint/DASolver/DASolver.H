@@ -610,6 +610,12 @@ public:
         return runTimePtr_();
     }
 
+    /// get DAOption object
+    const DAOption& getDAOption()
+    {
+        return daOptionPtr_();
+    }
+
     /// get DAStateInfo object
     const DAStateInfo& getDAStateInfo()
     {
@@ -632,6 +638,12 @@ public:
     const DAResidual& getDAResidual()
     {
         return daResidualPtr_();
+    }
+
+    /// get DAField object
+    const DAField& getDAField()
+    {
+        return daFieldPtr_();
     }
 
 };
