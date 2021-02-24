@@ -206,6 +206,8 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
 
             vector forces(vector::zero);
+
+            scalar aeroCoeff(0.0);
             
             forAll(patchNames_, cI)
             {
@@ -226,14 +228,16 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                     forces.x() = fN[faceI].x() + fT[faceI].x();
                     forces.y() = fN[faceI].y() + fT[faceI].y();
                     forces.z() = fN[faceI].z() + fT[faceI].z();
-                    scalar aeroCoeff = scale_ * (forces & forceDir_);
-
-                    objFuncValue += sqr(aeroCoeff - aeroCoeffRef_);
+                    aeroCoeff += scale_ * (forces & forceDir_);
                 }
             }
+            // fails to run in parallel!!!!!! 
+
+            objFuncValue += sqr(aeroCoeff - aeroCoeffRef_);
+
          }
     }
-    
+
     
     // need to reduce the sum of all objectives across all processors
     reduce(objFuncValue, sumOp<scalar>());
@@ -245,3 +249,23 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
 } // End namespace Foam
 
 // ************************************************************************* //
+
+            /*
+            forAll(objFuncFaceSources, idxI)
+            {
+                const label& objFuncFaceI = objFuncFaceSources[idxI];
+                label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+                const label patchI = daIndex_.bFacePatchI[bFaceI];
+                const label faceI = daIndex_.bFaceFaceI[bFaceI];
+
+                // normal force
+                vector fN(Sfb[patchI][faceI] * p.boundaryField()[patchI][faceI]);
+                // tangential force
+                vector fT(Sfb[patchI][faceI] & devRhoReffb[patchI][faceI]);
+                // project the force to forceDir
+                objFuncFaceValues[idxI] = scale_ * ((fN + fT) & forceDir_);
+
+                objFuncValue += objFuncFaceValues[idxI]; 
+            }
+            objFuncValue = sqr(objFuncValue - aeroCoeffRef_);
+            */
