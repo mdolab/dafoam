@@ -121,6 +121,8 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 objFuncCellValues[idxI] = scale_ * (sqr(state[cellI] - stateRef[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
+        // need to reduce the sum of all objectives across all processors
+         reduce(objFuncValue, sumOp<scalar>()); /// NEED TO FIX THIS
         }
         else if (stateType_ == "vector")
         {
@@ -132,6 +134,9 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 objFuncCellValues[idxI] = scale_ * (sqr(mag(state[cellI] - stateRef[cellI])));
                 objFuncValue += objFuncCellValues[idxI];
             }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>()); /// NEED TO FIX THIS
         }
     }
     
@@ -140,13 +145,13 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
          if (stateType_ == "surfaceFriction")
          {
             // get surface friction "fields" 
-            volScalarField surfaceFriction = db.lookupObject<volScalarField>(stateName_);
+            volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
             const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
 
             // ingredients for surface friction computation
             const volVectorField& U = db.lookupObject<volVectorField>("U");
             tmp<volTensorField> gradU = fvc::grad(U);
-            volTensorField::Boundary bGradU = gradU().boundaryField(); 
+            const volTensorField::Boundary& bGradU = gradU().boundaryField(); 
 
             const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
 	        const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
@@ -161,7 +166,8 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                     vector normal = -Sfp[patchI][faceI]/magSfp[patchI][faceI];
 
                     // tangent vector, computed from normal: tangent = p x normal; where p is a unit vector perpidicular to the plane 
-                    vector tangent(normal.y(), -normal.x(), 0.0);
+                    // NOTE: make this more general
+                    vector tangent(normal.y(), -normal.x(), 0.0);  
 
                     // velocity gradient at wall
                     tensor fGradU = bGradU[patchI][faceI];
@@ -195,6 +201,9 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
 
                 }
             }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>()); /// NEED TO FIX THIS
          }
 
          else if (stateType_ == "aeroCoeff") // based on calcLiftPerS* utility from DAFoam v1
@@ -231,16 +240,15 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                     aeroCoeff += scale_ * (forces & forceDir_);
                 }
             }
-            // fails to run in parallel!!!!!! 
-
+            // need to reduce the sum of all forces across all processors
+            reduce(aeroCoeff, sumOp<scalar>());
+            
+            // compute the objective function
             objFuncValue += sqr(aeroCoeff - aeroCoeffRef_);
 
          }
     }
 
-    
-    // need to reduce the sum of all objectives across all processors
-    reduce(objFuncValue, sumOp<scalar>());
 
     return;
 }
@@ -249,23 +257,3 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
 } // End namespace Foam
 
 // ************************************************************************* //
-
-            /*
-            forAll(objFuncFaceSources, idxI)
-            {
-                const label& objFuncFaceI = objFuncFaceSources[idxI];
-                label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
-                const label patchI = daIndex_.bFacePatchI[bFaceI];
-                const label faceI = daIndex_.bFaceFaceI[bFaceI];
-
-                // normal force
-                vector fN(Sfb[patchI][faceI] * p.boundaryField()[patchI][faceI]);
-                // tangential force
-                vector fT(Sfb[patchI][faceI] & devRhoReffb[patchI][faceI]);
-                // project the force to forceDir
-                objFuncFaceValues[idxI] = scale_ * ((fN + fT) & forceDir_);
-
-                objFuncValue += objFuncFaceValues[idxI]; 
-            }
-            objFuncValue = sqr(objFuncValue - aeroCoeffRef_);
-            */
