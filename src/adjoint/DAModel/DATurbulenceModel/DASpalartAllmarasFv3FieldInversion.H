@@ -83,6 +83,9 @@ protected:
     /// the reference field for surfaceFriction
     volScalarField surfaceFrictionRef_; 
 
+    /// reference field for profile data
+    volScalarField& profileRefFieldInversion_; 
+
     /// 3D wall distance
     const volScalarField& y_;
 

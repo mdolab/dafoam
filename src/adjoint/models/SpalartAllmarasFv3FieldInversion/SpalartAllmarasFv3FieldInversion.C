@@ -93,6 +93,14 @@ SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::SpalartAllmarasFv3FieldI
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
           this->mesh_),
+      profileRefFieldInversion_(
+          IOobject(
+              "profileRefFieldInversion",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          this->mesh_),
       y_(wallDist::New(this->mesh_).y())
 {
 }

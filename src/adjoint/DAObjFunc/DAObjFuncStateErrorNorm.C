@@ -122,7 +122,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 objFuncValue += objFuncCellValues[idxI];
             }
         // need to reduce the sum of all objectives across all processors
-         reduce(objFuncValue, sumOp<scalar>()); /// NEED TO FIX THIS
+         reduce(objFuncValue, sumOp<scalar>()); 
         }
         else if (stateType_ == "vector")
         {
@@ -136,7 +136,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             }
 
             // need to reduce the sum of all objectives across all processors
-            reduce(objFuncValue, sumOp<scalar>()); /// NEED TO FIX THIS
+            reduce(objFuncValue, sumOp<scalar>()); 
         }
     }
     
@@ -203,7 +203,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             }
 
             // need to reduce the sum of all objectives across all processors
-            reduce(objFuncValue, sumOp<scalar>()); /// NEED TO FIX THIS
+            reduce(objFuncValue, sumOp<scalar>()); 
          }
 
          else if (stateType_ == "aeroCoeff") // based on calcLiftPerS* utility from DAFoam v1
@@ -249,7 +249,30 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
          }
     }
 
+    else if (varTypeFieldInversion_ == "profile")
+    {
+        // get the velocity field
+        const volVectorField& state = db.lookupObject<volVectorField>(stateName_);
 
+        // only using the x-component of the velocity field
+        //const volScalarField& state = U().x(); 
+
+        // get the reference velocity field  (only x-component, hence volScalarField)
+        const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
+
+        forAll(objFuncCellSources, idxI)
+        {
+            const label& cellI = objFuncCellSources[idxI];
+            if (stateRef[cellI] < 1e16)
+            {
+                objFuncCellValues[idxI] = scale_ * (sqr(state[cellI].x() - stateRef[cellI]));
+                objFuncValue += objFuncCellValues[idxI];
+            }
+        }
+        
+        // need to reduce the sum of all objectives across all processors
+        reduce(objFuncValue, sumOp<scalar>()); 
+    }
     return;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
