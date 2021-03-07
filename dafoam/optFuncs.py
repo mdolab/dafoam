@@ -389,25 +389,32 @@ def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None)
             fOut.close()
 
 
-def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues):
+def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues, eps=1e-2, tol=1e-4, maxit=10):
+    """
+    Adjust the angle of attack or pitch to match the target lift.
+    This is usually needed for wing aerodynamic optimization
+    """
 
-    DASolver.setOption("adjUseColoring", False)
+    Info("\n")
+    Info("+--------------------------------------------------------------------------+")
+    Info("|              Running SolveCL to find alpha that matches target CL        |")
+    Info("+--------------------------------------------------------------------------+")
+    Info("eps: %g  tol: %g  maxit: %g" % (eps, tol, maxit))
 
     xDVs = DVGeo.getValues()
     alpha = xDVs[alphaName]
 
-    for i in range(10):
+    for i in range(maxit):
         # Solve the CFD problem
         xDVs[alphaName] = alpha
         funcs = {}
         funcs, fail = objFun(xDVs)
         CL0 = funcs[liftName]
         Info("alpha: %f, CL: %f" % (alpha.real, CL0))
-        if abs(CL0 - CL_star) / CL_star < 1e-5:
+        if abs(CL0 - CL_star) / CL_star < tol:
             Info("Completed! alpha = %f" % alpha.real)
-            break
+            return alpha.real
         # compute sens
-        eps = 1e-2
         alphaVal = alpha + eps
         xDVs[alphaName] = alphaVal
         funcsP = {}
@@ -415,6 +422,8 @@ def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues):
         CLP = funcsP[liftName]
         deltaAlpha = (CL_star - CL0) * eps / (CLP - CL0)
         alpha += deltaAlpha
+    
+    return alpha.real
 
 
 def verifySens(objFun=calcObjFuncValues, sensFun=calcObjFuncSens):
@@ -443,7 +452,7 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
             gradFD[funcName][shapeVar] = np.zeros(len(xDV[shapeVar]))
     if gcomm.rank == 0:
         print("-------FD----------", deltaX, flush=True)
-            
+
     for shapeVar in xDV:
         try:
             nDVs = len(xDV[shapeVar])
@@ -477,6 +486,7 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
                         fOut.write(line)
                         fOut.flush()
             fOut.close()
+
 
 class Info(object):
     """
