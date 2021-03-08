@@ -58,6 +58,10 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
         forceDir_[2] = dir[2];
         objFuncDict_.readEntry<scalar>("aeroCoeffRef", aeroCoeffRef_);
     }
+    if (stateType_ == "surfacePressure")
+    {
+        objFuncDict_.readEntry<scalar>("pRef", pRef_);
+    }
 
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
     // this objFunc only depends on the state variable at the zero level cell
@@ -206,7 +210,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             reduce(objFuncValue, sumOp<scalar>()); 
          }
 
-         else if (stateType_ == "aeroCoeff") // based on calcLiftPerS* utility from DAFoam v1
+         else if (stateType_ == "aeroCoeff") 
          {
             // get the ingredients for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
@@ -247,15 +251,46 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             objFuncValue += sqr(aeroCoeff - aeroCoeffRef_);
 
          }
+    
+        else if (stateType_ == "surfacePressure")
+        {
+            // get surface pressure "fields" 
+            volScalarField& surfacePressure = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
+            const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
+
+            // get the ingredient for computations
+            const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch,faceI)
+                {
+
+                    scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_); 
+
+                    surfacePressure.boundaryFieldRef()[patchI][faceI] = bSurfacePressure; 
+
+                    // calculate the objective function
+                    // extract the reference surface friction at the boundary
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
+
+                    objFuncValue += sqr(bSurfacePressure - bSurfacePressureRef);
+
+                }
+            }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>()); 
+
+        }   
     }
 
     else if (varTypeFieldInversion_ == "profile")
     {
         // get the velocity field
         const volVectorField& state = db.lookupObject<volVectorField>(stateName_);
-
-        // only using the x-component of the velocity field
-        //const volScalarField& state = U().x(); 
 
         // get the reference velocity field  (only x-component, hence volScalarField)
         const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);

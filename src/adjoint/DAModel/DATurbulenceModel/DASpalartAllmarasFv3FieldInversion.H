@@ -83,6 +83,12 @@ protected:
     /// the reference field for surfaceFriction
     volScalarField surfaceFrictionRef_; 
 
+    /// a surface pressure 'field' 
+    volScalarField surfacePressure_;
+
+    /// the reference field for surfacePressure
+    volScalarField surfacePressureRef_; 
+
     /// reference field for profile data
     volScalarField& profileRefFieldInversion_; 
 

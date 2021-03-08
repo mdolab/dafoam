@@ -53,6 +53,9 @@ protected:
     /// the lift, or drag coefficient from data
     scalar aeroCoeffRef_; 
 
+    /// the reference pressure for Cp calculation
+    scalar pRef_;
+
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;
 

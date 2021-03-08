@@ -59,6 +59,10 @@ protected:
 
     volScalarField surfaceFrictionRef_; 
 
+    volScalarField surfacePressure_;
+
+    volScalarField surfacePressureRef_; 
+
     volScalarField profileRefFieldInversion_; 
 
     //- Wall distance

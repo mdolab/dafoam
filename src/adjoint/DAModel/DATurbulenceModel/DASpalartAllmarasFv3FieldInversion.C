@@ -91,7 +91,11 @@ DASpalartAllmarasFv3FieldInversion::DASpalartAllmarasFv3FieldInversion(
       /*surfaceFriction_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("surfaceFriction"))),
       surfaceFrictionRef_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("surfaceFrictionRef"))),*/
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFrictionRef"))),
+      surfacePressure_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfacePressure"))),
+      surfacePressureRef_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfacePressureRef"))),*/
       surfaceFriction_(
           IOobject(
               "surfaceFriction",
@@ -111,6 +115,26 @@ DASpalartAllmarasFv3FieldInversion::DASpalartAllmarasFv3FieldInversion(
               IOobject::NO_WRITE),
           mesh,
           dimensionedScalar("surfaceFrictionRef", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
+      surfacePressure_(
+          IOobject(
+              "surfacePressure",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("surfacePressure", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
+      surfacePressureRef_(
+          IOobject(
+              "surfacePressureRef",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::NO_WRITE),
+          mesh,
+          dimensionedScalar("surfacePressureRef", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
       profileRefFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("profileRefFieldInversion"))),
