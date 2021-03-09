@@ -646,6 +646,18 @@ public:
         return daFieldPtr_();
     }
 
+    /// get DALinearEqn object
+    const DALinearEqn& getDALinearEqn()
+    {
+        return daLinearEqnPtr_();
+    }
+
+    /// get DACheckMesh object
+    const DACheckMesh& getDACheckMesh()
+    {
+        return daCheckMeshPtr_();
+    }
+
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
