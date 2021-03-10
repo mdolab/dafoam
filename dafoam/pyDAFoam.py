@@ -874,6 +874,28 @@ class PYDAFOAM(object):
 
         return
 
+    def writeDesignVariable(self, fileName, xDV):
+        """
+        Write the design variable history to files
+        """
+        # Write the design variable history to files
+        if self.comm.rank == 0:
+            if self.nSolveAdjoints == 0:
+                f = open(fileName, "w")
+            else:
+                f = open(fileName, "a")
+            # write design variables
+            f.write("Optimization Iteration: %03d\n" % self.nSolveAdjoints)
+            for dvName in sorted(xDV):
+                f.write("%s " % dvName)
+                try:
+                    for dvVal in xDV[dvName]:
+                        f.write(" %20.15e" % dvVal)
+                except Exception:
+                    f.write(" %20.15e" % xDV[dvName])
+                f.write("\n")
+            f.close()
+
     def getTimeInstanceObjFunc(self, instanceI, objFuncName):
         """
         Return the value of objective function at the given time instance and name

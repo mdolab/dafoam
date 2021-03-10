@@ -192,6 +192,9 @@ def calcObjFuncSens(xDV, funcs):
 
     a = time.time()
 
+    # write the design variable values to file
+    DASolver.writeDesignVariable("designVariableHist.txt", xDV)
+
     # Setup an empty dictionary for the evaluated derivative values
     funcsSens = {}
 
@@ -231,6 +234,9 @@ def calcObjFuncSensMP(xDV, funcs):
     fail = False
 
     a = time.time()
+
+    # write the design variable values to file
+    DASolver.writeDesignVariable("designVariableHist.txt", xDV)
 
     # Setup an empty dictionary for the evaluated derivative values
     funcsSensMP = {}
@@ -298,6 +304,9 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
     fail = False
 
     a = time.time()
+
+    # write the design variable values to file
+    DASolver.writeDesignVariable("designVariableHist.txt", xDV)
 
     # Setup an empty dictionary for the evaluated derivative values
     funcsSensCombined = {}
@@ -422,7 +431,7 @@ def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues, eps=1e-2, to
         CLP = funcsP[liftName]
         deltaAlpha = (CL_star - CL0) * eps / (CLP - CL0)
         alpha += deltaAlpha
-    
+
     return alpha.real
 
 
