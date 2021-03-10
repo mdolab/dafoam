@@ -66,9 +66,11 @@ SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::SpalartAllmarasFv3FieldI
               "betaRefFieldInversion",
               this->runTime_.timeName(),
               this->mesh_,
-              IOobject::MUST_READ,
-              IOobject::AUTO_WRITE),
-          this->mesh_),
+              IOobject::READ_IF_PRESENT,
+              IOobject::NO_WRITE),
+          this->mesh_,
+          dimensionedScalar("betaRefFieldInversion", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          zeroGradientFvPatchField<scalar>::typeName),
       varRefFieldInversion_(
           IOobject(
               "varRefFieldInversion",
@@ -84,7 +86,9 @@ SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::SpalartAllmarasFv3FieldI
               this->mesh_,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
-          this->mesh_),
+          this->mesh_,
+          dimensionedScalar("surfaceFriction", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
       surfaceFrictionRef_(
           IOobject(
               "surfaceFrictionRef",
@@ -92,15 +96,9 @@ SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::SpalartAllmarasFv3FieldI
               this->mesh_,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
-          this->mesh_),
-      surfacePressure_(
-          IOobject(
-              "surfacePressure",
-              this->runTime_.timeName(),
-              this->mesh_,
-              IOobject::READ_IF_PRESENT,
-              IOobject::AUTO_WRITE),
-          this->mesh_),
+          this->mesh_,
+          dimensionedScalar("surfaceFrictionRef", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
       surfacePressureRef_(
           IOobject(
               "surfacePressureRef",
@@ -108,7 +106,9 @@ SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::SpalartAllmarasFv3FieldI
               this->mesh_,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
-          this->mesh_),
+          this->mesh_,
+          dimensionedScalar("surfacePressureRef", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
       profileRefFieldInversion_(
           IOobject(
               "profileRefFieldInversion",
@@ -116,7 +116,9 @@ SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::SpalartAllmarasFv3FieldI
               this->mesh_,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
-          this->mesh_),
+          this->mesh_,
+          dimensionedScalar("profileRefFieldInversion", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
       y_(wallDist::New(this->mesh_).y())
 {
 }

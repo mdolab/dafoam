@@ -72,7 +72,7 @@ protected:
     volScalarField& betaFieldInversion_; 
 
     /// a reference beta field
-    volScalarField& betaRefFieldInversion_; 
+    volScalarField betaRefFieldInversion_; 
 
     /// reference field (e.g. velocity for DNS)
     volVectorField& varRefFieldInversion_; 
@@ -83,14 +83,11 @@ protected:
     /// the reference field for surfaceFriction
     volScalarField surfaceFrictionRef_; 
 
-    /// a surface pressure 'field' 
-    volScalarField surfacePressure_;
-
     /// the reference field for surfacePressure
     volScalarField surfacePressureRef_; 
 
     /// reference field for profile data
-    volScalarField& profileRefFieldInversion_; 
+    volScalarField profileRefFieldInversion_; 
 
     /// 3D wall distance
     const volScalarField& y_;

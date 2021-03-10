@@ -254,8 +254,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
     
         else if (stateType_ == "surfacePressure")
         {
-            // get surface pressure "fields" 
-            volScalarField& surfacePressure = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
+            // get ref surface pressure "fields" 
             const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
 
             // get the ingredient for computations
@@ -269,8 +268,6 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 {
 
                     scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_); 
-
-                    surfacePressure.boundaryFieldRef()[patchI][faceI] = bSurfacePressure; 
 
                     // calculate the objective function
                     // extract the reference surface friction at the boundary
