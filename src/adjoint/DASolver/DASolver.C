@@ -3183,63 +3183,65 @@ void DASolver::calcdRdActTPsiAD(
         DAFvSource& fvSource = const_cast<DAFvSource&>(
             meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
 
+        word diskName = dvSubDict.getWord("actuatorName");
+
         dictionary fvSourceSubDict = daOptionPtr_->getAllOptions().subDict("fvSource");
-        word diskName0 = fvSourceSubDict.toc()[0];
-        word source0 = fvSourceSubDict.subDict(diskName0).getWord("source");
-        if (source0 == "cylinderAnnulusSmooth")
+        word source = fvSourceSubDict.subDict(diskName).getWord("source");
+        if (source == "cylinderAnnulusSmooth")
         {
-            forAll(fvSourceSubDict.toc(), idxI)
+
+            this->updateOFField(wVec);
+            this->updateOFMesh(xvVec);
+
+            scalarList actDVList(9);
+            for (label i = 0; i < 9; i++)
             {
-                word diskName = fvSourceSubDict.toc()[idxI];
-                scalarList actDVList;
-                for (label i = 0; i < 9; i++)
-                {
-                    actDVList.append(fvSource.getActuatorDVs(diskName, i));
-                };
-
-                this->updateOFField(wVec);
-                this->updateOFMesh(xvVec);
-
-                this->globalADTape_.reset();
-                this->globalADTape_.setActive();
-                for (label i = 0; i < 9; i++)
-                {
-                    this->globalADTape_.registerInput(actDVList[i]);
-                }
-                for (label i = 0; i < 9; i++)
-                {
-                    fvSource.setActuatorDVs(diskName, i, actDVList[i]);
-                }
-                // compute residuals
-                daResidualPtr_->correctBoundaryConditions();
-                daResidualPtr_->updateIntermediateVariables();
-                daModelPtr_->correctBoundaryConditions();
-                daModelPtr_->updateIntermediateVariables();
-                label isPC = 0;
-                dictionary options;
-                options.set("isPC", isPC);
-                daResidualPtr_->calcResiduals(options);
-                daModelPtr_->calcResiduals(options);
-
-                this->registerResidualOutput4AD();
-                this->globalADTape_.setPassive();
-
-                this->assignVec2ResidualGradient(psi);
-                this->globalADTape_.evaluate();
-
-                PetscScalar* dRdActTPsiArray;
-                VecGetArray(dRdActTPsi, &dRdActTPsiArray);
-
-                for (label i = 0; i < 9; i++)
-                {
-                    dRdActTPsiArray[i] = actDVList[i].getGradient();
-                }
-
-                VecRestoreArray(dRdActTPsi, &dRdActTPsiArray);
-
-                this->globalADTape_.clearAdjoints();
-                this->globalADTape_.reset();
+                actDVList[i] = fvSource.getActuatorDVs(diskName, i);
             }
+
+            this->globalADTape_.reset();
+            this->globalADTape_.setActive();
+
+            for (label i = 0; i < 9; i++)
+            {
+                this->globalADTape_.registerInput(actDVList[i]);
+            }
+
+            // set dv values to fvSource obj for all procs
+            for (label i = 0; i < 9; i++)
+            {
+                fvSource.setActuatorDVs(diskName, i, actDVList[i]);
+            }
+
+            // compute residuals
+            daResidualPtr_->correctBoundaryConditions();
+            daResidualPtr_->updateIntermediateVariables();
+            daModelPtr_->correctBoundaryConditions();
+            daModelPtr_->updateIntermediateVariables();
+            label isPC = 0;
+            dictionary options;
+            options.set("isPC", isPC);
+            daResidualPtr_->calcResiduals(options);
+            daModelPtr_->calcResiduals(options);
+
+            this->registerResidualOutput4AD();
+            this->globalADTape_.setPassive();
+
+            this->assignVec2ResidualGradient(psi);
+            this->globalADTape_.evaluate();
+
+            for (label i = 0; i < 9; i++)
+            {
+                PetscScalar valIn = actDVList[i].getGradient();
+                // we need to do ADD_VALUES to get contribution from all procs
+                VecSetValue(dRdActTPsi, i, valIn, ADD_VALUES);
+            }
+
+            VecAssemblyBegin(dRdActTPsi);
+            VecAssemblyEnd(dRdActTPsi);
+
+            this->globalADTape_.clearAdjoints();
+            this->globalADTape_.reset();
         }
         else
         {
