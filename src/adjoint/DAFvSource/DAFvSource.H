@@ -122,6 +122,9 @@ public:
         return actuatorDiskDVs_[diskName][dvI];
     }
 
+    /// synchronize the values in DAOption and actuatorDiskDVs_
+    void syncDAOptionToActuatorDVs();
+
     /// virtual function for regIOobject
     bool writeData(Ostream& os) const;
 };

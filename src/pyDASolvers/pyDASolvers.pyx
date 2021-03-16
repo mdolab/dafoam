@@ -46,6 +46,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
+        void syncDAOptionToActuatorDVs()
         void updateOFField(PetscVec)
         void updateOFMesh(PetscVec)
         void setdXvdFFDMat(PetscMat)
@@ -194,6 +195,9 @@ cdef class pyDASolvers:
 
     def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
         self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
+    
+    def syncDAOptionToActuatorDVs(self):
+        self._thisptr.syncDAOptionToActuatorDVs()
 
     def updateOFField(self, Vec wVec):
         self._thisptr.updateOFField(wVec.vec)

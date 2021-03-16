@@ -1637,7 +1637,7 @@ class PYDAFOAM(object):
                     nDVs = nDVTable[designVarType]
                     # calculate dRdACT
                     dRdACT = PETSc.Mat().create(PETSc.COMM_WORLD)
-                    self.solver.calcdRdACT(self.xvVec, self.wVec, designVarName.encode(), dRdACT)
+                    self.solver.calcdRdACT(self.xvVec, self.wVec, designVarName.encode(), designVarType.encode(), dRdACT)
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
@@ -2633,6 +2633,22 @@ class PYDAFOAM(object):
 
         if self.getOption("adjJacobianOption") == "JacobianFree":
             self.solverAD.updateDAOption(self.options)
+        
+        if len(self.getOption("fvSource")) > 0:
+            self.syncDAOptionToActuatorDVs()
+    
+    def syncDAOptionToActuatorDVs(self):
+        """
+        Synchronize the values in DAOption and actuatorDiskDVs_. We need to synchronize the values 
+        defined in fvSource from DAOption to actuatorDiskDVs_ in the C++ layer
+        NOTE: we need to call this function whenever we change the actuator design variables
+        during optimization.
+        """
+
+        self.solver.syncDAOptionToActuatorDVs()
+
+        if self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.syncDAOptionToActuatorDVs()
 
     def _printCurrentOptions(self):
         """

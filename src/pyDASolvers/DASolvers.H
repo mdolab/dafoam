@@ -368,6 +368,12 @@ public:
         return DASolverPtr_->getNLocalCells();
     }
 
+    /// synchronize the values in DAOption and actuatorDiskDVs_
+    void syncDAOptionToActuatorDVs()
+    {
+        DASolverPtr_->syncDAOptionToActuatorDVs();
+    }
+
     /// return the value of objective
     double getObjFuncValue(const word objFuncName)
     {

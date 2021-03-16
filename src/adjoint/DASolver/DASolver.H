@@ -604,6 +604,14 @@ public:
         const word fieldName,
         const word fieldType);
 
+    /// synchronize the values in DAOption and actuatorDiskDVs_
+    void syncDAOptionToActuatorDVs()
+    {
+        DAFvSource& fvSource = const_cast<DAFvSource&>(
+            meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
+        fvSource.syncDAOptionToActuatorDVs();
+    }
+
     /// Accessing members
     /// return the mesh object
     const fvMesh& getMesh()
