@@ -1229,7 +1229,7 @@ void DASolver::calcdFdBCAD(
     label comp = dvSubDict.getLabel("comp");
 
     // Now get the BC value
-    scalar BC = -9999;
+    scalar BC = -1e16;
     forAll(patches, idxI)
     {
         word patchName = patches[idxI];
@@ -1275,6 +1275,10 @@ void DASolver::calcdFdBCAD(
             }
         }
     }
+    // need to reduce the BC value across all processors, this is because some of
+    // the processors might not own the prescribed patches so their BC value will be still -1e16, but
+    // when calling the following reduce function, they will get the correct BC from other processors
+    reduce(BC, maxOp<scalar>());
 
     // get the subDict for this objective function
     dictionary objFuncSubDict =
@@ -1383,7 +1387,8 @@ void DASolver::calcdFdBCAD(
         VecDuplicate(dFdBC, &dFdBCPart);
         VecZeroEntries(dFdBCPart);
         PetscScalar derivVal = BC.getGradient();
-        VecSetValue(dFdBCPart, 0, derivVal, INSERT_VALUES);
+        // we need to do ADD_VALUES to get contribution from all procs
+        VecSetValue(dFdBCPart, 0, derivVal, ADD_VALUES);
         VecAssemblyBegin(dFdBCPart);
         VecAssemblyEnd(dFdBCPart);
 
@@ -1458,11 +1463,11 @@ void DASolver::calcdRdBCTPsiAD(
     // name of the boundary patch
     wordList patches;
     dvSubDict.readEntry<wordList>("patches", patches);
-    // the compoent of a vector variable, ignore when it is a scalar
+    // the component of a vector variable, ignore when it is a scalar
     label comp = dvSubDict.getLabel("comp");
 
     // Now get the BC value
-    scalar BC = -9999;
+    scalar BC = -1e16;
     forAll(patches, idxI)
     {
         word patchName = patches[idxI];
@@ -1508,6 +1513,10 @@ void DASolver::calcdRdBCTPsiAD(
             }
         }
     }
+    // need to reduce the BC value across all processors, this is because some of
+    // the processors might not own the prescribed patches so their BC value will be still -1e16, but
+    // when calling the following reduce function, they will get the correct BC from other processors
+    reduce(BC, maxOp<scalar>());
 
     this->globalADTape_.reset();
     this->globalADTape_.setActive();
@@ -1586,7 +1595,8 @@ void DASolver::calcdRdBCTPsiAD(
     this->globalADTape_.evaluate();
 
     PetscScalar derivVal = BC.getGradient();
-    VecSetValue(dRdBCTPsi, 0, derivVal, INSERT_VALUES);
+    // we need to do ADD_VALUES to get contribution from all procs
+    VecSetValue(dRdBCTPsi, 0, derivVal, ADD_VALUES);
 
     VecAssemblyBegin(dRdBCTPsi);
     VecAssemblyEnd(dRdBCTPsi);
