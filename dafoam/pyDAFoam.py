@@ -1460,9 +1460,7 @@ class PYDAFOAM(object):
                             dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
                             dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                             dFdBC.setFromOptions()
-                            self.solverAD.calcdFdBCAD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
-                            )
+                            dFdBC.zeroEntries()  # dFdBC assumes to be zero
                             # Calculate dRBCT^Psi
                             totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                             totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
@@ -1485,69 +1483,67 @@ class PYDAFOAM(object):
                             dFdBC.destroy()
             ###################### AOA: angle of attack as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "AOA":
-                nDVs = 1
-                # calculate dRdAOA
-                dRdAOA = PETSc.Mat().create(PETSc.COMM_WORLD)
-                self.solver.calcdRdAOA(self.xvVec, self.wVec, designVarName.encode(), dRdAOA)
-                # loop over all objectives
-                for objFuncName in objFuncDict:
-                    if objFuncName in self.objFuncNames4Adj:
-                        # calculate dFdAOA
-                        dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
-                        dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                        dFdAOA.setFromOptions()
-                        self.solver.calcdFdAOA(
-                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdAOA
-                        )
-                        # call the total deriv
-                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                        totalDeriv.setFromOptions()
-                        self.calcTotalDeriv(dRdAOA, dFdAOA, self.adjVectors[objFuncName], totalDeriv)
-                        # assign the total derivative to self.adjTotalDeriv
-                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                        # we need to convert the parallel vec to seq vec
-                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                        for i in range(nDVs):
-                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
-                        totalDeriv.destroy()
-                        totalDerivSeq.destroy()
-                        dFdAOA.destroy()
-                dRdAOA.destroy()
-                """ NOTE: the AD version of AOA derivative is not accurate in parallel, need to fix it
-                nDVs = 1
-                # loop over all objectives
-                for objFuncName in objFuncDict:
-                    if objFuncName in self.objFuncNames4Adj:
-                        # calculate dFdAOA
-                        dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
-                        dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                        dFdAOA.setFromOptions()
-                        self.solverAD.calcdFdAOAAD(
-                            self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdAOA
-                        )
-                        # Calculate dRAOAT^Psi
-                        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                        totalDeriv.setFromOptions()
-                        self.solverAD.calcdRdAOATPsiAD(
-                            self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
-                        )
-                        # totalDeriv = dFdAOA - dRdAOAT*psi
-                        totalDeriv.scale(-1.0)
-                        totalDeriv.axpy(1.0, dFdAOA)
-                        # assign the total derivative to self.adjTotalDeriv
-                        self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                        # we need to convert the parallel vec to seq vec
-                        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                        for i in range(nDVs):
-                            self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
-                        totalDeriv.destroy()
-                        totalDerivSeq.destroy()
-                        dFdAOA.destroy()
-                """
+                if self.getOption("adjJacobianOption") == "JacobianFD":
+                    nDVs = 1
+                    # calculate dRdAOA
+                    dRdAOA = PETSc.Mat().create(PETSc.COMM_WORLD)
+                    self.solver.calcdRdAOA(self.xvVec, self.wVec, designVarName.encode(), dRdAOA)
+                    # loop over all objectives
+                    for objFuncName in objFuncDict:
+                        if objFuncName in self.objFuncNames4Adj:
+                            # calculate dFdAOA
+                            dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                            dFdAOA.setFromOptions()
+                            self.solver.calcdFdAOA(
+                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdAOA
+                            )
+                            # call the total deriv
+                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                            totalDeriv.setFromOptions()
+                            self.calcTotalDeriv(dRdAOA, dFdAOA, self.adjVectors[objFuncName], totalDeriv)
+                            # assign the total derivative to self.adjTotalDeriv
+                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                            # we need to convert the parallel vec to seq vec
+                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                            for i in range(nDVs):
+                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                            totalDeriv.destroy()
+                            totalDerivSeq.destroy()
+                            dFdAOA.destroy()
+                    dRdAOA.destroy()
+                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                    nDVs = 1
+                    # loop over all objectives
+                    for objFuncName in objFuncDict:
+                        if objFuncName in self.objFuncNames4Adj:
+                            # calculate dFdAOA
+                            dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                            dFdAOA.setFromOptions()
+                            self.calcdFdAOAAnalytical(objFuncName, dFdAOA)
+                            # Calculate dRAOAT^Psi
+                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                            totalDeriv.setFromOptions()
+                            self.solverAD.calcdRdAOATPsiAD(
+                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+                            )
+                            # totalDeriv = dFdAOA - dRdAOAT*psi
+                            totalDeriv.scale(-1.0)
+                            totalDeriv.axpy(1.0, dFdAOA)
+                            # assign the total derivative to self.adjTotalDeriv
+                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                            # we need to convert the parallel vec to seq vec
+                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                            for i in range(nDVs):
+                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                            totalDeriv.destroy()
+                            totalDerivSeq.destroy()
+                            dFdAOA.destroy()
             ################### FFD: FFD points as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "FFD":
                 if self.getOption("adjJacobianOption") == "JacobianFD":
@@ -1636,7 +1632,9 @@ class PYDAFOAM(object):
                     nDVs = nDVTable[designVarType]
                     # calculate dRdACT
                     dRdACT = PETSc.Mat().create(PETSc.COMM_WORLD)
-                    self.solver.calcdRdACT(self.xvVec, self.wVec, designVarName.encode(), designVarType.encode(), dRdACT)
+                    self.solver.calcdRdACT(
+                        self.xvVec, self.wVec, designVarName.encode(), designVarType.encode(), dRdACT
+                    )
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
@@ -1772,6 +1770,56 @@ class PYDAFOAM(object):
         dRdX.multTranspose(psi, totalDeriv)
         totalDeriv.scale(-1.0)
         totalDeriv.axpy(1.0, dFdX)
+
+    def calcdFdAOAAnalytical(self, objFuncName, dFdAOA):
+        """
+        This function computes partials derivatives dFdAlpha with alpha being the angle of attack (AOA)
+        We use the analytical method:
+        CD = Fx * cos(alpha) + Fy * sin(alpha)
+        CL = - Fx * sin(alpha) + Fy * cos(alpha)
+        So:
+        dCD/dAlpha = - Fx * sin(alpha) + Fy * cos(alpha) = CL
+        dCL/dAlpha = - Fx * cos(alpha) - Fy * sin(alpha) = - CD
+        NOTE: we need to convert the unit from radian to degree
+        """
+
+        objFuncDict = self.getOption("objFunc")
+
+        # find the neededMode of this objective function and also find out if it is a force objective
+        neededMode = "None"
+        isForceObj = 0
+        for objFuncPart in objFuncDict[objFuncName]:
+            if objFuncDict[objFuncName][objFuncPart]["type"] == "force":
+                isForceObj = 1
+                if objFuncDict[objFuncName][objFuncPart]["directionMode"] == "fixedDirection":
+                    raise Error("AOA derivative does not support directionMode=fixedDirection!")
+                elif objFuncDict[objFuncName][objFuncPart]["directionMode"] == "parallelToFlow":
+                    neededMode = "normalToFlow"
+                    break
+                elif objFuncDict[objFuncName][objFuncPart]["directionMode"] == "normalToFlow":
+                    neededMode = "parallelToFlow"
+                    break
+                else:
+                    raise Error("directionMode not valid!")
+
+        # if it is a forceObj, use the analytical approach to calculate dFdAOA, otherwise set it to zero
+        if isForceObj == 1:
+            # loop over all objectives again to find the neededMode
+            # Note that if the neededMode == "parallelToFlow", we need to add a minus sign
+            for objFuncNameNeeded in objFuncDict:
+                for objFuncPart in objFuncDict[objFuncNameNeeded]:
+                    if objFuncDict[objFuncNameNeeded][objFuncPart]["type"] == "force":
+                        if objFuncDict[objFuncNameNeeded][objFuncPart]["directionMode"] == neededMode:
+                            val = self.objFuncValuePrevIter[objFuncNameNeeded]
+                            if neededMode == "parallelToFlow":
+                                dFdAOA[0] = -val * np.pi / 180.0
+                            elif neededMode == "normalToFlow":
+                                dFdAOA[0] = val * np.pi / 180.0
+                            dFdAOA.assemblyBegin()
+                            dFdAOA.assemblyEnd()
+                            break
+        else:
+            dFdAOA.zeroEntries()
 
     def _initSolver(self):
         """
@@ -2632,13 +2680,13 @@ class PYDAFOAM(object):
 
         if self.getOption("adjJacobianOption") == "JacobianFree":
             self.solverAD.updateDAOption(self.options)
-        
+
         if len(self.getOption("fvSource")) > 0:
             self.syncDAOptionToActuatorDVs()
-    
+
     def syncDAOptionToActuatorDVs(self):
         """
-        Synchronize the values in DAOption and actuatorDiskDVs_. We need to synchronize the values 
+        Synchronize the values in DAOption and actuatorDiskDVs_. We need to synchronize the values
         defined in fvSource from DAOption to actuatorDiskDVs_ in the C++ layer
         NOTE: we need to call this function whenever we change the actuator design variables
         during optimization.
