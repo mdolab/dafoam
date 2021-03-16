@@ -35,6 +35,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdFdAOA(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdFFD(PetscVec, PetscVec, char *, PetscMat)
         void calcdRdXvTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdRdActTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdRdAOATPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdRdBCTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdFdFFD(PetscVec, PetscVec, char *, char *, PetscVec)
@@ -160,6 +161,9 @@ cdef class pyDASolvers:
     
     def calcdRdXvTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdXvTPsi):
         self._thisptr.calcdRdXvTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdXvTPsi.vec)
+    
+    def calcdRdActTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdActTPsi):
+        self._thisptr.calcdRdActTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdActTPsi.vec)
     
     def calcdRdAOATPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdAOATPsi):
         self._thisptr.calcdRdAOATPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdAOATPsi.vec)

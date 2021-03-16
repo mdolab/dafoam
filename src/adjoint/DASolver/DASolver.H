@@ -279,7 +279,7 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdBC);
-    
+
     /// compute dRdBCAD
     void calcdRdBCTPsiAD(
         const Vec xvVec,
@@ -310,7 +310,7 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdAOA);
-    
+
     /// compute dRdAOAAD
     void calcdRdAOATPsiAD(
         const Vec xvVec,
@@ -392,6 +392,13 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdXv);
+
+    void calcdRdActTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdActTPsi);
 
     /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
     static PetscErrorCode dRdWTMatVecMultFunction(
@@ -657,7 +664,6 @@ public:
     {
         return daCheckMeshPtr_();
     }
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

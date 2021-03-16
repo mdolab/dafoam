@@ -119,6 +119,17 @@ public:
         DASolverPtr_->calcdRdXvTPsiAD(xvVec, wVec, psi, dRdXvTPsi);
     }
 
+    /// compute dRdAct^T*Psi
+    void calcdRdActTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdActTPsi)
+    {
+        DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
+    }
+
     /// compute dFdAOA using reverse-mode AD
     void calcdFdAOAAD(
         const Vec xvVec,

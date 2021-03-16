@@ -27,6 +27,41 @@ DAFvSourceActuatorDisk::DAFvSourceActuatorDisk(
     this->calcFvSourceCellIndices(fvSourceCellIndices_);
 
     printInterval_ = daOption.getOption<label>("printInterval");
+
+    // now we need to initialize actuatorDiskDVs_
+    dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
+    word diskName0 = fvSourceSubDict.toc()[0];
+    word source0 = fvSourceSubDict.subDict(diskName0).getWord("source");
+
+    if (source0 == "cylinderAnnulusSmooth")
+    {
+        forAll(fvSourceSubDict.toc(), idxI)
+        {
+            word diskName = fvSourceSubDict.toc()[idxI];
+
+            // sub dictionary with all parameters for this disk
+            dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
+
+            // now read in all parameters for this actuator disk
+            scalarList centerList;
+            diskSubDict.readEntry<scalarList>("center", centerList);
+
+            // we have 9 design variables for each disk
+            scalarList dvList(9);
+            dvList[0] = centerList[0];
+            dvList[1] = centerList[1];
+            dvList[2] = centerList[2];
+            dvList[3] = diskSubDict.getScalar("outerRadius");
+            dvList[4] = diskSubDict.getScalar("innerRadius");
+            dvList[5] = diskSubDict.getScalar("scale");
+            dvList[6] = diskSubDict.getScalar("POD");
+            dvList[7] = diskSubDict.getScalar("expM");
+            dvList[8] = diskSubDict.getScalar("expN");
+
+            // set actuatorDiskDVs_
+            actuatorDiskDVs_.set(diskName, dvList);
+        }
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -213,21 +248,20 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             word diskName = fvSourceSubDict.toc()[idxI];
             dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
 
-            scalarList centerList;
             scalarList direction;
-            diskSubDict.readEntry<scalarList>("center", centerList);
             diskSubDict.readEntry<scalarList>("direction", direction);
-            vector center = {centerList[0], centerList[1], centerList[2]};
             vector dirNorm = {direction[0], direction[1], direction[2]};
             dirNorm = dirNorm / mag(dirNorm);
-            scalar outerRadius = diskSubDict.getScalar("outerRadius");
-            scalar innerRadius = diskSubDict.getScalar("innerRadius");
+            vector center = {
+                actuatorDiskDVs_[diskName][0], actuatorDiskDVs_[diskName][1], actuatorDiskDVs_[diskName][2]};
+            scalar outerRadius = actuatorDiskDVs_[diskName][3];
+            scalar innerRadius = actuatorDiskDVs_[diskName][4];
             word rotDir = diskSubDict.getWord("rotDir");
-            scalar scale = diskSubDict.getScalar("scale");
-            scalar POD = diskSubDict.getScalar("POD");
+            scalar scale = actuatorDiskDVs_[diskName][5];
+            scalar POD = actuatorDiskDVs_[diskName][6];
             scalar eps = diskSubDict.getScalar("eps");
-            scalar expM = diskSubDict.getScalar("expM");
-            scalar expN = diskSubDict.getScalar("expN");
+            scalar expM = actuatorDiskDVs_[diskName][7];
+            scalar expN = actuatorDiskDVs_[diskName][8];
             scalar rStarMin = diskSubDict.lookupOrDefault<scalar>("rStarMin", 0.02);
             scalar rStarMax = diskSubDict.lookupOrDefault<scalar>("rStarMax", 0.98);
             scalar epsR = diskSubDict.lookupOrDefault<scalar>("epsR", 0.02);
@@ -295,22 +329,22 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 if (rStar < rStarMin)
                 {
                     scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
-                    scalar fR = fRMin * exp(-dR2 / epsR / epsR) ;
-                    fAxial = fR * exp(-dA2 / eps / eps) ;
+                    scalar fR = fRMin * exp(-dR2 / epsR / epsR);
+                    fAxial = fR * exp(-dA2 / eps / eps);
                     fCirc = fAxial * POD / constant::mathematical::pi / rStarMin;
                 }
                 else if (rStar >= rStarMin && rStar <= rStarMax)
                 {
                     scalar fR = pow(rStar, expM) * pow(1.0 - rStar, expN) * scale;
-                    fAxial = fR * exp(-dA2 / eps / eps) ;
+                    fAxial = fR * exp(-dA2 / eps / eps);
                     // we use Hoekstra's method to calculate the fCirc based on fAxial
                     fCirc = fAxial * POD / constant::mathematical::pi / rPrime;
                 }
                 else
                 {
                     scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
-                    scalar fR = fRMax * exp(-dR2 / epsR / epsR) ;
-                    fAxial = fR * exp(-dA2 / eps / eps) ;
+                    scalar fR = fRMax * exp(-dR2 / epsR / epsR);
+                    fAxial = fR * exp(-dA2 / eps / eps);
                     fCirc = fAxial * POD / constant::mathematical::pi / rStarMax;
                 }
 

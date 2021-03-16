@@ -3145,6 +3145,122 @@ void DASolver::calcdRdFieldTPsiAD(
 #endif
 }
 
+void DASolver::calcdRdActTPsiAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    const word designVarName,
+    Vec dRdActTPsi)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Compute the matrix-vector products dRdAct^T*Psi using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdAct
+
+        designVarName: name of the design variable
+    
+    Output:
+        dRdActTPsi: the matrix-vector products dRdAct^T * Psi
+    */
+
+    Info << "Calculating [dRdAct]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdActTPsi);
+
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+    word designVarType = dvSubDict.getWord("designVarType");
+    if (designVarType == "ACTD")
+    {
+
+        DAFvSource& fvSource = const_cast<DAFvSource&>(
+            meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
+
+        dictionary fvSourceSubDict = daOptionPtr_->getAllOptions().subDict("fvSource");
+        word diskName0 = fvSourceSubDict.toc()[0];
+        word source0 = fvSourceSubDict.subDict(diskName0).getWord("source");
+        if (source0 == "cylinderAnnulusSmooth")
+        {
+            forAll(fvSourceSubDict.toc(), idxI)
+            {
+                word diskName = fvSourceSubDict.toc()[idxI];
+                scalarList actDVList;
+                for (label i = 0; i < 9; i++)
+                {
+                    actDVList.append(fvSource.getActuatorDVs(diskName, i));
+                };
+
+                this->updateOFField(wVec);
+                this->updateOFMesh(xvVec);
+
+                this->globalADTape_.reset();
+                this->globalADTape_.setActive();
+                for (label i = 0; i < 9; i++)
+                {
+                    this->globalADTape_.registerInput(actDVList[i]);
+                }
+                for (label i = 0; i < 9; i++)
+                {
+                    fvSource.setActuatorDVs(diskName, i, actDVList[i]);
+                }
+                // compute residuals
+                daResidualPtr_->correctBoundaryConditions();
+                daResidualPtr_->updateIntermediateVariables();
+                daModelPtr_->correctBoundaryConditions();
+                daModelPtr_->updateIntermediateVariables();
+                label isPC = 0;
+                dictionary options;
+                options.set("isPC", isPC);
+                daResidualPtr_->calcResiduals(options);
+                daModelPtr_->calcResiduals(options);
+
+                this->registerResidualOutput4AD();
+                this->globalADTape_.setPassive();
+
+                this->assignVec2ResidualGradient(psi);
+                this->globalADTape_.evaluate();
+
+                PetscScalar* dRdActTPsiArray;
+                VecGetArray(dRdActTPsi, &dRdActTPsiArray);
+
+                for (label i = 0; i < 9; i++)
+                {
+                    dRdActTPsiArray[i] = actDVList[i].getGradient();
+                }
+
+                VecRestoreArray(dRdActTPsi, &dRdActTPsiArray);
+
+                this->globalADTape_.clearAdjoints();
+                this->globalADTape_.reset();
+            }
+        }
+        else
+        {
+            FatalErrorIn("") << "source not supported. Options: cylinderAnnulusSmooth"
+                             << abort(FatalError);
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << "designVarType not supported. Options: ACTD"
+                         << abort(FatalError);
+    }
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdActTPsi_" + designVarName;
+        DAUtility::writeVectorBinary(dRdActTPsi, outputName);
+        DAUtility::writeVectorASCII(dRdActTPsi, outputName);
+    }
+#endif
+}
+
 void DASolver::registerStateVariableInput4AD()
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
