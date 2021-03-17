@@ -14,6 +14,7 @@ DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
 DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
+DAModel/DATurbulenceModel/DASpalartAllmarasFieldInversion.C
 DAModel/DATurbulenceModel/DAkEpsilon.C
 DAModel/DATurbulenceModel/DADummyTurbulenceModel.C
 
@@ -85,5 +86,6 @@ models/dummyTurbulenceModel/makeDummyTurbulenceModelIncompressible.C
 models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Incompressible.C
 models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionIncompressible.C
 models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionIncompressible.C
+models/SpalartAllmarasFieldInversion/makeSpalartAllmarasFieldInversionIncompressible.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFoamIncompressible$(DF_LIB_SUFFIX)
