@@ -15,7 +15,6 @@
 #include "addToRunTimeSelectionTable.H"
 #include "pisoControl.H"
 #include "adjustPhi.H"
-#include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

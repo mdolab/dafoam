@@ -6,14 +6,14 @@ Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: alpha
-@value 0.004409793907764713 1e-06 1e-08
+@value 0.004409101138894869 1e-06 1e-08
 Dictionary Key: shapey
 @value -0.007122688413025238 1e-06 1e-08
 @value -0.02840771135269596 1e-06 1e-08
 @value  0.05265037400867181 1e-06 1e-08
 Dictionary Key: CL
 Dictionary Key: alpha
-@value   0.1721138949457439 1e-06 1e-08
+@value    0.172119723539071 1e-06 1e-08
 Dictionary Key: shapey
 @value    1.768909810680021 1e-06 1e-08
 @value    1.298866728663029 1e-06 1e-08

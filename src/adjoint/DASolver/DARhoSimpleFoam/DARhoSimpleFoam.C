@@ -146,7 +146,7 @@ label DARhoSimpleFoam::solvePrimal(
         if (printToScreen)
         {
             daTurbulenceModelPtr_->printYPlus();
-            
+
             this->printAllObjFuncs();
 
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
@@ -155,11 +155,10 @@ label DARhoSimpleFoam::solvePrimal(
         }
 
         runTime.write();
-
     }
 
     this->writeAssociatedFields();
-    
+
     this->calcPrimalResidualStatistics("print");
 
     // primal converged, assign the OpenFoam fields to the state vec wVec

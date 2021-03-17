@@ -1186,6 +1186,13 @@ void DASolver::calcdFdBCAD(
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
+    -------------- NOTE -----------------
+    This function is not working in parallel.
+    It is not called in pyDAFoam.py. Instead
+    we assume dFdBC = 0. If your objective 
+    function does depends on BC, use the 
+    JacobianFD option
+    -------------- NOTE -----------------
     Description:
         This function computes partials derivatives dFdBC
     
@@ -1229,7 +1236,7 @@ void DASolver::calcdFdBCAD(
     label comp = dvSubDict.getLabel("comp");
 
     // Now get the BC value
-    scalar BC = -9999;
+    scalar BC = -1e16;
     forAll(patches, idxI)
     {
         word patchName = patches[idxI];
@@ -1275,6 +1282,10 @@ void DASolver::calcdFdBCAD(
             }
         }
     }
+    // need to reduce the BC value across all processors, this is because some of
+    // the processors might not own the prescribed patches so their BC value will be still -1e16, but
+    // when calling the following reduce function, they will get the correct BC from other processors
+    reduce(BC, maxOp<scalar>());
 
     // get the subDict for this objective function
     dictionary objFuncSubDict =
@@ -1383,7 +1394,8 @@ void DASolver::calcdFdBCAD(
         VecDuplicate(dFdBC, &dFdBCPart);
         VecZeroEntries(dFdBCPart);
         PetscScalar derivVal = BC.getGradient();
-        VecSetValue(dFdBCPart, 0, derivVal, INSERT_VALUES);
+        // we need to do ADD_VALUES to get contribution from all procs
+        VecSetValue(dFdBCPart, 0, derivVal, ADD_VALUES);
         VecAssemblyBegin(dFdBCPart);
         VecAssemblyEnd(dFdBCPart);
 
@@ -1407,7 +1419,7 @@ void DASolver::calcdFdBCAD(
 
     if (daOptionPtr_->getOption<label>("writeJacobians"))
     {
-        word outputName = "dFdBC_" + designVarName;
+        word outputName = "dFdBC_" + designVarName + "_" + objFuncName;
         DAUtility::writeVectorBinary(dFdBC, outputName);
         DAUtility::writeVectorASCII(dFdBC, outputName);
     }
@@ -1458,11 +1470,11 @@ void DASolver::calcdRdBCTPsiAD(
     // name of the boundary patch
     wordList patches;
     dvSubDict.readEntry<wordList>("patches", patches);
-    // the compoent of a vector variable, ignore when it is a scalar
+    // the component of a vector variable, ignore when it is a scalar
     label comp = dvSubDict.getLabel("comp");
 
     // Now get the BC value
-    scalar BC = -9999;
+    scalar BC = -1e16;
     forAll(patches, idxI)
     {
         word patchName = patches[idxI];
@@ -1508,6 +1520,10 @@ void DASolver::calcdRdBCTPsiAD(
             }
         }
     }
+    // need to reduce the BC value across all processors, this is because some of
+    // the processors might not own the prescribed patches so their BC value will be still -1e16, but
+    // when calling the following reduce function, they will get the correct BC from other processors
+    reduce(BC, maxOp<scalar>());
 
     this->globalADTape_.reset();
     this->globalADTape_.setActive();
@@ -1586,7 +1602,8 @@ void DASolver::calcdRdBCTPsiAD(
     this->globalADTape_.evaluate();
 
     PetscScalar derivVal = BC.getGradient();
-    VecSetValue(dRdBCTPsi, 0, derivVal, INSERT_VALUES);
+    // we need to do ADD_VALUES to get contribution from all procs
+    VecSetValue(dRdBCTPsi, 0, derivVal, ADD_VALUES);
 
     VecAssemblyBegin(dRdBCTPsi);
     VecAssemblyEnd(dRdBCTPsi);
@@ -1734,14 +1751,13 @@ void DASolver::calcdFdAOAAD(
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
+    -------------- NOTE -----------------
+    This function is not working in parallel.
+    It is not called in pyDAFoam.py. An analytical
+    dFdAOA approach is implemented in pyDAFoam.py
+    -------------- NOTE -----------------
     Description:
         This function computes partials derivatives dFdAlpha with alpha being the angle of attack (AOA) 
-        dFdAlpha = dF/dTan(Alpha) * dTan(Alpha)/dAlpha 
-                 = dF/d(Uy/Ux) / Cos(Alpha)^2 
-                 = dF/dUy * Ux / Cos(Alpha)^2
-        NOTE: the above sensitivity is for alpha in rad, so we need to convert to degree
-        
-        Here Ux and Uy are far field velocity in the x and y direction
     
     Input:
         xvVec: the volume mesh coordinate vector
@@ -1792,7 +1808,7 @@ void DASolver::calcdFdAOAAD(
         meshPtr_->thisDb().lookupObject<volVectorField>("U"));
 
     // now we need to get the Ux, Uy values from the inout patches
-    scalar Ux = -9999, Uy = -9999;
+    scalar Ux0 = -1e16, Uy0 = -1e16;
     forAll(patches, idxI)
     {
         word patchName = patches[idxI];
@@ -1801,31 +1817,33 @@ void DASolver::calcdFdAOAAD(
         {
             if (U.boundaryField()[patchI].type() == "fixedValue")
             {
-                Uy = U.boundaryField()[patchI][0][normalAxisIndex];
-                Ux = U.boundaryField()[patchI][0][flowAxisIndex];
+                Uy0 = U.boundaryField()[patchI][0][normalAxisIndex];
+                Ux0 = U.boundaryField()[patchI][0][flowAxisIndex];
                 break;
             }
             else if (U.boundaryField()[patchI].type() == "inletOutlet")
             {
                 mixedFvPatchField<vector>& inletOutletPatch =
                     refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
-                Uy = inletOutletPatch.refValue()[0][normalAxisIndex];
-                Ux = inletOutletPatch.refValue()[0][flowAxisIndex];
+                Uy0 = inletOutletPatch.refValue()[0][normalAxisIndex];
+                Ux0 = inletOutletPatch.refValue()[0][flowAxisIndex];
                 break;
             }
             else
             {
                 FatalErrorIn("") << "boundaryType: " << U.boundaryFieldRef()[patchI].type()
                                  << " not supported!"
-                                 << "Avaiable options are: fixedValue, inletOutlet"
+                                 << "Available options are: fixedValue, inletOutlet"
                                  << abort(FatalError);
             }
         }
     }
-    if (Ux.getValue() == -9999)
-    {
-        FatalErrorIn("") << "Ux and Uy not found!" << abort(FatalError);
-    }
+    // need to reduce the U value across all processors, this is because some of
+    // the processors might not own the prescribed patches so their U value will be still -1e16, but
+    // when calling the following reduce function, they will get the correct U from other processors
+    reduce(Ux0, maxOp<scalar>());
+    reduce(Uy0, maxOp<scalar>());
+    scalar aoa = atan(Uy0 / Ux0);
 
     // get the subDict for this objective function
     dictionary objFuncSubDict =
@@ -1851,9 +1869,10 @@ void DASolver::calcdFdAOAAD(
         this->globalADTape_.reset();
         // activate tape, start recording
         this->globalADTape_.setActive();
-        // register Uy as the input
-        this->globalADTape_.registerInput(Uy);
-        // set far field Uy
+        // register aoa as the input
+        this->globalADTape_.registerInput(aoa);
+
+        // set far field Ux, Uy
         forAll(patches, idxI)
         {
             word patchName = patches[idxI];
@@ -1861,11 +1880,16 @@ void DASolver::calcdFdAOAAD(
 
             if (meshPtr_->boundaryMesh()[patchI].size() > 0)
             {
+                scalar UMag = sqrt(Ux0 * Ux0 + Uy0 * Uy0);
+                scalar UxNew = UMag * cos(aoa);
+                scalar UyNew = UMag * sin(aoa);
+
                 if (U.boundaryField()[patchI].type() == "fixedValue")
                 {
                     forAll(U.boundaryField()[patchI], faceI)
                     {
-                        U.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = Uy;
+                        U.boundaryFieldRef()[patchI][faceI][flowAxisIndex] = UxNew;
+                        U.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = UyNew;
                     }
                 }
                 else if (U.boundaryField()[patchI].type() == "inletOutlet")
@@ -1875,7 +1899,8 @@ void DASolver::calcdFdAOAAD(
 
                     forAll(U.boundaryField()[patchI], faceI)
                     {
-                        inletOutletPatch.refValue()[faceI][normalAxisIndex] = Uy;
+                        inletOutletPatch.refValue()[faceI][flowAxisIndex] = UxNew;
+                        inletOutletPatch.refValue()[faceI][normalAxisIndex] = UyNew;
                     }
                 }
             }
@@ -1898,6 +1923,7 @@ void DASolver::calcdFdAOAAD(
         {
             fRef.setGradient(1.0);
         }
+
         // evaluate tape to compute derivative
         this->globalADTape_.evaluate();
 
@@ -1905,11 +1931,10 @@ void DASolver::calcdFdAOAAD(
         Vec dFdAOAPart;
         VecDuplicate(dFdAOA, &dFdAOAPart);
         VecZeroEntries(dFdAOAPart);
-        // we need to do dF/dAlpha = dF/dUy * Ux/cos(Alpha)^2
-        PetscScalar dFdUy = Uy.getGradient();
-        scalar cosSqr = Ux * Ux / (Ux * Ux + Uy * Uy);
-        PetscScalar derivVal = dFdUy * Ux.getValue() / cosSqr.getValue() * constant::mathematical::pi.getValue() / 180.0;
-        VecSetValue(dFdAOAPart, 0, derivVal, INSERT_VALUES);
+
+        // need to convert dFdAOA from radian to degree
+        PetscScalar derivVal = aoa.getGradient() * constant::mathematical::pi.getValue() / 180.0;
+        VecSetValue(dFdAOAPart, 0, derivVal, ADD_VALUES);
         VecAssemblyBegin(dFdAOAPart);
         VecAssemblyEnd(dFdAOAPart);
 
@@ -1923,7 +1948,6 @@ void DASolver::calcdFdAOAAD(
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
-            Info << "In calcdFdAOAAD" << endl;
             this->calcPrimalResidualStatistics("print");
             Info << objFuncName << ": " << fRef << endl;
         }
@@ -1933,10 +1957,11 @@ void DASolver::calcdFdAOAAD(
 
     if (daOptionPtr_->getOption<label>("writeJacobians"))
     {
-        word outputName = "dFdAOA_" + designVarName;
+        word outputName = "dFdAOA_" + designVarName + "_" + objFuncName;
         DAUtility::writeVectorBinary(dFdAOA, outputName);
         DAUtility::writeVectorASCII(dFdAOA, outputName);
     }
+
 #endif
 }
 
@@ -2001,7 +2026,7 @@ void DASolver::calcdRdAOATPsiAD(
         meshPtr_->thisDb().lookupObject<volVectorField>("U"));
 
     // now we need to get the Ux, Uy values from the inout patches
-    scalar Ux = -9999, Uy = -9999;
+    scalar Ux0 = -1e16, Uy0 = -1e16;
     forAll(patches, idxI)
     {
         word patchName = patches[idxI];
@@ -2010,16 +2035,16 @@ void DASolver::calcdRdAOATPsiAD(
         {
             if (U.boundaryField()[patchI].type() == "fixedValue")
             {
-                Uy = U.boundaryField()[patchI][0][normalAxisIndex];
-                Ux = U.boundaryField()[patchI][0][flowAxisIndex];
+                Uy0 = U.boundaryField()[patchI][0][normalAxisIndex];
+                Ux0 = U.boundaryField()[patchI][0][flowAxisIndex];
                 break;
             }
             else if (U.boundaryField()[patchI].type() == "inletOutlet")
             {
                 mixedFvPatchField<vector>& inletOutletPatch =
                     refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
-                Uy = inletOutletPatch.refValue()[0][normalAxisIndex];
-                Ux = inletOutletPatch.refValue()[0][flowAxisIndex];
+                Uy0 = inletOutletPatch.refValue()[0][normalAxisIndex];
+                Ux0 = inletOutletPatch.refValue()[0][flowAxisIndex];
                 break;
             }
             else
@@ -2031,16 +2056,18 @@ void DASolver::calcdRdAOATPsiAD(
             }
         }
     }
-    if (Ux.getValue() == -9999)
-    {
-        FatalErrorIn("") << "Ux and Uy not found!" << abort(FatalError);
-    }
+    // need to reduce the U value across all processors, this is because some of
+    // the processors might not own the prescribed patches so their U value will be still -1e16, but
+    // when calling the following reduce function, they will get the correct U from other processors
+    reduce(Ux0, maxOp<scalar>());
+    reduce(Uy0, maxOp<scalar>());
+    scalar aoa = atan(Uy0 / Ux0);
 
     this->globalADTape_.reset();
     this->globalADTape_.setActive();
-    // register Uy as the input
-    this->globalADTape_.registerInput(Uy);
-    // set far field Uy
+    // register aoa as the input
+    this->globalADTape_.registerInput(aoa);
+    // set far field U
     forAll(patches, idxI)
     {
         word patchName = patches[idxI];
@@ -2048,11 +2075,16 @@ void DASolver::calcdRdAOATPsiAD(
 
         if (meshPtr_->boundaryMesh()[patchI].size() > 0)
         {
+            scalar UMag = sqrt(Ux0 * Ux0 + Uy0 * Uy0);
+            scalar UxNew = UMag * cos(aoa);
+            scalar UyNew = UMag * sin(aoa);
+
             if (U.boundaryField()[patchI].type() == "fixedValue")
             {
                 forAll(U.boundaryField()[patchI], faceI)
                 {
-                    U.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = Uy;
+                    U.boundaryFieldRef()[patchI][faceI][flowAxisIndex] = UxNew;
+                    U.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = UyNew;
                 }
             }
             else if (U.boundaryField()[patchI].type() == "inletOutlet")
@@ -2062,7 +2094,8 @@ void DASolver::calcdRdAOATPsiAD(
 
                 forAll(U.boundaryField()[patchI], faceI)
                 {
-                    inletOutletPatch.refValue()[faceI][normalAxisIndex] = Uy;
+                    inletOutletPatch.refValue()[faceI][flowAxisIndex] = UxNew;
+                    inletOutletPatch.refValue()[faceI][normalAxisIndex] = UyNew;
                 }
             }
         }
@@ -2084,11 +2117,10 @@ void DASolver::calcdRdAOATPsiAD(
     this->assignVec2ResidualGradient(psi);
     this->globalADTape_.evaluate();
 
-    // we need to do [dR/dAlpha]^T*Psi = [dR/dUy]^T*Psi * Ux/cos(Alpha)^2
-    PetscScalar dRdUyTPsi = Uy.getGradient();
-    scalar cosSqr = Ux * Ux / (Ux * Ux + Uy * Uy);
-    PetscScalar derivVal = dRdUyTPsi * Ux.getValue() / cosSqr.getValue() * constant::mathematical::pi.getValue() / 180.0;
-    VecSetValue(dRdAOATPsi, 0, derivVal, INSERT_VALUES);
+    // need to convert dFdAOA from radian to degree
+    PetscScalar derivVal = aoa.getGradient() * constant::mathematical::pi.getValue() / 180.0;
+    // we need to do ADD_VALUES to get contribution from all procs
+    VecSetValue(dRdAOATPsi, 0, derivVal, ADD_VALUES);
 
     VecAssemblyBegin(dRdAOATPsi);
     VecAssemblyEnd(dRdAOATPsi);
@@ -3141,6 +3173,124 @@ void DASolver::calcdRdFieldTPsiAD(
         word outputName = "dRdFieldTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdFieldTPsi, outputName);
         DAUtility::writeVectorASCII(dRdFieldTPsi, outputName);
+    }
+#endif
+}
+
+void DASolver::calcdRdActTPsiAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    const word designVarName,
+    Vec dRdActTPsi)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Compute the matrix-vector products dRdAct^T*Psi using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdAct
+
+        designVarName: name of the design variable
+    
+    Output:
+        dRdActTPsi: the matrix-vector products dRdAct^T * Psi
+    */
+
+    Info << "Calculating [dRdAct]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdActTPsi);
+
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+    word designVarType = dvSubDict.getWord("designVarType");
+    if (designVarType == "ACTD")
+    {
+
+        DAFvSource& fvSource = const_cast<DAFvSource&>(
+            meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
+
+        word diskName = dvSubDict.getWord("actuatorName");
+
+        dictionary fvSourceSubDict = daOptionPtr_->getAllOptions().subDict("fvSource");
+        word source = fvSourceSubDict.subDict(diskName).getWord("source");
+        if (source == "cylinderAnnulusSmooth")
+        {
+
+            this->updateOFField(wVec);
+            this->updateOFMesh(xvVec);
+
+            scalarList actDVList(9);
+            for (label i = 0; i < 9; i++)
+            {
+                actDVList[i] = fvSource.getActuatorDVs(diskName, i);
+            }
+
+            this->globalADTape_.reset();
+            this->globalADTape_.setActive();
+
+            for (label i = 0; i < 9; i++)
+            {
+                this->globalADTape_.registerInput(actDVList[i]);
+            }
+
+            // set dv values to fvSource obj for all procs
+            for (label i = 0; i < 9; i++)
+            {
+                fvSource.setActuatorDVs(diskName, i, actDVList[i]);
+            }
+
+            // compute residuals
+            daResidualPtr_->correctBoundaryConditions();
+            daResidualPtr_->updateIntermediateVariables();
+            daModelPtr_->correctBoundaryConditions();
+            daModelPtr_->updateIntermediateVariables();
+            label isPC = 0;
+            dictionary options;
+            options.set("isPC", isPC);
+            daResidualPtr_->calcResiduals(options);
+            daModelPtr_->calcResiduals(options);
+
+            this->registerResidualOutput4AD();
+            this->globalADTape_.setPassive();
+
+            this->assignVec2ResidualGradient(psi);
+            this->globalADTape_.evaluate();
+
+            for (label i = 0; i < 9; i++)
+            {
+                PetscScalar valIn = actDVList[i].getGradient();
+                // we need to do ADD_VALUES to get contribution from all procs
+                VecSetValue(dRdActTPsi, i, valIn, ADD_VALUES);
+            }
+
+            VecAssemblyBegin(dRdActTPsi);
+            VecAssemblyEnd(dRdActTPsi);
+
+            this->globalADTape_.clearAdjoints();
+            this->globalADTape_.reset();
+        }
+        else
+        {
+            FatalErrorIn("") << "source not supported. Options: cylinderAnnulusSmooth"
+                             << abort(FatalError);
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << "designVarType not supported. Options: ACTD"
+                         << abort(FatalError);
+    }
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdActTPsi_" + designVarName;
+        DAUtility::writeVectorBinary(dRdActTPsi, outputName);
+        DAUtility::writeVectorASCII(dRdActTPsi, outputName);
     }
 #endif
 }

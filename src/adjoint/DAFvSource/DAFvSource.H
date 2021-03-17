@@ -32,8 +32,7 @@ namespace Foam
 \*---------------------------------------------------------------------------*/
 
 class DAFvSource
-:
-    public regIOobject
+    : public regIOobject
 {
 
 private:
@@ -44,10 +43,9 @@ private:
     void operator=(const DAFvSource&);
 
 protected:
-
     /// model name
     const word& modelType_;
-    
+
     /// fvMesh
     const fvMesh& mesh_;
 
@@ -59,6 +57,9 @@ protected:
 
     /// DAIndex object
     const DAIndex& daIndex_;
+
+    /// the list of design variables for all the actuator disks
+    HashTable<List<scalar>> actuatorDiskDVs_;
 
 public:
     /// Runtime type information
@@ -103,6 +104,26 @@ public:
 
     /// compute the FvSource term
     virtual void calcFvSource(volVectorField& fvSource);
+
+    /// set a new value to the actuator disk design variable
+    void setActuatorDVs(
+        const word diskName,
+        const label dvI,
+        const scalar val)
+    {
+        actuatorDiskDVs_[diskName][dvI] = val;
+    }
+
+    /// get the value from the actuator disk design variable
+    scalar getActuatorDVs(
+        const word diskName,
+        const label dvI)
+    {
+        return actuatorDiskDVs_[diskName][dvI];
+    }
+
+    /// synchronize the values in DAOption and actuatorDiskDVs_
+    void syncDAOptionToActuatorDVs();
 
     /// virtual function for regIOobject
     bool writeData(Ostream& os) const;

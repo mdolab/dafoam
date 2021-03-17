@@ -113,6 +113,17 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+        "CMZ": {
+            "part1": {
+                "type": "moment",
+                "source": "patchToFace",
+                "patches": ["walls", "frontandback", "wallsbump"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.5, 0.5, 0.5],
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),
+                "addToAdjoint": True,
+            }
+        },
     },
     "adjStateOrdering": "cell",
     "debug": True,

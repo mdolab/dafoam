@@ -130,6 +130,9 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
     scalar expM = diskModelSubDict.getScalar("expM");
     scalar expN = diskModelSubDict.getScalar("expN");
 
+    DAFvSource& fvSource = const_cast<DAFvSource&>(
+        mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource"));
+
     for (label i = 0; i < nActDVs_; i++)
     {
 
@@ -188,6 +191,9 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
             expN += delta;
             diskModelSubDict.set("expN", expN);
         }
+
+        // we need to synchronize the DAOption to actuatorDVs
+        fvSource.syncDAOptionToActuatorDVs();
 
         // Info<<daOption_.getAllOptions().subDict("fvSource")<<endl;
 
@@ -250,12 +256,14 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
             diskModelSubDict.set("expN", expN);
         }
 
+        // we need to synchronize the DAOption to actuatorDVs
+        fvSource.syncDAOptionToActuatorDVs();
+
         // Info<<daOption_.getAllOptions().subDict("fvSource")<<endl;
 
         // compute residual partial using finite-difference
         VecAXPY(resVec, -1.0, resVecRef);
         VecScale(resVec, rDeltaValue);
-
 
         // assign resVec to jacMat
         PetscInt Istart, Iend;

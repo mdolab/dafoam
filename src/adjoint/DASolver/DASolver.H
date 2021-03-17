@@ -279,7 +279,7 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdBC);
-    
+
     /// compute dRdBCAD
     void calcdRdBCTPsiAD(
         const Vec xvVec,
@@ -310,7 +310,7 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdAOA);
-    
+
     /// compute dRdAOAAD
     void calcdRdAOATPsiAD(
         const Vec xvVec,
@@ -392,6 +392,13 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdXv);
+
+    void calcdRdActTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdActTPsi);
 
     /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
     static PetscErrorCode dRdWTMatVecMultFunction(
@@ -597,6 +604,14 @@ public:
         const word fieldName,
         const word fieldType);
 
+    /// synchronize the values in DAOption and actuatorDiskDVs_
+    void syncDAOptionToActuatorDVs()
+    {
+        DAFvSource& fvSource = const_cast<DAFvSource&>(
+            meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
+        fvSource.syncDAOptionToActuatorDVs();
+    }
+
     /// Accessing members
     /// return the mesh object
     const fvMesh& getMesh()
@@ -657,7 +672,6 @@ public:
     {
         return daCheckMeshPtr_();
     }
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

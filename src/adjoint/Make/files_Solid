@@ -18,6 +18,8 @@ DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncVonMisesStressKS.C
 DAObjFunc/DAObjFuncMass.C
 
+DAFvSource/DAFvSource.C
+
 DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C
 DAResidual/DAResidualSolidDisplacementFoam.C

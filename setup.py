@@ -31,6 +31,7 @@ setup(
         "dafoam/scripts/dafoam_matgetvalues.py",
         "dafoam/scripts/dafoam_vecgetvalues.py",
         "dafoam/scripts/dafoam_plot3d2tecplot.py",
+        "dafoam/scripts/dafoam_plot3dscale.py",
     ],
     install_requires=[
         "numpy>=1.16.4",
