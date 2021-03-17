@@ -4,7 +4,7 @@ Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: FI
 Dictionary Key: alpha
-@value    81.82763504941296 0.0001 1e-06
+@value    64.72628344646824 0.0001 1e-06
 Dictionary Key: alphaPorosity
 @value    329.0823053537178 0.0001 1e-06
 Dictionary Key: beta
