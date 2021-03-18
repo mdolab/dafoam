@@ -2095,8 +2095,8 @@ class PYDAFOAM(object):
         # update the CFD Coordinates
         if self.DVGeo is not None:
             if self.ptSetName not in self.DVGeo.points:
-                coords0 = self.mapVector(self.coords0, self.allFamilies, self.designFamilyGroup)
-                self.DVGeo.addPointSet(coords0, self.ptSetName)
+                xs0 = self.mapVector(self.xs0, self.allFamilies, self.designFamilyGroup)
+                self.DVGeo.addPointSet(xs0, self.ptSetName)
                 self.pointsSet = True
 
             # set the surface coords
