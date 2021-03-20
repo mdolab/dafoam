@@ -890,10 +890,13 @@ class PYDAFOAM(object):
             for dvName in sorted(xDV):
                 f.write('    "%s": ' % dvName)
                 try:
-                    len(xDV)
+                    nDVs = len(xDV[dvName])
                     f.write("[ ")
-                    for dvVal in xDV[dvName]:
-                        f.write("%20.15e, " % dvVal)
+                    for i in range(nDVs):
+                        if i < nDVs - 1:
+                            f.write("%20.15e, " % xDV[dvName][i])
+                        else:
+                            f.write("%20.15e " % xDV[dvName][i])
                     f.write("],\n")
                 except Exception:
                     f.write(" %20.15e\n" % xDV[dvName])
