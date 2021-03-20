@@ -4,13 +4,15 @@ Dictionary Key: CL
 @value   0.3122138375727133 1e-08 1e-10
 Dictionary Key: CMZ
 @value   0.1623698516163209 1e-08 1e-10
+Dictionary Key: VOL
+@value    97144.37178311378 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: actuator
-@value 7.044830125978364e-06 1e-06 1e-08
+@value 7.044830125978363e-06 1e-06 1e-08
 @value -2.055244098549753e-05 1e-06 1e-08
-@value 2.510172440045851e-06 1e-06 1e-08
+@value 2.51017244004585e-06 1e-06 1e-08
 @value -2.611154881551088e-05 1e-06 1e-08
 @value 4.476616679349857e-05 1e-06 1e-08
 @value -3.984516375384466e-06 1e-06 1e-08
@@ -26,7 +28,7 @@ Dictionary Key: uin
 @value 0.003825075232455258 1e-06 1e-08
 Dictionary Key: CL
 Dictionary Key: actuator
-@value -2.126975534804597e-05 1e-06 1e-08
+@value -2.126975534804594e-05 1e-06 1e-08
 @value -0.0001158730457946201 1e-06 1e-08
 @value -2.18567652646194e-06 1e-06 1e-08
 @value -8.166359858873002e-06 1e-06 1e-08
@@ -59,6 +61,24 @@ Dictionary Key: shapey
 @value    1.452915484537946 1e-06 1e-08
 @value    1.158475435005828 1e-06 1e-08
 Dictionary Key: uin
-@value 0.006644918376001618 1e-06 1e-08
+@value 0.006644918376001619 1e-06 1e-08
+Dictionary Key: VOL
+Dictionary Key: actuator
+@value  -0.5410939441318587 1e-06 1e-08
+@value   -0.103345314196996 1e-06 1e-08
+@value 0.0001640025516938398 1e-06 1e-08
+@value  -0.2128795278642056 1e-06 1e-08
+@value   0.2499782037055565 1e-06 1e-08
+@value -0.02372449213790395 1e-06 1e-08
+@value -0.0006177133542530304 1e-06 1e-08
+@value   0.1441313785081069 1e-06 1e-08
+@value   0.2490485760708248 1e-06 1e-08
+Dictionary Key: shapey
+@value   -8492.331703566213 1e-06 1e-08
+@value   -7098.572876630517 1e-06 1e-08
+@value    -6231.93212884594 1e-06 1e-08
+@value   -5189.677818579965 1e-06 1e-08
+Dictionary Key: uin
+@value    102.4313279541521 1e-06 1e-08
 Dictionary Key: fail
 @value                    0 1e-06 1e-08
