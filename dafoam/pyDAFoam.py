@@ -887,6 +887,8 @@ class PYDAFOAM(object):
             # write design variables
             f.write("\nOptimization Iteration: %03d\n" % self.nSolveAdjoints)
             f.write("{\n")
+            nDVNames = len(xDV)
+            dvNameCounter = 0
             for dvName in sorted(xDV):
                 f.write('    "%s": ' % dvName)
                 try:
@@ -897,9 +899,15 @@ class PYDAFOAM(object):
                             f.write("%20.15e, " % xDV[dvName][i])
                         else:
                             f.write("%20.15e " % xDV[dvName][i])
-                    f.write("],\n")
+                    f.write("]")
                 except Exception:
-                    f.write(" %20.15e\n" % xDV[dvName])
+                    f.write(" %20.15e" % xDV[dvName])
+                # check whether to add a comma
+                dvNameCounter = dvNameCounter + 1
+                if dvNameCounter < nDVNames:
+                    f.write(",\n")
+                else:
+                    f.write("\n")
             f.write("}\n")
             f.close()
 
