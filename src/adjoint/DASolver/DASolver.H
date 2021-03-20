@@ -399,6 +399,14 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdActTPsi);
+    
+    /// compute dFdACT AD
+    void calcdFdACTAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdACT);
 
     /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
     static PetscErrorCode dRdWTMatVecMultFunction(

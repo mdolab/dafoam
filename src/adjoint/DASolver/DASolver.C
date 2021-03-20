@@ -3177,6 +3177,175 @@ void DASolver::calcdRdFieldTPsiAD(
 #endif
 }
 
+void DASolver::calcdFdACTAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdACT)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Compute dFdACT using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: the name of the objective function
+
+        designVarName: name of the design variable
+    
+    Output:
+        dFdACT: dF/dACT
+    */
+
+    Info << "Calculating dFdACT using reverse-mode AD" << endl;
+
+    VecZeroEntries(dFdACT);
+
+    // first check if the input is valid
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+    word designVarType = dvSubDict.getWord("designVarType");
+    if (designVarType == "ACTD")
+    {
+        DAFvSource& fvSource = const_cast<DAFvSource&>(
+            meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
+
+        word diskName = dvSubDict.getWord("actuatorName");
+        dictionary fvSourceSubDict = daOptionPtr_->getAllOptions().subDict("fvSource");
+        word source = fvSourceSubDict.subDict(diskName).getWord("source");
+        if (source == "cylinderAnnulusSmooth")
+        {
+            this->updateOFField(wVec);
+            this->updateOFMesh(xvVec);
+
+            // get the subDict for this objective function
+            dictionary objFuncSubDict =
+                daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+
+            // loop over all parts for this objFuncName
+            forAll(objFuncSubDict.toc(), idxJ)
+            {
+                // get the subDict for this part
+                word objFuncPart = objFuncSubDict.toc()[idxJ];
+                dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+                // initialize objFunc to get objFuncCellSources and objFuncFaceSources
+                autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
+                    meshPtr_(),
+                    daOptionPtr_(),
+                    daModelPtr_(),
+                    daIndexPtr_(),
+                    daResidualPtr_(),
+                    objFuncName,
+                    objFuncPart,
+                    objFuncSubDictPart));
+
+                // get the design variable vals
+                scalarList actDVList(9);
+                for (label i = 0; i < 9; i++)
+                {
+                    actDVList[i] = fvSource.getActuatorDVs(diskName, i);
+                }
+
+                // reset tape
+                this->globalADTape_.reset();
+                // activate tape, start recording
+                this->globalADTape_.setActive();
+                // register  the input
+                for (label i = 0; i < 9; i++)
+                {
+                    this->globalADTape_.registerInput(actDVList[i]);
+                }
+                // set dv values to fvSource obj for all procs
+                for (label i = 0; i < 9; i++)
+                {
+                    fvSource.setActuatorDVs(diskName, i, actDVList[i]);
+                }
+                // the actuatorDVs are updated, now we need to recompute fvSource
+                // this is not needed for the residual partials because fvSource
+                // will be automatically calculated in the UEqn, but for the
+                // obj partials, we need to manually recompute fvSource
+                fvSource.updateFvSource();
+
+                // update all intermediate variables and boundary conditions
+                daResidualPtr_->correctBoundaryConditions();
+                daResidualPtr_->updateIntermediateVariables();
+                daModelPtr_->correctBoundaryConditions();
+                daModelPtr_->updateIntermediateVariables();
+                // compute the objective function
+                scalar fRef = daObjFunc->getObjFuncValue();
+                // register f as the output
+                this->globalADTape_.registerOutput(fRef);
+                // stop recording
+                this->globalADTape_.setPassive();
+
+                // Note: since we used reduced objFunc, we only need to
+                // assign the seed for master proc
+                if (Pstream::master())
+                {
+                    fRef.setGradient(1.0);
+                }
+                // evaluate tape to compute derivative
+                this->globalADTape_.evaluate();
+
+                // assign the computed derivatives from the OpenFOAM variable to dFd*Part
+                Vec dFdACTPart;
+                VecDuplicate(dFdACT, &dFdACTPart);
+                VecZeroEntries(dFdACTPart);
+
+                for (label i = 0; i < 9; i++)
+                {
+                    PetscScalar valIn = actDVList[i].getGradient();
+                    // we need to do ADD_VALUES to get contribution from all procs
+                    VecSetValue(dFdACTPart, i, valIn, ADD_VALUES);
+                }
+
+                VecAssemblyBegin(dFdACTPart);
+                VecAssemblyEnd(dFdACTPart);
+
+                // need to clear adjoint and tape after the computation is done!
+                this->globalADTape_.clearAdjoints();
+                this->globalADTape_.reset();
+
+                // we need to add dFd*Part to dFd* because we want to sum
+                // all dFd*Part for all parts of this objFuncName.
+                VecAXPY(dFdACT, 1.0, dFdACTPart);
+
+                if (daOptionPtr_->getOption<label>("debug"))
+                {
+                    this->calcPrimalResidualStatistics("print");
+                    Info << objFuncName << ": " << fRef << endl;
+                }
+
+                VecDestroy(&dFdACTPart);
+            }
+        }
+        else
+        {
+            FatalErrorIn("") << "source not supported. Options: cylinderAnnulusSmooth"
+                             << abort(FatalError);
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << "designVarType not supported. Options: ACTD"
+                         << abort(FatalError);
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dFdACT_" + objFuncName + "_" + designVarName;
+        DAUtility::writeVectorBinary(dFdACT, outputName);
+        DAUtility::writeVectorASCII(dFdACT, outputName);
+    }
+#endif
+}
+
 void DASolver::calcdRdActTPsiAD(
     const Vec xvVec,
     const Vec wVec,

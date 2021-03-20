@@ -122,6 +122,14 @@ public:
         return actuatorDiskDVs_[diskName][dvI];
     }
 
+    /// calculate fvSource based on the latest actuatorDVs
+    void updateFvSource()
+    {
+        volVectorField& fvSource = const_cast<volVectorField&>(
+            mesh_.thisDb().lookupObject<volVectorField>("fvSource"));
+        this->calcFvSource(fvSource);
+    }
+
     /// synchronize the values in DAOption and actuatorDiskDVs_
     void syncDAOptionToActuatorDVs();
 

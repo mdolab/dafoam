@@ -296,6 +296,17 @@ public:
         DASolverPtr_->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
     }
 
+    /// compute dFdACT
+    void calcdFdACTAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdACT)
+    {
+        DASolverPtr_->calcdFdACTAD(xvVec, wVec, objFuncName, designVarName, dFdACT);
+    }
+
     /// compute dRdField
     void calcdRdFieldTPsiAD(
         const Vec xvVec,
