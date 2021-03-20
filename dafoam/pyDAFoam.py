@@ -887,16 +887,27 @@ class PYDAFOAM(object):
             # write design variables
             f.write("\nOptimization Iteration: %03d\n" % self.nSolveAdjoints)
             f.write("{\n")
+            nDVNames = len(xDV)
+            dvNameCounter = 0
             for dvName in sorted(xDV):
                 f.write('    "%s": ' % dvName)
                 try:
-                    len(xDV)
+                    nDVs = len(xDV[dvName])
                     f.write("[ ")
-                    for dvVal in xDV[dvName]:
-                        f.write("%20.15e, " % dvVal)
-                    f.write("],\n")
+                    for i in range(nDVs):
+                        if i < nDVs - 1:
+                            f.write("%20.15e, " % xDV[dvName][i])
+                        else:
+                            f.write("%20.15e " % xDV[dvName][i])
+                    f.write("]")
                 except Exception:
-                    f.write(" %20.15e\n" % xDV[dvName])
+                    f.write(" %20.15e" % xDV[dvName])
+                # check whether to add a comma
+                dvNameCounter = dvNameCounter + 1
+                if dvNameCounter < nDVNames:
+                    f.write(",\n")
+                else:
+                    f.write("\n")
             f.write("}\n")
             f.close()
 
@@ -2095,8 +2106,8 @@ class PYDAFOAM(object):
         # update the CFD Coordinates
         if self.DVGeo is not None:
             if self.ptSetName not in self.DVGeo.points:
-                coords0 = self.mapVector(self.coords0, self.allFamilies, self.designFamilyGroup)
-                self.DVGeo.addPointSet(coords0, self.ptSetName)
+                xs0 = self.mapVector(self.xs0, self.allFamilies, self.designFamilyGroup)
+                self.DVGeo.addPointSet(xs0, self.ptSetName)
                 self.pointsSet = True
 
             # set the surface coords

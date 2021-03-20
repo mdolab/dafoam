@@ -124,6 +124,32 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+        "VOL": {
+            "part1": {
+                "type": "variableVolSum",
+                "source": "boxToCell",
+                "min": [-10.0, -10.0, -10.0],
+                "max": [10.0, 10.0, 10.0],
+                "varName": "U",
+                "varType": "vector",
+                "component": 0,
+                "isSquare": 1,
+                "scale": 1.0,
+                "addToAdjoint": True,
+            },
+            "part2": {
+                "type": "variableVolSum",
+                "source": "boxToCell",
+                "min": [-10.0, -10.0, -10.0],
+                "max": [10.0, 10.0, 10.0],
+                "varName": "p",
+                "varType": "scalar",
+                "component": 0,
+                "isSquare": 0,
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
     },
     "adjStateOrdering": "cell",
     "debug": True,
