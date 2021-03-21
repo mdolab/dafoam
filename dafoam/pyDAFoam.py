@@ -1703,7 +1703,12 @@ class PYDAFOAM(object):
                             dFdACT.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                             dFdACT.setFromOptions()
                             self.solver.calcdFdACT(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdACT
+                                self.xvVec,
+                                self.wVec,
+                                objFuncName.encode(),
+                                designVarName.encode(),
+                                designVarType.encode(),
+                                dFdACT,
                             )
                             # call the total deriv
                             totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)

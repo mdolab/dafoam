@@ -313,9 +313,10 @@ public:
         const Vec wVec,
         const word objFuncName,
         const word designVarName,
+        const word designVarType,
         Vec dFdACT)
     {
-        DASolverPtr_->calcdFdACT(xvVec, wVec, objFuncName, designVarName, dFdACT);
+        DASolverPtr_->calcdFdACT(xvVec, wVec, objFuncName, designVarName, designVarType, dFdACT);
     }
 
     /// compute dRdField

@@ -356,6 +356,7 @@ public:
         const Vec wVec,
         const word objFuncName,
         const word designVarName,
+        const word designVarType,
         Vec dFdACT);
 
     /// compute dRdField^T*Psi

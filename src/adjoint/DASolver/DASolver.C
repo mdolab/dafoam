@@ -2419,6 +2419,7 @@ void DASolver::calcdFdACT(
     const Vec wVec,
     const word objFuncName,
     const word designVarName,
+    const word designVarType,
     Vec dFdACT)
 {
     /*
@@ -2441,6 +2442,11 @@ void DASolver::calcdFdACT(
     */
 
     VecZeroEntries(dFdACT);
+
+    if (designVarType != "ACTD")
+    {
+        return;
+    }
 
     // no coloring is need for ACT, so we create a dummy DAJacCon
     word dummyType = "dummy";
@@ -2469,7 +2475,7 @@ void DASolver::calcdFdACT(
         MatCreate(PETSC_COMM_WORLD, &dFdACTMat);
 
         // initialize DAPartDeriv for dFdACT
-        word modelType = "dFdACTD";
+        word modelType = "dFd" + designVarType;
         autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
             modelType,
             meshPtr_(),
