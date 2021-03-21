@@ -225,8 +225,8 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             dirNorm = dirNorm / mag(dirNorm);
             vector center = {
                 actuatorDiskDVs_[diskName][0], actuatorDiskDVs_[diskName][1], actuatorDiskDVs_[diskName][2]};
-            scalar outerRadius = actuatorDiskDVs_[diskName][3];
-            scalar innerRadius = actuatorDiskDVs_[diskName][4];
+            scalar innerRadius = actuatorDiskDVs_[diskName][3];
+            scalar outerRadius = actuatorDiskDVs_[diskName][4];
             word rotDir = diskSubDict.getWord("rotDir");
             scalar scale = actuatorDiskDVs_[diskName][5];
             scalar POD = actuatorDiskDVs_[diskName][6];

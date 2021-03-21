@@ -150,6 +150,20 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+        "VOL1": {
+            "part1": {
+                "type": "variableVolSum",
+                "source": "boxToCell",
+                "min": [-10.0, -10.0, -10.0],
+                "max": [10.0, 10.0, 10.0],
+                "varName": "fvSource",
+                "varType": "vector",
+                "component": 0,
+                "isSquare": 0,
+                "scale": 1.0,
+                "addToAdjoint": True,
+            },
+        },
     },
     "adjStateOrdering": "cell",
     "debug": True,

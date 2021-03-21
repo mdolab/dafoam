@@ -214,6 +214,9 @@ def calcObjFuncSens(xDV, funcs):
         Info("Objective Function Sensitivity: ")
         Info(funcsSens)
         Info("Adjoint Runtime: %g s" % (b - a))
+    
+    # write the sensitivity values to file
+    DASolver.writeTotalDeriv("totalDerivHist.txt", funcsSens, evalFuncs)
 
     fail = funcsSens["fail"]
 

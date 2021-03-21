@@ -911,6 +911,55 @@ class PYDAFOAM(object):
             f.write("}\n")
             f.close()
 
+    def writeTotalDeriv(self, fileName, sens, evalFuncs):
+        """
+        Write the total derivatives history to files in the json format
+        This will only write total derivative for evalFuncs
+        """
+        # Write the sens history to files
+        if self.comm.rank == 0:
+            if self.nSolveAdjoints == 1:
+                f = open(fileName, "w")
+            else:
+                f = open(fileName, "a")
+            # write design variables
+            f.write("\nOptimization Iteration: %03d\n" % (self.nSolveAdjoints - 1))
+            f.write("{\n")
+            nFuncNames = len(evalFuncs)
+            funcNameCounter = 0
+            for funcName in sorted(evalFuncs):
+                f.write('    "%s": \n    {\n' % funcName)
+                nDVNames = len(sens[funcName])
+                dvNameCounter = 0
+                for dvName in sorted(sens[funcName]):
+                    f.write('        "%s": ' % dvName)
+                    try:
+                        nDVs = len(sens[funcName][dvName])
+                        f.write("[ ")
+                        for i in range(nDVs):
+                            if i < nDVs - 1:
+                                f.write("%20.15e, " % sens[funcName][dvName][i])
+                            else:
+                                f.write("%20.15e " % sens[funcName][dvName][i])
+                        f.write("]")
+                    except Exception:
+                        f.write(" %20.15e" % sens[funcName][dvName])
+                    # check whether to add a comma
+                    dvNameCounter = dvNameCounter + 1
+                    if dvNameCounter < nDVNames:
+                        f.write(",\n")
+                    else:
+                        f.write("\n")
+                f.write("    }")
+                # check whether to add a comma
+                funcNameCounter = funcNameCounter + 1
+                if funcNameCounter < nFuncNames:
+                    f.write(",\n")
+                else:
+                    f.write("\n")
+            f.write("}\n")
+            f.close()
+
     def getTimeInstanceObjFunc(self, instanceI, objFuncName):
         """
         Return the value of objective function at the given time instance and name
@@ -1653,7 +1702,14 @@ class PYDAFOAM(object):
                             dFdACT = PETSc.Vec().create(PETSc.COMM_WORLD)
                             dFdACT.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                             dFdACT.setFromOptions()
-                            dFdACT.zeroEntries()  # dFdACT assumes to be zeros
+                            self.solver.calcdFdACT(
+                                self.xvVec,
+                                self.wVec,
+                                objFuncName.encode(),
+                                designVarName.encode(),
+                                designVarType.encode(),
+                                dFdACT,
+                            )
                             # call the total deriv
                             totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                             totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
@@ -1681,7 +1737,9 @@ class PYDAFOAM(object):
                             dFdACT = PETSc.Vec().create(PETSc.COMM_WORLD)
                             dFdACT.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                             dFdACT.setFromOptions()
-                            dFdACT.zeroEntries()  # dFdACT assumes to be zeros
+                            self.solverAD.calcdFdACTAD(
+                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdACT
+                            )
                             # call the total deriv
                             totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                             totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)

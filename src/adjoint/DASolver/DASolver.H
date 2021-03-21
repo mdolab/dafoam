@@ -349,6 +349,15 @@ public:
         const word designVarName,
         const word designVarType,
         Mat dRdACT);
+    
+    /// compute dFdACT
+    void calcdFdACT(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        const word designVarType,
+        Vec dFdACT);
 
     /// compute dRdField^T*Psi
     void calcdRdFieldTPsiAD(
@@ -399,6 +408,14 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdActTPsi);
+    
+    /// compute dFdACT AD
+    void calcdFdACTAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdACT);
 
     /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
     static PetscErrorCode dRdWTMatVecMultFunction(
