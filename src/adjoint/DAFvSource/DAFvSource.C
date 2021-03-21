@@ -148,8 +148,8 @@ void DAFvSource::syncDAOptionToActuatorDVs()
                 dvList[0] = centerList[0];
                 dvList[1] = centerList[1];
                 dvList[2] = centerList[2];
-                dvList[3] = diskSubDict.getScalar("outerRadius");
-                dvList[4] = diskSubDict.getScalar("innerRadius");
+                dvList[3] = diskSubDict.getScalar("innerRadius");
+                dvList[4] = diskSubDict.getScalar("outerRadius");
                 dvList[5] = diskSubDict.getScalar("scale");
                 dvList[6] = diskSubDict.getScalar("POD");
                 dvList[7] = diskSubDict.getScalar("expM");
