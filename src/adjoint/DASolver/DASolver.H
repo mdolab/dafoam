@@ -349,6 +349,14 @@ public:
         const word designVarName,
         const word designVarType,
         Mat dRdACT);
+    
+    /// compute dFdACT
+    void calcdFdACT(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdACT);
 
     /// compute dRdField^T*Psi
     void calcdRdFieldTPsiAD(

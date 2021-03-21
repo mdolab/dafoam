@@ -2414,6 +2414,113 @@ void DASolver::calcdRdACT(
     }
 }
 
+void DASolver::calcdFdACT(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdACT)
+{
+    /*
+    Description:
+        This function computes partials derivatives dFdW
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: name of the objective function F
+
+        designVarName: the name of the design variable
+    
+    Output:
+        dFdACT: the partial derivative vector dF/dACT
+        NOTE: You need to fully initialize the dFdACT vec before calliing this function,
+        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
+    */
+
+    VecZeroEntries(dFdACT);
+
+    // no coloring is need for ACT, so we create a dummy DAJacCon
+    word dummyType = "dummy";
+    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+        dummyType,
+        meshPtr_(),
+        daOptionPtr_(),
+        daModelPtr_(),
+        daIndexPtr_()));
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+    word actuatorName = dvSubDict.getWord("actuatorName");
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+
+    // loop over all parts of this objFuncName
+    forAll(objFuncSubDict.toc(), idxK)
+    {
+        word objFuncPart = objFuncSubDict.toc()[idxK];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+        Mat dFdACTMat;
+        MatCreate(PETSC_COMM_WORLD, &dFdACTMat);
+
+        // initialize DAPartDeriv for dFdACT
+        word modelType = "dFdACTD";
+        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+            modelType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daJacCon(),
+            daResidualPtr_()));
+
+        // initialize options
+        dictionary options;
+        options.set("objFuncName", objFuncName);
+        options.set("objFuncPart", objFuncPart);
+        options.set("objFuncSubDictPart", objFuncSubDictPart);
+        options.set("actuatorName", actuatorName);
+
+        // initialize dFdACT
+        daPartDeriv->initializePartDerivMat(options, dFdACTMat);
+
+        // calculate it
+        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdACTMat);
+
+        // now we need to extract the dFdACT from dFdACTMatrix
+        // NOTE: dFdACTMat is a nACTDVs by 1 matrix
+        Vec dFdACTPart;
+        VecDuplicate(dFdACT, &dFdACTPart);
+        VecZeroEntries(dFdACTPart);
+        MatGetColumnVector(dFdACTMat, dFdACTPart, 0);
+
+        // we need to add dFdACTPart to dFdACT because we want to sum
+        // all parts of this objFuncName.
+        VecAXPY(dFdACT, 1.0, dFdACTPart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            this->calcPrimalResidualStatistics("print");
+        }
+
+        // clear up
+        MatDestroy(&dFdACTMat);
+        VecDestroy(&dFdACTPart);
+    }
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dFdACT_" + designVarName;
+        DAUtility::writeVectorBinary(dFdACT, outputName);
+        DAUtility::writeVectorASCII(dFdACT, outputName);
+    }
+}
+
 void DASolver::calcdFdFieldAD(
     const Vec xvVec,
     const Vec wVec,

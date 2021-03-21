@@ -36,12 +36,6 @@ DAObjFuncVariableVolSum::DAObjFuncVariableVolSum(
         objFuncDict)
 {
 
-    if (daOption.getAllOptions().getWord("adjJacobianOption") != "JacobianFree")
-    {
-        FatalErrorIn("") << "Only support adjJacobianOption = JacobianFree"
-                         << abort(FatalError);
-    }
-
     // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
@@ -54,6 +48,11 @@ DAObjFuncVariableVolSum::DAObjFuncVariableVolSum(
     objFuncDict_.readEntry<label>("component", component_);
 
     objFuncDict_.readEntry<label>("isSquare", isSquare_);
+
+    if (daIndex.adjStateNames.found(varName_))
+    {
+        objFuncConInfo_ = {{varName_}};
+    }
 }
 
 /// calculate the value of objective function
@@ -87,6 +86,12 @@ void DAObjFuncVariableVolSum::calcObjFunc(
     // initialize objFunValue
     objFuncValue = 0.0;
 
+    // initialize faceValues to zero
+    forAll(objFuncCellValues, idxI)
+    {
+        objFuncCellValues[idxI] = 0.0;
+    }
+
     const objectRegistry& db = mesh_.thisDb();
 
     if (varType_ == "scalar")
@@ -99,12 +104,13 @@ void DAObjFuncVariableVolSum::calcObjFunc(
             scalar volume = mesh_.V()[cellI];
             if (isSquare_)
             {
-                objFuncValue += scale_ * volume * var[cellI] * var[cellI];
+                objFuncCellValues[idxI] = scale_ * volume * var[cellI] * var[cellI];
             }
             else
             {
-                objFuncValue += scale_ * volume * var[cellI];
+                objFuncCellValues[idxI] = scale_ * volume * var[cellI];
             }
+            objFuncValue += objFuncCellValues[idxI];
         }
     }
     else if (varType_ == "vector")
@@ -117,12 +123,13 @@ void DAObjFuncVariableVolSum::calcObjFunc(
             scalar volume = mesh_.V()[cellI];
             if (isSquare_)
             {
-                objFuncValue += scale_ * volume * var[cellI][component_] * var[cellI][component_];
+                objFuncCellValues[idxI] = scale_ * volume * var[cellI][component_] * var[cellI][component_];
             }
             else
             {
-                objFuncValue += scale_ * volume * var[cellI][component_];
+                objFuncCellValues[idxI] = scale_ * volume * var[cellI][component_];
             }
+            objFuncValue += objFuncCellValues[idxI];
         }
     }
     else
