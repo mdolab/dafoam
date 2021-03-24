@@ -1,10 +1,10 @@
-name: DAFoam
+name: build
 
 on: [push, pull_request]
 
 env:
   REPO_NAME: 'dafoam'
-  DOCKER_WORKING_DIR: '/home/dafoamuser/$REPO_NAME'
+  DOCKER_WORKING_DIR: '/home/dafoamuser/dafoam/$REPO_NAME'
   DOCKER_MOUNT_DIR: '/home/dafoamuser/mount/$REPO_NAME'
   DOCKER_TAG: 'latest'
 
@@ -35,7 +35,7 @@ jobs:
         if [ "${{matrix.args}}" = "solid" ]; then
            echo "Skip building the AD version for solid"
         else
-           docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && . /home/dafoamuser/OpenFOAM/OpenFOAM-v1812-AD/etc/bashrc && cd ${{env.DOCKER_WORKING_DIR}} && ./Allclean && ./Allmake ${{matrix.args}} 2> makeWarnings.txt"
+           docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && . /home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-AD/etc/bashrc && cd ${{env.DOCKER_WORKING_DIR}} && ./Allclean && ./Allmake ${{matrix.args}} 2> makeWarnings.txt"
         fi
         docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && cd ${{env.DOCKER_WORKING_DIR}} && pip install ."
         docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun ${{matrix.args}}"
