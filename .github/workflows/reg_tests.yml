@@ -1,4 +1,4 @@
-name: build
+name: Regression Test
 
 on: [push, pull_request]
 
