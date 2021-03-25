@@ -539,6 +539,18 @@ class DAOPTION(object):
     ## }
     intmdVar = {}
 
+    ## The sensitivity map will be saved to disk during optimization for the given design variable
+    ## names in the list. Currently only support design variable type FFD and Field
+    ## The surface sensitivity map is separated from the primal solution because they only have surface mesh.
+    ## They will be saved to folders such as 1e-11, 2e-11, 3e-11, etc,
+    ## When loading in paraview, you need to uncheck the "internalMesh", and check "allWalls" on the left panel
+    ## If your design variable is of field type, the sensitivity map will be saved along with the primal
+    ## solution because they share the same mesh. The sensitivity files read sens_objFuncName_designVarName
+    ## NOTE: this function only supports adjJacobianOption = JacobianFree
+    ## Example:
+    ##     "writeSensMap" : ["shapex", "shapey"]
+    writeSensMap = ["NONE"]
+
     def __init__(self):
         """
         Nothing needs to be done for initializing DAOPTION
@@ -1356,6 +1368,223 @@ class PYDAFOAM(object):
 
         return
 
+    def writeFieldSensitivityMap(self, objFuncName, designVarName, solutionTime, fieldType, sensVec):
+        """
+        Save the field sensitivity dObjFunc/dDesignVar map to disk.
+
+        Parameters
+        ----------
+
+        objFuncName : str
+            Name of the objective function
+        designVarName : str
+            Name of the design variable
+        solutionTime : float
+            The solution time where the sensitivity will be save
+        fieldType : str
+            The type of the field, either scalar or vector
+        sensVec : petsc vec
+            The Petsc vector that contains the sensitivity
+        """
+
+        workingDir = os.getcwd()
+        if self.parallel:
+            sensDir = "processor%d/%.8f/" % (self.rank, solutionTime)
+        else:
+            sensDir = "%.8f/" % solutionTime
+
+        sensDir = os.path.join(workingDir, sensDir)
+
+        sensList = []
+        Istart, Iend = sensVec.getOwnershipRange()
+        for idxI in range(Istart, Iend):
+            sensList.append(sensVec[idxI])
+
+        # write sens
+        if not os.path.isfile(os.path.join(sensDir, "sens_%s_%s" % (objFuncName, designVarName))):
+            fSens = open(os.path.join(sensDir, "sens_%s_%s" % (objFuncName, designVarName)), "w")
+            if fieldType == "scalar":
+                self._writeOpenFoamHeader(fSens, "volScalarField", sensDir, "sens_%s_%s" % (objFuncName, designVarName))
+                fSens.write("dimensions      [0 0 0 0 0 0 0];\n")
+                fSens.write("internalField   nonuniform List<scalar>\n")
+                fSens.write("%d\n" % len(sensList))
+                fSens.write("(\n")
+                for i in range(len(sensList)):
+                    fSens.write("%g\n" % sensList[i])
+                fSens.write(")\n")
+                fSens.write(";\n")
+            elif fieldType == "vector":
+                self._writeOpenFoamHeader(fSens, "volVectorField", sensDir, "sens_%s_%s" % (objFuncName, designVarName))
+                fSens.write("dimensions      [0 0 0 0 0 0 0];\n")
+                fSens.write("internalField   nonuniform List<vector>\n")
+                fSens.write("%d\n" % len(sensList) / 3)
+                fSens.write("(\n")
+                counterI = 0
+                for i in range(len(sensList) / 3):
+                    fSens.write("(")
+                    for j in range(3):
+                        fSens.write("%g " % sensList[counterI])
+                        counterI = counterI + 1
+                    fSens.write(")\n")
+                fSens.write(")\n")
+                fSens.write(";\n")
+            else:
+                raise Error("fieldType %s not valid! Options are: scalar or vector" % fieldType)
+
+            fSens.write("boundaryField\n")
+            fSens.write("{\n")
+            fSens.write('    "(.*)"\n')
+            fSens.write("    {\n")
+            fSens.write("        type  zeroGradient;\n")
+            fSens.write("    }\n")
+            fSens.write("}\n")
+            fSens.close()
+
+    def writeSurfaceSensitivityMap(self, objFuncName, designVarName, solutionTime):
+        """
+        Save the sensitivity dObjFunc/dXs map to disk. where Xs is the wall surface mesh coordinate
+
+        Parameters
+        ----------
+
+        objFuncName : str
+            Name of the objective function
+        designVarName : str
+            Name of the design variable
+        solutionTime : float
+            The solution time where the sensitivity will be save
+        """
+
+        dFdXs = self.mesh.getdXs()
+        dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.allWallsGroup)
+
+        pts = self.getSurfaceCoordinates(self.allWallsGroup)
+        conn, faceSizes = self.getSurfaceConnectivity(self.allWallsGroup)
+        conn = np.array(conn).flatten()
+
+        workingDir = os.getcwd()
+        if self.parallel:
+            meshDir = "processor%d/%.11f/polyMesh/" % (self.rank, solutionTime)
+            sensDir = "processor%d/%.11f/" % (self.rank, solutionTime)
+        else:
+            meshDir = "%.11f/polyMesh/" % solutionTime
+            sensDir = "%.11f/" % solutionTime
+
+        meshDir = os.path.join(workingDir, meshDir)
+        sensDir = os.path.join(workingDir, sensDir)
+
+        if not os.path.isdir(sensDir):
+            try:
+                os.mkdir(sensDir)
+            except Exception:
+                raise Error("Can not make a directory at %s" % sensDir)
+        if not os.path.isdir(meshDir):
+            try:
+                os.mkdir(meshDir)
+            except Exception:
+                raise Error("Can not make a directory at %s" % meshDir)
+
+        # write points
+        if not os.path.isfile(os.path.join(meshDir, "points")):
+            fPoints = open(os.path.join(meshDir, "points"), "w")
+            self._writeOpenFoamHeader(fPoints, "dictionary", meshDir, "points")
+            fPoints.write("%d\n" % len(pts))
+            fPoints.write("(\n")
+            for i in range(len(pts)):
+                fPoints.write("(%g %g %g)\n" % (float(pts[i][0]), float(pts[i][1]), float(pts[i][2])))
+            fPoints.write(")\n")
+            fPoints.close()
+
+        # write faces
+        if not os.path.isfile(os.path.join(meshDir, "faces")):
+            fFaces = open(os.path.join(meshDir, "faces"), "w")
+            self._writeOpenFoamHeader(fFaces, "dictionary", meshDir, "faces")
+            counterI = 0
+            fFaces.write("%d\n" % len(faceSizes))
+            fFaces.write("(\n")
+            for i in range(len(faceSizes)):
+                fFaces.write("%d(" % faceSizes[i])
+                for j in range(faceSizes[i]):
+                    fFaces.write(" %d " % conn[counterI])
+                    counterI += 1
+                fFaces.write(")\n")
+            fFaces.write(")\n")
+            fFaces.close()
+
+        # write owner
+        if not os.path.isfile(os.path.join(meshDir, "owner")):
+            fOwner = open(os.path.join(meshDir, "owner"), "w")
+            self._writeOpenFoamHeader(fOwner, "dictionary", meshDir, "owner")
+            fOwner.write("%d\n" % len(faceSizes))
+            fOwner.write("(\n")
+            for i in range(len(faceSizes)):
+                fOwner.write("0\n")
+            fOwner.write(")\n")
+            fOwner.close()
+
+        # write neighbour
+        if not os.path.isfile(os.path.join(meshDir, "neighbour")):
+            fNeighbour = open(os.path.join(meshDir, "neighbour"), "w")
+            self._writeOpenFoamHeader(fNeighbour, "dictionary", meshDir, "neighbour")
+            fNeighbour.write("%d\n" % len(faceSizes))
+            fNeighbour.write("(\n")
+            for i in range(len(faceSizes)):
+                fNeighbour.write("0\n")
+            fNeighbour.write(")\n")
+            fNeighbour.close()
+
+        # write boundary
+        if not os.path.isfile(os.path.join(meshDir, "boundary")):
+            fBoundary = open(os.path.join(meshDir, "boundary"), "w")
+            self._writeOpenFoamHeader(fBoundary, "dictionary", meshDir, "boundary")
+            fBoundary.write("1\n")
+            fBoundary.write("(\n")
+            fBoundary.write("    allWalls\n")
+            fBoundary.write("    {\n")
+            fBoundary.write("        type       wall;\n")
+            fBoundary.write("        nFaces     %d;\n" % len(faceSizes))
+            fBoundary.write("        startFace  0;\n")
+            fBoundary.write("    }\n")
+            fBoundary.write(")\n")
+            fBoundary.close()
+
+        # write sens
+        if not os.path.isfile(os.path.join(sensDir, "sens_%s_%s" % (objFuncName, designVarName))):
+            fSens = open(os.path.join(sensDir, "sens_%s_%s" % (objFuncName, designVarName)), "w")
+            self._writeOpenFoamHeader(fSens, "volVectorField", sensDir, "sens_%s_%s" % (objFuncName, designVarName))
+            fSens.write("dimensions      [0 0 0 0 0 0 0];\n")
+            fSens.write("internalField   uniform (0 0 0);\n")
+
+            counterI = 0
+            fSens.write("boundaryField\n")
+            fSens.write("{\n")
+            fSens.write("    allWalls\n")
+            fSens.write("    {\n")
+            fSens.write("        type  wall;\n")
+            fSens.write("        value nonuniform List<vector>\n")
+            fSens.write("%d\n" % len(faceSizes))
+            fSens.write("(\n")
+            counterI = 0
+            for i in range(len(faceSizes)):
+                sensXMean = 0.0
+                sensYMean = 0.0
+                sensZMean = 0.0
+                for j in range(faceSizes[i]):
+                    idxI = conn[counterI]
+                    sensXMean += dFdXs[idxI][0]
+                    sensYMean += dFdXs[idxI][1]
+                    sensZMean += dFdXs[idxI][2]
+                    counterI += 1
+                sensXMean /= faceSizes[i]
+                sensYMean /= faceSizes[i]
+                sensZMean /= faceSizes[i]
+                fSens.write("(%f %f %f)\n" % (sensXMean, sensYMean, sensZMean))
+            fSens.write(")\n")
+            fSens.write(";\n")
+            fSens.write("    }\n")
+            fSens.write("}\n")
+            fSens.close()
+
     def solvePrimal(self):
         """
         Run primal solver to compute state variables and objectives
@@ -1409,7 +1638,7 @@ class PYDAFOAM(object):
         viewerW(self.wVec)
         """
 
-        self.renameSolution(self.nSolveAdjoints)
+        solutionTime = self.renameSolution(self.nSolveAdjoints)
 
         Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
 
@@ -1677,6 +1906,12 @@ class PYDAFOAM(object):
                                 dFdXs = self.mesh.getdXs()
                                 dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.designFamilyGroup)
                                 dFdFFD = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
+                                # check if we need to save the sensitivity maps
+                                if designVarName in self.getOption("writeSensMap"):
+                                    # we can't save the surface sensitivity time with the primal solution
+                                    # because surfaceSensMap needs to have its own mesh (design surface only)
+                                    sensSolTime = float(solutionTime) / 1000.0
+                                    self.writeSurfaceSensitivityMap(objFuncName, designVarName, sensSolTime)
 
                             # assign the total derivative to self.adjTotalDeriv
                             self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
@@ -1799,6 +2034,14 @@ class PYDAFOAM(object):
                             # totalDeriv = dFdField - dRdFieldT*psi
                             totalDeriv.scale(-1.0)
                             totalDeriv.axpy(1.0, dFdField)
+
+                            # check if we need to save the sensitivity maps
+                            if designVarName in self.getOption("writeSensMap"):
+                                # we will write the field sensitivity with the primal solution because they
+                                # share the same mesh
+                                self.writeFieldSensitivityMap(
+                                    objFuncName, designVarName, float(solutionTime), fieldType, totalDeriv
+                                )
 
                             # assign the total derivative to self.adjTotalDeriv
                             self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
@@ -2065,7 +2308,7 @@ class PYDAFOAM(object):
 
         if float(solutionTime) < 1e-6:
             Info("Solution time %g less than 1e-6, not moved." % float(solutionTime))
-            return
+            return solutionTime
 
         distTime = "%.8f" % ((solIndex + 1) / 1e8)
 
@@ -2082,7 +2325,7 @@ class PYDAFOAM(object):
             except Exception:
                 raise Error("Can not move %s to %s" % (src, dst))
 
-        return
+        return distTime
 
     def setdXvdFFDMat(self, designVarName, deltaVPointThreshold=1.0e-16):
         """
