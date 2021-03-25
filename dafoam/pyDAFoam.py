@@ -541,13 +541,14 @@ class DAOPTION(object):
 
     ## The sensitivity map will be saved to disk during optimization for the given design variable
     ## names in the list. Currently only support design variable type FFD and Field
-    ## This will write the surface sensitivity to folders like 1e-11, 2e-11, etc, the surface sensitivity
-    ## map is separated from the primal solution because they only have surface mesh. When loading in
-    ## paraview, you need to uncheck the "internalMesh", and check "allWalls" on the left panel
+    ## The surface sensitivity map is separated from the primal solution because they only have surface mesh.
+    ## They will be saved to folders such as 1e-11, 2e-11, 3e-11, etc,
+    ## When loading in paraview, you need to uncheck the "internalMesh", and check "allWalls" on the left panel
     ## If your design variable is of field type, the sensitivity map will be saved along with the primal
     ## solution because they share the same mesh. The sensitivity files read sens_objFuncName_designVarName
+    ## NOTE: this function only supports adjJacobianOption = JacobianFree
     ## Example:
-    ##     "writeSensMap" : ["shape"]
+    ##     "writeSensMap" : ["shapex", "shapey"]
     writeSensMap = ["NONE"]
 
     def __init__(self):
@@ -1463,27 +1464,25 @@ class PYDAFOAM(object):
 
         workingDir = os.getcwd()
         if self.parallel:
-            meshDir = "processor%d/%g/polyMesh/" % (self.rank, solutionTime)
-            sensDir = "processor%d/%g/" % (self.rank, solutionTime)
+            meshDir = "processor%d/%.11f/polyMesh/" % (self.rank, solutionTime)
+            sensDir = "processor%d/%.11f/" % (self.rank, solutionTime)
         else:
-            meshDir = "%g/polyMesh/" % solutionTime
-            sensDir = "%g/" % solutionTime
+            meshDir = "%.11f/polyMesh/" % solutionTime
+            sensDir = "%.11f/" % solutionTime
 
         meshDir = os.path.join(workingDir, meshDir)
         sensDir = os.path.join(workingDir, sensDir)
 
-        if self.rank == 0:
-            if not os.path.isdir(sensDir):
-                try:
-                    os.mkdir(sensDir)
-                except Exception:
-                    raise Error("Can not make a directory at %s" % sensDir)
-            if not os.path.isdir(meshDir):
-                try:
-                    os.mkdir(meshDir)
-                except Exception:
-                    raise Error("Can not make a directory at %s" % meshDir)
-        self.comm.Barrier()
+        if not os.path.isdir(sensDir):
+            try:
+                os.mkdir(sensDir)
+            except Exception:
+                raise Error("Can not make a directory at %s" % sensDir)
+        if not os.path.isdir(meshDir):
+            try:
+                os.mkdir(meshDir)
+            except Exception:
+                raise Error("Can not make a directory at %s" % meshDir)
 
         # write points
         if not os.path.isfile(os.path.join(meshDir, "points")):
