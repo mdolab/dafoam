@@ -459,6 +459,7 @@ class DAOPTION(object):
         "gmresAbsTol": 1.0e-14,
         "gmresTolDiff": 1.0e2,
         "useNonZeroInitGuess": False,
+        "printInfo": 1,
     }
 
     ## Normalization for residuals. We should normalize all residuals!
