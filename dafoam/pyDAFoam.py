@@ -420,8 +420,11 @@ class DAOPTION(object):
     ## used internally, so users should never change this option in the Python layer.
     runStatus = "None"
 
-    ## Whether to print all options to screen before optimization. Needed only for debugging.
-    printAllOptions = False
+    ## Whether to print all options defined in pyDAFoam to screen before optimization.
+    printPYDAFOAMOptions = False
+
+    ## Whether to print all DAOption defined in the C++ layer to screen before optimization.
+    printDAOptions = True
 
     ## Whether running the optimization in the debug mode, which prints extra information.
     debug = False
@@ -614,7 +617,7 @@ class PYDAFOAM(object):
         self.ptSetName = self.getPointSetName()
 
         # Remind the user of all the DAFoam options:
-        if self.getOption("printAllOptions"):
+        if self.getOption("printPYDAFOAMOptions"):
             self._printCurrentOptions()
 
         # run decomposePar for parallel runs
@@ -2185,7 +2188,8 @@ class PYDAFOAM(object):
         if self.getOption("adjJacobianOption") == "JacobianFree":
             self.solverAD.initSolver()
 
-        self.solver.printAllOptions()
+        if self.getOption("printDAOptions"):
+            self.solver.printAllOptions()
 
         self.solverInitialized = 1
 
