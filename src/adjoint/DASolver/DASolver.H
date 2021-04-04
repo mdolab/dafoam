@@ -170,13 +170,6 @@ protected:
     /// a flag in dRdWTMatVecMultFunction to determine if the global tap is initialized
     label globalADTape4dRdWTInitialized = 0;
 
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
-
-    /// global tape for reverse-mode AD
-    codi::RealReverse::TapeType& globalADTape_;
-
-#endif
-
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -349,7 +342,7 @@ public:
         const word designVarName,
         const word designVarType,
         Mat dRdACT);
-    
+
     /// compute dFdACT
     void calcdFdACT(
         const Vec xvVec,
@@ -408,7 +401,7 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdActTPsi);
-    
+
     /// compute dFdACT AD
     void calcdFdACTAD(
         const Vec xvVec,
@@ -689,6 +682,13 @@ public:
     {
         return daCheckMeshPtr_();
     }
+
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+
+    /// global tape for reverse-mode AD
+    codi::RealReverse::TapeType& globalADTape_;
+
+#endif
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
