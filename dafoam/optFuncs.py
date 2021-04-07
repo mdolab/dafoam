@@ -195,6 +195,9 @@ def calcObjFuncSens(xDV, funcs):
     # write the design variable values to file
     DASolver.writeDesignVariable("designVariableHist.txt", xDV)
 
+    # write the deform FFDs
+    DASolver.writeDeformedFFDs()
+
     # Setup an empty dictionary for the evaluated derivative values
     funcsSens = {}
 
@@ -240,6 +243,9 @@ def calcObjFuncSensMP(xDV, funcs):
 
     # write the design variable values to file
     DASolver.writeDesignVariable("designVariableHist.txt", xDV)
+
+    # write the deform FFDs
+    DASolver.writeDeformedFFDs()
 
     # Setup an empty dictionary for the evaluated derivative values
     funcsSensMP = {}
@@ -310,6 +316,9 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
 
     # write the design variable values to file
     DASolver.writeDesignVariable("designVariableHist.txt", xDV)
+
+    # write the deform FFDs
+    DASolver.writeDeformedFFDs()
 
     # Setup an empty dictionary for the evaluated derivative values
     funcsSensCombined = {}
