@@ -555,6 +555,9 @@ class DAOPTION(object):
     ##     "writeSensMap" : ["shapex", "shapey"]
     writeSensMap = ["NONE"]
 
+    ## Whether to write deformed FFDs to the disk during optimization
+    writeDeformedFFDs = False
+
     def __init__(self):
         """
         Nothing needs to be done for initializing DAOPTION
@@ -926,6 +929,13 @@ class PYDAFOAM(object):
                     f.write("\n")
             f.write("}\n")
             f.close()
+    
+    def writeDeformedFFDs(self):
+        """
+        Write the deformed FFDs to the disk during optimization
+        """
+        if self.getOption("writeDeformedFFDs"):
+            self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % self.nSolveAdjoints)
 
     def writeTotalDeriv(self, fileName, sens, evalFuncs):
         """
