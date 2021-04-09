@@ -76,7 +76,13 @@ elif mode == "rotate":
         % (inputFileName, outputFileName, axis, deg)
     )
 
-    theta = deg * np.pi / 180.0
+    # ************** NOTE ******************
+    # we have to add a minus sign here because numpy-stl is known
+    # to have a problem for the direction of the rotation. It somehow rotates
+    # clockwise for a positive angle, which is not consistent with the conventional
+    # right-hand-side rule of rotation.
+    # Check their documentation https://numpy-stl.readthedocs.io/en/latest/stl.html
+    theta = - deg * np.pi / 180.0
 
     myMesh = mesh.Mesh.from_file(inputFileName)
 
