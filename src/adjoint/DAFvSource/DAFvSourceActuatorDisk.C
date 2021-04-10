@@ -233,9 +233,13 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             scalar eps = diskSubDict.getScalar("eps");
             scalar expM = actuatorDiskDVs_[diskName][7];
             scalar expN = actuatorDiskDVs_[diskName][8];
-            scalar rStarMin = diskSubDict.lookupOrDefault<scalar>("rStarMin", 0.02);
-            scalar rStarMax = diskSubDict.lookupOrDefault<scalar>("rStarMax", 0.98);
-            scalar epsR = diskSubDict.lookupOrDefault<scalar>("epsR", 0.02);
+            // Now we need to compute normalized eps in the radial direction, i.e. epsRStar this is because
+            // we need to smooth the radial distribution of the thrust, here the radial location is 
+            // normalized as rStar = (r - rInner) / (rOuter - rInner), so to make epsRStar consistent with this 
+            // we need to normalize eps with the demoninator of rStar, i.e. Outer - rInner
+            scalar epsRStar = eps / (outerRadius - innerRadius);
+            scalar rStarMin = epsRStar;
+            scalar rStarMax = 1.0 - epsRStar;
             scalar fRMin = pow(rStarMin, expM) * pow(1.0 - rStarMin, expN) * scale;
             scalar fRMax = pow(rStarMax, expM) * pow(1.0 - rStarMax, expN) * scale;
 
@@ -300,7 +304,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 if (rStar < rStarMin)
                 {
                     scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
-                    scalar fR = fRMin * exp(-dR2 / epsR / epsR);
+                    scalar fR = fRMin * exp(-dR2 / epsRStar / epsRStar);
                     fAxial = fR * exp(-dA2 / eps / eps);
                     fCirc = fAxial * POD / constant::mathematical::pi / rStarMin;
                 }
@@ -314,7 +318,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 else
                 {
                     scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
-                    scalar fR = fRMax * exp(-dR2 / epsR / epsR);
+                    scalar fR = fRMax * exp(-dR2 / epsRStar / epsRStar);
                     fAxial = fR * exp(-dA2 / eps / eps);
                     fCirc = fAxial * POD / constant::mathematical::pi / rStarMax;
                 }

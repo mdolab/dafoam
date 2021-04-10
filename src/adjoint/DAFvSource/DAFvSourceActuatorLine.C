@@ -95,9 +95,13 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
         scalar POD = lineSubDict.getScalar("POD");
         scalar expM = lineSubDict.getScalar("expM");
         scalar expN = lineSubDict.getScalar("expN");
-        scalar rStarMin = lineSubDict.lookupOrDefault<scalar>("rStarMin", 0.02);
-        scalar rStarMax = lineSubDict.lookupOrDefault<scalar>("rStarMax", 0.98);
-        scalar epsR = lineSubDict.lookupOrDefault<scalar>("epsR", 0.02);
+        // Now we need to compute normalized eps in the radial direction, i.e. epsRStar this is because
+        // we need to smooth the radial distribution of the thrust, here the radial location is 
+        // normalized as rStar = (r - rInner) / (rOuter - rInner), so to make epsRStar consistent with this 
+        // we need to normalize eps with the demoninator of rStar, i.e. Outer - rInner
+        scalar epsRStar = eps / (outerRadius - innerRadius);
+        scalar rStarMin = epsRStar;
+        scalar rStarMax = 1.0 - epsRStar;
         scalar fRMin = pow(rStarMin, expM) * pow(1.0 - rStarMin, expN);
         scalar fRMax = pow(rStarMax, expM) * pow(1.0 - rStarMax, expN);
 
@@ -207,7 +211,7 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             if (rStar < rStarMin)
             {
                 scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
-                fAxial = fRMin * exp(-dR2 / epsR / epsR);
+                fAxial = fRMin * exp(-dR2 / epsRStar / epsRStar);
                 fCirc = fAxial * POD / pi / rPrimeMin;
             }
             else if (rStar >= rStarMin && rStar <= rStarMax)
@@ -219,7 +223,7 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             else
             {
                 scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
-                fAxial = fRMax * exp(-dR2 / epsR / epsR);
+                fAxial = fRMax * exp(-dR2 / epsRStar / epsRStar);
                 fCirc = fAxial * POD / pi / rPrimeMax;
             }
 
