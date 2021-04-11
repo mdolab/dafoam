@@ -412,6 +412,10 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 {
                     Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
                     Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
+                    if (adjustThrust)
+                    {
+                        Info << "Dynamically adjusted scale for " << diskName << ": " << scale << endl;
+                    }
                     if (daOption_.getOption<label>("debug"))
                     {
                         Info << "adjustThrust for " << diskName << ": " << adjustThrust << endl;
