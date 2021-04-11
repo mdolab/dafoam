@@ -228,21 +228,94 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             scalar innerRadius = actuatorDiskDVs_[diskName][3];
             scalar outerRadius = actuatorDiskDVs_[diskName][4];
             word rotDir = diskSubDict.getWord("rotDir");
-            scalar scale = actuatorDiskDVs_[diskName][5];
+            // we will calculate or read scale later
+            scalar scale;
             scalar POD = actuatorDiskDVs_[diskName][6];
             scalar eps = diskSubDict.getScalar("eps");
             scalar expM = actuatorDiskDVs_[diskName][7];
             scalar expN = actuatorDiskDVs_[diskName][8];
             // Now we need to compute normalized eps in the radial direction, i.e. epsRStar this is because
-            // we need to smooth the radial distribution of the thrust, here the radial location is 
-            // normalized as rStar = (r - rInner) / (rOuter - rInner), so to make epsRStar consistent with this 
+            // we need to smooth the radial distribution of the thrust, here the radial location is
+            // normalized as rStar = (r - rInner) / (rOuter - rInner), so to make epsRStar consistent with this
             // we need to normalize eps with the demoninator of rStar, i.e. Outer - rInner
             scalar epsRStar = eps / (outerRadius - innerRadius);
             scalar rStarMin = epsRStar;
             scalar rStarMax = 1.0 - epsRStar;
-            scalar fRMin = pow(rStarMin, expM) * pow(1.0 - rStarMin, expN) * scale;
-            scalar fRMax = pow(rStarMax, expM) * pow(1.0 - rStarMax, expN) * scale;
+            scalar fRMin = pow(rStarMin, expM) * pow(1.0 - rStarMin, expN);
+            scalar fRMax = pow(rStarMax, expM) * pow(1.0 - rStarMax, expN);
 
+            label adjustThrust = diskSubDict.lookupOrDefault<label>("adjustThrust", 0);
+            // if adjustThrust = False, we just read "scale" from daOption
+            // if we want to adjust thrust, we calculate scale, instead of reading from daOption
+            // to calculate the scale, we just compute the fAxial with scale = 1, then we find
+            // the correct scale = targetThrust / thrust_with_scale_1
+            if (adjustThrust)
+            {
+                scale = 1.0;
+                scalar tmpThrustSumAll = 0.0;
+                forAll(mesh_.cells(), cellI)
+                {
+                    // the cell center coordinates of this cellI
+                    vector cellC = mesh_.C()[cellI];
+                    // cell center to disk center vector
+                    vector cellC2AVec = cellC - center;
+                    // tmp tensor for calculating the axial/radial components of cellC2AVec
+                    tensor cellC2AVecE(tensor::zero);
+                    cellC2AVecE.xx() = cellC2AVec.x();
+                    cellC2AVecE.yy() = cellC2AVec.y();
+                    cellC2AVecE.zz() = cellC2AVec.z();
+
+                    // now we need to decompose cellC2AVec into axial and radial components
+                    // the axial component of cellC2AVec vector
+                    vector cellC2AVecA = cellC2AVecE & dirNorm;
+                    // the radial component of cellC2AVec vector
+                    vector cellC2AVecR = cellC2AVec - cellC2AVecA;
+
+                    // the magnitude of radial component of cellC2AVecR
+                    scalar cellC2AVecRLen = mag(cellC2AVecR);
+                    // the magnitude of axial component of cellC2AVecR
+                    scalar cellC2AVecALen = mag(cellC2AVecA);
+
+                    // now we can use the smoothed formulation to compute source
+                    scalar rPrime = cellC2AVecRLen / outerRadius;
+                    scalar rPrimeHub = innerRadius / outerRadius;
+                    // rStar is normalized radial location
+                    scalar rStar = (rPrime - rPrimeHub) / (1.0 - rPrimeHub);
+
+                    scalar fAxial = 0.0;
+
+                    scalar dA2 = cellC2AVecALen * cellC2AVecALen;
+
+                    if (rStar < rStarMin)
+                    {
+                        scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
+                        scalar fR = fRMin * exp(-dR2 / epsRStar / epsRStar) * scale;
+                        fAxial = fR * exp(-dA2 / eps / eps);
+                    }
+                    else if (rStar >= rStarMin && rStar <= rStarMax)
+                    {
+                        scalar fR = pow(rStar, expM) * pow(1.0 - rStar, expN) * scale;
+                        fAxial = fR * exp(-dA2 / eps / eps);
+                    }
+                    else
+                    {
+                        scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
+                        scalar fR = fRMax * exp(-dR2 / epsRStar / epsRStar) * scale;
+                        fAxial = fR * exp(-dA2 / eps / eps);
+                    }
+
+                    tmpThrustSumAll += fAxial * mesh_.V()[cellI];
+                }
+                reduce(tmpThrustSumAll, sumOp<scalar>());
+                scalar targetThrust = diskSubDict.getScalar("targetThrust");
+                scale = targetThrust / tmpThrustSumAll;
+            }
+            else
+            {
+                scale = actuatorDiskDVs_[diskName][5];
+            }
+
+            // now we have the correct scale, repeat the loop to assign fvSource
             scalar thrustSourceSum = 0.0;
             scalar torqueSourceSum = 0.0;
             forAll(mesh_.cells(), cellI)
@@ -304,7 +377,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 if (rStar < rStarMin)
                 {
                     scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
-                    scalar fR = fRMin * exp(-dR2 / epsRStar / epsRStar);
+                    scalar fR = fRMin * exp(-dR2 / epsRStar / epsRStar) * scale;
                     fAxial = fR * exp(-dA2 / eps / eps);
                     fCirc = fAxial * POD / constant::mathematical::pi / rStarMin;
                 }
@@ -318,7 +391,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 else
                 {
                     scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
-                    scalar fR = fRMax * exp(-dR2 / epsRStar / epsRStar);
+                    scalar fR = fRMax * exp(-dR2 / epsRStar / epsRStar) * scale;
                     fAxial = fR * exp(-dA2 / eps / eps);
                     fCirc = fAxial * POD / constant::mathematical::pi / rStarMax;
                 }
@@ -339,6 +412,21 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 {
                     Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
                     Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
+                    if (daOption_.getOption<label>("debug"))
+                    {
+                        Info << "adjustThrust for " << diskName << ": " << adjustThrust << endl;
+                        Info << "center for " << diskName << ": " << center << endl;
+                        Info << "innerRadius for " << diskName << ": " << innerRadius << endl;
+                        Info << "outerRadius for " << diskName << ": " << outerRadius << endl;
+                        Info << "scale for " << diskName << ": " << scale << endl;
+                        Info << "POD for " << diskName << ": " << POD << endl;
+                        Info << "eps for " << diskName << ": " << eps << endl;
+                        Info << "expM for " << diskName << ": " << expM << endl;
+                        Info << "expN for " << diskName << ": " << expN << endl;
+                        Info << "epsRStar for " << diskName << ": " << epsRStar << endl;
+                        Info << "rStarMin for " << diskName << ": " << rStarMin << endl;
+                        Info << "rStarMax for " << diskName << ": " << rStarMax << endl;
+                    }
                 }
             }
         }
