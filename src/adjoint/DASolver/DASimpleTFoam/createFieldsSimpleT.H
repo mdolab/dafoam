@@ -38,6 +38,19 @@ volVectorField& U = UPtr_();
 
 #include "createPhiPython.H"
 
+// create alpha porosity term
+alphaPorosityPtr_.reset(
+    new volScalarField(
+        IOobject(
+            "alphaPorosity",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE),
+        mesh,
+        dimensionedScalar("alphaPorosity", dimensionSet(0, 0, -1, 0, 0, 0, 0), pTraits<scalar>::zero),
+        zeroGradientFvPatchField<scalar>::typeName));
+
 setRefCell(p, simple.dict(), pRefCell_, pRefValue_);
 mesh.setFluxRequired(p.name());
 

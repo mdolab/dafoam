@@ -24,6 +24,7 @@ DASimpleTFoam::DASimpleTFoam(
       pPtr_(nullptr),
       UPtr_(nullptr),
       phiPtr_(nullptr),
+      alphaPorosityPtr_(nullptr),
       laminarTransportPtr_(nullptr),
       turbulencePtr_(nullptr),
       daTurbulenceModelPtr_(nullptr),

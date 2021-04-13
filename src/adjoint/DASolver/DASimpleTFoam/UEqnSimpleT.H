@@ -2,6 +2,7 @@
 
 tmp<fvVectorMatrix> tUEqn(
     fvm::div(phi, U)
+    + fvm::Sp(alphaPorosity, U)
     + turbulencePtr_->divDevReff(U));
 fvVectorMatrix& UEqn = tUEqn.ref();
 
