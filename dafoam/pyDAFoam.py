@@ -904,7 +904,7 @@ class PYDAFOAM(object):
             else:
                 f = open(fileName, "a")
             # write design variables
-            f.write("\nOptimization Iteration: %03d\n" % self.nSolveAdjoints)
+            f.write('\n"Optimization_Iteration_%03d":\n' % self.nSolveAdjoints)
             f.write("{\n")
             nDVNames = len(xDV)
             dvNameCounter = 0
@@ -927,9 +927,9 @@ class PYDAFOAM(object):
                     f.write(",\n")
                 else:
                     f.write("\n")
-            f.write("}\n")
+            f.write("},\n")
             f.close()
-    
+
     def writeDeformedFFDs(self):
         """
         Write the deformed FFDs to the disk during optimization
@@ -949,7 +949,7 @@ class PYDAFOAM(object):
             else:
                 f = open(fileName, "a")
             # write design variables
-            f.write("\nOptimization Iteration: %03d\n" % (self.nSolveAdjoints - 1))
+            f.write('\n"Optimization_Iteration_%03d":\n' % (self.nSolveAdjoints - 1))
             f.write("{\n")
             nFuncNames = len(evalFuncs)
             funcNameCounter = 0
@@ -983,7 +983,7 @@ class PYDAFOAM(object):
                     f.write(",\n")
                 else:
                     f.write("\n")
-            f.write("}\n")
+            f.write("},\n")
             f.close()
 
     def getTimeInstanceObjFunc(self, instanceI, objFuncName):
