@@ -48,6 +48,9 @@ protected:
     surfaceScalarField phiResPartDeriv_;
     //@}
 
+    /// alpha porosity term
+    volScalarField& alphaPorosity_;
+
     volScalarField& alphat_;
 
     scalar Pr_ = -9999.0;
