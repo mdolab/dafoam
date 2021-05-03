@@ -171,6 +171,9 @@ public:
     globalIndex globalCoupledBFaceNumbering;
     globalIndex globalObjFuncGeoNumbering;
     globalIndex globalXvNumbering;
+    globalIndex globalVolScalarFieldNumbering;
+    globalIndex globalVolVectorFieldNumbering;
+    globalIndex globalSurfaceScalarFieldNumbering;
     //@}
 
     /// a list to map the point index from decomposed domains to the original un-decomposed domain
@@ -232,8 +235,27 @@ public:
         const label idxPoint,
         const label idxCoord) const;
 
+    /// get local cell index for a local cell index
+    label getLocalCellIndex(const label cellI) const;
+
     /// get global cell index for a local cell index
     label getGlobalCellIndex(const label cellI) const;
+
+    /// get local cell index for a local cell vector index
+    label getLocalCellVectorIndex(
+        const label cellI,
+        const label comp) const;
+
+    /// get global cell index for a local cell vector index
+    label getGlobalCellVectorIndex(
+        const label cellI,
+        const label comp) const;
+
+    /// get local face index for a local face index
+    label getLocalFaceIndex(const label faceI) const;
+
+    /// get global face index for a local face index
+    label getGlobalFaceIndex(const label faceI) const;
 
     /// compute global list adjStateID4GlobalAdjIdx that stores the stateID for a given globalAdjIndx
     void calcAdjStateID4GlobalAdjIdx(labelList& adjStateID4GlobalAdjIdx) const;
