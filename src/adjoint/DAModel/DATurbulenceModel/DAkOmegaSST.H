@@ -141,14 +141,10 @@ protected:
     //@{
     volScalarField& omega_;
     volScalarField omegaRes_;
-    volScalarField omegaResRef_;
     volScalarField omegaResPartDeriv_;
-    volScalarField omegaRef_;
     volScalarField& k_;
     volScalarField kRes_;
-    volScalarField kResRef_;
     volScalarField kResPartDeriv_;
-    volScalarField kRef_;
     //@}
 
     /// 3D wall distance
