@@ -369,6 +369,10 @@ class DAOPTION(object):
         "omegaMin": 1e-16,
         "epsilonMax": 1e16,
         "epsilonMin": 1e-16,
+        "ReThetatMax": 1e16,
+        "ReThetatMin": 1e-16,
+        "gammaIntMax": 1e16,
+        "gammaIntMin": 1e-16,
     }
 
     ## Whether to perform multipoint optimization.
