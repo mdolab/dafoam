@@ -19,7 +19,9 @@ DACheckMesh::DACheckMesh(
     const fvMesh& mesh1)
     : daOption_(daOption),
       runTime(runTime1),
-      mesh(mesh1)
+      mesh(mesh1),
+      surfWriter(nullptr),
+      setWriter(nullptr)
 {
     // Give an option to overwrite the default value of mesh quality check threshold
     fvMesh& meshNew = const_cast<fvMesh&>(mesh);
@@ -34,6 +36,10 @@ DACheckMesh::DACheckMesh(
     Info << "maxNonOrth: " << maxNonOrth_ << endl;
     Info << "maxSkewness: " << maxSkewness_ << endl;
     Info << "maxAspectRatio: " << maxAspectRatio_ << endl;
+
+    word surfaceFormat = "vtk";
+    surfWriter.reset(surfaceWriter::New(surfaceFormat));
+    setWriter.reset(writer<scalar>::New(vtkSetWriter<scalar>::typeName));
 }
 
 DACheckMesh::~DACheckMesh()
@@ -54,7 +60,7 @@ label DACheckMesh::run() const
 
     Info << "Checking mesh quality for time = " << runTime.timeName() << endl;
 
-    label nFailedChecks = checkGeometry(mesh);
+    label nFailedChecks = checkGeometry(mesh, surfWriter, setWriter);
 
     if (nFailedChecks)
     {
