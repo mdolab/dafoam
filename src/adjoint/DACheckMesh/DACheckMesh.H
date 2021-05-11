@@ -41,10 +41,10 @@ private:
 
     /// Time object
     const Time& runTime;
-    
+
     /// fvMesh object
     const fvMesh& mesh;
-    
+
     /// max aspect ratio
     scalar maxAspectRatio_ = 1000.0;
 
@@ -53,6 +53,12 @@ private:
 
     /// max skewness
     scalar maxSkewness_ = 4.0;
+
+    /// surface writer pointer for failed mesh
+    autoPtr<surfaceWriter> surfWriter;
+
+    /// set writer pointer for failed mesh
+    autoPtr<writer<scalar>> setWriter;
 
 public:
     // Constructors

@@ -47,6 +47,8 @@ ext = [
             os.getenv("FOAM_SRC") + "/finiteVolume/lnInclude",
             os.getenv("FOAM_SRC") + "/meshTools/lnInclude",
             os.getenv("FOAM_SRC") + "/sampling/lnInclude",
+            os.getenv("FOAM_SRC") + "/fileFormats/lnInclude",
+            os.getenv("FOAM_SRC") + "/surfMesh/lnInclude",
             # These are common for all OpenFOAM executives
             os.getenv("FOAM_SRC") + "/OpenFOAM/lnInclude",
             os.getenv("FOAM_SRC") + "/OSspecific/POSIX/lnInclude",
