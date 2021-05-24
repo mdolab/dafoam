@@ -39,6 +39,7 @@ DAObjFunc/DAObjFuncTotalPressure.C
 DAObjFunc/DAObjFuncTotalPressureRatio.C
 DAObjFunc/DAObjFuncTotalTemperatureRatio.C
 DAObjFunc/DAObjFuncMassFlowRate.C
+DAObjFunc/DAObjFuncStateErrorNorm.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C

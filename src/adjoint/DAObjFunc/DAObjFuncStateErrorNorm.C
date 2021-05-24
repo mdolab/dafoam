@@ -34,7 +34,7 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
         objFuncName,
         objFuncPart,
         objFuncDict),
-    daTurb_(daModel.getDATurbulenceModel())
+      daTurb_(daModel.getDATurbulenceModel())
 
 {
 
@@ -47,7 +47,7 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
     scale_ = objFuncDict_.getScalar("scale");
     if (varTypeFieldInversion_ == "surface")
     {
-        objFuncDict_.readEntry<wordList>("patchNames", patchNames_); 
+        objFuncDict_.readEntry<wordList>("patchNames", patchNames_);
     }
     if (stateType_ == "aeroCoeff")
     {
@@ -115,7 +115,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
 
     if (varTypeFieldInversion_ == "volume")
     {
-         if (stateType_ == "scalar")
+        if (stateType_ == "scalar")
         {
             const volScalarField& state = db.lookupObject<volScalarField>(stateName_);
             const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
@@ -125,8 +125,8 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 objFuncCellValues[idxI] = scale_ * (sqr(state[cellI] - stateRef[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
-        // need to reduce the sum of all objectives across all processors
-         reduce(objFuncValue, sumOp<scalar>()); 
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
         }
         else if (stateType_ == "vector")
         {
@@ -140,38 +140,38 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             }
 
             // need to reduce the sum of all objectives across all processors
-            reduce(objFuncValue, sumOp<scalar>()); 
+            reduce(objFuncValue, sumOp<scalar>());
         }
     }
-    
+
     else if (varTypeFieldInversion_ == "surface")
     {
-         if (stateType_ == "surfaceFriction")
-         {
-            // get surface friction "fields" 
+        if (stateType_ == "surfaceFriction")
+        {
+            // get surface friction "fields"
             volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
             const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
 
             // ingredients for surface friction computation
             const volVectorField& U = db.lookupObject<volVectorField>("U");
             tmp<volTensorField> gradU = fvc::grad(U);
-            const volTensorField::Boundary& bGradU = gradU().boundaryField(); 
+            const volTensorField::Boundary& bGradU = gradU().boundaryField();
 
             const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
-	        const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
-            
+            const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
+
             forAll(patchNames_, cI)
             {
                 label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
                 const fvPatch& patch = mesh_.boundary()[patchI];
-                forAll(patch,faceI)
+                forAll(patch, faceI)
                 {
                     // normal vector at wall, use -ve sign to ensure vector pointing into the domain
-                    vector normal = -Sfp[patchI][faceI]/magSfp[patchI][faceI];
+                    vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
 
-                    // tangent vector, computed from normal: tangent = p x normal; where p is a unit vector perpidicular to the plane 
+                    // tangent vector, computed from normal: tangent = p x normal; where p is a unit vector perpidicular to the plane
                     // NOTE: make this more general
-                    vector tangent(normal.y(), -normal.x(), 0.0);  
+                    vector tangent(normal.y(), -normal.x(), 0.0);
 
                     // velocity gradient at wall
                     tensor fGradU = bGradU[patchI][faceI];
@@ -183,7 +183,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                         where XX = partial(u1)/partial(x1), YX = partial(u2)/partial(x1) and so on.
                             => grad(U) = transpose(fGradU)
                     */
-                    tensor fGradUT = fGradU.T();             	
+                    tensor fGradUT = fGradU.T();
 
                     /* compute the surface friction assuming incompressible flow and no wall functions! Add run time warning message 
                     to reflect this later.
@@ -193,8 +193,8 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                     incorporate rho, mu, and dynamic pressure in scale_ as follows,
                           scale_ = nu / dynPressure,
                           => Cf = scale_ * tangent . (grad(U) . normal) */
-                    scalar bSurfaceFriction = scale_ * (tangent & (fGradUT & normal)); 
-                    
+                    scalar bSurfaceFriction = scale_ * (tangent & (fGradUT & normal));
+
                     surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
 
                     // calculate the objective function
@@ -202,26 +202,25 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                     scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
 
                     objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
-
                 }
             }
 
             // need to reduce the sum of all objectives across all processors
-            reduce(objFuncValue, sumOp<scalar>()); 
-         }
+            reduce(objFuncValue, sumOp<scalar>());
+        }
 
-         else if (stateType_ == "aeroCoeff") 
-         {
+        else if (stateType_ == "aeroCoeff")
+        {
             // get the ingredients for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
-            const surfaceVectorField::Boundary& Sfb = mesh_.Sf().boundaryField(); 
+            const surfaceVectorField::Boundary& Sfb = mesh_.Sf().boundaryField();
             tmp<volSymmTensorField> tdevRhoReff = daTurb_.devRhoReff();
             const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
 
             vector forces(vector::zero);
 
             scalar aeroCoeff(0.0);
-            
+
             forAll(patchNames_, cI)
             {
                 // get the patch id label
@@ -231,12 +230,12 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 const fvPatch& patch = mesh_.boundary()[patchI];
 
                 // normal force
-                vectorField fN(Sfb[patchI]*p.boundaryField()[patchI]);
+                vectorField fN(Sfb[patchI] * p.boundaryField()[patchI]);
 
                 // tangential force
                 vectorField fT(Sfb[patchI] & devRhoReffb[patchI]);
 
-                forAll(patch,faceI)
+                forAll(patch, faceI)
                 {
                     forces.x() = fN[faceI].x() + fT[faceI].x();
                     forces.y() = fN[faceI].y() + fT[faceI].y();
@@ -246,15 +245,14 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             }
             // need to reduce the sum of all forces across all processors
             reduce(aeroCoeff, sumOp<scalar>());
-            
+
             // compute the objective function
             objFuncValue += sqr(aeroCoeff - aeroCoeffRef_);
+        }
 
-         }
-    
         else if (stateType_ == "surfacePressure")
         {
-            // get ref surface pressure "fields" 
+            // get ref surface pressure "fields"
             const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
 
             // get the ingredient for computations
@@ -264,24 +262,52 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             {
                 label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
                 const fvPatch& patch = mesh_.boundary()[patchI];
-                forAll(patch,faceI)
+                forAll(patch, faceI)
                 {
 
-                    scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_); 
+                    scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
 
                     // calculate the objective function
-                    // extract the reference surface friction at the boundary
+                    // extract the reference surface pressure at the boundary
                     scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
 
                     objFuncValue += sqr(bSurfacePressure - bSurfacePressureRef);
-
                 }
             }
 
             // need to reduce the sum of all objectives across all processors
-            reduce(objFuncValue, sumOp<scalar>()); 
+            reduce(objFuncValue, sumOp<scalar>());
+        }
+        else if (stateType_ == "surfacePressureCustom")
+        {
+            // get ref surface pressure "fields"
+            const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
 
-        }   
+            // get the ingredient for computations
+            const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+
+                    scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
+
+                    // calculate the objective function
+                    // extract the reference surface pressure at the boundary
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
+                    if (bSurfacePressureRef < 1e16)
+                    {
+                        objFuncValue += sqr(bSurfacePressure - bSurfacePressureRef);
+                    }
+                }
+            }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+        }
     }
 
     else if (varTypeFieldInversion_ == "profile")
@@ -301,9 +327,9 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
                 objFuncValue += objFuncCellValues[idxI];
             }
         }
-        
+
         // need to reduce the sum of all objectives across all processors
-        reduce(objFuncValue, sumOp<scalar>()); 
+        reduce(objFuncValue, sumOp<scalar>());
     }
     return;
 }
