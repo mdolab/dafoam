@@ -17,6 +17,6 @@ dimensionedScalar Prt = PrtPtr_();
 volScalarField& alphat = alphatPtr_();
 
 // create a file to store the objective values
-this->initializeObjFuncHistFilePtr("objFuncHist");
+this->initializeObjFuncHistFilePtr("objFuncTimeSeries");
 
 this->setDAObjFuncList();

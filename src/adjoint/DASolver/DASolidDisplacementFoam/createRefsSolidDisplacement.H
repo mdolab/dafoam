@@ -11,6 +11,6 @@ volTensorField& gradD = gradDPtr_();
 volVectorField& divSigmaExp = divSigmaExpPtr_();
 
 // create a file to store the objective values
-this->initializeObjFuncHistFilePtr("objFuncHist");
+this->initializeObjFuncHistFilePtr("objFuncTimeSeries");
 
 this->setDAObjFuncList();
