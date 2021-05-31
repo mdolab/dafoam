@@ -52,41 +52,40 @@ void DAPisoFoam::initSolver()
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
-    label active = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
+    label hybridAdjActive = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
 
-    nTimeInstances_ =
-        daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
-
-    periodicity_ =
-        daOptionPtr_->getSubDictOption<scalar>("hybridAdjoint", "periodicity");
-
-    if (!active)
+    if (hybridAdjActive)
     {
-        FatalErrorIn("hybridAdjoint") << "active is False!" << abort(FatalError);
-    }
 
-    if (periodicity_ <= 0)
-    {
-        FatalErrorIn("hybridAdjoint") << "periodicity <= 0!" << abort(FatalError);
-    }
+        nTimeInstances_ =
+            daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
 
-    if (nTimeInstances_ <= 0)
-    {
-        FatalErrorIn("hybridAdjoint") << "nTimeInstances <= 0!" << abort(FatalError);
-    }
+        periodicity_ =
+            daOptionPtr_->getSubDictOption<scalar>("hybridAdjoint", "periodicity");
 
-    stateAllInstances_.setSize(nTimeInstances_);
-    stateBounaryAllInstances_.setSize(nTimeInstances_);
-    objFuncsAllInstances_.setSize(nTimeInstances_);
-    runTimeAllInstances_.setSize(nTimeInstances_);
-    runTimeIndexAllInstances_.setSize(nTimeInstances_);
+        if (periodicity_ <= 0)
+        {
+            FatalErrorIn("hybridAdjoint") << "periodicity <= 0!" << abort(FatalError);
+        }
 
-    forAll(stateAllInstances_, idxI)
-    {
-        stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
-        stateBounaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
-        runTimeAllInstances_[idxI] = 0.0;
-        runTimeIndexAllInstances_[idxI] = 0.0;
+        if (nTimeInstances_ <= 0)
+        {
+            FatalErrorIn("hybridAdjoint") << "nTimeInstances <= 0!" << abort(FatalError);
+        }
+
+        stateAllInstances_.setSize(nTimeInstances_);
+        stateBounaryAllInstances_.setSize(nTimeInstances_);
+        objFuncsAllInstances_.setSize(nTimeInstances_);
+        runTimeAllInstances_.setSize(nTimeInstances_);
+        runTimeIndexAllInstances_.setSize(nTimeInstances_);
+
+        forAll(stateAllInstances_, idxI)
+        {
+            stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
+            stateBounaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
+            runTimeAllInstances_[idxI] = 0.0;
+            runTimeIndexAllInstances_[idxI] = 0.0;
+        }
     }
 
     // initialize fvSource and the source term
@@ -104,7 +103,6 @@ void DAPisoFoam::initSolver()
 
     // initialize intermediate variable pointer for mean field calculation
     daIntmdVarPtr_.reset(new DAIntmdVar(mesh, daOptionPtr_()));
-
 }
 
 label DAPisoFoam::solvePrimal(
@@ -123,6 +121,8 @@ label DAPisoFoam::solvePrimal(
     */
 
 #include "createRefsPiso.H"
+
+    label hybridAdjActive = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
 
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
@@ -202,7 +202,10 @@ label DAPisoFoam::solvePrimal(
 
         runTime.write();
 
-        this->saveTimeInstanceField(timeInstanceI);
+        if (hybridAdjActive)
+        {
+            this->saveTimeInstanceField(timeInstanceI);
+        }
     }
 
     this->calcPrimalResidualStatistics("print");
