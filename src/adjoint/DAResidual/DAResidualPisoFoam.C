@@ -39,6 +39,8 @@ DAResidualPisoFoam::DAResidualPisoFoam(
     {
         hasFvSource_ = 1;
     }
+
+    timeAccurateAdjActive_ = daOption.getSubDictOption<label>("timeAccurateAdjoint", "active");
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -93,7 +95,7 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
     if (hasFvSource_)
     {
         DAFvSource& daFvSource(const_cast<DAFvSource&>(
-          mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
+            mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
         // update the actuator source term
         daFvSource.calcFvSource(fvSource_);
     }
@@ -102,6 +104,11 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
         fvm::div(phi_, U_, divUScheme)
         + daTurb_.divDevReff(U_)
         - fvSource_);
+
+    if (timeAccurateAdjActive_)
+    {
+        UEqn += fvm::ddt(U_);
+    }
 
     UEqn.relax();
 
@@ -125,6 +132,11 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
     HbyA = rAU * UEqn.H();
 
     surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
+
+    if (timeAccurateAdjActive_)
+    {
+        phiHbyA += fvc::interpolate(rAU)*fvc::ddtCorr(U_, phi_);
+    }
 
     adjustPhi(phiHbyA, U_, p_);
 

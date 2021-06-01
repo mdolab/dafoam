@@ -56,6 +56,9 @@ protected:
     /// whether to has fvSource term
     label hasFvSource_ = 0;
 
+    /// whether the time-accurate adjoint is active
+    label timeAccurateAdjActive_ = 0;
+
 public:
     TypeName("DAPisoFoam");
     // Constructors
