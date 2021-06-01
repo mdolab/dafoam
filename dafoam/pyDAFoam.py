@@ -401,6 +401,9 @@ class DAOPTION(object):
     ## periodicity is the periodicity of flow oscillation
     hybridAdjoint = {"active": False, "nTimeInstances": -1, "periodicity": -1.0}
 
+    ## Options for time-accurate adjoint.
+    timeAccurateAdjoint = {"active": False}
+
     ## At which iteration should we start the averaging of objective functions.
     ## This is only used for unsteady solvers
     objFuncAvgStart = 1

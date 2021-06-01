@@ -98,8 +98,11 @@ protected:
     /// periodicity of oscillating flow variables
     scalar periodicity_;
 
-    /// save primal variable to time instance list for unsteady adjoint
-    void saveTimeInstanceField(label& timeInstanceI);
+    /// save primal variable to time instance list for hybrid adjoint
+    void saveTimeInstanceFieldHybrid(label& timeInstanceI);
+
+    /// save primal variable to time instance list for time accurate adjoint
+    void saveTimeInstanceFieldTimeAccurate(label& timeInstanceI);
 
 public:
     TypeName("DAPisoFoam");

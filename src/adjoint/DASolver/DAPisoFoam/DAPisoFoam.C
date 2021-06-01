@@ -54,6 +54,8 @@ void DAPisoFoam::initSolver()
 
     label hybridAdjActive = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
 
+    label timeAccurateAdjActive = daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "active");
+
     if (hybridAdjActive)
     {
 
@@ -67,10 +69,21 @@ void DAPisoFoam::initSolver()
         {
             FatalErrorIn("hybridAdjoint") << "periodicity <= 0!" << abort(FatalError);
         }
+    }
+
+    if (timeAccurateAdjActive)
+    {
+        scalar endTime = runTimePtr_->endTime().value();
+        scalar deltaT = runTimePtr_->deltaTValue();
+        nTimeInstances_ = round(endTime / deltaT);
+    }
+
+    if (hybridAdjActive || timeAccurateAdjActive)
+    {
 
         if (nTimeInstances_ <= 0)
         {
-            FatalErrorIn("hybridAdjoint") << "nTimeInstances <= 0!" << abort(FatalError);
+            FatalErrorIn("") << "nTimeInstances <= 0!" << abort(FatalError);
         }
 
         stateAllInstances_.setSize(nTimeInstances_);
@@ -123,6 +136,7 @@ label DAPisoFoam::solvePrimal(
 #include "createRefsPiso.H"
 
     label hybridAdjActive = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
+    label timeAccurateAdjActive = daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "active");
 
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
@@ -204,7 +218,12 @@ label DAPisoFoam::solvePrimal(
 
         if (hybridAdjActive)
         {
-            this->saveTimeInstanceField(timeInstanceI);
+            this->saveTimeInstanceFieldHybrid(timeInstanceI);
+        }
+
+        if (timeAccurateAdjActive)
+        {
+            this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
         }
     }
 
@@ -222,7 +241,7 @@ label DAPisoFoam::solvePrimal(
     return 0;
 }
 
-void DAPisoFoam::saveTimeInstanceField(label& timeInstanceI)
+void DAPisoFoam::saveTimeInstanceFieldHybrid(label& timeInstanceI)
 {
     /*
     Description:
@@ -265,6 +284,34 @@ void DAPisoFoam::saveTimeInstanceField(label& timeInstanceI)
         timeInstanceI++;
     }
     return;
+}
+
+void DAPisoFoam::saveTimeInstanceFieldTimeAccurate(label& timeInstanceI)
+{
+    /*
+    Description:
+        Save primal variable to time instance list for unsteady adjoint
+        Here we save every time step
+    */
+    // save fields
+    daFieldPtr_->ofField2List(
+        stateAllInstances_[timeInstanceI],
+        stateBounaryAllInstances_[timeInstanceI]);
+
+    // save objective functions
+    forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
+    {
+        word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
+        scalar objFuncVal = this->getObjFuncValue(objFuncName);
+        objFuncsAllInstances_[timeInstanceI].set(objFuncName, objFuncVal);
+    }
+
+    // save runTime
+    scalar t = runTimePtr_->timeOutputValue();
+    runTimeAllInstances_[timeInstanceI] = t;
+    runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
+
+    timeInstanceI++;
 }
 
 void DAPisoFoam::setTimeInstanceField(const label instanceI)
