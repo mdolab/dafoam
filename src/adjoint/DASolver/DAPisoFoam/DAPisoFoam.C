@@ -56,6 +56,12 @@ void DAPisoFoam::initSolver()
 
     label timeAccurateAdjActive = daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "active");
 
+    if (hybridAdjActive * timeAccurateAdjActive != 0)
+    {
+        FatalErrorIn("") << "Both hybridAdjoint and timeAccurateAdjoint are active! Not valid!"
+                         << abort(FatalError);
+    }
+
     if (hybridAdjActive)
     {
 
