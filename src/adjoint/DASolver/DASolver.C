@@ -3074,6 +3074,7 @@ void DASolver::calcdFdXvAD(
             }
         }
         meshPtr_->movePoints(meshPoints);
+        meshPtr_->moving(false);
         // update all intermediate variables and boundary conditions
         daResidualPtr_->correctBoundaryConditions();
         daResidualPtr_->updateIntermediateVariables();
@@ -3179,6 +3180,7 @@ void DASolver::calcdRdXvTPsiAD(
         }
     }
     meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
     // compute residuals
     daResidualPtr_->correctBoundaryConditions();
     daResidualPtr_->updateIntermediateVariables();

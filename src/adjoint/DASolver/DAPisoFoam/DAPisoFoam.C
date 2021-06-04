@@ -79,9 +79,18 @@ void DAPisoFoam::initSolver()
 
     if (timeAccurateAdjActive)
     {
+
+        nTimeInstances_ =
+            daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "nTimeInstances");
+
         scalar endTime = runTimePtr_->endTime().value();
         scalar deltaT = runTimePtr_->deltaTValue();
-        nTimeInstances_ = round(endTime / deltaT);
+        label maxNTimeInstances = round(endTime / deltaT);
+        if (nTimeInstances_ > maxNTimeInstances)
+        {
+            FatalErrorIn("") << "nTimeInstances in timeAccurateAdjoint is greater than "
+                             << "the maximal possible value!" << abort(FatalError);
+        }
     }
 
     if (hybridAdjActive || timeAccurateAdjActive)
@@ -176,7 +185,9 @@ label DAPisoFoam::solvePrimal(
 
     // We need to set the mesh moving to false, otherwise we will get V0 not found error.
     // Need to dig into this issue later
-    mesh.moving(false);
+    // NOTE: we have commented this out. Setting mesh.moving(false) has been done
+    // right after mesh.movePoints() calls.
+    //mesh.moving(false);
 
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
