@@ -104,15 +104,11 @@ void DAPisoFoam::initSolver()
         stateAllInstances_.setSize(nTimeInstances_);
         stateBounaryAllInstances_.setSize(nTimeInstances_);
         objFuncsAllInstances_.setSize(nTimeInstances_);
-        runTimeAllInstances_.setSize(nTimeInstances_);
-        runTimeIndexAllInstances_.setSize(nTimeInstances_);
 
         forAll(stateAllInstances_, idxI)
         {
             stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
             stateBounaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
-            runTimeAllInstances_[idxI] = 0.0;
-            runTimeIndexAllInstances_[idxI] = 0.0;
         }
     }
 
@@ -294,10 +290,6 @@ void DAPisoFoam::saveTimeInstanceFieldHybrid(label& timeInstanceI)
             objFuncsAllInstances_[timeInstanceI].set(objFuncName, objFuncVal);
         }
 
-        // save runTime
-        runTimeAllInstances_[timeInstanceI] = t;
-        runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
-
         if (daOptionPtr_->getOption<label>("debug"))
         {
             this->calcPrimalResidualStatistics("print");
@@ -328,11 +320,6 @@ void DAPisoFoam::saveTimeInstanceFieldTimeAccurate(label& timeInstanceI)
         objFuncsAllInstances_[timeInstanceI].set(objFuncName, objFuncVal);
     }
 
-    // save runTime
-    scalar t = runTimePtr_->timeOutputValue();
-    runTimeAllInstances_[timeInstanceI] = t;
-    runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
-
     timeInstanceI++;
 }
 
@@ -350,7 +337,8 @@ void DAPisoFoam::setTimeInstanceField(const label instanceI)
     // set run time
     // NOTE: we need to call setTime before updating the oldTime fields, this is because
     // the setTime call will assign field to field.oldTime()
-    runTimePtr_->setTime(runTimeAllInstances_[instanceI], runTimeIndexAllInstances_[instanceI]);
+    scalar deltaT = runTimePtr_->deltaTValue();
+    runTimePtr_->setTime((instanceI + 1) * deltaT, instanceI + 1);
 
     label timeAccurateAdjActive = daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "active");
 

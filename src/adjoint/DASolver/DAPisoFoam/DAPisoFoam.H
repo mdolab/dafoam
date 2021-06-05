@@ -86,12 +86,6 @@ protected:
     /// objective function for all instances
     List<dictionary> objFuncsAllInstances_;
 
-    /// the runtime value for all instances
-    List<scalar> runTimeAllInstances_;
-
-    /// the runtime index for all instances
-    List<label> runTimeIndexAllInstances_;
-
     /// number of time instances for hybird adjoint
     label nTimeInstances_;
 
