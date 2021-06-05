@@ -402,7 +402,7 @@ class DAOPTION(object):
     hybridAdjoint = {"active": False, "nTimeInstances": -1, "periodicity": -1.0}
 
     ## Options for time-accurate adjoint.
-    timeAccurateAdjoint = {"active": False}
+    timeAccurateAdjoint = {"active": False, "nTimeInstances": -1}
 
     ## At which iteration should we start the averaging of objective functions.
     ## This is only used for unsteady solvers
@@ -1632,7 +1632,7 @@ class PYDAFOAM(object):
 
         return
 
-    def solveAdjoint(self):
+    def solveAdjoint(self, timeAccurate=False):
         """
         Run adjoint solver to compute the adjoint vector psiVec
 
@@ -1641,6 +1641,9 @@ class PYDAFOAM(object):
         xvVec: vector that contains all the mesh point coordinates
 
         wVec: vector that contains all the state variables
+
+        timeAccurate: if it is for time accurate adjoint, if True, we need to
+            do extra operation for dFdW
 
         Output:
         -------

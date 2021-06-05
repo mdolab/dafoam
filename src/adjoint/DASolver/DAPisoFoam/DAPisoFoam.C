@@ -224,6 +224,11 @@ label DAPisoFoam::solvePrimal(
 
             this->printAllObjFuncs();
 
+            if (daOptionPtr_->getOption<label>("debug"))
+            {
+                this->calcPrimalResidualStatistics("print");
+            }
+
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                  << nl << endl;
@@ -342,13 +347,43 @@ void DAPisoFoam::setTimeInstanceField(const label instanceI)
 
     Info << "Setting fields for time instance " << instanceI << endl;
 
+    // set run time
+    // NOTE: we need to call setTime before updating the oldTime fields, this is because
+    // the setTime call will assign field to field.oldTime()
+    runTimePtr_->setTime(runTimeAllInstances_[instanceI], runTimeIndexAllInstances_[instanceI]);
+
+    label timeAccurateAdjActive = daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "active");
+
     // set fields
+    label oldTimeLevel = 0;
     daFieldPtr_->list2OFField(
         stateAllInstances_[instanceI],
-        stateBounaryAllInstances_[instanceI]);
+        stateBounaryAllInstances_[instanceI],
+        oldTimeLevel);
 
-    // set run time
-    runTimePtr_->setTime(runTimeAllInstances_[instanceI], runTimeIndexAllInstances_[instanceI]);
+    // for time accurate adjoint, in addition to assign current fields,
+    // we need to assign oldTime fields. The number of old time fields
+    // depends on the ddtScheme and will be decided in list2OFField func
+    if (timeAccurateAdjActive)
+    {
+        if (instanceI >= 1)
+        {
+            oldTimeLevel = 1;
+            daFieldPtr_->list2OFField(
+                stateAllInstances_[instanceI - 1],
+                stateBounaryAllInstances_[instanceI - 1],
+                oldTimeLevel);
+        }
+
+        if (instanceI >= 2)
+        {
+            oldTimeLevel = 2;
+            daFieldPtr_->list2OFField(
+                stateAllInstances_[instanceI - 2],
+                stateBounaryAllInstances_[instanceI - 2],
+                oldTimeLevel);
+        }
+    }
 
     // We need to call correctBC multiple times to reproduce
     // the exact residual for mulitpoint, this is needed for some boundary conditions

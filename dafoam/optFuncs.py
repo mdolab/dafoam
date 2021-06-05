@@ -217,7 +217,7 @@ def calcObjFuncSens(xDV, funcs):
         Info("Objective Function Sensitivity: ")
         Info(funcsSens)
         Info("Adjoint Runtime: %g s" % (b - a))
-    
+
     # write the sensitivity values to file
     DASolver.writeTotalDeriv("totalDerivHist.txt", funcsSens, evalFuncs)
 
@@ -368,6 +368,61 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
     Info("Adjoint Runtime: %g s" % (b - a))
 
     return funcsSensCombined, fail
+
+
+def calcObjFuncSensTimeAccurateAdjoint(xDV, funcs):
+    """
+    Run the adjoint solver and get objective function sensitivities.
+    This is the time accurate adjoint version of calcObjFuncSens
+    """
+
+    Info("\n")
+    Info("+--------------------------------------------------------------------------+")
+    Info("|              Evaluating Objective Function Sensitivities %03d             |" % DASolver.nSolveAdjoints)
+    Info("+--------------------------------------------------------------------------+")
+
+    fail = False
+
+    a = time.time()
+
+    # write the design variable values to file
+    DASolver.writeDesignVariable("designVariableHist.txt", xDV)
+
+    # write the deform FFDs
+    DASolver.writeDeformedFFDs()
+
+    nTimeInstances = DASolver.getOption("timeAccurateAdjoint")["nTimeInstances"]
+
+    for i in range(nTimeInstances-1, -1, -1):
+
+        Info("--Solving Adjoint for Time Instance %d--" % i)
+
+        funcsSens = {}
+
+        # Evaluate the geometric constraint derivatives
+        DVCon.evalFunctionsSens(funcsSens)
+
+        # set the state vector for case i
+        DASolver.setTimeInstanceField(i)
+
+        # Solve the adjoint
+        DASolver.solveAdjoint()
+
+        # Evaluate the CFD derivatives
+        DASolver.evalFunctionsSens(funcsSens, evalFuncs=evalFuncs)
+
+        if funcsSens["fail"] is True:
+            fail = True
+
+        if DASolver.getOption("debug"):
+            with np.printoptions(precision=16, threshold=5, suppress=True):
+                Info("Objective Function Sensitivity: ")
+                Info(funcsSens)
+
+    b = time.time()
+    Info("Adjoint Runtime: %g s" % (b - a))
+
+    return funcsSens, fail
 
 
 def runPrimal(objFun=calcObjFuncValues):
