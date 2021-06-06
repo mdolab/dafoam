@@ -180,6 +180,50 @@ def calcObjFuncValuesHybridAdjoint(xDV):
     return funcs, fail
 
 
+def calcObjFuncValuesTimeAccurateAdjoint(xDV):
+    """
+    Update the design surface and run the primal solver to get objective function values.
+    """
+
+    Info("\n")
+    Info("+--------------------------------------------------------------------------+")
+    Info("|                  Evaluating Objective Functions %03d                      |" % DASolver.nSolvePrimals)
+    Info("+--------------------------------------------------------------------------+")
+    Info("Design Variables: ")
+    Info(xDV)
+
+    a = time.time()
+
+    # Setup an empty dictionary for the evaluated function values
+    funcs = {}
+
+    # Set the current design variables in the DV object
+    DVGeo.setDesignVars(xDV)
+    DASolver.setDesignVars(xDV)
+
+    # Evaluate the geometric constraints and add them to the funcs dictionary
+    DVCon.evalFunctions(funcs)
+
+    # Solve the CFD problem
+    DASolver()
+
+    # Populate the required values from the CFD problem
+    DASolver.evalFunctions(funcs, evalFuncs=evalFuncs)
+
+    DASolver.setTimeInstanceVar(mode="list2Mat")
+
+    b = time.time()
+
+    # Print the current solution to the screen
+    Info("Objective Functions: ")
+    Info(funcs)
+    Info("Flow Runtime: %g" % (b - a))
+
+    fail = funcs["fail"]
+
+    return funcs, fail
+
+
 def calcObjFuncSens(xDV, funcs):
     """
     Run the adjoint solver and get objective function sensitivities.
@@ -393,7 +437,9 @@ def calcObjFuncSensTimeAccurateAdjoint(xDV, funcs):
 
     nTimeInstances = DASolver.getOption("timeAccurateAdjoint")["nTimeInstances"]
 
-    for i in range(nTimeInstances-1, -1, -1):
+    DASolver.setTimeInstanceVar(mode="mat2List")
+
+    for i in range(nTimeInstances - 1, -1, -1):
 
         Info("--Solving Adjoint for Time Instance %d--" % i)
 

@@ -102,7 +102,7 @@ void DAPisoFoam::initSolver()
         }
 
         stateAllInstances_.setSize(nTimeInstances_);
-        stateBounaryAllInstances_.setSize(nTimeInstances_);
+        stateBoundaryAllInstances_.setSize(nTimeInstances_);
         objFuncsAllInstances_.setSize(nTimeInstances_);
         runTimeAllInstances_.setSize(nTimeInstances_);
         runTimeIndexAllInstances_.setSize(nTimeInstances_);
@@ -110,7 +110,7 @@ void DAPisoFoam::initSolver()
         forAll(stateAllInstances_, idxI)
         {
             stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
-            stateBounaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
+            stateBoundaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
             runTimeAllInstances_[idxI] = 0.0;
             runTimeIndexAllInstances_[idxI] = 0;
         }
@@ -284,7 +284,7 @@ void DAPisoFoam::saveTimeInstanceFieldHybrid(label& timeInstanceI)
         // save fields
         daFieldPtr_->ofField2List(
             stateAllInstances_[timeInstanceI],
-            stateBounaryAllInstances_[timeInstanceI]);
+            stateBoundaryAllInstances_[timeInstanceI]);
 
         // save objective functions
         forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
@@ -318,7 +318,7 @@ void DAPisoFoam::saveTimeInstanceFieldTimeAccurate(label& timeInstanceI)
     // save fields
     daFieldPtr_->ofField2List(
         stateAllInstances_[timeInstanceI],
-        stateBounaryAllInstances_[timeInstanceI]);
+        stateBoundaryAllInstances_[timeInstanceI]);
 
     // save objective functions
     forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
@@ -358,7 +358,7 @@ void DAPisoFoam::setTimeInstanceField(const label instanceI)
     label oldTimeLevel = 0;
     daFieldPtr_->list2OFField(
         stateAllInstances_[instanceI],
-        stateBounaryAllInstances_[instanceI],
+        stateBoundaryAllInstances_[instanceI],
         oldTimeLevel);
 
     // for time accurate adjoint, in addition to assign current fields,
@@ -371,7 +371,7 @@ void DAPisoFoam::setTimeInstanceField(const label instanceI)
             oldTimeLevel = 1;
             daFieldPtr_->list2OFField(
                 stateAllInstances_[instanceI - 1],
-                stateBounaryAllInstances_[instanceI - 1],
+                stateBoundaryAllInstances_[instanceI - 1],
                 oldTimeLevel);
         }
 
@@ -380,7 +380,7 @@ void DAPisoFoam::setTimeInstanceField(const label instanceI)
             oldTimeLevel = 2;
             daFieldPtr_->list2OFField(
                 stateAllInstances_[instanceI - 2],
-                stateBounaryAllInstances_[instanceI - 2],
+                stateBoundaryAllInstances_[instanceI - 2],
                 oldTimeLevel);
         }
     }
@@ -404,6 +404,88 @@ void DAPisoFoam::setTimeInstanceVar(
     Vec timeVec,
     Vec timeIdxVec)
 {
+    PetscInt Istart, Iend;
+    MatGetOwnershipRange(stateMat, &Istart, &Iend);
+
+    PetscInt IstartBC, IendBC;
+    MatGetOwnershipRange(stateBCMat, &IstartBC, &IendBC);
+
+    for (label n = 0; n < nTimeInstances_; n++)
+    {
+        for (label i = Istart; i < Iend; i++)
+        {
+            label relIdx = i - Istart;
+            PetscScalar val;
+            if (mode == "mat2List")
+            {
+                MatGetValues(stateMat, 1, &i, 1, &n, &val);
+                stateAllInstances_[n][relIdx] = val;
+            }
+            else if (mode == "list2Mat")
+            {
+                assignValueCheckAD(val, stateAllInstances_[n][relIdx]);
+                MatSetValue(stateMat, i, n, val, INSERT_VALUES);
+            }
+            else
+            {
+                FatalErrorIn("") << "mode not valid!" << abort(FatalError);
+            }
+        }
+
+        for (label i = IstartBC; i < IendBC; i++)
+        {
+            label relIdx = i - IstartBC;
+            PetscScalar val;
+            if (mode == "mat2List")
+            {
+                MatGetValues(stateBCMat, 1, &i, 1, &n, &val);
+                stateBoundaryAllInstances_[n][relIdx] = val;
+            }
+            else if (mode == "list2Mat")
+            {
+                assignValueCheckAD(val, stateBoundaryAllInstances_[n][relIdx]);
+                MatSetValue(stateBCMat, i, n, val, INSERT_VALUES);
+            }
+            else
+            {
+                FatalErrorIn("") << "mode not valid!" << abort(FatalError);
+            }
+        }
+    }
+
+    if (mode == "list2Mat")
+    {
+        MatAssemblyBegin(stateMat, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(stateMat, MAT_FINAL_ASSEMBLY);
+        MatAssemblyBegin(stateBCMat, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(stateBCMat, MAT_FINAL_ASSEMBLY);
+    }
+
+    PetscScalar* timeVecArray;
+    PetscScalar* timeIdxVecArray;
+    VecGetArray(timeVec, &timeVecArray);
+    VecGetArray(timeIdxVec, &timeIdxVecArray);
+
+    for (label n = 0; n < nTimeInstances_; n++)
+    {
+        if (mode == "mat2List")
+        {
+            runTimeAllInstances_[n] = timeVecArray[n];
+            runTimeIndexAllInstances_[n] = round(timeIdxVecArray[n]);
+        }
+        else if (mode == "list2Mat")
+        {
+            assignValueCheckAD(timeVecArray[n], runTimeAllInstances_[n]);
+            timeIdxVecArray[n] = runTimeIndexAllInstances_[n];
+        }
+        else
+        {
+            FatalErrorIn("") << "mode not valid!" << abort(FatalError);
+        }
+    }
+
+    VecRestoreArray(timeVec, &timeVecArray);
+    VecRestoreArray(timeIdxVec, &timeIdxVecArray);
 }
 
 scalar DAPisoFoam::getTimeInstanceObjFunc(

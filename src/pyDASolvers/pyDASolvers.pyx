@@ -56,6 +56,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void ofField2StateVec(PetscVec)
         void stateVec2OFField(PetscVec)
         int getNLocalAdjointStates()
+        int getNLocalAdjointBoundaryStates()
         int getNLocalCells()
         int checkMesh()
         double getObjFuncValue(char *)
@@ -240,6 +241,9 @@ cdef class pyDASolvers:
     
     def getNLocalAdjointStates(self):
         return self._thisptr.getNLocalAdjointStates()
+    
+    def getNLocalAdjointBoundaryStates(self):
+        return self._thisptr.getNLocalAdjointBoundaryStates()
     
     def getNLocalCells(self):
         return self._thisptr.getNLocalCells()

@@ -562,6 +562,12 @@ public:
         return daIndexPtr_->nLocalAdjointStates;
     }
 
+    /// return the number of local adjoint boundary states
+    label getNLocalAdjointBoundaryStates() const
+    {
+        return daIndexPtr_->nLocalAdjointBoundaryStates;
+    }
+
     /// return the number of local cells
     label getNLocalCells() const
     {

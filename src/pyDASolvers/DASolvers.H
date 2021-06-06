@@ -385,6 +385,12 @@ public:
         return DASolverPtr_->getNLocalAdjointStates();
     }
 
+    /// return the number of local adjoint boundary states
+    label getNLocalAdjointBoundaryStates() const
+    {
+        return DASolverPtr_->getNLocalAdjointBoundaryStates();
+    }
+
     /// return the number of local cells
     label getNLocalCells() const
     {

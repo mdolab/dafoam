@@ -893,12 +893,60 @@ class PYDAFOAM(object):
         Set the OpenFOAM state variables based on instance index
         """
 
-        self.solver.setTimeInstanceField(instanceI)
+        if self.getOption("adjJacobianOption") == "JacobianFD":
+            solver = self.solver
+        elif self.getOption("adjJacobianOption") == "JacobianFree":
+            solver = self.solverAD
+
+        solver.setTimeInstanceField(instanceI)
         # NOTE: we need to set the OF field to wVec vector here!
         # this is because we will assign self.wVec to the solveAdjoint function later
-        self.solver.ofField2StateVec(self.wVec)
+        solver.ofField2StateVec(self.wVec)
 
         return
+
+    def initTimeInstanceMats(self):
+
+        nLocalAdjointStates = self.solver.getNLocalAdjointStates()
+        nLocalAdjointBoundaryStates = self.solver.getNLocalAdjointBoundaryStates()
+        nTimeInstances = -99999
+        if self.getOption("hybridAdjoint")["active"]:
+            nTimeInstances = self.getOption("hybridAdjoint")["nTimeInstances"]
+        elif self.getOption("timeAccurateAdjoint")["active"]:
+            nTimeInstances = self.getOption("timeAccurateAdjoint")["nTimeInstances"]
+
+        self.stateMat = PETSc.Mat().create(PETSc.COMM_WORLD)
+        self.stateMat.setSizes(((nLocalAdjointStates, None), (None, nTimeInstances)))
+        self.stateMat.setFromOptions()
+        self.stateMat.setPreallocationNNZ((nTimeInstances, nTimeInstances))
+        self.stateMat.setUp()
+
+        self.stateBCMat = PETSc.Mat().create(PETSc.COMM_WORLD)
+        self.stateBCMat.setSizes(((nLocalAdjointBoundaryStates, None), (None, nTimeInstances)))
+        self.stateBCMat.setFromOptions()
+        self.stateBCMat.setPreallocationNNZ((nTimeInstances, nTimeInstances))
+        self.stateBCMat.setUp()
+
+        self.timeVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
+        self.timeIdxVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
+
+    def setTimeInstanceVar(self, mode):
+
+        if mode == "list2Mat":
+            self.solver.setTimeInstanceVar(mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec)
+        elif mode == "mat2List":
+            if self.getOption("adjJacobianOption") == "JacobianFD":
+                self.solver.setTimeInstanceVar(
+                    mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
+                )
+            elif self.getOption("adjJacobianOption") == "JacobianFree":
+                self.solverAD.setTimeInstanceVar(
+                    mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
+                )
+            else:
+                raise Error("adjJacobianOption can only be either JacobianFD or JacobianFree!")
+        else:
+            raise Error("mode can only be either mat2List or list2Mat!")
 
     def writeDesignVariable(self, fileName, xDV):
         """
@@ -2211,6 +2259,9 @@ class PYDAFOAM(object):
 
         if self.getOption("printDAOptions"):
             self.solver.printAllOptions()
+
+        if self.getOption("hybridAdjoint")["active"] or self.getOption("timeAccurateAdjoint")["active"]:
+            self.initTimeInstanceMats()
 
         self.solverInitialized = 1
 

@@ -81,7 +81,7 @@ protected:
     List<List<scalar>> stateAllInstances_;
 
     /// state boundary variable list for all instances
-    List<List<scalar>> stateBounaryAllInstances_;
+    List<List<scalar>> stateBoundaryAllInstances_;
 
     /// objective function for all instances
     List<dictionary> objFuncsAllInstances_;
