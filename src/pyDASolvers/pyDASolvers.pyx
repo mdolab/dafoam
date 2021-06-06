@@ -74,6 +74,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void readVectorBinary(PetscVec, char *)
         void writeVectorBinary(PetscVec, char *)
         void setTimeInstanceField(int)
+        void setTimeInstanceVar(char *, PetscMat, PetscMat, PetscVec, PetscVec)
         double getTimeInstanceObjFunc(int, char *)
         void setFieldValue4GlobalCellI(char *, double, int, int)
         void updateBoundaryConditions(char *, char *)
@@ -278,6 +279,9 @@ cdef class pyDASolvers:
     
     def setTimeInstanceField(self, instanceI):
         self._thisptr.setTimeInstanceField(instanceI)
+    
+    def setTimeInstanceVar(self, mode, Mat stateMat, Mat stateBCMat, Vec timeVec, Vec timeIdxVec):
+        self._thisptr.setTimeInstanceVar(mode, stateMat.mat, stateBCMat.mat, timeVec.vec, timeIdxVec.vec)
     
     def getTimeInstanceObjFunc(self, instanceI, objFuncName):
         return self._thisptr.getTimeInstanceObjFunc(instanceI, objFuncName)

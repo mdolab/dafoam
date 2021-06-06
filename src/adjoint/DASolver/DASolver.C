@@ -4292,6 +4292,22 @@ scalar DASolver::getTimeInstanceObjFunc(
     return 0.0;
 }
 
+void DASolver::setTimeInstanceVar(
+    const word mode,
+    Mat stateMat,
+    Mat stateBCMat,
+    Vec timeVec,
+    Vec timeIdxVec)
+{
+    /*
+    Description:
+        Assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
+    */
+
+    FatalErrorIn("") << "setTimeInstanceVar should be implemented in child classes!"
+                     << abort(FatalError);
+}
+
 label DASolver::isPrintTime(
     const Time& runTime,
     const label printInterval) const

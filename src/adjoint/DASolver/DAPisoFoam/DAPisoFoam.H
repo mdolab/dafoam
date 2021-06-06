@@ -86,6 +86,12 @@ protected:
     /// objective function for all instances
     List<dictionary> objFuncsAllInstances_;
 
+    /// the runtime value for all instances
+    List<scalar> runTimeAllInstances_;
+
+    /// the runtime index for all instances
+    List<label> runTimeIndexAllInstances_;
+
     /// number of time instances for hybird adjoint
     label nTimeInstances_;
 
@@ -127,6 +133,13 @@ public:
     virtual scalar getTimeInstanceObjFunc(
         const label instanceI,
         const word objFuncName);
+    
+    virtual void setTimeInstanceVar(
+        const word mode,
+        Mat stateMat,
+        Mat stateBCMat,
+        Vec timeVec,
+        Vec timeIdxVec);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

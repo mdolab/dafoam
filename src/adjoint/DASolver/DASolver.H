@@ -221,6 +221,14 @@ public:
         const label instanceI,
         const word objFuncName);
 
+    /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
+    virtual void setTimeInstanceVar(
+        const word mode,
+        Mat stateMat,
+        Mat stateBCMat,
+        Vec timeVec,
+        Vec timeIdxVec);
+
     /// compute dRdWT
     void calcdRdWT(
         const Vec xvVec,

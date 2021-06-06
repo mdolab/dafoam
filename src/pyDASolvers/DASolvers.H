@@ -509,6 +509,17 @@ public:
         DASolverPtr_->setTimeInstanceField(instanceI);
     }
 
+    /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
+    void setTimeInstanceVar(
+        const word mode,
+        Mat stateMat,
+        Mat stateBCMat,
+        Vec timeVec,
+        Vec timeIdxVec)
+    {
+        DASolverPtr_->setTimeInstanceVar(mode, stateMat, stateBCMat, timeVec, timeIdxVec);
+    }
+
     /// return the value of objective function at the given time instance and name
     double getTimeInstanceObjFunc(
         const label instanceI,
