@@ -431,6 +431,10 @@ void DASolver::calcPrimalResidualStatistics(
         // print the primal residuals to screen
         Info << "Printing Primal Residual Statistics." << endl;
     }
+    else if (mode == "calc")
+    {
+        // we will just calculate but not printting anything
+    }
     else
     {
         FatalErrorIn("") << "mode not valid" << abort(FatalError);

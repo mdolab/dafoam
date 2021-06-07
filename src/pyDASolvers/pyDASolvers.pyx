@@ -79,6 +79,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getTimeInstanceObjFunc(int, char *)
         void setFieldValue4GlobalCellI(char *, double, int, int)
         void updateBoundaryConditions(char *, char *)
+        void calcPrimalResidualStatistics(char *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -295,3 +296,6 @@ cdef class pyDASolvers:
     
     def updateBoundaryConditions(self, fieldName, fieldType):
         self._thisptr.updateBoundaryConditions(fieldName, fieldType)
+    
+    def calcPrimalResidualStatistics(self, mode):
+        self._thisptr.calcPrimalResidualStatistics(mode)

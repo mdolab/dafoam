@@ -887,6 +887,12 @@ class PYDAFOAM(object):
         self.wVec.assemblyEnd()
 
         return
+    
+    def calcPrimalResidualStatistics(self, mode):
+        if self.getOption("adjJacobianOption") == "JacobianFD":
+            self.solver.calcPrimalResidualStatistics(mode.encode())
+        elif self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.calcPrimalResidualStatistics(mode.encode())
 
     def setTimeInstanceField(self, instanceI):
         """

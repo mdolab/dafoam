@@ -553,6 +553,12 @@ public:
     {
         DASolverPtr_->updateBoundaryConditions(fieldName, fieldType);
     }
+
+    /// Calculate the mean, max, and norm2 for all residuals and print it to screen
+    void calcPrimalResidualStatistics(const word mode)
+    {
+        DASolverPtr_->calcPrimalResidualStatistics(mode, 0);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
