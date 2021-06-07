@@ -418,6 +418,12 @@ public:
         const word designVarName,
         Vec dFdACT);
 
+    /// compute dRdWOld^T*Psi
+    void calcdRdWOldTPsiAD(
+        const label oldTimeLevel,
+        const Vec psi,
+        Vec dRdWOldTPsi);
+
     /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
     static PetscErrorCode dRdWTMatVecMultFunction(
         Mat dRdWT,
@@ -433,7 +439,7 @@ public:
     void destroydRdWTMatrixFree();
 
     /// register all state variables as the input for reverse-mode AD
-    void registerStateVariableInput4AD();
+    void registerStateVariableInput4AD(const label oldTimeLevel = 0);
 
     /// register field variables as the input for reverse-mode AD
     void registerFieldVariableInput4AD(
@@ -447,7 +453,9 @@ public:
     void assignVec2ResidualGradient(Vec vecX);
 
     /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
-    void assignStateGradient2Vec(Vec vecY);
+    void assignStateGradient2Vec(
+        Vec vecY,
+        const label oldTimeLevel = 0);
 
     /// set the reverse-mode AD derivatives from the field variables in OpenFOAM to vecY
     void assignFieldGradient2Vec(

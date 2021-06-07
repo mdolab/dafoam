@@ -3583,13 +3583,89 @@ void DASolver::calcdRdActTPsiAD(
 #endif
 }
 
-void DASolver::registerStateVariableInput4AD()
+void DASolver::calcdRdWOldTPsiAD(
+    const label oldTimeLevel,
+    const Vec psi,
+    Vec dRdWOldTPsi)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Compute the matrix-vector products dRdWOld^T*Psi using reverse-mode AD
+        Here WOld means the state variable from previous time step,
+        if oldTimeLevel = 1, WOld means W0, if oldTimeLevel=2, WOld means W00
+        R is always the residuals for the current time step
+    
+    Input:
+
+        oldTimeLevel: 1-dRdW0^T  2-dRdW00^T
+
+        psi: the vector to multiply dRdW0^T
+    
+    Output:
+        dRdWOldTPsi: the matrix-vector products dRdWOld^T * Psi
+    */
+
+    Info << "Calculating [dRdWOld]^T * Psi using reverse-mode AD with level " << oldTimeLevel << endl;
+
+    VecZeroEntries(dRdWOldTPsi);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD(oldTimeLevel);
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(dRdWOldTPsi, oldTimeLevel);
+
+    // NOTE: we need to normalize dRdWOldTPsi!
+    this->normalizeGradientVec(dRdWOldTPsi);
+
+    VecAssemblyBegin(dRdWOldTPsi);
+    VecAssemblyEnd(dRdWOldTPsi);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
+void DASolver::registerStateVariableInput4AD(const label oldTimeLevel)
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
     Description:
         Register all state variables as the input for reverse-mode AD
+    
+    Input:
+        oldTimeLevel: which time level to register, the default value
+        is 0, meaning it will register the state itself. If its 
+        value is 1, it will register state.oldTime(), if its value
+        is 2, it will register state.oldTime().oldTime(). For
+        steady-state adjoint oldTimeLevel = 0
     */
+
+    if (oldTimeLevel < 0 || oldTimeLevel > 2)
+    {
+        FatalErrorIn("") << "oldTimeLevel not valid. Options: 0, 1, or 2"
+                         << abort(FatalError);
+    }
 
     forAll(stateInfo_["volVectorStates"], idxI)
     {
@@ -3601,7 +3677,18 @@ void DASolver::registerStateVariableInput4AD()
         {
             for (label i = 0; i < 3; i++)
             {
-                this->globalADTape_.registerInput(state[cellI][i]);
+                if (oldTimeLevel == 0)
+                {
+                    this->globalADTape_.registerInput(state[cellI][i]);
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    this->globalADTape_.registerInput(state.oldTime()[cellI][i]);
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    this->globalADTape_.registerInput(state.oldTime().oldTime()[cellI][i]);
+                }
             }
         }
     }
@@ -3614,7 +3701,18 @@ void DASolver::registerStateVariableInput4AD()
 
         forAll(state, cellI)
         {
-            this->globalADTape_.registerInput(state[cellI]);
+            if (oldTimeLevel == 0)
+            {
+                this->globalADTape_.registerInput(state[cellI]);
+            }
+            else if (oldTimeLevel == 1)
+            {
+                this->globalADTape_.registerInput(state.oldTime()[cellI]);
+            }
+            else if (oldTimeLevel == 2)
+            {
+                this->globalADTape_.registerInput(state.oldTime().oldTime()[cellI]);
+            }
         }
     }
 
@@ -3626,7 +3724,18 @@ void DASolver::registerStateVariableInput4AD()
 
         forAll(state, cellI)
         {
-            this->globalADTape_.registerInput(state[cellI]);
+            if (oldTimeLevel == 0)
+            {
+                this->globalADTape_.registerInput(state[cellI]);
+            }
+            else if (oldTimeLevel == 1)
+            {
+                this->globalADTape_.registerInput(state.oldTime()[cellI]);
+            }
+            else if (oldTimeLevel == 2)
+            {
+                this->globalADTape_.registerInput(state.oldTime().oldTime()[cellI]);
+            }
         }
     }
 
@@ -3638,13 +3747,35 @@ void DASolver::registerStateVariableInput4AD()
 
         forAll(state, faceI)
         {
-            this->globalADTape_.registerInput(state[faceI]);
+            if (oldTimeLevel == 0)
+            {
+                this->globalADTape_.registerInput(state[faceI]);
+            }
+            else if (oldTimeLevel == 1)
+            {
+                this->globalADTape_.registerInput(state.oldTime()[faceI]);
+            }
+            else if (oldTimeLevel == 2)
+            {
+                this->globalADTape_.registerInput(state.oldTime().oldTime()[faceI]);
+            }
         }
         forAll(state.boundaryField(), patchI)
         {
             forAll(state.boundaryField()[patchI], faceI)
             {
-                this->globalADTape_.registerInput(state.boundaryFieldRef()[patchI][faceI]);
+                if (oldTimeLevel == 0)
+                {
+                    this->globalADTape_.registerInput(state.boundaryFieldRef()[patchI][faceI]);
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    this->globalADTape_.registerInput(state.oldTime().boundaryFieldRef()[patchI][faceI]);
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    this->globalADTape_.registerInput(state.oldTime().oldTime().boundaryFieldRef()[patchI][faceI]);
+                }
             }
         }
     }
@@ -3950,7 +4081,9 @@ void DASolver::assignVec2ResidualGradient(Vec vecX)
 #endif
 }
 
-void DASolver::assignStateGradient2Vec(Vec vecY)
+void DASolver::assignStateGradient2Vec(
+    Vec vecY,
+    const label oldTimeLevel)
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
@@ -3959,11 +4092,23 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
     
     Input:
         OpenFOAM state variables that contain the reverse-mode derivative 
+
+        oldTimeLevel: which time level to register, the default value
+        is 0, meaning it will register the state itself. If its 
+        value is 1, it will register state.oldTime(), if its value
+        is 2, it will register state.oldTime().oldTime(). For
+        steady-state adjoint oldTimeLevel = 0
     
     Output:
         vecY: a vector to store the derivatives. The order of this vector is 
         the same as the state variable vector
     */
+
+    if (oldTimeLevel < 0 || oldTimeLevel > 2)
+    {
+        FatalErrorIn("") << "oldTimeLevel not valid. Options: 0, 1, or 2"
+                         << abort(FatalError);
+    }
 
     PetscScalar* vecArray;
     VecGetArray(vecY, &vecArray);
@@ -3979,7 +4124,18 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
             for (label i = 0; i < 3; i++)
             {
                 label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
-                vecArray[localIdx] = state[cellI][i].getGradient();
+                if (oldTimeLevel == 0)
+                {
+                    vecArray[localIdx] = state[cellI][i].getGradient();
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    vecArray[localIdx] = state.oldTime()[cellI][i].getGradient();
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    vecArray[localIdx] = state.oldTime().oldTime()[cellI][i].getGradient();
+                }
             }
         }
     }
@@ -3993,7 +4149,18 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
         forAll(meshPtr_->cells(), cellI)
         {
             label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
-            vecArray[localIdx] = state[cellI].getGradient();
+            if (oldTimeLevel == 0)
+            {
+                vecArray[localIdx] = state[cellI].getGradient();
+            }
+            else if (oldTimeLevel == 1)
+            {
+                vecArray[localIdx] = state.oldTime()[cellI].getGradient();
+            }
+            else if (oldTimeLevel == 2)
+            {
+                vecArray[localIdx] = state.oldTime().oldTime()[cellI].getGradient();
+            }
         }
     }
 
@@ -4006,7 +4173,18 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
         forAll(meshPtr_->cells(), cellI)
         {
             label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
-            vecArray[localIdx] = state[cellI].getGradient();
+            if (oldTimeLevel == 0)
+            {
+                vecArray[localIdx] = state[cellI].getGradient();
+            }
+            else if (oldTimeLevel == 1)
+            {
+                vecArray[localIdx] = state.oldTime()[cellI].getGradient();
+            }
+            else if (oldTimeLevel == 2)
+            {
+                vecArray[localIdx] = state.oldTime().oldTime()[cellI].getGradient();
+            }
         }
     }
 
@@ -4022,14 +4200,40 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
 
             if (faceI < daIndexPtr_->nLocalInternalFaces)
             {
-                vecArray[localIdx] = state[faceI].getGradient();
+                if (oldTimeLevel == 0)
+                {
+                    vecArray[localIdx] = state[faceI].getGradient();
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    vecArray[localIdx] = state.oldTime()[faceI].getGradient();
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    vecArray[localIdx] = state.oldTime().oldTime()[faceI].getGradient();
+                }
             }
             else
             {
                 label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
                 label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
                 label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
-                vecArray[localIdx] = state.boundaryField()[patchIdx][faceIdx].getGradient();
+
+                if (oldTimeLevel == 0)
+                {
+                    vecArray[localIdx] =
+                        state.boundaryField()[patchIdx][faceIdx].getGradient();
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    vecArray[localIdx] =
+                        state.oldTime().boundaryField()[patchIdx][faceIdx].getGradient();
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    vecArray[localIdx] =
+                        state.oldTime().oldTime().boundaryField()[patchIdx][faceIdx].getGradient();
+                }
             }
         }
     }
