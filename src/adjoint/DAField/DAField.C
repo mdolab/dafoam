@@ -1203,55 +1203,50 @@ void DAField::list2OFField(
         // lookup state from meshDb
         makeState(stateInfo_["volVectorStates"][idxI], volVectorField, db);
 
-        label maxOldTimes = state.nOldTimes();
-
-        if (maxOldTimes >= oldTimeLevel)
+        forAll(mesh_.cells(), cellI)
         {
-            forAll(mesh_.cells(), cellI)
+            for (label comp = 0; comp < 3; comp++)
             {
-                for (label comp = 0; comp < 3; comp++)
+                label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
+                if (oldTimeLevel == 0)
                 {
-                    label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
-                    if (oldTimeLevel == 0)
-                    {
-                        state[cellI][comp] = stateList[localIdx];
-                    }
-                    else if (oldTimeLevel == 1)
-                    {
-                        state.oldTime()[cellI][comp] = stateList[localIdx];
-                    }
-                    else if (oldTimeLevel == 2)
-                    {
-                        state.oldTime().oldTime()[cellI][comp] = stateList[localIdx];
-                    }
+                    state[cellI][comp] = stateList[localIdx];
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    state.oldTime()[cellI][comp] = stateList[localIdx];
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    state.oldTime().oldTime()[cellI][comp] = stateList[localIdx];
                 }
             }
+        }
 
-            forAll(state.boundaryField(), patchI)
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
             {
-                if (state.boundaryField()[patchI].size() > 0)
+                forAll(state.boundaryField()[patchI], faceI)
                 {
-                    forAll(state.boundaryField()[patchI], faceI)
+                    for (label comp = 0; comp < 3; comp++)
                     {
-                        for (label comp = 0; comp < 3; comp++)
+                        if (oldTimeLevel == 0)
                         {
-                            if (oldTimeLevel == 0)
-                            {
-                                state.boundaryFieldRef()[patchI][faceI][comp] =
-                                    stateBoundaryList[localBFaceI];
-                            }
-                            else if (oldTimeLevel == 1)
-                            {
-                                state.oldTime().boundaryFieldRef()[patchI][faceI][comp] =
-                                    stateBoundaryList[localBFaceI];
-                            }
-                            else if (oldTimeLevel == 2)
-                            {
-                                state.oldTime().oldTime().boundaryFieldRef()[patchI][faceI][comp] =
-                                    stateBoundaryList[localBFaceI];
-                            }
-                            localBFaceI++;
+                            state.boundaryFieldRef()[patchI][faceI][comp] =
+                                stateBoundaryList[localBFaceI];
                         }
+                        else if (oldTimeLevel == 1)
+                        {
+                            state.oldTime().boundaryFieldRef()[patchI][faceI][comp] =
+                                stateBoundaryList[localBFaceI];
+                        }
+                        else if (oldTimeLevel == 2)
+                        {
+                            state.oldTime().oldTime().boundaryFieldRef()[patchI][faceI][comp] =
+                                stateBoundaryList[localBFaceI];
+                        }
+                        localBFaceI++;
                     }
                 }
             }
@@ -1263,50 +1258,45 @@ void DAField::list2OFField(
         // lookup state from meshDb
         makeState(stateInfo_["volScalarStates"][idxI], volScalarField, db);
 
-        label maxOldTimes = state.nOldTimes();
-
-        if (maxOldTimes >= oldTimeLevel)
+        forAll(mesh_.cells(), cellI)
         {
-            forAll(mesh_.cells(), cellI)
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            if (oldTimeLevel == 0)
             {
-                label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-                if (oldTimeLevel == 0)
-                {
-                    state[cellI] = stateList[localIdx];
-                }
-                else if (oldTimeLevel == 1)
-                {
-                    state.oldTime()[cellI] = stateList[localIdx];
-                }
-                else if (oldTimeLevel == 2)
-                {
-                    state.oldTime().oldTime()[cellI] = stateList[localIdx];
-                }
+                state[cellI] = stateList[localIdx];
             }
-
-            forAll(state.boundaryField(), patchI)
+            else if (oldTimeLevel == 1)
             {
-                if (state.boundaryField()[patchI].size() > 0)
+                state.oldTime()[cellI] = stateList[localIdx];
+            }
+            else if (oldTimeLevel == 2)
+            {
+                state.oldTime().oldTime()[cellI] = stateList[localIdx];
+            }
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
                 {
-                    forAll(state.boundaryField()[patchI], faceI)
+                    if (oldTimeLevel == 0)
                     {
-                        if (oldTimeLevel == 0)
-                        {
-                            state.boundaryFieldRef()[patchI][faceI] =
-                                stateBoundaryList[localBFaceI];
-                        }
-                        else if (oldTimeLevel == 1)
-                        {
-                            state.oldTime().boundaryFieldRef()[patchI][faceI] =
-                                stateBoundaryList[localBFaceI];
-                        }
-                        else if (oldTimeLevel == 2)
-                        {
-                            state.oldTime().oldTime().boundaryFieldRef()[patchI][faceI] =
-                                stateBoundaryList[localBFaceI];
-                        }
-                        localBFaceI++;
+                        state.boundaryFieldRef()[patchI][faceI] =
+                            stateBoundaryList[localBFaceI];
                     }
+                    else if (oldTimeLevel == 1)
+                    {
+                        state.oldTime().boundaryFieldRef()[patchI][faceI] =
+                            stateBoundaryList[localBFaceI];
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        state.oldTime().oldTime().boundaryFieldRef()[patchI][faceI] =
+                            stateBoundaryList[localBFaceI];
+                    }
+                    localBFaceI++;
                 }
             }
         }
@@ -1317,50 +1307,45 @@ void DAField::list2OFField(
         // lookup state from meshDb
         makeState(stateInfo_["modelStates"][idxI], volScalarField, db);
 
-        label maxOldTimes = state.nOldTimes();
-
-        if (maxOldTimes >= oldTimeLevel)
+        forAll(mesh_.cells(), cellI)
         {
-            forAll(mesh_.cells(), cellI)
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            if (oldTimeLevel == 0)
             {
-                label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
-                if (oldTimeLevel == 0)
-                {
-                    state[cellI] = stateList[localIdx];
-                }
-                else if (oldTimeLevel == 1)
-                {
-                    state.oldTime()[cellI] = stateList[localIdx];
-                }
-                else if (oldTimeLevel == 2)
-                {
-                    state.oldTime().oldTime()[cellI] = stateList[localIdx];
-                }
+                state[cellI] = stateList[localIdx];
             }
-
-            forAll(state.boundaryField(), patchI)
+            else if (oldTimeLevel == 1)
             {
-                if (state.boundaryField()[patchI].size() > 0)
+                state.oldTime()[cellI] = stateList[localIdx];
+            }
+            else if (oldTimeLevel == 2)
+            {
+                state.oldTime().oldTime()[cellI] = stateList[localIdx];
+            }
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryField()[patchI].size() > 0)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
                 {
-                    forAll(state.boundaryField()[patchI], faceI)
+                    if (oldTimeLevel == 0)
                     {
-                        if (oldTimeLevel == 0)
-                        {
-                            state.boundaryFieldRef()[patchI][faceI] =
-                                stateBoundaryList[localBFaceI];
-                        }
-                        else if (oldTimeLevel == 1)
-                        {
-                            state.oldTime().boundaryFieldRef()[patchI][faceI] =
-                                stateBoundaryList[localBFaceI];
-                        }
-                        else if (oldTimeLevel == 2)
-                        {
-                            state.oldTime().oldTime().boundaryFieldRef()[patchI][faceI] =
-                                stateBoundaryList[localBFaceI];
-                        }
-                        localBFaceI++;
+                        state.boundaryFieldRef()[patchI][faceI] =
+                            stateBoundaryList[localBFaceI];
                     }
+                    else if (oldTimeLevel == 1)
+                    {
+                        state.oldTime().boundaryFieldRef()[patchI][faceI] =
+                            stateBoundaryList[localBFaceI];
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        state.oldTime().oldTime().boundaryFieldRef()[patchI][faceI] =
+                            stateBoundaryList[localBFaceI];
+                    }
+                    localBFaceI++;
                 }
             }
         }
@@ -1371,50 +1356,44 @@ void DAField::list2OFField(
         // lookup state from meshDb
         makeState(stateInfo_["surfaceScalarStates"][idxI], surfaceScalarField, db);
 
-        label maxOldTimes = state.nOldTimes();
-
-        if (maxOldTimes >= oldTimeLevel)
+        forAll(mesh_.faces(), faceI)
         {
-
-            forAll(mesh_.faces(), faceI)
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
+            if (faceI < daIndex_.nLocalInternalFaces)
             {
-                label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
-                if (faceI < daIndex_.nLocalInternalFaces)
-                {
 
-                    if (oldTimeLevel == 0)
-                    {
-                        state[faceI] = stateList[localIdx];
-                    }
-                    else if (oldTimeLevel == 1)
-                    {
-                        state.oldTime()[faceI] = stateList[localIdx];
-                    }
-                    else if (oldTimeLevel == 2)
-                    {
-                        state.oldTime().oldTime()[faceI] = stateList[localIdx];
-                    }
-                }
-                else
+                if (oldTimeLevel == 0)
                 {
-                    label relIdx = faceI - daIndex_.nLocalInternalFaces;
-                    const label& patchIdx = daIndex_.bFacePatchI[relIdx];
-                    const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
-                    if (oldTimeLevel == 0)
-                    {
-                        state.boundaryFieldRef()[patchIdx][faceIdx] =
-                            stateList[localIdx];
-                    }
-                    else if (oldTimeLevel == 1)
-                    {
-                        state.oldTime().boundaryFieldRef()[patchIdx][faceIdx] =
-                            stateList[localIdx];
-                    }
-                    else if (oldTimeLevel == 2)
-                    {
-                        state.oldTime().oldTime().boundaryFieldRef()[patchIdx][faceIdx] =
-                            stateList[localIdx];
-                    }
+                    state[faceI] = stateList[localIdx];
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    state.oldTime()[faceI] = stateList[localIdx];
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    state.oldTime().oldTime()[faceI] = stateList[localIdx];
+                }
+            }
+            else
+            {
+                label relIdx = faceI - daIndex_.nLocalInternalFaces;
+                const label& patchIdx = daIndex_.bFacePatchI[relIdx];
+                const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
+                if (oldTimeLevel == 0)
+                {
+                    state.boundaryFieldRef()[patchIdx][faceIdx] =
+                        stateList[localIdx];
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    state.oldTime().boundaryFieldRef()[patchIdx][faceIdx] =
+                        stateList[localIdx];
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    state.oldTime().oldTime().boundaryFieldRef()[patchIdx][faceIdx] =
+                        stateList[localIdx];
                 }
             }
         }
