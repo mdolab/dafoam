@@ -85,10 +85,10 @@ void DAPisoFoam::initSolver()
 
         scalar endTime = runTimePtr_->endTime().value();
         scalar deltaT = runTimePtr_->deltaTValue();
-        label maxNTimeInstances = round(endTime / deltaT);
-        if (nTimeInstances_ > maxNTimeInstances)
+        label maxNTimeInstances = round(endTime / deltaT) + 1;
+        if (nTimeInstances_ != maxNTimeInstances)
         {
-            FatalErrorIn("") << "nTimeInstances in timeAccurateAdjoint is greater than "
+            FatalErrorIn("") << "nTimeInstances in timeAccurateAdjoint is not equal to "
                              << "the maximal possible value!" << abort(FatalError);
         }
     }
@@ -193,6 +193,12 @@ label DAPisoFoam::solvePrimal(
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;
+    // for time accurate adjoints, we need to save states for Time = 0
+    if (timeAccurateAdjActive)
+    {
+        this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
+    }
+    // main loop
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
         printToScreen = this->isPrintTime(runTime, printInterval);
@@ -347,6 +353,8 @@ void DAPisoFoam::setTimeInstanceField(const label instanceI)
 
     Info << "Setting fields for time instance " << instanceI << endl;
 
+    label idxI = -9999;
+
     // set run time
     // NOTE: we need to call setTime before updating the oldTime fields, this is because
     // the setTime call will assign field to field.oldTime()
@@ -362,27 +370,31 @@ void DAPisoFoam::setTimeInstanceField(const label instanceI)
         oldTimeLevel);
 
     // for time accurate adjoint, in addition to assign current fields,
-    // we need to assign oldTime fields. The number of old time fields
-    // depends on the ddtScheme and will be decided in list2OFField func
+    // we need to assign oldTime fields.
+    // NOTE: we always assign oldTime() and oldTime().oldTime(), independent
+    // of whether this variable needs oldTime() or not. Also, for the first
+    // time step, we just assign U to U.oldTime()
     if (timeAccurateAdjActive)
     {
-        if (instanceI >= 1)
-        {
-            oldTimeLevel = 1;
-            daFieldPtr_->list2OFField(
-                stateAllInstances_[instanceI - 1],
-                stateBoundaryAllInstances_[instanceI - 1],
-                oldTimeLevel);
-        }
+        // assign U.oldTime()
+        oldTimeLevel = 1;
+        // if instanceI - 1 < 0, we just assign idxI = 0. This is essentially
+        // assigning U.oldTime() = U
+        idxI = max(instanceI - 1, 0);
+        daFieldPtr_->list2OFField(
+            stateAllInstances_[idxI],
+            stateBoundaryAllInstances_[idxI],
+            oldTimeLevel);
 
-        if (instanceI >= 2)
-        {
-            oldTimeLevel = 2;
-            daFieldPtr_->list2OFField(
-                stateAllInstances_[instanceI - 2],
-                stateBoundaryAllInstances_[instanceI - 2],
-                oldTimeLevel);
-        }
+        // assign U.oldTime().oldTime()
+        oldTimeLevel = 2;
+        // if instanceI - 2 < 0, we just assign idxI = 0, This is essentially
+        // assigning U.oldTime().oldTime() = U
+        idxI = max(instanceI - 2, 0);
+        daFieldPtr_->list2OFField(
+            stateAllInstances_[idxI],
+            stateBoundaryAllInstances_[idxI],
+            oldTimeLevel);
     }
 
     // We need to call correctBC multiple times to reproduce

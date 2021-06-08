@@ -341,6 +341,15 @@ public:
         DASolverPtr_->calcdFdFieldAD(xvVec, wVec, objFuncName, designVarName, dFdField);
     }
 
+    /// compute dRdWOld^T*Psi
+    void calcdRdWOldTPsiAD(
+        const label oldTimeLevel,
+        const Vec psi,
+        Vec dRdWOldTPsi)
+    {
+        DASolverPtr_->calcdRdWOldTPsiAD(oldTimeLevel, psi, dRdWOldTPsi);
+    }
+
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
     void updateOFField(const Vec wVec)
     {

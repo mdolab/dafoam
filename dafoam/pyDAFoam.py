@@ -401,7 +401,8 @@ class DAOPTION(object):
     ## periodicity is the periodicity of flow oscillation
     hybridAdjoint = {"active": False, "nTimeInstances": -1, "periodicity": -1.0}
 
-    ## Options for time-accurate adjoint.
+    ## Options for time-accurate adjoint. Here nTimeInstances should be the number of time
+    ## steps + 1 because we need to include the Time = 0 for time accurate adjoint
     timeAccurateAdjoint = {"active": False, "nTimeInstances": -1}
 
     ## At which iteration should we start the averaging of objective functions.
@@ -706,6 +707,12 @@ class PYDAFOAM(object):
         # initialize the adjoint vector dict
         self.adjVectors = self._initializeAdjVectors()
 
+        # initialize the dRdWOldTPsi vectors
+        self._initializeTimeAccurateAdjointVectors()
+
+        # check if the combination of options is valid.
+        self._checkOptions()
+
         Info("pyDAFoam initialization done!")
 
         return
@@ -834,6 +841,50 @@ class PYDAFOAM(object):
 
         return adjTotalDeriv
 
+    def _initializeTimeAccurateAdjointVectors(self):
+        """
+        Initialize the dRdWTPsi vectors for time accurate adjoint.
+        Here we need to initialize current time step and two previous
+        time steps 0 and 00 for both state and residuals. This is
+        because the backward ddt scheme depends on U, U0, and U00
+        """
+        if self.getOption("timeAccurateAdjoint")["active"]:
+            objFuncDict = self.getOption("objFunc")
+            wSize = self.solver.getNLocalAdjointStates()
+            self.dRdW0TPsi = {}
+            self.dRdW00TPsi = {}
+            self.dR0dW0TPsi = {}
+            self.dR0dW00TPsi = {}
+            self.dR00dW0TPsi = {}
+            self.dR00dW00TPsi = {}
+            for objFuncName in objFuncDict:
+                if objFuncName in self.objFuncNames4Adj:
+                    vecA = PETSc.Vec().create(PETSc.COMM_WORLD)
+                    vecA.setSizes((wSize, PETSc.DECIDE), bsize=1)
+                    vecA.setFromOptions()
+                    vecA.zeroEntries()
+                    self.dRdW0TPsi[objFuncName] = vecA
+
+                    vecB = vecA.duplicate()
+                    vecB.zeroEntries()
+                    self.dRdW00TPsi[objFuncName] = vecB
+
+                    vecC = vecA.duplicate()
+                    vecC.zeroEntries()
+                    self.dR0dW0TPsi[objFuncName] = vecC
+
+                    vecD = vecA.duplicate()
+                    vecD.zeroEntries()
+                    self.dR0dW00TPsi[objFuncName] = vecD
+
+                    vecE = vecA.duplicate()
+                    vecE.zeroEntries()
+                    self.dR00dW0TPsi[objFuncName] = vecE
+
+                    vecF = vecA.duplicate()
+                    vecF.zeroEntries()
+                    self.dR00dW00TPsi[objFuncName] = vecF
+
     def _calcObjFuncNames4Adj(self):
         """
         Compute the objective function names for which we solve the adjoint equation
@@ -859,6 +910,20 @@ class PYDAFOAM(object):
                 else:
                     raise Error("addToAdjoint can be either True or False")
         return objFuncList
+
+    def _checkOptions(self):
+        """
+        Check if the combination of options are valid.
+        For example, if timeAccurateAdjoint is active, we have to set
+        adjJacobianOption = JacobianFree
+        NOTE: we should add all possible checks here!
+        """
+        # check time accurate adjoint
+        if self.getOption("timeAccurateAdjoint")["active"]:
+            if not self.getOption("adjJacobianOption") == "JacobianFree":
+                raise Error("timeAccurateAdjoint only supports adjJacobianOption=JacobianFree!")
+
+        # check other combinations...
 
     def saveMultiPointField(self, indexMP):
         """
@@ -887,7 +952,7 @@ class PYDAFOAM(object):
         self.wVec.assemblyEnd()
 
         return
-    
+
     def calcPrimalResidualStatistics(self, mode):
         if self.getOption("adjJacobianOption") == "JacobianFD":
             self.solver.calcPrimalResidualStatistics(mode.encode())
@@ -1686,7 +1751,7 @@ class PYDAFOAM(object):
 
         return
 
-    def solveAdjoint(self, timeAccurate=False):
+    def solveAdjoint(self):
         """
         Run adjoint solver to compute the adjoint vector psiVec
 
@@ -1695,9 +1760,6 @@ class PYDAFOAM(object):
         xvVec: vector that contains all the mesh point coordinates
 
         wVec: vector that contains all the state variables
-
-        timeAccurate: if it is for time accurate adjoint, if True, we need to
-            do extra operation for dFdW
 
         Output:
         -------
@@ -1763,11 +1825,25 @@ class PYDAFOAM(object):
                 elif self.getOption("adjJacobianOption") == "JacobianFree":
                     self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
 
+                # if it is time accurate adjoint, add extra terms for dFdW
+                if self.getOption("timeAccurateAdjoint")["active"]:
+                    # first copy the vectors from previous residual time step level
+                    self.dR00dW0TPsi[objFuncName].copy(self.dR0dW0TPsi[objFuncName])
+                    self.dR00dW00TPsi[objFuncName].copy(self.dR0dW00TPsi[objFuncName])
+                    self.dR0dW0TPsi[objFuncName].copy(self.dRdW0TPsi[objFuncName])
+                    self.dR0dW00TPsi[objFuncName].copy(self.dRdW00TPsi[objFuncName])
+                    dFdW.axpy(-1.0, self.dR0dW0TPsi[objFuncName])
+                    dFdW.axpy(-1.0, self.dR00dW00TPsi[objFuncName])
+
                 # Initialize the adjoint vector psi and solve for it
                 if self.getOption("adjJacobianOption") == "JacobianFD":
                     self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
                 elif self.getOption("adjJacobianOption") == "JacobianFree":
                     self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
+
+                if self.getOption("timeAccurateAdjoint")["active"]:
+                    self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[objFuncName], self.dRdW0TPsi[objFuncName])
+                    self.solverAD.calcdRdWOldTPsiAD(2, self.adjVectors[objFuncName], self.dRdW00TPsi[objFuncName])
 
                 dFdW.destroy()
 

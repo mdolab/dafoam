@@ -3643,6 +3643,13 @@ void DASolver::calcdRdWOldTPsiAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdWOldTPsi";
+        DAUtility::writeVectorBinary(dRdWOldTPsi, outputName);
+        DAUtility::writeVectorASCII(dRdWOldTPsi, outputName);
+    }
 #endif
 }
 

@@ -439,7 +439,7 @@ def calcObjFuncSensTimeAccurateAdjoint(xDV, funcs):
 
     DASolver.setTimeInstanceVar(mode="mat2List")
 
-    for i in range(nTimeInstances - 1, -1, -1):
+    for i in range(nTimeInstances - 1, 0, -1):
 
         Info("--Solving Adjoint for Time Instance %d--" % i)
 
