@@ -40,7 +40,7 @@ DAResidualPisoFoam::DAResidualPisoFoam(
         hasFvSource_ = 1;
     }
 
-    timeAccurateAdjActive_ = daOption.getSubDictOption<label>("timeAccurateAdjoint", "active");
+    hybridAdjActive_ = daOption.getSubDictOption<label>("hybridAdjoint", "active");
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -101,13 +101,14 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
     }
 
     fvVectorMatrix UEqn(
-        fvm::div(phi_, U_, divUScheme)
+        fvm::ddt(U_)
+        + fvm::div(phi_, U_, divUScheme)
         + daTurb_.divDevReff(U_)
         - fvSource_);
 
-    if (timeAccurateAdjActive_)
+    if (hybridAdjActive_)
     {
-        UEqn += fvm::ddt(U_);
+        UEqn -= fvm::ddt(U_);
     }
 
     UEqn.relax();
@@ -131,11 +132,14 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
     volVectorField HbyA("HbyA", U_);
     HbyA = rAU * UEqn.H();
 
-    surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
+    surfaceScalarField phiHbyA(
+        "phiHbyA",
+        fvc::flux(HbyA)
+            + fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_));
 
-    if (timeAccurateAdjActive_)
+    if (hybridAdjActive_)
     {
-        phiHbyA += fvc::interpolate(rAU)*fvc::ddtCorr(U_, phi_);
+        phiHbyA -= fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_);
     }
 
     adjustPhi(phiHbyA, U_, p_);
