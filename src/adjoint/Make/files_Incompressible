@@ -80,8 +80,9 @@ DALinearEqn/DALinearEqn.C
 
 DASolver/DASolver.C
 DASolver/DASimpleFoam/DASimpleFoam.C
-DASolver/DAPisoFoam/DAPisoFoam.C
 DASolver/DASimpleTFoam/DASimpleTFoam.C
+DASolver/DAPisoFoam/DAPisoFoam.C
+DASolver/DAPimpleFoam/DAPimpleFoam.C
 
 boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
 boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
