@@ -170,6 +170,33 @@ protected:
     /// a flag in dRdWTMatVecMultFunction to determine if the global tap is initialized
     label globalADTape4dRdWTInitialized = 0;
 
+    /// state variable list for all instances (unsteady)
+    List<List<scalar>> stateAllInstances_;
+
+    /// state boundary variable list for all instances (unsteady)
+    List<List<scalar>> stateBoundaryAllInstances_;
+
+    /// objective function for all instances (unsteady)
+    List<dictionary> objFuncsAllInstances_;
+
+    /// the runtime value for all instances (unsteady)
+    List<scalar> runTimeAllInstances_;
+
+    /// the runtime index for all instances (unsteady)
+    List<label> runTimeIndexAllInstances_;
+
+    /// number of time instances for hybird adjoint (unsteady)
+    label nTimeInstances_;
+
+    /// periodicity of oscillating flow variables (unsteady)
+    scalar periodicity_;
+
+    /// save primal variable to time instance list for hybrid adjoint (unsteady)
+    void saveTimeInstanceFieldHybrid(label& timeInstanceI);
+
+    /// save primal variable to time instance list for time accurate adjoint (unsteady)
+    void saveTimeInstanceFieldTimeAccurate(label& timeInstanceI);
+
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -214,15 +241,15 @@ public:
         Vec wVec) = 0;
 
     /// assign primal variables based on the current time instance
-    virtual void setTimeInstanceField(const label instanceI);
+    void setTimeInstanceField(const label instanceI);
 
     /// return the value of objective function at the given time instance and name
-    virtual scalar getTimeInstanceObjFunc(
+    scalar getTimeInstanceObjFunc(
         const label instanceI,
         const word objFuncName);
 
     /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
-    virtual void setTimeInstanceVar(
+    void setTimeInstanceVar(
         const word mode,
         Mat stateMat,
         Mat stateBCMat,

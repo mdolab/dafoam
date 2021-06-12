@@ -62,7 +62,7 @@ protected:
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;
 
-    /// fvSource term 
+    /// fvSource term
     autoPtr<volVectorField> fvSourcePtr_;
 
     /// whether to have fvSource term
@@ -76,33 +76,6 @@ protected:
 
     /// pressure reference value
     scalar pRefValue_ = 0.0;
-
-    /// state variable list for all instances
-    List<List<scalar>> stateAllInstances_;
-
-    /// state boundary variable list for all instances
-    List<List<scalar>> stateBoundaryAllInstances_;
-
-    /// objective function for all instances
-    List<dictionary> objFuncsAllInstances_;
-
-    /// the runtime value for all instances
-    List<scalar> runTimeAllInstances_;
-
-    /// the runtime index for all instances
-    List<label> runTimeIndexAllInstances_;
-
-    /// number of time instances for hybird adjoint
-    label nTimeInstances_;
-
-    /// periodicity of oscillating flow variables
-    scalar periodicity_;
-
-    /// save primal variable to time instance list for hybrid adjoint
-    void saveTimeInstanceFieldHybrid(label& timeInstanceI);
-
-    /// save primal variable to time instance list for time accurate adjoint
-    void saveTimeInstanceFieldTimeAccurate(label& timeInstanceI);
 
 public:
     TypeName("DAPisoFoam");
@@ -125,21 +98,6 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec);
-
-    /// assign primal variables based on the current time instance
-    virtual void setTimeInstanceField(const label instanceI);
-
-    /// return the value of objective function at the given time instance and name
-    virtual scalar getTimeInstanceObjFunc(
-        const label instanceI,
-        const word objFuncName);
-    
-    virtual void setTimeInstanceVar(
-        const word mode,
-        Mat stateMat,
-        Mat stateBCMat,
-        Vec timeVec,
-        Vec timeIdxVec);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
