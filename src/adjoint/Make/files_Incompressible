@@ -27,6 +27,7 @@ DAModel/DAModel.C
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoSimpleFoam.C
 DAStateInfo/DAStateInfoPisoFoam.C
+DAStateInfo/DAStateInfoPimpleFoam.C
 DAStateInfo/DAStateInfoSimpleTFoam.C
 
 DAIndex/DAIndex.C
@@ -53,6 +54,7 @@ DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C
 DAResidual/DAResidualSimpleFoam.C
 DAResidual/DAResidualPisoFoam.C
+DAResidual/DAResidualPimpleFoam.C
 DAResidual/DAResidualSimpleTFoam.C
 
 DAColoring/DAColoring.C
