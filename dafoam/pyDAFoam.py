@@ -1001,6 +1001,11 @@ class PYDAFOAM(object):
 
         self.timeVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
         self.timeIdxVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
+    
+    def initOldTimes(self):
+        # No need to initialize oldTimes for FD
+        if self.getOption("adjJacobianOption") == "JacobianFree":
+            self.solverAD.initOldTimes()
 
     def setTimeInstanceVar(self, mode):
 

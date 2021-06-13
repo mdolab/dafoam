@@ -4748,6 +4748,58 @@ void DASolver::saveTimeInstanceFieldTimeAccurate(label& timeInstanceI)
     timeInstanceI++;
 }
 
+void DASolver::initOldTimes()
+{
+    /*
+    Description:
+        Initialize the oldTime for all state variables. We will create oldTime for
+        all state variables, no matter whether a variable actually need the oldTime()
+        field. This will allow setTimeInstanceField to correctly assign values for
+        oldTime(). NOTE: we need to call this function before calling setTimeInstanceField
+        Otherwise, the first setTimeInstanceField call will not get the correct
+        oldTime values.
+    */
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+        // just create/initialize oldTimes
+        state.oldTime();
+        state.oldTime().oldTime();
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+        // just create/initialize oldTimes
+        state.oldTime();
+        state.oldTime().oldTime();
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+        // just create/initialize oldTimes
+        state.oldTime();
+        state.oldTime().oldTime();
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+        // just create/initialize oldTimes
+        state.oldTime();
+        state.oldTime().oldTime();
+    }
+}
+
 void DASolver::setTimeInstanceField(const label instanceI)
 {
     /*

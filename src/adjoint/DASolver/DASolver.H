@@ -255,6 +255,9 @@ public:
         Mat stateBCMat,
         Vec timeVec,
         Vec timeIdxVec);
+    
+    /// initialize the oldTime for all state variables
+    void initOldTimes();
 
     /// compute dRdWT
     void calcdRdWT(

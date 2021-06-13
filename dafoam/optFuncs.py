@@ -439,6 +439,10 @@ def calcObjFuncSensTimeAccurateAdjoint(xDV, funcs):
 
     DASolver.setTimeInstanceVar(mode="mat2List")
 
+    # need to initialize oldTime fields for all variables this will
+    # create the correct oldTime fields for setTimeInstanceField
+    DASolver.initOldTimes()
+
     for i in range(nTimeInstances - 1, 0, -1):
 
         Info("--Solving Adjoint for Time Instance %d--" % i)
