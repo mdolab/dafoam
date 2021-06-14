@@ -342,6 +342,9 @@ def calcObjFuncSensUnsteady(xDV, funcs):
     # create the correct oldTime fields for setTimeInstanceField
     DASolver.initOldTimes()
 
+    # set these vectors zeros
+    DASolver.zeroTimeAccurateAdjointVectors()
+
     for i in range(nTimeInstances - 1, iEnd, -1):
 
         Info("--Solving Adjoint for Time Instance %d--" % i)

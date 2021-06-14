@@ -882,6 +882,18 @@ class PYDAFOAM(object):
                     vecF = vecA.duplicate()
                     vecF.zeroEntries()
                     self.dR00dW00TPsi[objFuncName] = vecF
+    
+    def zeroTimeAccurateAdjointVectors(self):
+        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
+            objFuncDict = self.getOption("objFunc")
+            for objFuncName in objFuncDict:
+                if objFuncName in self.objFuncNames4Adj:
+                    self.dRdW0TPsi[objFuncName].zeroEntries()
+                    self.dRdW00TPsi[objFuncName].zeroEntries()
+                    self.dR0dW0TPsi[objFuncName].zeroEntries()
+                    self.dR0dW00TPsi[objFuncName].zeroEntries()
+                    self.dR00dW0TPsi[objFuncName].zeroEntries()
+                    self.dR00dW00TPsi[objFuncName].zeroEntries()
 
     def _calcObjFuncNames4Adj(self):
         """
@@ -1830,10 +1842,10 @@ class PYDAFOAM(object):
                 # if it is time accurate adjoint, add extra terms for dFdW
                 if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
                     # first copy the vectors from previous residual time step level
-                    self.dR00dW0TPsi[objFuncName].copy(self.dR0dW0TPsi[objFuncName])
-                    self.dR00dW00TPsi[objFuncName].copy(self.dR0dW00TPsi[objFuncName])
-                    self.dR0dW0TPsi[objFuncName].copy(self.dRdW0TPsi[objFuncName])
-                    self.dR0dW00TPsi[objFuncName].copy(self.dRdW00TPsi[objFuncName])
+                    self.dR0dW0TPsi[objFuncName].copy(self.dR00dW0TPsi[objFuncName])
+                    self.dR0dW00TPsi[objFuncName].copy(self.dR00dW00TPsi[objFuncName])
+                    self.dRdW0TPsi[objFuncName].copy(self.dR0dW0TPsi[objFuncName])
+                    self.dRdW00TPsi[objFuncName].copy(self.dR0dW00TPsi[objFuncName])
                     dFdW.axpy(-1.0, self.dR0dW0TPsi[objFuncName])
                     dFdW.axpy(-1.0, self.dR00dW00TPsi[objFuncName])
 
