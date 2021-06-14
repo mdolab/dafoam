@@ -4832,28 +4832,25 @@ void DASolver::setTimeInstanceField(const label instanceI)
     // NOTE: we always assign oldTime() and oldTime().oldTime(), independent
     // of whether this variable needs oldTime() or not. Also, for the first
     // time step, we just assign U to U.oldTime()
-    if (mode == "timeAccurateAdjoint")
-    {
-        // assign U.oldTime()
-        oldTimeLevel = 1;
-        // if instanceI - 1 < 0, we just assign idxI = 0. This is essentially
-        // assigning U.oldTime() = U
-        idxI = max(instanceI - 1, 0);
-        daFieldPtr_->list2OFField(
-            stateAllInstances_[idxI],
-            stateBoundaryAllInstances_[idxI],
-            oldTimeLevel);
+    // assign U.oldTime()
+    oldTimeLevel = 1;
+    // if instanceI - 1 < 0, we just assign idxI = 0. This is essentially
+    // assigning U.oldTime() = U
+    idxI = max(instanceI - 1, 0);
+    daFieldPtr_->list2OFField(
+        stateAllInstances_[idxI],
+        stateBoundaryAllInstances_[idxI],
+        oldTimeLevel);
 
-        // assign U.oldTime().oldTime()
-        oldTimeLevel = 2;
-        // if instanceI - 2 < 0, we just assign idxI = 0, This is essentially
-        // assigning U.oldTime().oldTime() = U
-        idxI = max(instanceI - 2, 0);
-        daFieldPtr_->list2OFField(
-            stateAllInstances_[idxI],
-            stateBoundaryAllInstances_[idxI],
-            oldTimeLevel);
-    }
+    // assign U.oldTime().oldTime()
+    oldTimeLevel = 2;
+    // if instanceI - 2 < 0, we just assign idxI = 0, This is essentially
+    // assigning U.oldTime().oldTime() = U
+    idxI = max(instanceI - 2, 0);
+    daFieldPtr_->list2OFField(
+        stateAllInstances_[idxI],
+        stateBoundaryAllInstances_[idxI],
+        oldTimeLevel);
 
     // We need to call correctBC multiple times to reproduce
     // the exact residual for mulitpoint, this is needed for some boundary conditions

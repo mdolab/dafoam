@@ -334,18 +334,15 @@ def calcObjFuncSensUnsteady(xDV, funcs):
     mode = DASolver.getOption("unsteadyAdjoint")["mode"]
     nTimeInstances = DASolver.getOption("unsteadyAdjoint")["nTimeInstances"]
     if mode == "hybridAdjoint":
-        iStart = 0
-        iEnd = nTimeInstances
-        dI = 1
+        iEnd = -1
     elif mode == "timeAccurateAdjoint":
-        iStart = nTimeInstances - 1
         iEnd = 0
-        dI = -1
-        # need to initialize oldTime fields for all variables this will
-        # create the correct oldTime fields for setTimeInstanceField
-        DASolver.initOldTimes()
 
-    for i in range(iStart, iEnd, dI):
+    # need to initialize oldTime fields for all variables this will
+    # create the correct oldTime fields for setTimeInstanceField
+    DASolver.initOldTimes()
+
+    for i in range(nTimeInstances - 1, iEnd, -1):
 
         Info("--Solving Adjoint for Time Instance %d--" % i)
 
