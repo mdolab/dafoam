@@ -4818,7 +4818,7 @@ void DASolver::setTimeInstanceField(const label instanceI)
     // the setTime call will assign field to field.oldTime()
     runTimePtr_->setTime(runTimeAllInstances_[instanceI], runTimeIndexAllInstances_[instanceI]);
 
-    label timeAccurateAdjActive = daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "active");
+    word mode = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
 
     // set fields
     label oldTimeLevel = 0;
@@ -4832,7 +4832,7 @@ void DASolver::setTimeInstanceField(const label instanceI)
     // NOTE: we always assign oldTime() and oldTime().oldTime(), independent
     // of whether this variable needs oldTime() or not. Also, for the first
     // time step, we just assign U to U.oldTime()
-    if (timeAccurateAdjActive)
+    if (mode == "timeAccurateAdjoint")
     {
         // assign U.oldTime()
         oldTimeLevel = 1;

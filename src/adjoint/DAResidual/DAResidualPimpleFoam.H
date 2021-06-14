@@ -56,8 +56,8 @@ protected:
     /// whether to has fvSource term
     label hasFvSource_ = 0;
 
-    /// whether the hybrid adjoint is active
-    label hybridAdjActive_ = 0;
+    /// whether the hybrid adjoint or time accurate adjoint is active
+    word mode_ = "None";
 
 public:
     TypeName("DAPimpleFoam");

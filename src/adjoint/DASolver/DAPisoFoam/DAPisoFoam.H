@@ -77,6 +77,9 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
+    /// whether the hybrid adjoint or time accurate adjoint is active
+    word mode_ = "None";
+
 public:
     TypeName("DAPisoFoam");
     // Constructors

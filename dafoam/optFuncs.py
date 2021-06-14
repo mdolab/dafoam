@@ -136,10 +136,10 @@ def calcObjFuncValuesMP(xDV):
     return funcsMP, fail
 
 
-def calcObjFuncValuesHybridAdjoint(xDV):
+def calcObjFuncValuesUnsteady(xDV):
     """
     Update the design surface and run the primal solver to get objective function values.
-    This is the hybrid adjoint version of calcObjFuncValues
+    This is the unsteady adjoint version of calcObjFuncValues
     """
 
     Info("\n")
@@ -164,52 +164,11 @@ def calcObjFuncValuesHybridAdjoint(xDV):
     # Solve the CFD problem
     DASolver()
 
-    # Set values for the hybrid adjoint objectives. This function needs to be
+    # Set values for the unsteady adjoint objectives. This function needs to be
     # implemented in run scripts
-    setHybridAdjointObjFuncs(DASolver, funcs, evalFuncs)
+    setObjFuncsUnsteady(DASolver, funcs, evalFuncs)
 
-    b = time.time()
-
-    # Print the current solution to the screen
-    Info("Objective Functions: ")
-    Info(funcs)
-    Info("Flow Runtime: %g" % (b - a))
-
-    fail = funcs["fail"]
-
-    return funcs, fail
-
-
-def calcObjFuncValuesTimeAccurateAdjoint(xDV):
-    """
-    Update the design surface and run the primal solver to get objective function values.
-    """
-
-    Info("\n")
-    Info("+--------------------------------------------------------------------------+")
-    Info("|                  Evaluating Objective Functions %03d                      |" % DASolver.nSolvePrimals)
-    Info("+--------------------------------------------------------------------------+")
-    Info("Design Variables: ")
-    Info(xDV)
-
-    a = time.time()
-
-    # Setup an empty dictionary for the evaluated function values
-    funcs = {}
-
-    # Set the current design variables in the DV object
-    DVGeo.setDesignVars(xDV)
-    DASolver.setDesignVars(xDV)
-
-    # Evaluate the geometric constraints and add them to the funcs dictionary
-    DVCon.evalFunctions(funcs)
-
-    # Solve the CFD problem
-    DASolver()
-
-    # Populate the required values from the CFD problem
-    DASolver.evalFunctions(funcs, evalFuncs=evalFuncs)
-
+    # assign state lists to mats
     DASolver.setTimeInstanceVar(mode="list2Mat")
 
     b = time.time()
@@ -343,10 +302,10 @@ def calcObjFuncSensMP(xDV, funcs):
     return funcsSensMP, fail
 
 
-def calcObjFuncSensHybridAdjoint(xDV, funcs):
+def calcObjFuncSensUnsteady(xDV, funcs):
     """
     Run the adjoint solver and get objective function sensitivities.
-    This is the hybrid adjoint version of calcObjFuncSens
+    This is the unsteady adjoint version of calcObjFuncSens
     """
 
     Info("\n")
@@ -364,14 +323,29 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
     # write the deform FFDs
     DASolver.writeDeformedFFDs()
 
+    # assign the state mats to lists
+    DASolver.setTimeInstanceVar(mode="mat2List")
+
     # Setup an empty dictionary for the evaluated derivative values
     funcsSensCombined = {}
 
     funcsSensAllInstances = []
 
-    nTimeInstances = DASolver.getOption("hybridAdjoint")["nTimeInstances"]
+    mode = DASolver.getOption("unsteadyAdjoint")["mode"]
+    nTimeInstances = DASolver.getOption("unsteadyAdjoint")["nTimeInstances"]
+    if mode == "hybridAdjoint":
+        iStart = 0
+        iEnd = nTimeInstances
+        dI = 1
+    elif mode == "timeAccurateAdjoint":
+        iStart = nTimeInstances - 1
+        iEnd = 0
+        dI = -1
+        # need to initialize oldTime fields for all variables this will
+        # create the correct oldTime fields for setTimeInstanceField
+        DASolver.initOldTimes()
 
-    for i in range(nTimeInstances):
+    for i in range(iStart, iEnd, dI):
 
         Info("--Solving Adjoint for Time Instance %d--" % i)
 
@@ -399,80 +373,19 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
 
         funcsSensAllInstances.append(funcsSens)
 
-    setHybridAdjointObjFuncsSens(DASolver, funcs, funcsSensAllInstances, funcsSensCombined)
+    setObjFuncsSensUnsteady(DASolver, funcs, funcsSensAllInstances, funcsSensCombined)
 
     funcsSensCombined["fail"] = fail
 
     # Print the current solution to the screen
     with np.printoptions(precision=16, threshold=5, suppress=True):
-        Info("Objective Function Sensitivity Hybrid Adjoint: ")
+        Info("Objective Function Sensitivity Unsteady Adjoint: ")
         Info(funcsSensCombined)
 
     b = time.time()
     Info("Adjoint Runtime: %g s" % (b - a))
 
     return funcsSensCombined, fail
-
-
-def calcObjFuncSensTimeAccurateAdjoint(xDV, funcs):
-    """
-    Run the adjoint solver and get objective function sensitivities.
-    This is the time accurate adjoint version of calcObjFuncSens
-    """
-
-    Info("\n")
-    Info("+--------------------------------------------------------------------------+")
-    Info("|              Evaluating Objective Function Sensitivities %03d             |" % DASolver.nSolveAdjoints)
-    Info("+--------------------------------------------------------------------------+")
-
-    fail = False
-
-    a = time.time()
-
-    # write the design variable values to file
-    DASolver.writeDesignVariable("designVariableHist.txt", xDV)
-
-    # write the deform FFDs
-    DASolver.writeDeformedFFDs()
-
-    nTimeInstances = DASolver.getOption("timeAccurateAdjoint")["nTimeInstances"]
-
-    DASolver.setTimeInstanceVar(mode="mat2List")
-
-    # need to initialize oldTime fields for all variables this will
-    # create the correct oldTime fields for setTimeInstanceField
-    DASolver.initOldTimes()
-
-    for i in range(nTimeInstances - 1, 0, -1):
-
-        Info("--Solving Adjoint for Time Instance %d--" % i)
-
-        funcsSens = {}
-
-        # Evaluate the geometric constraint derivatives
-        DVCon.evalFunctionsSens(funcsSens)
-
-        # set the state vector for case i
-        DASolver.setTimeInstanceField(i)
-
-        # Solve the adjoint
-        DASolver.solveAdjoint()
-
-        # Evaluate the CFD derivatives
-        DASolver.evalFunctionsSens(funcsSens, evalFuncs=evalFuncs)
-
-        if funcsSens["fail"] is True:
-            fail = True
-
-        if DASolver.getOption("debug"):
-            with np.printoptions(precision=16, threshold=5, suppress=True):
-                Info("Objective Function Sensitivity: ")
-                Info(funcsSens)
-
-    b = time.time()
-    Info("Adjoint Runtime: %g s" % (b - a))
-
-    return funcsSens, fail
 
 
 def runPrimal(objFun=calcObjFuncValues):

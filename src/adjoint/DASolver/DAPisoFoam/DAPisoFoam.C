@@ -52,36 +52,27 @@ void DAPisoFoam::initSolver()
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
-    label hybridAdjActive = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
+    mode_ = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
 
-    label timeAccurateAdjActive = daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "active");
-
-    if (hybridAdjActive * timeAccurateAdjActive != 0)
-    {
-        FatalErrorIn("") << "Both hybridAdjoint and timeAccurateAdjoint are active! Not valid!"
-                         << abort(FatalError);
-    }
-
-    if (hybridAdjActive)
+    if (mode_ == "hybridAdjoint")
     {
 
         nTimeInstances_ =
-            daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
+            daOptionPtr_->getSubDictOption<label>("unsteadyAdjoint", "nTimeInstances");
 
         periodicity_ =
-            daOptionPtr_->getSubDictOption<scalar>("hybridAdjoint", "periodicity");
+            daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "periodicity");
 
         if (periodicity_ <= 0)
         {
-            FatalErrorIn("hybridAdjoint") << "periodicity <= 0!" << abort(FatalError);
+            FatalErrorIn("") << "periodicity <= 0!" << abort(FatalError);
         }
     }
-
-    if (timeAccurateAdjActive)
+    else if (mode_ == "timeAccurateAdjoint")
     {
 
         nTimeInstances_ =
-            daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "nTimeInstances");
+            daOptionPtr_->getSubDictOption<label>("unsteadyAdjoint", "nTimeInstances");
 
         scalar endTime = runTimePtr_->endTime().value();
         scalar deltaT = runTimePtr_->deltaTValue();
@@ -93,7 +84,7 @@ void DAPisoFoam::initSolver()
         }
     }
 
-    if (hybridAdjActive || timeAccurateAdjActive)
+    if (mode_ == "hybridAdjoint" || mode_ == "timeAccurateAdjoint")
     {
 
         if (nTimeInstances_ <= 0)
@@ -150,9 +141,6 @@ label DAPisoFoam::solvePrimal(
 
 #include "createRefsPiso.H"
 
-    label hybridAdjActive = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
-    label timeAccurateAdjActive = daOptionPtr_->getSubDictOption<label>("timeAccurateAdjoint", "active");
-
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
@@ -194,7 +182,7 @@ label DAPisoFoam::solvePrimal(
     label printToScreen = 0;
     label timeInstanceI = 0;
     // for time accurate adjoints, we need to save states for Time = 0
-    if (timeAccurateAdjActive)
+    if (mode_ == "timeAccurateAdjoint")
     {
         this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
     }
@@ -244,12 +232,12 @@ label DAPisoFoam::solvePrimal(
 
         runTime.write();
 
-        if (hybridAdjActive)
+        if (mode_ == "hybridAdjoint")
         {
             this->saveTimeInstanceFieldHybrid(timeInstanceI);
         }
 
-        if (timeAccurateAdjActive)
+        if (mode_ == "timeAccurateAdjoint")
         {
             this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
         }

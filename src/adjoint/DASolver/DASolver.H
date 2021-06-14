@@ -186,10 +186,10 @@ protected:
     List<label> runTimeIndexAllInstances_;
 
     /// number of time instances for hybird adjoint (unsteady)
-    label nTimeInstances_;
+    label nTimeInstances_ = -9999;
 
     /// periodicity of oscillating flow variables (unsteady)
-    scalar periodicity_;
+    scalar periodicity_ = 0.0;
 
     /// save primal variable to time instance list for hybrid adjoint (unsteady)
     void saveTimeInstanceFieldHybrid(label& timeInstanceI);

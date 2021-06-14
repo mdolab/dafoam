@@ -398,13 +398,10 @@ class DAOPTION(object):
     ## This is used only for transonic solvers such as DARhoSimpleCFoam
     transonicPCOption = -1
 
-    ## Options for hybrid adjoint. Here nTimeInstances is the number of time instances
-    ## periodicity is the periodicity of flow oscillation
-    hybridAdjoint = {"active": False, "nTimeInstances": -1, "periodicity": -1.0}
-
-    ## Options for time-accurate adjoint. Here nTimeInstances should be the number of time
-    ## steps + 1 because we need to include the Time = 0 for time accurate adjoint
-    timeAccurateAdjoint = {"active": False, "nTimeInstances": -1}
+    ## Options for unsteady adjoint. mode can be hybridAdjoint or timeAccurateAdjoint
+    ## Here nTimeInstances is the number of time instances and periodicity is the 
+    ## periodicity of flow oscillation (hybrid adjoint only)
+    unsteadyAdjoint = {"mode": "None", "nTimeInstances": -1, "periodicity": -1.0}
 
     ## At which iteration should we start the averaging of objective functions.
     ## This is only used for unsteady solvers
@@ -849,7 +846,7 @@ class PYDAFOAM(object):
         time steps 0 and 00 for both state and residuals. This is
         because the backward ddt scheme depends on U, U0, and U00
         """
-        if self.getOption("timeAccurateAdjoint")["active"]:
+        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
             objFuncDict = self.getOption("objFunc")
             wSize = self.solver.getNLocalAdjointStates()
             self.dRdW0TPsi = {}
@@ -920,7 +917,7 @@ class PYDAFOAM(object):
         NOTE: we should add all possible checks here!
         """
         # check time accurate adjoint
-        if self.getOption("timeAccurateAdjoint")["active"]:
+        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
             if not self.getOption("adjJacobianOption") == "JacobianFree":
                 raise Error("timeAccurateAdjoint only supports adjJacobianOption=JacobianFree!")
 
@@ -982,10 +979,9 @@ class PYDAFOAM(object):
         nLocalAdjointStates = self.solver.getNLocalAdjointStates()
         nLocalAdjointBoundaryStates = self.solver.getNLocalAdjointBoundaryStates()
         nTimeInstances = -99999
-        if self.getOption("hybridAdjoint")["active"]:
-            nTimeInstances = self.getOption("hybridAdjoint")["nTimeInstances"]
-        elif self.getOption("timeAccurateAdjoint")["active"]:
-            nTimeInstances = self.getOption("timeAccurateAdjoint")["nTimeInstances"]
+        adjMode = self.getOption("unsteadyAdjoint")["mode"]
+        if adjMode == "hybridAdjoint" or adjMode == "timeAccurateAdjoint":
+            nTimeInstances = self.getOption("unsteadyAdjoint")["nTimeInstances"]
 
         self.stateMat = PETSc.Mat().create(PETSc.COMM_WORLD)
         self.stateMat.setSizes(((nLocalAdjointStates, None), (None, nTimeInstances)))
@@ -1832,7 +1828,7 @@ class PYDAFOAM(object):
                     self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
 
                 # if it is time accurate adjoint, add extra terms for dFdW
-                if self.getOption("timeAccurateAdjoint")["active"]:
+                if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
                     # first copy the vectors from previous residual time step level
                     self.dR00dW0TPsi[objFuncName].copy(self.dR0dW0TPsi[objFuncName])
                     self.dR00dW00TPsi[objFuncName].copy(self.dR0dW00TPsi[objFuncName])
@@ -1847,7 +1843,7 @@ class PYDAFOAM(object):
                 elif self.getOption("adjJacobianOption") == "JacobianFree":
                     self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
 
-                if self.getOption("timeAccurateAdjoint")["active"]:
+                if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
                     self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[objFuncName], self.dRdW0TPsi[objFuncName])
                     self.solverAD.calcdRdWOldTPsiAD(2, self.adjVectors[objFuncName], self.dRdW00TPsi[objFuncName])
 
@@ -2348,7 +2344,8 @@ class PYDAFOAM(object):
         if self.getOption("printDAOptions"):
             self.solver.printAllOptions()
 
-        if self.getOption("hybridAdjoint")["active"] or self.getOption("timeAccurateAdjoint")["active"]:
+        adjMode = self.getOption("unsteadyAdjoint")["mode"]
+        if adjMode == "hybridAdjoint" or adjMode == "timeAccurateAdjoint":
             self.initTimeInstanceMats()
 
         self.solverInitialized = 1

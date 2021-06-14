@@ -40,7 +40,7 @@ DAResidualPimpleFoam::DAResidualPimpleFoam(
         hasFvSource_ = 1;
     }
 
-    hybridAdjActive_ = daOption.getSubDictOption<label>("hybridAdjoint", "active");
+    mode_ = daOption.getSubDictOption<word>("unsteadyAdjoint", "mode");
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -106,7 +106,7 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
         + daTurb_.divDevReff(U_)
         - fvSource_);
 
-    if (hybridAdjActive_)
+    if (mode_ == "hybridAdjoint")
     {
         UEqn -= fvm::ddt(U_);
     }
@@ -137,7 +137,7 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
         fvc::flux(HbyA)
             + fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_));
 
-    if (hybridAdjActive_)
+    if (mode_ == "hybridAdjoint")
     {
         phiHbyA -= fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_);
     }
