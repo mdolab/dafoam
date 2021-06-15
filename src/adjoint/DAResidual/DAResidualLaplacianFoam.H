@@ -32,7 +32,6 @@ protected:
     //@{
     volScalarField& T_;
     volScalarField TRes_;
-    volScalarField TResPartDeriv_;
     //@}
 
     dimensionedScalar DT_;

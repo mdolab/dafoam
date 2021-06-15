@@ -55,11 +55,8 @@ void DAResidualPisoFoam::clear()
         in the parent and child classes
     */
     URes_.clear();
-    UResPartDeriv_.clear();
     pRes_.clear();
-    pResPartDeriv_.clear();
     phiRes_.clear();
-    phiResPartDeriv_.clear();
 }
 
 void DAResidualPisoFoam::calcResiduals(const dictionary& options)

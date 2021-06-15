@@ -178,16 +178,12 @@ protected:
     //@{
     volScalarField& omega_;
     volScalarField omegaRes_;
-    volScalarField omegaResPartDeriv_;
     volScalarField& k_;
     volScalarField kRes_;
-    volScalarField kResPartDeriv_;
     volScalarField& ReThetat_; // Transition onset momentum-thickness Reynolds number
     volScalarField ReThetatRes_;
-    volScalarField ReThetatResPartDeriv_;
     volScalarField& gammaInt_; // Intermittency
     volScalarField gammaIntRes_;
-    volScalarField gammaIntResPartDeriv_;
     //@}
 
     /// Effective intermittency

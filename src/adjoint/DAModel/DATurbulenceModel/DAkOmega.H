@@ -70,10 +70,8 @@ protected:
     //@{
     volScalarField& omega_;
     volScalarField omegaRes_;
-    volScalarField omegaResPartDeriv_;
     volScalarField& k_;
     volScalarField kRes_;
-    volScalarField kResPartDeriv_;
     //@}
 
     /// cell-center omega values near the wall, this is to fix the issue that the

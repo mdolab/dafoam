@@ -63,7 +63,6 @@ protected:
     //@{
     volScalarField& nuTilda_;
     volScalarField nuTildaRes_;
-    volScalarField nuTildaResPartDeriv_;
     //@}
 
     /// 3D wall distance
