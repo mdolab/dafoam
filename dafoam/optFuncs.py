@@ -338,9 +338,12 @@ def calcObjFuncSensUnsteady(xDV, funcs):
     elif mode == "timeAccurateAdjoint":
         iEnd = 0
 
-    # need to initialize oldTime fields for all variables this will
-    # create the correct oldTime fields for setTimeInstanceField
-    DASolver.initOldTimes()
+    # NOTE: calling calcRes here is critical because it will setup the correct
+    # old time levels for setTimeInstanceField. Otherwise, the residual for the
+    # first adjoint time instance will be incorrect because the residuals have
+    # not been computed and the old time levels will be zeros for all variables,
+    # this will create issues for the setTimeInstanceField call (nOldTimes)
+    DASolver.calcPrimalResidualStatistics("calc")
 
     # set these vectors zeros
     DASolver.zeroTimeAccurateAdjointVectors()
