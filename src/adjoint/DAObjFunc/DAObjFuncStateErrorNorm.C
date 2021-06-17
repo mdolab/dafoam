@@ -323,7 +323,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             const label& cellI = objFuncCellSources[idxI];
             if (stateRef[cellI] < 1e16)
             {
-                objFuncCellValues[idxI] = scale_ * (sqr(state[cellI].x() - stateRef[cellI]));
+                objFuncCellValues[idxI] = (sqr(scale_ * state[cellI].x() - stateRef[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
         }
