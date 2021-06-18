@@ -34,7 +34,7 @@ protected:
     volScalarField TRes_;
     //@}
 
-    dimensionedScalar DT_;
+    scalar DT_;
 
 public:
     TypeName("DALaplacianFoam");

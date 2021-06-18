@@ -24,7 +24,7 @@ DAResidualScalarTransportFoam::DAResidualScalarTransportFoam(
     const DAIndex& daIndex)
     : DAResidual(modelType, mesh, daOption, daModel, daIndex),
       // initialize and register state variables and their residuals, we use macros defined in macroFunctions.H
-      setResidualClassMemberScalar(T, dimensionSet(0, 0, 0, 1, 0, 0, 0)),
+      setResidualClassMemberScalar(T, dimensionSet(0, 0, -1, 1, 0, 0, 0)),
       phi_(const_cast<surfaceScalarField&>(
           mesh_.thisDb().lookupObject<surfaceScalarField>("phi")))
 
@@ -39,7 +39,7 @@ DAResidualScalarTransportFoam::DAResidualScalarTransportFoam(
 
     dimensionedScalar DT("DT", dimViscosity, transportProperties);
 
-    DT_ = DT;
+    DT_ = DT.value();
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -70,10 +70,12 @@ void DAResidualScalarTransportFoam::calcResiduals(const dictionary& options)
         URes_, pRes_, TRes_, phiRes_: residual field variables
     */
 
+    dimensionedScalar DT("DT", dimViscosity, DT_);
+
     fvScalarMatrix TEqn(
         fvm::ddt(T_)
         + fvm::div(phi_, T_)
-        - fvm::laplacian(DT_, T_));
+        - fvm::laplacian(DT, T_));
 
     TEqn.relax();
 

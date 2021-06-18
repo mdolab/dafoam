@@ -229,6 +229,20 @@ class DAOPTION(object):
     ##                "addToAdjoint": True,
     ##            }
     ##        },
+    ##        "THRUST": {
+    ##            "part1": {
+    ##                "type": "variableVolSum",
+    ##                "source": "boxToCell",
+    ##                "min": [-50.0, -50.0, -50.0],
+    ##                "max": [50.0, 50.0, 50.0],
+    ##                "varName": "fvSource",
+    ##                "varType": "vector",
+    ##                "component": 0,
+    ##                "isSquare": 0,
+    ##                "scale": 1.0,
+    ##                "addToAdjoint": True,
+    ##            },
+    ##        },
     ##        "FI": {
     ##            "part1": {
     ##                "type": "stateErrorNorm",
@@ -724,7 +738,7 @@ class PYDAFOAM(object):
         self.solverRegistry = {
             "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam", "DAPimpleFoam"],
             "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam"],
-            "Solid": ["DASolidDisplacementFoam"],
+            "Solid": ["DASolidDisplacementFoam", "DALaplacianFoam", "DAScalarTransportFoam"],
         }
 
     def __call__(self):

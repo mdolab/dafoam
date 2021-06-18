@@ -179,7 +179,6 @@ label DAScalarTransportFoam::solvePrimal(
             - fvm::laplacian(DT, T));
 
         TEqn.relax();
-        TEqn.solve();
 
         // get the solver performance info such as initial
         // and final residuals

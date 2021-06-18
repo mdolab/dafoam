@@ -175,8 +175,6 @@ label DALaplacianFoam::solvePrimal(
             fvm::ddt(T)
             - fvm::laplacian(DT, T));
 
-        TEqn.solve();
-
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverT = TEqn.solve();

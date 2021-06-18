@@ -35,7 +35,7 @@ protected:
     surfaceScalarField& phi_;
     //@}
 
-    dimensionedScalar DT_;
+    scalar DT_;
 
 public:
     TypeName("DAScalarTransportFoam");
