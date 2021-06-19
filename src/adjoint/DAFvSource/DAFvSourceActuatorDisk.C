@@ -373,8 +373,6 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 scalar rStar = (rPrime - rPrimeHub) / (1.0 - rPrimeHub);
 
                 scalar fAxial = 0.0;
-                scalar fCirc = 0.0;
-
                 scalar dA2 = cellC2AVecALen * cellC2AVecALen;
 
                 if (rStar < rStarMin)
@@ -382,22 +380,22 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                     scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);
                     scalar fR = fRMin * exp(-dR2 / epsRStar / epsRStar) * scale;
                     fAxial = fR * exp(-dA2 / eps / eps);
-                    fCirc = fAxial * POD / constant::mathematical::pi / rStarMin;
                 }
                 else if (rStar >= rStarMin && rStar <= rStarMax)
                 {
                     scalar fR = pow(rStar, expM) * pow(1.0 - rStar, expN) * scale;
                     fAxial = fR * exp(-dA2 / eps / eps);
-                    // we use Hoekstra's method to calculate the fCirc based on fAxial
-                    fCirc = fAxial * POD / constant::mathematical::pi / rPrime;
                 }
                 else
                 {
                     scalar dR2 = (rStar - rStarMax) * (rStar - rStarMax);
                     scalar fR = fRMax * exp(-dR2 / epsRStar / epsRStar) * scale;
                     fAxial = fR * exp(-dA2 / eps / eps);
-                    fCirc = fAxial * POD / constant::mathematical::pi / rStarMax;
                 }
+                // we use Hoekstra's method to calculate the fCirc based on fAxial
+                // here we add 0.01*eps/outerRadius to avoid diving a zero rPrime
+                // this might happen if a cell center is very close to actuator center
+                scalar fCirc = fAxial * POD / constant::mathematical::pi / (rPrime + 0.01 * eps / outerRadius);
 
                 vector sourceVec = (fAxial * dirNorm + fCirc * cellC2AVecCNorm);
                 // the source is the force normalized by the cell volume
