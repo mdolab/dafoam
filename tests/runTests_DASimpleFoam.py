@@ -65,6 +65,7 @@ aeroOptions = {
             "eps": 0.1,  # eps should be of cell size
             "expM": 1.0,
             "expN": 0.5,
+            "adjustThrust": 0,
         },
     },
     "objFunc": {
@@ -190,6 +191,7 @@ def actuator(val, geo):
                 "eps": 0.1,  # eps should be of cell size
                 "expM": actExpM,
                 "expN": actExpN,
+                "adjustThrust": 0,
             },
         },
     )
