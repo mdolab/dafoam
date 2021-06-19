@@ -1,24 +1,24 @@
 Dictionary Key: CD
-@value  0.09340981962203246 1e-08 1e-10
+@value  0.09340977706079624 1e-08 1e-10
 Dictionary Key: CL
-@value   0.3122070733063254 1e-08 1e-10
+@value   0.3122067096074801 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: shapey
-@value   0.2116590327421694 1e-06 1e-08
-@value   0.1738848418621413 1e-06 1e-08
-@value    2.374417257561231 1e-06 1e-08
-@value      1.8835252312794 1e-06 1e-08
+@value   0.2140536273652476 1e-05 1e-07
+@value    0.177394058027215 1e-05 1e-07
+@value    2.375954185318922 1e-05 1e-07
+@value    1.885591206501376 1e-05 1e-07
 Dictionary Key: uin
-@value 0.003722184772337245 1e-06 1e-08
+@value 0.003915576327250028 1e-05 1e-07
 Dictionary Key: CL
 Dictionary Key: shapey
-@value   0.5456234649600328 1e-06 1e-08
-@value   0.4544910153001713 1e-06 1e-08
-@value    0.443337074425948 1e-06 1e-08
-@value   0.3585970307049681 1e-06 1e-08
+@value   0.5355584475236188 1e-05 1e-07
+@value   0.4393530067924477 1e-05 1e-07
+@value   0.4356534901534372 1e-05 1e-07
+@value   0.3464242397132455 1e-05 1e-07
 Dictionary Key: uin
-@value  0.01217123275855338 1e-06 1e-08
+@value   0.0125617487254271 1e-05 1e-07
 Dictionary Key: fail
-@value                    0 1e-06 1e-08
+@value                    0 1e-05 1e-07

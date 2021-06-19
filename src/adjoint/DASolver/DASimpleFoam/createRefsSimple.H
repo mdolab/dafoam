@@ -15,6 +15,6 @@ volVectorField& fvSource = fvSourcePtr_();
 IOMRFZoneList& MRF = MRFPtr_();
 
 // create a file to store the objective values
-this->initializeObjFuncHistFilePtr("objFuncHist");
+this->initializeObjFuncHistFilePtr("objFuncTimeSeries");
 
 this->setDAObjFuncList();

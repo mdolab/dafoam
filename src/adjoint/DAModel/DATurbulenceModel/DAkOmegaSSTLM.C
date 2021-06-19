@@ -119,14 +119,6 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
           dimensionedScalar("omegaRes", dimensionSet(0, 0, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      omegaResPartDeriv_(
-          IOobject(
-              "omegaResPartDeriv",
-              mesh.time().timeName(),
-              mesh,
-              IOobject::NO_READ,
-              IOobject::NO_WRITE),
-          omegaRes_),
       k_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("k"))),
       kRes_(
@@ -144,14 +136,6 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
           dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      kResPartDeriv_(
-          IOobject(
-              "kResPartDeriv",
-              mesh.time().timeName(),
-              mesh,
-              IOobject::NO_READ,
-              IOobject::NO_WRITE),
-          kRes_),
       ReThetat_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("ReThetat"))),
       ReThetatRes_(
@@ -169,14 +153,6 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
           dimensionedScalar("ReThetatRes", dimensionSet(0, 0, -1, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchScalarField::typeName),
-      ReThetatResPartDeriv_(
-          IOobject(
-              "ReThetatResPartDeriv",
-              mesh_.time().timeName(),
-              mesh_,
-              IOobject::NO_READ,
-              IOobject::NO_WRITE),
-          ReThetatRes_),
       gammaInt_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("gammaInt"))),
       gammaIntRes_(
@@ -194,14 +170,6 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
           dimensionedScalar("gammaIntRes", dimensionSet(0, 0, -1, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchScalarField::typeName),
-      gammaIntResPartDeriv_(
-          IOobject(
-              "gammaIntResPartDeriv",
-              mesh_.time().timeName(),
-              mesh_,
-              IOobject::NO_READ,
-              IOobject::NO_WRITE),
-          gammaIntRes_),
       gammaIntEff_(const_cast<volScalarField::Internal&>(
           mesh_.thisDb().lookupObject<volScalarField::Internal>("gammaIntEff"))),
       y_(mesh_.thisDb().lookupObject<volScalarField>("yWall"))

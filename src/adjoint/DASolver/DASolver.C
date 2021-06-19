@@ -431,6 +431,10 @@ void DASolver::calcPrimalResidualStatistics(
         // print the primal residuals to screen
         Info << "Printing Primal Residual Statistics." << endl;
     }
+    else if (mode == "calc")
+    {
+        // we will just calculate but not printting anything
+    }
     else
     {
         FatalErrorIn("") << "mode not valid" << abort(FatalError);
@@ -3074,6 +3078,7 @@ void DASolver::calcdFdXvAD(
             }
         }
         meshPtr_->movePoints(meshPoints);
+        meshPtr_->moving(false);
         // update all intermediate variables and boundary conditions
         daResidualPtr_->correctBoundaryConditions();
         daResidualPtr_->updateIntermediateVariables();
@@ -3179,6 +3184,7 @@ void DASolver::calcdRdXvTPsiAD(
         }
     }
     meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
     // compute residuals
     daResidualPtr_->correctBoundaryConditions();
     daResidualPtr_->updateIntermediateVariables();
@@ -3577,13 +3583,99 @@ void DASolver::calcdRdActTPsiAD(
 #endif
 }
 
-void DASolver::registerStateVariableInput4AD()
+void DASolver::calcdRdWOldTPsiAD(
+    const label oldTimeLevel,
+    const Vec psi,
+    Vec dRdWOldTPsi)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Compute the matrix-vector products dRdWOld^T*Psi using reverse-mode AD
+        Here WOld means the state variable from previous time step,
+        if oldTimeLevel = 1, WOld means W0, if oldTimeLevel=2, WOld means W00
+        R is always the residuals for the current time step
+        NOTE: if the oldTimeLevel is greater than the max nOldTimes a variable 
+        has, the derivative will be zero. This is done by registering input
+        only for variables that have enough oldTimes in registerStateVariableInput4AD
+    
+    Input:
+
+        oldTimeLevel: 1-dRdW0^T  2-dRdW00^T
+
+        psi: the vector to multiply dRdW0^T
+    
+    Output:
+        dRdWOldTPsi: the matrix-vector products dRdWOld^T * Psi
+    */
+
+    Info << "Calculating [dRdWOld]^T * Psi using reverse-mode AD with level " << oldTimeLevel << endl;
+
+    VecZeroEntries(dRdWOldTPsi);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD(oldTimeLevel);
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(dRdWOldTPsi, oldTimeLevel);
+
+    // NOTE: we need to normalize dRdWOldTPsi!
+    this->normalizeGradientVec(dRdWOldTPsi);
+
+    VecAssemblyBegin(dRdWOldTPsi);
+    VecAssemblyEnd(dRdWOldTPsi);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    {
+        word outputName = "dRdWOldTPsi";
+        DAUtility::writeVectorBinary(dRdWOldTPsi, outputName);
+        DAUtility::writeVectorASCII(dRdWOldTPsi, outputName);
+    }
+#endif
+}
+
+void DASolver::registerStateVariableInput4AD(const label oldTimeLevel)
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
     Description:
         Register all state variables as the input for reverse-mode AD
+    
+    Input:
+        oldTimeLevel: which time level to register, the default value
+        is 0, meaning it will register the state itself. If its 
+        value is 1, it will register state.oldTime(), if its value
+        is 2, it will register state.oldTime().oldTime(). For
+        steady-state adjoint oldTimeLevel = 0
     */
+
+    if (oldTimeLevel < 0 || oldTimeLevel > 2)
+    {
+        FatalErrorIn("") << "oldTimeLevel not valid. Options: 0, 1, or 2"
+                         << abort(FatalError);
+    }
 
     forAll(stateInfo_["volVectorStates"], idxI)
     {
@@ -3591,11 +3683,27 @@ void DASolver::registerStateVariableInput4AD()
         volVectorField& state = const_cast<volVectorField&>(
             meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
 
-        forAll(state, cellI)
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            for (label i = 0; i < 3; i++)
+            forAll(state, cellI)
             {
-                this->globalADTape_.registerInput(state[cellI][i]);
+                for (label i = 0; i < 3; i++)
+                {
+                    if (oldTimeLevel == 0)
+                    {
+                        this->globalADTape_.registerInput(state[cellI][i]);
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        this->globalADTape_.registerInput(state.oldTime()[cellI][i]);
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        this->globalADTape_.registerInput(state.oldTime().oldTime()[cellI][i]);
+                    }
+                }
             }
         }
     }
@@ -3606,9 +3714,25 @@ void DASolver::registerStateVariableInput4AD()
         volScalarField& state = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        forAll(state, cellI)
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            this->globalADTape_.registerInput(state[cellI]);
+            forAll(state, cellI)
+            {
+                if (oldTimeLevel == 0)
+                {
+                    this->globalADTape_.registerInput(state[cellI]);
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    this->globalADTape_.registerInput(state.oldTime()[cellI]);
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    this->globalADTape_.registerInput(state.oldTime().oldTime()[cellI]);
+                }
+            }
         }
     }
 
@@ -3618,9 +3742,25 @@ void DASolver::registerStateVariableInput4AD()
         volScalarField& state = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        forAll(state, cellI)
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            this->globalADTape_.registerInput(state[cellI]);
+            forAll(state, cellI)
+            {
+                if (oldTimeLevel == 0)
+                {
+                    this->globalADTape_.registerInput(state[cellI]);
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    this->globalADTape_.registerInput(state.oldTime()[cellI]);
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    this->globalADTape_.registerInput(state.oldTime().oldTime()[cellI]);
+                }
+            }
         }
     }
 
@@ -3630,15 +3770,42 @@ void DASolver::registerStateVariableInput4AD()
         surfaceScalarField& state = const_cast<surfaceScalarField&>(
             meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
 
-        forAll(state, faceI)
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            this->globalADTape_.registerInput(state[faceI]);
-        }
-        forAll(state.boundaryField(), patchI)
-        {
-            forAll(state.boundaryField()[patchI], faceI)
+            forAll(state, faceI)
             {
-                this->globalADTape_.registerInput(state.boundaryFieldRef()[patchI][faceI]);
+                if (oldTimeLevel == 0)
+                {
+                    this->globalADTape_.registerInput(state[faceI]);
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    this->globalADTape_.registerInput(state.oldTime()[faceI]);
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    this->globalADTape_.registerInput(state.oldTime().oldTime()[faceI]);
+                }
+            }
+            forAll(state.boundaryField(), patchI)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    if (oldTimeLevel == 0)
+                    {
+                        this->globalADTape_.registerInput(state.boundaryFieldRef()[patchI][faceI]);
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        this->globalADTape_.registerInput(state.oldTime().boundaryFieldRef()[patchI][faceI]);
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        this->globalADTape_.registerInput(state.oldTime().oldTime().boundaryFieldRef()[patchI][faceI]);
+                    }
+                }
             }
         }
     }
@@ -3944,7 +4111,9 @@ void DASolver::assignVec2ResidualGradient(Vec vecX)
 #endif
 }
 
-void DASolver::assignStateGradient2Vec(Vec vecY)
+void DASolver::assignStateGradient2Vec(
+    Vec vecY,
+    const label oldTimeLevel)
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
     /*
@@ -3953,11 +4122,23 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
     
     Input:
         OpenFOAM state variables that contain the reverse-mode derivative 
+
+        oldTimeLevel: which time level to register, the default value
+        is 0, meaning it will register the state itself. If its 
+        value is 1, it will register state.oldTime(), if its value
+        is 2, it will register state.oldTime().oldTime(). For
+        steady-state adjoint oldTimeLevel = 0
     
     Output:
         vecY: a vector to store the derivatives. The order of this vector is 
         the same as the state variable vector
     */
+
+    if (oldTimeLevel < 0 || oldTimeLevel > 2)
+    {
+        FatalErrorIn("") << "oldTimeLevel not valid. Options: 0, 1, or 2"
+                         << abort(FatalError);
+    }
 
     PetscScalar* vecArray;
     VecGetArray(vecY, &vecArray);
@@ -3968,12 +4149,28 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
         volVectorField& state = const_cast<volVectorField&>(
             meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
 
-        forAll(meshPtr_->cells(), cellI)
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            for (label i = 0; i < 3; i++)
+            forAll(meshPtr_->cells(), cellI)
             {
-                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
-                vecArray[localIdx] = state[cellI][i].getGradient();
+                for (label i = 0; i < 3; i++)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                    if (oldTimeLevel == 0)
+                    {
+                        vecArray[localIdx] = state[cellI][i].getGradient();
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        vecArray[localIdx] = state.oldTime()[cellI][i].getGradient();
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        vecArray[localIdx] = state.oldTime().oldTime()[cellI][i].getGradient();
+                    }
+                }
             }
         }
     }
@@ -3984,10 +4181,26 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
         volScalarField& state = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        forAll(meshPtr_->cells(), cellI)
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
-            vecArray[localIdx] = state[cellI].getGradient();
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                if (oldTimeLevel == 0)
+                {
+                    vecArray[localIdx] = state[cellI].getGradient();
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    vecArray[localIdx] = state.oldTime()[cellI].getGradient();
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    vecArray[localIdx] = state.oldTime().oldTime()[cellI].getGradient();
+                }
+            }
         }
     }
 
@@ -3997,10 +4210,26 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
         volScalarField& state = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        forAll(meshPtr_->cells(), cellI)
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
-            vecArray[localIdx] = state[cellI].getGradient();
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                if (oldTimeLevel == 0)
+                {
+                    vecArray[localIdx] = state[cellI].getGradient();
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    vecArray[localIdx] = state.oldTime()[cellI].getGradient();
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    vecArray[localIdx] = state.oldTime().oldTime()[cellI].getGradient();
+                }
+            }
         }
     }
 
@@ -4010,20 +4239,51 @@ void DASolver::assignStateGradient2Vec(Vec vecY)
         surfaceScalarField& state = const_cast<surfaceScalarField&>(
             meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
 
-        forAll(meshPtr_->faces(), faceI)
-        {
-            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+        label maxOldTimes = state.nOldTimes();
 
-            if (faceI < daIndexPtr_->nLocalInternalFaces)
+        if (maxOldTimes >= oldTimeLevel)
+        {
+            forAll(meshPtr_->faces(), faceI)
             {
-                vecArray[localIdx] = state[faceI].getGradient();
-            }
-            else
-            {
-                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
-                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
-                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
-                vecArray[localIdx] = state.boundaryField()[patchIdx][faceIdx].getGradient();
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+                if (faceI < daIndexPtr_->nLocalInternalFaces)
+                {
+                    if (oldTimeLevel == 0)
+                    {
+                        vecArray[localIdx] = state[faceI].getGradient();
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        vecArray[localIdx] = state.oldTime()[faceI].getGradient();
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        vecArray[localIdx] = state.oldTime().oldTime()[faceI].getGradient();
+                    }
+                }
+                else
+                {
+                    label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                    label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                    label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+
+                    if (oldTimeLevel == 0)
+                    {
+                        vecArray[localIdx] =
+                            state.boundaryField()[patchIdx][faceIdx].getGradient();
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        vecArray[localIdx] =
+                            state.oldTime().boundaryField()[patchIdx][faceIdx].getGradient();
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        vecArray[localIdx] =
+                            state.oldTime().oldTime().boundaryField()[patchIdx][faceIdx].getGradient();
+                    }
+                }
             }
         }
     }
@@ -4265,31 +4525,6 @@ void DASolver::writeObjFuncHistFile()
     return;
 }
 
-void DASolver::setTimeInstanceField(const label instanceI)
-{
-    /*
-    Description:
-        Assign primal variables based on the current time instance
-    */
-
-    FatalErrorIn("") << "setTimeInstanceField should be implemented in child classes!"
-                     << abort(FatalError);
-}
-
-scalar DASolver::getTimeInstanceObjFunc(
-    const label instanceI,
-    const word objFuncName)
-{
-    /*
-    Description:
-        Return the value of objective function at the given time instance and name
-    */
-    FatalErrorIn("") << "getTimeInstanceObjFunc should be implemented in child classes!"
-                     << abort(FatalError);
-
-    return 0.0;
-}
-
 label DASolver::isPrintTime(
     const Time& runTime,
     const label printInterval) const
@@ -4481,6 +4716,298 @@ void DASolver::updateBoundaryConditions(
         FatalErrorIn("") << fieldType << " not support. Options are: vector or scalar "
                          << abort(FatalError);
     }
+}
+
+void DASolver::saveTimeInstanceFieldHybrid(label& timeInstanceI)
+{
+    /*
+    Description:
+        Save primal variable to time instance list for unsteady adjoint
+        Here we save the last nTimeInstances snapshots
+    */
+
+    scalar endTime = runTimePtr_->endTime().value();
+    scalar t = runTimePtr_->timeOutputValue();
+    scalar instanceStart =
+        endTime - periodicity_ / nTimeInstances_ * (nTimeInstances_ - 1 - timeInstanceI);
+
+    // the 2nd condition is for t=9.999999999999 scenario)
+    if (t > instanceStart || fabs(t - endTime) < 1e-8)
+    {
+        Info << "Saving time instance " << timeInstanceI << " at Time = " << t << endl;
+
+        // save fields
+        daFieldPtr_->ofField2List(
+            stateAllInstances_[timeInstanceI],
+            stateBoundaryAllInstances_[timeInstanceI]);
+
+        // save objective functions
+        forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
+        {
+            word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
+            scalar objFuncVal = this->getObjFuncValue(objFuncName);
+            objFuncsAllInstances_[timeInstanceI].set(objFuncName, objFuncVal);
+        }
+
+        // save runTime
+        runTimeAllInstances_[timeInstanceI] = t;
+        runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            this->calcPrimalResidualStatistics("print");
+        }
+
+        timeInstanceI++;
+    }
+    return;
+}
+
+void DASolver::saveTimeInstanceFieldTimeAccurate(label& timeInstanceI)
+{
+    /*
+    Description:
+        Save primal variable to time instance list for unsteady adjoint
+        Here we save every time step
+    */
+    // save fields
+    daFieldPtr_->ofField2List(
+        stateAllInstances_[timeInstanceI],
+        stateBoundaryAllInstances_[timeInstanceI]);
+
+    // save objective functions
+    forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
+    {
+        word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
+        scalar objFuncVal = this->getObjFuncValue(objFuncName);
+        objFuncsAllInstances_[timeInstanceI].set(objFuncName, objFuncVal);
+    }
+
+    // save runTime
+    scalar t = runTimePtr_->timeOutputValue();
+    runTimeAllInstances_[timeInstanceI] = t;
+    runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
+
+    timeInstanceI++;
+}
+
+void DASolver::initOldTimes()
+{
+    /*
+    Description:
+        Initialize the oldTime for all state variables. We will create oldTime for
+        all state variables, no matter whether a variable actually need the oldTime()
+        field. This will allow setTimeInstanceField to correctly assign values for
+        oldTime(). NOTE: we need to call this function before calling setTimeInstanceField
+        Otherwise, the first setTimeInstanceField call will not get the correct
+        oldTime values.
+    */
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+        // just create/initialize oldTimes
+        state.oldTime();
+        state.oldTime().oldTime();
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+        // just create/initialize oldTimes
+        state.oldTime();
+        state.oldTime().oldTime();
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+        // just create/initialize oldTimes
+        state.oldTime();
+        state.oldTime().oldTime();
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+        // just create/initialize oldTimes
+        state.oldTime();
+        state.oldTime().oldTime();
+    }
+}
+
+void DASolver::setTimeInstanceField(const label instanceI)
+{
+    /*
+    Description:
+        Assign primal variables based on the current time instance
+        If unsteady adjoint solvers are used, this virtual function should be 
+        implemented in a child class, otherwise, return error if called
+    */
+
+    Info << "Setting fields for time instance " << instanceI << endl;
+
+    label idxI = -9999;
+
+    // set run time
+    // NOTE: we need to call setTime before updating the oldTime fields, this is because
+    // the setTime call will assign field to field.oldTime()
+    runTimePtr_->setTime(runTimeAllInstances_[instanceI], runTimeIndexAllInstances_[instanceI]);
+
+    word mode = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
+
+    // set fields
+    label oldTimeLevel = 0;
+    daFieldPtr_->list2OFField(
+        stateAllInstances_[instanceI],
+        stateBoundaryAllInstances_[instanceI],
+        oldTimeLevel);
+
+    // for time accurate adjoint, in addition to assign current fields,
+    // we need to assign oldTime fields.
+    if (mode == "timeAccurateAdjoint")
+    {
+        // assign U.oldTime()
+        oldTimeLevel = 1;
+        // if instanceI - 1 < 0, we just assign idxI = 0. This is essentially
+        // assigning U.oldTime() = U0
+        idxI = max(instanceI - 1, 0);
+        daFieldPtr_->list2OFField(
+            stateAllInstances_[idxI],
+            stateBoundaryAllInstances_[idxI],
+            oldTimeLevel);
+
+        // assign U.oldTime().oldTime()
+        oldTimeLevel = 2;
+        // if instanceI - 2 < 0, we just assign idxI = 0, This is essentially
+        // assigning U.oldTime().oldTime() = U0
+        idxI = max(instanceI - 2, 0);
+        daFieldPtr_->list2OFField(
+            stateAllInstances_[idxI],
+            stateBoundaryAllInstances_[idxI],
+            oldTimeLevel);
+    }
+
+    // We need to call correctBC multiple times to reproduce
+    // the exact residual for mulitpoint, this is needed for some boundary conditions
+    // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
+    for (label i = 0; i < 10; i++)
+    {
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+    }
+}
+
+void DASolver::setTimeInstanceVar(
+    const word mode,
+    Mat stateMat,
+    Mat stateBCMat,
+    Vec timeVec,
+    Vec timeIdxVec)
+{
+    PetscInt Istart, Iend;
+    MatGetOwnershipRange(stateMat, &Istart, &Iend);
+
+    PetscInt IstartBC, IendBC;
+    MatGetOwnershipRange(stateBCMat, &IstartBC, &IendBC);
+
+    for (label n = 0; n < nTimeInstances_; n++)
+    {
+        for (label i = Istart; i < Iend; i++)
+        {
+            label relIdx = i - Istart;
+            PetscScalar val;
+            if (mode == "mat2List")
+            {
+                MatGetValues(stateMat, 1, &i, 1, &n, &val);
+                stateAllInstances_[n][relIdx] = val;
+            }
+            else if (mode == "list2Mat")
+            {
+                assignValueCheckAD(val, stateAllInstances_[n][relIdx]);
+                MatSetValue(stateMat, i, n, val, INSERT_VALUES);
+            }
+            else
+            {
+                FatalErrorIn("") << "mode not valid!" << abort(FatalError);
+            }
+        }
+
+        for (label i = IstartBC; i < IendBC; i++)
+        {
+            label relIdx = i - IstartBC;
+            PetscScalar val;
+            if (mode == "mat2List")
+            {
+                MatGetValues(stateBCMat, 1, &i, 1, &n, &val);
+                stateBoundaryAllInstances_[n][relIdx] = val;
+            }
+            else if (mode == "list2Mat")
+            {
+                assignValueCheckAD(val, stateBoundaryAllInstances_[n][relIdx]);
+                MatSetValue(stateBCMat, i, n, val, INSERT_VALUES);
+            }
+            else
+            {
+                FatalErrorIn("") << "mode not valid!" << abort(FatalError);
+            }
+        }
+    }
+
+    if (mode == "list2Mat")
+    {
+        MatAssemblyBegin(stateMat, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(stateMat, MAT_FINAL_ASSEMBLY);
+        MatAssemblyBegin(stateBCMat, MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(stateBCMat, MAT_FINAL_ASSEMBLY);
+    }
+
+    PetscScalar* timeVecArray;
+    PetscScalar* timeIdxVecArray;
+    VecGetArray(timeVec, &timeVecArray);
+    VecGetArray(timeIdxVec, &timeIdxVecArray);
+
+    for (label n = 0; n < nTimeInstances_; n++)
+    {
+        if (mode == "mat2List")
+        {
+            runTimeAllInstances_[n] = timeVecArray[n];
+            runTimeIndexAllInstances_[n] = round(timeIdxVecArray[n]);
+        }
+        else if (mode == "list2Mat")
+        {
+            assignValueCheckAD(timeVecArray[n], runTimeAllInstances_[n]);
+            timeIdxVecArray[n] = runTimeIndexAllInstances_[n];
+        }
+        else
+        {
+            FatalErrorIn("") << "mode not valid!" << abort(FatalError);
+        }
+    }
+
+    VecRestoreArray(timeVec, &timeVecArray);
+    VecRestoreArray(timeIdxVec, &timeIdxVecArray);
+}
+
+scalar DASolver::getTimeInstanceObjFunc(
+    const label instanceI,
+    const word objFuncName)
+{
+    /*
+    Description:
+        Return the value of objective function at the given time instance and name
+    */
+
+    return objFuncsAllInstances_[instanceI].getScalar(objFuncName);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

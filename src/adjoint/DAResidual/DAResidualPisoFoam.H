@@ -33,15 +33,12 @@ protected:
     //@{
     volVectorField& U_;
     volVectorField URes_;
-    volVectorField UResPartDeriv_;
 
     volScalarField& p_;
     volScalarField pRes_;
-    volScalarField pResPartDeriv_;
 
     surfaceScalarField& phi_;
     surfaceScalarField phiRes_;
-    surfaceScalarField phiResPartDeriv_;
     //@}
 
     /// fvSource term
@@ -55,6 +52,9 @@ protected:
 
     /// whether to has fvSource term
     label hasFvSource_ = 0;
+
+    /// whether the hybrid adjoint or time accurate adjoint is active
+    word mode_ = "None";
 
 public:
     TypeName("DAPisoFoam");

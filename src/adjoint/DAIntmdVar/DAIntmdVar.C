@@ -114,9 +114,14 @@ void DAIntmdVar::update()
                     volScalarField& intmdField = volScalarList_[idxI];
                     if (nIdx != 0)
                     {
-                        // no need to compute Mean for nIdx = 0 because it will be assigned baseState 
-                        // when restart begines, i.e., nIdx = 1
+                        // if nIdx != 0, we use nIdx to compute beta
                         scalar beta = 1.0 / nIdx;
+                        intmdField = beta * baseState + (1.0 - beta) * intmdField;
+                    }
+                    else
+                    {
+                        // if nIdx == 0, we use restartSteps to compute beta
+                        scalar beta = 1.0 / restartSteps;
                         intmdField = beta * baseState + (1.0 - beta) * intmdField;
                     }
                 }
@@ -126,9 +131,14 @@ void DAIntmdVar::update()
                     volVectorField& intmdField = volVectorList_[idxI];
                     if (nIdx != 0)
                     {
-                        // no need to compute Mean for nIdx = 0 because it will be assigned baseState  
-                        // when restart begines, i.e., nIdx = 1
+                        // if nIdx != 0, we use nIdx to compute beta
                         scalar beta = 1.0 / nIdx;
+                        intmdField = beta * baseState + (1.0 - beta) * intmdField;
+                    }
+                    else
+                    {
+                        // if nIdx == 0, we use restartSteps to compute beta
+                        scalar beta = 1.0 / restartSteps;
                         intmdField = beta * baseState + (1.0 - beta) * intmdField;
                     }
                 }

@@ -349,9 +349,13 @@ void DAIndex::calcStateLocalIndexOffset(HashTable<label>& offset)
         forAll(phiAccumulatdOffset, idxI)
         {
             if (idxI == 0)
+            {
                 phiAccumulatdOffset[idxI] = 0;
+            }
             else
+            {
                 phiAccumulatdOffset[idxI] = cellOwnedFaces[idxI - 1].size() + phiAccumulatdOffset[idxI - 1];
+            }
         }
         //Info<<"phiAccumulatdOffset "<<phiAccumulatdOffset<<endl;
 

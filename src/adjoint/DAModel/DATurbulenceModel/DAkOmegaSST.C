@@ -92,14 +92,6 @@ DAkOmegaSST::DAkOmegaSST(
           dimensionedScalar("omegaRes", dimensionSet(0, 0, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      omegaResPartDeriv_(
-          IOobject(
-              "omegaResPartDeriv",
-              mesh.time().timeName(),
-              mesh,
-              IOobject::NO_READ,
-              IOobject::NO_WRITE),
-          omegaRes_),
       k_(
           const_cast<volScalarField&>(
               mesh_.thisDb().lookupObject<volScalarField>("k"))),
@@ -118,14 +110,6 @@ DAkOmegaSST::DAkOmegaSST(
           dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      kResPartDeriv_(
-          IOobject(
-              "kResPartDeriv",
-              mesh.time().timeName(),
-              mesh,
-              IOobject::NO_READ,
-              IOobject::NO_WRITE),
-          kRes_),
       y_(mesh_.thisDb().lookupObject<volScalarField>("yWall"))
 {
 

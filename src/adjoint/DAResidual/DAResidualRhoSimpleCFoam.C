@@ -67,13 +67,9 @@ void DAResidualRhoSimpleCFoam::clear()
         in the parent and child classes
     */
     URes_.clear();
-    UResPartDeriv_.clear();
     pRes_.clear();
-    pResPartDeriv_.clear();
     TRes_.clear();
-    TResPartDeriv_.clear();
     phiRes_.clear();
-    phiResPartDeriv_.clear();
 }
 
 void DAResidualRhoSimpleCFoam::calcResiduals(const dictionary& options)

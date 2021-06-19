@@ -170,6 +170,33 @@ protected:
     /// a flag in dRdWTMatVecMultFunction to determine if the global tap is initialized
     label globalADTape4dRdWTInitialized = 0;
 
+    /// state variable list for all instances (unsteady)
+    List<List<scalar>> stateAllInstances_;
+
+    /// state boundary variable list for all instances (unsteady)
+    List<List<scalar>> stateBoundaryAllInstances_;
+
+    /// objective function for all instances (unsteady)
+    List<dictionary> objFuncsAllInstances_;
+
+    /// the runtime value for all instances (unsteady)
+    List<scalar> runTimeAllInstances_;
+
+    /// the runtime index for all instances (unsteady)
+    List<label> runTimeIndexAllInstances_;
+
+    /// number of time instances for hybird adjoint (unsteady)
+    label nTimeInstances_ = -9999;
+
+    /// periodicity of oscillating flow variables (unsteady)
+    scalar periodicity_ = 0.0;
+
+    /// save primal variable to time instance list for hybrid adjoint (unsteady)
+    void saveTimeInstanceFieldHybrid(label& timeInstanceI);
+
+    /// save primal variable to time instance list for time accurate adjoint (unsteady)
+    void saveTimeInstanceFieldTimeAccurate(label& timeInstanceI);
+
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -214,12 +241,23 @@ public:
         Vec wVec) = 0;
 
     /// assign primal variables based on the current time instance
-    virtual void setTimeInstanceField(const label instanceI);
+    void setTimeInstanceField(const label instanceI);
 
     /// return the value of objective function at the given time instance and name
-    virtual scalar getTimeInstanceObjFunc(
+    scalar getTimeInstanceObjFunc(
         const label instanceI,
         const word objFuncName);
+
+    /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
+    void setTimeInstanceVar(
+        const word mode,
+        Mat stateMat,
+        Mat stateBCMat,
+        Vec timeVec,
+        Vec timeIdxVec);
+    
+    /// initialize the oldTime for all state variables
+    void initOldTimes();
 
     /// compute dRdWT
     void calcdRdWT(
@@ -410,6 +448,12 @@ public:
         const word designVarName,
         Vec dFdACT);
 
+    /// compute dRdWOld^T*Psi
+    void calcdRdWOldTPsiAD(
+        const label oldTimeLevel,
+        const Vec psi,
+        Vec dRdWOldTPsi);
+
     /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
     static PetscErrorCode dRdWTMatVecMultFunction(
         Mat dRdWT,
@@ -425,7 +469,7 @@ public:
     void destroydRdWTMatrixFree();
 
     /// register all state variables as the input for reverse-mode AD
-    void registerStateVariableInput4AD();
+    void registerStateVariableInput4AD(const label oldTimeLevel = 0);
 
     /// register field variables as the input for reverse-mode AD
     void registerFieldVariableInput4AD(
@@ -439,7 +483,9 @@ public:
     void assignVec2ResidualGradient(Vec vecX);
 
     /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
-    void assignStateGradient2Vec(Vec vecY);
+    void assignStateGradient2Vec(
+        Vec vecY,
+        const label oldTimeLevel = 0);
 
     /// set the reverse-mode AD derivatives from the field variables in OpenFOAM to vecY
     void assignFieldGradient2Vec(
@@ -552,6 +598,12 @@ public:
     label getNLocalAdjointStates() const
     {
         return daIndexPtr_->nLocalAdjointStates;
+    }
+
+    /// return the number of local adjoint boundary states
+    label getNLocalAdjointBoundaryStates() const
+    {
+        return daIndexPtr_->nLocalAdjointBoundaryStates;
     }
 
     /// return the number of local cells

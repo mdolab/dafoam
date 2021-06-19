@@ -47,6 +47,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
         void updateOFField(PetscVec)
@@ -56,6 +57,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void ofField2StateVec(PetscVec)
         void stateVec2OFField(PetscVec)
         int getNLocalAdjointStates()
+        int getNLocalAdjointBoundaryStates()
         int getNLocalCells()
         int checkMesh()
         double getObjFuncValue(char *)
@@ -74,9 +76,12 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void readVectorBinary(PetscVec, char *)
         void writeVectorBinary(PetscVec, char *)
         void setTimeInstanceField(int)
+        void initOldTimes()
+        void setTimeInstanceVar(char *, PetscMat, PetscMat, PetscVec, PetscVec)
         double getTimeInstanceObjFunc(int, char *)
         void setFieldValue4GlobalCellI(char *, double, int, int)
         void updateBoundaryConditions(char *, char *)
+        void calcPrimalResidualStatistics(char *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -200,6 +205,9 @@ cdef class pyDASolvers:
 
     def calcdFdFieldAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdField):
         self._thisptr.calcdFdFieldAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdField.vec)
+    
+    def calcdRdWOldTPsiAD(self, oldTimeLevel, Vec psi, Vec dRdWOldTPsi):
+        self._thisptr.calcdRdWOldTPsiAD(oldTimeLevel, psi.vec, dRdWOldTPsi.vec)
 
     def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
         self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
@@ -240,6 +248,9 @@ cdef class pyDASolvers:
     def getNLocalAdjointStates(self):
         return self._thisptr.getNLocalAdjointStates()
     
+    def getNLocalAdjointBoundaryStates(self):
+        return self._thisptr.getNLocalAdjointBoundaryStates()
+    
     def getNLocalCells(self):
         return self._thisptr.getNLocalCells()
     
@@ -279,6 +290,12 @@ cdef class pyDASolvers:
     def setTimeInstanceField(self, instanceI):
         self._thisptr.setTimeInstanceField(instanceI)
     
+    def initOldTimes(self):
+        self._thisptr.initOldTimes()
+    
+    def setTimeInstanceVar(self, mode, Mat stateMat, Mat stateBCMat, Vec timeVec, Vec timeIdxVec):
+        self._thisptr.setTimeInstanceVar(mode, stateMat.mat, stateBCMat.mat, timeVec.vec, timeIdxVec.vec)
+    
     def getTimeInstanceObjFunc(self, instanceI, objFuncName):
         return self._thisptr.getTimeInstanceObjFunc(instanceI, objFuncName)
 
@@ -287,3 +304,6 @@ cdef class pyDASolvers:
     
     def updateBoundaryConditions(self, fieldName, fieldType):
         self._thisptr.updateBoundaryConditions(fieldName, fieldType)
+    
+    def calcPrimalResidualStatistics(self, mode):
+        self._thisptr.calcPrimalResidualStatistics(mode)

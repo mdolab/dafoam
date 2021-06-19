@@ -81,7 +81,6 @@ void DAResidualSolidDisplacementFoam::clear()
         in the parent and child classes
     */
     DRes_.clear();
-    DResPartDeriv_.clear();
 }
 
 void DAResidualSolidDisplacementFoam::calcResiduals(const dictionary& options)
