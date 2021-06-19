@@ -247,7 +247,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             scalar fRMin = pow(rStarMin, expM) * pow(1.0 - rStarMin, expN);
             scalar fRMax = pow(rStarMax, expM) * pow(1.0 - rStarMax, expN);
 
-            label adjustThrust = diskSubDict.getScalar("adjustThrust");
+            label adjustThrust = diskSubDict.getLabel("adjustThrust");
             // if adjustThrust = False, we just read "scale" from daOption
             // if we want to adjust thrust, we calculate scale, instead of reading from daOption
             // to calculate the scale, we just compute the fAxial with scale = 1, then we find
