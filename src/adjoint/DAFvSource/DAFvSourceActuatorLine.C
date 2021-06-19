@@ -35,6 +35,8 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
         Compute the actuator line source term. 
         Reference:  Stokkermans et al. Validation and comparison of RANS propeller 
         modeling methods for tip-mounted applications
+        NOTE: rotDir = right means propeller rotates clockwise viewed from 
+        the tail of the aircraft looking forward
     */
 
     const scalar& pi = Foam::constant::mathematical::pi;
@@ -128,13 +130,13 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             vector cellC2AVecC(vector::zero);
             if (rotDir == "left")
             {
-                // this assumes right hand rotation of propellers
-                cellC2AVecC = cellC2AVecR ^ cellC2AVecA; // circ
+                // propeller rotates counter-clockwise viewed from the tail of the aircraft looking forward
+                cellC2AVecC = cellC2AVecR ^ direction; // circ
             }
             else if (rotDir == "right")
             {
-                // this assumes left hand rotation of propellers
-                cellC2AVecC = cellC2AVecA ^ cellC2AVecR; // circ
+                // propeller rotates clockwise viewed from the tail of the aircraft looking forward
+                cellC2AVecC = direction ^ cellC2AVecR; // circ
             }
             else
             {

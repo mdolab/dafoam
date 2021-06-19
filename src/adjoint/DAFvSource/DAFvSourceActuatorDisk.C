@@ -46,6 +46,9 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
         source = rStar * sqrt(1.0 - rStar) * scale
         where rStar is the normalized radial location and scale is used to 
         make sure the integral force equals the desired total thrust
+        
+        NOTE: rotDir = right means propeller rotates clockwise viewed from 
+        the tail of the aircraft looking forward
 
         There are two options to assign the source term:
         1. cylinderAnnulusToCell. Users prescribe a cylinderAnnulus and the fvSource will be
@@ -161,13 +164,13 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 vector cellC2AVecC(vector::zero);
                 if (rotDir == "left")
                 {
-                    // this assumes right hand rotation of propellers
-                    cellC2AVecC = cellC2AVecR ^ cellC2AVecA; // circ
+                    // propeller rotates counter-clockwise viewed from the tail of the aircraft looking forward
+                    cellC2AVecC = cellC2AVecR ^ diskDirNorm; // circ
                 }
                 else if (rotDir == "right")
                 {
-                    // this assumes left hand rotation of propellers
-                    cellC2AVecC = cellC2AVecA ^ cellC2AVecR; // circ
+                    // propeller rotates clockwise viewed from the tail of the aircraft looking forward
+                    cellC2AVecC = diskDirNorm ^ cellC2AVecR; // circ
                 }
                 else
                 {
@@ -244,7 +247,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             scalar fRMin = pow(rStarMin, expM) * pow(1.0 - rStarMin, expN);
             scalar fRMax = pow(rStarMax, expM) * pow(1.0 - rStarMax, expN);
 
-            label adjustThrust = diskSubDict.lookupOrDefault<label>("adjustThrust", 0);
+            label adjustThrust = diskSubDict.getScalar("adjustThrust");
             // if adjustThrust = False, we just read "scale" from daOption
             // if we want to adjust thrust, we calculate scale, instead of reading from daOption
             // to calculate the scale, we just compute the fAxial with scale = 1, then we find
@@ -341,13 +344,13 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 vector cellC2AVecC(vector::zero);
                 if (rotDir == "left")
                 {
-                    // this assumes right hand rotation of propellers
-                    cellC2AVecC = cellC2AVecR ^ cellC2AVecA; // circ
+                    // propeller rotates counter-clockwise viewed from the tail of the aircraft looking forward
+                    cellC2AVecC = cellC2AVecR ^ dirNorm; // circ
                 }
                 else if (rotDir == "right")
                 {
-                    // this assumes left hand rotation of propellers
-                    cellC2AVecC = cellC2AVecA ^ cellC2AVecR; // circ
+                    // propeller rotates clockwise viewed from the tail of the aircraft looking forward
+                    cellC2AVecC = dirNorm ^ cellC2AVecR; // circ
                 }
                 else
                 {
