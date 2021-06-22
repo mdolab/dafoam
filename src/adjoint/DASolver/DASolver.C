@@ -35,7 +35,7 @@ DASolver::DASolver(
       daLinearEqnPtr_(nullptr),
       daResidualPtr_(nullptr),
       objFuncHistFilePtr_(nullptr)
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
       ,
       globalADTape_(codi::RealReverse::getGlobalTape())
 #endif
@@ -1188,7 +1188,7 @@ void DASolver::calcdFdBCAD(
     const word designVarName,
     Vec dFdBC)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     -------------- NOTE -----------------
     This function is not working in parallel.
@@ -1437,7 +1437,7 @@ void DASolver::calcdRdBCTPsiAD(
     const word designVarName,
     Vec dRdBCTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Compute the matrix-vector products dRdBC^T*Psi using reverse-mode AD
@@ -1753,7 +1753,7 @@ void DASolver::calcdFdAOAAD(
     const word designVarName,
     Vec dFdAOA)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     -------------- NOTE -----------------
     This function is not working in parallel.
@@ -1976,7 +1976,7 @@ void DASolver::calcdRdAOATPsiAD(
     const word designVarName,
     Vec dRdAOATPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Compute the matrix-vector products dRdAOA^T*Psi using reverse-mode AD
@@ -2538,7 +2538,7 @@ void DASolver::calcdFdFieldAD(
     const word designVarName,
     Vec dFdField)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         This function computes partials derivatives dFdField
@@ -2674,7 +2674,7 @@ void DASolver::createMLRKSPMatrixFree(
     const Mat jacPCMat,
     KSP ksp)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Call createMLRKSP from DALinearEqn
@@ -2767,7 +2767,7 @@ void DASolver::initializedRdWTMatrixFree(
     const Vec xvVec,
     const Vec wVec)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         This function initialize the matrix-free dRdWT, which will be
@@ -2799,7 +2799,7 @@ void DASolver::initializedRdWTMatrixFree(
 
 void DASolver::destroydRdWTMatrixFree()
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Destroy dRdWTMF_
@@ -2810,7 +2810,7 @@ void DASolver::destroydRdWTMatrixFree()
 
 PetscErrorCode DASolver::dRdWTMatVecMultFunction(Mat dRdWTMF, Vec vecX, Vec vecY)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         This function implements a way to compute matrix-vector products
@@ -2851,7 +2851,7 @@ PetscErrorCode DASolver::dRdWTMatVecMultFunction(Mat dRdWTMF, Vec vecX, Vec vecY
 
 void DASolver::initializeGlobalADTape4dRdWT()
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Initialize the global tape for computing dRdWT*psi
@@ -2894,7 +2894,7 @@ void DASolver::calcdFdWAD(
     const word objFuncName,
     Vec dFdW)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         This function computes partials derivatives dFdW using AD
@@ -3015,7 +3015,7 @@ void DASolver::calcdFdXvAD(
     const word designVarName,
     Vec dFdXv)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Compute dFdXv using reverse-mode AD
@@ -3149,7 +3149,7 @@ void DASolver::calcdRdXvTPsiAD(
     const Vec psi,
     Vec dRdXvTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Compute the matrix-vector products dRdXv^T*Psi using reverse-mode AD
@@ -3227,7 +3227,7 @@ void DASolver::calcdRdFieldTPsiAD(
     const word designVarName,
     Vec dRdFieldTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Compute the matrix-vector products dRdField^T*Psi using reverse-mode AD
@@ -3303,7 +3303,7 @@ void DASolver::calcdFdACTAD(
     const word designVarName,
     Vec dFdACT)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Compute dFdACT using reverse-mode AD
@@ -3472,7 +3472,7 @@ void DASolver::calcdRdActTPsiAD(
     const word designVarName,
     Vec dRdActTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Compute the matrix-vector products dRdAct^T*Psi using reverse-mode AD
@@ -3588,7 +3588,7 @@ void DASolver::calcdRdWOldTPsiAD(
     const Vec psi,
     Vec dRdWOldTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Compute the matrix-vector products dRdWOld^T*Psi using reverse-mode AD
@@ -3658,7 +3658,7 @@ void DASolver::calcdRdWOldTPsiAD(
 
 void DASolver::registerStateVariableInput4AD(const label oldTimeLevel)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Register all state variables as the input for reverse-mode AD
@@ -3817,7 +3817,7 @@ void DASolver::registerFieldVariableInput4AD(
     const word fieldName,
     const word fieldType)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Register field variables as the input for reverse-mode AD
@@ -3862,7 +3862,7 @@ void DASolver::registerFieldVariableInput4AD(
 
 void DASolver::registerResidualOutput4AD()
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_AD_REVERSE)
     /*
     Description:
         Register all residuals as the output for reverse-mode AD

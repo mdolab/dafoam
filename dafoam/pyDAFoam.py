@@ -413,7 +413,7 @@ class DAOPTION(object):
     transonicPCOption = -1
 
     ## Options for unsteady adjoint. mode can be hybridAdjoint or timeAccurateAdjoint
-    ## Here nTimeInstances is the number of time instances and periodicity is the 
+    ## Here nTimeInstances is the number of time instances and periodicity is the
     ## periodicity of flow oscillation (hybrid adjoint only)
     unsteadyAdjoint = {"mode": "None", "nTimeInstances": -1, "periodicity": -1.0}
 
@@ -562,6 +562,14 @@ class DAOPTION(object):
     ##      }
     ## }
     intmdVar = {}
+
+    ## Whether to use the brute force AD mode in runPrimal.
+    ## This mode uses reverse-mode AD to compute gradients
+    ## by setting a seed in the beginning and run the entire
+    ## primal solver. NOTE: it uses a LOT of memory and is
+    ## only applicable for very small scale problems!
+    ## They typically are used in verifying gradient accuracy
+    useBruteForceAD = False
 
     ## The sensitivity map will be saved to disk during optimization for the given design variable
     ## names in the list. Currently only support design variable type FFD and Field
@@ -896,7 +904,7 @@ class PYDAFOAM(object):
                     vecF = vecA.duplicate()
                     vecF.zeroEntries()
                     self.dR00dW00TPsi[objFuncName] = vecF
-    
+
     def zeroTimeAccurateAdjointVectors(self):
         if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
             objFuncDict = self.getOption("objFunc")
@@ -1023,7 +1031,7 @@ class PYDAFOAM(object):
 
         self.timeVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
         self.timeIdxVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
-    
+
     def initOldTimes(self):
         # No need to initialize oldTimes for FD
         if self.getOption("adjJacobianOption") == "JacobianFree":
@@ -1753,6 +1761,30 @@ class PYDAFOAM(object):
             fSens.write("}\n")
             fSens.close()
 
+    def writePetscVecMat(self, name, vecMat, mode="ASCII"):
+        """
+        Write Petsc vectors or matrices
+        """
+
+        Info("Saving %s to disk...." % name)
+        if mode == "ASCII":
+            viewer = PETSc.Viewer().createASCII(name + ".dat", mode="w", comm=PETSc.COMM_WORLD)
+            viewer(vecMat)
+        elif mode == "Binary":
+            viewer = PETSc.Viewer().createBinary(name + ".bin", mode="w", comm=PETSc.COMM_WORLD)
+            viewer(vecMat)
+        else:
+            raise Error("mode not valid! Options are: ASCII or Binary")
+
+    def readPetscVecMat(self, name, vecMat):
+        """
+        Read Petsc vectors or matrices
+        """
+
+        Info("Reading %s from disk...." % name)
+        viewer = PETSc.Viewer().createBinary(name + ".bin", comm=PETSc.COMM_WORLD)
+        vecMat.load(viewer)
+
     def solvePrimal(self):
         """
         Run primal solver to compute state variables and objectives
@@ -1773,7 +1805,10 @@ class PYDAFOAM(object):
         self.deletePrevPrimalSolTime()
 
         self.primalFail = 0
-        self.primalFail = self.solver.solvePrimal(self.xvVec, self.wVec)
+        if self.getOption("useBruteForceAD"):
+            self.primalFail = self.solverAD.solvePrimal(self.xvVec, self.wVec)
+        else:
+            self.primalFail = self.solver.solvePrimal(self.xvVec, self.wVec)
 
         self.nSolvePrimals += 1
 
@@ -2076,29 +2111,19 @@ class PYDAFOAM(object):
                             totalDerivXv.scale(-1.0)
                             totalDerivXv.axpy(1.0, dFdXv)
 
-                            dFdXvTotalArray = np.zeros(xvSize, self.dtype)
-                            Istart, Iend = totalDerivXv.getOwnershipRange()
-                            for idxI in range(Istart, Iend):
-                                idxRel = idxI - Istart
-                                dFdXvTotalArray[idxRel] = totalDerivXv[idxI]
-
                             if self.DVGeo is not None and self.DVGeo.getNDV() > 0:
-                                # Now get total derivative wrt surface coordinates
-                                self.mesh.warpDeriv(dFdXvTotalArray)
-                                dFdXs = self.mesh.getdXs()
-                                dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.designFamilyGroup)
-                                dFdFFD = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
-                                # check if we need to save the sensitivity maps
+                                dFdFFD = self.mapdXvTodFFD(totalDerivXv)
                                 if designVarName in self.getOption("writeSensMap"):
                                     # we can't save the surface sensitivity time with the primal solution
                                     # because surfaceSensMap needs to have its own mesh (design surface only)
                                     sensSolTime = float(solutionTime) / 1000.0
                                     self.writeSurfaceSensitivityMap(objFuncName, designVarName, sensSolTime)
 
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] = dFdFFD[designVarName][0][i]
+                                # assign the total derivative to self.adjTotalDeriv
+                                self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                                for i in range(nDVs):
+                                    self.adjTotalDeriv[objFuncName][designVarName][i] = dFdFFD[designVarName][0][i]
+
                             totalDerivXv.destroy()
                             dFdXv.destroy()
             ################### ACT: actuator models as design variable ###################
@@ -2247,6 +2272,38 @@ class PYDAFOAM(object):
             self.dRdWTPC.destroy()
 
         return
+
+    def mapdXvTodFFD(self, totalDerivXv):
+        """
+        Map the Xv derivative (volume derivative) to the FFD derivatives (design variables)
+        Essentially, we first map the Xv (volume) to Xs (surface) using IDWarp, then, we
+        further map Xs (surface) to FFD using pyGeo
+
+        Input:
+        ------
+        totalDerivXv: total derivative dFdXv vector
+
+        Output:
+        ------
+        dFdFFD: the mapped total derivative with respect to FFD variables
+        """
+
+        xvSize = len(self.xv) * 3
+
+        dFdXvTotalArray = np.zeros(xvSize, self.dtype)
+
+        Istart, Iend = totalDerivXv.getOwnershipRange()
+
+        for idxI in range(Istart, Iend):
+            idxRel = idxI - Istart
+            dFdXvTotalArray[idxRel] = totalDerivXv[idxI]
+
+        self.mesh.warpDeriv(dFdXvTotalArray)
+        dFdXs = self.mesh.getdXs()
+        dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.designFamilyGroup)
+        dFdFFD = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
+
+        return dFdFFD
 
     def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
