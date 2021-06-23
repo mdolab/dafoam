@@ -44,7 +44,7 @@ DAObjFuncWallHeatFlux::DAObjFuncWallHeatFlux(
               mesh.time().timeName(),
               mesh,
               IOobject::NO_READ,
-              IOobject::NO_WRITE),
+              IOobject::AUTO_WRITE),
           mesh,
 #ifdef IncompressibleFlow
           dimensionedScalar("wallHeatFlux", dimensionSet(1, -2, 1, 1, 0, 0, 0), 0.0),

@@ -35,7 +35,6 @@ class DARhoSimpleFoam
 {
 
 protected:
-
     /// simple pointer
     autoPtr<simpleControl> simplePtr_;
 
@@ -66,7 +65,7 @@ protected:
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;
 
-    /// fvSource term 
+    /// fvSource term
     autoPtr<volVectorField> fvSourcePtr_;
 
     /// fvSource term for the energy equation
@@ -105,7 +104,6 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec);
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

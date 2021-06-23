@@ -5,6 +5,9 @@ EXE_INC = \
     -DSolidDASolver \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/fileFormats/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
     -I$(LIB_SRC)/OpenFOAM/lnInclude \
     -I../include \
     -I$(PETSC_DIR)/include \
@@ -18,6 +21,7 @@ LIB_LIBS = \
     -lOpenFOAM$(DF_LIB_SUFFIX) \
     -lfiniteVolume$(DF_LIB_SUFFIX) \
     -lmeshTools$(DF_LIB_SUFFIX) \
+    -lsampling$(DF_LIB_SUFFIX) \
     -L$(PETSC_LIB) -lpetsc \
     -L$(MPI_ARCH_PATH)/lib \
     -L$(MPI_ARCH_PATH)/lib64 \

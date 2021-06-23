@@ -2,6 +2,7 @@ DAUtility/DAUtility.C
 
 DACheckMesh/DACheckMesh.C
 DACheckMesh/checkGeometry.C
+DACheckMesh/checkTools.C
 
 DAOption/DAOption.C
 
@@ -69,6 +70,7 @@ DAPartDeriv/DAPartDerivdRdAOA.C
 DAPartDeriv/DAPartDerivdRdACTP.C
 DAPartDeriv/DAPartDerivdRdACTD.C
 DAPartDeriv/DAPartDerivdRdACTL.C
+DAPartDeriv/DAPartDerivdFdACTD.C
 
 DALinearEqn/DALinearEqn.C
 

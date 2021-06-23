@@ -78,9 +78,9 @@ void DAObjFuncVonMisesStressKS::calcObjFunc(
     */
 
     // initialize faceValues to zero
-    forAll(objFuncFaceValues, idxI)
+    forAll(objFuncCellValues, idxI)
     {
-        objFuncFaceValues[idxI] = 0.0;
+        objFuncCellValues[idxI] = 0.0;
     }
 
     objFuncValue = 0.0;

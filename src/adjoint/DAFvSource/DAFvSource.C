@@ -100,7 +100,6 @@ void DAFvSource::calcFvSource(volVectorField& fvSource)
                      << abort(FatalError);
 }
 
-
 bool DAFvSource::writeData(Ostream& os) const
 {
     /*
@@ -109,6 +108,58 @@ bool DAFvSource::writeData(Ostream& os) const
     */
     // do nothing
     return true;
+}
+
+void DAFvSource::syncDAOptionToActuatorDVs()
+{
+    /*
+    Description:
+        Synchronize the values in DAOption and actuatorDiskDVs_. 
+        We need to synchronize the values defined in fvSource from DAOption to actuatorDiskDVs_
+        NOTE: we need to call this function whenever we change the actuator design variables 
+        during optimization. This is needed because we need to use actuatorDiskDVs_ in AD 
+    */
+
+    // now we need to initialize actuatorDiskDVs_
+    dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
+    word diskName0 = fvSourceSubDict.toc()[0];
+
+    word type0 = fvSourceSubDict.subDict(diskName0).getWord("type");
+
+    if (type0 == "actuatorDisk")
+    {
+        word source0 = fvSourceSubDict.subDict(diskName0).getWord("source");
+
+        if (source0 == "cylinderAnnulusSmooth")
+        {
+            forAll(fvSourceSubDict.toc(), idxI)
+            {
+                word diskName = fvSourceSubDict.toc()[idxI];
+
+                // sub dictionary with all parameters for this disk
+                dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
+
+                // now read in all parameters for this actuator disk
+                scalarList centerList;
+                diskSubDict.readEntry<scalarList>("center", centerList);
+
+                // we have 9 design variables for each disk
+                scalarList dvList(9);
+                dvList[0] = centerList[0];
+                dvList[1] = centerList[1];
+                dvList[2] = centerList[2];
+                dvList[3] = diskSubDict.getScalar("innerRadius");
+                dvList[4] = diskSubDict.getScalar("outerRadius");
+                dvList[5] = diskSubDict.getScalar("scale");
+                dvList[6] = diskSubDict.getScalar("POD");
+                dvList[7] = diskSubDict.getScalar("expM");
+                dvList[8] = diskSubDict.getScalar("expN");
+
+                // set actuatorDiskDVs_
+                actuatorDiskDVs_.set(diskName, dvList);
+            }
+        }
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

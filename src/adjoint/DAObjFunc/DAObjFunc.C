@@ -287,7 +287,6 @@ scalar DAObjFunc::masterFunction(
     return objFuncValue;
 }
 
-/// calcluate the value of objective function
 scalar DAObjFunc::getObjFuncValue()
 {
     /*

@@ -32,7 +32,6 @@ protected:
     //@{
     volVectorField& D_;
     volVectorField DRes_;
-    volVectorField DResPartDeriv_;
     //@}
 
     volTensorField& gradD_;

@@ -40,6 +40,7 @@ aeroOptions = {
     "adjJacobianOption": "JacobianFree",
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
+    "writeSensMap": ["betaSA", "alphaPorosity"],
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},

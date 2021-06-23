@@ -40,9 +40,9 @@ LRef = 1.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleFoam",
-    "adjJacobianOption": "JacobianFree",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
+    "adjJacobianOption": "JacobianFree",
     "primalMinResTol": 1e-12,
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
@@ -151,4 +151,4 @@ else:
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-6, 1e-8)
+        reg_write_dict(funcsSens, 1e-5, 1e-7)

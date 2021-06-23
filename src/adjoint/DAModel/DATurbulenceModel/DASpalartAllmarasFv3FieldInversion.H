@@ -65,7 +65,6 @@ protected:
     //@{
     volScalarField& nuTilda_;
     volScalarField nuTildaRes_;
-    volScalarField nuTildaResPartDeriv_;
     //@}
 
     /// A beta field multiplying to the production term

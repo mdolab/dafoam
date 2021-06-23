@@ -25,13 +25,6 @@
         const_cast<fieldType&>(                  \
             db.lookupObject<fieldType>(stateResName)));
 
-#define makeStatePartDeriv(regState, fieldType, db)          \
-    const word stateName = regState;                         \
-    const word statePartDerivName = stateName + "PartDeriv"; \
-    fieldType& statePartDeriv(                               \
-        const_cast<fieldType&>(                              \
-            db.lookupObject<fieldType>(statePartDerivName)));
-
 #define normalizeResiduals(resName)                                                                \
     if (!DAUtility::isInList<word>(#resName, daOption_.getOption<wordList>("normalizeResiduals"))) \
     {                                                                                              \
@@ -70,15 +63,7 @@
                 IOobject::NO_WRITE),                                  \
             mesh,                                                     \
             dimensionedScalar(#stateName "Res", stateUnit, 0.0),      \
-            zeroGradientFvPatchField<scalar>::typeName),                \
-        stateName##ResPartDeriv_(                                     \
-            IOobject(                                                 \
-                #stateName "ResPartDeriv",                            \
-                mesh.time().timeName(),                               \
-                mesh,                                                 \
-                IOobject::NO_READ,                                    \
-                IOobject::NO_WRITE),                                  \
-            stateName##Res_)
+            zeroGradientFvPatchField<scalar>::typeName)
 
 #define setResidualClassMemberVector(stateName, stateUnit)                \
     stateName##_(                                                         \
@@ -93,15 +78,7 @@
                 IOobject::NO_WRITE),                                      \
             mesh,                                                         \
             dimensionedVector(#stateName "Res", stateUnit, vector::zero), \
-            zeroGradientFvPatchField<vector>::typeName),                    \
-        stateName##ResPartDeriv_(                                         \
-            IOobject(                                                     \
-                #stateName "ResPartDeriv",                                \
-                mesh.time().timeName(),                                   \
-                mesh,                                                     \
-                IOobject::NO_READ,                                        \
-                IOobject::NO_WRITE),                                      \
-            stateName##Res_)
+            zeroGradientFvPatchField<vector>::typeName)
 
 #define setResidualClassMemberPhi(stateName)                              \
     stateName##_(                                                         \
@@ -110,14 +87,6 @@
         stateName##Res_(                                                  \
             IOobject(                                                     \
                 #stateName "Res",                                         \
-                mesh.time().timeName(),                                   \
-                mesh,                                                     \
-                IOobject::NO_READ,                                        \
-                IOobject::NO_WRITE),                                      \
-            mesh.thisDb().lookupObject<surfaceScalarField>(#stateName)),  \
-        stateName##ResPartDeriv_(                                         \
-            IOobject(                                                     \
-                #stateName "ResPartDeriv",                                \
                 mesh.time().timeName(),                                   \
                 mesh,                                                     \
                 IOobject::NO_READ,                                        \

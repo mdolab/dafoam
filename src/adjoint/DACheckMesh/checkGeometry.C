@@ -5,20 +5,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "PatchTools.H"
 #include "checkGeometry.H"
-#include "polyMesh.H"
-#include "cellSet.H"
-#include "faceSet.H"
-#include "pointSet.H"
-#include "edgeHashes.H"
-#include "wedgePolyPatch.H"
-#include "unitConversion.H"
-#include "polyMeshTetDecomposition.H"
-#include "functionObject.H"
-
-#include "cyclicACMIPolyPatch.H"
-#include "Time.H"
 
 namespace Foam
 {
@@ -221,7 +208,10 @@ bool Foam::checkCoupledPoints(
     }
 }
 
-Foam::label Foam::checkGeometry(const polyMesh& mesh)
+Foam::label Foam::checkGeometry(
+    const polyMesh& mesh,
+    const autoPtr<surfaceWriter>& surfWriter,
+    const autoPtr<writer<scalar>>& setWriter)
 {
     label noFailedChecks = 0;
 
@@ -274,8 +264,14 @@ Foam::label Foam::checkGeometry(const polyMesh& mesh)
 
             if (nNonClosed > 0)
             {
-                Info << "  <<There are " << nNonClosed
-                     << " non closed cells " << endl;
+                Info << "  <<Writing " << nNonClosed
+                     << " non closed cells to set " << cells.name() << endl;
+                cells.instance() = mesh.pointsInstance();
+                cells.write();
+                if (surfWriter.valid())
+                {
+                    mergeAndWrite(surfWriter(), cells);
+                }
             }
         }
 
@@ -283,9 +279,15 @@ Foam::label Foam::checkGeometry(const polyMesh& mesh)
 
         if (nHighAspect > 0)
         {
-            Info << "  <<There are " << nHighAspect
-                 << " cells with high aspect ratio"
-                 << endl;
+            Info << "  <<Writing " << nHighAspect
+                 << " cells with high aspect ratio to set "
+                 << aspectCells.name() << endl;
+            aspectCells.instance() = mesh.pointsInstance();
+            aspectCells.write();
+            if (surfWriter.valid())
+            {
+                mergeAndWrite(surfWriter(), aspectCells);
+            }
         }
     }
 
@@ -299,8 +301,14 @@ Foam::label Foam::checkGeometry(const polyMesh& mesh)
 
             if (nFaces > 0)
             {
-                Info << "  <<There are " << nFaces
-                     << " zero area faces " << endl;
+                Info << "  <<Writing " << nFaces
+                     << " zero area faces to set " << faces.name() << endl;
+                faces.instance() = mesh.pointsInstance();
+                faces.write();
+                if (surfWriter.valid())
+                {
+                    mergeAndWrite(surfWriter(), faces);
+                }
             }
         }
     }
@@ -315,8 +323,14 @@ Foam::label Foam::checkGeometry(const polyMesh& mesh)
 
             if (nCells > 0)
             {
-                Info << "  <<There are " << nCells
-                     << " zero volume cells " << endl;
+                Info << "  <<Writing " << nCells
+                     << " zero volume cells to set " << cells.name() << endl;
+                cells.instance() = mesh.pointsInstance();
+                cells.write();
+                if (surfWriter.valid())
+                {
+                    mergeAndWrite(surfWriter(), cells);
+                }
             }
         }
     }
@@ -332,8 +346,14 @@ Foam::label Foam::checkGeometry(const polyMesh& mesh)
 
         if (nFaces > 0)
         {
-            Info << "  <<There are " << nFaces
-                 << " non-orthogonal faces " << endl;
+            Info << "  <<Writing " << nFaces
+                 << " non-orthogonal faces to set " << faces.name() << endl;
+            faces.instance() = mesh.pointsInstance();
+            faces.write();
+            if (surfWriter.valid())
+            {
+                mergeAndWrite(surfWriter(), faces);
+            }
         }
     }
 
@@ -347,9 +367,15 @@ Foam::label Foam::checkGeometry(const polyMesh& mesh)
 
             if (nFaces > 0)
             {
-                Info << "  <<There are " << nFaces
-                     << " faces with incorrect orientation "
-                     << endl;
+                Info << "  <<Writing " << nFaces
+                     << " faces with incorrect orientation to set "
+                     << faces.name() << endl;
+                faces.instance() = mesh.pointsInstance();
+                faces.write();
+                if (surfWriter.valid())
+                {
+                    mergeAndWrite(surfWriter(), faces);
+                }
             }
         }
     }
@@ -364,8 +390,14 @@ Foam::label Foam::checkGeometry(const polyMesh& mesh)
 
             if (nFaces > 0)
             {
-                Info << "  <<There are " << nFaces
-                     << " skew faces" << endl;
+                Info << "  <<Writing " << nFaces
+                     << " skew faces to set " << faces.name() << endl;
+                faces.instance() = mesh.pointsInstance();
+                faces.write();
+                if (surfWriter.valid())
+                {
+                    mergeAndWrite(surfWriter(), faces);
+                }
             }
         }
     }
@@ -380,9 +412,16 @@ Foam::label Foam::checkGeometry(const polyMesh& mesh)
 
             if (nFaces > 0)
             {
-                Info << " <<There are " << nFaces
+                Info << "  <<Writing " << nFaces
                      << " faces with incorrectly matched 0th (or consecutive)"
-                     << endl;
+                     << " vertex to set "
+                     << faces.name() << endl;
+                faces.instance() = mesh.pointsInstance();
+                faces.write();
+                if (surfWriter.valid())
+                {
+                    mergeAndWrite(surfWriter(), faces);
+                }
             }
         }
     }

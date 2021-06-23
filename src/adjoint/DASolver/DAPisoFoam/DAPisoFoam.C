@@ -52,41 +52,59 @@ void DAPisoFoam::initSolver()
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
-    label active = daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "active");
+    mode_ = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
 
-    nTimeInstances_ =
-        daOptionPtr_->getSubDictOption<label>("hybridAdjoint", "nTimeInstances");
-
-    periodicity_ =
-        daOptionPtr_->getSubDictOption<scalar>("hybridAdjoint", "periodicity");
-
-    if (!active)
+    if (mode_ == "hybridAdjoint")
     {
-        FatalErrorIn("hybridAdjoint") << "active is False!" << abort(FatalError);
+
+        nTimeInstances_ =
+            daOptionPtr_->getSubDictOption<label>("unsteadyAdjoint", "nTimeInstances");
+
+        periodicity_ =
+            daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "periodicity");
+
+        if (periodicity_ <= 0)
+        {
+            FatalErrorIn("") << "periodicity <= 0!" << abort(FatalError);
+        }
+    }
+    else if (mode_ == "timeAccurateAdjoint")
+    {
+
+        nTimeInstances_ =
+            daOptionPtr_->getSubDictOption<label>("unsteadyAdjoint", "nTimeInstances");
+
+        scalar endTime = runTimePtr_->endTime().value();
+        scalar deltaT = runTimePtr_->deltaTValue();
+        label maxNTimeInstances = round(endTime / deltaT) + 1;
+        if (nTimeInstances_ != maxNTimeInstances)
+        {
+            FatalErrorIn("") << "nTimeInstances in timeAccurateAdjoint is not equal to "
+                             << "the maximal possible value!" << abort(FatalError);
+        }
     }
 
-    if (periodicity_ <= 0)
+    if (mode_ == "hybridAdjoint" || mode_ == "timeAccurateAdjoint")
     {
-        FatalErrorIn("hybridAdjoint") << "periodicity <= 0!" << abort(FatalError);
-    }
 
-    if (nTimeInstances_ <= 0)
-    {
-        FatalErrorIn("hybridAdjoint") << "nTimeInstances <= 0!" << abort(FatalError);
-    }
+        if (nTimeInstances_ <= 0)
+        {
+            FatalErrorIn("") << "nTimeInstances <= 0!" << abort(FatalError);
+        }
 
-    stateAllInstances_.setSize(nTimeInstances_);
-    stateBounaryAllInstances_.setSize(nTimeInstances_);
-    objFuncsAllInstances_.setSize(nTimeInstances_);
-    runTimeAllInstances_.setSize(nTimeInstances_);
-    runTimeIndexAllInstances_.setSize(nTimeInstances_);
+        stateAllInstances_.setSize(nTimeInstances_);
+        stateBoundaryAllInstances_.setSize(nTimeInstances_);
+        objFuncsAllInstances_.setSize(nTimeInstances_);
+        runTimeAllInstances_.setSize(nTimeInstances_);
+        runTimeIndexAllInstances_.setSize(nTimeInstances_);
 
-    forAll(stateAllInstances_, idxI)
-    {
-        stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
-        stateBounaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
-        runTimeAllInstances_[idxI] = 0.0;
-        runTimeIndexAllInstances_[idxI] = 0.0;
+        forAll(stateAllInstances_, idxI)
+        {
+            stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
+            stateBoundaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
+            runTimeAllInstances_[idxI] = 0.0;
+            runTimeIndexAllInstances_[idxI] = 0;
+        }
     }
 
     // initialize fvSource and the source term
@@ -104,7 +122,6 @@ void DAPisoFoam::initSolver()
 
     // initialize intermediate variable pointer for mean field calculation
     daIntmdVarPtr_.reset(new DAIntmdVar(mesh, daOptionPtr_()));
-
 }
 
 label DAPisoFoam::solvePrimal(
@@ -156,12 +173,20 @@ label DAPisoFoam::solvePrimal(
 
     // We need to set the mesh moving to false, otherwise we will get V0 not found error.
     // Need to dig into this issue later
-    mesh.moving(false);
+    // NOTE: we have commented this out. Setting mesh.moving(false) has been done
+    // right after mesh.movePoints() calls.
+    //mesh.moving(false);
 
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;
+    // for time accurate adjoints, we need to save states for Time = 0
+    if (mode_ == "timeAccurateAdjoint")
+    {
+        this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
+    }
+    // main loop
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
         printToScreen = this->isPrintTime(runTime, printInterval);
@@ -193,6 +218,11 @@ label DAPisoFoam::solvePrimal(
 
             this->printAllObjFuncs();
 
+            if (daOptionPtr_->getOption<label>("debug"))
+            {
+                this->calcPrimalResidualStatistics("print");
+            }
+
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                  << nl << endl;
@@ -202,7 +232,15 @@ label DAPisoFoam::solvePrimal(
 
         runTime.write();
 
-        this->saveTimeInstanceField(timeInstanceI);
+        if (mode_ == "hybridAdjoint")
+        {
+            this->saveTimeInstanceFieldHybrid(timeInstanceI);
+        }
+
+        if (mode_ == "timeAccurateAdjoint")
+        {
+            this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
+        }
     }
 
     this->calcPrimalResidualStatistics("print");
@@ -217,94 +255,6 @@ label DAPisoFoam::solvePrimal(
          << endl;
 
     return 0;
-}
-
-void DAPisoFoam::saveTimeInstanceField(label& timeInstanceI)
-{
-    /*
-    Description:
-        Save primal variable to time instance list for unsteady adjoint
-        Here we save the last nTimeInstances snapshots
-    */
-
-    scalar endTime = runTimePtr_->endTime().value();
-    scalar t = runTimePtr_->timeOutputValue();
-    scalar instanceStart =
-        endTime - periodicity_ / nTimeInstances_ * (nTimeInstances_ - 1 - timeInstanceI);
-
-    // the 2nd condition is for t=9.999999999999 scenario)
-    if (t > instanceStart || fabs(t - endTime) < 1e-8)
-    {
-        Info << "Saving time instance " << timeInstanceI << " at Time = " << t << endl;
-
-        // save fields
-        daFieldPtr_->ofField2List(
-            stateAllInstances_[timeInstanceI],
-            stateBounaryAllInstances_[timeInstanceI]);
-
-        // save objective functions
-        forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
-        {
-            word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
-            scalar objFuncVal = this->getObjFuncValue(objFuncName);
-            objFuncsAllInstances_[timeInstanceI].set(objFuncName, objFuncVal);
-        }
-
-        // save runTime
-        runTimeAllInstances_[timeInstanceI] = t;
-        runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-
-        timeInstanceI++;
-    }
-    return;
-}
-
-void DAPisoFoam::setTimeInstanceField(const label instanceI)
-{
-    /*
-    Description:
-        Assign primal variables based on the current time instance
-        If unsteady adjoint solvers are used, this virtual function should be 
-        implemented in a child class, otherwise, return error if called
-    */
-
-    Info << "Setting fields for time instance " << instanceI << endl;
-
-    // set fields
-    daFieldPtr_->list2OFField(
-        stateAllInstances_[instanceI],
-        stateBounaryAllInstances_[instanceI]);
-
-    // set run time
-    runTimePtr_->setTime(runTimeAllInstances_[instanceI], runTimeIndexAllInstances_[instanceI]);
-
-    // We need to call correctBC multiple times to reproduce
-    // the exact residual for mulitpoint, this is needed for some boundary conditions
-    // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
-    for (label i = 0; i < 10; i++)
-    {
-        daResidualPtr_->correctBoundaryConditions();
-        daResidualPtr_->updateIntermediateVariables();
-        daModelPtr_->correctBoundaryConditions();
-        daModelPtr_->updateIntermediateVariables();
-    }
-}
-
-scalar DAPisoFoam::getTimeInstanceObjFunc(
-    const label instanceI,
-    const word objFuncName)
-{
-    /*
-    Description:
-        Return the value of objective function at the given time instance and name
-    */
-
-    return objFuncsAllInstances_[instanceI].getScalar(objFuncName);
 }
 
 } // End namespace Foam

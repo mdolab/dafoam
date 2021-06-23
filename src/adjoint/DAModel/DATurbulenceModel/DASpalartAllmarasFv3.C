@@ -74,14 +74,6 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
           dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      nuTildaResPartDeriv_(
-          IOobject(
-              "nuTildaResPartDeriv",
-              mesh.time().timeName(),
-              mesh,
-              IOobject::NO_READ,
-              IOobject::NO_WRITE),
-          nuTildaRes_),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 

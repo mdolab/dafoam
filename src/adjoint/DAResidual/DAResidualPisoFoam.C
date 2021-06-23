@@ -39,6 +39,9 @@ DAResidualPisoFoam::DAResidualPisoFoam(
     {
         hasFvSource_ = 1;
     }
+
+    mode_ = daOption.getSubDictOption<word>("unsteadyAdjoint", "mode");
+
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -52,11 +55,8 @@ void DAResidualPisoFoam::clear()
         in the parent and child classes
     */
     URes_.clear();
-    UResPartDeriv_.clear();
     pRes_.clear();
-    pResPartDeriv_.clear();
     phiRes_.clear();
-    phiResPartDeriv_.clear();
 }
 
 void DAResidualPisoFoam::calcResiduals(const dictionary& options)
@@ -93,15 +93,21 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
     if (hasFvSource_)
     {
         DAFvSource& daFvSource(const_cast<DAFvSource&>(
-          mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
+            mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
         // update the actuator source term
         daFvSource.calcFvSource(fvSource_);
     }
 
     fvVectorMatrix UEqn(
-        fvm::div(phi_, U_, divUScheme)
+        fvm::ddt(U_)
+        + fvm::div(phi_, U_, divUScheme)
         + daTurb_.divDevReff(U_)
         - fvSource_);
+
+    if (mode_ == "hybridAdjoint")
+    {
+        UEqn -= fvm::ddt(U_);
+    }
 
     UEqn.relax();
 
@@ -124,7 +130,15 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
     volVectorField HbyA("HbyA", U_);
     HbyA = rAU * UEqn.H();
 
-    surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
+    surfaceScalarField phiHbyA(
+        "phiHbyA",
+        fvc::flux(HbyA)
+            + fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_));
+
+    if (mode_ == "hybridAdjoint")
+    {
+        phiHbyA -= fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_);
+    }
 
     adjustPhi(phiHbyA, U_, p_);
 

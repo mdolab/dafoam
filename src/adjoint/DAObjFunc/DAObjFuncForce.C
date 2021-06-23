@@ -228,12 +228,12 @@ void DAObjFuncForce::updateForceDir(vector& forceDir)
         {
             FatalErrorIn("") << "boundaryType: " << U.boundaryField()[patchI].type()
                              << " not supported!"
-                             << "Avaiable options are: fixedValue, inletOutlet"
+                             << "Available options are: fixedValue, inletOutlet"
                              << abort(FatalError);
         }
     }
 
-    // need to reduce the sum of force across all processors, this is becasue some of
+    // need to reduce the sum of force across all processors, this is because some of
     // the processor might not own the inoutRefPatchName_ so their flowDir will be -1e16, but
     // when calling the following reduce function, they will get the correct flowDir
     // computed by other processors

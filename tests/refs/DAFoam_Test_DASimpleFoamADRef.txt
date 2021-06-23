@@ -6,17 +6,17 @@ Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: alpha
-@value 0.002281015388109595 1e-06 1e-08
+@value 0.002280322248925539 1e-05 1e-07
 Dictionary Key: shapey
-@value 0.002222204930968835 1e-06 1e-08
-@value  0.05860736358738627 1e-06 1e-08
-@value   0.0843995115626785 1e-06 1e-08
+@value -0.01063654962919052 1e-05 1e-07
+@value 0.005827183422422215 1e-05 1e-07
+@value  0.01999379830211091 1e-05 1e-07
 Dictionary Key: CL
 Dictionary Key: alpha
-@value  0.08994221487263414 1e-06 1e-08
+@value  0.08995513866376829 1e-05 1e-07
 Dictionary Key: shapey
-@value    1.408327076057439 1e-06 1e-08
-@value    1.019918362420464 1e-06 1e-08
-@value    1.351698800955053 1e-06 1e-08
+@value   0.7008636067027021 1e-05 1e-07
+@value   0.6091514202242572 1e-05 1e-07
+@value    1.418731539899734 1e-05 1e-07
 Dictionary Key: fail
-@value                    0 1e-06 1e-08
+@value                    0 1e-05 1e-07
