@@ -14,7 +14,7 @@ Info << endl
 pointField meshPointsForwardAD = mesh.points();
 // for ACTD derivs
 scalarList actDVListForwardAD(9);
-if (daOptionPtr_->getAllOptions().subDict("forwardModeAD").getLabel("active"))
+if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
 {
 
     dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
@@ -34,7 +34,7 @@ if (daOptionPtr_->getAllOptions().subDict("forwardModeAD").getLabel("active"))
 
     if (type == "FFD")
     {
-        label seedIndex = daOptionPtr_->getAllOptions().subDict("forwardModeAD").getLabel("seedIndex");
+        label seedIndex = daOptionPtr_->getAllOptions().subDict("useAD").getLabel("seedIndex");
 
         forAll(meshPointsForwardAD, i)
         {
@@ -51,7 +51,7 @@ if (daOptionPtr_->getAllOptions().subDict("forwardModeAD").getLabel("active"))
     }
     else if (type == "Field")
     {
-        label seedIndex = daOptionPtr_->getAllOptions().subDict("forwardModeAD").getLabel("seedIndex");
+        label seedIndex = daOptionPtr_->getAllOptions().subDict("useAD").getLabel("seedIndex");
 
         word fieldName = dvSubDict.getWord("fieldName");
         word fieldType = dvSubDict.getWord("fieldType");
@@ -96,7 +96,7 @@ if (daOptionPtr_->getAllOptions().subDict("forwardModeAD").getLabel("active"))
     else if (type == "ACTD")
     {
 
-        label seedIndex = daOptionPtr_->getAllOptions().subDict("forwardModeAD").getLabel("seedIndex");
+        label seedIndex = daOptionPtr_->getAllOptions().subDict("useAD").getLabel("seedIndex");
 
         DAFvSource& fvSource = const_cast<DAFvSource&>(
             meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));

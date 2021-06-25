@@ -207,8 +207,6 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             scalar rStar = (rPrime - rPrimeHub) / (1.0 - rPrimeHub);
 
             scalar fAxial = 0.0;
-            scalar rPrimeMin = rStarMin * (1.0 - rPrimeHub) + rPrimeHub;
-            scalar rPrimeMax = rStarMax * (1.0 - rPrimeHub) + rPrimeHub;
             if (rStar < rStarMin)
             {
                 scalar dR2 = (rStar - rStarMin) * (rStar - rStarMin);

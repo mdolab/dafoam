@@ -524,12 +524,6 @@ public:
         DASolverPtr_->setTimeInstanceField(instanceI);
     }
 
-    /// initialize the oldTime for all state variables
-    void initOldTimes()
-    {
-        DASolverPtr_->initOldTimes();
-    }
-
     /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
     void setTimeInstanceVar(
         const word mode,

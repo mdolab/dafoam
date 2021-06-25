@@ -429,6 +429,11 @@ class DAOPTION(object):
     ## of solving the adjoint equations. One needs to balance these factors
     adjPCLag = 1
 
+    ## Whether to use AD: Mode options: forward, reverse, or None. If forward mode AD is used
+    ## the seedIndex will be set to compute derivative by running the whole primal solver.
+    ## setting seedIndex to -1 will assign seeds for all design variables.
+    useAD = {"mode": "None", "seedIndex": -9990}
+
     # *********************************************************************************************
     # ************************************ Advance Options ****************************************
     # *********************************************************************************************
@@ -563,12 +568,6 @@ class DAOPTION(object):
     ## }
     intmdVar = {}
 
-    ## Whether to use the forward-mode AD mode in runPrimal.
-    ## This mode sets seeds for a given seedIndex and run primal to compute derivatives
-    ## It is typically used in verifying the adjoint derivative accuracy
-    ## If seedIndex is -1, apply the seeds for all fields (e.g,. all mesh points)
-    forwardModeAD = {"active": False, "seedIndex": -9999}
-
     ## The sensitivity map will be saved to disk during optimization for the given design variable
     ## names in the list. Currently only support design variable type FFD and Field
     ## The surface sensitivity map is separated from the primal solution because they only have surface mesh.
@@ -627,6 +626,9 @@ class PYDAFOAM(object):
 
         # initialize options for adjoints
         self._initializeOptions(options)
+
+        # check if the combination of options is valid.
+        self._checkOptions()
 
         # initialize comm for parallel communication
         self._initializeComm(comm)
@@ -727,9 +729,6 @@ class PYDAFOAM(object):
 
         # initialize the dRdWOldTPsi vectors
         self._initializeTimeAccurateAdjointVectors()
-
-        # check if the combination of options is valid.
-        self._checkOptions()
 
         Info("pyDAFoam initialization done!")
 
@@ -953,6 +952,19 @@ class PYDAFOAM(object):
             if not self.getOption("adjJacobianOption") == "JacobianFree":
                 raise Error("timeAccurateAdjoint only supports adjJacobianOption=JacobianFree!")
 
+        # if we set adjJacobianOption = JacobianFree, we must set useAD-mode = reverse
+        if self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] == "forward":
+                raise Error(
+                    "adjJacobianOption=JacobianFree is not compatible with useAD-mode=forward! Set adjJacobianOption to JacobianFD!"
+                )
+            if self.getOption("useAD")["mode"] == "None":
+                Info("adjJacobianOption=JacobianFree, while useAD-mode=None!")
+                Info("setting useAD-mode=reverse!")
+                self.setOption("useAD", {"mode": "reverse"})
+            else:
+                raise Error("adjJacobianOption=JacobianFree is only compatible with useAD-mode=reverse!")
+
         # check other combinations...
 
     def saveMultiPointField(self, indexMP):
@@ -1029,11 +1041,6 @@ class PYDAFOAM(object):
 
         self.timeVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
         self.timeIdxVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
-
-    def initOldTimes(self):
-        # No need to initialize oldTimes for FD
-        if self.getOption("adjJacobianOption") == "JacobianFree":
-            self.solverAD.initOldTimes()
 
     def setTimeInstanceVar(self, mode):
 
@@ -1804,7 +1811,7 @@ class PYDAFOAM(object):
         self.deletePrevPrimalSolTime()
 
         self.primalFail = 0
-        if self.getOption("forwardModeAD")["active"]:
+        if self.getOption("useAD")["mode"] == "forward":
             self.primalFail = self.solverAD.solvePrimal(self.xvVec, self.wVec)
         else:
             self.primalFail = self.solver.solvePrimal(self.xvVec, self.wVec)
@@ -2113,7 +2120,7 @@ class PYDAFOAM(object):
                             # totalDeriv = dFdXv - dRdXvT*psi
                             totalDerivXv.scale(-1.0)
                             totalDerivXv.axpy(1.0, dFdXv)
-                        
+
                             # write the matrix
                             if self.getOption("writeJacobians"):
                                 self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv)
@@ -2401,9 +2408,15 @@ class PYDAFOAM(object):
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
 
-            if self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] == "forward":
 
-                from .pyDASolverIncompressibleAD import pyDASolvers as pyDASolversAD
+                from .pyDASolverIncompressibleADF import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
+            elif self.getOption("useAD")["mode"] == "reverse":
+
+                from .pyDASolverIncompressibleADR import pyDASolvers as pyDASolversAD
 
                 self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
@@ -2413,20 +2426,33 @@ class PYDAFOAM(object):
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
 
-            if self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] == "forward":
 
-                from .pyDASolverCompressibleAD import pyDASolvers as pyDASolversAD
+                from .pyDASolverCompressibleADF import pyDASolvers as pyDASolversAD
 
                 self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
+            elif self.getOption("useAD")["mode"] == "reverse":
+
+                from .pyDASolverCompressibleADR import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
         elif solverName in self.solverRegistry["Solid"]:
 
             from .pyDASolverSolid import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
 
-            if self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] == "forward":
 
-                from .pyDASolverSolidAD import pyDASolvers as pyDASolversAD
+                from .pyDASolverSolidADF import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
+            elif self.getOption("useAD")["mode"] == "reverse":
+
+                from .pyDASolverSolidADR import pyDASolvers as pyDASolversAD
 
                 self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
         else:
@@ -2434,7 +2460,7 @@ class PYDAFOAM(object):
 
         self.solver.initSolver()
 
-        if self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.initSolver()
 
         if self.getOption("printDAOptions"):
