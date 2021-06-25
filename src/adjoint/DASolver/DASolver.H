@@ -735,7 +735,7 @@ public:
         return daCheckMeshPtr_();
     }
 
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
 
     /// global tape for reverse-mode AD
     codi::RealReverse::TapeType& globalADTape_;

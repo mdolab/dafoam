@@ -116,8 +116,8 @@ label DASimpleFoam::solvePrimal(
     // set the rotating wall velocity after the mesh is updated (if MRF is active)
     this->setRotingWallVelocity();
 
-    // when useBruteForceAD is True, we need to set the seed here
-#include "setBruteForceADSeeds.H"
+    // if the forwardModeAD is active, we need to set the seed here
+#include "setForwardADSeeds.H"
 
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
@@ -167,8 +167,8 @@ label DASimpleFoam::solvePrimal(
     // write the mesh to files
     mesh.write();
 
-    // when useBruteForceAD is True, we need to get the total derivatives here
-#include "getBruteForceADDerivs.H"
+    // if the forwardModeAD is active,, we need to get the total derivatives here
+#include "getForwardADDerivs.H"
 
     Info << "End\n"
          << endl;

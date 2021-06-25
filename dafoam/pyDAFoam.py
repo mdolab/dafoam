@@ -563,13 +563,11 @@ class DAOPTION(object):
     ## }
     intmdVar = {}
 
-    ## Whether to use the brute force AD mode in runPrimal.
-    ## This mode uses reverse-mode AD to compute gradients
-    ## by setting a seed in the beginning and run the entire
-    ## primal solver. NOTE: it uses a LOT of memory and is
-    ## only applicable for very small scale problems!
-    ## They typically are used in verifying gradient accuracy
-    useBruteForceAD = False
+    ## Whether to use the forward-mode AD mode in runPrimal.
+    ## This mode sets seeds for a given seedIndex and run primal to compute derivatives
+    ## It is typically used in verifying the adjoint derivative accuracy
+    ## If seedIndex is -1, apply the seeds for all fields (e.g,. all mesh points)
+    forwardModeAD = {"active": False, "seedIndex": -9999}
 
     ## The sensitivity map will be saved to disk during optimization for the given design variable
     ## names in the list. Currently only support design variable type FFD and Field
@@ -1761,7 +1759,7 @@ class PYDAFOAM(object):
             fSens.write("}\n")
             fSens.close()
 
-    def writePetscVecMat(self, name, vecMat, mode="ASCII"):
+    def writePetscVecMat(self, name, vecMat, mode="Binary"):
         """
         Write Petsc vectors or matrices
         """
@@ -1769,6 +1767,7 @@ class PYDAFOAM(object):
         Info("Saving %s to disk...." % name)
         if mode == "ASCII":
             viewer = PETSc.Viewer().createASCII(name + ".dat", mode="w", comm=PETSc.COMM_WORLD)
+            viewer.pushFormat(1)
             viewer(vecMat)
         elif mode == "Binary":
             viewer = PETSc.Viewer().createBinary(name + ".bin", mode="w", comm=PETSc.COMM_WORLD)
@@ -1805,7 +1804,7 @@ class PYDAFOAM(object):
         self.deletePrevPrimalSolTime()
 
         self.primalFail = 0
-        if self.getOption("useBruteForceAD"):
+        if self.getOption("forwardModeAD")["active"]:
             self.primalFail = self.solverAD.solvePrimal(self.xvVec, self.wVec)
         else:
             self.primalFail = self.solver.solvePrimal(self.xvVec, self.wVec)
@@ -1953,6 +1952,7 @@ class PYDAFOAM(object):
                             self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
                             for i in range(nDVs):
                                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdBC.destroy()
@@ -1984,6 +1984,7 @@ class PYDAFOAM(object):
                             self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
                             for i in range(nDVs):
                                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdBC.destroy()
@@ -2016,6 +2017,7 @@ class PYDAFOAM(object):
                             self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
                             for i in range(nDVs):
                                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdAOA.destroy()
@@ -2047,6 +2049,7 @@ class PYDAFOAM(object):
                             self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
                             for i in range(nDVs):
                                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdAOA.destroy()
@@ -2110,6 +2113,11 @@ class PYDAFOAM(object):
                             # totalDeriv = dFdXv - dRdXvT*psi
                             totalDerivXv.scale(-1.0)
                             totalDerivXv.axpy(1.0, dFdXv)
+                        
+                            # write the matrix
+                            if self.getOption("writeJacobians"):
+                                self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv)
+                                self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv, "ASCII")
 
                             if self.DVGeo is not None and self.DVGeo.getNDV() > 0:
                                 dFdFFD = self.mapdXvTodFFD(totalDerivXv)
@@ -2241,6 +2249,11 @@ class PYDAFOAM(object):
                             # totalDeriv = dFdField - dRdFieldT*psi
                             totalDeriv.scale(-1.0)
                             totalDeriv.axpy(1.0, dFdField)
+
+                            # write the matrix
+                            if self.getOption("writeJacobians"):
+                                self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv)
+                                self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv, "ASCII")
 
                             # check if we need to save the sensitivity maps
                             if designVarName in self.getOption("writeSensMap"):
