@@ -456,7 +456,7 @@ class DAOPTION(object):
 
     ## Whether to write Jacobian matrices to file for debugging
     ## Example:
-    ##    writeJacobians = {"dRdWT", "dFdW"}
+    ##    writeJacobians = ["dRdWT", "dFdW"]
     ## This will write the dRdWT and dFdW matrices to the disk
     writeJacobians = ["None"]
 

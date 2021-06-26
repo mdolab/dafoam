@@ -114,7 +114,9 @@ void DAJacCon::initializeStateBoundaryCon()
 
     this->setupStateBoundaryConID(&stateBoundaryConID_);
 
-    if (daOption_.getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOption_.getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("stateBoundaryCon"))
     {
         DAUtility::writeMatrixBinary(stateBoundaryCon_, "stateBoundaryCon");
         DAUtility::writeMatrixBinary(stateBoundaryConID_, "stateBoundaryConID");
@@ -2144,7 +2146,9 @@ void DAJacCon::checkSpecialBCs()
         VecAssemblyBegin(isPIVBCState_);
         VecAssemblyEnd(isPIVBCState_);
 
-        if (daOption_.getOption<label>("writeJacobians"))
+        wordList writeJacobians;
+        daOption_.getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+        if (writeJacobians.found("isPIVVec"))
         {
             DAUtility::writeVectorASCII(isPIVBCState_, "isPIVVec");
         }
