@@ -177,8 +177,7 @@ DAIndex::DAIndex(
     // calculate some local lists for indexing
     this->calcLocalIdxLists(adjStateName4LocalAdjIdx, cellIFaceI4LocalAdjIdx);
 
-    if (daOption_.getOption<label>("writeJacobians")
-        || daOption_.getOption<label>("debug"))
+    if (daOption_.getOption<label>("debug"))
     {
         this->writeAdjointIndexing();
     }
