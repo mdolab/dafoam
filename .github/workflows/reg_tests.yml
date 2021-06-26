@@ -35,7 +35,7 @@ jobs:
         if [ "${{matrix.args}}" = "solid" ]; then
            echo "Skip building the AD version for solid"
         else
-           docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && . /home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-AD/etc/bashrc && cd ${{env.DOCKER_WORKING_DIR}} && ./Allclean && ./Allmake ${{matrix.args}} 2> makeWarnings.txt"
+           docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && . /home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc && cd ${{env.DOCKER_WORKING_DIR}} && ./Allclean && ./Allmake ${{matrix.args}} 2> makeWarnings.txt"
         fi
         docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && cd ${{env.DOCKER_WORKING_DIR}} && pip install ."
         docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun ${{matrix.args}}"
