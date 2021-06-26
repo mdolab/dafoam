@@ -454,8 +454,11 @@ class DAOPTION(object):
     ## Whether running the optimization in the debug mode, which prints extra information.
     debug = False
 
-    ## Whether to write all the Jacobian matrices to file for debugging
-    writeJacobians = False
+    ## Whether to write Jacobian matrices to file for debugging
+    ## Example:
+    ##    writeJacobians = {"dRdWT", "dFdW"}
+    ## This will write the dRdWT and dFdW matrices to the disk
+    writeJacobians = ["None"]
 
     ## The print interval of primal and adjoint solution, e.g., how frequent to print the primal
     ## solution steps, how frequent to print the dRdWT partial derivative computation.
@@ -954,11 +957,13 @@ class PYDAFOAM(object):
 
         # if we set adjJacobianOption = JacobianFree, we must set useAD-mode = reverse
         if self.getOption("adjJacobianOption") == "JacobianFree":
-            if self.getOption("useAD")["mode"] == "forward":
+            if self.getOption("useAD")["mode"] == "reverse":
+                pass
+            elif self.getOption("useAD")["mode"] == "forward":
                 raise Error(
                     "adjJacobianOption=JacobianFree is not compatible with useAD-mode=forward! Set adjJacobianOption to JacobianFD!"
                 )
-            if self.getOption("useAD")["mode"] == "None":
+            elif self.getOption("useAD")["mode"] == "None":
                 Info("adjJacobianOption=JacobianFree, while useAD-mode=None!")
                 Info("setting useAD-mode=reverse!")
                 self.setOption("useAD", {"mode": "reverse"})
@@ -996,20 +1001,20 @@ class PYDAFOAM(object):
         return
 
     def calcPrimalResidualStatistics(self, mode):
-        if self.getOption("adjJacobianOption") == "JacobianFD":
-            self.solver.calcPrimalResidualStatistics(mode.encode())
-        elif self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.calcPrimalResidualStatistics(mode.encode())
+        else:
+            self.solver.calcPrimalResidualStatistics(mode.encode())
 
     def setTimeInstanceField(self, instanceI):
         """
         Set the OpenFOAM state variables based on instance index
         """
 
-        if self.getOption("adjJacobianOption") == "JacobianFD":
-            solver = self.solver
-        elif self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             solver = self.solverAD
+        else:
+            solver = self.solver
 
         solver.setTimeInstanceField(instanceI)
         # NOTE: we need to set the OF field to wVec vector here!
@@ -1047,16 +1052,14 @@ class PYDAFOAM(object):
         if mode == "list2Mat":
             self.solver.setTimeInstanceVar(mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec)
         elif mode == "mat2List":
-            if self.getOption("adjJacobianOption") == "JacobianFD":
-                self.solver.setTimeInstanceVar(
-                    mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
-                )
-            elif self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
                 self.solverAD.setTimeInstanceVar(
                     mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
                 )
             else:
-                raise Error("adjJacobianOption can only be either JacobianFD or JacobianFree!")
+                self.solver.setTimeInstanceVar(
+                    mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
+                )
         else:
             raise Error("mode can only be either mat2List or list2Mat!")
 
@@ -2122,7 +2125,7 @@ class PYDAFOAM(object):
                             totalDerivXv.axpy(1.0, dFdXv)
 
                             # write the matrix
-                            if self.getOption("writeJacobians"):
+                            if "dFdXvTotalDeriv" in self.getOption("writeJacobians"):
                                 self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv)
                                 self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv, "ASCII")
 
@@ -2258,7 +2261,7 @@ class PYDAFOAM(object):
                             totalDeriv.axpy(1.0, dFdField)
 
                             # write the matrix
-                            if self.getOption("writeJacobians"):
+                            if "dFdFieldTotalDeriv" in self.getOption("writeJacobians"):
                                 self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv)
                                 self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv, "ASCII")
 
@@ -3273,7 +3276,7 @@ class PYDAFOAM(object):
 
         self.solver.updateDAOption(self.options)
 
-        if self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.updateDAOption(self.options)
 
         if len(self.getOption("fvSource")) > 0:
@@ -3289,7 +3292,7 @@ class PYDAFOAM(object):
 
         self.solver.syncDAOptionToActuatorDVs()
 
-        if self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.syncDAOptionToActuatorDVs()
 
     def _printCurrentOptions(self):
