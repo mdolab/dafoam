@@ -113,6 +113,8 @@ int main(int argc, char* argv[])
     }
     liftPerS.write();
 
+    Info << "Force: " << forces << endl;
+
     Info << "Computing liftPerS.... Completed!" << endl;
 
     return 0;

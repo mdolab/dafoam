@@ -19,7 +19,6 @@
 #include "singlePhaseTransportModel.H"
 #include "turbulentTransportModel.H"
 
-
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -113,6 +112,8 @@ int main(int argc, char* argv[])
         }
     }
     liftPerS.write();
+
+    Info << "Force: " << forces << endl;
 
     Info << "Computing liftPerS.... Completed!" << endl;
 
