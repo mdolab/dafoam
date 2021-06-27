@@ -53,6 +53,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void updateOFField(PetscVec)
         void updateOFMesh(PetscVec)
         void setdXvdFFDMat(PetscMat)
+        void setFFD2XvSeedVec(PetscVec)
         int getGlobalXvIndex(int, int)
         void ofField2StateVec(PetscVec)
         void stateVec2OFField(PetscVec)
@@ -222,6 +223,9 @@ cdef class pyDASolvers:
 
     def setdXvdFFDMat(self, Mat dXvdFFDMat):
         self._thisptr.setdXvdFFDMat(dXvdFFDMat.mat)
+    
+    def setFFD2XvSeedVec(self, Vec FFD2XvSeedVec):
+        self._thisptr.setFFD2XvSeedVec(FFD2XvSeedVec.vec)
     
     def getGlobalXvIndex(self, pointI, coordI):
         return self._thisptr.getGlobalXvIndex(pointI, coordI)

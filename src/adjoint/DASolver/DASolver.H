@@ -126,6 +126,9 @@ protected:
     /// the matrix that stores the partials dXv/dFFD computed from the idwarp and pygeo in the pyDAFoam.py
     Mat dXvdFFDMat_;
 
+    /// the vector that stores the AD seeds that propagate from FFD to Xv and will be used in forward mode AD
+    Vec FFD2XvSeedVec_;
+
     /// the maximal residual for primal solution
     scalar primalMinRes_ = 1e10;
 
@@ -255,7 +258,7 @@ public:
         Mat stateBCMat,
         Vec timeVec,
         Vec timeIdxVec);
-    
+
     /// initialize the oldTime for all state variables
     void initOldTimes();
 
@@ -641,6 +644,9 @@ public:
 
     /// set the value for DASolver::dXvdFFDMat_
     void setdXvdFFDMat(const Mat dXvdFFDMat);
+
+    /// set the value for DASolver::FFD2XvSeedVec_
+    void setFFD2XvSeedVec(Vec vecIn);
 
     /// update the allOptions_ dict in DAOption based on the pyOptions from pyDAFoam
     void updateDAOption(PyObject* pyOptions)

@@ -431,8 +431,9 @@ class DAOPTION(object):
 
     ## Whether to use AD: Mode options: forward, reverse, or None. If forward mode AD is used
     ## the seedIndex will be set to compute derivative by running the whole primal solver.
-    ## setting seedIndex to -1 will assign seeds for all design variables.
-    useAD = {"mode": "None", "seedIndex": -9990}
+    ## dvName is the name of design variable to set the seed for the forward AD
+    ## setting seedIndex to -1 for dFdField will assign seeds for all design variables.
+    useAD = {"mode": "None", "dvName": "None", "seedIndex": -9999}
 
     # *********************************************************************************************
     # ************************************ Advance Options ****************************************
@@ -781,6 +782,14 @@ class PYDAFOAM(object):
 
                 xvNew = self.mesh.getSolverGrid()
                 self.xvFlatten2XvVec(xvNew, self.xvVec)
+            
+            # if it is forward AD mode and we are computing the Xv derivatives
+            # call calcFFD2XvSeedVec
+            if self.getOption("useAD")["mode"] == "forward":
+                dvName = self.getOption("useAD")["dvName"]
+                dvType = self.getOption("designVar")[dvName]["designVarType"]
+                if dvType == "FFD":
+                    self.calcFFD2XvSeedVec()
 
         # solve the primal to get new state variables
         self.solvePrimal()
@@ -2612,6 +2621,55 @@ class PYDAFOAM(object):
                 raise Error("Can not move %s to %s" % (src, dst))
 
         return distTime
+
+    def calcFFD2XvSeedVec(self):
+        """
+        Calculate the FFD2XvSeedVec vector:
+        Given a FFD seed xDvDot, run pyGeo and IDWarp and propagate the seed to Xv seed xVDot:
+            xSDot = \\frac{dX_{S}}{dX_{DV}}\\xDvDot
+            xVDot = \\frac{dX_{V}}{dX_{S}}\\xSDot
+
+        Then, we assign this vector to FFD2XvSeedVec in DASolver
+        This will be used in forward mode AD runs
+        """
+
+        if self.DVGeo is None:
+            raise Error("DVGeo not set!")
+
+        dvName = self.getOption("useAD")["dvName"]
+        seedIndex = self.getOption("useAD")["seedIndex"]
+        # create xDVDot vec and initialize it with zeros
+        xDV = self.DVGeo.getValues()
+
+        # create a copy of xDV and set the seed to 1.0
+        # the dv and index depends on dvName and seedIndex
+        xDvDot = {}
+        for key in list(xDV.keys()):
+            xDvDot[key] = np.zeros_like(xDV[key], dtype=self.dtype)
+        xDvDot[dvName][seedIndex] = 1.0
+
+        # get the original surf coords
+        xSDot0 = np.zeros_like(self.xs0, self.dtype)
+        xSDot0 = self.mapVector(xSDot0, self.allFamilies, self.designFamilyGroup)
+
+        # get xSDot
+        xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName=self.ptSetName, comm=self.comm).reshape(xSDot0.shape)
+        # get xVDot
+        xVDot = self.mesh.warpDerivFwd(xSDot)
+
+        seedVec = self.xvVec.duplicate()
+        seedVec.zeroEntries()
+        Istart, Iend = seedVec.getOwnershipRange()
+
+        # assign xVDot to seedVec
+        for idx in range(Istart, Iend):
+            idxRel = idx - Istart
+            seedVec[idx] = xVDot[idxRel]
+
+        seedVec.assemblyBegin()
+        seedVec.assemblyEnd()
+
+        self.solverAD.setFFD2XvSeedVec(seedVec)
 
     def setdXvdFFDMat(self, designVarName, deltaVPointThreshold=1.0e-16):
         """

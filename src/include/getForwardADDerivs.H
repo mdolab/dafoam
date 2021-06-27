@@ -12,16 +12,6 @@ if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
 
     dictionary objFuncDict = daOptionPtr_->getAllOptions().subDict("objFunc");
 
-    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
-
-    if (designVarDict.size() != 1)
-    {
-        FatalErrorIn("")
-            << "forward-mode AD only supports "
-            << "one designVar key!"
-            << abort(FatalError);
-    }
-
     forAll(daObjFuncPtrList_, idxI)
     {
         DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];

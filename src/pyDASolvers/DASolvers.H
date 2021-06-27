@@ -432,6 +432,12 @@ public:
         DASolverPtr_->setdXvdFFDMat(dXvdFFDMat);
     }
 
+    /// set the value for DASolver::FFD2XvSeedVec_
+    void setFFD2XvSeedVec(Vec vecIn)
+    {
+        DASolverPtr_->setFFD2XvSeedVec(vecIn);
+    }
+
     /// update the allOptions_ dict in DAOption based on the pyOptions from pyDAFoam
     void updateDAOption(PyObject* pyOptions)
     {

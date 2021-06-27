@@ -13,38 +13,34 @@ Info << endl
 if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
 {
 
+    word designVarName = daOptionPtr_->getAllOptions().subDict("useAD").getWord("dvName");
+
     dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
-
-    if (designVarDict.size() != 1)
-    {
-        FatalErrorIn("")
-            << "forward-mode AD only supports "
-            << "one designVar key!"
-            << abort(FatalError);
-    }
-
-    word designVarName = designVarDict.toc()[0];
     // get the subDict for this dvName
     dictionary dvSubDict = designVarDict.subDict(designVarName);
     word type = dvSubDict.getWord("designVarType");
 
     if (type == "FFD")
     {
+        // NOTE: seedIndex is not needed for FFD here, instead, we set FFD2XvSeedVec
+        // in pyDAFoam.py and then read it here
         // for Xv derivs
         pointField meshPointsForwardAD = mesh.points();
-        label seedIndex = daOptionPtr_->getAllOptions().subDict("useAD").getLabel("seedIndex");
 
+        Info << "Setting seeds based on FFD2XvSeedVec: " << endl;
+        PetscScalar* seedArray;
+        VecGetArray(FFD2XvSeedVec_, &seedArray);
         forAll(meshPointsForwardAD, i)
         {
             for (label j = 0; j < 3; j++)
             {
-                label glxIdx = daIndexPtr_->getGlobalXvIndex(i, j);
-                if (glxIdx == seedIndex || seedIndex == -1)
-                {
-                    meshPointsForwardAD[i][j].setGradient(1.0);
-                }
+                label localIdx = daIndexPtr_->getLocalXvIndex(i, j);
+                PetscScalar seedVal = seedArray[localIdx];
+                meshPointsForwardAD[i][j].setGradient(seedVal);
             }
         }
+        VecRestoreArray(FFD2XvSeedVec_, &seedArray);
+
         mesh.movePoints(meshPointsForwardAD);
     }
     else if (type == "Field")
@@ -109,7 +105,7 @@ if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
             // get the design variable vals
             for (label i = 0; i < 9; i++)
             {
-                if (i == seedIndex || seedIndex == -1)
+                if (i == seedIndex)
                 {
                     actDVListForwardAD[i] = fvSource.getActuatorDVs(diskName, i);
                     actDVListForwardAD[i].setGradient(1.0);

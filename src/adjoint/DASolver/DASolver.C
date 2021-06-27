@@ -4436,6 +4436,20 @@ void DASolver::setdXvdFFDMat(const Mat dXvdFFDMat)
     MatAssemblyEnd(dXvdFFDMat_, MAT_FINAL_ASSEMBLY);
 }
 
+
+void DASolver::setFFD2XvSeedVec(Vec vecIn)
+{
+    /*
+    Description:
+        Set the value for FFD2XvSeedVec_
+    
+    Input:
+        vecIn: this vector will be copied to FFD2XvSeedVec_
+    */
+    VecDuplicate(vecIn, &FFD2XvSeedVec_);
+    VecCopy(vecIn, FFD2XvSeedVec_);
+}
+
 label DASolver::checkResidualTol()
 {
     /*
