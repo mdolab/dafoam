@@ -1,3 +1,3 @@
 calcLiftPerS.C
 
-EXE = $(FOAM_USER_APPBIN)/calcLiftPerSIncompressible
+EXE = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedBins/calcLiftPerSIncompressible
