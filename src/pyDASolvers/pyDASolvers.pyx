@@ -82,6 +82,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void setFieldValue4GlobalCellI(char *, double, int, int)
         void updateBoundaryConditions(char *, char *)
         void calcPrimalResidualStatistics(char *)
+        double getForwardADDerivVal(char *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -307,3 +308,6 @@ cdef class pyDASolvers:
     
     def calcPrimalResidualStatistics(self, mode):
         self._thisptr.calcPrimalResidualStatistics(mode)
+    
+    def getForwardADDerivVal(self, objFuncName):
+        return self._thisptr.getForwardADDerivVal(objFuncName)

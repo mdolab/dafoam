@@ -1171,6 +1171,12 @@ class PYDAFOAM(object):
         """
 
         return self.solver.getTimeInstanceObjFunc(instanceI, objFuncName.encode())
+    
+    def getForwardADDerivVal(self, objFuncName):
+        """
+        Return the derivative value computed by forward mode AD primal solution
+        """
+        return self.solverAD.getForwardADDerivVal(objFuncName.encode())
 
     def evalFunctions(self, funcs, evalFuncs=None, ignoreMissing=False):
         """

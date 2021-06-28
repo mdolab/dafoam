@@ -574,6 +574,12 @@ public:
     {
         DASolverPtr_->calcPrimalResidualStatistics(mode, 0);
     }
+
+    /// get forwardADDerivVal_
+    PetscScalar getForwardADDerivVal(const word objFuncName)
+    {
+        return DASolverPtr_->getForwardADDerivVal(objFuncName);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

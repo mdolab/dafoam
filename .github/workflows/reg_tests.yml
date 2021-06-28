@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        testConfig: [incompressible, compressible, solid]
+        testConfig: [incompressible, compressible, solid, forward]
         include:
           - testConfig: incompressible
             args: 'incompressible'
@@ -24,6 +24,8 @@ jobs:
             args: 'compressible'
           - testConfig: solid
             args: 'solid'
+          - testConfig: forward
+            args: 'forward'
     steps:
     - uses: actions/checkout@v2
     - name: Create the docker container and run the tests
@@ -34,6 +36,8 @@ jobs:
         docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake ${{matrix.args}}"
         if [ "${{matrix.args}}" = "solid" ]; then
            echo "Skip building the AD version for solid"
+        elif [ "${{matrix.args}}" = "forward" ]; then
+           docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && . /home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADF/etc/bashrc && cd ${{env.DOCKER_WORKING_DIR}} && ./Allclean && ./Allmake ${{matrix.args}} 2> makeWarnings.txt"
         else
            docker exec -i regtest /bin/bash -c ". /home/dafoamuser/dafoam/loadDAFoam.sh && . /home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc && cd ${{env.DOCKER_WORKING_DIR}} && ./Allclean && ./Allmake ${{matrix.args}} 2> makeWarnings.txt"
         fi

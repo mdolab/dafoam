@@ -129,6 +129,9 @@ protected:
     /// the vector that stores the AD seeds that propagate from FFD to Xv and will be used in forward mode AD
     Vec FFD2XvSeedVec_;
 
+    /// the derivative value computed by the forward mode primal solution.
+    HashTable<PetscScalar> forwardADDerivVal_;
+
     /// the maximal residual for primal solution
     scalar primalMinRes_ = 1e10;
 
@@ -739,6 +742,12 @@ public:
     const DACheckMesh& getDACheckMesh()
     {
         return daCheckMeshPtr_();
+    }
+
+    /// get forwardADDerivVal_
+    PetscScalar getForwardADDerivVal(const word objFuncName)
+    {
+        return forwardADDerivVal_[objFuncName];
     }
 
 #ifdef CODI_AD_REVERSE

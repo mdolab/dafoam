@@ -21,6 +21,10 @@ if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
              << "-" << daObjFunc.getObjFuncPart()
              << "-" << daObjFunc.getObjFuncType()
              << ": Val " << objFunc << " Deriv " << objFunc.getGradient() << endl;
+        
+        // assign the forward mode AD derivative to forwardADDerivVal_
+        // such that we can get this value later
+        forwardADDerivVal_.set(objFuncName, objFunc.getGradient());
     }
 }
 

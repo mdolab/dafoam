@@ -1,0 +1,24 @@
+Dictionary Key: CD
+Dictionary Key: actuator
+@value 0.0007476393445158399 1e-05 1e-07
+@value -0.001153967036767792 1e-05 1e-07
+@value 2.733722008175337e-07 1e-05 1e-07
+@value -0.0001614046475121192 1e-05 1e-07
+Dictionary Key: alpha
+@value -0.004255879946518415 1e-05 1e-07
+Dictionary Key: pitch
+@value 0.001532154354245148 1e-05 1e-07
+Dictionary Key: shape
+@value -0.00817501160899459 1e-05 1e-07
+Dictionary Key: CL
+Dictionary Key: actuator
+@value -0.004695409461390519 1e-05 1e-07
+@value -0.05353506340112661 1e-05 1e-07
+@value -1.011443651048309e-05 1e-05 1e-07
+@value -0.002526706872396332 1e-05 1e-07
+Dictionary Key: alpha
+@value   0.1062958283580826 1e-05 1e-07
+Dictionary Key: pitch
+@value   0.1073231279958292 1e-05 1e-07
+Dictionary Key: shape
+@value   0.6511885028120862 1e-05 1e-07
