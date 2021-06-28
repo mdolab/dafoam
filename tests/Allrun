@@ -44,9 +44,12 @@ case $argm in
     sleep 3
     runTests Integration
     runTests DASimpleFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleAD.so" ]; then
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
       runTests DASimpleFoamField
+    fi
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADF.so" ]; then
+      runTests DASimpleFoamForwardAD
     fi
     runTests DASimpleFoamMRF
     runTests DASimpleTFoam
@@ -56,7 +59,7 @@ case $argm in
     runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleAD.so" ]; then
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DARhoSimpleFoamAD
       runTests DARhoSimpleCFoamAD
     fi
@@ -74,7 +77,7 @@ case $argm in
     sleep 3
     runTests Integration
     runTests DASimpleFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleAD.so" ]; then
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
       runTests DASimpleFoamField
     fi
@@ -95,7 +98,7 @@ case $argm in
     runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleAD.so" ]; then
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DARhoSimpleFoamAD
       runTests DARhoSimpleCFoamAD
     fi
@@ -117,8 +120,18 @@ case $argm in
     echo "************************************************************"
     echo " "
     ;;
+  "forward")
+    echo "Running forward AD tests...."
+    sleep 3
+    runTests DASimpleFoamForwardAD
+    echo " "
+    echo "************************************************************"
+    echo "**************** Forward AD tests passed! ******************"
+    echo "************************************************************"
+    echo " "
+    ;;
   *)
-    echo "Argument not valid! Options are: all, incompressible, compressible, or solid"
+    echo "Argument not valid! Options are: all, incompressible, compressible, solid, or forward"
     echo "Example: ./Allrun all"
     exit 1
     ;;

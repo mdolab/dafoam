@@ -413,7 +413,7 @@ class DAOPTION(object):
     transonicPCOption = -1
 
     ## Options for unsteady adjoint. mode can be hybridAdjoint or timeAccurateAdjoint
-    ## Here nTimeInstances is the number of time instances and periodicity is the 
+    ## Here nTimeInstances is the number of time instances and periodicity is the
     ## periodicity of flow oscillation (hybrid adjoint only)
     unsteadyAdjoint = {"mode": "None", "nTimeInstances": -1, "periodicity": -1.0}
 
@@ -428,6 +428,12 @@ class DAOPTION(object):
     ## the adjoint total runtime. However, setting a too large lag value will decreases the speed
     ## of solving the adjoint equations. One needs to balance these factors
     adjPCLag = 1
+
+    ## Whether to use AD: Mode options: forward, reverse, or None. If forward mode AD is used
+    ## the seedIndex will be set to compute derivative by running the whole primal solver.
+    ## dvName is the name of design variable to set the seed for the forward AD
+    ## setting seedIndex to -1 for dFdField will assign seeds for all design variables.
+    useAD = {"mode": "None", "dvName": "None", "seedIndex": -9999}
 
     # *********************************************************************************************
     # ************************************ Advance Options ****************************************
@@ -449,8 +455,11 @@ class DAOPTION(object):
     ## Whether running the optimization in the debug mode, which prints extra information.
     debug = False
 
-    ## Whether to write all the Jacobian matrices to file for debugging
-    writeJacobians = False
+    ## Whether to write Jacobian matrices to file for debugging
+    ## Example:
+    ##    writeJacobians = ["dRdWT", "dFdW"]
+    ## This will write the dRdWT and dFdW matrices to the disk
+    writeJacobians = ["None"]
 
     ## The print interval of primal and adjoint solution, e.g., how frequent to print the primal
     ## solution steps, how frequent to print the dRdWT partial derivative computation.
@@ -622,6 +631,9 @@ class PYDAFOAM(object):
         # initialize options for adjoints
         self._initializeOptions(options)
 
+        # check if the combination of options is valid.
+        self._checkOptions()
+
         # initialize comm for parallel communication
         self._initializeComm(comm)
 
@@ -722,9 +734,6 @@ class PYDAFOAM(object):
         # initialize the dRdWOldTPsi vectors
         self._initializeTimeAccurateAdjointVectors()
 
-        # check if the combination of options is valid.
-        self._checkOptions()
-
         Info("pyDAFoam initialization done!")
 
         return
@@ -773,6 +782,14 @@ class PYDAFOAM(object):
 
                 xvNew = self.mesh.getSolverGrid()
                 self.xvFlatten2XvVec(xvNew, self.xvVec)
+            
+            # if it is forward AD mode and we are computing the Xv derivatives
+            # call calcFFD2XvSeedVec
+            if self.getOption("useAD")["mode"] == "forward":
+                dvName = self.getOption("useAD")["dvName"]
+                dvType = self.getOption("designVar")[dvName]["designVarType"]
+                if dvType == "FFD":
+                    self.calcFFD2XvSeedVec()
 
         # solve the primal to get new state variables
         self.solvePrimal()
@@ -896,7 +913,7 @@ class PYDAFOAM(object):
                     vecF = vecA.duplicate()
                     vecF.zeroEntries()
                     self.dR00dW00TPsi[objFuncName] = vecF
-    
+
     def zeroTimeAccurateAdjointVectors(self):
         if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
             objFuncDict = self.getOption("objFunc")
@@ -947,6 +964,21 @@ class PYDAFOAM(object):
             if not self.getOption("adjJacobianOption") == "JacobianFree":
                 raise Error("timeAccurateAdjoint only supports adjJacobianOption=JacobianFree!")
 
+        # if we set adjJacobianOption = JacobianFree, we must set useAD-mode = reverse
+        if self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] == "reverse":
+                pass
+            elif self.getOption("useAD")["mode"] == "forward":
+                raise Error(
+                    "adjJacobianOption=JacobianFree is not compatible with useAD-mode=forward! Set adjJacobianOption to JacobianFD!"
+                )
+            elif self.getOption("useAD")["mode"] == "None":
+                Info("adjJacobianOption=JacobianFree, while useAD-mode=None!")
+                Info("setting useAD-mode=reverse!")
+                self.setOption("useAD", {"mode": "reverse"})
+            else:
+                raise Error("adjJacobianOption=JacobianFree is only compatible with useAD-mode=reverse!")
+
         # check other combinations...
 
     def saveMultiPointField(self, indexMP):
@@ -978,20 +1010,20 @@ class PYDAFOAM(object):
         return
 
     def calcPrimalResidualStatistics(self, mode):
-        if self.getOption("adjJacobianOption") == "JacobianFD":
-            self.solver.calcPrimalResidualStatistics(mode.encode())
-        elif self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.calcPrimalResidualStatistics(mode.encode())
+        else:
+            self.solver.calcPrimalResidualStatistics(mode.encode())
 
     def setTimeInstanceField(self, instanceI):
         """
         Set the OpenFOAM state variables based on instance index
         """
 
-        if self.getOption("adjJacobianOption") == "JacobianFD":
-            solver = self.solver
-        elif self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             solver = self.solverAD
+        else:
+            solver = self.solver
 
         solver.setTimeInstanceField(instanceI)
         # NOTE: we need to set the OF field to wVec vector here!
@@ -1023,27 +1055,20 @@ class PYDAFOAM(object):
 
         self.timeVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
         self.timeIdxVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
-    
-    def initOldTimes(self):
-        # No need to initialize oldTimes for FD
-        if self.getOption("adjJacobianOption") == "JacobianFree":
-            self.solverAD.initOldTimes()
 
     def setTimeInstanceVar(self, mode):
 
         if mode == "list2Mat":
             self.solver.setTimeInstanceVar(mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec)
         elif mode == "mat2List":
-            if self.getOption("adjJacobianOption") == "JacobianFD":
-                self.solver.setTimeInstanceVar(
-                    mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
-                )
-            elif self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
                 self.solverAD.setTimeInstanceVar(
                     mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
                 )
             else:
-                raise Error("adjJacobianOption can only be either JacobianFD or JacobianFree!")
+                self.solver.setTimeInstanceVar(
+                    mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
+                )
         else:
             raise Error("mode can only be either mat2List or list2Mat!")
 
@@ -1146,6 +1171,12 @@ class PYDAFOAM(object):
         """
 
         return self.solver.getTimeInstanceObjFunc(instanceI, objFuncName.encode())
+    
+    def getForwardADDerivVal(self, objFuncName):
+        """
+        Return the derivative value computed by forward mode AD primal solution
+        """
+        return self.solverAD.getForwardADDerivVal(objFuncName.encode())
 
     def evalFunctions(self, funcs, evalFuncs=None, ignoreMissing=False):
         """
@@ -1753,6 +1784,31 @@ class PYDAFOAM(object):
             fSens.write("}\n")
             fSens.close()
 
+    def writePetscVecMat(self, name, vecMat, mode="Binary"):
+        """
+        Write Petsc vectors or matrices
+        """
+
+        Info("Saving %s to disk...." % name)
+        if mode == "ASCII":
+            viewer = PETSc.Viewer().createASCII(name + ".dat", mode="w", comm=PETSc.COMM_WORLD)
+            viewer.pushFormat(1)
+            viewer(vecMat)
+        elif mode == "Binary":
+            viewer = PETSc.Viewer().createBinary(name + ".bin", mode="w", comm=PETSc.COMM_WORLD)
+            viewer(vecMat)
+        else:
+            raise Error("mode not valid! Options are: ASCII or Binary")
+
+    def readPetscVecMat(self, name, vecMat):
+        """
+        Read Petsc vectors or matrices
+        """
+
+        Info("Reading %s from disk...." % name)
+        viewer = PETSc.Viewer().createBinary(name + ".bin", comm=PETSc.COMM_WORLD)
+        vecMat.load(viewer)
+
     def solvePrimal(self):
         """
         Run primal solver to compute state variables and objectives
@@ -1773,7 +1829,10 @@ class PYDAFOAM(object):
         self.deletePrevPrimalSolTime()
 
         self.primalFail = 0
-        self.primalFail = self.solver.solvePrimal(self.xvVec, self.wVec)
+        if self.getOption("useAD")["mode"] == "forward":
+            self.primalFail = self.solverAD.solvePrimal(self.xvVec, self.wVec)
+        else:
+            self.primalFail = self.solver.solvePrimal(self.xvVec, self.wVec)
 
         self.nSolvePrimals += 1
 
@@ -1918,6 +1977,7 @@ class PYDAFOAM(object):
                             self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
                             for i in range(nDVs):
                                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdBC.destroy()
@@ -1949,6 +2009,7 @@ class PYDAFOAM(object):
                             self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
                             for i in range(nDVs):
                                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdBC.destroy()
@@ -1981,6 +2042,7 @@ class PYDAFOAM(object):
                             self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
                             for i in range(nDVs):
                                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdAOA.destroy()
@@ -2012,6 +2074,7 @@ class PYDAFOAM(object):
                             self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
                             for i in range(nDVs):
                                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdAOA.destroy()
@@ -2076,29 +2139,24 @@ class PYDAFOAM(object):
                             totalDerivXv.scale(-1.0)
                             totalDerivXv.axpy(1.0, dFdXv)
 
-                            dFdXvTotalArray = np.zeros(xvSize, self.dtype)
-                            Istart, Iend = totalDerivXv.getOwnershipRange()
-                            for idxI in range(Istart, Iend):
-                                idxRel = idxI - Istart
-                                dFdXvTotalArray[idxRel] = totalDerivXv[idxI]
+                            # write the matrix
+                            if "dFdXvTotalDeriv" in self.getOption("writeJacobians"):
+                                self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv)
+                                self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv, "ASCII")
 
                             if self.DVGeo is not None and self.DVGeo.getNDV() > 0:
-                                # Now get total derivative wrt surface coordinates
-                                self.mesh.warpDeriv(dFdXvTotalArray)
-                                dFdXs = self.mesh.getdXs()
-                                dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.designFamilyGroup)
-                                dFdFFD = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
-                                # check if we need to save the sensitivity maps
+                                dFdFFD = self.mapdXvTodFFD(totalDerivXv)
                                 if designVarName in self.getOption("writeSensMap"):
                                     # we can't save the surface sensitivity time with the primal solution
                                     # because surfaceSensMap needs to have its own mesh (design surface only)
                                     sensSolTime = float(solutionTime) / 1000.0
                                     self.writeSurfaceSensitivityMap(objFuncName, designVarName, sensSolTime)
 
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] = dFdFFD[designVarName][0][i]
+                                # assign the total derivative to self.adjTotalDeriv
+                                self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                                for i in range(nDVs):
+                                    self.adjTotalDeriv[objFuncName][designVarName][i] = dFdFFD[designVarName][0][i]
+
                             totalDerivXv.destroy()
                             dFdXv.destroy()
             ################### ACT: actuator models as design variable ###################
@@ -2217,6 +2275,11 @@ class PYDAFOAM(object):
                             totalDeriv.scale(-1.0)
                             totalDeriv.axpy(1.0, dFdField)
 
+                            # write the matrix
+                            if "dFdFieldTotalDeriv" in self.getOption("writeJacobians"):
+                                self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv)
+                                self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv, "ASCII")
+
                             # check if we need to save the sensitivity maps
                             if designVarName in self.getOption("writeSensMap"):
                                 # we will write the field sensitivity with the primal solution because they
@@ -2247,6 +2310,38 @@ class PYDAFOAM(object):
             self.dRdWTPC.destroy()
 
         return
+
+    def mapdXvTodFFD(self, totalDerivXv):
+        """
+        Map the Xv derivative (volume derivative) to the FFD derivatives (design variables)
+        Essentially, we first map the Xv (volume) to Xs (surface) using IDWarp, then, we
+        further map Xs (surface) to FFD using pyGeo
+
+        Input:
+        ------
+        totalDerivXv: total derivative dFdXv vector
+
+        Output:
+        ------
+        dFdFFD: the mapped total derivative with respect to FFD variables
+        """
+
+        xvSize = len(self.xv) * 3
+
+        dFdXvTotalArray = np.zeros(xvSize, self.dtype)
+
+        Istart, Iend = totalDerivXv.getOwnershipRange()
+
+        for idxI in range(Istart, Iend):
+            idxRel = idxI - Istart
+            dFdXvTotalArray[idxRel] = totalDerivXv[idxI]
+
+        self.mesh.warpDeriv(dFdXvTotalArray)
+        dFdXs = self.mesh.getdXs()
+        dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.designFamilyGroup)
+        dFdFFD = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
+
+        return dFdFFD
 
     def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
@@ -2331,9 +2426,15 @@ class PYDAFOAM(object):
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
 
-            if self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] == "forward":
 
-                from .pyDASolverIncompressibleAD import pyDASolvers as pyDASolversAD
+                from .pyDASolverIncompressibleADF import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
+            elif self.getOption("useAD")["mode"] == "reverse":
+
+                from .pyDASolverIncompressibleADR import pyDASolvers as pyDASolversAD
 
                 self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
@@ -2343,20 +2444,33 @@ class PYDAFOAM(object):
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
 
-            if self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] == "forward":
 
-                from .pyDASolverCompressibleAD import pyDASolvers as pyDASolversAD
+                from .pyDASolverCompressibleADF import pyDASolvers as pyDASolversAD
 
                 self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
+            elif self.getOption("useAD")["mode"] == "reverse":
+
+                from .pyDASolverCompressibleADR import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
         elif solverName in self.solverRegistry["Solid"]:
 
             from .pyDASolverSolid import pyDASolvers
 
             self.solver = pyDASolvers(solverArg.encode(), self.options)
 
-            if self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] == "forward":
 
-                from .pyDASolverSolidAD import pyDASolvers as pyDASolversAD
+                from .pyDASolverSolidADF import pyDASolvers as pyDASolversAD
+
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
+            elif self.getOption("useAD")["mode"] == "reverse":
+
+                from .pyDASolverSolidADR import pyDASolvers as pyDASolversAD
 
                 self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
         else:
@@ -2364,7 +2478,7 @@ class PYDAFOAM(object):
 
         self.solver.initSolver()
 
-        if self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.initSolver()
 
         if self.getOption("printDAOptions"):
@@ -2513,6 +2627,55 @@ class PYDAFOAM(object):
                 raise Error("Can not move %s to %s" % (src, dst))
 
         return distTime
+
+    def calcFFD2XvSeedVec(self):
+        """
+        Calculate the FFD2XvSeedVec vector:
+        Given a FFD seed xDvDot, run pyGeo and IDWarp and propagate the seed to Xv seed xVDot:
+            xSDot = \\frac{dX_{S}}{dX_{DV}}\\xDvDot
+            xVDot = \\frac{dX_{V}}{dX_{S}}\\xSDot
+
+        Then, we assign this vector to FFD2XvSeedVec in DASolver
+        This will be used in forward mode AD runs
+        """
+
+        if self.DVGeo is None:
+            raise Error("DVGeo not set!")
+
+        dvName = self.getOption("useAD")["dvName"]
+        seedIndex = self.getOption("useAD")["seedIndex"]
+        # create xDVDot vec and initialize it with zeros
+        xDV = self.DVGeo.getValues()
+
+        # create a copy of xDV and set the seed to 1.0
+        # the dv and index depends on dvName and seedIndex
+        xDvDot = {}
+        for key in list(xDV.keys()):
+            xDvDot[key] = np.zeros_like(xDV[key], dtype=self.dtype)
+        xDvDot[dvName][seedIndex] = 1.0
+
+        # get the original surf coords
+        xSDot0 = np.zeros_like(self.xs0, self.dtype)
+        xSDot0 = self.mapVector(xSDot0, self.allFamilies, self.designFamilyGroup)
+
+        # get xSDot
+        xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName=self.ptSetName, comm=self.comm).reshape(xSDot0.shape)
+        # get xVDot
+        xVDot = self.mesh.warpDerivFwd(xSDot)
+
+        seedVec = self.xvVec.duplicate()
+        seedVec.zeroEntries()
+        Istart, Iend = seedVec.getOwnershipRange()
+
+        # assign xVDot to seedVec
+        for idx in range(Istart, Iend):
+            idxRel = idx - Istart
+            seedVec[idx] = xVDot[idxRel]
+
+        seedVec.assemblyBegin()
+        seedVec.assemblyEnd()
+
+        self.solverAD.setFFD2XvSeedVec(seedVec)
 
     def setdXvdFFDMat(self, designVarName, deltaVPointThreshold=1.0e-16):
         """
@@ -3177,7 +3340,7 @@ class PYDAFOAM(object):
 
         self.solver.updateDAOption(self.options)
 
-        if self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.updateDAOption(self.options)
 
         if len(self.getOption("fvSource")) > 0:
@@ -3193,7 +3356,7 @@ class PYDAFOAM(object):
 
         self.solver.syncDAOptionToActuatorDVs()
 
-        if self.getOption("adjJacobianOption") == "JacobianFree":
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.syncDAOptionToActuatorDVs()
 
     def _printCurrentOptions(self):

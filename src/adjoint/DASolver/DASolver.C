@@ -35,7 +35,7 @@ DASolver::DASolver(
       daLinearEqnPtr_(nullptr),
       daResidualPtr_(nullptr),
       objFuncHistFilePtr_(nullptr)
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
       ,
       globalADTape_(codi::RealReverse::getGlobalTape())
 #endif
@@ -733,7 +733,9 @@ void DASolver::calcdRdWT(
         this->calcPrimalResidualStatistics("print");
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdWT"))
     {
         DAUtility::writeMatrixBinary(dRdWT, matName);
     }
@@ -866,13 +868,6 @@ void DASolver::calcdFdW(
             this->calcPrimalResidualStatistics("print");
         }
 
-        if (daOptionPtr_->getOption<label>("writeJacobians"))
-        {
-            word outputName = "dFdWPart_" + objFuncName + "_" + objFuncPart;
-            DAUtility::writeVectorBinary(dFdWPart, outputName);
-            DAUtility::writeVectorASCII(dFdWPart, outputName);
-        }
-
         MatDestroy(&dFdWMat);
         VecDestroy(&dFdWPart);
         VecDestroy(&oneVec);
@@ -882,7 +877,9 @@ void DASolver::calcdFdW(
         daObjFunc->clear();
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdW"))
     {
         word outputName = "dFdW_" + objFuncName;
         DAUtility::writeVectorBinary(dFdW, outputName);
@@ -967,7 +964,9 @@ void DASolver::calcdRdBC(
         this->calcPrimalResidualStatistics("print");
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdBC"))
     {
         word outputName = "dRdBC_" + designVarName;
         DAUtility::writeMatrixBinary(dRdBC, outputName);
@@ -1089,7 +1088,9 @@ void DASolver::calcdFdBC(
         VecDestroy(&oneVec);
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdBC"))
     {
         word outputName = "dFdBC_" + designVarName;
         DAUtility::writeVectorBinary(dFdBC, outputName);
@@ -1173,7 +1174,9 @@ void DASolver::calcdRdAOA(
         this->calcPrimalResidualStatistics("print");
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdAOA"))
     {
         word outputName = "dRdAOA_" + designVarName;
         DAUtility::writeMatrixBinary(dRdAOA, outputName);
@@ -1188,7 +1191,7 @@ void DASolver::calcdFdBCAD(
     const word designVarName,
     Vec dFdBC)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     -------------- NOTE -----------------
     This function is not working in parallel.
@@ -1421,7 +1424,9 @@ void DASolver::calcdFdBCAD(
         VecDestroy(&dFdBCPart);
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdBC"))
     {
         word outputName = "dFdBC_" + designVarName + "_" + objFuncName;
         DAUtility::writeVectorBinary(dFdBC, outputName);
@@ -1437,7 +1442,7 @@ void DASolver::calcdRdBCTPsiAD(
     const word designVarName,
     Vec dRdBCTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Compute the matrix-vector products dRdBC^T*Psi using reverse-mode AD
@@ -1615,7 +1620,9 @@ void DASolver::calcdRdBCTPsiAD(
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdBCTPsi"))
     {
         word outputName = "dRdBCTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdBCTPsi, outputName);
@@ -1738,7 +1745,9 @@ void DASolver::calcdFdAOA(
         VecDestroy(&oneVec);
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdAOA"))
     {
         word outputName = "dFdAOA_" + designVarName;
         DAUtility::writeVectorBinary(dFdAOA, outputName);
@@ -1753,7 +1762,7 @@ void DASolver::calcdFdAOAAD(
     const word designVarName,
     Vec dFdAOA)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     -------------- NOTE -----------------
     This function is not working in parallel.
@@ -1959,7 +1968,9 @@ void DASolver::calcdFdAOAAD(
         VecDestroy(&dFdAOAPart);
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdAOA"))
     {
         word outputName = "dFdAOA_" + designVarName + "_" + objFuncName;
         DAUtility::writeVectorBinary(dFdAOA, outputName);
@@ -1976,7 +1987,7 @@ void DASolver::calcdRdAOATPsiAD(
     const word designVarName,
     Vec dRdAOATPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Compute the matrix-vector products dRdAOA^T*Psi using reverse-mode AD
@@ -2132,7 +2143,9 @@ void DASolver::calcdRdAOATPsiAD(
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdAOATPsi"))
     {
         word outputName = "dRdAOATPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdAOATPsi, outputName);
@@ -2210,7 +2223,9 @@ void DASolver::calcdRdFFD(
         this->calcPrimalResidualStatistics("print");
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdFFD"))
     {
         word outputName = "dRdFFD_" + designVarName;
         DAUtility::writeMatrixBinary(dRdFFD, outputName);
@@ -2336,7 +2351,9 @@ void DASolver::calcdFdFFD(
         daPartDeriv->clear();
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdFFD"))
     {
         word outputName = "dFdFFD_" + designVarName;
         DAUtility::writeVectorBinary(dFdFFD, outputName);
@@ -2410,7 +2427,9 @@ void DASolver::calcdRdACT(
         this->calcPrimalResidualStatistics("print");
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdACT"))
     {
         word outputName = "dRd" + designVarType + "_" + designVarName;
         DAUtility::writeMatrixBinary(dRdACT, outputName);
@@ -2523,7 +2542,9 @@ void DASolver::calcdFdACT(
         VecDestroy(&dFdACTPart);
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdACT"))
     {
         word outputName = "dFdACT_" + designVarName;
         DAUtility::writeVectorBinary(dFdACT, outputName);
@@ -2538,7 +2559,7 @@ void DASolver::calcdFdFieldAD(
     const word designVarName,
     Vec dFdField)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         This function computes partials derivatives dFdField
@@ -2646,7 +2667,9 @@ void DASolver::calcdFdFieldAD(
         VecDestroy(&dFdFieldPart);
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdField"))
     {
         word outputName = "dFdField_" + designVarName;
         DAUtility::writeVectorBinary(dFdField, outputName);
@@ -2674,7 +2697,7 @@ void DASolver::createMLRKSPMatrixFree(
     const Mat jacPCMat,
     KSP ksp)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Call createMLRKSP from DALinearEqn
@@ -2767,7 +2790,7 @@ void DASolver::initializedRdWTMatrixFree(
     const Vec xvVec,
     const Vec wVec)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         This function initialize the matrix-free dRdWT, which will be
@@ -2799,7 +2822,7 @@ void DASolver::initializedRdWTMatrixFree(
 
 void DASolver::destroydRdWTMatrixFree()
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Destroy dRdWTMF_
@@ -2810,7 +2833,7 @@ void DASolver::destroydRdWTMatrixFree()
 
 PetscErrorCode DASolver::dRdWTMatVecMultFunction(Mat dRdWTMF, Vec vecX, Vec vecY)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         This function implements a way to compute matrix-vector products
@@ -2851,7 +2874,7 @@ PetscErrorCode DASolver::dRdWTMatVecMultFunction(Mat dRdWTMF, Vec vecX, Vec vecY
 
 void DASolver::initializeGlobalADTape4dRdWT()
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Initialize the global tape for computing dRdWT*psi
@@ -2894,7 +2917,7 @@ void DASolver::calcdFdWAD(
     const word objFuncName,
     Vec dFdW)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         This function computes partials derivatives dFdW using AD
@@ -2998,7 +3021,9 @@ void DASolver::calcdFdWAD(
     // NOTE: we need to normalize dFdW!
     this->normalizeGradientVec(dFdW);
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdW"))
     {
         word outputName = "dFdW_" + objFuncName;
         DAUtility::writeVectorBinary(dFdW, outputName);
@@ -3015,7 +3040,7 @@ void DASolver::calcdFdXvAD(
     const word designVarName,
     Vec dFdXv)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Compute dFdXv using reverse-mode AD
@@ -3134,7 +3159,9 @@ void DASolver::calcdFdXvAD(
         VecDestroy(&dFdXvPart);
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdXv"))
     {
         word outputName = "dFdXv_" + objFuncName + "_" + designVarName;
         DAUtility::writeVectorBinary(dFdXv, outputName);
@@ -3149,7 +3176,7 @@ void DASolver::calcdRdXvTPsiAD(
     const Vec psi,
     Vec dRdXvTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Compute the matrix-vector products dRdXv^T*Psi using reverse-mode AD
@@ -3227,7 +3254,7 @@ void DASolver::calcdRdFieldTPsiAD(
     const word designVarName,
     Vec dRdFieldTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Compute the matrix-vector products dRdField^T*Psi using reverse-mode AD
@@ -3287,7 +3314,9 @@ void DASolver::calcdRdFieldTPsiAD(
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdFieldTPsi"))
     {
         word outputName = "dRdFieldTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdFieldTPsi, outputName);
@@ -3303,7 +3332,7 @@ void DASolver::calcdFdACTAD(
     const word designVarName,
     Vec dFdACT)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Compute dFdACT using reverse-mode AD
@@ -3456,7 +3485,9 @@ void DASolver::calcdFdACTAD(
                          << abort(FatalError);
     }
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdACT"))
     {
         word outputName = "dFdACT_" + objFuncName + "_" + designVarName;
         DAUtility::writeVectorBinary(dFdACT, outputName);
@@ -3472,7 +3503,7 @@ void DASolver::calcdRdActTPsiAD(
     const word designVarName,
     Vec dRdActTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Compute the matrix-vector products dRdAct^T*Psi using reverse-mode AD
@@ -3574,7 +3605,9 @@ void DASolver::calcdRdActTPsiAD(
         FatalErrorIn("") << "designVarType not supported. Options: ACTD"
                          << abort(FatalError);
     }
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdActTPsi"))
     {
         word outputName = "dRdActTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdActTPsi, outputName);
@@ -3588,7 +3621,7 @@ void DASolver::calcdRdWOldTPsiAD(
     const Vec psi,
     Vec dRdWOldTPsi)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Compute the matrix-vector products dRdWOld^T*Psi using reverse-mode AD
@@ -3647,7 +3680,9 @@ void DASolver::calcdRdWOldTPsiAD(
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
 
-    if (daOptionPtr_->getOption<label>("writeJacobians"))
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdWOldTPsi"))
     {
         word outputName = "dRdWOldTPsi";
         DAUtility::writeVectorBinary(dRdWOldTPsi, outputName);
@@ -3658,7 +3693,7 @@ void DASolver::calcdRdWOldTPsiAD(
 
 void DASolver::registerStateVariableInput4AD(const label oldTimeLevel)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Register all state variables as the input for reverse-mode AD
@@ -3817,7 +3852,7 @@ void DASolver::registerFieldVariableInput4AD(
     const word fieldName,
     const word fieldType)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Register field variables as the input for reverse-mode AD
@@ -3862,7 +3897,7 @@ void DASolver::registerFieldVariableInput4AD(
 
 void DASolver::registerResidualOutput4AD()
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         Register all residuals as the output for reverse-mode AD
@@ -4401,6 +4436,20 @@ void DASolver::setdXvdFFDMat(const Mat dXvdFFDMat)
     MatAssemblyEnd(dXvdFFDMat_, MAT_FINAL_ASSEMBLY);
 }
 
+
+void DASolver::setFFD2XvSeedVec(Vec vecIn)
+{
+    /*
+    Description:
+        Set the value for FFD2XvSeedVec_
+    
+    Input:
+        vecIn: this vector will be copied to FFD2XvSeedVec_
+    */
+    VecDuplicate(vecIn, &FFD2XvSeedVec_);
+    VecCopy(vecIn, FFD2XvSeedVec_);
+}
+
 label DASolver::checkResidualTol()
 {
     /*
@@ -4789,58 +4838,6 @@ void DASolver::saveTimeInstanceFieldTimeAccurate(label& timeInstanceI)
     runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
 
     timeInstanceI++;
-}
-
-void DASolver::initOldTimes()
-{
-    /*
-    Description:
-        Initialize the oldTime for all state variables. We will create oldTime for
-        all state variables, no matter whether a variable actually need the oldTime()
-        field. This will allow setTimeInstanceField to correctly assign values for
-        oldTime(). NOTE: we need to call this function before calling setTimeInstanceField
-        Otherwise, the first setTimeInstanceField call will not get the correct
-        oldTime values.
-    */
-    forAll(stateInfo_["volVectorStates"], idxI)
-    {
-        const word stateName = stateInfo_["volVectorStates"][idxI];
-        volVectorField& state = const_cast<volVectorField&>(
-            meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
-        // just create/initialize oldTimes
-        state.oldTime();
-        state.oldTime().oldTime();
-    }
-
-    forAll(stateInfo_["volScalarStates"], idxI)
-    {
-        const word stateName = stateInfo_["volScalarStates"][idxI];
-        volScalarField& state = const_cast<volScalarField&>(
-            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
-        // just create/initialize oldTimes
-        state.oldTime();
-        state.oldTime().oldTime();
-    }
-
-    forAll(stateInfo_["modelStates"], idxI)
-    {
-        const word stateName = stateInfo_["modelStates"][idxI];
-        volScalarField& state = const_cast<volScalarField&>(
-            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
-        // just create/initialize oldTimes
-        state.oldTime();
-        state.oldTime().oldTime();
-    }
-
-    forAll(stateInfo_["surfaceScalarStates"], idxI)
-    {
-        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
-        surfaceScalarField& state = const_cast<surfaceScalarField&>(
-            meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
-        // just create/initialize oldTimes
-        state.oldTime();
-        state.oldTime().oldTime();
-    }
 }
 
 void DASolver::setTimeInstanceField(const label instanceI)

@@ -7,8 +7,10 @@ fi
 
 if [ -z "$WM_CODI_AD_MODE" ]; then
   export DF_LIB_SUFFIX=""
-else
-  export DF_LIB_SUFFIX="AD"
+elif [ "$WM_CODI_AD_MODE" = "CODI_AD_FORWARD" ]; then
+  export DF_LIB_SUFFIX="ADF"
+elif [ "$WM_CODI_AD_MODE" = "CODI_AD_REVERSE" ]; then
+  export DF_LIB_SUFFIX="ADR"
 fi
 
 case $1 in
