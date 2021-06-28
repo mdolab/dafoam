@@ -53,6 +53,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void updateOFField(PetscVec)
         void updateOFMesh(PetscVec)
         void setdXvdFFDMat(PetscMat)
+        void setFFD2XvSeedVec(PetscVec)
         int getGlobalXvIndex(int, int)
         void ofField2StateVec(PetscVec)
         void stateVec2OFField(PetscVec)
@@ -76,12 +77,12 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void readVectorBinary(PetscVec, char *)
         void writeVectorBinary(PetscVec, char *)
         void setTimeInstanceField(int)
-        void initOldTimes()
         void setTimeInstanceVar(char *, PetscMat, PetscMat, PetscVec, PetscVec)
         double getTimeInstanceObjFunc(int, char *)
         void setFieldValue4GlobalCellI(char *, double, int, int)
         void updateBoundaryConditions(char *, char *)
         void calcPrimalResidualStatistics(char *)
+        double getForwardADDerivVal(char *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -224,6 +225,9 @@ cdef class pyDASolvers:
     def setdXvdFFDMat(self, Mat dXvdFFDMat):
         self._thisptr.setdXvdFFDMat(dXvdFFDMat.mat)
     
+    def setFFD2XvSeedVec(self, Vec FFD2XvSeedVec):
+        self._thisptr.setFFD2XvSeedVec(FFD2XvSeedVec.vec)
+    
     def getGlobalXvIndex(self, pointI, coordI):
         return self._thisptr.getGlobalXvIndex(pointI, coordI)
     
@@ -290,9 +294,6 @@ cdef class pyDASolvers:
     def setTimeInstanceField(self, instanceI):
         self._thisptr.setTimeInstanceField(instanceI)
     
-    def initOldTimes(self):
-        self._thisptr.initOldTimes()
-    
     def setTimeInstanceVar(self, mode, Mat stateMat, Mat stateBCMat, Vec timeVec, Vec timeIdxVec):
         self._thisptr.setTimeInstanceVar(mode, stateMat.mat, stateBCMat.mat, timeVec.vec, timeIdxVec.vec)
     
@@ -307,3 +308,6 @@ cdef class pyDASolvers:
     
     def calcPrimalResidualStatistics(self, mode):
         self._thisptr.calcPrimalResidualStatistics(mode)
+    
+    def getForwardADDerivVal(self, objFuncName):
+        return self._thisptr.getForwardADDerivVal(objFuncName)

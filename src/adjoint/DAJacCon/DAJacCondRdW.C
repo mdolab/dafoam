@@ -673,7 +673,9 @@ void DAJacCondRdW::setupdRdWCon(
         VecAssemblyEnd(dRdWTPreallocOff_);
 
         //output the matrix to a file
-        if (daOption_.getOption<label>("writeJacobians"))
+        wordList writeJacobians;
+        daOption_.getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+        if (writeJacobians.found("dRdWTPrealloc"))
         {
             DAUtility::writeVectorASCII(dRdWTPreallocOn_, "dRdWTPreallocOn");
             DAUtility::writeVectorASCII(dRdWTPreallocOff_, "dRdWTPreallocOff");
@@ -687,7 +689,9 @@ void DAJacCondRdW::setupdRdWCon(
         MatAssemblyEnd(jacCon_, MAT_FINAL_ASSEMBLY);
 
         //output the matrix to a file
-        if (daOption_.getOption<label>("writeJacobians"))
+        wordList writeJacobians;
+        daOption_.getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+        if (writeJacobians.found("dRdWCon"))
         {
             //DAUtility::writeMatRowSize(jacCon_, "dRdWCon");
             DAUtility::writeMatrixBinary(jacCon_, "dRdWCon");

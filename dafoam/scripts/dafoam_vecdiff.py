@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Compare values in two different vectors and identify the max relative error
+Compare values in two different vectors and identify the max relative/absolute error
 """
 import os, sys
 import argparse
@@ -10,7 +10,7 @@ petsc4py.init(sys.argv)
 from petsc4py import PETSc
 
 
-def evalVecDiff(vecName1, vecName2, diffTol=1e-30):
+def evalVecDiff(vecName1, vecName2, mode, diffTol=1e-30):
 
     # the relative error is computed as
     # (vec1-vec2)/vec1
@@ -43,16 +43,20 @@ def evalVecDiff(vecName1, vecName2, diffTol=1e-30):
     for i in range(Istart, Iend):
         valDiff = abs(vecDiff[i])
         valRef = abs(vec1[i])
-        valRelError = valDiff / (valRef + diffTol)
-        l2norm = l2norm + valRelError ** 2
-        if valRelError > diffTol:
-            if valRelError > maxDiff:
-                maxDiff = valRelError
+        if mode == "rel":
+            valError = valDiff / (valRef + diffTol)
+        elif mode == "abs":
+            valError = valDiff
+        else:
+            print("mode not supported! Options are: abs or rel")
+        l2norm = l2norm + valDiff ** 2
+        if valError > diffTol:
+            if valError > maxDiff:
+                maxDiff = valError
                 maxRowI = i
                 maxVal1 = vec1.getValue(i)
                 maxVal2 = vec2.getValue(i)
                 foundDiff = 1
-    l2norm = l2norm ** 0.5
 
     if foundDiff == 1:
         print("L2Norm: %20.16e" % l2norm)
@@ -67,6 +71,6 @@ def evalVecDiff(vecName1, vecName2, diffTol=1e-30):
 
 
 if __name__ == "__main__":
-    print("\nUsage: python dafoam_vecreldiff.py vecName1 vecName2")
-    print("Example python dafoam_vecreldiff.py dFdW1.bin dFdW2.bin\n")
-    evalVecDiff(sys.argv[1], sys.argv[2])
+    print("\nUsage: python dafoam_vecreldiff.py vecName1 vecName2 mode")
+    print("Example python dafoam_vecreldiff.py dFdW1.bin dFdW2.bin abs\n")
+    evalVecDiff(sys.argv[1], sys.argv[2], sys.argv[3])

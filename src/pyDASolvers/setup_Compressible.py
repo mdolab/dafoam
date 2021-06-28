@@ -24,8 +24,11 @@ solverName = "pyDASolverCompressible"
 if os.getenv("WM_CODI_AD_MODE") is None:
     libSuffix = ""
     codiADMode = "CODI_AD_NONE"
-else:
-    libSuffix = "AD"
+elif os.getenv("WM_CODI_AD_MODE") == "CODI_AD_FORWARD":
+    libSuffix = "ADF"
+    codiADMode = os.getenv("WM_CODI_AD_MODE")
+elif os.getenv("WM_CODI_AD_MODE") == "CODI_AD_REVERSE":
+    libSuffix = "ADR"
     codiADMode = os.getenv("WM_CODI_AD_MODE")
 
 # These setup should reproduce calling wmake to compile OpenFOAM libraries and solvers

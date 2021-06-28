@@ -432,6 +432,12 @@ public:
         DASolverPtr_->setdXvdFFDMat(dXvdFFDMat);
     }
 
+    /// set the value for DASolver::FFD2XvSeedVec_
+    void setFFD2XvSeedVec(Vec vecIn)
+    {
+        DASolverPtr_->setFFD2XvSeedVec(vecIn);
+    }
+
     /// update the allOptions_ dict in DAOption based on the pyOptions from pyDAFoam
     void updateDAOption(PyObject* pyOptions)
     {
@@ -524,12 +530,6 @@ public:
         DASolverPtr_->setTimeInstanceField(instanceI);
     }
 
-    /// initialize the oldTime for all state variables
-    void initOldTimes()
-    {
-        DASolverPtr_->initOldTimes();
-    }
-
     /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
     void setTimeInstanceVar(
         const word mode,
@@ -573,6 +573,12 @@ public:
     void calcPrimalResidualStatistics(const word mode)
     {
         DASolverPtr_->calcPrimalResidualStatistics(mode, 0);
+    }
+
+    /// get forwardADDerivVal_
+    PetscScalar getForwardADDerivVal(const word objFuncName)
+    {
+        return DASolverPtr_->getForwardADDerivVal(objFuncName);
     }
 };
 

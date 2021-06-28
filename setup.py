@@ -26,8 +26,8 @@ setup(
     packages=["dafoam"],
     package_data={"dafoam": ["*.so"]},
     scripts=[
-        "dafoam/scripts/dafoam_matreldiff.py",
-        "dafoam/scripts/dafoam_vecreldiff.py",
+        "dafoam/scripts/dafoam_matdiff.py",
+        "dafoam/scripts/dafoam_vecdiff.py",
         "dafoam/scripts/dafoam_matgetvalues.py",
         "dafoam/scripts/dafoam_vecgetvalues.py",
         "dafoam/scripts/dafoam_plot3d2tecplot.py",

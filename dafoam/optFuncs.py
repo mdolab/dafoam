@@ -468,15 +468,6 @@ def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues, eps=1e-2, to
     return alpha.real
 
 
-def verifySens(objFun=calcObjFuncValues, sensFun=calcObjFuncSens):
-    """
-    Verify the FFD sensitivity against finite-difference references
-    """
-
-    runAdjoint(objFun, sensFun, "sensAdjoint.txt")
-    calcFDSens(objFun, "sensFD.txt")
-
-
 def calcFDSens(objFun=calcObjFuncValues, fileName=None):
     """
     Compute finite-difference sensitivity
