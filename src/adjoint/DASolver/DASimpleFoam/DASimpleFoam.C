@@ -167,9 +167,6 @@ label DASimpleFoam::solvePrimal(
     // write the mesh to files
     mesh.write();
 
-    // if the forwardModeAD is active,, we need to get the total derivatives here
-#include "getForwardADDerivs.H"
-
     Info << "End\n"
          << endl;
 
