@@ -108,6 +108,19 @@ label DASolver::loop(Time& runTime)
     scalar deltaT = runTime.deltaT().value();
     scalar t = runTime.timeOutputValue();
     scalar tol = daOptionPtr_->getOption<scalar>("primalMinResTol");
+
+    // execute functionObjectList, e.g., field averaging, sampling
+    functionObjectList& funcObj = const_cast<functionObjectList&>(runTime.functionObjects());
+    if (runTime.timeIndex() == runTime.startTimeIndex())
+    {
+        funcObj.start();
+    }
+    else
+    {
+        funcObj.execute();
+    }
+    
+    // check exit condition
     if (primalMinRes_ < tol)
     {
         Info << "Time = " << t << endl;
@@ -116,11 +129,13 @@ label DASolver::loop(Time& runTime)
         this->printAllObjFuncs();
         runTime.writeNow();
         prevPrimalSolTime_ = t;
+        funcObj.end();
         return 0;
     }
     else if (t > endTime - 0.5 * deltaT)
     {
         prevPrimalSolTime_ = t;
+        funcObj.end();
         return 0;
     }
     else
