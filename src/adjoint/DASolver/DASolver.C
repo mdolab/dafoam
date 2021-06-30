@@ -113,6 +113,7 @@ label DASolver::loop(Time& runTime)
         Info << "Time = " << t << endl;
         Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << tol << endl
              << endl;
+        this->printAllObjFuncs();
         runTime.writeNow();
         prevPrimalSolTime_ = t;
         return 0;
