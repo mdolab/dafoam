@@ -117,6 +117,9 @@ label DARhoSimpleFoam::solvePrimal(
         return 1;
     }
 
+    // if the forwardModeAD is active, we need to set the seed here
+#include "setForwardADSeeds.H"
+
     // set the rotating wall velocity after the mesh is updated (if MRF is active)
     this->setRotingWallVelocity();
 

@@ -15,7 +15,7 @@
 #include "addToRunTimeSelectionTable.H"
 #include "singlePhaseTransportModel.H"
 #include "turbulentTransportModel.H"
-#include "pimpleControl.H"
+#include "pimpleControlDF.H"
 #include "DARegDbSinglePhaseTransportModel.H"
 #include "DARegDbTurbulenceModelIncompressible.H"
 #include "DAFvSource.H"
@@ -36,7 +36,7 @@ class DAPimpleFoam
 
 protected:
     /// pimple pointer
-    autoPtr<pimpleControl> pimplePtr_;
+    autoPtr<pimpleControlDF> pimplePtr_;
 
     /// pressure field pointer
     autoPtr<volScalarField> pPtr_;

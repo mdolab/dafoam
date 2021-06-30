@@ -103,6 +103,9 @@ label DASimpleTFoam::solvePrimal(
         return 1;
     }
 
+    // if the forwardModeAD is active, we need to set the seed here
+#include "setForwardADSeeds.H"
+
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;

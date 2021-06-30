@@ -113,6 +113,7 @@ label DASolver::loop(Time& runTime)
         Info << "Time = " << t << endl;
         Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << tol << endl
              << endl;
+        this->printAllObjFuncs();
         runTime.writeNow();
         prevPrimalSolTime_ = t;
         return 0;
@@ -147,10 +148,25 @@ void DASolver::printAllObjFuncs()
     forAll(daObjFuncPtrList_, idxI)
     {
         DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-        Info << daObjFunc.getObjFuncName()
+        word objFuncName = daObjFunc.getObjFuncName();
+        scalar objFuncVal = daObjFunc.getObjFuncValue();
+        Info << objFuncName
              << "-" << daObjFunc.getObjFuncPart()
              << "-" << daObjFunc.getObjFuncType()
-             << ": " << daObjFunc.getObjFuncValue() << endl;
+             << ": " << objFuncVal;
+#ifdef CODI_AD_FORWARD
+
+        // if the forwardModeAD is active,, we need to get the total derivatives here
+        if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
+        {
+            Info << " ForwardAD Deriv: " << objFuncVal.getGradient();
+
+            // assign the forward mode AD derivative to forwardADDerivVal_
+            // such that we can get this value later
+            forwardADDerivVal_.set(objFuncName, objFuncVal.getGradient());
+        }
+#endif
+        Info << endl;
     }
 }
 
@@ -4435,7 +4451,6 @@ void DASolver::setdXvdFFDMat(const Mat dXvdFFDMat)
     MatAssemblyBegin(dXvdFFDMat_, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(dXvdFFDMat_, MAT_FINAL_ASSEMBLY);
 }
-
 
 void DASolver::setFFD2XvSeedVec(Vec vecIn)
 {
