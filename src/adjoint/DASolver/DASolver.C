@@ -8,6 +8,9 @@
 #include "DASolver.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// initialize the static variable, which will be used in forward mode AD
+// computation for AOA derivatives
+scalar Foam::DAUtility::angleOfAttackRadForwardAD = -9999.0;
 
 namespace Foam
 {
@@ -119,7 +122,7 @@ label DASolver::loop(Time& runTime)
     {
         funcObj.execute();
     }
-    
+
     // check exit condition
     if (primalMinRes_ < tol)
     {
@@ -1799,6 +1802,9 @@ void DASolver::calcdFdAOAAD(
     This function is not working in parallel.
     It is not called in pyDAFoam.py. An analytical
     dFdAOA approach is implemented in pyDAFoam.py
+    The problem is in the updateForceDir function
+    in DAObjFuncForce.C where we use a reduce function
+    to get flow direction and lose track of AD seeds
     -------------- NOTE -----------------
     Description:
         This function computes partials derivatives dFdAlpha with alpha being the angle of attack (AOA) 

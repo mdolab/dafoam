@@ -196,65 +196,100 @@ void DAObjFuncForce::updateForceDir(vector& forceDir)
     Description:
         Dynamically adjust the force direction based on the flow direction from
         far field
+        NOTE: we have special implementation for forward mode AD because
+        we need to progagate the aoa seed to here. The problem of the regular
+        treatment is that we use reduce(flowDir[0], maxOp<scalar>()); to get the
+        flowDir for thoese processors that have no inout patches, this reduce
+        function will lose track of AD seeds for aoa.
 
     Output:
         forceDir: the force direction vector
     */
 
-    label patchI = mesh_.boundaryMesh().findPatchID(inoutRefPatchName_);
-
-    volVectorField& U =
-        const_cast<volVectorField&>(mesh_.thisDb().lookupObject<volVectorField>("U"));
-
-    vector flowDir = {-1e16, -1e16, -1e16};
-
-    // for decomposed domain, don't set BC if the patch is empty
-    if (mesh_.boundaryMesh()[patchI].size() > 0)
+    if (DAUtility::angleOfAttackRadForwardAD > -999.0)
     {
-        if (U.boundaryField()[patchI].type() == "fixedValue")
+        // DAUtility::angleOfAttackRadForwardAD is set, this is dF/dAOA forwardMode
+        // derivative, use special treatment here
+
+        scalar compA = cos(DAUtility::angleOfAttackRadForwardAD);
+        scalar compB = sin(DAUtility::angleOfAttackRadForwardAD);
+
+        if (dirMode_ == "parallelToFlow")
         {
-            flowDir = U.boundaryField()[patchI][0];
-            flowDir = flowDir / mag(flowDir);
+            forceDir[flowAxisIndex_] = compA;
+            forceDir[normalAxisIndex_] = compB;
         }
-        else if (U.boundaryField()[patchI].type() == "inletOutlet")
+        else if (dirMode_ == "normalToFlow")
         {
-            // perturb inletValue
-            mixedFvPatchField<vector>& inletOutletPatch =
-                refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
-            flowDir = inletOutletPatch.refValue()[0];
-            flowDir = flowDir / mag(flowDir);
+            forceDir[flowAxisIndex_] = -compB;
+            forceDir[normalAxisIndex_] = compA;
         }
         else
         {
-            FatalErrorIn("") << "boundaryType: " << U.boundaryField()[patchI].type()
-                             << " not supported!"
-                             << "Available options are: fixedValue, inletOutlet"
-                             << abort(FatalError);
+            FatalErrorIn(" ") << "directionMode not valid!"
+                              << "Options: parallelToFlow, normalToFlow."
+                              << abort(FatalError);
         }
-    }
-
-    // need to reduce the sum of force across all processors, this is because some of
-    // the processor might not own the inoutRefPatchName_ so their flowDir will be -1e16, but
-    // when calling the following reduce function, they will get the correct flowDir
-    // computed by other processors
-    reduce(flowDir[0], maxOp<scalar>());
-    reduce(flowDir[1], maxOp<scalar>());
-    reduce(flowDir[2], maxOp<scalar>());
-
-    if (dirMode_ == "parallelToFlow")
-    {
-        forceDir = flowDir;
-    }
-    else if (dirMode_ == "normalToFlow")
-    {
-        forceDir[flowAxisIndex_] = -flowDir[normalAxisIndex_];
-        forceDir[normalAxisIndex_] = flowDir[flowAxisIndex_];
     }
     else
     {
-        FatalErrorIn(" ") << "directionMode not valid!"
-                          << "Options: parallelToFlow, normalToFlow."
-                          << abort(FatalError);
+        // DAUtility::angleOfAttackRadForwardAD is not set, usual regular forceDir computation
+
+        label patchI = mesh_.boundaryMesh().findPatchID(inoutRefPatchName_);
+
+        volVectorField& U =
+            const_cast<volVectorField&>(mesh_.thisDb().lookupObject<volVectorField>("U"));
+
+        vector flowDir = {-1e16, -1e16, -1e16};
+
+        // for decomposed domain, don't set BC if the patch is empty
+        if (mesh_.boundaryMesh()[patchI].size() > 0)
+        {
+            if (U.boundaryField()[patchI].type() == "fixedValue")
+            {
+                flowDir = U.boundaryField()[patchI][0];
+                flowDir = flowDir / mag(flowDir);
+            }
+            else if (U.boundaryField()[patchI].type() == "inletOutlet")
+            {
+                // perturb inletValue
+                mixedFvPatchField<vector>& inletOutletPatch =
+                    refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
+                flowDir = inletOutletPatch.refValue()[0];
+                flowDir = flowDir / mag(flowDir);
+            }
+            else
+            {
+                FatalErrorIn("") << "boundaryType: " << U.boundaryField()[patchI].type()
+                                 << " not supported!"
+                                 << "Available options are: fixedValue, inletOutlet"
+                                 << abort(FatalError);
+            }
+        }
+
+        // need to reduce the sum of force across all processors, this is because some of
+        // the processor might not own the inoutRefPatchName_ so their flowDir will be -1e16, but
+        // when calling the following reduce function, they will get the correct flowDir
+        // computed by other processors
+        reduce(flowDir[0], maxOp<scalar>());
+        reduce(flowDir[1], maxOp<scalar>());
+        reduce(flowDir[2], maxOp<scalar>());
+
+        if (dirMode_ == "parallelToFlow")
+        {
+            forceDir = flowDir;
+        }
+        else if (dirMode_ == "normalToFlow")
+        {
+            forceDir[flowAxisIndex_] = -flowDir[normalAxisIndex_];
+            forceDir[normalAxisIndex_] = flowDir[flowAxisIndex_];
+        }
+        else
+        {
+            FatalErrorIn(" ") << "directionMode not valid!"
+                              << "Options: parallelToFlow, normalToFlow."
+                              << abort(FatalError);
+        }
     }
 }
 
