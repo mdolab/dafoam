@@ -83,6 +83,17 @@ daOptions = {
                 "addToAdjoint": True,
             }
         },
+        "CMZ": {
+            "part1": {
+                "type": "moment",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.25, 0.0, 0.05],
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),
+                "addToAdjoint": True,
+            }
+        },
     },
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {
@@ -206,51 +217,60 @@ optFuncs.gcomm = gcomm
 funcsSens = {}
 funcsSens["CD"] = {}
 funcsSens["CL"] = {}
+funcsSens["CMZ"] = {}
 
 # Run
 # shape
 DASolver()
 funcsSens["CD"]["shape"] = DASolver.getForwardADDerivVal("CD")
 funcsSens["CL"]["shape"] = DASolver.getForwardADDerivVal("CL")
+funcsSens["CMZ"]["shape"] = DASolver.getForwardADDerivVal("CMZ")
 # pitch
 DASolver.setOption("useAD", {"dvName": "pitch"})
 DASolver.updateDAOption()
 DASolver()
 funcsSens["CD"]["pitch"] = DASolver.getForwardADDerivVal("CD")
 funcsSens["CL"]["pitch"] = DASolver.getForwardADDerivVal("CL")
+funcsSens["CMZ"]["pitch"] = DASolver.getForwardADDerivVal("CMZ")
 # aoa
 DASolver.setOption("useAD", {"dvName": "alpha"})
 DASolver.updateDAOption()
 DASolver()
 funcsSens["CD"]["alpha"] = DASolver.getForwardADDerivVal("CD")
 funcsSens["CL"]["alpha"] = DASolver.getForwardADDerivVal("CL")
+funcsSens["CMZ"]["alpha"] = DASolver.getForwardADDerivVal("CMZ")
 # ACTD
 funcsSens["CD"]["actuator"] = [] 
 funcsSens["CL"]["actuator"] = []
+funcsSens["CMZ"]["actuator"] = []
 # 0th
 DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 0})
 DASolver.updateDAOption()
 DASolver()
 funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))
 funcsSens["CL"]["actuator"].append(DASolver.getForwardADDerivVal("CL"))
+funcsSens["CMZ"]["actuator"].append(DASolver.getForwardADDerivVal("CMZ"))
 # 3th
 DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 3})
 DASolver.updateDAOption()
 DASolver()
 funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))
 funcsSens["CL"]["actuator"].append(DASolver.getForwardADDerivVal("CL"))
+funcsSens["CMZ"]["actuator"].append(DASolver.getForwardADDerivVal("CMZ"))
 # 5th
 DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 5})
 DASolver.updateDAOption()
 DASolver()
 funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))
 funcsSens["CL"]["actuator"].append(DASolver.getForwardADDerivVal("CL"))
+funcsSens["CMZ"]["actuator"].append(DASolver.getForwardADDerivVal("CMZ"))
 # 7th
 DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 7})
 DASolver.updateDAOption()
 DASolver()
 funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))
 funcsSens["CL"]["actuator"].append(DASolver.getForwardADDerivVal("CL"))
+funcsSens["CMZ"]["actuator"].append(DASolver.getForwardADDerivVal("CMZ"))
 
 if gcomm.rank == 0:
     reg_write_dict(funcsSens, 1e-5, 1e-7)
