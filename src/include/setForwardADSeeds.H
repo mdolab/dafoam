@@ -194,6 +194,10 @@ if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
         // convert to back to radian
         aoaForwardAD *= constant::mathematical::pi.getValue() / 180.0;
 
+        // assign the angle of attack to the static variable in DAUtility. It will be used in determing
+        // the forceDir in DAObjeFuncForce.C
+        DAUtility::angleOfAttackRadForwardAD = aoaForwardAD;
+
         // set far field Ux, Uy
         forAll(patches, idxI)
         {
