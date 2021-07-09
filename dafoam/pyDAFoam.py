@@ -3359,6 +3359,63 @@ class PYDAFOAM(object):
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.syncDAOptionToActuatorDVs()
 
+    def getNLocalAdjointStates(self):
+        """
+        Get number of local adjoint states
+        """
+        return self.solver.getNLocalAdjointStates()
+    
+    def getDVsCons(self):
+        """
+        Return the list of design variable names
+        NOTE: constraints are not implemented yet
+        """
+        DVNames = []
+        DVSizes = []
+        if self.DVGeo is None:
+            return None
+        else:
+            DVs = self.DVGeo.getValues()
+            for dvName in DVs:
+                try:
+                    size = len(DVs[dvName])
+                except Exception:
+                    size = 1
+                DVNames.append(dvName)
+                DVSizes.append(size)
+            return DVNames, DVSizes
+    
+    def getStates(self):
+        """
+        Return the adjoint state array owns by this processor
+        """
+        nLocalStateSize = self.solver.getNLocalAdjointStates()
+        states = np.zeros(nLocalStateSize, self.dtype)
+        Istart, Iend = self.wVec.getOwnershipRange()
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            states[iRel] = self.wVec[i]
+        
+        return states
+        
+    def getResiduals(self):
+        """
+        Return the residual array owns by this processor
+        """
+        nLocalStateSize = self.solver.getNLocalAdjointStates()
+        residuals = np.zeros(nLocalStateSize, self.dtype)
+        resVec = self.wVec.duplicate()
+        resVec.zeroEntries()
+        
+        self.solver.calcResidualVec(resVec)
+
+        Istart, Iend = self.resVec.getOwnershipRange()
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            residuals[iRel] = resVec[i]
+        
+        return residuals
+
     def _printCurrentOptions(self):
         """
         Prints a nicely formatted dictionary of all the current solver

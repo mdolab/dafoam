@@ -4770,6 +4770,99 @@ void DASolver::setFieldValue4GlobalCellI(
     }
 }
 
+void DASolver::calcResidualVec(Vec resVec)
+{
+    /*
+    Description:
+        Calculate the residual and assign it to resVec
+    
+    Input/Output:
+        resVec: residual vector
+    */
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    PetscScalar* vecArray;
+    VecGetArray(resVec, &vecArray);
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const word resName = stateName + "Res";
+        const volVectorField& stateRes = meshPtr_->thisDb().lookupObject<volVectorField>(resName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                vecArray[localIdx] = stateRes[cellI][i];
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        const volScalarField& stateRes = meshPtr_->thisDb().lookupObject<volScalarField>(resName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            vecArray[localIdx] = stateRes[cellI];
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const word resName = stateName + "Res";
+        const volScalarField& stateRes = meshPtr_->thisDb().lookupObject<volScalarField>(resName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            vecArray[localIdx] = stateRes[cellI];
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        const surfaceScalarField& stateRes = meshPtr_->thisDb().lookupObject<surfaceScalarField>(resName);
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                vecArray[localIdx] = stateRes[faceI];
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                vecArray[localIdx] = stateRes.boundaryField()[patchIdx][faceIdx];
+            }
+        }
+    }
+
+    VecRestoreArray(resVec, &vecArray);
+}
+
 void DASolver::updateBoundaryConditions(
     const word fieldName,
     const word fieldType)

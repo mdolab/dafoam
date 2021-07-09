@@ -580,6 +580,12 @@ public:
     {
         return DASolverPtr_->getForwardADDerivVal(objFuncName);
     }
+
+    /// calculate the residual and assign it to the resVec vector
+    void calcResidualVec(Vec resVec)
+    {
+        DASolverPtr_->calcResidualVec(resVec);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

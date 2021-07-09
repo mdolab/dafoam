@@ -751,6 +751,9 @@ public:
         return forwardADDerivVal_[objFuncName];
     }
 
+    /// calculate the residual and assign it to the resVec vector
+    void calcResidualVec(Vec resVec);
+
 #ifdef CODI_AD_REVERSE
 
     /// global tape for reverse-mode AD
