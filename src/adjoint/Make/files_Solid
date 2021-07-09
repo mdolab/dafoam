@@ -23,6 +23,7 @@ DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncVonMisesStressKS.C
 DAObjFunc/DAObjFuncMass.C
 DAObjFunc/DAObjFuncVariableVolSum.C
+DAObjFunc/DAObjFuncMeshQualityKS.C
 
 DAFvSource/DAFvSource.C
 

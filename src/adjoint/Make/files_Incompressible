@@ -43,6 +43,7 @@ DAObjFunc/DAObjFuncWallHeatFlux.C
 DAObjFunc/DAObjFuncTotalPressure.C
 DAObjFunc/DAObjFuncStateErrorNorm.C
 DAObjFunc/DAObjFuncVariableVolSum.C
+DAObjFunc/DAObjFuncMeshQualityKS.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
