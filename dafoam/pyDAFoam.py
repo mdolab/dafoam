@@ -3415,6 +3415,19 @@ class PYDAFOAM(object):
             residuals[iRel] = resVec[i]
         
         return residuals
+    
+    def setStates(self, states):
+        """
+        Set the state to the OpenFOAM field
+        """
+        Istart, Iend = self.wVec.getOwnershipRange()
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            self.wVec[i] = states[iRel]
+        
+        self.solver.stateVec2OFField(self.wVec)
+        
+        return
 
     def _printCurrentOptions(self):
         """
