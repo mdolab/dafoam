@@ -52,6 +52,8 @@ void DAPimpleFoam::initSolver()
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
+    this->setDAObjFuncList();
+
     mode_ = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
 
     if (mode_ == "hybridAdjoint")

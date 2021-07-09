@@ -54,6 +54,7 @@ void DASimpleTFoam::initSolver()
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
+    this->setDAObjFuncList();
 }
 
 label DASimpleTFoam::solvePrimal(
@@ -134,7 +135,7 @@ label DASimpleTFoam::solvePrimal(
         if (printToScreen)
         {
             daTurbulenceModelPtr_->printYPlus();
-            
+
             this->printAllObjFuncs();
 
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
@@ -143,7 +144,6 @@ label DASimpleTFoam::solvePrimal(
         }
 
         runTime.write();
-
     }
 
     this->calcPrimalResidualStatistics("print");

@@ -52,6 +52,8 @@ void DARhoSimpleCFoam::initSolver()
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+
+    this->setDAObjFuncList();
 }
 
 label DARhoSimpleCFoam::solvePrimal(
