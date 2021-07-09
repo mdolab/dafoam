@@ -28,6 +28,8 @@ DACheckMesh::DACheckMesh(
     maxNonOrth_ = daOption_.getSubDictOption<scalar>("checkMeshThreshold", "maxNonOrth");
     maxSkewness_ = daOption_.getSubDictOption<scalar>("checkMeshThreshold", "maxSkewness");
     maxAspectRatio_ = daOption_.getSubDictOption<scalar>("checkMeshThreshold", "maxAspectRatio");
+    maxIncorrectlyOrientedFaces_ =
+        daOption_.getSubDictOption<label>("checkMeshThreshold", "maxIncorrectlyOrientedFaces");
     meshNew.setNonOrthThreshold(maxNonOrth_);
     meshNew.setSkewThreshold(maxSkewness_);
     meshNew.setAspectThreshold(maxAspectRatio_);
@@ -36,6 +38,7 @@ DACheckMesh::DACheckMesh(
     Info << "maxNonOrth: " << maxNonOrth_ << endl;
     Info << "maxSkewness: " << maxSkewness_ << endl;
     Info << "maxAspectRatio: " << maxAspectRatio_ << endl;
+    Info << "maxIncorrectlyOrientedFaces: " << maxIncorrectlyOrientedFaces_ << endl;
 
     word surfaceFormat = "vtk";
     surfWriter.reset(surfaceWriter::New(surfaceFormat));
@@ -60,7 +63,7 @@ label DACheckMesh::run() const
 
     Info << "Checking mesh quality for time = " << runTime.timeName() << endl;
 
-    label nFailedChecks = checkGeometry(mesh, surfWriter, setWriter);
+    label nFailedChecks = checkGeometry(mesh, surfWriter, setWriter, maxIncorrectlyOrientedFaces_);
 
     if (nFailedChecks)
     {
