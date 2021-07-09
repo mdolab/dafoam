@@ -558,6 +558,7 @@ class DAOPTION(object):
         "maxAspectRatio": 1000.0,
         "maxNonOrth": 70.0,
         "maxSkewness": 4.0,
+        "maxIncorrectlyOrientedFaces": 0,
     }
 
     ## Compute intermediate variables such as the mean fields

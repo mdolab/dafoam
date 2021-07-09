@@ -49,6 +49,7 @@ bool checkCoupledPoints(const polyMesh&, const bool report, labelHashSet*);
 label checkGeometry(
     const polyMesh& mesh,
     const autoPtr<surfaceWriter>& surfWriter,
-    const autoPtr<writer<scalar>>& setWriter);
+    const autoPtr<writer<scalar>>& setWriter,
+    const label maxIncorrectlyOrientedFaces);
 
 }
