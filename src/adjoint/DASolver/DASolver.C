@@ -4805,7 +4805,7 @@ void DASolver::calcResidualVec(Vec resVec)
             for (label i = 0; i < 3; i++)
             {
                 label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
-                vecArray[localIdx] = stateRes[cellI][i];
+                assignValueCheckAD(vecArray[localIdx], stateRes[cellI][i]);
             }
         }
     }
@@ -4819,7 +4819,7 @@ void DASolver::calcResidualVec(Vec resVec)
         forAll(meshPtr_->cells(), cellI)
         {
             label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
-            vecArray[localIdx] = stateRes[cellI];
+            assignValueCheckAD(vecArray[localIdx], stateRes[cellI]);
         }
     }
 
@@ -4832,7 +4832,7 @@ void DASolver::calcResidualVec(Vec resVec)
         forAll(meshPtr_->cells(), cellI)
         {
             label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
-            vecArray[localIdx] = stateRes[cellI];
+            assignValueCheckAD(vecArray[localIdx], stateRes[cellI]);
         }
     }
 
@@ -4848,14 +4848,14 @@ void DASolver::calcResidualVec(Vec resVec)
 
             if (faceI < daIndexPtr_->nLocalInternalFaces)
             {
-                vecArray[localIdx] = stateRes[faceI];
+                assignValueCheckAD(vecArray[localIdx], stateRes[faceI]);
             }
             else
             {
                 label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
                 label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
                 label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
-                vecArray[localIdx] = stateRes.boundaryField()[patchIdx][faceIdx];
+                assignValueCheckAD(vecArray[localIdx], stateRes.boundaryField()[patchIdx][faceIdx]);
             }
         }
     }
