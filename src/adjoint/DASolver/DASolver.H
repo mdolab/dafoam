@@ -273,6 +273,13 @@ public:
         const label isPC,
         Mat dRdWT);
 
+    /// compute [dRdW]^T*Psi
+    void calcdRdWTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        Vec dRdWTPsi);
+
     /// compute dFdW
     void calcdFdW(
         const Vec xvVec,

@@ -3653,6 +3653,83 @@ void DASolver::calcdRdActTPsiAD(
 #endif
 }
 
+void DASolver::calcdRdWTPsiAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    Vec dRdWTPsi)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute the matrix-vector products dRdW^T*Psi using reverse-mode AD
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdW0^T
+    
+    Output:
+        dRdWTPsi: the matrix-vector products dRdW^T * Psi
+    */
+
+    Info << "Calculating [dRdW]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdWTPsi);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD();
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(dRdWTPsi);
+
+    // NOTE: we need to normalize dRdWTPsi!
+    this->normalizeGradientVec(dRdWTPsi);
+
+    VecAssemblyBegin(dRdWTPsi);
+    VecAssemblyEnd(dRdWTPsi);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdWTPsi"))
+    {
+        word outputName = "dRdWTPsi";
+        DAUtility::writeVectorBinary(dRdWTPsi, outputName);
+        DAUtility::writeVectorASCII(dRdWTPsi, outputName);
+    }
+#endif
+}
+
 void DASolver::calcdRdWOldTPsiAD(
     const label oldTimeLevel,
     const Vec psi,

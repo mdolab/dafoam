@@ -22,6 +22,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initSolver()
         int solvePrimal(PetscVec, PetscVec)
         void calcdRdWT(PetscVec, PetscVec, int, PetscMat)
+        void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree(PetscVec, PetscVec)
         void destroydRdWTMatrixFree()
         void calcdFdW(PetscVec, PetscVec, char *, PetscVec)
@@ -132,6 +133,9 @@ cdef class pyDASolvers:
     
     def calcdRdWT(self, Vec xvVec, Vec wVec, isPC, Mat dRdWT):
         self._thisptr.calcdRdWT(xvVec.vec, wVec.vec, isPC, dRdWT.mat)
+    
+    def calcdRdWTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdWTPsi):
+        self._thisptr.calcdRdWTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdWTPsi.vec)
     
     def initializedRdWTMatrixFree(self, Vec xvVec, Vec wVec):
         self._thisptr.initializedRdWTMatrixFree(xvVec.vec, wVec.vec)
