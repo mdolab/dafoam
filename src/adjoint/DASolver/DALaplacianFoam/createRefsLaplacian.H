@@ -7,5 +7,3 @@ dimensionedScalar& DT = DTPtr_();
 
 // create a file to store the objective values
 this->initializeObjFuncHistFilePtr("objFuncTimeSeries");
-
-this->setDAObjFuncList();

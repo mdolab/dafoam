@@ -350,6 +350,16 @@ public:
         DASolverPtr_->calcdRdWOldTPsiAD(oldTimeLevel, psi, dRdWOldTPsi);
     }
 
+    /// compute [dRdW]^T*Psi
+    void calcdRdWTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        Vec dRdWTPsi)
+    {
+        DASolverPtr_->calcdRdWTPsiAD(xvVec, wVec, psi, dRdWTPsi);
+    }
+
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
     void updateOFField(const Vec wVec)
     {
@@ -579,6 +589,12 @@ public:
     PetscScalar getForwardADDerivVal(const word objFuncName)
     {
         return DASolverPtr_->getForwardADDerivVal(objFuncName);
+    }
+
+    /// calculate the residual and assign it to the resVec vector
+    void calcResidualVec(Vec resVec)
+    {
+        DASolverPtr_->calcResidualVec(resVec);
     }
 };
 

@@ -22,6 +22,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initSolver()
         int solvePrimal(PetscVec, PetscVec)
         void calcdRdWT(PetscVec, PetscVec, int, PetscMat)
+        void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree(PetscVec, PetscVec)
         void destroydRdWTMatrixFree()
         void calcdFdW(PetscVec, PetscVec, char *, PetscVec)
@@ -83,6 +84,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void updateBoundaryConditions(char *, char *)
         void calcPrimalResidualStatistics(char *)
         double getForwardADDerivVal(char *)
+        void calcResidualVec(PetscVec)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -131,6 +133,9 @@ cdef class pyDASolvers:
     
     def calcdRdWT(self, Vec xvVec, Vec wVec, isPC, Mat dRdWT):
         self._thisptr.calcdRdWT(xvVec.vec, wVec.vec, isPC, dRdWT.mat)
+    
+    def calcdRdWTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdWTPsi):
+        self._thisptr.calcdRdWTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdWTPsi.vec)
     
     def initializedRdWTMatrixFree(self, Vec xvVec, Vec wVec):
         self._thisptr.initializedRdWTMatrixFree(xvVec.vec, wVec.vec)
@@ -311,3 +316,6 @@ cdef class pyDASolvers:
     
     def getForwardADDerivVal(self, objFuncName):
         return self._thisptr.getForwardADDerivVal(objFuncName)
+    
+    def calcResidualVec(self, Vec resVec):
+        self._thisptr.calcResidualVec(resVec.vec)

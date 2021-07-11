@@ -3653,6 +3653,83 @@ void DASolver::calcdRdActTPsiAD(
 #endif
 }
 
+void DASolver::calcdRdWTPsiAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    Vec dRdWTPsi)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute the matrix-vector products dRdW^T*Psi using reverse-mode AD
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdW0^T
+    
+    Output:
+        dRdWTPsi: the matrix-vector products dRdW^T * Psi
+    */
+
+    Info << "Calculating [dRdW]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdWTPsi);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD();
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(dRdWTPsi);
+
+    // NOTE: we need to normalize dRdWTPsi!
+    this->normalizeGradientVec(dRdWTPsi);
+
+    VecAssemblyBegin(dRdWTPsi);
+    VecAssemblyEnd(dRdWTPsi);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdWTPsi"))
+    {
+        word outputName = "dRdWTPsi";
+        DAUtility::writeVectorBinary(dRdWTPsi, outputName);
+        DAUtility::writeVectorASCII(dRdWTPsi, outputName);
+    }
+#endif
+}
+
 void DASolver::calcdRdWOldTPsiAD(
     const label oldTimeLevel,
     const Vec psi,
@@ -4768,6 +4845,99 @@ void DASolver::setFieldValue4GlobalCellI(
                              << abort(FatalError);
         }
     }
+}
+
+void DASolver::calcResidualVec(Vec resVec)
+{
+    /*
+    Description:
+        Calculate the residual and assign it to resVec
+    
+    Input/Output:
+        resVec: residual vector
+    */
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    PetscScalar* vecArray;
+    VecGetArray(resVec, &vecArray);
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const word resName = stateName + "Res";
+        const volVectorField& stateRes = meshPtr_->thisDb().lookupObject<volVectorField>(resName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                assignValueCheckAD(vecArray[localIdx], stateRes[cellI][i]);
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        const volScalarField& stateRes = meshPtr_->thisDb().lookupObject<volScalarField>(resName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            assignValueCheckAD(vecArray[localIdx], stateRes[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const word resName = stateName + "Res";
+        const volScalarField& stateRes = meshPtr_->thisDb().lookupObject<volScalarField>(resName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            assignValueCheckAD(vecArray[localIdx], stateRes[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        const surfaceScalarField& stateRes = meshPtr_->thisDb().lookupObject<surfaceScalarField>(resName);
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                assignValueCheckAD(vecArray[localIdx], stateRes[faceI]);
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                assignValueCheckAD(vecArray[localIdx], stateRes.boundaryField()[patchIdx][faceIdx]);
+            }
+        }
+    }
+
+    VecRestoreArray(resVec, &vecArray);
 }
 
 void DASolver::updateBoundaryConditions(

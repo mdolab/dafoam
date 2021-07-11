@@ -57,6 +57,8 @@ void DARhoSimpleFoam::initSolver()
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
+    this->setDAObjFuncList();
+
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)

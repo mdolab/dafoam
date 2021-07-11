@@ -16,5 +16,3 @@ const dictionary& allOptions = daOptionPtr_->getAllOptions();
 
 // create a file to store the objective values
 this->initializeObjFuncHistFilePtr("objFuncTimeSeries");
-
-this->setDAObjFuncList();

@@ -783,7 +783,7 @@ class PYDAFOAM(object):
 
                 xvNew = self.mesh.getSolverGrid()
                 self.xvFlatten2XvVec(xvNew, self.xvVec)
-            
+
             # if it is forward AD mode and we are computing the Xv derivatives
             # call calcFFD2XvSeedVec
             if self.getOption("useAD")["mode"] == "forward":
@@ -1172,7 +1172,7 @@ class PYDAFOAM(object):
         """
 
         return self.solver.getTimeInstanceObjFunc(instanceI, objFuncName.encode())
-    
+
     def getForwardADDerivVal(self, objFuncName):
         """
         Return the derivative value computed by forward mode AD primal solution
@@ -3359,6 +3359,116 @@ class PYDAFOAM(object):
 
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.syncDAOptionToActuatorDVs()
+
+    def getNLocalAdjointStates(self):
+        """
+        Get number of local adjoint states
+        """
+        return self.solver.getNLocalAdjointStates()
+
+    def getDVsCons(self):
+        """
+        Return the list of design variable names
+        NOTE: constraints are not implemented yet
+        """
+        DVNames = []
+        DVSizes = []
+        if self.DVGeo is None:
+            return None
+        else:
+            DVs = self.DVGeo.getValues()
+            for dvName in DVs:
+                try:
+                    size = len(DVs[dvName])
+                except Exception:
+                    size = 1
+                DVNames.append(dvName)
+                DVSizes.append(size)
+            return DVNames, DVSizes
+
+    def getStates(self):
+        """
+        Return the adjoint state array owns by this processor
+        """
+        nLocalStateSize = self.solver.getNLocalAdjointStates()
+        states = np.zeros(nLocalStateSize, self.dtype)
+        Istart, Iend = self.wVec.getOwnershipRange()
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            states[iRel] = self.wVec[i]
+
+        return states
+
+    def getResiduals(self):
+        """
+        Return the residual array owns by this processor
+        """
+        nLocalStateSize = self.solver.getNLocalAdjointStates()
+        residuals = np.zeros(nLocalStateSize, self.dtype)
+        resVec = self.wVec.duplicate()
+        resVec.zeroEntries()
+
+        self.solver.calcResidualVec(resVec)
+
+        Istart, Iend = self.resVec.getOwnershipRange()
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            residuals[iRel] = resVec[i]
+
+        return residuals
+
+    def setStates(self, states):
+        """
+        Set the state to the OpenFOAM field
+        """
+        Istart, Iend = self.wVec.getOwnershipRange()
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            self.wVec[i] = states[iRel]
+
+        self.wVec.assemblyBegin()
+        self.wVec.assemblyEnd()
+
+        self.solver.stateVec2OFField(self.wVec)
+
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.stateVec2OFField(self.wVec)
+
+        return
+
+    def vec2Array(self, vec):
+        """
+        Convert a Petsc vector to numpy array
+        """
+
+        Istart, Iend = vec.getOwnershipRange()
+        size = Iend - Istart
+        array1 = np.zeros(size, self.dtype)
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            array1[iRel] = vec[i]
+        return array1
+
+    def array2Vec(self, array1):
+        """
+        Convert a numpy array to Petsc vector
+        """
+        size = len(array1)
+
+        vec = PETSc.Vec().create(PETSc.COMM_WORLD)
+        vec.setSizes((size, PETSc.DECIDE), bsize=1)
+        vec.setFromOptions()
+        vec.zeroEntries()
+
+        Istart, Iend = vec.getOwnershipRange()
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            vec[i] = array1[iRel]
+
+        vec.assemblyBegin()
+        vec.assemblyEnd()
+
+        return vec
 
     def _printCurrentOptions(self):
         """
