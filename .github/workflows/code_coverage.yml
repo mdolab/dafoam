@@ -67,7 +67,7 @@ jobs:
 
         if [ "${{matrix.args}}" = "python" ]; then
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && wget https://github.com/dafoam/files/releases/download/v1.0.0/input.tar.gz --no-check-certificate && tar -xvf input.tar.gz"
-           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && coverage run -p --include=${{env.DOCKER_PYTHON_PACKAGE_PATH}}/pyDAFoam.py runTests_Integration.py && rm -rf input && tar -xvf input.tar.gz && mpirun -np 4 coverage run -p --include=${{env.DOCKER_PYTHON_PACKAGE_PATH}}/pyDAFoam.py runTests_Integration.py && coverage combine && echo dafoamuser | sudo -S cp -r * ${{env.DOCKER_MOUNT_DIR}}/"
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && coverage run -p --include=${{env.DOCKER_PYTHON_PACKAGE_PATH}}/pyDAFoam.py runTests_Integration.py && rm -rf input && tar -xvf input.tar.gz && mpirun -np 4 coverage run -p --include=${{env.DOCKER_PYTHON_PACKAGE_PATH}}/pyDAFoam.py runTests_Integration.py && coverage combine && echo dafoamuser | sudo -S cp -r .coverage ${{env.DOCKER_MOUNT_DIR}}/"
         else
            docker exec -i -e DF_CHECK_COVERAGE=1 regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun ${{matrix.args}}"
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjoint && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && coveralls --dryrun --gcov-options '\-lp' && echo dafoamuser | sudo -S cp -r ../adjoint ${{env.DOCKER_MOUNT_DIR}}/"
