@@ -29,12 +29,19 @@ function runTests()
     echo "${1}: Failed!"
     exit 1
   fi
-  python testFuncs.py refs/DAFoam_Test_${1}Ref.txt DAFoam_Test_${1}.txt
-  if [ "$?" -ne "0" ]; then 
-    echo "${1}: Failed!"
-    exit 1
+  if [ -z "$DF_CHECK_COVERAGE" ]; then
+    python testFuncs.py refs/DAFoam_Test_${1}Ref.txt DAFoam_Test_${1}.txt
+    if [ "$?" -ne "0" ]; then 
+      echo "${1}: Failed!"
+      exit 1
+    else
+      echo "${1}: Success!"
+    fi
+  elif [ "$DF_CHECK_COVERAGE" = "1" ]; then
+    echo "DF_CHECK_COVERAGE key found! Do NOT check the regression test values!"
   else
-    echo "${1}: Success!"
+    echo "DF_CHECK_COVERAGE key not valid! Set it to 1!"
+    exit 1
   fi
 }
 
@@ -124,8 +131,10 @@ case $argm in
   "forward")
     echo "Running forward AD tests...."
     sleep 3
-    runTests DASimpleFoamForwardAD
-    runTests DASimpleFoamFieldForwardAD
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADF.so" ]; then
+      runTests DASimpleFoamForwardAD
+      runTests DASimpleFoamFieldForwardAD
+    fi
     echo " "
     echo "************************************************************"
     echo "**************** Forward AD tests passed! ******************"
@@ -138,5 +147,3 @@ case $argm in
     exit 1
     ;;
 esac
-
-
