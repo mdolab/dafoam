@@ -10,7 +10,7 @@ env:
   DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
   DOCKER_OF_ADF_BASHRC: '/home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADF/etc/bashrc'
   DOCKER_OF_ADR_BASHRC: '/home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc'
-
+  CI_ENV: `bash <(curl -s https://codecov.io/env)`
 jobs:
   code_coverage:
     runs-on: ubuntu-18.04
@@ -33,10 +33,11 @@ jobs:
     - uses: actions/checkout@v2
     - name: Create the docker container and run the tests
       run: |
+        ci_env=`bash <(curl -s https://codecov.io/env)`
         docker pull dafoam/opt-packages:${{env.DOCKER_TAG}}
-        docker run -i -d -u dafoamuser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
+        docker run $ci_env -e CI=true -i -d -u dafoamuser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
         docker exec -i regtest /bin/bash -c "rm -rf ${{env.DOCKER_WORKING_DIR}} && cp -r ${{env.DOCKER_MOUNT_DIR}} ${{env.DOCKER_WORKING_DIR}}"
-        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && pip install cpp-coveralls && pip install coverage"
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && pip install cpp-coveralls && pip install codecov"
         docker exec regtest sed -i 's/-std=c++11/-std=c++11 -coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Incompressible
         docker exec regtest sed -i 's/-lOpenFOAM$(DF_LIB_SUFFIX)/-lOpenFOAM$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Incompressible
         docker exec regtest sed -i 's/-std=c++11/-std=c++11 -coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Compressible
@@ -56,10 +57,7 @@ jobs:
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && pip install ."
         docker exec -i -e DF_CHECK_COVERAGE=1 regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun ${{matrix.args}}"
 
-        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && coverage combine && echo dafoamuser | sudo -S cp -r .coverage ${{env.DOCKER_MOUNT_DIR}}/"
-        bash <(curl -s https://codecov.io/bash)
-        rm .coverage*
-
-        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjoint && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && coveralls --dryrun --gcov-options '\-lp' && echo dafoamuser | sudo -S cp -r ../adjoint ${{env.DOCKER_MOUNT_DIR}}/"
-        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && coveralls --dryrun --gcov-options '\-lp' && echo dafoamuser | sudo -S cp -r ../adjointAD ${{env.DOCKER_MOUNT_DIR}}/"
-        bash <(curl -s https://codecov.io/bash)
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && coverage combine && codecov"
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjoint && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && coveralls --dryrun --gcov-options '\-lp'"
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && coveralls --dryrun --gcov-options '\-lp'"
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src && codecov"
