@@ -1,0 +1,4 @@
+ignore:
+  - "home/dafoamuser/dafoam/OpenFOAM/**/*"
+  - "home/dafoamuser/dafoam/packages/petsc-3.11.4/**/*"
+  - "usr/include/**/*"
