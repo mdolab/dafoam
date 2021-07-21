@@ -23,7 +23,7 @@ TRef = 1.0
 aeroOptions = {
     "designSurfaces": ["patch1"],
     "solverName": "DALaplacianFoam",
-    "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3},
+    "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 0.1},
     "objFunc": {
         "TVOL": {
             "part1": {
