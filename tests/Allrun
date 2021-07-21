@@ -81,6 +81,7 @@ case $argm in
     runTests DATurboFoamSubsonic
     runTests DATurboFoamTransonic
     runTests DASolidDisplacementFoam
+    runTests DAScalarTransportFoam
     echo " "
     echo "************************************************************"
     echo "**************** All DAFoam tests passed! ******************"
@@ -131,6 +132,7 @@ case $argm in
     echo "Running solid tests...."
     sleep 3
     runTests DASolidDisplacementFoam
+    runTests DAScalarTransportFoam
     echo " "
     echo "************************************************************"
     echo "******************* Solid tests passed! ********************"
