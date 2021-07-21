@@ -561,18 +561,6 @@ class DAOPTION(object):
         "maxIncorrectlyOrientedFaces": 0,
     }
 
-    ## Compute intermediate variables such as the mean fields
-    ## Example:
-    ## "intmdVar" : {
-    ##     "UMean" : {
-    ##         "operation": "Mean",
-    ##         "fieldType": "volVectorField",
-    ##         "baseField": "U",
-    ##         "restartSteps": 1000
-    ##      }
-    ## }
-    intmdVar = {}
-
     ## The sensitivity map will be saved to disk during optimization for the given design variable
     ## names in the list. Currently only support design variable type FFD and Field
     ## The surface sensitivity map is separated from the primal solution because they only have surface mesh.

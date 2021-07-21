@@ -38,20 +38,6 @@ daOptions = {
     "designSurfaces": ["wallsbump"],
     "adjPCLag": 3,
     "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 1.0},
-    "intmdVar" : {
-         "UMean" : {
-             "operation": "Mean",
-             "fieldType": "volVectorField",
-             "baseField": "U",
-             "restartSteps": 1000
-         },
-         "pMean" : {
-             "operation": "Mean",
-             "fieldType": "volScalarField",
-             "baseField": "p",
-             "restartSteps": 1000
-          },
-    },
     "fvSource": {
         "line1": {
             "type": "actuatorLine",
