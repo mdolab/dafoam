@@ -156,6 +156,20 @@ def reg_file_comp(ref_file, comp_file):
     return res
 
 
+def replace_text_in_file(ref_file, old_text, new_text):
+    """
+    Replace the text in a file
+    """
+    if MPI.COMM_WORLD.rank == 0:
+        f = open(ref_file, "r")
+        fData = f.read()
+        f.close()
+        fDataNew = fData.replace(old_text, new_text)
+        f = open(ref_file, "w")
+        f.write(fDataNew)
+        f.close()
+
+
 if __name__ == "__main__":
 
     testFileRef = sys.argv[1]

@@ -18,6 +18,8 @@ if gcomm.rank == 0:
     os.system("cp -r system.incompressible system")
     os.system("cp -r constant/turbulenceProperties.sstlm constant/turbulenceProperties")
 
+replace_text_in_file("system/fvSchemes", "meshWave", "meshWaveFrozen")
+
 aeroOptions = {
     "solverName": "DASimpleFoam",
     "designSurfaceFamily": "designSurface",
