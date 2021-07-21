@@ -3398,7 +3398,7 @@ class PYDAFOAM(object):
 
         self.solver.calcResidualVec(resVec)
 
-        Istart, Iend = self.resVec.getOwnershipRange()
+        Istart, Iend = resVec.getOwnershipRange()
         for i in range(Istart, Iend):
             iRel = i - Istart
             residuals[iRel] = resVec[i]
