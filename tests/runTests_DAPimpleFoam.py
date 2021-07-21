@@ -10,7 +10,6 @@ import os
 from pygeo import *
 from pyspline import *
 from idwarp import *
-from pyoptsparse import Optimization, OPT
 import numpy as np
 from testFuncs import *
 
@@ -31,37 +30,16 @@ if gcomm.rank == 0:
     os.system("cp -r system/fvSolution.unsteady system/fvSolution")
     os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
 
+replace_text_in_file("system/controlDict", "endTime         40;", "endTime         0.05;")
+
 # test incompressible solvers
 daOptions = {
-    "solverName": "DAPisoFoam",
-    "designSurfaceFamily": "designSurface",
+    "solverName": "DAPimpleFoam",
     "designSurfaces": ["wallsbump"],
-    "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 1.0},
-    "fvSource": {
-        "point1": {
-            "type": "actuatorPoint",
-            "smoothFunction": "hyperbolic",
-            "center": [0.5, 0.5, 0.5],  # center and size define a rectangular
-            "size": [0.2, 0.2, 0.2],
-            "amplitude": [0.0, 0.2, 0.0],
-            "phase": 0.0,
-            "thrustDirIdx": 0,
-            "periodicity": 1.0,
-            "eps": 10.0,
-            "scale": 10.0,  # scale the source such the integral equals desired thrust
-        },
-        "point2": {
-            "type": "actuatorPoint",
-            "smoothFunction": "gaussian",
-            "center": [0.5, 0.5, 0.5],  # center and size define a rectangular
-            "amplitude": [0.0, 0.2, 0.0],
-            "phase": 3.1415926,
-            "thrustDirIdx": 0,
-            "periodicity": 1.0,
-            "eps": 0.1,
-            "scale": 10.0,  # scale the source such the integral equals desired thrust
-        },
-    },
+    "printIntervalUnsteady": 100,
+    "writeJacobians": ["all"],
+    "adjJacobianOption": "JacobianFree",
+    "unsteadyAdjoint": {"mode": "timeAccurateAdjoint", "nTimeInstances": 6},
     "objFunc": {
         "CD": {
             "part1": {
@@ -74,24 +52,14 @@ daOptions = {
                 "addToAdjoint": True,
             }
         },
-        "CL": {
-            "part1": {
-                "type": "force",
-                "source": "patchToFace",
-                "patches": ["wallsbump"],
-                "directionMode": "fixedDirection",
-                "direction": [0.0, 1.0, 0.0],
-                "scale": 1.0,
-                "addToAdjoint": True,
-            }
-        },
     },
     "primalMinResTol": 1e-16,
+    "adjStateOrdering": "cell",
+    "adjEqnOption": {"pcFillLevel": 0, "jacMatReOrdering": "natural", "useNonZeroInitGuess": False},
     "normalizeStates": {"U": 1.0, "p": 1.0, "nuTilda": 0.1, "phi": 1.0},
-    "adjPartDerivFDStep": {"State": 1e-7, "FFD": 1e-3, "ACTP": 1e-3},
-    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
-    # Design variable setup
-    "designVar": {"shapey": {"designVarType": "FFD"}, "actuator": {"actuatorName": "point2", "designVarType": "ACTP"}},
+    "adjPartDerivFDStep": {"State": 1e-7, "FFD": 1e-2},
+    "designVar": {},
+    "adjPCLag": 1000,
 }
 
 # mesh warping parameters, users need to manually specify the symmetry plane
@@ -103,55 +71,15 @@ meshOptions = {
 }
 
 # DVGeo
-FFDFile = "./FFD/bumpFFD.xyz"
-DVGeo = DVGeometry(FFDFile)
-DVGeo.addRefAxis("bodyAxis", xFraction=0.25, alignIndex="k")
-
-
-def actuator(val, geo):
-    actX = float(val[0])
-    actY = float(val[1])
-    actZ = float(val[2])
-    actAx = float(val[3])
-    actAy = float(val[4])
-    actAz = float(val[5])
-    actT = float(val[6])
-    actPhase = float(val[7])
-    actScale = float(val[8])
-    DASolver.setOption(
-        "fvSource",
-        {
-            "point2": {
-                "type": "actuatorPoint",
-                "smoothFunction": "gaussian",
-                "center": [actX, actY, actZ],
-                "amplitude": [actAx, actAy, actAz],
-                "phase": actPhase,
-                "thrustDirIdx": 0,
-                "periodicity": actT,
-                "eps": 0.1,
-                "scale": actScale,
-            },
-        },
-    )
-    DASolver.updateDAOption()
-
-
+DVGeo = DVGeometry("./FFD/bumpFFD.xyz")
+# select points
 iVol = 0
 pts = DVGeo.getLocalIndex(iVol)
-indexList = pts[:, 1, 1].flatten()
+indexList = pts[2, 1, 2].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 # shape
 DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
-# actuator point parameter
-DVGeo.addGeoDVGlobal(
-    "actuator",
-    value=[0.5, 0.5, 0.5, 0.0, 0.2, 0.0, 1.0, 3.1415926, 10.0],
-    func=actuator,
-    lower=-100.0,
-    upper=100.0,
-    scale=1.0,
-)
+daOptions["designVar"]["shapey"] = {"designVarType": "FFD"}
 
 # DAFoam
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
@@ -176,14 +104,14 @@ def setObjFuncsUnsteady(DASolver, funcs, evalFuncs):
     nTimeInstances = DASolver.getOption("unsteadyAdjoint")["nTimeInstances"]
     for func in evalFuncs:
         avgObjVal = 0.0
-        for i in range(nTimeInstances):
+        for i in range(1, nTimeInstances):
             avgObjVal += DASolver.getTimeInstanceObjFunc(i, func)
-        funcs[func] = avgObjVal / nTimeInstances
+        funcs[func] = avgObjVal # / (nTimeInstances - 1)
 
     funcs["fail"] = False
 
 
-def setObjFuncsSensUnsteady(CFDSolver, funcs, funcsSensAllTimeInstances, funcsSensCombined):
+def setObjFuncsSensUnsteady(DASolver, funcs, funcsSensAllTimeInstances, funcsSensCombined):
 
     nTimeInstances = 1.0 * len(funcsSensAllTimeInstances)
     for funcsSens in funcsSensAllTimeInstances:
@@ -197,14 +125,13 @@ def setObjFuncsSensUnsteady(CFDSolver, funcs, funcsSensAllTimeInstances, funcsSe
         for objFunc in funcsSens:
             if objFunc != "fail":
                 for dv in funcsSens[objFunc]:
-                    funcsSensCombined[objFunc][dv] += funcsSens[objFunc][dv] / nTimeInstances
+                    funcsSensCombined[objFunc][dv] += funcsSens[objFunc][dv] # / nTimeInstances
 
     funcsSensCombined["fail"] = False
 
     if gcomm.rank == 0:
         print(funcsSensCombined)
     return
-
 
 optFuncs.DASolver = DASolver
 optFuncs.DVGeo = DVGeo

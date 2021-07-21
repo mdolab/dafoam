@@ -44,6 +44,7 @@ aeroOptions = {
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "adjJacobianOption": "JacobianFree",
+    "writeJacobians": ["all"],
     "primalMinResTol": 1e-12,
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
@@ -85,6 +86,42 @@ aeroOptions = {
                 "scale": 1.0 / (0.5 * rho0 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
+        },
+        "orthoRad": {
+            "part1": {
+                "type": "meshQualityKS",
+                "source": "boxToCell",
+                "min": [-50.0, -50.0, -50.0],
+                "max": [50.0, 50.0, 50.0],
+                "coeffKS": 20.0,
+                "metric": "faceOrthogonality",
+                "scale": 50.0,
+                "addToAdjoint": True,
+            },
+        },
+        "skewness": {
+            "part1": {
+                "type": "meshQualityKS",
+                "source": "boxToCell",
+                "min": [-50.0, -50.0, -50.0],
+                "max": [50.0, 50.0, 50.0],
+                "coeffKS": 20.0,
+                "metric": "faceSkewness",
+                "scale": 1.0,
+                "addToAdjoint": True,
+            },
+        },
+        "nonOrtho": {
+            "part1": {
+                "type": "meshQualityKS",
+                "source": "boxToCell",
+                "min": [-50.0, -50.0, -50.0],
+                "max": [50.0, 50.0, 50.0],
+                "coeffKS": 1.0,
+                "metric": "nonOrthoAngle",
+                "scale": 1.0,
+                "addToAdjoint": True,
+            },
         },
     },
     "normalizeStates": {"U": U0, "p": p0, "k": 1.0, "omega": 1.0, "phi": 1.0},

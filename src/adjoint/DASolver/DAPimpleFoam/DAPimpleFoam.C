@@ -27,7 +27,6 @@ DAPimpleFoam::DAPimpleFoam(
       laminarTransportPtr_(nullptr),
       turbulencePtr_(nullptr),
       daTurbulenceModelPtr_(nullptr),
-      daIntmdVarPtr_(nullptr),
       daFvSourcePtr_(nullptr),
       fvSourcePtr_(nullptr)
 {
@@ -121,9 +120,6 @@ void DAPimpleFoam::initSolver()
             fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
         daFvSourcePtr_->calcFvSource(fvSource);
     }
-
-    // initialize intermediate variable pointer for mean field calculation
-    daIntmdVarPtr_.reset(new DAIntmdVar(mesh, daOptionPtr_()));
 }
 
 label DAPimpleFoam::solvePrimal(
@@ -231,8 +227,6 @@ label DAPimpleFoam::solvePrimal(
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                  << nl << endl;
         }
-
-        daIntmdVarPtr_->update();
 
         runTime.write();
 

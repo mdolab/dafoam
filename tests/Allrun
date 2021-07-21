@@ -55,6 +55,7 @@ case $argm in
     echo "Running all tests...."
     sleep 3
     runTests Integration
+    runTests Primal
     runTests DASimpleFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
@@ -68,6 +69,7 @@ case $argm in
     runTests DASimpleTFoam
     runTests DAPisoFoam
     runTests DAPisoFoamACTL
+    runTests DAPimpleFoam
     runTests DARhoSimpleFoam
     runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
@@ -79,6 +81,8 @@ case $argm in
     runTests DATurboFoamSubsonic
     runTests DATurboFoamTransonic
     runTests DASolidDisplacementFoam
+    runTests DAScalarTransportFoam
+    runTests DALaplacianFoam
     echo " "
     echo "************************************************************"
     echo "**************** All DAFoam tests passed! ******************"
@@ -89,6 +93,7 @@ case $argm in
     echo "Running incompressible tests...."
     sleep 3
     runTests Integration
+    runTests Primal
     runTests DASimpleFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
@@ -98,6 +103,7 @@ case $argm in
     runTests DASimpleTFoam
     runTests DAPisoFoam
     runTests DAPisoFoamACTL
+    runTests DAPimpleFoam
     echo " "
     echo "************************************************************"
     echo "************** Incompressible tests passed! ****************"
@@ -127,6 +133,8 @@ case $argm in
     echo "Running solid tests...."
     sleep 3
     runTests DASolidDisplacementFoam
+    runTests DAScalarTransportFoam
+    runTests DALaplacianFoam
     echo " "
     echo "************************************************************"
     echo "******************* Solid tests passed! ********************"

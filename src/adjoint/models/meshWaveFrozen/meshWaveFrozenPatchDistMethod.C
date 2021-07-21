@@ -108,65 +108,9 @@ bool Foam::patchDistMethods::meshWaveFrozen::correct(
     volScalarField& y,
     volVectorField& n)
 {
-    if (isComputed_)
-    {
-        y = y_;
-        n = n_;
-        return nUnset_ > 0;
-    }
-    else
-    {
-        y = dimensionedScalar("yWall", dimLength, GREAT);
-
-        // Collect pointers to data on patches
-        UPtrList<vectorField> patchData(mesh_.boundaryMesh().size());
-
-        volVectorField::Boundary& nbf = n.boundaryFieldRef();
-
-        forAll(nbf, patchi)
-        {
-            patchData.set(patchi, &nbf[patchi]);
-        }
-
-        // Do mesh wave
-        patchDataWave<wallPointData<vector>> wave(
-            mesh_,
-            patchIDs_,
-            patchData,
-            correctWalls_);
-
-        // Transfer cell values from wave into y and n
-        y.transfer(wave.distance());
-
-        n.transfer(wave.cellData());
-
-        // Transfer values on patches into boundaryField of y and n
-        volScalarField::Boundary& ybf = y.boundaryFieldRef();
-
-        forAll(ybf, patchi)
-        {
-            scalarField& waveFld = wave.patchDistance()[patchi];
-
-            if (!isA<emptyFvPatchScalarField>(ybf[patchi]))
-            {
-                ybf[patchi].transfer(waveFld);
-
-                vectorField& wavePatchData = wave.patchData()[patchi];
-
-                nbf[patchi].transfer(wavePatchData);
-            }
-        }
-
-        // Transfer number of unset values
-        nUnset_ = wave.nUnset();
-
-        y_ = y;
-        n_ = n;
-
-        isComputed_ = 1;
-
-        return nUnset_ > 0;
-    }
+    // NOT implemented!
+    FatalErrorIn("") << "NOT implemented" << abort(FatalError);
+    return nUnset_ > 0;
 }
 
 // ************************************************************************* //

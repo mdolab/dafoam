@@ -21,11 +21,10 @@ if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.incompressible 0")
     os.system("cp -r system.incompressible system")
-    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.kw constant/turbulenceProperties")
 
 U0 = 10.0
 p0 = 0.0
-nuTilda0 = 4.5e-5
 A0 = 0.1
 alpha0 = 3.0
 LRef = 1.0
@@ -38,8 +37,7 @@ daOptions = {
     "useAD": {"mode": "forward", "dvName": "shape", "seedIndex": 0},
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
-        "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
-        "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
+        "pIn": {"variable": "p", "patches": ["inout"], "value": [0.0]},
         "useWallFunction": False,
     },
     "fvSource": {
@@ -95,14 +93,6 @@ daOptions = {
             }
         },
     },
-    "adjEqnOption": {"gmresRelTol": 1.0e-10, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
-    "normalizeStates": {
-        "U": U0,
-        "p": U0 * U0 / 2.0,
-        "nuTilda": nuTilda0 * 10.0,
-        "phi": 1.0,
-    },
-    "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
     "designVar": {},
 }
 
@@ -165,6 +155,15 @@ def actuator(val, geo):
     )
     DASolver.updateDAOption()
 
+def ubc(val, geo):
+    inletU = float(val[0])
+    DASolver.setOption("primalBC", {"UIn": {"variable": "U", "patches": ["inout"], "value": [inletU, 0.0, 0.0]}})
+    DASolver.updateDAOption()
+
+def pbc(val, geo):
+    pIn = float(val[0])
+    DASolver.setOption("primalBC", {"pIn": {"variable": "p", "patches": ["inout"], "value": [pIn]}})
+    DASolver.updateDAOption()
 
 # select points
 pts = DVGeo.getLocalIndex(0)
@@ -189,6 +188,13 @@ DVGeo.addGeoDVGlobal(
     scale=1.0,
 )
 daOptions["designVar"]["actuator"] = {"actuatorName": "disk1", "designVarType": "ACTD"}
+# U BC
+DVGeo.addGeoDVGlobal("ubc", [U0], ubc, lower=0.0, upper=100.0, scale=1.0)
+daOptions["designVar"]["ubc"] = {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0}
+# p BC
+DVGeo.addGeoDVGlobal("pbc", [0.0], pbc, lower=-100.0, upper=100.0, scale=1.0)
+daOptions["designVar"]["pbc"] = {"designVarType": "BC", "patches": ["inout"], "variable": "p", "comp": 0}
+
 # DAFoam
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
 DASolver.setDVGeo(DVGeo)
@@ -239,6 +245,13 @@ DASolver()
 funcsSens["CD"]["alpha"] = DASolver.getForwardADDerivVal("CD")
 funcsSens["CL"]["alpha"] = DASolver.getForwardADDerivVal("CL")
 funcsSens["CMZ"]["alpha"] = DASolver.getForwardADDerivVal("CMZ")
+# ubc
+DASolver.setOption("useAD", {"dvName": "ubc"})
+DASolver.updateDAOption()
+DASolver()
+funcsSens["CD"]["ubc"] = DASolver.getForwardADDerivVal("CD")
+funcsSens["CL"]["ubc"] = DASolver.getForwardADDerivVal("CL")
+funcsSens["CMZ"]["ubc"] = DASolver.getForwardADDerivVal("CMZ")
 # ACTD
 funcsSens["CD"]["actuator"] = [] 
 funcsSens["CL"]["actuator"] = []
@@ -271,6 +284,14 @@ DASolver()
 funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))
 funcsSens["CL"]["actuator"].append(DASolver.getForwardADDerivVal("CL"))
 funcsSens["CMZ"]["actuator"].append(DASolver.getForwardADDerivVal("CMZ"))
+
+# pbc
+DASolver.setOption("useAD", {"dvName": "pbc"})
+DASolver.updateDAOption()
+DASolver()
+funcsSens["CD"]["pbc"] = DASolver.getForwardADDerivVal("CD")
+funcsSens["CL"]["pbc"] = DASolver.getForwardADDerivVal("CL")
+funcsSens["CMZ"]["pbc"] = DASolver.getForwardADDerivVal("CMZ")
 
 if gcomm.rank == 0:
     reg_write_dict(funcsSens, 1e-5, 1e-7)

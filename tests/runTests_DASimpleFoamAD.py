@@ -43,9 +43,11 @@ aeroOptions = {
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "adjJacobianOption": "JacobianFree",
+    "writeJacobians": ["all"],
+    "writeSensMap": ["shapey"],
     "primalMinResTol": 1e-12,
     "primalBC": {
-        "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
         "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
         "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},
@@ -107,6 +109,7 @@ def alpha(val, geo):
     DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
     DASolver.updateDAOption()
 
+
 # select points
 pts = DVGeo.getLocalIndex(0)
 indexList = pts[1:4, 1, 0].flatten()
@@ -144,11 +147,25 @@ if calcFDSens == 1:
     optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValues, fileName="sensFD.txt")
 else:
     DASolver.runColoring()
-    xDV = DVGeo.getValues()
+    alphaSet = optFuncs.solveCL(0.5, "alpha", "CL", tol=1e-2)
+    if abs(alphaSet - 5.139885) > 1e-3:
+        exit(1)
+    alpha([alpha0], None)
+    xDVs = DVGeo.getValues()
+    xDVs["alpha"][0] = alpha0
+    DVGeo.setDesignVars(xDVs)
     funcs = {}
-    funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    funcs, fail = optFuncs.runPrimal()
     funcsSens = {}
-    funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
+    funcsSens, fail = optFuncs.runAdjoint(fileName="totalSens.txt")
+    optFuncs.calcFDSens(fileName="totalSensFD.txt")
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-5, 1e-7)
+
+        f = open("totalSensFD.txt")
+        lines = f.readlines()
+        f.close()
+        line4 = float(lines[4])
+        if abs(line4 - 0.002349192076814971) / line4 > 1e-3:
+            exit(1)
