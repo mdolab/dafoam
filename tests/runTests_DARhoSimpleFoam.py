@@ -193,16 +193,6 @@ else:
 # Unit tests for functions that are not called in the above run
 # *************************************************************
 
-# Additional test for a failed mesh
-# perturb a large value for design variable to make a failed mesh
-xDV["shapey"][0] = 1000.0
-funcs1 = {}
-funcs1, fail1 = optFuncs.calcObjFuncValues(xDV)
-
-# the checkMesh utility should detect failed mesh
-if fail1 is False:
-    exit(1)
-
 # test point2Vec functions
 xvSize = len(DASolver.xv) * 3
 xvVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
@@ -245,6 +235,18 @@ rVecNormRead = rVecRead.norm(1)
 if rVecNorm != rVecNormRead:
     exit(1)
 
+# Test vector IO in pyDAFoam.py
+DASolver.writePetscVecMat("rVecRead", rVec, mode="ASCII")
+DASolver.writePetscVecMat("rVecRead", rVec, mode="Binary")
+rVecRead = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+rVecRead.setSizes((rSize, PETSc.DECIDE), bsize=1)
+rVecRead.setFromOptions()
+DASolver.readPetscVecMat("rVecRead", rVec)
+rVecNormRead = rVecRead.norm(1)
+
+if rVecNorm != rVecNormRead:
+    exit(1)
+
 # Test matrix IO functions
 lRow = gcomm.rank + 1
 testMat = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -270,4 +272,40 @@ DASolver.solver.readMatrixBinary(testMat1, b"testMat")
 testMatNorm1 = testMat1.norm(0)
 
 if testMatNorm != testMatNorm1:
+    exit(1)
+
+# call inferface functions
+DVNames, DVSizes = DASolver.getDVsCons()
+if DVNames[0] != "uin" or DVNames[1] != "shapey":
+    exit(1)
+if DVSizes[0] != 1 or DVSizes[1] != 4:
+    exit(1)
+
+states = DASolver.getStates()
+statesMean = states.mean()
+statesVec = DASolver.array2Vec(states)
+states1 = DASolver.vec2Array(statesVec)
+statesMean1 = states1.mean()
+if statesMean != statesMean1:
+    exit(1)
+
+residuals = DASolver.getResiduals()
+residualsMean = residuals.mean()
+
+DASolver.setStates(states)
+
+residuals1 = DASolver.getResiduals()
+residualsMean1 = residuals1.mean()
+
+if residualsMean != residualsMean1:
+    exit(1)
+
+# Additional test for a failed mesh
+# perturb a large value for design variable to make a failed mesh
+xDV["shapey"][0] = 1000.0
+funcs1 = {}
+funcs1, fail1 = optFuncs.calcObjFuncValues(xDV)
+
+# the checkMesh utility should detect failed mesh
+if fail1 is False:
     exit(1)
