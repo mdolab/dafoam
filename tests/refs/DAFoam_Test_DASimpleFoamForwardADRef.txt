@@ -6,6 +6,8 @@ Dictionary Key: actuator
 @value 0.005209536216257642 1e-05 1e-07
 Dictionary Key: alpha
 @value 0.003939840195210651 1e-05 1e-07
+Dictionary Key: pbc
+@value 0.005480364289246823 1e-05 1e-07
 Dictionary Key: pitch
 @value 0.003914197759563972 1e-05 1e-07
 Dictionary Key: shape
@@ -20,6 +22,8 @@ Dictionary Key: actuator
 @value -0.002935281876766425 1e-05 1e-07
 Dictionary Key: alpha
 @value   0.1002076388012022 1e-05 1e-07
+Dictionary Key: pbc
+@value -0.0002755171777368629 1e-05 1e-07
 Dictionary Key: pitch
 @value   0.1018875720677924 1e-05 1e-07
 Dictionary Key: shape
@@ -34,6 +38,8 @@ Dictionary Key: actuator
 @value 0.000134580975622368 1e-05 1e-07
 Dictionary Key: alpha
 @value -0.001127184468859737 1e-05 1e-07
+Dictionary Key: pbc
+@value 6.547734730279198e-08 1e-05 1e-07
 Dictionary Key: pitch
 @value -0.0007467022203754775 1e-05 1e-07
 Dictionary Key: shape

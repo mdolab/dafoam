@@ -37,6 +37,7 @@ daOptions = {
     "useAD": {"mode": "forward", "dvName": "shape", "seedIndex": 0},
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "pIn": {"variable": "p", "patches": ["inout"], "value": [0.0]},
         "useWallFunction": False,
     },
     "fvSource": {
@@ -159,6 +160,11 @@ def ubc(val, geo):
     DASolver.setOption("primalBC", {"UIn": {"variable": "U", "patches": ["inout"], "value": [inletU, 0.0, 0.0]}})
     DASolver.updateDAOption()
 
+def pbc(val, geo):
+    pIn = float(val[0])
+    DASolver.setOption("primalBC", {"pIn": {"variable": "p", "patches": ["inout"], "value": [pIn]}})
+    DASolver.updateDAOption()
+
 # select points
 pts = DVGeo.getLocalIndex(0)
 indexList = pts[1:4, 1, 0].flatten()
@@ -185,6 +191,9 @@ daOptions["designVar"]["actuator"] = {"actuatorName": "disk1", "designVarType": 
 # U BC
 DVGeo.addGeoDVGlobal("ubc", [U0], ubc, lower=0.0, upper=100.0, scale=1.0)
 daOptions["designVar"]["ubc"] = {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0}
+# p BC
+DVGeo.addGeoDVGlobal("pbc", [0.0], pbc, lower=-100.0, upper=100.0, scale=1.0)
+daOptions["designVar"]["pbc"] = {"designVarType": "BC", "patches": ["inout"], "variable": "p", "comp": 0}
 
 # DAFoam
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
@@ -236,7 +245,7 @@ DASolver()
 funcsSens["CD"]["alpha"] = DASolver.getForwardADDerivVal("CD")
 funcsSens["CL"]["alpha"] = DASolver.getForwardADDerivVal("CL")
 funcsSens["CMZ"]["alpha"] = DASolver.getForwardADDerivVal("CMZ")
-# bc
+# ubc
 DASolver.setOption("useAD", {"dvName": "ubc"})
 DASolver.updateDAOption()
 DASolver()
@@ -275,6 +284,14 @@ DASolver()
 funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))
 funcsSens["CL"]["actuator"].append(DASolver.getForwardADDerivVal("CL"))
 funcsSens["CMZ"]["actuator"].append(DASolver.getForwardADDerivVal("CMZ"))
+
+# pbc
+DASolver.setOption("useAD", {"dvName": "pbc"})
+DASolver.updateDAOption()
+DASolver()
+funcsSens["CD"]["pbc"] = DASolver.getForwardADDerivVal("CD")
+funcsSens["CL"]["pbc"] = DASolver.getForwardADDerivVal("CL")
+funcsSens["CMZ"]["pbc"] = DASolver.getForwardADDerivVal("CMZ")
 
 if gcomm.rank == 0:
     reg_write_dict(funcsSens, 1e-5, 1e-7)
