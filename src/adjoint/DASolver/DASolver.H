@@ -107,9 +107,6 @@ protected:
     dictionary totalDerivDict_;
 
     /// pointer to the objective function file used in unsteady primal solvers
-    autoPtr<OFstream> objFuncHistFilePtr_;
-
-    /// pointer to the objective function file used in unsteady primal solvers
     autoPtr<OFstream> objFuncAvgHistFilePtr_;
 
     /// number of iterations since the start of objFunc averaging
@@ -158,12 +155,6 @@ protected:
     void reduceStateResConLevel(
         const dictionary& maxResConLv4JacPCMat,
         HashTable<List<List<word>>>& stateResConInfo) const;
-
-    /// initialize objFuncHistFilePtr_
-    void initializeObjFuncHistFilePtr(const word fileName);
-
-    /// write objective functions values to the objFuncHistFile
-    void writeObjFuncHistFile();
 
     /// set velocity boundary condition for rotating walls
     void setRotingWallVelocity();

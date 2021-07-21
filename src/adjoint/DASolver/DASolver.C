@@ -36,8 +36,7 @@ DASolver::DASolver(
       daFieldPtr_(nullptr),
       daCheckMeshPtr_(nullptr),
       daLinearEqnPtr_(nullptr),
-      daResidualPtr_(nullptr),
-      objFuncHistFilePtr_(nullptr)
+      daResidualPtr_(nullptr)
 #ifdef CODI_AD_REVERSE
       ,
       globalADTape_(codi::RealReverse::getGlobalTape())
@@ -103,9 +102,6 @@ label DASolver::loop(Time& runTime)
         The loop method to increment the runtime. The reason we implent this is
         because the runTime.loop() and simple.loop() give us seg fault...
     */
-
-    // we write the objective function to file at every step
-    this->writeObjFuncHistFile();
 
     scalar endTime = runTime.endTime().value();
     scalar deltaT = runTime.deltaT().value();
@@ -4110,102 +4106,6 @@ label DASolver::checkResidualTol()
     }
 
     return 1;
-}
-
-void DASolver::initializeObjFuncHistFilePtr(const word fileName)
-{
-    /*
-    Description:
-        Initialize the log file to store objective function
-        values for each step. This is only used for unsteady
-        primal solvers
-    */
-
-    label myProc = Pstream::myProcNo();
-    if (myProc == 0)
-    {
-        objFuncHistFilePtr_.reset(new OFstream(fileName + ".txt"));
-        objFuncAvgHistFilePtr_.reset(new OFstream(fileName + "Avg.txt"));
-    }
-    return;
-}
-
-void DASolver::writeObjFuncHistFile()
-{
-    /*
-    Description:
-        Write objective function values to the log file  for each step. 
-        This is only used for unsteady primal solvers
-    */
-
-    label myProc = Pstream::myProcNo();
-    scalar t = runTimePtr_->timeOutputValue();
-
-    // we start averaging after objFuncAvgStart
-    if (runTimePtr_->timeIndex() == daOptionPtr_->getOption<label>("objFuncAvgStart"))
-    {
-        // set nItersObjFuncAvg_ to 1 to start averaging
-        nItersObjFuncAvg_ = 1;
-        // initialize avgObjFuncValues_
-        avgObjFuncValues_.setSize(daOptionPtr_->getAllOptions().subDict("objFunc").toc().size());
-        forAll(avgObjFuncValues_, idxI)
-        {
-            avgObjFuncValues_[idxI] = 0.0;
-        }
-    }
-
-    // write to files using proc0 only
-    if (myProc == 0)
-    {
-        objFuncHistFilePtr_() << t << " ";
-        if (nItersObjFuncAvg_ > 0)
-        {
-            objFuncAvgHistFilePtr_() << t << " ";
-        }
-    }
-
-    // loop over all objs
-    forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
-    {
-        word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
-        // this is instantaneous value
-        scalar objFuncVal = this->getObjFuncValue(objFuncName);
-
-        // if nItersObjFuncAvg_ > 0, compute averaged obj values
-        if (nItersObjFuncAvg_ > 0)
-        {
-            avgObjFuncValues_[idxI] =
-                objFuncVal / nItersObjFuncAvg_ + (nItersObjFuncAvg_ - 1.0) / nItersObjFuncAvg_ * avgObjFuncValues_[idxI];
-        }
-
-        // write to files using proc0 only
-        if (myProc == 0)
-        {
-            objFuncHistFilePtr_() << objFuncVal << " ";
-            if (nItersObjFuncAvg_ > 0)
-            {
-                objFuncAvgHistFilePtr_() << avgObjFuncValues_[idxI] << " ";
-            }
-        }
-    }
-
-    // increment nItersObjFuncAvg_
-    if (nItersObjFuncAvg_ > 0)
-    {
-        nItersObjFuncAvg_++;
-    }
-
-    // write to files using proc0 only
-    if (myProc == 0)
-    {
-        objFuncHistFilePtr_() << endl;
-        if (nItersObjFuncAvg_ > 0)
-        {
-            objFuncAvgHistFilePtr_() << endl;
-        }
-    }
-
-    return;
 }
 
 label DASolver::isPrintTime(
