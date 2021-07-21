@@ -55,6 +55,7 @@ case $argm in
     echo "Running all tests...."
     sleep 3
     runTests Integration
+    runTests Primal
     runTests DASimpleFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
@@ -89,6 +90,7 @@ case $argm in
     echo "Running incompressible tests...."
     sleep 3
     runTests Integration
+    runTests Primal
     runTests DASimpleFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
