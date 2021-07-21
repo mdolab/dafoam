@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "2.2.7"
+__version__ = "2.2.8"
 
 import subprocess
 import os
