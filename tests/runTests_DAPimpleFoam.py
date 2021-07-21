@@ -37,6 +37,7 @@ daOptions = {
     "solverName": "DAPimpleFoam",
     "designSurfaces": ["wallsbump"],
     "printIntervalUnsteady": 100,
+    "writeJacobians": ["all"],
     "adjJacobianOption": "JacobianFree",
     "unsteadyAdjoint": {"mode": "timeAccurateAdjoint", "nTimeInstances": 6},
     "objFunc": {

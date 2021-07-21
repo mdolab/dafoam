@@ -43,6 +43,7 @@ aeroOptions = {
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "adjJacobianOption": "JacobianFree",
+    "writeJacobians": ["all"],
     "writeSensMap": ["shapey"],
     "primalMinResTol": 1e-12,
     "primalBC": {

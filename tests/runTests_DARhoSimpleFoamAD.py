@@ -80,7 +80,7 @@ aeroOptions = {
             "expM": 1.0,
             "expN": 0.5,
             "adjustThrust": 1,
-            "targetThrust": 1.2
+            "targetThrust": 1.2,
         },
     },
     "objFunc": {
@@ -150,7 +150,7 @@ aeroOptions = {
                 "isSquare": 0,
                 "scale": 1.0,
                 "addToAdjoint": True,
-            }
+            },
         },
         "VOL1": {
             "part1": {
@@ -193,10 +193,12 @@ FFDFile = "./FFD/bumpFFD.xyz"
 DVGeo = DVGeometry(FFDFile)
 DVGeo.addRefAxis("dummyAxis", xFraction=0.25, alignIndex="k")
 
+
 def uin(val, geo):
     inletU = float(val[0])
     DASolver.setOption("primalBC", {"UIn": {"variable": "U", "patches": ["inlet"], "value": [inletU, 0.0, 0.0]}})
     DASolver.updateDAOption()
+
 
 def actuator(val, geo):
     actX = float(val[0])
@@ -225,11 +227,12 @@ def actuator(val, geo):
                 "expM": actExpM,
                 "expN": actExpN,
                 "adjustThrust": 1,
-                "targetThrust": 1.2
+                "targetThrust": 1.2,
             },
         },
     )
     DASolver.updateDAOption()
+
 
 # select points
 pts = DVGeo.getLocalIndex(0)
@@ -283,6 +286,12 @@ else:
     funcs, fail = optFuncs.calcObjFuncValues(xDV)
     funcsSens = {}
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
+    psiVec = DASolver.wVec.duplicate()
+    psiVec.set(1.0)
+    prodVec = DASolver.wVec.duplicate()
+    DASolver.solverAD.calcdRdWTPsiAD(DASolver.xvVec, DASolver.wVec, psiVec, prodVec)
+    if abs(prodVec.norm() - 26067551656.012016) / 26067551656.012016 > 1e-3:
+        exit(1)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-5, 1e-7)

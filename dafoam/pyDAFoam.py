@@ -967,12 +967,10 @@ class PYDAFOAM(object):
                 self.setOption("useAD", {"mode": "reverse"})
             else:
                 raise Error("adjJacobianOption=JacobianFree is only compatible with useAD-mode=reverse!")
-        
+
         if "NONE" not in self.getOption("writeSensMap"):
             if self.getOption("adjJacobianOption") != "JacobianFree":
-                raise Error(
-                    "writeSensMap is only compatible with adjJacobianOption=JacobianFree!"
-                )
+                raise Error("writeSensMap is only compatible with adjJacobianOption=JacobianFree!")
 
         # check other combinations...
 
@@ -2135,7 +2133,9 @@ class PYDAFOAM(object):
                             totalDerivXv.axpy(1.0, dFdXv)
 
                             # write the matrix
-                            if "dFdXvTotalDeriv" in self.getOption("writeJacobians"):
+                            if "dFdXvTotalDeriv" in self.getOption("writeJacobians") or "all" in self.getOption(
+                                "writeJacobians"
+                            ):
                                 self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv)
                                 self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv, "ASCII")
 
@@ -2271,7 +2271,9 @@ class PYDAFOAM(object):
                             totalDeriv.axpy(1.0, dFdField)
 
                             # write the matrix
-                            if "dFdFieldTotalDeriv" in self.getOption("writeJacobians"):
+                            if "dFdFieldTotalDeriv" in self.getOption("writeJacobians") or "all" in self.getOption(
+                                "writeJacobians"
+                            ):
                                 self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv)
                                 self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv, "ASCII")
 

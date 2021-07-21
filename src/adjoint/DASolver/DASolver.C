@@ -769,7 +769,7 @@ void DASolver::calcdRdWT(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdWT"))
+    if (writeJacobians.found("dRdWT") || writeJacobians.found("all"))
     {
         DAUtility::writeMatrixBinary(dRdWT, matName);
     }
@@ -913,7 +913,7 @@ void DASolver::calcdFdW(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdW"))
+    if (writeJacobians.found("dFdW") || writeJacobians.found("all"))
     {
         word outputName = "dFdW_" + objFuncName;
         DAUtility::writeVectorBinary(dFdW, outputName);
@@ -1000,7 +1000,7 @@ void DASolver::calcdRdBC(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdBC"))
+    if (writeJacobians.found("dRdBC") || writeJacobians.found("all"))
     {
         word outputName = "dRdBC_" + designVarName;
         DAUtility::writeMatrixBinary(dRdBC, outputName);
@@ -1124,7 +1124,7 @@ void DASolver::calcdFdBC(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdBC"))
+    if (writeJacobians.found("dFdBC") || writeJacobians.found("all"))
     {
         word outputName = "dFdBC_" + designVarName;
         DAUtility::writeVectorBinary(dFdBC, outputName);
@@ -1210,7 +1210,7 @@ void DASolver::calcdRdAOA(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdAOA"))
+    if (writeJacobians.found("dRdAOA") || writeJacobians.found("all"))
     {
         word outputName = "dRdAOA_" + designVarName;
         DAUtility::writeMatrixBinary(dRdAOA, outputName);
@@ -1405,7 +1405,7 @@ void DASolver::calcdRdBCTPsiAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdBCTPsi"))
+    if (writeJacobians.found("dRdBCTPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdBCTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdBCTPsi, outputName);
@@ -1530,7 +1530,7 @@ void DASolver::calcdFdAOA(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdAOA"))
+    if (writeJacobians.found("dFdAOA") || writeJacobians.found("all"))
     {
         word outputName = "dFdAOA_" + designVarName;
         DAUtility::writeVectorBinary(dFdAOA, outputName);
@@ -1703,7 +1703,7 @@ void DASolver::calcdRdAOATPsiAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdAOATPsi"))
+    if (writeJacobians.found("dRdAOATPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdAOATPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdAOATPsi, outputName);
@@ -1783,7 +1783,7 @@ void DASolver::calcdRdFFD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdFFD"))
+    if (writeJacobians.found("dRdFFD") || writeJacobians.found("all"))
     {
         word outputName = "dRdFFD_" + designVarName;
         DAUtility::writeMatrixBinary(dRdFFD, outputName);
@@ -1911,7 +1911,7 @@ void DASolver::calcdFdFFD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdFFD"))
+    if (writeJacobians.found("dFdFFD") || writeJacobians.found("all"))
     {
         word outputName = "dFdFFD_" + designVarName;
         DAUtility::writeVectorBinary(dFdFFD, outputName);
@@ -1987,7 +1987,7 @@ void DASolver::calcdRdACT(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdACT"))
+    if (writeJacobians.found("dRdACT") || writeJacobians.found("all"))
     {
         word outputName = "dRd" + designVarType + "_" + designVarName;
         DAUtility::writeMatrixBinary(dRdACT, outputName);
@@ -2102,7 +2102,7 @@ void DASolver::calcdFdACT(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdACT"))
+    if (writeJacobians.found("dFdACT") || writeJacobians.found("all"))
     {
         word outputName = "dFdACT_" + designVarName;
         DAUtility::writeVectorBinary(dFdACT, outputName);
@@ -2227,7 +2227,7 @@ void DASolver::calcdFdFieldAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdField"))
+    if (writeJacobians.found("dFdField") || writeJacobians.found("all"))
     {
         word outputName = "dFdField_" + designVarName;
         DAUtility::writeVectorBinary(dFdField, outputName);
@@ -2581,7 +2581,7 @@ void DASolver::calcdFdWAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdW"))
+    if (writeJacobians.found("dFdW") || writeJacobians.found("all"))
     {
         word outputName = "dFdW_" + objFuncName;
         DAUtility::writeVectorBinary(dFdW, outputName);
@@ -2719,7 +2719,7 @@ void DASolver::calcdFdXvAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdXv"))
+    if (writeJacobians.found("dFdXv") || writeJacobians.found("all"))
     {
         word outputName = "dFdXv_" + objFuncName + "_" + designVarName;
         DAUtility::writeVectorBinary(dFdXv, outputName);
@@ -2874,7 +2874,7 @@ void DASolver::calcdRdFieldTPsiAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdFieldTPsi"))
+    if (writeJacobians.found("dRdFieldTPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdFieldTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdFieldTPsi, outputName);
@@ -3045,7 +3045,7 @@ void DASolver::calcdFdACTAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdACT"))
+    if (writeJacobians.found("dFdACT") || writeJacobians.found("all"))
     {
         word outputName = "dFdACT_" + objFuncName + "_" + designVarName;
         DAUtility::writeVectorBinary(dFdACT, outputName);
@@ -3165,7 +3165,7 @@ void DASolver::calcdRdActTPsiAD(
     }
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdActTPsi"))
+    if (writeJacobians.found("dRdActTPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdActTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdActTPsi, outputName);
@@ -3242,7 +3242,7 @@ void DASolver::calcdRdWTPsiAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdWTPsi"))
+    if (writeJacobians.found("dRdWTPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdWTPsi";
         DAUtility::writeVectorBinary(dRdWTPsi, outputName);
@@ -3317,7 +3317,7 @@ void DASolver::calcdRdWOldTPsiAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdWOldTPsi"))
+    if (writeJacobians.found("dRdWOldTPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdWOldTPsi";
         DAUtility::writeVectorBinary(dRdWOldTPsi, outputName);
