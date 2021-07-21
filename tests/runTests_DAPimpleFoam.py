@@ -31,6 +31,7 @@ if gcomm.rank == 0:
     os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
 
 replace_text_in_file("system/controlDict", "endTime         40;", "endTime         0.05;")
+replace_text_in_file("system/fvSolution", "nOuterCorrectors    1;", "nOuterCorrectors    2;")
 
 # test incompressible solvers
 daOptions = {

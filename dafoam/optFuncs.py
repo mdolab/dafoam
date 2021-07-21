@@ -400,6 +400,8 @@ def runPrimal(objFun=calcObjFuncValues):
     funcs = {}
     funcs, fail = objFun(xDV)
 
+    return funcs, fail
+
 
 def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None):
     """
@@ -429,6 +431,8 @@ def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None)
                         fOut.write(line)
                         fOut.flush()
             fOut.close()
+
+    return funcsSens, fail
 
 
 def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues, eps=1e-2, tol=1e-4, maxit=10):

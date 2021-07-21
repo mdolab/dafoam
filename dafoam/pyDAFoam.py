@@ -967,6 +967,12 @@ class PYDAFOAM(object):
                 self.setOption("useAD", {"mode": "reverse"})
             else:
                 raise Error("adjJacobianOption=JacobianFree is only compatible with useAD-mode=reverse!")
+        
+        if "NONE" not in self.getOption("writeSensMap"):
+            if self.getOption("adjJacobianOption") != "JacobianFree":
+                raise Error(
+                    "writeSensMap is only compatible with adjJacobianOption=JacobianFree!"
+                )
 
         # check other combinations...
 
