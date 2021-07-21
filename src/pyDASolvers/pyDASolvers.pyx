@@ -43,8 +43,6 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdBCTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdFdFFD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdFdXvAD(PetscVec, PetscVec, char *, char*, PetscVec)
-        void calcdFdAOAAD(PetscVec, PetscVec, char *, char*, PetscVec)
-        void calcdFdBCAD(PetscVec, PetscVec, char *, char*, PetscVec)
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
@@ -196,12 +194,6 @@ cdef class pyDASolvers:
 
     def calcdFdXvAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdXv):
         self._thisptr.calcdFdXvAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdXv.vec)
-    
-    def calcdFdAOAAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdAOA):
-        self._thisptr.calcdFdAOAAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdAOA.vec)
-    
-    def calcdFdBCAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdBC):
-        self._thisptr.calcdFdBCAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdBC.vec)
 
     def calcdRdACT(self, Vec xvVec, Vec wVec, designVarName, designVarType, Mat dRdACT):
         self._thisptr.calcdRdACT(xvVec.vec, wVec.vec, designVarName, designVarType, dRdACT.mat)

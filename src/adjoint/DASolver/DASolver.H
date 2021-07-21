@@ -333,14 +333,6 @@ public:
         const word designVarName,
         Vec dRdBCTPsi);
 
-    /// compute dFdBCAD
-    void calcdFdBCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdBC);
-
     /// compute dRdAOA
     void calcdRdAOA(
         const Vec xvVec,
@@ -363,14 +355,6 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdAOATPsi);
-
-    /// compute dFdAOAAD
-    void calcdFdAOAAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdAOA);
 
     /// compute dRdFFD
     void calcdRdFFD(
