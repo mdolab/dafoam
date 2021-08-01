@@ -4243,28 +4243,30 @@ void DASolver::setFieldValue4GlobalCellI(
         compI: which component to set (only for vectors such as U)
     */
 
-    if (daIndexPtr_->globalCellNumbering.isLocal(globalCellI))
+    if (meshPtr_->thisDb().foundObject<volVectorField>(fieldName))
     {
-
-        if (meshPtr_->thisDb().foundObject<volVectorField>(fieldName))
+        if (daIndexPtr_->globalCellVectorNumbering.isLocal(globalCellI))
         {
             volVectorField& field =
                 const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(fieldName));
-            label localCellI = daIndexPtr_->globalCellNumbering.toLocal(globalCellI);
+            label localCellI = daIndexPtr_->globalCellVectorNumbering.toLocal(globalCellI);
             field[localCellI][compI] = val;
         }
-        else if (meshPtr_->thisDb().foundObject<volScalarField>(fieldName))
+    }
+    else if (meshPtr_->thisDb().foundObject<volScalarField>(fieldName))
+    {
+        if (daIndexPtr_->globalCellNumbering.isLocal(globalCellI))
         {
             volScalarField& field =
                 const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
             label localCellI = daIndexPtr_->globalCellNumbering.toLocal(globalCellI);
             field[localCellI] = val;
         }
-        else
-        {
-            FatalErrorIn("") << fieldName << " not found in volScalar and volVector Fields "
-                             << abort(FatalError);
-        }
+    }
+    else
+    {
+        FatalErrorIn("") << fieldName << " not found in volScalar and volVector Fields "
+                         << abort(FatalError);
     }
 }
 
