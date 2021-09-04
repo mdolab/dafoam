@@ -4,6 +4,6 @@ Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: shapey
-@value   -2546.969583029006 1e-05 1e-07
+@value                    0 1e-05 1e-07
 Dictionary Key: fail
 @value                    0 1e-05 1e-07

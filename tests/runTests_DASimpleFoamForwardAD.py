@@ -294,4 +294,4 @@ funcsSens["CL"]["pbc"] = DASolver.getForwardADDerivVal("CL")
 funcsSens["CMZ"]["pbc"] = DASolver.getForwardADDerivVal("CMZ")
 
 if gcomm.rank == 0:
-    reg_write_dict(funcsSens, 1e-5, 1e-7)
+    reg_write_dict(funcsSens, 1e-4, 1e-5)

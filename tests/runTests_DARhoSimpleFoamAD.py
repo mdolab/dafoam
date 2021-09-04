@@ -30,12 +30,12 @@ os.chdir("./input/CurvedCubeSnappyHexMesh")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.compressible 0")
-    os.system("cp -r constant/turbulenceProperties.ke constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
+
+replace_text_in_file("system/fvSchemes", "meshWave", "meshWaveFrozen")
 
 U0 = 50.0
 p0 = 101325.0
-k0 = 0.06
-epsilon0 = 2.16
 T0 = 300.0
 A0 = 1.0
 rho0 = 1.0
@@ -51,8 +51,6 @@ aeroOptions = {
         "UIn": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
         "T0": {"variable": "T", "patches": ["inlet"], "value": [T0]},
-        "k0": {"variable": "k", "patches": ["inlet"], "value": [k0]},
-        "epsilon0": {"variable": "epsilon", "patches": ["inlet"], "value": [epsilon0]},
         "useWallFunction": False,
     },
     "primalVarBounds": {
@@ -168,8 +166,7 @@ aeroOptions = {
         },
     },
     "adjStateOrdering": "cell",
-    "debug": True,
-    "normalizeStates": {"U": U0, "p": p0, "k": k0, "epsilon": epsilon0, "phi": 1.0, "T": T0},
+    "normalizeStates": {"U": U0, "p": p0, "nuTilda": 1e-4, "phi": 1.0, "T": T0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
@@ -290,7 +287,8 @@ else:
     psiVec.set(1.0)
     prodVec = DASolver.wVec.duplicate()
     DASolver.solverAD.calcdRdWTPsiAD(DASolver.xvVec, DASolver.wVec, psiVec, prodVec)
-    if abs(prodVec.norm() - 26067551656.012016) / 26067551656.012016 > 1e-3:
+    if abs(prodVec.norm() - 4351730273.14912) / 4351730273.14912 > 1e-3:
+        print("prodVec.norm() failed!", prodVec.norm())
         exit(1)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)

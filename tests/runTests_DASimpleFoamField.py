@@ -192,6 +192,10 @@ else:
     alphaPorositySens = funcsSens["FI"]["alphaPorosity"]
     funcsSens["FI"]["alphaPorosity"] = np.zeros(1, "d")
     funcsSens["FI"]["alphaPorosity"][0] = np.linalg.norm(alphaPorositySens)
+
+    # Do not consider alpha deriv, just assign it to 0
+    funcsSens["FI"]["alpha"] = 0
+
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-4, 1e-6)
