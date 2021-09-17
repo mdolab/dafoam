@@ -38,6 +38,7 @@ if gcomm.rank == 0:
 aeroOptions = {
     "solverName": "DATurboFoam",
     "designSurfaceFamily": "designSurface",
+    "adjJacobianOption": "JacobianFD",
     "designSurfaces": ["blade"],
     "primalMinResTol": 1e-12,
     "primalBC": {

@@ -37,6 +37,7 @@ epsilon0 = 42.0
 aeroOptions = {
     "solverName": "DASimpleTFoam",
     "designSurfaceFamily": "designSurface",
+    "adjJacobianOption": "JacobianFD",
     "designSurfaces": ["ubend"],
     "primalMinResTol": 1e-12,
     "primalBC": {

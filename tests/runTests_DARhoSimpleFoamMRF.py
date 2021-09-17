@@ -37,6 +37,7 @@ if gcomm.rank == 0:
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DARhoSimpleFoam",
+    "adjJacobianOption": "JacobianFD",
     "designSurfaces": ["blade"],
     "primalMinResTol": 1e-12,
     "primalVarBounds": {

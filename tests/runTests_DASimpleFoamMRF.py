@@ -35,6 +35,7 @@ if gcomm.rank == 0:
 aeroOptions = {
     "solverName": "DASimpleFoam",
     "designSurfaces": ["blade"],
+    "adjJacobianOption": "JacobianFD",
     "primalMinResTol": 1e-12,
     "objFunc": {
         "CMZ": {
