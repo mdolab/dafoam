@@ -29,7 +29,7 @@ aeroOptions = {
     "maxTractionBCIters": 20,
     "solverName": "DASolidDisplacementFoam",
     "designSurfaceFamily": "designSurface",
-    "adjJacobianOption": "JacobianFD",
+    "useAD": {"mode": "fd"},
     "designSurfaces": ["hole"],
     "primalMinResTol": 1e-10,
     "primalMinResTolDiff": 1e10,

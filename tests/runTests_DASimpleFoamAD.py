@@ -42,7 +42,7 @@ aeroOptions = {
     "solverName": "DASimpleFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
-    "adjJacobianOption": "JacobianFree",
+    "useAD": {"mode": "reverse"},
     "writeJacobians": ["all"],
     "writeSensMap": ["shapey"],
     "primalMinResTol": 1e-12,

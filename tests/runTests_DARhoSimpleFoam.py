@@ -42,7 +42,7 @@ rho0 = 1.0
 aeroOptions = {
     "solverName": "DARhoSimpleFoam",
     "designSurfaceFamily": "designSurface",
-    "adjJacobianOption": "JacobianFD",
+    "useAD": {"mode": "fd"},
     "designSurfaces": ["wallsbump"],
     "writeJacobians": ["all"],
     "primalMinResTol": 1e-12,

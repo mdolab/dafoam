@@ -37,7 +37,7 @@ daOptions = {
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
     "writeJacobians": ["all"],
-    "adjJacobianOption": "JacobianFD",
+    "useAD": {"mode": "fd"},
     "adjPCLag": 3,
     "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 1.0},
     "fvSource": {

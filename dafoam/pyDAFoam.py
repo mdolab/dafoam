@@ -348,12 +348,6 @@ class DAOPTION(object):
     ## },
     fvSource = {}
 
-    ## Adjoint solution option.
-    ## JacobianFD: Using finite-difference method to compute the partials
-    ## JacobianFree: Using the matrix-free GMRES to solve the adjoint equation without computing
-    ## the state Jacobians.
-    adjJacobianOption = "JacobianFree"
-
     ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
     ## Setting the bounds increases the robustness of primal solution for compressible solvers.
     ## Also, we set lower bounds for turbulence variables to ensure they are physical
@@ -429,11 +423,14 @@ class DAOPTION(object):
     ## of solving the adjoint equations. One needs to balance these factors
     adjPCLag = 1
 
-    ## Whether to use AD: Mode options: forward, reverse, or None. If forward mode AD is used
+    ## Whether to use AD: Mode options: forward, reverse, or fd. If forward mode AD is used
     ## the seedIndex will be set to compute derivative by running the whole primal solver.
     ## dvName is the name of design variable to set the seed for the forward AD
     ## setting seedIndex to -1 for dFdField will assign seeds for all design variables.
-    useAD = {"mode": "None", "dvName": "None", "seedIndex": -9999}
+    ## If reverse mode is used, the adjoint will be computed by a Jacobian free approach
+    ## refer to: Kenway et al. Effective adjoint approach for computational fluid dynamics, 
+    ## Progress in Aerospace Science, 2019.
+    useAD = {"mode": "reverse", "dvName": "None", "seedIndex": -9999}
 
     # *********************************************************************************************
     # ************************************ Advance Options ****************************************
@@ -568,7 +565,7 @@ class DAOPTION(object):
     ## When loading in paraview, you need to uncheck the "internalMesh", and check "allWalls" on the left panel
     ## If your design variable is of field type, the sensitivity map will be saved along with the primal
     ## solution because they share the same mesh. The sensitivity files read sens_objFuncName_designVarName
-    ## NOTE: this function only supports adjJacobianOption = JacobianFree
+    ## NOTE: this function only supports useAD->mode:reverse
     ## Example:
     ##     "writeSensMap" : ["shapex", "shapey"]
     writeSensMap = ["NONE"]
@@ -944,33 +941,20 @@ class PYDAFOAM(object):
     def _checkOptions(self):
         """
         Check if the combination of options are valid.
-        For example, if timeAccurateAdjoint is active, we have to set
-        adjJacobianOption = JacobianFree
         NOTE: we should add all possible checks here!
         """
+
+        if not self.getOption("useAD")["mode"] in ["fd", "reverse", "forward"]:
+            raise Error("useAD->mode only supports fd, reverse, or forward!")
+
         # check time accurate adjoint
         if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
-            if not self.getOption("adjJacobianOption") == "JacobianFree":
-                raise Error("timeAccurateAdjoint only supports adjJacobianOption=JacobianFree!")
-
-        # if we set adjJacobianOption = JacobianFree, we must set useAD-mode = reverse
-        if self.getOption("adjJacobianOption") == "JacobianFree":
-            if self.getOption("useAD")["mode"] == "reverse":
-                pass
-            elif self.getOption("useAD")["mode"] == "forward":
-                raise Error(
-                    "adjJacobianOption=JacobianFree is not compatible with useAD-mode=forward! Set adjJacobianOption to JacobianFD!"
-                )
-            elif self.getOption("useAD")["mode"] == "None":
-                Info("adjJacobianOption=JacobianFree, while useAD-mode=None!")
-                Info("setting useAD-mode=reverse!")
-                self.setOption("useAD", {"mode": "reverse"})
-            else:
-                raise Error("adjJacobianOption=JacobianFree is only compatible with useAD-mode=reverse!")
+            if not self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+                raise Error("timeAccurateAdjoint only supports useAD->mode=forward|reverse")
 
         if "NONE" not in self.getOption("writeSensMap"):
-            if self.getOption("adjJacobianOption") != "JacobianFree":
-                raise Error("writeSensMap is only compatible with adjJacobianOption=JacobianFree!")
+            if not self.getOption("useAD")["mode"] in ["reverse"]:
+                raise Error("writeSensMap is only compatible with useAD->mode=reverse")
 
         # check other combinations...
 
@@ -1858,6 +1842,9 @@ class PYDAFOAM(object):
         viewerW(self.wVec)
         """
 
+        if self.getOption("useAD")["mode"] == "forward":
+            raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
+
         solutionTime = self.renameSolution(self.nSolveAdjoints)
 
         Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
@@ -1867,16 +1854,16 @@ class PYDAFOAM(object):
 
         if self.getOption("multiPoint"):
             self.solver.updateOFField(self.wVec)
-            if self.getOption("adjJacobianOption") == "JacobianFree":
+            if self.getOption("useAD")["mode"] == "reverse":
                 self.solverAD.updateOFField(self.wVec)
 
         self.adjointFail = 0
 
         # calculate dRdWT
-        if self.getOption("adjJacobianOption") == "JacobianFD":
+        if self.getOption("useAD")["mode"] == "fd":
             dRdWT = PETSc.Mat().create(PETSc.COMM_WORLD)
             self.solver.calcdRdWT(self.xvVec, self.wVec, 0, dRdWT)
-        elif self.getOption("adjJacobianOption") == "JacobianFree":
+        elif self.getOption("useAD")["mode"] == "reverse":
             self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
 
         # calculate dRdWTPC
@@ -1887,9 +1874,9 @@ class PYDAFOAM(object):
 
         # Initialize the KSP object
         ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-        if self.getOption("adjJacobianOption") == "JacobianFD":
+        if self.getOption("useAD")["mode"] == "fd":
             self.solver.createMLRKSP(dRdWT, self.dRdWTPC, ksp)
-        elif self.getOption("adjJacobianOption") == "JacobianFree":
+        elif self.getOption("useAD")["mode"] == "reverse":
             self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
 
         # loop over all objFunc, calculate dFdW, and solve the adjoint
@@ -1900,9 +1887,9 @@ class PYDAFOAM(object):
                 dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
                 dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
                 dFdW.setFromOptions()
-                if self.getOption("adjJacobianOption") == "JacobianFD":
+                if self.getOption("useAD")["mode"] == "fd":
                     self.solver.calcdFdW(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
-                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                elif self.getOption("useAD")["mode"] == "reverse":
                     self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
 
                 # if it is time accurate adjoint, add extra terms for dFdW
@@ -1916,9 +1903,9 @@ class PYDAFOAM(object):
                     dFdW.axpy(-1.0, self.dR00dW00TPsi[objFuncName])
 
                 # Initialize the adjoint vector psi and solve for it
-                if self.getOption("adjJacobianOption") == "JacobianFD":
+                if self.getOption("useAD")["mode"] == "fd":
                     self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
-                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                elif self.getOption("useAD")["mode"] == "reverse":
                     self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
 
                 if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
@@ -1928,9 +1915,9 @@ class PYDAFOAM(object):
                 dFdW.destroy()
 
         ksp.destroy()
-        if self.getOption("adjJacobianOption") == "JacobianFD":
+        if self.getOption("useAD")["mode"] == "fd":
             dRdWT.destroy()
-        elif self.getOption("adjJacobianOption") == "JacobianFree":
+        elif self.getOption("useAD")["mode"] == "reverse":
             self.solverAD.destroydRdWTMatrixFree()
         # we destroy dRdWTPC only when we need to recompute it next time
         # see the bottom of this function
@@ -1943,7 +1930,7 @@ class PYDAFOAM(object):
             Info("Computing total derivatives for %s" % designVarName)
             ###################### BC: boundary condition as design variable ###################
             if designVarDict[designVarName]["designVarType"] == "BC":
-                if self.getOption("adjJacobianOption") == "JacobianFD":
+                if self.getOption("useAD")["mode"] == "fd":
                     nDVs = 1
                     # calculate dRdBC
                     dRdBC = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -1975,7 +1962,7 @@ class PYDAFOAM(object):
                             totalDerivSeq.destroy()
                             dFdBC.destroy()
                     dRdBC.destroy()
-                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                elif self.getOption("useAD")["mode"] == "reverse":
                     nDVs = 1
                     # loop over all objectives
                     for objFuncName in objFuncDict:
@@ -2008,7 +1995,7 @@ class PYDAFOAM(object):
                             dFdBC.destroy()
             ###################### AOA: angle of attack as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "AOA":
-                if self.getOption("adjJacobianOption") == "JacobianFD":
+                if self.getOption("useAD")["mode"] == "fd":
                     nDVs = 1
                     # calculate dRdAOA
                     dRdAOA = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -2040,7 +2027,7 @@ class PYDAFOAM(object):
                             totalDerivSeq.destroy()
                             dFdAOA.destroy()
                     dRdAOA.destroy()
-                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                elif self.getOption("useAD")["mode"] == "reverse":
                     nDVs = 1
                     # loop over all objectives
                     for objFuncName in objFuncDict:
@@ -2073,7 +2060,7 @@ class PYDAFOAM(object):
                             dFdAOA.destroy()
             ################### FFD: FFD points as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "FFD":
-                if self.getOption("adjJacobianOption") == "JacobianFD":
+                if self.getOption("useAD")["mode"] == "fd":
                     nDVs = self.setdXvdFFDMat(designVarName)
                     # calculate dRdFFD
                     dRdFFD = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -2104,7 +2091,7 @@ class PYDAFOAM(object):
                             totalDerivSeq.destroy()
                             dFdFFD.destroy()
                     dRdFFD.destroy()
-                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                elif self.getOption("useAD")["mode"] == "reverse":
                     try:
                         nDVs = len(self.DVGeo.getValues()[designVarName])
                     except Exception:
@@ -2156,7 +2143,7 @@ class PYDAFOAM(object):
                             dFdXv.destroy()
             ################### ACT: actuator models as design variable ###################
             elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
-                if self.getOption("adjJacobianOption") == "JacobianFD":
+                if self.getOption("useAD")["mode"] == "fd":
                     designVarType = designVarDict[designVarName]["designVarType"]
                     nDVTable = {"ACTP": 9, "ACTD": 9, "ACTL": 11}
                     nDVs = nDVTable[designVarType]
@@ -2196,7 +2183,7 @@ class PYDAFOAM(object):
                             totalDerivSeq.destroy()
                             dFdACT.destroy()
                     dRdACT.destroy()
-                elif self.getOption("adjJacobianOption") == "JacobianFree":
+                elif self.getOption("useAD")["mode"] == "reverse":
                     designVarType = designVarDict[designVarName]["designVarType"]
                     nDVTable = {"ACTP": 9, "ACTD": 9, "ACTL": 11}
                     nDVs = nDVTable[designVarType]
@@ -2234,7 +2221,7 @@ class PYDAFOAM(object):
                             totalDerivSeq.destroy()
             ################### Field: field variables (e.g., alphaPorosity, betaSA) as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "Field":
-                if self.getOption("adjJacobianOption") == "JacobianFree":
+                if self.getOption("useAD")["mode"] == "reverse":
 
                     xDV = self.DVGeo.getValues()
                     nDVs = len(xDV[designVarName])
@@ -2296,7 +2283,7 @@ class PYDAFOAM(object):
                             totalDerivSeq.destroy()
                             dFdField.destroy()
                 else:
-                    raise Error("For Field design variable type, we only support adjJacobianOption=JacobianFree")
+                    raise Error("For Field design variable type, we only support useAD->mode=reverse")
             else:
                 raise Error("designVarType %s not supported!" % designVarDict[designVarName]["designVarType"])
 

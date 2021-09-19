@@ -24,7 +24,7 @@ aeroOptions = {
     "designSurfaces": ["upperWall"],
     "solverName": "DAScalarTransportFoam",
     "adjPCLag": 1000,
-    "adjJacobianOption": "JacobianFree",
+    "useAD": {"mode": "reverse"},
     "printIntervalUnsteady": 1,
     "primalBC": {"T0": {"variable": "T", "patches": ["inlet"], "value": [TRef]}},
     "unsteadyAdjoint": {"mode": "timeAccurateAdjoint", "nTimeInstances": 3},
