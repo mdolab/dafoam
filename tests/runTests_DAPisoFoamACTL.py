@@ -37,6 +37,7 @@ daOptions = {
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
     "writeJacobians": ["all"],
+    "adjJacobianOption": "JacobianFD",
     "adjPCLag": 3,
     "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 1.0},
     "fvSource": {
@@ -230,4 +231,4 @@ else:
     funcsSens, fail = optFuncs.calcObjFuncSensUnsteady(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-5, 1e-7)
+        reg_write_dict(funcsSens, 1e-4, 1e-6)

@@ -352,7 +352,7 @@ class DAOPTION(object):
     ## JacobianFD: Using finite-difference method to compute the partials
     ## JacobianFree: Using the matrix-free GMRES to solve the adjoint equation without computing
     ## the state Jacobians.
-    adjJacobianOption = "JacobianFD"
+    adjJacobianOption = "JacobianFree"
 
     ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
     ## Setting the bounds increases the robustness of primal solution for compressible solvers.

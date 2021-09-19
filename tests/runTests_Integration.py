@@ -37,6 +37,7 @@ CM_target = 0.0
 aeroOptions = {
     "solverName": "DASimpleFoam",
     "designSurfaceFamily": "designSurface",
+    "adjJacobianOption": "JacobianFD",
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
     "multiPoint": True,
