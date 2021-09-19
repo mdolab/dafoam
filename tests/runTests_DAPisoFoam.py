@@ -36,7 +36,7 @@ daOptions = {
     "solverName": "DAPisoFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
-    "adjJacobianOption": "JacobianFD",
+    "useAD": {"mode": "fd"},
     "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 1.0},
     "fvSource": {
         "point1": {

@@ -38,7 +38,7 @@ daOptions = {
     "designSurfaces": ["wallsbump"],
     "printIntervalUnsteady": 100,
     "writeJacobians": ["all"],
-    "adjJacobianOption": "JacobianFree",
+    "useAD": {"mode": "reverse"},
     "unsteadyAdjoint": {"mode": "timeAccurateAdjoint", "nTimeInstances": 6},
     "objFunc": {
         "CD": {

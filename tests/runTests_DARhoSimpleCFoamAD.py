@@ -43,7 +43,7 @@ aeroOptions = {
     "solverName": "DARhoSimpleCFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
-    "adjJacobianOption": "JacobianFree",
+    "useAD": {"mode": "reverse"},
     "writeJacobians": ["all"],
     "primalMinResTol": 1e-12,
     "primalBC": {
