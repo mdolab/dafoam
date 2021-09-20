@@ -41,11 +41,11 @@ jobs:
         docker exec -i regtest /bin/bash -c "rm -rf ${{env.DOCKER_WORKING_DIR}} && cp -r ${{env.DOCKER_MOUNT_DIR}} ${{env.DOCKER_WORKING_DIR}}"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && pip install coverage"
         docker exec regtest sed -i 's/-std=c++11/-std=c++11 -coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Incompressible
-        docker exec regtest sed -i 's/-lOpenFOAM$(DF_LIB_SUFFIX)/-lOpenFOAM$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Incompressible
+        docker exec regtest sed -i 's/-lfiniteVolume$(DF_LIB_SUFFIX)/-lfiniteVolume$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Incompressible
         docker exec regtest sed -i 's/-std=c++11/-std=c++11 -coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Compressible
-        docker exec regtest sed -i 's/-lOpenFOAM$(DF_LIB_SUFFIX)/-lOpenFOAM$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Compressible
+        docker exec regtest sed -i 's/-lfiniteVolume$(DF_LIB_SUFFIX)/-lfiniteVolume$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Compressible
         docker exec regtest sed -i 's/-std=c++11/-std=c++11 -coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Solid
-        docker exec regtest sed -i 's/-lOpenFOAM$(DF_LIB_SUFFIX)/-lOpenFOAM$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Solid
+        docker exec regtest sed -i 's/-lfiniteVolume$(DF_LIB_SUFFIX)/-lfiniteVolume$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Solid
         docker exec -i regtest /bin/bash -c "cd ${{env.DOCKER_WORKING_DIR}}/src && cp -r adjoint adjointAD && cp -r pyDASolvers pyDASolversAD"
         if [ "${{matrix.args}}" = "forward" ]; then
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake incompressible"
