@@ -91,6 +91,7 @@ ext = [
         # All other flags for OpenFOAM, users don't need to touch this
         extra_compile_args=[
             "-std=c++11",
+            "-Wno-deprecated-copy",
             "-DCompressibleFlow",
             "-m64",
             "-DOPENFOAM_PLUS=1812",
