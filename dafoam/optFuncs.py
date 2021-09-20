@@ -434,6 +434,19 @@ def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None)
 
     return funcsSens, fail
 
+def runForwardAD(dvName="None", seedIndex=-1):
+    """
+    Run the forward mode AD for the primal solver to compute the brute force total
+    derivative. This is primarily used in verification of the adjoint accuracy
+    """
+
+    if not DASolver.getOption("useAD")["mode"] == "forward":
+        Info("runForwardAD only supports useAD->mode=forward!")
+        Info("Please set useAD->mode to forward and rerun!")
+        exit(1)
+    DASolver.setOption("useAD",{"dvName": dvName, "seedIndex": seedIndex})
+    DASolver.updateDAOption()
+    DASolver()
 
 def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues, eps=1e-2, tol=1e-4, maxit=10):
     """

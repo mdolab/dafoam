@@ -34,7 +34,7 @@ p0 = 101325.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DARhoSimpleFoam",
-    "adjJacobianOption": "JacobianFD",
+    "useAD": {"mode": "fd"},
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["ubend"],
     "primalMinResTol": 1e-5,

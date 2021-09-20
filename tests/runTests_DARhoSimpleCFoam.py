@@ -42,7 +42,7 @@ rho0 = 1.0
 aeroOptions = {
     "solverName": "DARhoSimpleCFoam",
     "designSurfaceFamily": "designSurface",
-    "adjJacobianOption": "JacobianFD",
+    "useAD": {"mode": "fd"},
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
     "writeJacobians": ["all"],

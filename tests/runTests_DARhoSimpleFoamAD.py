@@ -45,7 +45,7 @@ aeroOptions = {
     "solverName": "DARhoSimpleFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
-    "adjJacobianOption": "JacobianFree",
+    "useAD": {"mode": "reverse"},
     "primalMinResTol": 1e-12,
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
