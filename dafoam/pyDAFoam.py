@@ -714,6 +714,12 @@ class PYDAFOAM(object):
         # preconditioner matrix
         self.dRdWTPC = None
 
+        # the surface geometry/mesh displacement computed by the structural solver
+        # this is used in FSI. Here self.surfGeoDisp is a N by 3 numpy array
+        # that stores the displacement vector for each surface mesh point. The order of
+        # is same as the surface point return by self.getSurfaceCoordinates
+        self.surfGeoDisp = None
+
         # initialize the adjoint vector dict
         self.adjVectors = self._initializeAdjVectors()
 
@@ -759,6 +765,12 @@ class PYDAFOAM(object):
             if not self.DVGeo.pointSetUpToDate(self.ptSetName):
                 Info("Updating DVGeo PointSet....")
                 xs = self.DVGeo.update(self.ptSetName, config=None)
+
+                # if we have surface geometry/mesh displacement computed by the structural solver,
+                # add the displace mesh here.
+                if self.surfGeoDisp is not None:
+                    xs += self.surfGeoDisp
+
                 self.setSurfaceCoordinates(xs, self.designFamilyGroup)
                 Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(self.ptSetName)))
 
