@@ -23,7 +23,7 @@ def printVecValues(vecName, rowI, diffTol=1e-30):
 
     if rowI == -1:
         for i in range(vecSize):
-            if vec1.getValue(i) > diffTol:
+            if abs(vec1.getValue(i)) > diffTol:
                 print("%12d %16.14e" % (i, vec1.getValue(i)))
     else:
         print("%12d %16.14e" % (rowI, vec1.getValue(rowI)))
