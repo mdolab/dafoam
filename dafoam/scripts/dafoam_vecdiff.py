@@ -50,8 +50,8 @@ def evalVecDiff(vecName1, vecName2, mode, diffTol=1e-30):
         else:
             print("mode not supported! Options are: abs or rel")
         l2norm = l2norm + valDiff ** 2
-        if valError > diffTol:
-            if valError > maxDiff:
+        if abs(valError) > diffTol:
+            if abs(valError) > maxDiff:
                 maxDiff = valError
                 maxRowI = i
                 maxVal1 = vec1.getValue(i)

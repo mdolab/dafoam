@@ -31,7 +31,7 @@ def printMatValues(mat, rowI, colI, transposed, diffTol = 1e-30):
 
     for i in range(nCols):
         if (int(colI) == -1) or (int(rowVals[0][i]) == int(colI)):
-            if rowVals[1][i] > diffTol:
+            if abs(rowVals[1][i]) > diffTol:
                 print("%16d %20.16e" % (rowVals[0][i], rowVals[1][i]))
 
 
