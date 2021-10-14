@@ -619,7 +619,7 @@ public:
     scalar getObjFuncValue(const word objFuncName);
 
     /// return the forces of the desired fluid-structure-interaction patches
-    void calcSurfaceForces(Mat pointForce);
+    void getForces(Mat pointForce, Vec pointList);
 
     /// print all DAOption
     void printAllOptions()

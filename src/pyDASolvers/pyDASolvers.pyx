@@ -61,7 +61,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getNLocalCells()
         int checkMesh()
         double getObjFuncValue(char *)
-        void calcSurfaceForces(PetscMat)
+        void getForces(PetscMat, PetscVec)
         void printAllOptions()
         void updateDAOption(object)
         double getPrevPrimalSolTime()
@@ -262,8 +262,8 @@ cdef class pyDASolvers:
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
 
-    def calcSurfaceForces(self, Mat pointForce):
-        self._thisptr.calcSurfaceForces(pointForce.mat)
+    def getForces(self, Mat pointForce, Vec pointList):
+        self._thisptr.getForces(pointForce.mat, pointList.vec)
 
     def printAllOptions(self):
         self._thisptr.printAllOptions()

@@ -316,7 +316,7 @@ void DASolver::setDAObjFuncList()
     }
 }
 
-void DASolver::calcSurfaceForces(Mat pointForce)
+void DASolver::getForces(Mat forces, Vec pointList)
 {
     /*
     Description:
@@ -324,32 +324,52 @@ void DASolver::calcSurfaceForces(Mat pointForce)
         fluid-structure-interaction patches.
 
     Output:
-        pointForce : a (nPoint x 3) array of forces for all of the nodes
+        forces : a (nPoint x 3) array of forces for all of the nodes
         of the desired patches.
     */
     Info << "Calculating surface forces" << endl;
-    wordList patchNames;
-    patchNames = daOptionPtr_->getSubDictOption<wordList>("fsi", "surfaces");
+    // Zero point force arrays
+    MatZeroEntries(forces);
 
-    // Generate point mesh and get the boundary mesh
+#ifndef SolidDASolver
+    // Generate patches, point mesh, and point boundary mesh
+    const polyBoundaryMesh& patches = meshPtr_->boundaryMesh();
     const pointMesh& pMesh = pointMesh::New(meshPtr_());
     const pointBoundaryMesh& boundaryMesh = pMesh.boundary();
 
+    // Find wall patches and sort in alphabetical order
+    label nWallPatch = 0;
+    forAll(patches, patchI)
+    {
+        if (patches[patchI].type() == "wall")
+        {
+            nWallPatch += 1;
+        }
+    }
+    List<word> patchList(nWallPatch);
+
+    label iWallPatch = 0;
+    forAll(patches, patchI)
+    {
+        if (patches[patchI].type() == "wall")
+        {
+            patchList[iWallPatch] = patches[patchI].name();
+            iWallPatch += 1;
+        }
+    }
+    SortableList<word> patchListSort(patchList);
+
     // compute size of point and connectivity arrays
     label nPoints = 0;
-    forAll(patchNames, cI)
+    forAll(patchListSort, cI)
     {
         // Get number of points in patch
-        label patchIPoints = boundaryMesh.findPatchID(patchNames[cI]);
+        label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
         nPoints += boundaryMesh[patchIPoints].size();
     }
 
     Info << "Total number of points: " << nPoints << endl;
 
-    // Zero point force arrays
-    MatZeroEntries(pointForce);
-
-#ifndef SolidDASolver
     // Initialize surface field for face-centered forces
     volVectorField volumeForceField(
         IOobject(
@@ -361,7 +381,6 @@ void DASolver::calcSurfaceForces(Mat pointForce)
         meshPtr_(),
         dimensionedVector("surfaceForce", dimensionSet(1, 1, -2, 0, 0, 0, 0), vector::zero),
         fixedValueFvPatchScalarField::typeName);
-
 
     // this code is pulled from:
     // src/functionObjects/forcces/forces.C
@@ -378,11 +397,10 @@ void DASolver::calcSurfaceForces(Mat pointForce)
     const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
 
     // iterate over patches and extract boundary surface forces
-    forAll(patchNames, cI)
+    forAll(patchListSort, cI)
     {
         // get the patch id label
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchNames[cI]);
-
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
         // create a shorter handle for the boundary patch
         const fvPatch& patch = meshPtr_->boundary()[patchI];
         // normal force
@@ -408,10 +426,10 @@ void DASolver::calcSurfaceForces(Mat pointForce)
 
     vector nodeForce(vector::zero);
 
-    forAll(patchNames, cI)
+    forAll(patchListSort, cI)
     {
         // get the patch id label
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchNames[cI]);
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
 
         // Loop over Faces
         forAll(meshPtr_->boundaryMesh()[patchI], faceI)
@@ -439,20 +457,24 @@ void DASolver::calcSurfaceForces(Mat pointForce)
                         break;
                     }
                 }
+
                 // If node is already included, add value to its entry
                 if (found) {
                     // Add Force
-                    MatSetValue(pointForce, iPoint, 0, nodeForce[0], ADD_VALUES);
-                    MatSetValue(pointForce, iPoint, 1, nodeForce[1], ADD_VALUES);
-                    MatSetValue(pointForce, iPoint, 2, nodeForce[2], ADD_VALUES);
+                    MatSetValue(forces, iPoint, 0, nodeForce[0], ADD_VALUES);
+                    MatSetValue(forces, iPoint, 1, nodeForce[1], ADD_VALUES);
+                    MatSetValue(forces, iPoint, 2, nodeForce[2], ADD_VALUES);
                 }
                 // If node is not already included, add it as the newest point and add global
                 // index mapping
                 else{
                     // Add Force
-                    MatSetValue(pointForce, pointCounter, 0, nodeForce[0], ADD_VALUES);
-                    MatSetValue(pointForce, pointCounter, 1, nodeForce[1], ADD_VALUES);
-                    MatSetValue(pointForce, pointCounter, 2, nodeForce[2], ADD_VALUES);
+                    MatSetValue(forces, pointCounter, 0, nodeForce[0], ADD_VALUES);
+                    MatSetValue(forces, pointCounter, 1, nodeForce[1], ADD_VALUES);
+                    MatSetValue(forces, pointCounter, 2, nodeForce[2], ADD_VALUES);
+
+                    // Add to Node Order Array
+                    VecSetValue(pointList, pointCounter, faceIPointIndexI, INSERT_VALUES);
 
                     // Add to Global - Local Mapping
                     globalIndex[pointCounter] = faceIPointIndexI;
@@ -464,8 +486,8 @@ void DASolver::calcSurfaceForces(Mat pointForce)
         }
     }
 #endif
-    MatAssemblyBegin(pointForce, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(pointForce, MAT_FINAL_ASSEMBLY);
+    MatAssemblyBegin(forces, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(forces, MAT_FINAL_ASSEMBLY);
 
     Info << "Calculating surface force.... Completed!" << endl;
     return;

@@ -297,14 +297,6 @@ class DAOPTION(object):
     ## and shows up in the constant/polyMesh/boundary file
     designSurfaces = ["None"]
 
-    ## Fluid-structure-interaction information. This dictionary should contain the "enable" key to
-    ## activate (true) or deactivate (false) fluid-structure-interaction computations. It should
-    ## also contain a list (surfaces=[]) that specifies which surfaces are included.
-    fsi = {
-        "enabled": False,
-        "surfaces": ["None"]
-    }
-
     # *********************************************************************************************
     # ****************************** Intermediate Options *****************************************
     # *********************************************************************************************
@@ -727,10 +719,6 @@ class PYDAFOAM(object):
 
         # initialize the dRdWOldTPsi vectors
         self._initializeTimeAccurateAdjointVectors()
-
-        # Initialize fluid-structure-interaction
-        if self.getOption("fsi")["enabled"]:
-            self._initializeFSI()
 
         Info("pyDAFoam initialization done!")
 
@@ -2339,17 +2327,51 @@ class PYDAFOAM(object):
 
         return dFdFFD
 
-    def calcSurfaceForces(self):
-        """
-        Calculate the surface forces over the specified fluid-structure-interaction
-        surfaces.
-        """
-        self.solver.calcSurfaceForces(self.fsiMat)
+    def getForces(self, groupName=None):
+        """Return the forces on this processor on the families defined by groupName.
+        Parameters
+        ----------
+        groupName : str
+            Group identifier to get only forces cooresponding to the
+            desired group. The group must be a family or a user-supplied
+            group of families. The default is None which corresponds to
+            all wall-type surfaces.
 
-        # viewer = PETSc.Viewer().createASCII("fsiMat", comm=PETSc.COMM_WORLD)
-        # viewer(self.fsiMat)
+        Returns
+        -------
+        forces : array (N,3)
+            Forces on this processor. Note that N may be 0, and an
+            empty array of shape (0, 3) can be returned.
+        """
+        # Calculate number of surface points
+        nPts, nCells = self._getSurfaceSize(self.allWallsGroup)
 
-        return
+        # Initialize PETSc vector and matrix
+        pointListTemp = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        pointListTemp.setSizes((nPts, PETSc.DECIDE), bsize=1)
+        pointListTemp.setFromOptions()
+
+        forceTemp = PETSc.Mat().createDense(((nPts,None),(None,3)), comm=PETSc.COMM_SELF)
+        forceTemp.setFromOptions()
+        forceTemp.setPreallocationNNZ((nPts, 3))
+        forceTemp.setUp()
+
+        # Compute forces
+        self.solver.getForces(forceTemp, pointListTemp)
+        forces = np.copy(forceTemp.getDenseArray())
+        pointList = np.copy(pointListTemp.getValues(range(0,nPts)))
+        forceTemp.destroy()
+        pointListTemp.destroy()
+
+        # Reorder points to match sorted convention
+        indices = np.argsort(pointList)
+        forces = forces[indices]
+
+        if groupName is None:
+            groupName = self.allWallsGroup
+
+        # Finally map the vector as required.
+        return self.mapVector(forces, self.allWallsGroup, groupName)
 
     def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
@@ -3113,31 +3135,6 @@ class PYDAFOAM(object):
                 self.wVecMPList[i] = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
                 self.wVecMPList[i].setSizes((wSize, PETSc.DECIDE), bsize=1)
                 self.wVecMPList[i].setFromOptions()
-
-        return
-
-    def _initializeFSI(self):
-        """
-        Initialize the fluid-structure-interaction PETSc matrix
-        """
-        # Sort patches in alphabetical order
-        self.setOption("fsi", {"surfaces": sorted(self.getOption("fsi")["surfaces"])})
-        self.updateDAOption()
-
-        # Calculate number of surface points
-        # Loop over all surfaces in order and select those that match listed surfaces
-        nPts = 0
-        for groupName in self.families:
-            if groupName in self.getOption("fsi")["surfaces"]:
-                nPtsLocal, nCells = self._getSurfaceSize(groupName)
-                nPts += nPtsLocal
-
-        # Initialize PETSc matrix
-        self.fsiMat = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
-        self.fsiMat.setSizes(((nPts, None), (None, 3)))
-        self.fsiMat.setFromOptions()
-        self.fsiMat.setPreallocationNNZ((nPts, 3))
-        self.fsiMat.setUp()
 
         return
 
