@@ -408,6 +408,12 @@ public:
         return returnVal;
     }
 
+    /// return the value of objective
+    void calcSurfaceForces(Mat pointForce)
+    {
+        DASolverPtr_->calcSurfaceForces(pointForce);
+    }
+
     /// call DASolver::printAllOptions
     void printAllOptions()
     {

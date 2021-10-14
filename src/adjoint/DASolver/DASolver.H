@@ -15,6 +15,7 @@
 #include <petscksp.h>
 #include "Python.h"
 #include "fvCFD.H"
+#include "fvMesh.H"
 #include "runTimeSelectionTables.H"
 #include "OFstream.H"
 #include "functionObjectList.H"
@@ -31,6 +32,7 @@
 #include "DAField.H"
 #include "DAPartDeriv.H"
 #include "DALinearEqn.H"
+#include "volPointInterpolation.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -615,6 +617,9 @@ public:
 
     /// return the value of the objective function
     scalar getObjFuncValue(const word objFuncName);
+
+    /// return the forces of the desired fluid-structure-interaction patches
+    void calcSurfaceForces(Mat pointForce);
 
     /// print all DAOption
     void printAllOptions()

@@ -297,6 +297,14 @@ class DAOPTION(object):
     ## and shows up in the constant/polyMesh/boundary file
     designSurfaces = ["None"]
 
+    ## Fluid-structure-interaction information. This dictionary should contain the "enable" key to
+    ## activate (true) or deactivate (false) fluid-structure-interaction computations. It should
+    ## also contain a list (surfaces=[]) that specifies which surfaces are included.
+    fsi = {
+        "enabled": False,
+        "surfaces": ["None"]
+    }
+
     # *********************************************************************************************
     # ****************************** Intermediate Options *****************************************
     # *********************************************************************************************
@@ -719,6 +727,10 @@ class PYDAFOAM(object):
 
         # initialize the dRdWOldTPsi vectors
         self._initializeTimeAccurateAdjointVectors()
+
+        # Initialize fluid-structure-interaction
+        if self.getOption("fsi")["enabled"]:
+            self._initializeFSI()
 
         Info("pyDAFoam initialization done!")
 
@@ -2327,6 +2339,18 @@ class PYDAFOAM(object):
 
         return dFdFFD
 
+    def calcSurfaceForces(self):
+        """
+        Calculate the surface forces over the specified fluid-structure-interaction
+        surfaces.
+        """
+        self.solver.calcSurfaceForces(self.fsiMat)
+
+        # viewer = PETSc.Viewer().createASCII("fsiMat", comm=PETSc.COMM_WORLD)
+        # viewer(self.fsiMat)
+
+        return
+
     def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
         Compute total derivative
@@ -3089,6 +3113,31 @@ class PYDAFOAM(object):
                 self.wVecMPList[i] = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
                 self.wVecMPList[i].setSizes((wSize, PETSc.DECIDE), bsize=1)
                 self.wVecMPList[i].setFromOptions()
+
+        return
+
+    def _initializeFSI(self):
+        """
+        Initialize the fluid-structure-interaction PETSc matrix
+        """
+        # Sort patches in alphabetical order
+        self.setOption("fsi", {"surfaces": sorted(self.getOption("fsi")["surfaces"])})
+        self.updateDAOption()
+
+        # Calculate number of surface points
+        # Loop over all surfaces in order and select those that match listed surfaces
+        nPts = 0
+        for groupName in self.families:
+            if groupName in self.getOption("fsi")["surfaces"]:
+                nPtsLocal, nCells = self._getSurfaceSize(groupName)
+                nPts += nPtsLocal
+
+        # Initialize PETSc matrix
+        self.fsiMat = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
+        self.fsiMat.setSizes(((nPts, None), (None, 3)))
+        self.fsiMat.setFromOptions()
+        self.fsiMat.setPreallocationNNZ((nPts, 3))
+        self.fsiMat.setUp()
 
         return
 
