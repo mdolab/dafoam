@@ -95,9 +95,9 @@ DAObjFuncCenterOfPressure::DAObjFuncCenterOfPressure(
 /// calculate the value of objective function
 void DAObjFuncCenterOfPressure::calcObjFunc(
     const labelList& objFuncFaceSources,
-    //const labelList& objFuncCellSources,
-    //scalarList& objFuncFaceValues,
-    //scalarList& objFuncCellValues,
+    const labelList& objFuncCellSources,
+    scalarList& objFuncFaceValues,
+    scalarList& objFuncCellValues,
     scalar& objFuncValue)
 {
     /*

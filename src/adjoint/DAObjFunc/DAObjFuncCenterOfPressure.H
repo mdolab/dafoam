@@ -61,9 +61,9 @@ public:
     /// calculate the value of objective function
     virtual void calcObjFunc(
         const labelList& objFuncFaceSources,
-        //const labelList& objFuncCellSources,
-        //scalarList& objFuncFaceValues,
-        //scalarList& objFuncCellValues,
+        const labelList& objFuncCellSources,
+        scalarList& objFuncFaceValues,
+        scalarList& objFuncCellValues,
         scalar& objFuncValue);
 };
 
