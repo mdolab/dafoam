@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAObjFuncCenterPressure.H"
+#include "DAObjFuncCenterOfPressure.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAObjFuncCenterPressure, 0);
-addToRunTimeSelectionTable(DAObjFunc, DAObjFuncCenterPressure, dictionary);
+defineTypeNameAndDebug(DAObjFuncCenterOfPressure, 0);
+addToRunTimeSelectionTable(DAObjFunc, DAObjFuncCenterOfPressure, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAObjFuncCenterPressure::DAObjFuncCenterPressure(
+DAObjFuncCenterOfPressure::DAObjFuncCenterOfPressure(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
@@ -93,7 +93,7 @@ DAObjFuncCenterPressure::DAObjFuncCenterPressure(
 }
 
 /// calculate the value of objective function
-void DAObjFuncCenterPressure::calcObjFunc(
+void DAObjFuncCenterOfPressure::calcObjFunc(
     const labelList& objFuncFaceSources,
     //const labelList& objFuncCellSources,
     //scalarList& objFuncFaceValues,
@@ -120,7 +120,7 @@ void DAObjFuncCenterPressure::calcObjFunc(
     }*/
     // initialize objFuncValue
     objFuncValue = 0.0;
-    vector weightedPressure = 0.0;
+    vector weightedPressure;
     scalar totalPressure = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
@@ -144,9 +144,9 @@ void DAObjFuncCenterPressure::calcObjFunc(
         // r vector
         vector rVec = mesh_.Cf().boundaryField()[patchI][faceI] - pressureOrigin_;
         // force weighted by distance
-        weightedPressure += rVec * fN.magnitude();
+        weightedPressure += rVec * mag(fN);
         // total force
-        totalPressure += fN.magnitude();
+        totalPressure += mag(fN);
     }
 
     // need to reduce the sum of force across all processors

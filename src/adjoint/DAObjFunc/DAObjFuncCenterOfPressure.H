@@ -4,12 +4,12 @@
     Version : v2
 
     Description:
-        Child class for moment
+        Child class for center of pressure
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncCenterPressure_H
-#define DAObjFuncCenterPressure_H
+#ifndef DAObjFuncCenterOfPressure_H
+#define DAObjFuncCenterOfPressure_H
 
 #include "DAObjFunc.H"
 #include "addToRunTimeSelectionTable.H"
@@ -20,14 +20,15 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncCenterPressure Declaration
+      Class DAObjFuncCenterOfPressure Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncCenterPressure
+class DAObjFuncCenterOfPressure
     : public DAObjFunc
 {
 
 protected:
+
     /// the direction of the moment
     vector pressureDir_;
 
@@ -42,7 +43,7 @@ public:
     // Constructors
 
     //- Construct from components
-    DAObjFuncCenterPressure(
+    DAObjFuncCenterOfPressure(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
@@ -53,7 +54,7 @@ public:
         const dictionary& objFuncDict);
 
     //- Destructor
-    virtual ~DAObjFuncCenterPressure()
+    virtual ~DAObjFuncCenterOfPressure()
     {
     }
 
