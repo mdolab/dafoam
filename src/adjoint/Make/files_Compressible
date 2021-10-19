@@ -37,6 +37,7 @@ DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncForce.C
 DAObjFunc/DAObjFuncMoment.C
 DAObjFunc/DAObjFuncWallHeatFlux.C
+DAObjFunc/DAObjFuncCenterPressure.C
 DAObjFunc/DAObjFuncTotalPressure.C
 DAObjFunc/DAObjFuncTotalPressureRatio.C
 DAObjFunc/DAObjFuncTotalTemperatureRatio.C

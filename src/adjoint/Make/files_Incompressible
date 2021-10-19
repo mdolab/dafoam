@@ -38,6 +38,7 @@ DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncForce.C
 DAObjFunc/DAObjFuncMoment.C
 DAObjFunc/DAObjFuncWallHeatFlux.C
+DAObjFunc/DAObjFuncCenterPressure.C
 DAObjFunc/DAObjFuncTotalPressure.C
 DAObjFunc/DAObjFuncStateErrorNorm.C
 DAObjFunc/DAObjFuncVariableVolSum.C
