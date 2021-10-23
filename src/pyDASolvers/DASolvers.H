@@ -409,9 +409,9 @@ public:
     }
 
     /// return the value of objective
-    void getForces(Mat pointForce, Vec pointList)
+    void getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
     {
-        DASolverPtr_->getForces(pointForce, pointList);
+        DASolverPtr_->getForces(fX, fY, fZ, pointList);
     }
 
     /// call DASolver::printAllOptions

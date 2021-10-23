@@ -316,7 +316,7 @@ void DASolver::setDAObjFuncList()
     }
 }
 
-void DASolver::getForces(Mat forces, Vec pointList)
+void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
 {
     /*
     Description:
@@ -329,7 +329,11 @@ void DASolver::getForces(Mat forces, Vec pointList)
     */
     Info << "Calculating surface forces" << endl;
     // Zero point force arrays
-    MatZeroEntries(forces);
+    VecZeroEntries(fX);
+    VecZeroEntries(fY);
+    VecZeroEntries(fZ);
+
+    VecZeroEntries(pointList);
 
 #ifndef SolidDASolver
     // Generate patches, point mesh, and point boundary mesh
@@ -426,6 +430,16 @@ void DASolver::getForces(Mat forces, Vec pointList)
 
     vector nodeForce(vector::zero);
 
+    PetscScalar* vecArrayFX;
+    VecGetArray(fX, &vecArrayFX);
+    PetscScalar* vecArrayFY;
+    VecGetArray(fY, &vecArrayFY);
+    PetscScalar* vecArrayFZ;
+    VecGetArray(fZ, &vecArrayFZ);
+
+    PetscScalar* vecArrayPointList;
+    VecGetArray(pointList, &vecArrayPointList);
+
     forAll(patchListSort, cI)
     {
         // get the patch id label
@@ -461,20 +475,19 @@ void DASolver::getForces(Mat forces, Vec pointList)
                 // If node is already included, add value to its entry
                 if (found) {
                     // Add Force
-                    MatSetValue(forces, iPoint, 0, nodeForce[0], ADD_VALUES);
-                    MatSetValue(forces, iPoint, 1, nodeForce[1], ADD_VALUES);
-                    MatSetValue(forces, iPoint, 2, nodeForce[2], ADD_VALUES);
+                    assignValueCheckAD(vecArrayFX[iPoint],vecArrayFX[iPoint]+nodeForce[0]);
+                    assignValueCheckAD(vecArrayFY[iPoint],vecArrayFY[iPoint]+nodeForce[1]);
+                    assignValueCheckAD(vecArrayFZ[iPoint],vecArrayFZ[iPoint]+nodeForce[2]);
                 }
-                // If node is not already included, add it as the newest point and add global
-                // index mapping
+                // If node is not already included, add it as the newest point and add global index mapping
                 else{
                     // Add Force
-                    MatSetValue(forces, pointCounter, 0, nodeForce[0], ADD_VALUES);
-                    MatSetValue(forces, pointCounter, 1, nodeForce[1], ADD_VALUES);
-                    MatSetValue(forces, pointCounter, 2, nodeForce[2], ADD_VALUES);
+                    assignValueCheckAD(vecArrayFX[pointCounter],nodeForce[0]);
+                    assignValueCheckAD(vecArrayFY[pointCounter],nodeForce[1]);
+                    assignValueCheckAD(vecArrayFZ[pointCounter],nodeForce[2]);
 
                     // Add to Node Order Array
-                    VecSetValue(pointList, pointCounter, faceIPointIndexI, INSERT_VALUES);
+                    assignValueCheckAD(vecArrayPointList[pointCounter],faceIPointIndexI)
 
                     // Add to Global - Local Mapping
                     globalIndex[pointCounter] = faceIPointIndexI;
@@ -485,9 +498,13 @@ void DASolver::getForces(Mat forces, Vec pointList)
             }
         }
     }
+    VecRestoreArray(fX, &vecArrayFX);
+    VecRestoreArray(fY, &vecArrayFY);
+    VecRestoreArray(fZ, &vecArrayFZ);
+
+    VecRestoreArray(pointList, &vecArrayPointList);
 #endif
-    MatAssemblyBegin(forces, MAT_FINAL_ASSEMBLY);
-    MatAssemblyEnd(forces, MAT_FINAL_ASSEMBLY);
+
 
     Info << "Calculating surface force.... Completed!" << endl;
     return;

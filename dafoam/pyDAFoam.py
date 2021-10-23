@@ -2346,21 +2346,38 @@ class PYDAFOAM(object):
         # Calculate number of surface points
         nPts, nCells = self._getSurfaceSize(self.allWallsGroup)
 
-        # Initialize PETSc vector and matrix
+        # Initialize PETSc vectors
         pointListTemp = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         pointListTemp.setSizes((nPts, PETSc.DECIDE), bsize=1)
         pointListTemp.setFromOptions()
 
-        forceTemp = PETSc.Mat().createDense(((nPts,None),(None,3)), comm=PETSc.COMM_SELF)
-        forceTemp.setFromOptions()
-        forceTemp.setPreallocationNNZ((nPts, 3))
-        forceTemp.setUp()
+        fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fX.setSizes((nPts, PETSc.DECIDE), bsize=1)
+        fX.setFromOptions()
+
+        fY = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fY.setSizes((nPts, PETSc.DECIDE), bsize=1)
+        fY.setFromOptions()
+
+        fZ = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fZ.setSizes((nPts, PETSc.DECIDE), bsize=1)
+        fZ.setFromOptions()
 
         # Compute forces
-        self.solver.getForces(forceTemp, pointListTemp)
-        forces = np.copy(forceTemp.getDenseArray())
+        self.solver.getForces(fX, fY, fZ, pointListTemp)
+
+        # Copy data from PETSc vectors
+        forces = np.zeros((nPts,3))
+        forces[:,0] = np.copy(fX.getValues(range(0,nPts)))
+        forces[:,1] = np.copy(fY.getValues(range(0,nPts)))
+        forces[:,2] = np.copy(fZ.getValues(range(0,nPts)))
+
         pointList = np.copy(pointListTemp.getValues(range(0,nPts)))
-        forceTemp.destroy()
+
+        # Cleanup PETSc vectors
+        fX.destroy()
+        fY.destroy()
+        fZ.destroy()
         pointListTemp.destroy()
 
         # Reorder points to match sorted convention
