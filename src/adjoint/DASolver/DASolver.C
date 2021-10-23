@@ -473,18 +473,22 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
                 }
 
                 // If node is already included, add value to its entry
+                PetscScalar val1, val2, val3;
+                assignValueCheckAD(val1, nodeForce[0]);
+                assignValueCheckAD(val2, nodeForce[1]);
+                assignValueCheckAD(val3, nodeForce[2]);
                 if (found) {
                     // Add Force
-                    assignValueCheckAD(vecArrayFX[iPoint],vecArrayFX[iPoint]+nodeForce[0]);
-                    assignValueCheckAD(vecArrayFY[iPoint],vecArrayFY[iPoint]+nodeForce[1]);
-                    assignValueCheckAD(vecArrayFZ[iPoint],vecArrayFZ[iPoint]+nodeForce[2]);
+                    assignValueCheckAD(vecArrayFX[iPoint],vecArrayFX[iPoint]+val1);
+                    assignValueCheckAD(vecArrayFY[iPoint],vecArrayFY[iPoint]+val2);
+                    assignValueCheckAD(vecArrayFZ[iPoint],vecArrayFZ[iPoint]+val3);
                 }
                 // If node is not already included, add it as the newest point and add global index mapping
                 else{
                     // Add Force
-                    assignValueCheckAD(vecArrayFX[pointCounter],nodeForce[0]);
-                    assignValueCheckAD(vecArrayFY[pointCounter],nodeForce[1]);
-                    assignValueCheckAD(vecArrayFZ[pointCounter],nodeForce[2]);
+                    assignValueCheckAD(vecArrayFX[pointCounter],val1);
+                    assignValueCheckAD(vecArrayFY[pointCounter],val2);
+                    assignValueCheckAD(vecArrayFZ[pointCounter],val3);
 
                     // Add to Node Order Array
                     assignValueCheckAD(vecArrayPointList[pointCounter],faceIPointIndexI)
