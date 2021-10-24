@@ -136,7 +136,7 @@ aeroOptions = {
                 "type": "centerPressure",
                 "source": "patchToFace",
                 "patches": ["wing"],
-                "axis": [-1.0, 0.0, 0.0],
+                "axis": [1.0, 0.0, 0.0],
                 "center": [0, 0, 0],
                 "scale": 1.0,
                 "addToAdjoint": True,
