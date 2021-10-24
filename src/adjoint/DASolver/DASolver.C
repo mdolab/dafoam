@@ -479,20 +479,18 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
                 assignValueCheckAD(val3, nodeForce[2]);
                 if (found) {
                     // Add Force
-                    assignValueCheckAD(vecArrayFX[iPoint],vecArrayFX[iPoint]+val1);
-                    assignValueCheckAD(vecArrayFY[iPoint],vecArrayFY[iPoint]+val2);
-                    assignValueCheckAD(vecArrayFZ[iPoint],vecArrayFZ[iPoint]+val3);
-                }
+                    vecArrayFX[iPoint] += val1;
+                    vecArrayFY[iPoint] += val2;
+                    vecArrayFZ[iPoint] += val3;
+                    }
                 // If node is not already included, add it as the newest point and add global index mapping
                 else{
                     // Add Force
-                    assignValueCheckAD(vecArrayFX[pointCounter],val1);
-                    assignValueCheckAD(vecArrayFY[pointCounter],val2);
-                    assignValueCheckAD(vecArrayFZ[pointCounter],val3);
-
+                    vecArrayFX[pointCounter] = val1;
+                    vecArrayFY[pointCounter] = val2;
+                    vecArrayFZ[pointCounter] = val3;
                     // Add to Node Order Array
-                    assignValueCheckAD(vecArrayPointList[pointCounter],faceIPointIndexI)
-
+                    vecArrayPointList[pointCounter] = faceIPointIndexI;
                     // Add to Global - Local Mapping
                     globalIndex[pointCounter] = faceIPointIndexI;
 
