@@ -316,6 +316,202 @@ void DASolver::setDAObjFuncList()
     }
 }
 
+void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
+{
+    /*
+    Description:
+        Compute the nodal forces for all of the nodes on the
+        fluid-structure-interaction patches.
+
+    Output:
+        forces : a (nPoint x 3) array of forces for all of the nodes
+        of the desired patches.
+    */
+    Info << "Calculating surface forces" << endl;
+    // Zero point force arrays
+    VecZeroEntries(fX);
+    VecZeroEntries(fY);
+    VecZeroEntries(fZ);
+
+    VecZeroEntries(pointList);
+
+#ifndef SolidDASolver
+    // Generate patches, point mesh, and point boundary mesh
+    const polyBoundaryMesh& patches = meshPtr_->boundaryMesh();
+    const pointMesh& pMesh = pointMesh::New(meshPtr_());
+    const pointBoundaryMesh& boundaryMesh = pMesh.boundary();
+
+    // Find wall patches and sort in alphabetical order
+    label nWallPatch = 0;
+    forAll(patches, patchI)
+    {
+        if (patches[patchI].type() == "wall")
+        {
+            nWallPatch += 1;
+        }
+    }
+    List<word> patchList(nWallPatch);
+
+    label iWallPatch = 0;
+    forAll(patches, patchI)
+    {
+        if (patches[patchI].type() == "wall")
+        {
+            patchList[iWallPatch] = patches[patchI].name();
+            iWallPatch += 1;
+        }
+    }
+    SortableList<word> patchListSort(patchList);
+
+    // compute size of point and connectivity arrays
+    label nPoints = 0;
+    forAll(patchListSort, cI)
+    {
+        // Get number of points in patch
+        label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
+        nPoints += boundaryMesh[patchIPoints].size();
+    }
+
+    Info << "Total number of points: " << nPoints << endl;
+
+    // Initialize surface field for face-centered forces
+    volVectorField volumeForceField(
+        IOobject(
+            "volumeForceField",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        meshPtr_(),
+        dimensionedVector("surfaceForce", dimensionSet(1, 1, -2, 0, 0, 0, 0), vector::zero),
+        fixedValueFvPatchScalarField::typeName);
+
+    // this code is pulled from:
+    // src/functionObjects/forcces/forces.C
+    // modified slightly
+    vector force(vector::zero);
+
+    const objectRegistry& db = meshPtr_->thisDb();
+    const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+    const surfaceVectorField::Boundary& Sfb = meshPtr_->Sf().boundaryField();
+
+    const DATurbulenceModel& daTurb = daModelPtr_->getDATurbulenceModel();
+    tmp<volSymmTensorField> tdevRhoReff = daTurb.devRhoReff();
+    const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
+
+    // iterate over patches and extract boundary surface forces
+    forAll(patchListSort, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
+        // create a shorter handle for the boundary patch
+        const fvPatch& patch = meshPtr_->boundary()[patchI];
+        // normal force
+        vectorField fN(Sfb[patchI] * p.boundaryField()[patchI]);
+        // tangential force
+        vectorField fT(Sfb[patchI] & devRhoReffb[patchI]);
+        // sum them up
+        forAll(patch, faceI)
+        {
+            force.x() = fN[faceI].x() + fT[faceI].x();
+            force.y() = fN[faceI].y() + fT[faceI].y();
+            force.z() = fN[faceI].z() + fT[faceI].z();
+            volumeForceField.boundaryFieldRef()[patchI][faceI] = force;
+        }
+    }
+    volumeForceField.write();
+
+    // The above volumeForceField is face-centered, we need to interpolate it to point-centered
+    label pointCounter = 0;
+    List<label> globalIndex(nPoints, -1);
+
+    pointField meshPoints = meshPtr_->points();
+
+    vector nodeForce(vector::zero);
+
+    PetscScalar* vecArrayFX;
+    VecGetArray(fX, &vecArrayFX);
+    PetscScalar* vecArrayFY;
+    VecGetArray(fY, &vecArrayFY);
+    PetscScalar* vecArrayFZ;
+    VecGetArray(fZ, &vecArrayFZ);
+
+    PetscScalar* vecArrayPointList;
+    VecGetArray(pointList, &vecArrayPointList);
+
+    forAll(patchListSort, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
+
+        // Loop over Faces
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // Get number of points
+            const label nPoints = meshPtr_->boundaryMesh()[patchI][faceI].size();
+
+            // Divide force to nodes
+            nodeForce = volumeForceField.boundaryFieldRef()[patchI][faceI] / double(nPoints);
+
+            forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
+            {
+                // this is the index that corresponds to meshPoints, which contains both volume and surface points
+                // so we can't directly reuse this index because we want to have only surface points
+                label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
+
+                // Loop over globalMapping array to check if this node is already included
+                bool found = false;
+                label iPoint;
+                for (label i = 0; i < pointCounter; i++){
+                    if (faceIPointIndexI == globalIndex[i])
+                    {
+                        found = true;
+                        iPoint = i;
+                        break;
+                    }
+                }
+
+                // If node is already included, add value to its entry
+                PetscScalar val1, val2, val3;
+                assignValueCheckAD(val1, nodeForce[0]);
+                assignValueCheckAD(val2, nodeForce[1]);
+                assignValueCheckAD(val3, nodeForce[2]);
+                if (found) {
+                    // Add Force
+                    vecArrayFX[iPoint] += val1;
+                    vecArrayFY[iPoint] += val2;
+                    vecArrayFZ[iPoint] += val3;
+                    }
+                // If node is not already included, add it as the newest point and add global index mapping
+                else{
+                    // Add Force
+                    vecArrayFX[pointCounter] = val1;
+                    vecArrayFY[pointCounter] = val2;
+                    vecArrayFZ[pointCounter] = val3;
+                    // Add to Node Order Array
+                    vecArrayPointList[pointCounter] = faceIPointIndexI;
+                    // Add to Global - Local Mapping
+                    globalIndex[pointCounter] = faceIPointIndexI;
+
+                    // Increment counter
+                    pointCounter += 1;
+                }
+            }
+        }
+    }
+    VecRestoreArray(fX, &vecArrayFX);
+    VecRestoreArray(fY, &vecArrayFY);
+    VecRestoreArray(fZ, &vecArrayFZ);
+
+    VecRestoreArray(pointList, &vecArrayPointList);
+#endif
+
+
+    Info << "Calculating surface force.... Completed!" << endl;
+    return;
+}
+
 void DASolver::reduceStateResConLevel(
     const dictionary& maxResConLv4JacPCMat,
     HashTable<List<List<word>>>& stateResConInfo) const
