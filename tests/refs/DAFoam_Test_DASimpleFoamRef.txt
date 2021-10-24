@@ -5,7 +5,7 @@ Dictionary Key: CL
 Dictionary Key: CMZ
 @value -0.006992993721841563 1e-08 1e-10
 Dictionary Key: COP
-@value  -0.2647688063259427 1e-08 1e-10
+@value   0.2647688063259427 1e-08 1e-10
 Dictionary Key: THRUST
 @value   0.3964124860392292 1e-08 1e-10
 Dictionary Key: VOL
@@ -77,9 +77,9 @@ Dictionary Key: actuator
 Dictionary Key: alpha
 @value  0 0.0001 1e-06
 Dictionary Key: shapey
-@value  0.023503013060866 0.0001 1e-06
-@value -2.227990580916384e-05 0.0001 1e-06
-@value  0.0001934083835863909 0.0001 1e-06
+@value  -0.023503013060866 0.0001 1e-06
+@value  2.227990580916384e-05 0.0001 1e-06
+@value  -0.0001934083835863909 0.0001 1e-06
 Dictionary Key: THRUST
 Dictionary Key: actuator
 @value   0.3141086102615986 1e-04 1e-06
