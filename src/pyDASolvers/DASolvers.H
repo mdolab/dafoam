@@ -408,6 +408,12 @@ public:
         return returnVal;
     }
 
+    /// return the value of objective
+    void getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
+    {
+        DASolverPtr_->getForces(fX, fY, fZ, pointList);
+    }
+
     /// call DASolver::printAllOptions
     void printAllOptions()
     {

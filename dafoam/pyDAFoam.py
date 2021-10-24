@@ -2339,6 +2339,69 @@ class PYDAFOAM(object):
 
         return dFdFFD
 
+    def getForces(self, groupName=None):
+        """Return the forces on this processor on the families defined by groupName.
+        Parameters
+        ----------
+        groupName : str
+            Group identifier to get only forces cooresponding to the
+            desired group. The group must be a family or a user-supplied
+            group of families. The default is None which corresponds to
+            all wall-type surfaces.
+
+        Returns
+        -------
+        forces : array (N,3)
+            Forces on this processor. Note that N may be 0, and an
+            empty array of shape (0, 3) can be returned.
+        """
+        # Calculate number of surface points
+        nPts, nCells = self._getSurfaceSize(self.allWallsGroup)
+
+        # Initialize PETSc vectors
+        pointListTemp = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        pointListTemp.setSizes((nPts, PETSc.DECIDE), bsize=1)
+        pointListTemp.setFromOptions()
+
+        fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fX.setSizes((nPts, PETSc.DECIDE), bsize=1)
+        fX.setFromOptions()
+
+        fY = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fY.setSizes((nPts, PETSc.DECIDE), bsize=1)
+        fY.setFromOptions()
+
+        fZ = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fZ.setSizes((nPts, PETSc.DECIDE), bsize=1)
+        fZ.setFromOptions()
+
+        # Compute forces
+        self.solver.getForces(fX, fY, fZ, pointListTemp)
+
+        # Copy data from PETSc vectors
+        forces = np.zeros((nPts,3))
+        forces[:,0] = np.copy(fX.getValues(range(0,nPts)))
+        forces[:,1] = np.copy(fY.getValues(range(0,nPts)))
+        forces[:,2] = np.copy(fZ.getValues(range(0,nPts)))
+
+        pointList = np.copy(pointListTemp.getValues(range(0,nPts)))
+
+        # Cleanup PETSc vectors
+        fX.destroy()
+        fY.destroy()
+        fZ.destroy()
+        pointListTemp.destroy()
+
+        # Reorder points to match sorted convention
+        indices = np.argsort(pointList)
+        forces = forces[indices]
+
+        if groupName is None:
+            groupName = self.allWallsGroup
+
+        # Finally map the vector as required.
+        return self.mapVector(forces, self.allWallsGroup, groupName)
+
     def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
         Compute total derivative
