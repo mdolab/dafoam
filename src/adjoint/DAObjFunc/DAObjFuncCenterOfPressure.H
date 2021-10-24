@@ -29,14 +29,12 @@ class DAObjFuncCenterOfPressure
 
 protected:
 
-    /// the direction of the moment
+    /// the direction to project the center of moment onto
     vector pressureDir_;
 
-    /// the center of rotation for moment
+    /// The point to compute center of pressure about
     vector pressureOrigin_;
 
-    /// DATurbulenceModel object
-    //const DATurbulenceModel& daTurb_;
 
 public:
     TypeName("centerPressure");
