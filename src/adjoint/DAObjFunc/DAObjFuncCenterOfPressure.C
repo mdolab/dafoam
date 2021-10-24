@@ -62,34 +62,6 @@ DAObjFuncCenterOfPressure::DAObjFuncCenterOfPressure(
     pressureOrigin_[2] = center[2];
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
-
-/*
-    // setup the connectivity for moment, this is needed in Foam::DAJacCondFdW
-    // need to determine the name of pressure because some buoyant OF solver use
-    // p_rgh as pressure
-    word pName = "p";
-    if (mesh_.thisDb().foundObject<volScalarField>("p_rgh"))
-    {
-        pName = "p_rgh";
-    }
-#ifdef IncompressibleFlow
-    // For incompressible flow, it depends on zero level
-    // of U, nut, and p, and one level of U
-    objFuncConInfo_ = {
-        {"U", "nut", pName}, // level 0
-        {"U"}}; // level 1
-#endif
-
-#ifdef CompressibleFlow
-    // For compressible flow, it depends on zero level
-    // of U, nut, T, and p, and one level of U
-    objFuncConInfo_ = {
-        {"U", "nut", "T", pName}, // level 0
-        {"U"}}; // level 1
-#endif
-
-    // now replace nut with the corrected name for the selected turbulence model
-    daModel.correctModelStates(objFuncConInfo_[0]);*/
 }
 
 /// calculate the value of objective function
@@ -102,34 +74,24 @@ void DAObjFuncCenterOfPressure::calcObjFunc(
 {
     /*
     Description:
-        Calculate the average location of average pressure applied to the body.
-        This code is similar to the src/adjoint/DAObjFunc/DAObjFuncMoment force
-        calculation.
+        Calculate the average location of pressure applied to the body.
 
     Input:
         objFuncFaceSources: List of face source (index) for this objective
 
     Output:
-        objFuncValue: the sum of objective, reduced across all processsors and scaled by "scale"
+        objFuncValue: the sum of objective along a chosen "axis", reduced across all processsors and scaled by "scale"
     */
 
-    // initialize faceValues to zero
-    /*forAll(objFuncFaceValues, idxI)
-    {
-        objFuncFaceValues[idxI] = 0.0;
-    }*/
     // initialize objFuncValue
     objFuncValue = 0.0;
-    vector weightedPressure;
+    vector weightedPressure(0, 0, 0);
     scalar totalPressure = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
     const volScalarField& p = db.lookupObject<volScalarField>("p");
 
     const surfaceVectorField::Boundary& Sfb = mesh_.Sf().boundaryField();
-
-    //tmp<volSymmTensorField> tdevRhoReff = daTurb_.devRhoReff();
-    //const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
 
     // calculate discrete force for each objFuncFace
     forAll(objFuncFaceSources, idxI)
@@ -142,7 +104,7 @@ void DAObjFuncCenterOfPressure::calcObjFunc(
         // normal force
         vector fN(Sfb[patchI][faceI] * p.boundaryField()[patchI][faceI]);
         // r vector
-        vector rVec = mesh_.Cf().boundaryField()[patchI][faceI] - pressureOrigin_;
+        vector rVec = mesh_.Cf().boundaryField()[patchI][faceI];
         // force weighted by distance
         weightedPressure += rVec * mag(fN);
         // total force
@@ -153,7 +115,7 @@ void DAObjFuncCenterOfPressure::calcObjFunc(
     reduce(weightedPressure, sumOp<vector>());
     reduce(totalPressure, sumOp<scalar>());
 
-    objFuncValue = scale_ * (weightedPressure & pressureDir_) / totalPressure;
+    objFuncValue = scale_ * ((weightedPressure / totalPressure) - pressureOrigin_) & pressureDir_;
 
     return;
 }
