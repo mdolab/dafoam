@@ -131,6 +131,17 @@ aeroOptions = {
                 "addToAdjoint": True,
             },
         },
+        "COP": {
+            "part1": {
+                "type": "centerPressure",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "axis": [1.0, 0.0, 0.0],
+                "center": [0, 0, 0],
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
     },
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3, "ACTD": 1.0e-3},
