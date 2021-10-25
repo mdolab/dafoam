@@ -267,6 +267,18 @@ class DAOPTION(object):
     ##                "addToAdjoint": True,
     ##            },
     ##        },
+    ##        "COP": {
+    ##            "part1": {
+    ##                "type": "centerOfPressure",
+    ##                "source": "patchToFace",
+    ##                "patches": ["wing"],
+    ##                "axis": [1.0, 0.0, 0.0],
+    ##                "forceAxis": [0.0, 1.0, 0.0],
+    ##                "center": [0, 0, 0],
+    ##                "scale": 1.0,
+    ##                "addToAdjoint": True,
+    ##            },
+    ##        },
     ##    },
     objFunc = {}
 

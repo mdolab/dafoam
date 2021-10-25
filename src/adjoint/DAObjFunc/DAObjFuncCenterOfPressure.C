@@ -42,24 +42,33 @@ DAObjFuncCenterOfPressure::DAObjFuncCenterOfPressure(
     // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
-    scalarList dir;
-    objFuncDict_.readEntry<scalarList>("axis", dir);
-    pressureDir_[0] = dir[0];
-    pressureDir_[1] = dir[1];
-    pressureDir_[2] = dir[2];
+    scalarList axisList;
+    objFuncDict_.readEntry<scalarList>("axis", axisList);
+    axis_[0] = axisList[0];
+    axis_[1] = axisList[1];
+    axis_[2] = axisList[2];
+    // normalize
+    axis_ /= mag(axis_);
 
-    if (fabs(mag(pressureDir_) - 1.0) > 1.0e-4)
+    scalarList forceAxisList;
+    objFuncDict_.readEntry<scalarList>("forceAxis", forceAxisList);
+    forceAxis_[0] = forceAxisList[0];
+    forceAxis_[1] = forceAxisList[1];
+    forceAxis_[2] = forceAxisList[2];
+    // normalize
+    forceAxis_ /= mag(forceAxis_);
+
+    if (fabs(axis_ & forceAxis_) > 1e-8)
     {
-        FatalErrorIn(" ") << "the magnitude of the axis parameter in "
-                          << objFuncName << " " << objFuncPart << " is not 1.0!"
+        FatalErrorIn(" ") << "axis and forceAxis vectors need to be orthogonal! "
                           << abort(FatalError);
     }
 
-    scalarList center;
-    objFuncDict_.readEntry<scalarList>("center", center);
-    pressureOrigin_[0] = center[0];
-    pressureOrigin_[1] = center[1];
-    pressureOrigin_[2] = center[2];
+    scalarList centerList;
+    objFuncDict_.readEntry<scalarList>("center", centerList);
+    center_[0] = centerList[0];
+    center_[1] = centerList[1];
+    center_[2] = centerList[2];
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
 }
@@ -80,12 +89,12 @@ void DAObjFuncCenterOfPressure::calcObjFunc(
         objFuncFaceSources: List of face source (index) for this objective
 
     Output:
-        objFuncValue: the sum of objective along a chosen "axis", reduced across all processsors and scaled by "scale"
+        objFuncValue: the sum of objective along a chosen "axis", reduced across all processors and scaled by "scale"
     */
 
     // initialize objFuncValue
     objFuncValue = 0.0;
-    vector weightedPressure(0, 0, 0);
+    scalar weightedPressure = 0.0;
     scalar totalPressure = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
@@ -103,19 +112,21 @@ void DAObjFuncCenterOfPressure::calcObjFunc(
 
         // normal force
         vector fN(Sfb[patchI][faceI] * p.boundaryField()[patchI][faceI]);
-        // r vector
-        vector rVec = mesh_.Cf().boundaryField()[patchI][faceI];
+        // r vector projected to the axis vector
+        scalar r = (mesh_.Cf().boundaryField()[patchI][faceI] - center_) & axis_;
+        // force projected to force axis vector
+        scalar f = fN & forceAxis_;
         // force weighted by distance
-        weightedPressure += rVec * mag(fN);
+        weightedPressure += r * f;
         // total force
-        totalPressure += mag(fN);
+        totalPressure += f;
     }
 
     // need to reduce the sum of force across all processors
-    reduce(weightedPressure, sumOp<vector>());
+    reduce(weightedPressure, sumOp<scalar>());
     reduce(totalPressure, sumOp<scalar>());
 
-    objFuncValue = scale_ * ((weightedPressure / totalPressure) - pressureOrigin_) & pressureDir_;
+    objFuncValue = scale_ * (weightedPressure / totalPressure + (center_ & axis_));
 
     return;
 }
