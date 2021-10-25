@@ -463,7 +463,8 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
                 // Loop over globalMapping array to check if this node is already included
                 bool found = false;
                 label iPoint;
-                for (label i = 0; i < pointCounter; i++){
+                for (label i = 0; i < pointCounter; i++)
+                {
                     if (faceIPointIndexI == globalIndex[i])
                     {
                         found = true;
@@ -477,14 +478,16 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
                 assignValueCheckAD(val1, nodeForce[0]);
                 assignValueCheckAD(val2, nodeForce[1]);
                 assignValueCheckAD(val3, nodeForce[2]);
-                if (found) {
+                if (found)
+                {
                     // Add Force
                     vecArrayFX[iPoint] += val1;
                     vecArrayFY[iPoint] += val2;
                     vecArrayFZ[iPoint] += val3;
-                    }
+                }
                 // If node is not already included, add it as the newest point and add global index mapping
-                else{
+                else
+                {
                     // Add Force
                     vecArrayFX[pointCounter] = val1;
                     vecArrayFY[pointCounter] = val2;
@@ -506,7 +509,6 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
 
     VecRestoreArray(pointList, &vecArrayPointList);
 #endif
-
 
     Info << "Calculating surface force.... Completed!" << endl;
     return;
