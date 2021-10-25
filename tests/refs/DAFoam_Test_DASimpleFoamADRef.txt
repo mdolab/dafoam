@@ -20,8 +20,6 @@ Dictionary Key: shapey
 @value   0.7008636067027021 1e-05 1e-07
 @value   0.6091514202242572 1e-05 1e-07
 @value    1.418731539899734 1e-05 1e-07
-Dictionary Key: fail
-@value                    0 1e-05 1e-07
 Dictionary Key: COP
 Dictionary Key: alpha
 @value -0.002070288134350218 1e-05 1e-07
