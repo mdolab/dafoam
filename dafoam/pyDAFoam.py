@@ -428,7 +428,7 @@ class DAOPTION(object):
     ## dvName is the name of design variable to set the seed for the forward AD
     ## setting seedIndex to -1 for dFdField will assign seeds for all design variables.
     ## If reverse mode is used, the adjoint will be computed by a Jacobian free approach
-    ## refer to: Kenway et al. Effective adjoint approach for computational fluid dynamics, 
+    ## refer to: Kenway et al. Effective adjoint approach for computational fluid dynamics,
     ## Progress in Aerospace Science, 2019.
     useAD = {"mode": "reverse", "dvName": "None", "seedIndex": -9999}
 
@@ -2340,7 +2340,8 @@ class PYDAFOAM(object):
         return dFdFFD
 
     def getForces(self, groupName=None):
-        """Return the forces on this processor on the families defined by groupName.
+        """
+        Return the forces on this processor on the families defined by groupName.
         Parameters
         ----------
         groupName : str
@@ -2379,12 +2380,12 @@ class PYDAFOAM(object):
         self.solver.getForces(fX, fY, fZ, pointListTemp)
 
         # Copy data from PETSc vectors
-        forces = np.zeros((nPts,3))
-        forces[:,0] = np.copy(fX.getValues(range(0,nPts)))
-        forces[:,1] = np.copy(fY.getValues(range(0,nPts)))
-        forces[:,2] = np.copy(fZ.getValues(range(0,nPts)))
+        forces = np.zeros((nPts, 3))
+        forces[:, 0] = np.copy(fX.getValues(range(0, nPts)))
+        forces[:, 1] = np.copy(fY.getValues(range(0, nPts)))
+        forces[:, 2] = np.copy(fZ.getValues(range(0, nPts)))
 
-        pointList = np.copy(pointListTemp.getValues(range(0,nPts)))
+        pointList = np.copy(pointListTemp.getValues(range(0, nPts)))
 
         # Cleanup PETSc vectors
         fX.destroy()
