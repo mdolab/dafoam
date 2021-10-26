@@ -29,15 +29,17 @@ class DAObjFuncCenterOfPressure
 
 protected:
 
-    /// the direction to project the center of moment onto
-    vector pressureDir_;
+    /// the direction to project the center of pressure onto
+    vector axis_;
+
+    /// the direction to project the force onto
+    vector forceAxis_;
 
     /// The point to compute center of pressure about
-    vector pressureOrigin_;
-
+    vector center_;
 
 public:
-    TypeName("centerPressure");
+    TypeName("centerOfPressure");
     // Constructors
 
     //- Construct from components
