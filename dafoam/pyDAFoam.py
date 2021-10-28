@@ -309,6 +309,10 @@ class DAOPTION(object):
     ## and shows up in the constant/polyMesh/boundary file
     designSurfaces = ["None"]
 
+    ## Fluid-structure interatcion (FSI) options. This dictionary takes in the required values for
+    ## an FSI case to be used throughout the simulation.
+    fsi = {"pRef": 0.0}
+
     # *********************************************************************************************
     # ****************************** Intermediate Options *****************************************
     # *********************************************************************************************
