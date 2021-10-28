@@ -336,6 +336,10 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
     VecZeroEntries(pointList);
 
 #ifndef SolidDASolver
+    // Get reference pressure
+    scalarList p0;
+    daOptionPtr_->getAllOptions().subDict("primalBC").subDict("p0").readEntry<scalarList>("value", p0);
+
     // Generate patches, point mesh, and point boundary mesh
     const polyBoundaryMesh& patches = meshPtr_->boundaryMesh();
     const pointMesh& pMesh = pointMesh::New(meshPtr_());
@@ -408,7 +412,7 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
         // create a shorter handle for the boundary patch
         const fvPatch& patch = meshPtr_->boundary()[patchI];
         // normal force
-        vectorField fN(Sfb[patchI] * p.boundaryField()[patchI]);
+        vectorField fN(Sfb[patchI] * (p.boundaryField()[patchI] - p0[0]));
         // tangential force
         vectorField fT(Sfb[patchI] & devRhoReffb[patchI]);
         // sum them up
