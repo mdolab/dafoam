@@ -313,6 +313,9 @@ class DAOPTION(object):
     ## an FSI case to be used throughout the simulation.
     fsi = {"pRef": 0.0}
 
+    ## An option to run the primal only; no adjoint or optimization will be run
+    primalOnly = False
+
     # *********************************************************************************************
     # ****************************** Intermediate Options *****************************************
     # *********************************************************************************************
@@ -668,6 +671,20 @@ class PYDAFOAM(object):
         self.solverInitialized = 0
         self._initSolver()
 
+        # initialize the number of primal and adjoint calls
+        self.nSolvePrimals = 0
+        self.nSolveAdjoints = 0
+
+        # flags for primal and adjoint failure
+        self.primalFail = 0
+        self.adjointFail = 0
+
+        # if the primalOnly flag is on, init xvVec and wVec and return
+        if self.getOption("primalOnly"):
+            self.xvVec = None
+            self.wVec = None
+            return
+
         # initialize mesh information and read grids
         self._readMeshInfo()
 
@@ -707,14 +724,6 @@ class PYDAFOAM(object):
         self.mesh = None
         self.DVGeo = None
 
-        # initialize the number of primal and adjoint calls
-        self.nSolvePrimals = 0
-        self.nSolveAdjoints = 0
-
-        # flags for primal and adjoint failure
-        self.primalFail = 0
-        self.adjointFail = 0
-
         # objFuncValuePreIter stores the objective function value from the previous
         # iteration. When the primal solution fails, the evalFunctions function will read
         # value from self.objFuncValuePreIter
@@ -753,7 +762,7 @@ class PYDAFOAM(object):
         """
 
         self.solverRegistry = {
-            "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam", "DAPimpleFoam"],
+            "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam", "DAPimpleFoam", "DAPimpleDyMFoam"],
             "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam"],
             "Solid": ["DASolidDisplacementFoam", "DALaplacianFoam", "DAScalarTransportFoam"],
         }

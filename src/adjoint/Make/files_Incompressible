@@ -85,6 +85,7 @@ DASolver/DASimpleFoam/DASimpleFoam.C
 DASolver/DASimpleTFoam/DASimpleTFoam.C
 DASolver/DAPisoFoam/DAPisoFoam.C
 DASolver/DAPimpleFoam/DAPimpleFoam.C
+DASolver/DAPimpleDyMFoam/DAPimpleDyMFoam.C
 
 boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
 boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C

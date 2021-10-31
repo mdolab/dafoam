@@ -49,6 +49,8 @@ ext = [
             os.getenv("FOAM_SRC") + "/sampling/lnInclude",
             os.getenv("FOAM_SRC") + "/fileFormats/lnInclude",
             os.getenv("FOAM_SRC") + "/surfMesh/lnInclude",
+            os.getenv("FOAM_SRC") + "/dynamicFvMesh/lnInclude",
+            os.getenv("FOAM_SRC") + "/dynamicMesh/lnInclude",
             # These are common for all OpenFOAM executives
             os.getenv("FOAM_SRC") + "/OpenFOAM/lnInclude",
             os.getenv("FOAM_SRC") + "/OSspecific/POSIX/lnInclude",
@@ -72,6 +74,8 @@ ext = [
             "incompressibleTransportModels" + libSuffix,
             "finiteVolume" + libSuffix,
             "sampling" + libSuffix,
+            "dynamicFvMesh" + libSuffix,
+            "dynamicMesh" + libSuffix,
             "meshTools" + libSuffix,
             "fvOptions" + libSuffix,
             "DAFoamIncompressible" + libSuffix,
