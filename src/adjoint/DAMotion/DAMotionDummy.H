@@ -4,24 +4,15 @@
     Version : v2
 
     Description:
-        Child class for DAPimpleDyMFoam
+        Child class for dummy (no) motion
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAPimpleDyMFoam_H
-#define DAPimpleDyMFoam_H
+#ifndef DAMotionDummy_H
+#define DAMotionDummy_H
 
-#include "DASolver.H"
-#include "addToRunTimeSelectionTable.H"
-#include "singlePhaseTransportModel.H"
-#include "turbulentTransportModel.H"
-#include "pimpleControlDF.H"
-#include "DARegDbSinglePhaseTransportModel.H"
-#include "DARegDbTurbulenceModelIncompressible.H"
 #include "DAMotion.H"
-#include "pimpleControl.H"
-#include "dynamicFvMesh.H"
-#include "CorrectPhi.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -29,39 +20,32 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAPimpleDyMFoam Declaration
+      Class DAMotionDummy Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAPimpleDyMFoam
-    : public DASolver
+class DAMotionDummy
+    : public DAMotion
 {
 
 protected:
 
-    /// rigid body motion pointer
-    autoPtr<DAMotion> daMotionPtr_;
-
 public:
-    TypeName("DAPimpleDyMFoam");
+    TypeName("dummy");
     // Constructors
 
     //- Construct from components
-    DAPimpleDyMFoam(
-        char* argsAll,
-        PyObject* pyOptions);
+    DAMotionDummy(
+        const dynamicFvMesh& mesh,
+        const DAOption& daOption);
 
     //- Destructor
-    virtual ~DAPimpleDyMFoam()
+    virtual ~DAMotionDummy()
     {
     }
 
-    /// initialize fields and variables
-    virtual void initSolver();
+    /// update the cell displacement
+    virtual void correct();
 
-    /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

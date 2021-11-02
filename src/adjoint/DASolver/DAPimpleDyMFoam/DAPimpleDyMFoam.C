@@ -19,7 +19,8 @@ addToRunTimeSelectionTable(DASolver, DAPimpleDyMFoam, dictionary);
 DAPimpleDyMFoam::DAPimpleDyMFoam(
     char* argsAll,
     PyObject* pyOptions)
-    : DASolver(argsAll, pyOptions)
+    : DASolver(argsAll, pyOptions),
+      daMotionPtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -59,6 +60,8 @@ label DAPimpleDyMFoam::solvePrimal(
 #include "CourantNo.H"
 #include "setInitialDeltaT.H"
 
+    daMotionPtr_.reset(DAMotion::New(mesh, daOptionPtr_()));
+
     turbulence->validate();
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -74,6 +77,8 @@ label DAPimpleDyMFoam::solvePrimal(
 #include "setDeltaT.H"
 
         ++runTime;
+
+        daMotionPtr_->correct();
 
         Info << "Time = " << runTime.timeName() << nl << endl;
 

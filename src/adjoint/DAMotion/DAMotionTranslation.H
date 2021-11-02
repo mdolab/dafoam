@@ -4,24 +4,15 @@
     Version : v2
 
     Description:
-        Child class for DAPimpleDyMFoam
+        Child class for translation motion
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAPimpleDyMFoam_H
-#define DAPimpleDyMFoam_H
+#ifndef DAMotionTranslation_H
+#define DAMotionTranslation_H
 
-#include "DASolver.H"
-#include "addToRunTimeSelectionTable.H"
-#include "singlePhaseTransportModel.H"
-#include "turbulentTransportModel.H"
-#include "pimpleControlDF.H"
-#include "DARegDbSinglePhaseTransportModel.H"
-#include "DARegDbTurbulenceModelIncompressible.H"
 #include "DAMotion.H"
-#include "pimpleControl.H"
-#include "dynamicFvMesh.H"
-#include "CorrectPhi.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -29,39 +20,42 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAPimpleDyMFoam Declaration
+      Class DAMotionTranslation Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAPimpleDyMFoam
-    : public DASolver
+class DAMotionTranslation
+    : public DAMotion
 {
 
 protected:
 
-    /// rigid body motion pointer
-    autoPtr<DAMotion> daMotionPtr_;
+    scalar amplitude_;
+
+    scalar frequency_;
+
+    scalar phase_;
+
+    vector direction_ = vector::zero;
+
+    wordList patchNames_;
 
 public:
-    TypeName("DAPimpleDyMFoam");
+    TypeName("translation");
     // Constructors
 
     //- Construct from components
-    DAPimpleDyMFoam(
-        char* argsAll,
-        PyObject* pyOptions);
+    DAMotionTranslation(
+        const dynamicFvMesh& mesh,
+        const DAOption& daOption);
 
     //- Destructor
-    virtual ~DAPimpleDyMFoam()
+    virtual ~DAMotionTranslation()
     {
     }
 
-    /// initialize fields and variables
-    virtual void initSolver();
+    /// update the cell displacement
+    virtual void correct();
 
-    /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -30,6 +30,10 @@ DAStateInfo/DAStateInfoPisoFoam.C
 DAStateInfo/DAStateInfoPimpleFoam.C
 DAStateInfo/DAStateInfoSimpleTFoam.C
 
+DAMotion/DAMotion.C
+DAMotion/DAMotionDummy.C
+DAMotion/DAMotionTranslation.C
+
 DAIndex/DAIndex.C
 
 DAField/DAField.C

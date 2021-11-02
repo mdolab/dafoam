@@ -451,6 +451,10 @@ class DAOPTION(object):
     ## Progress in Aerospace Science, 2019.
     useAD = {"mode": "reverse", "dvName": "None", "seedIndex": -9999}
 
+    ## Rigid body motion for dynamic mesh
+    ## This option will be used in DAPimpleDyMFoam to simulate dynamicMesh motion
+    rigidBodyMotion = {"mode": "dummy"}
+
     # *********************************************************************************************
     # ************************************ Advance Options ****************************************
     # *********************************************************************************************
