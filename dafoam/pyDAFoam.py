@@ -2372,36 +2372,41 @@ class PYDAFOAM(object):
             Forces on this processor. Note that N may be 0, and an
             empty array of shape (0, 3) can be returned.
         """
+        Info("Computing surface forces")
         # Calculate number of surface points
-        nPts, nCells = self._getSurfaceSize(self.allWallsGroup)
+        nPts, _ = self._getSurfaceSize(self.allWallsGroup)
 
         # Initialize PETSc vectors
         pointListTemp = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         pointListTemp.setSizes((nPts, PETSc.DECIDE), bsize=1)
         pointListTemp.setFromOptions()
+        pointListTemp.zeroEntries()
 
         fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         fX.setSizes((nPts, PETSc.DECIDE), bsize=1)
         fX.setFromOptions()
+        fX.zeroEntries()
 
         fY = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         fY.setSizes((nPts, PETSc.DECIDE), bsize=1)
         fY.setFromOptions()
+        fY.zeroEntries()
 
         fZ = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         fZ.setSizes((nPts, PETSc.DECIDE), bsize=1)
         fZ.setFromOptions()
+        fZ.zeroEntries()
 
         # Compute forces
         self.solver.getForces(fX, fY, fZ, pointListTemp)
 
         # Copy data from PETSc vectors
         forces = np.zeros((nPts, 3))
-        forces[:, 0] = np.copy(fX.getValues(range(0, nPts)))
-        forces[:, 1] = np.copy(fY.getValues(range(0, nPts)))
-        forces[:, 2] = np.copy(fZ.getValues(range(0, nPts)))
+        forces[:, 0] = np.copy(fX.getArray())
+        forces[:, 1] = np.copy(fY.getArray())
+        forces[:, 2] = np.copy(fZ.getArray())
 
-        pointList = np.copy(pointListTemp.getValues(range(0, nPts)))
+        pointList = np.copy(pointListTemp.getArray())
 
         # Cleanup PETSc vectors
         fX.destroy()
