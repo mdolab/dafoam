@@ -2419,9 +2419,9 @@ class PYDAFOAM(object):
         forces = forces[indices]
 
         # Print total force
-        fXSum = np.sum(forces[:,0])
-        fYSum = np.sum(forces[:,1])
-        fZSum = np.sum(forces[:,2])
+        fXSum = np.sum(forces[:, 0])
+        fYSum = np.sum(forces[:, 1])
+        fZSum = np.sum(forces[:, 2])
 
         fXTot = self.comm.allreduce(fXSum, op=MPI.SUM)
         fYTot = self.comm.allreduce(fYSum, op=MPI.SUM)
