@@ -327,14 +327,6 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
         forces : a (nPoint x 3) array of forces for all of the nodes
         of the desired patches.
     */
-    Info << "Calculating surface forces" << endl;
-    // Zero point force arrays
-    VecZeroEntries(fX);
-    VecZeroEntries(fY);
-    VecZeroEntries(fZ);
-
-    VecZeroEntries(pointList);
-
 #ifndef SolidDASolver
     // Get reference pressure
     scalar pRef;
@@ -375,8 +367,6 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
         label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
         nPoints += boundaryMesh[patchIPoints].size();
     }
-
-    Info << "Total number of points: " << nPoints << endl;
 
     // Initialize surface field for face-centered forces
     volVectorField volumeForceField(
@@ -512,9 +502,8 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
     VecRestoreArray(fZ, &vecArrayFZ);
 
     VecRestoreArray(pointList, &vecArrayPointList);
-#endif
 
-    Info << "Calculating surface force.... Completed!" << endl;
+#endif
     return;
 }
 
