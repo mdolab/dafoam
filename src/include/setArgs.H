@@ -15,7 +15,7 @@ List<word> argvList;
 
 char* pch;
 pch = strtok(argsAll_, " ");
-int argc = 0;
+argc = 0;
 while (pch != NULL)
 {
     argc++;
@@ -23,7 +23,7 @@ while (pch != NULL)
     pch = strtok(NULL, " ");
 }
 
-char** argv = new char*[argc];
+argv = new char*[argc];
 for (int i = 0; i < argc; i++)
 {
     argv[i] = const_cast<char*>(argvList[i].c_str());

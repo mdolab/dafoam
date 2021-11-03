@@ -30,6 +30,11 @@ DAStateInfo/DAStateInfoPisoFoam.C
 DAStateInfo/DAStateInfoPimpleFoam.C
 DAStateInfo/DAStateInfoSimpleTFoam.C
 
+DAMotion/DAMotion.C
+DAMotion/DAMotionDummy.C
+DAMotion/DAMotionTranslation.C
+DAMotion/DAMotionTranslationCoupled.C
+
 DAIndex/DAIndex.C
 
 DAField/DAField.C
@@ -85,6 +90,7 @@ DASolver/DASimpleFoam/DASimpleFoam.C
 DASolver/DASimpleTFoam/DASimpleTFoam.C
 DASolver/DAPisoFoam/DAPisoFoam.C
 DASolver/DAPimpleFoam/DAPimpleFoam.C
+DASolver/DAPimpleDyMFoam/DAPimpleDyMFoam.C
 
 boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
 boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
