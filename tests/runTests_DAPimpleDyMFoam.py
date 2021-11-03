@@ -10,6 +10,8 @@ from testFuncs import *
 
 os.chdir("./input/NACA0012DynamicMesh")
 
+replace_text_in_file("system/controlDict", "endTime         0.01;", "endTime         0.001;")
+
 daOptions = {
     "solverName": "DAPimpleDyMFoam",
     "primalOnly": True,

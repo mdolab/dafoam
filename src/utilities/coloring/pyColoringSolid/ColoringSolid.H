@@ -46,6 +46,12 @@ private:
     /// all the arguments
     char* argsAll_;
 
+    /// number of arguments parsed from argsAll_
+    int argc;
+
+    /// the actual arguments parsed from argsAll_
+    char** argv; 
+
     /// all options in DAFoam
     PyObject* pyOptions_;
 

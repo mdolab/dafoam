@@ -48,8 +48,10 @@ label DAPimpleDyMFoam::solvePrimal(
     Output:
         wVec: state variable vector
     */
+for(int i=0;i<argc;i++)
+Info<<argv[i]<<endl;
 
-#include "setArgs.H"
+//#include "setArgs.H"
 #include "setRootCase.H"
 #include "createTime.H"
 #include "createDynamicFvMesh.H"
