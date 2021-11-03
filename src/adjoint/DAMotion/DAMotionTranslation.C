@@ -31,6 +31,7 @@ DAMotionTranslation::DAMotionTranslation(
     direction_[0] = dirList[0];
     direction_[1] = dirList[1];
     direction_[2] = dirList[2];
+    daOption_.getAllOptions().subDict("rigidBodyMotion").readEntry<wordList>("patchNames", patchNames_);
 }
 
 void DAMotionTranslation::correct()

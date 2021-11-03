@@ -28,7 +28,6 @@ class DAMotionTranslation
 {
 
 protected:
-
     /// amplitude of the translation oscillation
     scalar amplitude_;
 
@@ -57,7 +56,6 @@ public:
 
     /// update the cell displacement
     virtual void correct();
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

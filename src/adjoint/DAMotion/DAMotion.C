@@ -25,7 +25,6 @@ DAMotion::DAMotion(
     : mesh_(mesh),
       daOption_(daOption)
 {
-    daOption_.getAllOptions().subDict("rigidBodyMotion").readEntry<wordList>("patchNames", patchNames_);
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
