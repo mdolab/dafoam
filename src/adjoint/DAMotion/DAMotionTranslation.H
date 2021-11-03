@@ -4,7 +4,7 @@
     Version : v2
 
     Description:
-        Child class for translation motion
+        Child class for translation oscillation motion
 
 \*---------------------------------------------------------------------------*/
 
@@ -29,15 +29,17 @@ class DAMotionTranslation
 
 protected:
 
+    /// amplitude of the translation oscillation
     scalar amplitude_;
 
+    /// frequency of the translation oscillation
     scalar frequency_;
 
+    /// phase of the translation oscillation
     scalar phase_;
 
+    /// direction of the translation oscillation
     vector direction_ = vector::zero;
-
-    wordList patchNames_;
 
 public:
     TypeName("translation");

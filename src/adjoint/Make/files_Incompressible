@@ -33,6 +33,7 @@ DAStateInfo/DAStateInfoSimpleTFoam.C
 DAMotion/DAMotion.C
 DAMotion/DAMotionDummy.C
 DAMotion/DAMotionTranslation.C
+DAMotion/DAMotionTranslationCoupled.C
 
 DAIndex/DAIndex.C
 

@@ -15,6 +15,7 @@
 #include "fvOptions.H"
 #include "DAOption.H"
 #include "dynamicFvMesh.H"
+#include "fvc.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -41,6 +42,9 @@ protected:
 
     /// DAOption object
     const DAOption& daOption_;
+
+    /// patch names for the moving body
+    wordList patchNames_;
 
 public:
     /// Runtime type information
@@ -79,6 +83,9 @@ public:
 
     /// update the cell displacement
     virtual void correct() = 0;
+
+    /// calculate the force
+    vector getForce(const dynamicFvMesh& mesh);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

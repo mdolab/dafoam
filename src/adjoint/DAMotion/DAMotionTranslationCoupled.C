@@ -5,27 +5,29 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAMotionTranslation.H"
+#include "DAMotionTranslationCoupled.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAMotionTranslation, 0);
-addToRunTimeSelectionTable(DAMotion, DAMotionTranslation, dictionary);
+defineTypeNameAndDebug(DAMotionTranslationCoupled, 0);
+addToRunTimeSelectionTable(DAMotion, DAMotionTranslationCoupled, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAMotionTranslation::DAMotionTranslation(
+DAMotionTranslationCoupled::DAMotionTranslationCoupled(
     const dynamicFvMesh& mesh,
     const DAOption& daOption)
     : DAMotion(
         mesh,
         daOption)
 {
-    amplitude_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("amplitude");
-    frequency_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("frequency");
-    phase_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("phase");
+    M_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("mass");
+    C_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("damping");
+    K_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("stiffness");
+    y0_ = daOption_.getAllOptions().subDict("rigidBodyMotion").lookupOrDefault<scalar>("y0", 0.0);
+    V0_ = daOption_.getAllOptions().subDict("rigidBodyMotion").lookupOrDefault<scalar>("V0", 0.0);
     scalarList dirList;
     daOption_.getAllOptions().subDict("rigidBodyMotion").readEntry<scalarList>("direction", dirList);
     direction_[0] = dirList[0];
@@ -33,16 +35,22 @@ DAMotionTranslation::DAMotionTranslation(
     direction_[2] = dirList[2];
 }
 
-void DAMotionTranslation::correct()
+void DAMotionTranslationCoupled::correct()
 {
     volVectorField& cellDisp =
         const_cast<volVectorField&>(mesh_.thisDb().lookupObject<volVectorField>("cellDisplacement"));
 
-    scalar currentTime = mesh_.time().value();
+    scalar dT = mesh_.time().deltaT().value();
 
-    const scalar& pi = Foam::constant::mathematical::pi;
+    vector force = this->getForce(mesh_);
+    scalar yForce = force & direction_;
 
-    vector dy = amplitude_ * sin(2.0 * pi * frequency_ * currentTime + phase_) * direction_;
+    // Euler method to solve the mass-spring-damper model
+    y_ = y0_ + dT * V0_;
+    V_ = V0_ + dT * (yForce - C_ * V0_ - K_ * y0_) / M_;
+
+    y0_ = y_;
+    V0_ = V_;
 
     forAll(patchNames_, idxI)
     {
@@ -51,9 +59,12 @@ void DAMotionTranslation::correct()
 
         forAll(cellDisp.boundaryField()[patchI], faceI)
         {
-            cellDisp.boundaryFieldRef()[patchI][faceI] = dy;
+            cellDisp.boundaryFieldRef()[patchI][faceI] = y_ * direction_;
         }
     }
+
+    // print information
+    Info << "yForce: " << yForce << "  y: " << y_ << "  V: " << V_ << endl;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -25,6 +25,7 @@ DAMotion::DAMotion(
     : mesh_(mesh),
       daOption_(daOption)
 {
+    daOption_.getAllOptions().subDict("rigidBodyMotion").readEntry<wordList>("patchNames", patchNames_);
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
@@ -69,6 +70,38 @@ autoPtr<DAMotion> DAMotion::New(
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+vector DAMotion::getForce(const dynamicFvMesh& mesh)
+{
+
+    const objectRegistry& db = mesh.thisDb();
+    const volScalarField& p = db.lookupObject<volScalarField>("p");
+    const volScalarField& nut = db.lookupObject<volScalarField>("nut");
+    const volScalarField& nu = db.lookupObject<volScalarField>("nu");
+    const volVectorField& U = db.lookupObject<volVectorField>("U");
+
+    volSymmTensorField tdevRhoReff("devRhoReff", -(nu + nut) * dev(twoSymm(fvc::grad(U))));
+
+    const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff.boundaryField();
+
+    // iterate over patches and extract boundary surface forces
+    vector force(vector::zero);
+    forAll(patchNames_, idxI)
+    {
+        // get the patch id label
+        label patchI = mesh.boundaryMesh().findPatchID(patchNames_[idxI]);
+        // normal force
+        vectorField fN(mesh.Sf().boundaryField()[patchI] * p.boundaryField()[patchI]);
+        // tangential force
+        vectorField fT(mesh.Sf().boundaryField()[patchI] & devRhoReffb[patchI]);
+        // sum them up
+        forAll(mesh.boundaryMesh()[patchI], faceI)
+        {
+            force += fN[faceI] + fT[faceI];
+        }
+    }
+
+    return force;
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
