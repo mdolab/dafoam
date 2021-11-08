@@ -52,6 +52,9 @@ protected:
 
     /// spring stiffness constant
     scalar K_;
+    
+    /// scaling factor for force
+    scalar forceScale_;
 
     /// spring oscillation direction
     vector direction_ = vector::zero;

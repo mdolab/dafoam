@@ -26,6 +26,7 @@ DAMotionTranslationCoupled::DAMotionTranslationCoupled(
     M_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("mass");
     C_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("damping");
     K_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("stiffness");
+    forceScale_ = daOption_.getAllOptions().subDict("rigidBodyMotion").getScalar("forceScale");
     y0_ = daOption_.getAllOptions().subDict("rigidBodyMotion").lookupOrDefault<scalar>("y0", 0.0);
     V0_ = daOption_.getAllOptions().subDict("rigidBodyMotion").lookupOrDefault<scalar>("V0", 0.0);
     scalarList dirList;
@@ -44,7 +45,7 @@ void DAMotionTranslationCoupled::correct()
     scalar dT = mesh_.time().deltaT().value();
 
     vector force = this->getForce(mesh_);
-    scalar yForce = force & direction_;
+    scalar yForce = force & direction_ * forceScale_;
 
     // Euler method to solve the mass-spring-damper model
     y_ = y0_ + dT * V0_;

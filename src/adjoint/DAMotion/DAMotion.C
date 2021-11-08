@@ -99,6 +99,10 @@ vector DAMotion::getForce(const dynamicFvMesh& mesh)
         }
     }
 
+    reduce(force[0], sumOp<scalar>());
+    reduce(force[1], sumOp<scalar>());
+    reduce(force[2], sumOp<scalar>());
+
     return force;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
