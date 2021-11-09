@@ -35,6 +35,7 @@ DAMotionTranslationCoupled::DAMotionTranslationCoupled(
     direction_[1] = dirList[1];
     direction_[2] = dirList[2];
     daOption_.getAllOptions().subDict("rigidBodyMotion").readEntry<wordList>("patchNames", patchNames_);
+    t_ = 0.0;
 }
 
 void DAMotionTranslationCoupled::correct()
@@ -45,6 +46,8 @@ void DAMotionTranslationCoupled::correct()
     scalar dT = mesh_.time().deltaT().value();
 
     vector force = this->getForce(mesh_);
+    // NOTE: we scale the force here. This can be useful if we simulate a 2D geometry and 
+    // want to scale the force to the full 3D model for spring dynamics
     scalar yForce = force & direction_ * forceScale_;
 
     // Euler method to solve the mass-spring-damper model
@@ -65,8 +68,10 @@ void DAMotionTranslationCoupled::correct()
         }
     }
 
+    t_ += dT;
+
     // print information
-    Info << "yForce: " << yForce << "  y: " << y_ << "  V: " << V_ << endl;
+    Info << "Time: " << t_ << " yForce: " << yForce << "  y: " << y_ << "  V: " << V_ << endl;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

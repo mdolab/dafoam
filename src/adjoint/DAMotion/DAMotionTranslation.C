@@ -39,11 +39,11 @@ void DAMotionTranslation::correct()
     volVectorField& cellDisp =
         const_cast<volVectorField&>(mesh_.thisDb().lookupObject<volVectorField>("cellDisplacement"));
 
-    scalar currentTime = mesh_.time().value();
+    scalar t = mesh_.time().value();
 
     const scalar& pi = Foam::constant::mathematical::pi;
 
-    vector dy = amplitude_ * sin(2.0 * pi * frequency_ * currentTime + phase_) * direction_;
+    scalar y = amplitude_ * sin(2.0 * pi * frequency_ * t + phase_);
 
     forAll(patchNames_, idxI)
     {
@@ -52,9 +52,12 @@ void DAMotionTranslation::correct()
 
         forAll(cellDisp.boundaryField()[patchI], faceI)
         {
-            cellDisp.boundaryFieldRef()[patchI][faceI] = dy;
+            cellDisp.boundaryFieldRef()[patchI][faceI] = y * direction_;
         }
     }
+
+    // print information
+    Info << "Time: " << t << "  y: " << y << endl;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
