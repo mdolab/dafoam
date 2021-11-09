@@ -71,6 +71,9 @@ protected:
     /// velocity from the previous step
     scalar V0_;
 
+    /// the simulation time based on dT and it should be same as the runtime
+    scalar t_;
+
 public:
     TypeName("translationCoupled");
     // Constructors
