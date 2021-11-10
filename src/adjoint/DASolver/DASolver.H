@@ -627,6 +627,9 @@ public:
     /// return the forces of the desired fluid-structure-interaction patches
     void getForces(Vec fX, Vec fY, Vec fZ, Vec pointList);
 
+    /// compute the forces of the desired fluid-structure-interation patches
+    void getForcesInternal(List<scalar> &fX, List<scalar> &fY, List<scalar> &fZ, List<label> &pointList);
+
     /// print all DAOption
     void printAllOptions()
     {

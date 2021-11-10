@@ -322,10 +322,66 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
     Description:
         Compute the nodal forces for all of the nodes on the
         fluid-structure-interaction patches.
+    */
+#ifndef SolidDASolver
+    // Allocate arrays
+    List<scalar> fXTemp(0);
+    List<scalar> fYTemp(0);
+    List<scalar> fZTemp(0);
+    List<label> pointListTemp(0);
 
-    Output:
-        forces : a (nPoint x 3) array of forces for all of the nodes
-        of the desired patches.
+    // Compute forces
+    getForcesInternal(fXTemp, fYTemp, fZTemp, pointListTemp);
+
+    // Zero PETSc Arrays
+    VecZeroEntries(fX);
+    VecZeroEntries(fY);
+    VecZeroEntries(fZ);
+    VecZeroEntries(pointList);
+
+    // Get PETSc arrays
+    PetscScalar* vecArrayFX;
+    VecGetArray(fX, &vecArrayFX);
+    PetscScalar* vecArrayFY;
+    VecGetArray(fY, &vecArrayFY);
+    PetscScalar* vecArrayFZ;
+    VecGetArray(fZ, &vecArrayFZ);
+    PetscScalar* vecArrayPointList;
+    VecGetArray(pointList, &vecArrayPointList);
+
+    // Transfer to PETSc Array
+    label pointCounter = 0;
+    forAll(pointListTemp, cI){
+        // Get Values
+        PetscScalar val1, val2, val3, val4;
+        assignValueCheckAD(val1, fXTemp[pointCounter]);
+        assignValueCheckAD(val2, fYTemp[pointCounter]);
+        assignValueCheckAD(val3, fZTemp[pointCounter]);
+        assignValueCheckAD(val4, pointListTemp[pointCounter]);
+
+        // Set Values
+        vecArrayFX[pointCounter] = val1;
+        vecArrayFY[pointCounter] = val2;
+        vecArrayFZ[pointCounter] = val3;
+        vecArrayPointList[pointCounter] = val4;
+
+        // Increment counter
+        pointCounter += 1;
+    }
+    VecRestoreArray(fX, &vecArrayFX);
+    VecRestoreArray(fY, &vecArrayFY);
+    VecRestoreArray(fZ, &vecArrayFZ);
+    VecRestoreArray(pointList, &vecArrayPointList);
+#endif
+    return;
+}
+
+void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ, List<label>& pointList)
+{
+    /*
+    Description:
+        Compute the nodal forces for all of the nodes on the
+        fluid-structure-interaction patches.
     */
 #ifndef SolidDASolver
     // Get reference pressure
@@ -367,6 +423,17 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
         label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
         nPoints += boundaryMesh[patchIPoints].size();
     }
+
+    // Resize input lists and generate temporary unsorted versions
+    fX.resize(nPoints);
+    fY.resize(nPoints);
+    fZ.resize(nPoints);
+    pointList.resize(nPoints);
+
+    List<scalar> fXTemp(nPoints);
+    List<scalar> fYTemp(nPoints);
+    List<scalar> fZTemp(nPoints);
+    List<label> pointListTemp(nPoints);
 
     // Initialize surface field for face-centered forces
     volVectorField volumeForceField(
@@ -424,16 +491,6 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
 
     vector nodeForce(vector::zero);
 
-    PetscScalar* vecArrayFX;
-    VecGetArray(fX, &vecArrayFX);
-    PetscScalar* vecArrayFY;
-    VecGetArray(fY, &vecArrayFY);
-    PetscScalar* vecArrayFZ;
-    VecGetArray(fZ, &vecArrayFZ);
-
-    PetscScalar* vecArrayPointList;
-    VecGetArray(pointList, &vecArrayPointList);
-
     forAll(patchListSort, cI)
     {
         // get the patch id label
@@ -456,7 +513,7 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
 
                 // Loop over globalMapping array to check if this node is already included
                 bool found = false;
-                label iPoint;
+                label iPoint = -1;
                 for (label i = 0; i < pointCounter; i++)
                 {
                     if (faceIPointIndexI == globalIndex[i])
@@ -468,26 +525,22 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
                 }
 
                 // If node is already included, add value to its entry
-                PetscScalar val1, val2, val3;
-                assignValueCheckAD(val1, nodeForce[0]);
-                assignValueCheckAD(val2, nodeForce[1]);
-                assignValueCheckAD(val3, nodeForce[2]);
                 if (found)
                 {
                     // Add Force
-                    vecArrayFX[iPoint] += val1;
-                    vecArrayFY[iPoint] += val2;
-                    vecArrayFZ[iPoint] += val3;
+                    fXTemp[iPoint] += nodeForce[0];
+                    fYTemp[iPoint] += nodeForce[1];
+                    fZTemp[iPoint] += nodeForce[2];
                 }
                 // If node is not already included, add it as the newest point and add global index mapping
                 else
                 {
                     // Add Force
-                    vecArrayFX[pointCounter] = val1;
-                    vecArrayFY[pointCounter] = val2;
-                    vecArrayFZ[pointCounter] = val3;
+                    fXTemp[pointCounter] = nodeForce[0];
+                    fYTemp[pointCounter] = nodeForce[1];
+                    fZTemp[pointCounter] = nodeForce[2];
                     // Add to Node Order Array
-                    vecArrayPointList[pointCounter] = faceIPointIndexI;
+                    pointListTemp[pointCounter] = faceIPointIndexI;
                     // Add to Global - Local Mapping
                     globalIndex[pointCounter] = faceIPointIndexI;
 
@@ -497,12 +550,27 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
             }
         }
     }
-    VecRestoreArray(fX, &vecArrayFX);
-    VecRestoreArray(fY, &vecArrayFY);
-    VecRestoreArray(fZ, &vecArrayFZ);
 
-    VecRestoreArray(pointList, &vecArrayPointList);
+    // Sort nodes in increasing order based on pointList
+    SortableList<label> pointListSort(pointListTemp);
 
+    // Iterate through pointList and sort the temp force arrays
+    for (label i = 0; i < nPoints; i++){
+        // Search for corresponding entry in unsorted array
+        label iPoint = -1;
+        for (label j = 0; j < nPoints; j++){
+            if (pointListSort[i] == pointListTemp[j]){
+                iPoint = j;
+                break;
+            }
+        }
+
+        // Enter point in sorted arrays
+        fX[i] = fXTemp[iPoint];
+        fY[i] = fYTemp[iPoint];
+        fZ[i] = fZTemp[iPoint];
+        pointList[i] = pointListTemp[iPoint];
+    }
 #endif
     return;
 }
