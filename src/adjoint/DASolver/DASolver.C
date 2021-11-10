@@ -353,17 +353,16 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
     label pointCounter = 0;
     forAll(pointListTemp, cI){
         // Get Values
-        PetscScalar val1, val2, val3, val4;
+        PetscScalar val1, val2, val3;
         assignValueCheckAD(val1, fXTemp[pointCounter]);
         assignValueCheckAD(val2, fYTemp[pointCounter]);
         assignValueCheckAD(val3, fZTemp[pointCounter]);
-        assignValueCheckAD(val4, pointListTemp[pointCounter]);
 
         // Set Values
         vecArrayFX[pointCounter] = val1;
         vecArrayFY[pointCounter] = val2;
         vecArrayFZ[pointCounter] = val3;
-        vecArrayPointList[pointCounter] = val4;
+        vecArrayPointList[pointCounter] = pointListTemp[pointCounter];
 
         // Increment counter
         pointCounter += 1;
