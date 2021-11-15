@@ -422,6 +422,13 @@ public:
         const Vec psi,
         Vec dRdXvTPsi);
 
+    /// compute dForcedXv
+    void calcdForcedXvAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dForcedXv);
+
     /// compute dFdXv AD
     void calcdFdXvAD(
         const Vec xvVec,
@@ -436,6 +443,12 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdActTPsi);
+
+    void calcdForcedWAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dForcedW);
 
     /// compute dFdACT AD
     void calcdFdACTAD(
@@ -476,8 +489,14 @@ public:
     /// register all residuals as the output for reverse-mode AD
     void registerResidualOutput4AD();
 
+    /// register all force as the ouptut for referse-mod AD
+    void registerForceOutput4AD(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ);
+
     /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
     void assignVec2ResidualGradient(Vec vecX);
+
+    /// assign the reverse-mode AD input seeds from fBarVec to the force vectors in OpenFOAM
+    void assignVec2ForceGradient(Vec fBarVec, List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ);
 
     /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
     void assignStateGradient2Vec(
@@ -626,6 +645,9 @@ public:
 
     /// return the forces of the desired fluid-structure-interaction patches
     void getForces(Vec fX, Vec fY, Vec fZ, Vec pointList);
+
+    /// return the number of points used for force calculation
+    label nForcePoints();
 
     /// compute the forces of the desired fluid-structure-interation patches
     void getForcesInternal(List<scalar> &fX, List<scalar> &fY, List<scalar> &fZ, List<label> &pointList);

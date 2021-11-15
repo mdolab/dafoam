@@ -119,6 +119,16 @@ public:
         DASolverPtr_->calcdRdXvTPsiAD(xvVec, wVec, psi, dRdXvTPsi);
     }
 
+    /// compute dForcedXv
+    void calcdForcedXvAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dForcedW)
+    {
+        DASolverPtr_->calcdForcedXvAD(xvVec, wVec, fBarVec, dForcedW);
+    }
+
     /// compute dRdAct^T*Psi
     void calcdRdActTPsiAD(
         const Vec xvVec,
@@ -128,6 +138,16 @@ public:
         Vec dRdActTPsi)
     {
         DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
+    }
+
+    /// compute dForcedW
+    void calcdForcedWAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dForcedW)
+    {
+        DASolverPtr_->calcdForcedWAD(xvVec, wVec, fBarVec, dForcedW);
     }
 
     /// compute dRdAOA^T*Psi
