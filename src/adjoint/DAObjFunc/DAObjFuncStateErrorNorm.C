@@ -62,6 +62,10 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
     }
+    ic (stateType_ == "profile")
+    {
+        objFuncDict_.readEntry<scalar>("weightingLimit", weightingLimit_);
+    }
 
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
     // this objFunc only depends on the state variable at the zero level cell
@@ -141,6 +145,31 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
 
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
+        }
+        else if (stateType_ == "ReynoldsShearStress")
+        {
+            const volSymmTensorField& stateRef = db.lookupObject<volSymmTensorField>(stateRefName_);
+
+            volScalarField TauXYDNS(stateRef.component(symmTensor::XY)); 
+
+            // read velocity and eddy viscosity field to compute the Reynold stresses
+            const volVectorField& U_ = db.lookupObject<volVectorField>("U");
+            const volScalarField& nut_ = db.lookupObject<volScalarField>("nut");
+
+            // compute the Reynolds stress, assume ((2.0/3.0)*I)*tk() term is zero (true for S-A model)
+            volSymmTensorField Tau(-(nut_)*dev(twoSymm(fvc::grad(U_))));
+            // extract the XY component
+            volScalarField TauXY(Tau.component(symmTensor::XY)); 
+
+            forAll(objFuncCellSources, idxI)
+            {
+                const label& cellI = objFuncCellSources[idxI];
+                objFuncCellValues[idxI] = (sqr(TauXY[cellI] - TauXYDNS[cellI]));
+                objFuncValue += objFuncCellValues[idxI];
+            }
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+
         }
     }
 

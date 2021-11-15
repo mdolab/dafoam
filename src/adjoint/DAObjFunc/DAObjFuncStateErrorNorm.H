@@ -56,6 +56,9 @@ protected:
     /// the reference pressure for Cp calculation
     scalar pRef_;
 
+    /// the limit beyond which weighting is applied for profile data 
+    scalar weightingLimit_; 
+
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;
 
