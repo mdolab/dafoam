@@ -30,12 +30,12 @@ os.chdir("./input/CurvedCubeSnappyHexMesh")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.compressible 0")
-    os.system("cp -r constant/turbulenceProperties.ke constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
+
+replace_text_in_file("system/fvSchemes", "meshWave", "meshWaveFrozen")
 
 U0 = 50.0
 p0 = 101325.0
-k0 = 0.06
-epsilon0 = 2.16
 T0 = 300.0
 A0 = 1.0
 rho0 = 1.0
@@ -45,14 +45,12 @@ aeroOptions = {
     "solverName": "DARhoSimpleFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
-    "adjJacobianOption": "JacobianFree",
+    "useAD": {"mode": "reverse"},
     "primalMinResTol": 1e-12,
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
         "T0": {"variable": "T", "patches": ["inlet"], "value": [T0]},
-        "k0": {"variable": "k", "patches": ["inlet"], "value": [k0]},
-        "epsilon0": {"variable": "epsilon", "patches": ["inlet"], "value": [epsilon0]},
         "useWallFunction": False,
     },
     "primalVarBounds": {
@@ -80,7 +78,7 @@ aeroOptions = {
             "expM": 1.0,
             "expN": 0.5,
             "adjustThrust": 1,
-            "targetThrust": 1.2
+            "targetThrust": 1.2,
         },
     },
     "objFunc": {
@@ -150,7 +148,7 @@ aeroOptions = {
                 "isSquare": 0,
                 "scale": 1.0,
                 "addToAdjoint": True,
-            }
+            },
         },
         "VOL1": {
             "part1": {
@@ -168,8 +166,7 @@ aeroOptions = {
         },
     },
     "adjStateOrdering": "cell",
-    "debug": True,
-    "normalizeStates": {"U": U0, "p": p0, "k": k0, "epsilon": epsilon0, "phi": 1.0, "T": T0},
+    "normalizeStates": {"U": U0, "p": p0, "nuTilda": 1e-4, "phi": 1.0, "T": T0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
@@ -193,10 +190,12 @@ FFDFile = "./FFD/bumpFFD.xyz"
 DVGeo = DVGeometry(FFDFile)
 DVGeo.addRefAxis("dummyAxis", xFraction=0.25, alignIndex="k")
 
+
 def uin(val, geo):
     inletU = float(val[0])
     DASolver.setOption("primalBC", {"UIn": {"variable": "U", "patches": ["inlet"], "value": [inletU, 0.0, 0.0]}})
     DASolver.updateDAOption()
+
 
 def actuator(val, geo):
     actX = float(val[0])
@@ -225,11 +224,12 @@ def actuator(val, geo):
                 "expM": actExpM,
                 "expN": actExpN,
                 "adjustThrust": 1,
-                "targetThrust": 1.2
+                "targetThrust": 1.2,
             },
         },
     )
     DASolver.updateDAOption()
+
 
 # select points
 pts = DVGeo.getLocalIndex(0)
@@ -283,6 +283,13 @@ else:
     funcs, fail = optFuncs.calcObjFuncValues(xDV)
     funcsSens = {}
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
+    psiVec = DASolver.wVec.duplicate()
+    psiVec.set(1.0)
+    prodVec = DASolver.wVec.duplicate()
+    DASolver.solverAD.calcdRdWTPsiAD(DASolver.xvVec, DASolver.wVec, psiVec, prodVec)
+    if abs(prodVec.norm() - 4351730273.14912) / 4351730273.14912 > 1e-3:
+        print("prodVec.norm() failed!", prodVec.norm())
+        exit(1)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-5, 1e-7)

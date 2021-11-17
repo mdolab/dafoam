@@ -22,6 +22,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initSolver()
         int solvePrimal(PetscVec, PetscVec)
         void calcdRdWT(PetscVec, PetscVec, int, PetscMat)
+        void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree(PetscVec, PetscVec)
         void destroydRdWTMatrixFree()
         void calcdFdW(PetscVec, PetscVec, char *, PetscVec)
@@ -42,8 +43,6 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdBCTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdFdFFD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdFdXvAD(PetscVec, PetscVec, char *, char*, PetscVec)
-        void calcdFdAOAAD(PetscVec, PetscVec, char *, char*, PetscVec)
-        void calcdFdBCAD(PetscVec, PetscVec, char *, char*, PetscVec)
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
@@ -62,6 +61,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getNLocalCells()
         int checkMesh()
         double getObjFuncValue(char *)
+        void getForces(PetscVec, PetscVec, PetscVec, PetscVec)
         void printAllOptions()
         void updateDAOption(object)
         double getPrevPrimalSolTime()
@@ -83,6 +83,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void updateBoundaryConditions(char *, char *)
         void calcPrimalResidualStatistics(char *)
         double getForwardADDerivVal(char *)
+        void calcResidualVec(PetscVec)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -131,6 +132,9 @@ cdef class pyDASolvers:
     
     def calcdRdWT(self, Vec xvVec, Vec wVec, isPC, Mat dRdWT):
         self._thisptr.calcdRdWT(xvVec.vec, wVec.vec, isPC, dRdWT.mat)
+    
+    def calcdRdWTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdWTPsi):
+        self._thisptr.calcdRdWTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdWTPsi.vec)
     
     def initializedRdWTMatrixFree(self, Vec xvVec, Vec wVec):
         self._thisptr.initializedRdWTMatrixFree(xvVec.vec, wVec.vec)
@@ -191,12 +195,6 @@ cdef class pyDASolvers:
 
     def calcdFdXvAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdXv):
         self._thisptr.calcdFdXvAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdXv.vec)
-    
-    def calcdFdAOAAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdAOA):
-        self._thisptr.calcdFdAOAAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdAOA.vec)
-    
-    def calcdFdBCAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdBC):
-        self._thisptr.calcdFdBCAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdBC.vec)
 
     def calcdRdACT(self, Vec xvVec, Vec wVec, designVarName, designVarType, Mat dRdACT):
         self._thisptr.calcdRdACT(xvVec.vec, wVec.vec, designVarName, designVarType, dRdACT.mat)
@@ -264,6 +262,9 @@ cdef class pyDASolvers:
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
 
+    def getForces(self, Vec fX, Vec fY, Vec fZ, Vec pointList):
+        self._thisptr.getForces(fX.vec, fY.vec, fZ.vec, pointList.vec)
+
     def printAllOptions(self):
         self._thisptr.printAllOptions()
 
@@ -311,3 +312,6 @@ cdef class pyDASolvers:
     
     def getForwardADDerivVal(self, objFuncName):
         return self._thisptr.getForwardADDerivVal(objFuncName)
+    
+    def calcResidualVec(self, Vec resVec):
+        self._thisptr.calcResidualVec(resVec.vec)

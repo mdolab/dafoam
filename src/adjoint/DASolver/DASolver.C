@@ -8,6 +8,9 @@
 #include "DASolver.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// initialize the static variable, which will be used in forward mode AD
+// computation for AOA derivatives
+scalar Foam::DAUtility::angleOfAttackRadForwardAD = -9999.0;
 
 namespace Foam
 {
@@ -33,8 +36,7 @@ DASolver::DASolver(
       daFieldPtr_(nullptr),
       daCheckMeshPtr_(nullptr),
       daLinearEqnPtr_(nullptr),
-      daResidualPtr_(nullptr),
-      objFuncHistFilePtr_(nullptr)
+      daResidualPtr_(nullptr)
 #ifdef CODI_AD_REVERSE
       ,
       globalADTape_(codi::RealReverse::getGlobalTape())
@@ -101,25 +103,38 @@ label DASolver::loop(Time& runTime)
         because the runTime.loop() and simple.loop() give us seg fault...
     */
 
-    // we write the objective function to file at every step
-    this->writeObjFuncHistFile();
-
     scalar endTime = runTime.endTime().value();
     scalar deltaT = runTime.deltaT().value();
     scalar t = runTime.timeOutputValue();
     scalar tol = daOptionPtr_->getOption<scalar>("primalMinResTol");
+
+    // execute functionObjectList, e.g., field averaging, sampling
+    functionObjectList& funcObj = const_cast<functionObjectList&>(runTime.functionObjects());
+    if (runTime.timeIndex() == runTime.startTimeIndex())
+    {
+        funcObj.start();
+    }
+    else
+    {
+        funcObj.execute();
+    }
+
+    // check exit condition
     if (primalMinRes_ < tol)
     {
         Info << "Time = " << t << endl;
         Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << tol << endl
              << endl;
+        this->printAllObjFuncs();
         runTime.writeNow();
         prevPrimalSolTime_ = t;
+        funcObj.end();
         return 0;
     }
     else if (t > endTime - 0.5 * deltaT)
     {
         prevPrimalSolTime_ = t;
+        funcObj.end();
         return 0;
     }
     else
@@ -147,10 +162,25 @@ void DASolver::printAllObjFuncs()
     forAll(daObjFuncPtrList_, idxI)
     {
         DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-        Info << daObjFunc.getObjFuncName()
+        word objFuncName = daObjFunc.getObjFuncName();
+        scalar objFuncVal = daObjFunc.getObjFuncValue();
+        Info << objFuncName
              << "-" << daObjFunc.getObjFuncPart()
              << "-" << daObjFunc.getObjFuncType()
-             << ": " << daObjFunc.getObjFuncValue() << endl;
+             << ": " << objFuncVal;
+#ifdef CODI_AD_FORWARD
+
+        // if the forwardModeAD is active,, we need to get the total derivatives here
+        if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
+        {
+            Info << " ForwardAD Deriv: " << objFuncVal.getGradient();
+
+            // assign the forward mode AD derivative to forwardADDerivVal_
+            // such that we can get this value later
+            forwardADDerivVal_.set(objFuncName, objFuncVal.getGradient());
+        }
+#endif
+        Info << endl;
     }
 }
 
@@ -284,6 +314,197 @@ void DASolver::setDAObjFuncList()
             objFuncInstanceI++;
         }
     }
+}
+
+void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
+{
+    /*
+    Description:
+        Compute the nodal forces for all of the nodes on the
+        fluid-structure-interaction patches.
+
+    Output:
+        forces : a (nPoint x 3) array of forces for all of the nodes
+        of the desired patches.
+    */
+#ifndef SolidDASolver
+    // Get reference pressure
+    scalar pRef;
+    daOptionPtr_->getAllOptions().subDict("fsi").readEntry<scalar>("pRef", pRef);
+
+    // Generate patches, point mesh, and point boundary mesh
+    const polyBoundaryMesh& patches = meshPtr_->boundaryMesh();
+    const pointMesh& pMesh = pointMesh::New(meshPtr_());
+    const pointBoundaryMesh& boundaryMesh = pMesh.boundary();
+
+    // Find wall patches and sort in alphabetical order
+    label nWallPatch = 0;
+    forAll(patches, patchI)
+    {
+        if (patches[patchI].type() == "wall")
+        {
+            nWallPatch += 1;
+        }
+    }
+    List<word> patchList(nWallPatch);
+
+    label iWallPatch = 0;
+    forAll(patches, patchI)
+    {
+        if (patches[patchI].type() == "wall")
+        {
+            patchList[iWallPatch] = patches[patchI].name();
+            iWallPatch += 1;
+        }
+    }
+    SortableList<word> patchListSort(patchList);
+
+    // compute size of point and connectivity arrays
+    label nPoints = 0;
+    forAll(patchListSort, cI)
+    {
+        // Get number of points in patch
+        label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
+        nPoints += boundaryMesh[patchIPoints].size();
+    }
+
+    // Initialize surface field for face-centered forces
+    volVectorField volumeForceField(
+        IOobject(
+            "volumeForceField",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        meshPtr_(),
+        dimensionedVector("surfaceForce", dimensionSet(1, 1, -2, 0, 0, 0, 0), vector::zero),
+        fixedValueFvPatchScalarField::typeName);
+
+    // this code is pulled from:
+    // src/functionObjects/forcces/forces.C
+    // modified slightly
+    vector force(vector::zero);
+
+    const objectRegistry& db = meshPtr_->thisDb();
+    const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+    const surfaceVectorField::Boundary& Sfb = meshPtr_->Sf().boundaryField();
+
+    const DATurbulenceModel& daTurb = daModelPtr_->getDATurbulenceModel();
+    tmp<volSymmTensorField> tdevRhoReff = daTurb.devRhoReff();
+    const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
+
+    // iterate over patches and extract boundary surface forces
+    forAll(patchListSort, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
+        // create a shorter handle for the boundary patch
+        const fvPatch& patch = meshPtr_->boundary()[patchI];
+        // normal force
+        vectorField fN(Sfb[patchI] * (p.boundaryField()[patchI] - pRef));
+        // tangential force
+        vectorField fT(Sfb[patchI] & devRhoReffb[patchI]);
+        // sum them up
+        forAll(patch, faceI)
+        {
+            force.x() = fN[faceI].x() + fT[faceI].x();
+            force.y() = fN[faceI].y() + fT[faceI].y();
+            force.z() = fN[faceI].z() + fT[faceI].z();
+            volumeForceField.boundaryFieldRef()[patchI][faceI] = force;
+        }
+    }
+    volumeForceField.write();
+
+    // The above volumeForceField is face-centered, we need to interpolate it to point-centered
+    label pointCounter = 0;
+    List<label> globalIndex(nPoints, -1);
+
+    pointField meshPoints = meshPtr_->points();
+
+    vector nodeForce(vector::zero);
+
+    PetscScalar* vecArrayFX;
+    VecGetArray(fX, &vecArrayFX);
+    PetscScalar* vecArrayFY;
+    VecGetArray(fY, &vecArrayFY);
+    PetscScalar* vecArrayFZ;
+    VecGetArray(fZ, &vecArrayFZ);
+
+    PetscScalar* vecArrayPointList;
+    VecGetArray(pointList, &vecArrayPointList);
+
+    forAll(patchListSort, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
+
+        // Loop over Faces
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // Get number of points
+            const label nPoints = meshPtr_->boundaryMesh()[patchI][faceI].size();
+
+            // Divide force to nodes
+            nodeForce = volumeForceField.boundaryFieldRef()[patchI][faceI] / double(nPoints);
+
+            forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
+            {
+                // this is the index that corresponds to meshPoints, which contains both volume and surface points
+                // so we can't directly reuse this index because we want to have only surface points
+                label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
+
+                // Loop over globalMapping array to check if this node is already included
+                bool found = false;
+                label iPoint;
+                for (label i = 0; i < pointCounter; i++)
+                {
+                    if (faceIPointIndexI == globalIndex[i])
+                    {
+                        found = true;
+                        iPoint = i;
+                        break;
+                    }
+                }
+
+                // If node is already included, add value to its entry
+                PetscScalar val1, val2, val3;
+                assignValueCheckAD(val1, nodeForce[0]);
+                assignValueCheckAD(val2, nodeForce[1]);
+                assignValueCheckAD(val3, nodeForce[2]);
+                if (found)
+                {
+                    // Add Force
+                    vecArrayFX[iPoint] += val1;
+                    vecArrayFY[iPoint] += val2;
+                    vecArrayFZ[iPoint] += val3;
+                }
+                // If node is not already included, add it as the newest point and add global index mapping
+                else
+                {
+                    // Add Force
+                    vecArrayFX[pointCounter] = val1;
+                    vecArrayFY[pointCounter] = val2;
+                    vecArrayFZ[pointCounter] = val3;
+                    // Add to Node Order Array
+                    vecArrayPointList[pointCounter] = faceIPointIndexI;
+                    // Add to Global - Local Mapping
+                    globalIndex[pointCounter] = faceIPointIndexI;
+
+                    // Increment counter
+                    pointCounter += 1;
+                }
+            }
+        }
+    }
+    VecRestoreArray(fX, &vecArrayFX);
+    VecRestoreArray(fY, &vecArrayFY);
+    VecRestoreArray(fZ, &vecArrayFZ);
+
+    VecRestoreArray(pointList, &vecArrayPointList);
+
+#endif
+    return;
 }
 
 void DASolver::reduceStateResConLevel(
@@ -735,7 +956,7 @@ void DASolver::calcdRdWT(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdWT"))
+    if (writeJacobians.found("dRdWT") || writeJacobians.found("all"))
     {
         DAUtility::writeMatrixBinary(dRdWT, matName);
     }
@@ -879,7 +1100,7 @@ void DASolver::calcdFdW(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdW"))
+    if (writeJacobians.found("dFdW") || writeJacobians.found("all"))
     {
         word outputName = "dFdW_" + objFuncName;
         DAUtility::writeVectorBinary(dFdW, outputName);
@@ -966,7 +1187,7 @@ void DASolver::calcdRdBC(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdBC"))
+    if (writeJacobians.found("dRdBC") || writeJacobians.found("all"))
     {
         word outputName = "dRdBC_" + designVarName;
         DAUtility::writeMatrixBinary(dRdBC, outputName);
@@ -1090,7 +1311,7 @@ void DASolver::calcdFdBC(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdBC"))
+    if (writeJacobians.found("dFdBC") || writeJacobians.found("all"))
     {
         word outputName = "dFdBC_" + designVarName;
         DAUtility::writeVectorBinary(dFdBC, outputName);
@@ -1176,263 +1397,12 @@ void DASolver::calcdRdAOA(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdAOA"))
+    if (writeJacobians.found("dRdAOA") || writeJacobians.found("all"))
     {
         word outputName = "dRdAOA_" + designVarName;
         DAUtility::writeMatrixBinary(dRdAOA, outputName);
         DAUtility::writeMatrixASCII(dRdAOA, outputName);
     }
-}
-
-void DASolver::calcdFdBCAD(
-    const Vec xvVec,
-    const Vec wVec,
-    const word objFuncName,
-    const word designVarName,
-    Vec dFdBC)
-{
-#ifdef CODI_AD_REVERSE
-    /*
-    -------------- NOTE -----------------
-    This function is not working in parallel.
-    It is not called in pyDAFoam.py. Instead
-    we assume dFdBC = 0. If your objective 
-    function does depends on BC, use the 
-    JacobianFD option
-    -------------- NOTE -----------------
-    Description:
-        This function computes partials derivatives dFdBC
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        objFuncName: name of the objective function F
-
-        designVarName: the name of the design variable
-    
-    Output:
-        dFdBC: the partial derivative vector dF/dBC
-        NOTE: You need to fully initialize the dF vec before calliing this function,
-        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
-    */
-
-    Info << "Calculating dFdBC using reverse-mode AD for " << designVarName << endl;
-
-    VecZeroEntries(dFdBC);
-
-    // this is needed because the self.solverAD object in the Python layer
-    // never run the primal solution, so the wVec and xvVec is not always
-    // update to date
-    this->updateOFField(wVec);
-    this->updateOFMesh(xvVec);
-
-    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
-
-    // get the subDict for this dvName
-    dictionary dvSubDict = designVarDict.subDict(designVarName);
-
-    // get info from dvSubDict. This needs to be defined in the pyDAFoam
-    // name of the variable for changing the boundary condition
-    word varName = dvSubDict.getWord("variable");
-    // name of the boundary patch
-    wordList patches;
-    dvSubDict.readEntry<wordList>("patches", patches);
-    // the compoent of a vector variable, ignore when it is a scalar
-    label comp = dvSubDict.getLabel("comp");
-
-    // Now get the BC value
-    scalar BC = -1e16;
-    forAll(patches, idxI)
-    {
-        word patchName = patches[idxI];
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-        if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
-        {
-            volVectorField& state(const_cast<volVectorField&>(
-                meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-            // for decomposed domain, don't set BC if the patch is empty
-            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-            {
-                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                {
-                    BC = state.boundaryFieldRef()[patchI][0][comp];
-                }
-                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                {
-                    mixedFvPatchField<vector>& inletOutletPatch =
-                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                    BC = inletOutletPatch.refValue()[0][comp];
-                }
-            }
-        }
-        else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
-        {
-            volScalarField& state(const_cast<volScalarField&>(
-                meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-            // for decomposed domain, don't set BC if the patch is empty
-            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-            {
-                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                {
-                    BC = state.boundaryFieldRef()[patchI][0];
-                }
-                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                {
-                    mixedFvPatchField<scalar>& inletOutletPatch =
-                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                    BC = inletOutletPatch.refValue()[0];
-                }
-            }
-        }
-    }
-    // need to reduce the BC value across all processors, this is because some of
-    // the processors might not own the prescribed patches so their BC value will be still -1e16, but
-    // when calling the following reduce function, they will get the correct BC from other processors
-    reduce(BC, maxOp<scalar>());
-
-    // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
-    // loop over all parts of this objFuncName
-    forAll(objFuncSubDict.toc(), idxK)
-    {
-        word objFuncPart = objFuncSubDict.toc()[idxK];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-
-        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
-        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daResidualPtr_(),
-            objFuncName,
-            objFuncPart,
-            objFuncSubDictPart));
-
-        // reset tape
-        this->globalADTape_.reset();
-        // activate tape, start recording
-        this->globalADTape_.setActive();
-        // register BC as the input
-        this->globalADTape_.registerInput(BC);
-        // ******* now set BC ******
-        forAll(patches, idxI)
-        {
-            word patchName = patches[idxI];
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
-            {
-                volVectorField& state(const_cast<volVectorField&>(
-                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        forAll(state.boundaryFieldRef()[patchI], faceI)
-                        {
-                            state.boundaryFieldRef()[patchI][faceI][comp] = BC;
-                        }
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<vector>& inletOutletPatch =
-                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                        vector val = inletOutletPatch.refValue()[0];
-                        val[comp] = BC;
-                        inletOutletPatch.refValue() = val;
-                    }
-                }
-            }
-            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
-            {
-                volScalarField& state(const_cast<volScalarField&>(
-                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        forAll(state.boundaryFieldRef()[patchI], faceI)
-                        {
-                            state.boundaryFieldRef()[patchI][faceI] = BC;
-                        }
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<scalar>& inletOutletPatch =
-                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                        inletOutletPatch.refValue() = BC;
-                    }
-                }
-            }
-        }
-        // ******* now set BC done******
-        // update all intermediate variables and boundary conditions
-        daResidualPtr_->correctBoundaryConditions();
-        daResidualPtr_->updateIntermediateVariables();
-        daModelPtr_->correctBoundaryConditions();
-        daModelPtr_->updateIntermediateVariables();
-        // compute the objective function
-        scalar fRef = daObjFunc->getObjFuncValue();
-        // register f as the output
-        this->globalADTape_.registerOutput(fRef);
-        // stop recording
-        this->globalADTape_.setPassive();
-
-        // Note: since we used reduced objFunc, we only need to
-        // assign the seed for master proc
-        if (Pstream::master())
-        {
-            fRef.setGradient(1.0);
-        }
-        // evaluate tape to compute derivative
-        this->globalADTape_.evaluate();
-
-        // assign the computed derivatives from the OpenFOAM variable to dFdFieldPart
-        Vec dFdBCPart;
-        VecDuplicate(dFdBC, &dFdBCPart);
-        VecZeroEntries(dFdBCPart);
-        PetscScalar derivVal = BC.getGradient();
-        // we need to do ADD_VALUES to get contribution from all procs
-        VecSetValue(dFdBCPart, 0, derivVal, ADD_VALUES);
-        VecAssemblyBegin(dFdBCPart);
-        VecAssemblyEnd(dFdBCPart);
-
-        // need to clear adjoint and tape after the computation is done!
-        this->globalADTape_.clearAdjoints();
-        this->globalADTape_.reset();
-
-        // we need to add dFdBCPart to dFdBC because we want to sum
-        // all dFdBCPart for all parts of this objFuncName.
-        VecAXPY(dFdBC, 1.0, dFdBCPart);
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            Info << "In calcdFdBCAD" << endl;
-            this->calcPrimalResidualStatistics("print");
-            Info << objFuncName << ": " << fRef << endl;
-        }
-
-        VecDestroy(&dFdBCPart);
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdBC"))
-    {
-        word outputName = "dFdBC_" + designVarName + "_" + objFuncName;
-        DAUtility::writeVectorBinary(dFdBC, outputName);
-        DAUtility::writeVectorASCII(dFdBC, outputName);
-    }
-#endif
 }
 
 void DASolver::calcdRdBCTPsiAD(
@@ -1622,7 +1592,7 @@ void DASolver::calcdRdBCTPsiAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdBCTPsi"))
+    if (writeJacobians.found("dRdBCTPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdBCTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdBCTPsi, outputName);
@@ -1747,237 +1717,12 @@ void DASolver::calcdFdAOA(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdAOA"))
+    if (writeJacobians.found("dFdAOA") || writeJacobians.found("all"))
     {
         word outputName = "dFdAOA_" + designVarName;
         DAUtility::writeVectorBinary(dFdAOA, outputName);
         DAUtility::writeVectorASCII(dFdAOA, outputName);
     }
-}
-
-void DASolver::calcdFdAOAAD(
-    const Vec xvVec,
-    const Vec wVec,
-    const word objFuncName,
-    const word designVarName,
-    Vec dFdAOA)
-{
-#ifdef CODI_AD_REVERSE
-    /*
-    -------------- NOTE -----------------
-    This function is not working in parallel.
-    It is not called in pyDAFoam.py. An analytical
-    dFdAOA approach is implemented in pyDAFoam.py
-    -------------- NOTE -----------------
-    Description:
-        This function computes partials derivatives dFdAlpha with alpha being the angle of attack (AOA) 
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        objFuncName: name of the objective function F
-
-        designVarName: the name of the design variable
-    
-    Output:
-        dFdAOA: the partial derivative vector dF/dAOA
-        NOTE: You need to fully initialize the dF vec before calliing this function,
-        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
-    */
-
-    Info << "Calculating dFdAOA using reverse-mode AD for " << designVarName << endl;
-
-    VecZeroEntries(dFdAOA);
-
-    // this is needed because the self.solverAD object in the Python layer
-    // never run the primal solution, so the wVec and xvVec is not always
-    // update to date
-    this->updateOFField(wVec);
-    this->updateOFMesh(xvVec);
-
-    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
-
-    // get the subDict for this dvName
-    dictionary dvSubDict = designVarDict.subDict(designVarName);
-
-    // get info from dvSubDict. This needs to be defined in the pyDAFoam
-    // name of the boundary patch
-    wordList patches;
-    dvSubDict.readEntry<wordList>("patches", patches);
-    // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
-    word flowAxis = dvSubDict.getWord("flowAxis");
-    word normalAxis = dvSubDict.getWord("normalAxis");
-
-    HashTable<label> axisIndices;
-    axisIndices.set("x", 0);
-    axisIndices.set("y", 1);
-    axisIndices.set("z", 2);
-    label flowAxisIndex = axisIndices[flowAxis];
-    label normalAxisIndex = axisIndices[normalAxis];
-
-    volVectorField& U = const_cast<volVectorField&>(
-        meshPtr_->thisDb().lookupObject<volVectorField>("U"));
-
-    // now we need to get the Ux, Uy values from the inout patches
-    scalar Ux0 = -1e16, Uy0 = -1e16;
-    forAll(patches, idxI)
-    {
-        word patchName = patches[idxI];
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-        if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-        {
-            if (U.boundaryField()[patchI].type() == "fixedValue")
-            {
-                Uy0 = U.boundaryField()[patchI][0][normalAxisIndex];
-                Ux0 = U.boundaryField()[patchI][0][flowAxisIndex];
-                break;
-            }
-            else if (U.boundaryField()[patchI].type() == "inletOutlet")
-            {
-                mixedFvPatchField<vector>& inletOutletPatch =
-                    refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
-                Uy0 = inletOutletPatch.refValue()[0][normalAxisIndex];
-                Ux0 = inletOutletPatch.refValue()[0][flowAxisIndex];
-                break;
-            }
-            else
-            {
-                FatalErrorIn("") << "boundaryType: " << U.boundaryFieldRef()[patchI].type()
-                                 << " not supported!"
-                                 << "Available options are: fixedValue, inletOutlet"
-                                 << abort(FatalError);
-            }
-        }
-    }
-    // need to reduce the U value across all processors, this is because some of
-    // the processors might not own the prescribed patches so their U value will be still -1e16, but
-    // when calling the following reduce function, they will get the correct U from other processors
-    reduce(Ux0, maxOp<scalar>());
-    reduce(Uy0, maxOp<scalar>());
-    scalar aoa = atan(Uy0 / Ux0);
-
-    // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
-    // loop over all parts of this objFuncName
-    forAll(objFuncSubDict.toc(), idxK)
-    {
-        word objFuncPart = objFuncSubDict.toc()[idxK];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-
-        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
-        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daResidualPtr_(),
-            objFuncName,
-            objFuncPart,
-            objFuncSubDictPart));
-
-        // reset tape
-        this->globalADTape_.reset();
-        // activate tape, start recording
-        this->globalADTape_.setActive();
-        // register aoa as the input
-        this->globalADTape_.registerInput(aoa);
-
-        // set far field Ux, Uy
-        forAll(patches, idxI)
-        {
-            word patchName = patches[idxI];
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-
-            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-            {
-                scalar UMag = sqrt(Ux0 * Ux0 + Uy0 * Uy0);
-                scalar UxNew = UMag * cos(aoa);
-                scalar UyNew = UMag * sin(aoa);
-
-                if (U.boundaryField()[patchI].type() == "fixedValue")
-                {
-                    forAll(U.boundaryField()[patchI], faceI)
-                    {
-                        U.boundaryFieldRef()[patchI][faceI][flowAxisIndex] = UxNew;
-                        U.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = UyNew;
-                    }
-                }
-                else if (U.boundaryField()[patchI].type() == "inletOutlet")
-                {
-                    mixedFvPatchField<vector>& inletOutletPatch =
-                        refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
-
-                    forAll(U.boundaryField()[patchI], faceI)
-                    {
-                        inletOutletPatch.refValue()[faceI][flowAxisIndex] = UxNew;
-                        inletOutletPatch.refValue()[faceI][normalAxisIndex] = UyNew;
-                    }
-                }
-            }
-        }
-        // update all intermediate variables and boundary conditions
-        daResidualPtr_->correctBoundaryConditions();
-        daResidualPtr_->updateIntermediateVariables();
-        daModelPtr_->correctBoundaryConditions();
-        daModelPtr_->updateIntermediateVariables();
-        // compute the objective function
-        scalar fRef = daObjFunc->getObjFuncValue();
-        // register f as the output
-        this->globalADTape_.registerOutput(fRef);
-        // stop recording
-        this->globalADTape_.setPassive();
-
-        // Note: since we used reduced objFunc, we only need to
-        // assign the seed for master proc
-        if (Pstream::master())
-        {
-            fRef.setGradient(1.0);
-        }
-
-        // evaluate tape to compute derivative
-        this->globalADTape_.evaluate();
-
-        // assign the computed derivatives from the OpenFOAM variable to dFdFieldPart
-        Vec dFdAOAPart;
-        VecDuplicate(dFdAOA, &dFdAOAPart);
-        VecZeroEntries(dFdAOAPart);
-
-        // need to convert dFdAOA from radian to degree
-        PetscScalar derivVal = aoa.getGradient() * constant::mathematical::pi.getValue() / 180.0;
-        VecSetValue(dFdAOAPart, 0, derivVal, ADD_VALUES);
-        VecAssemblyBegin(dFdAOAPart);
-        VecAssemblyEnd(dFdAOAPart);
-
-        // need to clear adjoint and tape after the computation is done!
-        this->globalADTape_.clearAdjoints();
-        this->globalADTape_.reset();
-
-        // we need to add dFdAOAPart to dFdAOA because we want to sum
-        // all dFdAOAPart for all parts of this objFuncName.
-        VecAXPY(dFdAOA, 1.0, dFdAOAPart);
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-            Info << objFuncName << ": " << fRef << endl;
-        }
-
-        VecDestroy(&dFdAOAPart);
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdAOA"))
-    {
-        word outputName = "dFdAOA_" + designVarName + "_" + objFuncName;
-        DAUtility::writeVectorBinary(dFdAOA, outputName);
-        DAUtility::writeVectorASCII(dFdAOA, outputName);
-    }
-
-#endif
 }
 
 void DASolver::calcdRdAOATPsiAD(
@@ -2145,7 +1890,7 @@ void DASolver::calcdRdAOATPsiAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdAOATPsi"))
+    if (writeJacobians.found("dRdAOATPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdAOATPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdAOATPsi, outputName);
@@ -2225,7 +1970,7 @@ void DASolver::calcdRdFFD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdFFD"))
+    if (writeJacobians.found("dRdFFD") || writeJacobians.found("all"))
     {
         word outputName = "dRdFFD_" + designVarName;
         DAUtility::writeMatrixBinary(dRdFFD, outputName);
@@ -2353,7 +2098,7 @@ void DASolver::calcdFdFFD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdFFD"))
+    if (writeJacobians.found("dFdFFD") || writeJacobians.found("all"))
     {
         word outputName = "dFdFFD_" + designVarName;
         DAUtility::writeVectorBinary(dFdFFD, outputName);
@@ -2429,7 +2174,7 @@ void DASolver::calcdRdACT(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdACT"))
+    if (writeJacobians.found("dRdACT") || writeJacobians.found("all"))
     {
         word outputName = "dRd" + designVarType + "_" + designVarName;
         DAUtility::writeMatrixBinary(dRdACT, outputName);
@@ -2544,7 +2289,7 @@ void DASolver::calcdFdACT(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdACT"))
+    if (writeJacobians.found("dFdACT") || writeJacobians.found("all"))
     {
         word outputName = "dFdACT_" + designVarName;
         DAUtility::writeVectorBinary(dFdACT, outputName);
@@ -2669,7 +2414,7 @@ void DASolver::calcdFdFieldAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdField"))
+    if (writeJacobians.found("dFdField") || writeJacobians.found("all"))
     {
         word outputName = "dFdField_" + designVarName;
         DAUtility::writeVectorBinary(dFdField, outputName);
@@ -3023,7 +2768,7 @@ void DASolver::calcdFdWAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdW"))
+    if (writeJacobians.found("dFdW") || writeJacobians.found("all"))
     {
         word outputName = "dFdW_" + objFuncName;
         DAUtility::writeVectorBinary(dFdW, outputName);
@@ -3161,7 +2906,7 @@ void DASolver::calcdFdXvAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdXv"))
+    if (writeJacobians.found("dFdXv") || writeJacobians.found("all"))
     {
         word outputName = "dFdXv_" + objFuncName + "_" + designVarName;
         DAUtility::writeVectorBinary(dFdXv, outputName);
@@ -3316,7 +3061,7 @@ void DASolver::calcdRdFieldTPsiAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdFieldTPsi"))
+    if (writeJacobians.found("dRdFieldTPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdFieldTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdFieldTPsi, outputName);
@@ -3487,7 +3232,7 @@ void DASolver::calcdFdACTAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdACT"))
+    if (writeJacobians.found("dFdACT") || writeJacobians.found("all"))
     {
         word outputName = "dFdACT_" + objFuncName + "_" + designVarName;
         DAUtility::writeVectorBinary(dFdACT, outputName);
@@ -3607,11 +3352,88 @@ void DASolver::calcdRdActTPsiAD(
     }
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdActTPsi"))
+    if (writeJacobians.found("dRdActTPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdActTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdActTPsi, outputName);
         DAUtility::writeVectorASCII(dRdActTPsi, outputName);
+    }
+#endif
+}
+
+void DASolver::calcdRdWTPsiAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    Vec dRdWTPsi)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute the matrix-vector products dRdW^T*Psi using reverse-mode AD
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdW0^T
+    
+    Output:
+        dRdWTPsi: the matrix-vector products dRdW^T * Psi
+    */
+
+    Info << "Calculating [dRdW]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdWTPsi);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD();
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(dRdWTPsi);
+
+    // NOTE: we need to normalize dRdWTPsi!
+    this->normalizeGradientVec(dRdWTPsi);
+
+    VecAssemblyBegin(dRdWTPsi);
+    VecAssemblyEnd(dRdWTPsi);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdWTPsi") || writeJacobians.found("all"))
+    {
+        word outputName = "dRdWTPsi";
+        DAUtility::writeVectorBinary(dRdWTPsi, outputName);
+        DAUtility::writeVectorASCII(dRdWTPsi, outputName);
     }
 #endif
 }
@@ -3682,7 +3504,7 @@ void DASolver::calcdRdWOldTPsiAD(
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdWOldTPsi"))
+    if (writeJacobians.found("dRdWOldTPsi") || writeJacobians.found("all"))
     {
         word outputName = "dRdWOldTPsi";
         DAUtility::writeVectorBinary(dRdWOldTPsi, outputName);
@@ -4436,7 +4258,6 @@ void DASolver::setdXvdFFDMat(const Mat dXvdFFDMat)
     MatAssemblyEnd(dXvdFFDMat_, MAT_FINAL_ASSEMBLY);
 }
 
-
 void DASolver::setFFD2XvSeedVec(Vec vecIn)
 {
     /*
@@ -4476,102 +4297,6 @@ label DASolver::checkResidualTol()
     }
 
     return 1;
-}
-
-void DASolver::initializeObjFuncHistFilePtr(const word fileName)
-{
-    /*
-    Description:
-        Initialize the log file to store objective function
-        values for each step. This is only used for unsteady
-        primal solvers
-    */
-
-    label myProc = Pstream::myProcNo();
-    if (myProc == 0)
-    {
-        objFuncHistFilePtr_.reset(new OFstream(fileName + ".txt"));
-        objFuncAvgHistFilePtr_.reset(new OFstream(fileName + "Avg.txt"));
-    }
-    return;
-}
-
-void DASolver::writeObjFuncHistFile()
-{
-    /*
-    Description:
-        Write objective function values to the log file  for each step. 
-        This is only used for unsteady primal solvers
-    */
-
-    label myProc = Pstream::myProcNo();
-    scalar t = runTimePtr_->timeOutputValue();
-
-    // we start averaging after objFuncAvgStart
-    if (runTimePtr_->timeIndex() == daOptionPtr_->getOption<label>("objFuncAvgStart"))
-    {
-        // set nItersObjFuncAvg_ to 1 to start averaging
-        nItersObjFuncAvg_ = 1;
-        // initialize avgObjFuncValues_
-        avgObjFuncValues_.setSize(daOptionPtr_->getAllOptions().subDict("objFunc").toc().size());
-        forAll(avgObjFuncValues_, idxI)
-        {
-            avgObjFuncValues_[idxI] = 0.0;
-        }
-    }
-
-    // write to files using proc0 only
-    if (myProc == 0)
-    {
-        objFuncHistFilePtr_() << t << " ";
-        if (nItersObjFuncAvg_ > 0)
-        {
-            objFuncAvgHistFilePtr_() << t << " ";
-        }
-    }
-
-    // loop over all objs
-    forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
-    {
-        word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
-        // this is instantaneous value
-        scalar objFuncVal = this->getObjFuncValue(objFuncName);
-
-        // if nItersObjFuncAvg_ > 0, compute averaged obj values
-        if (nItersObjFuncAvg_ > 0)
-        {
-            avgObjFuncValues_[idxI] =
-                objFuncVal / nItersObjFuncAvg_ + (nItersObjFuncAvg_ - 1.0) / nItersObjFuncAvg_ * avgObjFuncValues_[idxI];
-        }
-
-        // write to files using proc0 only
-        if (myProc == 0)
-        {
-            objFuncHistFilePtr_() << objFuncVal << " ";
-            if (nItersObjFuncAvg_ > 0)
-            {
-                objFuncAvgHistFilePtr_() << avgObjFuncValues_[idxI] << " ";
-            }
-        }
-    }
-
-    // increment nItersObjFuncAvg_
-    if (nItersObjFuncAvg_ > 0)
-    {
-        nItersObjFuncAvg_++;
-    }
-
-    // write to files using proc0 only
-    if (myProc == 0)
-    {
-        objFuncHistFilePtr_() << endl;
-        if (nItersObjFuncAvg_ > 0)
-        {
-            objFuncAvgHistFilePtr_() << endl;
-        }
-    }
-
-    return;
 }
 
 label DASolver::isPrintTime(
@@ -4709,29 +4434,124 @@ void DASolver::setFieldValue4GlobalCellI(
         compI: which component to set (only for vectors such as U)
     */
 
-    if (daIndexPtr_->globalCellNumbering.isLocal(globalCellI))
+    if (meshPtr_->thisDb().foundObject<volVectorField>(fieldName))
     {
-
-        if (meshPtr_->thisDb().foundObject<volVectorField>(fieldName))
+        if (daIndexPtr_->globalCellVectorNumbering.isLocal(globalCellI))
         {
             volVectorField& field =
                 const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(fieldName));
-            label localCellI = daIndexPtr_->globalCellNumbering.toLocal(globalCellI);
+            label localCellI = daIndexPtr_->globalCellVectorNumbering.toLocal(globalCellI);
             field[localCellI][compI] = val;
         }
-        else if (meshPtr_->thisDb().foundObject<volScalarField>(fieldName))
+    }
+    else if (meshPtr_->thisDb().foundObject<volScalarField>(fieldName))
+    {
+        if (daIndexPtr_->globalCellNumbering.isLocal(globalCellI))
         {
             volScalarField& field =
                 const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
             label localCellI = daIndexPtr_->globalCellNumbering.toLocal(globalCellI);
             field[localCellI] = val;
         }
-        else
+    }
+    else
+    {
+        FatalErrorIn("") << fieldName << " not found in volScalar and volVector Fields "
+                         << abort(FatalError);
+    }
+}
+
+void DASolver::calcResidualVec(Vec resVec)
+{
+    /*
+    Description:
+        Calculate the residual and assign it to resVec
+    
+    Input/Output:
+        resVec: residual vector
+    */
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    PetscScalar* vecArray;
+    VecGetArray(resVec, &vecArray);
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const word resName = stateName + "Res";
+        const volVectorField& stateRes = meshPtr_->thisDb().lookupObject<volVectorField>(resName);
+
+        forAll(meshPtr_->cells(), cellI)
         {
-            FatalErrorIn("") << fieldName << " not found in volScalar and volVector Fields "
-                             << abort(FatalError);
+            for (label i = 0; i < 3; i++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                assignValueCheckAD(vecArray[localIdx], stateRes[cellI][i]);
+            }
         }
     }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        const volScalarField& stateRes = meshPtr_->thisDb().lookupObject<volScalarField>(resName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            assignValueCheckAD(vecArray[localIdx], stateRes[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const word resName = stateName + "Res";
+        const volScalarField& stateRes = meshPtr_->thisDb().lookupObject<volScalarField>(resName);
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            assignValueCheckAD(vecArray[localIdx], stateRes[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        const surfaceScalarField& stateRes = meshPtr_->thisDb().lookupObject<surfaceScalarField>(resName);
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                assignValueCheckAD(vecArray[localIdx], stateRes[faceI]);
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                assignValueCheckAD(vecArray[localIdx], stateRes.boundaryField()[patchIdx][faceIdx]);
+            }
+        }
+    }
+
+    VecRestoreArray(resVec, &vecArray);
 }
 
 void DASolver::updateBoundaryConditions(

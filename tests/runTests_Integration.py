@@ -37,11 +37,13 @@ CM_target = 0.0
 aeroOptions = {
     "solverName": "DASimpleFoam",
     "designSurfaceFamily": "designSurface",
+    "useAD": {"mode": "fd"},
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
     "multiPoint": True,
     "nMultiPoints": 1,
     "printPYDAFOAMOptions": True,
+    "writeDeformedFFDs": True,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},

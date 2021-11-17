@@ -211,7 +211,8 @@ bool Foam::checkCoupledPoints(
 Foam::label Foam::checkGeometry(
     const polyMesh& mesh,
     const autoPtr<surfaceWriter>& surfWriter,
-    const autoPtr<writer<scalar>>& setWriter)
+    const autoPtr<writer<scalar>>& setWriter,
+    const label maxIncorrectlyOrientedFaces)
 {
     label noFailedChecks = 0;
 
@@ -361,9 +362,21 @@ Foam::label Foam::checkGeometry(
         faceSet faces(mesh, "wrongOrientedFaces", mesh.nFaces() / 100 + 1);
         if (mesh.checkFacePyramids(true, -SMALL, &faces))
         {
-            noFailedChecks++;
+            if (maxIncorrectlyOrientedFaces > 0)
+            {
+                Info << "maxIncorrectlyOrientedFaces threshold is set to " << maxIncorrectlyOrientedFaces << endl;
+            }
 
             label nFaces = returnReduce(faces.size(), sumOp<label>());
+
+            // if nFaces is less than maxIncorrectlyOrientedFaces
+            // we do not consider it is a failed mesh. This allows
+            // users to relax the mesh check for incorrectly oriented
+            // mesh faces
+            if (nFaces > maxIncorrectlyOrientedFaces)
+            {
+                noFailedChecks++;
+            }
 
             if (nFaces > 0)
             {

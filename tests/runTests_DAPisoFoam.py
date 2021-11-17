@@ -36,21 +36,8 @@ daOptions = {
     "solverName": "DAPisoFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
+    "useAD": {"mode": "fd"},
     "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 1.0},
-    "intmdVar" : {
-         "UMean" : {
-             "operation": "Mean",
-             "fieldType": "volVectorField",
-             "baseField": "U",
-             "restartSteps": 1000
-         },
-         "pMean" : {
-             "operation": "Mean",
-             "fieldType": "volScalarField",
-             "baseField": "p",
-             "restartSteps": 1000
-          },
-    },
     "fvSource": {
         "point1": {
             "type": "actuatorPoint",
@@ -240,4 +227,4 @@ else:
     funcsSens, fail = optFuncs.calcObjFuncSensUnsteady(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-5, 1e-7)
+        reg_write_dict(funcsSens, 1e-4, 1e-6)

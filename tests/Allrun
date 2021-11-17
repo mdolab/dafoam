@@ -24,17 +24,29 @@ function runTests()
 {
   rm -rf input DAFoam_Test_${1}.txt
   tar -zxf input.tar.gz
-  mpirun -np 4 python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
-  if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-    echo "${1}: Failed!"
-    exit 1
-  fi
-  python testFuncs.py refs/DAFoam_Test_${1}Ref.txt DAFoam_Test_${1}.txt
-  if [ "$?" -ne "0" ]; then 
-    echo "${1}: Failed!"
-    exit 1
+  if [ -z "$DF_CHECK_COVERAGE" ]; then
+    mpirun -np 4 python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+      echo "${1}: Failed!"
+      exit 1
+    fi
+    python testFuncs.py refs/DAFoam_Test_${1}Ref.txt DAFoam_Test_${1}.txt
+    if [ "$?" -ne "0" ]; then 
+      echo "${1}: Failed!"
+      exit 1
+    else
+      echo "${1}: Success!"
+    fi
+  elif [ "$DF_CHECK_COVERAGE" = "1" ]; then
+    mpirun -np 4 coverage run runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+      echo "${1}: Failed!"
+      exit 1
+    fi
+    echo "DF_CHECK_COVERAGE key found! Do NOT check the regression test values!"
   else
-    echo "${1}: Success!"
+    echo "DF_CHECK_COVERAGE key not valid! Set it to 1!"
+    exit 1
   fi
 }
 
@@ -43,6 +55,7 @@ case $argm in
     echo "Running all tests...."
     sleep 3
     runTests Integration
+    runTests Primal
     runTests DASimpleFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
@@ -50,11 +63,14 @@ case $argm in
     fi
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADF.so" ]; then
       runTests DASimpleFoamForwardAD
+      runTests DASimpleFoamFieldForwardAD
     fi
     runTests DASimpleFoamMRF
     runTests DASimpleTFoam
     runTests DAPisoFoam
     runTests DAPisoFoamACTL
+    runTests DAPimpleFoam
+    runTests DAPimpleDyMFoam
     runTests DARhoSimpleFoam
     runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
@@ -66,6 +82,8 @@ case $argm in
     runTests DATurboFoamSubsonic
     runTests DATurboFoamTransonic
     runTests DASolidDisplacementFoam
+    runTests DAScalarTransportFoam
+    runTests DALaplacianFoam
     echo " "
     echo "************************************************************"
     echo "**************** All DAFoam tests passed! ******************"
@@ -76,6 +94,7 @@ case $argm in
     echo "Running incompressible tests...."
     sleep 3
     runTests Integration
+    runTests Primal
     runTests DASimpleFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
@@ -85,6 +104,8 @@ case $argm in
     runTests DASimpleTFoam
     runTests DAPisoFoam
     runTests DAPisoFoamACTL
+    runTests DAPimpleFoam
+    runTests DAPimpleDyMFoam
     echo " "
     echo "************************************************************"
     echo "************** Incompressible tests passed! ****************"
@@ -114,6 +135,8 @@ case $argm in
     echo "Running solid tests...."
     sleep 3
     runTests DASolidDisplacementFoam
+    runTests DAScalarTransportFoam
+    runTests DALaplacianFoam
     echo " "
     echo "************************************************************"
     echo "******************* Solid tests passed! ********************"
@@ -123,7 +146,10 @@ case $argm in
   "forward")
     echo "Running forward AD tests...."
     sleep 3
-    runTests DASimpleFoamForwardAD
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADF.so" ]; then
+      runTests DASimpleFoamForwardAD
+      runTests DASimpleFoamFieldForwardAD
+    fi
     echo " "
     echo "************************************************************"
     echo "**************** Forward AD tests passed! ******************"
@@ -136,5 +162,3 @@ case $argm in
     exit 1
     ;;
 esac
-
-

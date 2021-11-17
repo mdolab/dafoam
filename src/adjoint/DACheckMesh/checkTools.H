@@ -19,8 +19,6 @@ class cellSet;
 class fileName;
 class polyMesh;
 
-void printMeshStats(const polyMesh& mesh, const bool allTopology);
-
 //- Generate merged surface on master and write. Needs input patch
 //  to be of mesh faces.
 void mergeAndWrite(

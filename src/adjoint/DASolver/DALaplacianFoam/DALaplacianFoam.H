@@ -12,7 +12,6 @@
 #define DALaplacianFoam_H
 
 #include "DASolver.H"
-#include "DAIntmdVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -34,9 +33,6 @@ protected:
 
     /// DT pointer
     autoPtr<dimensionedScalar> DTPtr_;
-
-    /// DAIntmVar pointer
-    autoPtr<DAIntmdVar> daIntmdVarPtr_;
 
     /// unsteady mode
     word mode_ = "None";

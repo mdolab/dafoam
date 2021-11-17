@@ -54,6 +54,9 @@ private:
     /// max skewness
     scalar maxSkewness_ = 4.0;
 
+    /// max number of incorrectly oriented faces
+    label maxIncorrectlyOrientedFaces_ = 0;
+
     /// surface writer pointer for failed mesh
     autoPtr<surfaceWriter> surfWriter;
 

@@ -30,12 +30,10 @@ os.chdir("./input/CurvedCubeSnappyHexMesh")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.compressible 0")
-    os.system("cp -r constant/turbulenceProperties.ke constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
 
 U0 = 50.0
 p0 = 101325.0
-k0 = 0.06
-epsilon0 = 2.16
 T0 = 300.0
 A0 = 1.0
 rho0 = 1.0
@@ -44,14 +42,14 @@ rho0 = 1.0
 aeroOptions = {
     "solverName": "DARhoSimpleFoam",
     "designSurfaceFamily": "designSurface",
+    "useAD": {"mode": "fd"},
     "designSurfaces": ["wallsbump"],
+    "writeJacobians": ["all"],
     "primalMinResTol": 1e-12,
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
         "T0": {"variable": "T", "patches": ["inlet"], "value": [T0]},
-        "k0": {"variable": "k", "patches": ["inlet"], "value": [k0]},
-        "epsilon0": {"variable": "epsilon", "patches": ["inlet"], "value": [epsilon0]},
         "useWallFunction": False,
     },
     "primalVarBounds": {
@@ -112,7 +110,7 @@ aeroOptions = {
     },
     "adjStateOrdering": "cell",
     "debug": True,
-    "normalizeStates": {"U": U0, "p": p0, "k": k0, "epsilon": epsilon0, "phi": 1.0, "T": T0},
+    "normalizeStates": {"U": U0, "p": p0, "nuTilda": 1e-4, "phi": 1.0, "T": T0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
@@ -186,22 +184,12 @@ else:
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-5, 1e-7)
+        reg_write_dict(funcsSens, 1e-4, 1e-6)
 
 
 # *************************************************************
 # Unit tests for functions that are not called in the above run
 # *************************************************************
-
-# Additional test for a failed mesh
-# perturb a large value for design variable to make a failed mesh
-xDV["shapey"][0] = 1000.0
-funcs1 = {}
-funcs1, fail1 = optFuncs.calcObjFuncValues(xDV)
-
-# the checkMesh utility should detect failed mesh
-if fail1 is False:
-    exit(1)
 
 # test point2Vec functions
 xvSize = len(DASolver.xv) * 3
@@ -245,6 +233,18 @@ rVecNormRead = rVecRead.norm(1)
 if rVecNorm != rVecNormRead:
     exit(1)
 
+# Test vector IO in pyDAFoam.py
+DASolver.writePetscVecMat("rVecRead", rVec, mode="ASCII")
+DASolver.writePetscVecMat("rVecRead", rVec, mode="Binary")
+rVecRead = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+rVecRead.setSizes((rSize, PETSc.DECIDE), bsize=1)
+rVecRead.setFromOptions()
+DASolver.readPetscVecMat("rVecRead", rVec)
+rVecNormRead = rVecRead.norm(1)
+
+if rVecNorm != rVecNormRead:
+    exit(1)
+
 # Test matrix IO functions
 lRow = gcomm.rank + 1
 testMat = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -270,4 +270,40 @@ DASolver.solver.readMatrixBinary(testMat1, b"testMat")
 testMatNorm1 = testMat1.norm(0)
 
 if testMatNorm != testMatNorm1:
+    exit(1)
+
+# call inferface functions
+DVNames, DVSizes = DASolver.getDVsCons()
+if DVNames[0] != "uin" or DVNames[1] != "shapey":
+    exit(1)
+if DVSizes[0] != 1 or DVSizes[1] != 4:
+    exit(1)
+
+states = DASolver.getStates()
+statesMean = states.mean()
+statesVec = DASolver.array2Vec(states)
+states1 = DASolver.vec2Array(statesVec)
+statesMean1 = states1.mean()
+if statesMean != statesMean1:
+    exit(1)
+
+residuals = DASolver.getResiduals()
+residualsMean = residuals.mean()
+
+DASolver.setStates(states)
+
+residuals1 = DASolver.getResiduals()
+residualsMean1 = residuals1.mean()
+
+if residualsMean != residualsMean1:
+    exit(1)
+
+# Additional test for a failed mesh
+# perturb a large value for design variable to make a failed mesh
+xDV["shapey"][0] = 1000.0
+funcs1 = {}
+funcs1, fail1 = optFuncs.calcObjFuncValues(xDV)
+
+# the checkMesh utility should detect failed mesh
+if fail1 is False:
     exit(1)

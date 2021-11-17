@@ -57,6 +57,8 @@ void DARhoSimpleFoam::initSolver()
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
+    this->setDAObjFuncList();
+
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)
@@ -116,6 +118,9 @@ label DARhoSimpleFoam::solvePrimal(
     {
         return 1;
     }
+
+    // if the forwardModeAD is active, we need to set the seed here
+#include "setForwardADSeeds.H"
 
     // set the rotating wall velocity after the mesh is updated (if MRF is active)
     this->setRotingWallVelocity();

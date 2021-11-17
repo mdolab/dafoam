@@ -52,6 +52,8 @@ void DASimpleFoam::initSolver()
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+    
+    this->setDAObjFuncList();
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -166,9 +168,6 @@ label DASimpleFoam::solvePrimal(
 
     // write the mesh to files
     mesh.write();
-
-    // if the forwardModeAD is active,, we need to get the total derivatives here
-#include "getForwardADDerivs.H"
 
     Info << "End\n"
          << endl;

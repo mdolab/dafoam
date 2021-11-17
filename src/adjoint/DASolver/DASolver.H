@@ -15,8 +15,10 @@
 #include <petscksp.h>
 #include "Python.h"
 #include "fvCFD.H"
+#include "fvMesh.H"
 #include "runTimeSelectionTables.H"
 #include "OFstream.H"
+#include "functionObjectList.H"
 #include "DAUtility.H"
 #include "DACheckMesh.H"
 #include "DAOption.H"
@@ -30,6 +32,7 @@
 #include "DAField.H"
 #include "DAPartDeriv.H"
 #include "DALinearEqn.H"
+#include "volPointInterpolation.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -106,9 +109,6 @@ protected:
     dictionary totalDerivDict_;
 
     /// pointer to the objective function file used in unsteady primal solvers
-    autoPtr<OFstream> objFuncHistFilePtr_;
-
-    /// pointer to the objective function file used in unsteady primal solvers
     autoPtr<OFstream> objFuncAvgHistFilePtr_;
 
     /// number of iterations since the start of objFunc averaging
@@ -157,12 +157,6 @@ protected:
     void reduceStateResConLevel(
         const dictionary& maxResConLv4JacPCMat,
         HashTable<List<List<word>>>& stateResConInfo) const;
-
-    /// initialize objFuncHistFilePtr_
-    void initializeObjFuncHistFilePtr(const word fileName);
-
-    /// write objective functions values to the objFuncHistFile
-    void writeObjFuncHistFile();
 
     /// set velocity boundary condition for rotating walls
     void setRotingWallVelocity();
@@ -272,6 +266,13 @@ public:
         const label isPC,
         Mat dRdWT);
 
+    /// compute [dRdW]^T*Psi
+    void calcdRdWTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        Vec dRdWTPsi);
+
     /// compute dFdW
     void calcdFdW(
         const Vec xvVec,
@@ -325,14 +326,6 @@ public:
         const word designVarName,
         Vec dRdBCTPsi);
 
-    /// compute dFdBCAD
-    void calcdFdBCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdBC);
-
     /// compute dRdAOA
     void calcdRdAOA(
         const Vec xvVec,
@@ -355,14 +348,6 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdAOATPsi);
-
-    /// compute dFdAOAAD
-    void calcdFdAOAAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdAOA);
 
     /// compute dRdFFD
     void calcdRdFFD(
@@ -633,6 +618,9 @@ public:
     /// return the value of the objective function
     scalar getObjFuncValue(const word objFuncName);
 
+    /// return the forces of the desired fluid-structure-interaction patches
+    void getForces(Vec fX, Vec fY, Vec fZ, Vec pointList);
+
     /// print all DAOption
     void printAllOptions()
     {
@@ -749,6 +737,9 @@ public:
     {
         return forwardADDerivVal_[objFuncName];
     }
+
+    /// calculate the residual and assign it to the resVec vector
+    void calcResidualVec(Vec resVec);
 
 #ifdef CODI_AD_REVERSE
 

@@ -45,6 +45,8 @@ void DAScalarTransportFoam::initSolver()
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
+    this->setDAObjFuncList();
+
     mode_ = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
 
     if (mode_ == "hybridAdjoint")
@@ -99,9 +101,6 @@ void DAScalarTransportFoam::initSolver()
             runTimeIndexAllInstances_[idxI] = 0;
         }
     }
-
-    // initialize intermediate variable pointer for mean field calculation
-    daIntmdVarPtr_.reset(new DAIntmdVar(mesh, daOptionPtr_()));
 }
 
 label DAScalarTransportFoam::solvePrimal(
@@ -199,8 +198,6 @@ label DAScalarTransportFoam::solvePrimal(
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                  << nl << endl;
         }
-
-        daIntmdVarPtr_->update();
 
         runTime.write();
 

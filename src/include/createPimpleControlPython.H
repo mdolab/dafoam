@@ -5,10 +5,10 @@
 
 \*---------------------------------------------------------------------------*/
 
-Info << "Create pimpleControl." << endl;
+Info << "Create pimpleControlDF." << endl;
 
 pimplePtr_.reset(
-    new pimpleControl(
+    new pimpleControlDF(
         mesh));
 
-pimpleControl& pimple = pimplePtr_();
+pimpleControlDF& pimple = pimplePtr_();

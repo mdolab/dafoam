@@ -130,17 +130,6 @@ public:
         DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
     }
 
-    /// compute dFdAOA using reverse-mode AD
-    void calcdFdAOAAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdAOA)
-    {
-        DASolverPtr_->calcdFdAOAAD(xvVec, wVec, objFuncName, designVarName, dFdAOA);
-    }
-
     /// compute dRdAOA^T*Psi
     void calcdRdAOATPsiAD(
         const Vec xvVec,
@@ -219,17 +208,6 @@ public:
         Vec dFdBC)
     {
         DASolverPtr_->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
-    }
-
-    /// compute dFdBC using reverse-mode AD
-    void calcdFdBCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdBC)
-    {
-        DASolverPtr_->calcdFdBCAD(xvVec, wVec, objFuncName, designVarName, dFdBC);
     }
 
     /// compute dRdBC^T*Psi
@@ -350,6 +328,16 @@ public:
         DASolverPtr_->calcdRdWOldTPsiAD(oldTimeLevel, psi, dRdWOldTPsi);
     }
 
+    /// compute [dRdW]^T*Psi
+    void calcdRdWTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        Vec dRdWTPsi)
+    {
+        DASolverPtr_->calcdRdWTPsiAD(xvVec, wVec, psi, dRdWTPsi);
+    }
+
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
     void updateOFField(const Vec wVec)
     {
@@ -418,6 +406,12 @@ public:
         double returnVal = 0.0;
         assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValue(objFuncName));
         return returnVal;
+    }
+
+    /// return the value of objective
+    void getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
+    {
+        DASolverPtr_->getForces(fX, fY, fZ, pointList);
     }
 
     /// call DASolver::printAllOptions
@@ -579,6 +573,12 @@ public:
     PetscScalar getForwardADDerivVal(const word objFuncName)
     {
         return DASolverPtr_->getForwardADDerivVal(objFuncName);
+    }
+
+    /// calculate the residual and assign it to the resVec vector
+    void calcResidualVec(Vec resVec)
+    {
+        DASolverPtr_->calcResidualVec(resVec);
     }
 };
 

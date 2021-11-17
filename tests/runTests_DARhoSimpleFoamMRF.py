@@ -37,6 +37,7 @@ if gcomm.rank == 0:
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DARhoSimpleFoam",
+    "useAD": {"mode": "fd"},
     "designSurfaces": ["blade"],
     "primalMinResTol": 1e-12,
     "primalVarBounds": {
@@ -128,4 +129,4 @@ else:
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-5, 1e-7)
+        reg_write_dict(funcsSens, 1e-4, 1e-6)

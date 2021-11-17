@@ -117,6 +117,9 @@ public:
 
     /// generate global index numbering for local-global index transferring
     static globalIndex genGlobalIndex(const label localIndexSize);
+
+    /// angle of attack in radian
+    static scalar angleOfAttackRadForwardAD;
 };
 
 template<class classType>
