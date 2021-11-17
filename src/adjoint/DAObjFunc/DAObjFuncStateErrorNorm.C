@@ -62,10 +62,6 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
     }
-    ic (stateType_ == "profile")
-    {
-        objFuncDict_.readEntry<scalar>("weightingLimit", weightingLimit_);
-    }
 
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
     // this objFunc only depends on the state variable at the zero level cell
