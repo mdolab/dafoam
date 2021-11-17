@@ -96,8 +96,8 @@ DASpalartAllmarasFv3FieldInversion::DASpalartAllmarasFv3FieldInversion(
           mesh.thisDb().lookupObject<volScalarField>("surfacePressureRef"))),
       profileRefFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("profileRefFieldInversion"))),
-      TauDNS_(const_cast<volSymmTensorField&>(
-          mesh.thisDb().lookupObject<volSymmTensorField>("TauDNS"))),
+      //TauDNS_(const_cast<volSymmTensorField&>(
+      //   mesh.thisDb().lookupObject<volSymmTensorField>("TauDNS"))),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 

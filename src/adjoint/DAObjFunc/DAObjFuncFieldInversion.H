@@ -8,8 +8,8 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncStateErrorNorm_H
-#define DAObjFuncStateErrorNorm_H
+#ifndef DAObjFuncFieldInversion_H
+#define DAObjFuncFieldInversion_H
 
 #include "DAObjFunc.H"
 #include "addToRunTimeSelectionTable.H"
@@ -20,10 +20,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncStateErrorNorm Declaration
+      Class DAObjFuncFieldInversion Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncStateErrorNorm
+class DAObjFuncFieldInversion
     : public DAObjFunc
 {
 
@@ -64,7 +64,7 @@ public:
     // Constructors
 
     //- Construct from components
-    DAObjFuncStateErrorNorm(
+    DAObjFuncFieldInversion(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
@@ -75,7 +75,7 @@ public:
         const dictionary& objFuncDict);
 
     //- Destructor
-    virtual ~DAObjFuncStateErrorNorm()
+    virtual ~DAObjFuncFieldInversion()
     {
     }
 

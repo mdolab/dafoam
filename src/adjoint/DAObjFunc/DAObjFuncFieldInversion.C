@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAObjFuncStateErrorNorm.H"
+#include "DAObjFuncFieldInversion.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAObjFuncStateErrorNorm, 0);
-addToRunTimeSelectionTable(DAObjFunc, DAObjFuncStateErrorNorm, dictionary);
+defineTypeNameAndDebug(DAObjFuncFieldInversion, 0);
+addToRunTimeSelectionTable(DAObjFunc, DAObjFuncFieldInversion, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
+DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
@@ -76,7 +76,7 @@ DAObjFuncStateErrorNorm::DAObjFuncStateErrorNorm(
 }
 
 /// calculate the value of objective function
-void DAObjFuncStateErrorNorm::calcObjFunc(
+void DAObjFuncFieldInversion::calcObjFunc(
     const labelList& objFuncFaceSources,
     const labelList& objFuncCellSources,
     scalarList& objFuncFaceValues,
@@ -142,7 +142,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
         }
-        else if (stateType_ == "ReynoldsShearStress")
+        /*else if (stateType_ == "ReynoldsShearStress")
         {
             const volSymmTensorField& stateRef = db.lookupObject<volSymmTensorField>(stateRefName_);
 
@@ -166,7 +166,7 @@ void DAObjFuncStateErrorNorm::calcObjFunc(
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
 
-        }
+        }*/
     }
 
     else if (varTypeFieldInversion_ == "surface")

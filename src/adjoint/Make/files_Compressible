@@ -43,7 +43,7 @@ DAObjFunc/DAObjFuncTotalTemperatureRatio.C
 DAObjFunc/DAObjFuncMassFlowRate.C
 DAObjFunc/DAObjFuncVariableVolSum.C
 DAObjFunc/DAObjFuncMeshQualityKS.C
-DAObjFunc/DAObjFuncStateErrorNorm.C
+DAObjFunc/DAObjFuncFieldInversion.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C

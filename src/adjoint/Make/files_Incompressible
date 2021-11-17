@@ -46,7 +46,7 @@ DAObjFunc/DAObjFuncMoment.C
 DAObjFunc/DAObjFuncWallHeatFlux.C
 DAObjFunc/DAObjFuncCenterOfPressure.C
 DAObjFunc/DAObjFuncTotalPressure.C
-DAObjFunc/DAObjFuncStateErrorNorm.C
+DAObjFunc/DAObjFuncFieldInversion.C
 DAObjFunc/DAObjFuncVariableVolSum.C
 DAObjFunc/DAObjFuncMeshQualityKS.C
 
