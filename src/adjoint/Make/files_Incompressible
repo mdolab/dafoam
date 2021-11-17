@@ -12,7 +12,8 @@ DARegDb/DARegDbTurbulenceModelIncompressible.C
 DAModel/DATurbulenceModel/DATurbulenceModel.C
 DAModel/DATurbulenceModel/DASpalartAllmaras.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
-DAModel/DATurbulenceModel/DASpalartAllmarasFv3Beta.C
+DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
+DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
 DAModel/DATurbulenceModel/DAkOmegaSSTLM.C
 DAModel/DATurbulenceModel/DAkOmega.C
@@ -96,7 +97,8 @@ boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
 boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
 models/dummyTurbulenceModel/makeDummyTurbulenceModelIncompressible.C
 models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Incompressible.C
-models/SpalartAllmarasFv3Beta/makeSpalartAllmarasFv3BetaIncompressible.C
+models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionIncompressible.C
+models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionIncompressible.C
 models/meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
 models/pimpleControlDF/pimpleControlDF.C
 
