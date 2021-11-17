@@ -78,7 +78,7 @@ protected:
     volVectorField& varRefFieldInversion_; 
 
     /// reference Reynolds stress field
-    volSymmTensorField TauDNS_;
+    //volSymmTensorField TauDNS_;
 
     /// a surface friction 'field' when using skin friction data for field inversion
     volScalarField surfaceFriction_;
