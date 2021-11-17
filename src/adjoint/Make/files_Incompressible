@@ -13,6 +13,7 @@ DAModel/DATurbulenceModel/DATurbulenceModel.C
 DAModel/DATurbulenceModel/DASpalartAllmaras.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
+DAModel/DATurbulenceModel/DAkOmegaFieldInversion.C
 DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
 DAModel/DATurbulenceModel/DAkOmegaSSTLM.C
@@ -99,6 +100,7 @@ models/dummyTurbulenceModel/makeDummyTurbulenceModelIncompressible.C
 models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Incompressible.C
 models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionIncompressible.C
 models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionIncompressible.C
+models/kOmegaFieldInversion/makekOmegaFieldInversionIncompressible.C
 models/meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
 models/pimpleControlDF/pimpleControlDF.C
 
