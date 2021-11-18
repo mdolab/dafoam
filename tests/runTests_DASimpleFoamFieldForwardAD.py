@@ -17,6 +17,8 @@ gcomm = MPI.COMM_WORLD
 
 os.chdir("./input/NACA0012BetaSA")
 
+replace_text_in_file("constant/turbulenceProperties", "RASModel             SpalartAllmarasFv3Beta;", "RASModel             SpalartAllmarasFv3FieldInversion;")
+
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.incompressible 0")

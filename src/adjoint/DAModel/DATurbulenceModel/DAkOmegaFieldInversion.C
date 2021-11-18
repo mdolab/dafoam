@@ -541,7 +541,7 @@ void DAkOmegaFieldInversion::calcResiduals(const dictionary& options)
     volScalarField divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_)));
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
+    volScalarField G("kOmegaFieldInversion:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
     tgradU.clear();
 
     if (solveTurbState_)
