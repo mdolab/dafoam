@@ -46,13 +46,15 @@ void DAMotionTranslationCoupled::correct()
     scalar dT = mesh_.time().deltaT().value();
 
     vector force = this->getForce(mesh_);
-    // NOTE: we scale the force here. This can be useful if we simulate a 2D geometry and 
+    // NOTE: we scale the force here. This can be useful if we simulate a 2D geometry and
     // want to scale the force to the full 3D model for spring dynamics
     scalar yForce = force & direction_ * forceScale_;
 
-    // Euler method to solve the mass-spring-damper model
-    y_ = y0_ + dT * V0_;
-    V_ = V0_ + dT * (yForce - C_ * V0_ - K_ * y0_) / M_;
+    // RK2 method to solve the mass-spring-damper model
+    scalar ym = y0_ + 0.5 * dT * V0_;
+    scalar Vm = V0_ + 0.5 * dT * (yForce - C_ * V0_ - K_ * y0_) / M_;
+    y_ = y0_ + dT * Vm;
+    V_ = V0_ + dT * (yForce - C_ * Vm - K_ * ym) / M_;
 
     y0_ = y_;
     V0_ = V_;
