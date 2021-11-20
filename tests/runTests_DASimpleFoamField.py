@@ -73,7 +73,7 @@ aeroOptions = {
         },
         "FI": {
             "part1": {
-                "type": "stateErrorNorm",
+                "type": "fieldInversion",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
@@ -85,7 +85,7 @@ aeroOptions = {
                 "addToAdjoint": True,
             },
             "part2": {
-                "type": "stateErrorNorm",
+                "type": "fieldInversion",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
