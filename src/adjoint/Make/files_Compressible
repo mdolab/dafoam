@@ -14,6 +14,7 @@ DAModel/DATurbulenceModel/DASpalartAllmaras.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
 DAModel/DATurbulenceModel/DAkOmegaFieldInversion.C
+DAModel/DATurbulenceModel/DAkOmegaFieldInversionk.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
 DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
 DAModel/DATurbulenceModel/DAkEpsilon.C
@@ -90,6 +91,8 @@ models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Compressible.C
 models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionCompressible.C
 models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionCompressible.C
 models/kOmegaFieldInversion/makekOmegaFieldInversionCompressible.C
+models/kOmegaFieldInversionk/makekOmegaFieldInversionkCompressible.C
+
 models/meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFoamCompressible$(DF_LIB_SUFFIX)

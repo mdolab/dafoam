@@ -60,7 +60,7 @@ protected:
     const DATurbulenceModel& daTurb_;
 
 public:
-    TypeName("stateErrorNorm");
+    TypeName("fieldInversion");
     // Constructors
 
     //- Construct from components
