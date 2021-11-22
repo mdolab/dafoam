@@ -45,6 +45,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     stateName_ = objFuncDict_.getWord("stateName");
     stateRefName_ = objFuncDict_.getWord("stateRefName");
     scale_ = objFuncDict_.getScalar("scale");
+    weightedSum_ = objFuncDict_.getWord("weightedSum");
     if (varTypeFieldInversion_ == "surface")
     {
         objFuncDict_.readEntry<wordList>("patchNames", patchNames_);
@@ -62,7 +63,10 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
     }
-
+    if (weightedSum_ == "on")
+    {
+        objFuncDict_.readEntry<scalar>("weight", weight_); 
+    }
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
     // this objFunc only depends on the state variable at the zero level cell
     if (DAUtility::isInList<word>(stateName_, daIndex.adjStateNames))
@@ -228,6 +232,12 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
                     objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
                 }
+
+                if (weightedSum_ == "on")
+                {
+                    objFuncValue = weight_ * objFuncValue;
+                }
+
             }
 
             // need to reduce the sum of all objectives across all processors
@@ -351,6 +361,11 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncCellValues[idxI] = (sqr(scale_ * state[cellI].x() - stateRef[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
+        }
+        
+        if (weightedSum_ == "on")
+        {
+            objFuncValue = weight_ * objFuncValue;
         }
 
         // need to reduce the sum of all objectives across all processors
