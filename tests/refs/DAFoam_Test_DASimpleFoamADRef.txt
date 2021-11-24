@@ -30,8 +30,8 @@ Dictionary Key: shapey
 @value   0.3973317807917438 1e-05 1e-07
 @value    1.137565481925202 1e-05 1e-07
 Dictionary Key: dForcedW
-@value   0.5364956851579189 1e-05 1e-07
+@value   0.5088672045603829 1e-05 1e-07
 Dictionary Key: dForcedxV
-@value    6.970578574599136 1e-05 1e-07
+@value    6.316755936424617 1e-05 1e-07
 Dictionary Key: fail
 @value                    0 1e-05 1e-07

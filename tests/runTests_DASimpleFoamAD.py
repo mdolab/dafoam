@@ -14,6 +14,8 @@ from pyoptsparse import Optimization, OPT
 import numpy as np
 from testFuncs import *
 
+np.random.seed(0)
+
 calcFDSens = 0
 if len(sys.argv) != 1:
     if sys.argv[1] == "calcFDSens":
