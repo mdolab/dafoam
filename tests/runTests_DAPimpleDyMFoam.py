@@ -22,6 +22,7 @@ daOptions = {
         "mass": 20.0,
         "damping": 0.0,
         "stiffness": 1000.0,
+        "forceScale": 1.0,
         "V0": 0.1,
         "direction": [0.0, 1.0, 0.0],
     },

@@ -48,11 +48,7 @@ label DAPimpleDyMFoam::solvePrimal(
     Output:
         wVec: state variable vector
     */
-for(int i=0;i<argc;i++)
-Info<<argv[i]<<endl;
-
-//#include "setArgs.H"
-#include "setRootCase.H"
+    Foam::argList& args = argsPtr_();
 #include "createTime.H"
 #include "createDynamicFvMesh.H"
 #include "initContinuityErrs.H"

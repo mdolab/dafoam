@@ -20,7 +20,7 @@
         dy1/dt = V = y2
         dy2/dt = a = (F - C * y2 - K * y1) / M
 
-        We can then use the Euler method to solve the above two ODEs
+        We can then use the RK2 method to solve the above two ODEs
 
 \*---------------------------------------------------------------------------*/
 
@@ -52,6 +52,9 @@ protected:
 
     /// spring stiffness constant
     scalar K_;
+    
+    /// scaling factor for force
+    scalar forceScale_;
 
     /// spring oscillation direction
     vector direction_ = vector::zero;
@@ -67,6 +70,9 @@ protected:
 
     /// velocity from the previous step
     scalar V0_;
+
+    /// the simulation time based on dT and it should be same as the runtime
+    scalar t_;
 
 public:
     TypeName("translationCoupled");
