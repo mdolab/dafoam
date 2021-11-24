@@ -425,7 +425,6 @@ void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
             nWallPatch += 1;
         }
     }
-    // List<word> patchList(nWallPatch);
     patchList.resize(nWallPatch);
 
     label iWallPatch = 0;
@@ -494,7 +493,7 @@ void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar
         fixedValueFvPatchScalarField::typeName);
 
     // this code is pulled from:
-    // src/functionObjects/forcces/forces.C
+    // src/functionObjects/forces/forces.C
     // modified slightly
     vector force(vector::zero);
 
