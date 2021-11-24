@@ -6,6 +6,8 @@ Dictionary Key: COP
 @value   0.2298218575114749 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
+Dictionary Key: forces
+@value   0.3038183401326526 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: alpha
 @value 0.002280322248925539 1e-05 1e-07
@@ -27,5 +29,9 @@ Dictionary Key: shapey
 @value  0.02508769994931661 1e-05 1e-07
 @value   0.3973317807917438 1e-05 1e-07
 @value    1.137565481925202 1e-05 1e-07
+Dictionary Key: dForcedW
+@value   0.5364956851579189 1e-05 1e-07
+Dictionary Key: dForcedxV
+@value    6.970578574599136 1e-05 1e-07
 Dictionary Key: fail
 @value                    0 1e-05 1e-07
