@@ -14,8 +14,6 @@ from pyoptsparse import Optimization, OPT
 import numpy as np
 from testFuncs import *
 
-np.random.seed(0)
-
 calcFDSens = 0
 if len(sys.argv) != 1:
     if sys.argv[1] == "calcFDSens":
@@ -182,7 +180,7 @@ else:
     funcs["forces"] = fNormSum
 
     # Compute dForcedxV
-    fBar = np.random.rand(np.size(forces.flatten()))
+    fBar = np.ones(np.size(forces.flatten()))
     fBarVec = DASolver.array2Vec(fBar)
     dForcedXv = DASolver.xvVec.duplicate()
     dForcedXv.zeroEntries()
@@ -193,7 +191,7 @@ else:
     funcsSens["dForcedxV"] = xVBarNormSum
 
     # Compute dForcedW
-    fBar = np.random.rand(np.size(forces.flatten()))
+    fBar = np.ones(np.size(forces.flatten()))
     fBarVec = DASolver.array2Vec(fBar)
     dForcedW = DASolver.wVec.duplicate()
     dForcedW.zeroEntries()
