@@ -61,7 +61,7 @@ protected:
     int argc;
 
     /// the actual arguments parsed from argsAll_
-    char** argv; 
+    char** argv;
 
     /// all options in DAFoam
     PyObject* pyOptions_;
@@ -647,10 +647,10 @@ public:
     void getForces(Vec fX, Vec fY, Vec fZ, Vec pointList);
 
     /// return the number of points used for force calculation
-    label nForcePoints();
+    void getForcesInfo(label& nPoints, List<word>& patchList);
 
     /// compute the forces of the desired fluid-structure-interation patches
-    void getForcesInternal(List<scalar> &fX, List<scalar> &fY, List<scalar> &fZ, List<label> &pointList);
+    void getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ, List<label>& pointList, List<word>& patchList);
 
     /// print all DAOption
     void printAllOptions()
