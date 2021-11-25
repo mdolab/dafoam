@@ -7,7 +7,7 @@ Dictionary Key: COP
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: forces
-@value   0.3038183401326526 1e-08 1e-10
+@value   0.4202343589635726 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: alpha
 @value 0.002280322248925539 1e-05 1e-07
