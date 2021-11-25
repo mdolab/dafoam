@@ -320,18 +320,97 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
 {
     /*
     Description:
-        Compute the nodal forces for all of the nodes on the
-        fluid-structure-interaction patches.
+        Compute the nodal forces for all of the nodes on the fluid-structure-interaction
+        patches. This routine is a wrapper that exposes the actual force computation
+        routine to the Python layer using PETSc vectors. For the actual force computation
+        routine view the getForcesInternal() function.
+
+    Inputs:
+        fX: Vector of X-component of forces
+
+        fY: Vector of Y-component of forces
+
+        fZ: Vector of Z-component of forces
+
+        pointList: Global indices of nodes used in force computation
 
     Output:
-        forces : a (nPoint x 3) array of forces for all of the nodes
-        of the desired patches.
+        fX, fY, fZ, and pointList are modified / set in place.
     */
 #ifndef SolidDASolver
-    // Get reference pressure
-    scalar pRef;
-    daOptionPtr_->getAllOptions().subDict("fsi").readEntry<scalar>("pRef", pRef);
+    // Get Data
+    label nPoints;
+    List<word> patchList;
+    this->getForcesInfo(nPoints, patchList);
 
+    // Allocate arrays
+    List<scalar> fXTemp(nPoints);
+    List<scalar> fYTemp(nPoints);
+    List<scalar> fZTemp(nPoints);
+    List<label> pointListTemp(nPoints);
+
+    // Compute forces
+    this->getForcesInternal(fXTemp, fYTemp, fZTemp, pointListTemp, patchList);
+
+    // Zero PETSc Arrays
+    VecZeroEntries(fX);
+    VecZeroEntries(fY);
+    VecZeroEntries(fZ);
+    VecZeroEntries(pointList);
+
+    // Get PETSc arrays
+    PetscScalar* vecArrayFX;
+    VecGetArray(fX, &vecArrayFX);
+    PetscScalar* vecArrayFY;
+    VecGetArray(fY, &vecArrayFY);
+    PetscScalar* vecArrayFZ;
+    VecGetArray(fZ, &vecArrayFZ);
+    PetscScalar* vecArrayPointList;
+    VecGetArray(pointList, &vecArrayPointList);
+
+    // Transfer to PETSc Array
+    label pointCounter = 0;
+    forAll(pointListTemp, cI)
+    {
+        // Get Values
+        PetscScalar val1, val2, val3;
+        assignValueCheckAD(val1, fXTemp[pointCounter]);
+        assignValueCheckAD(val2, fYTemp[pointCounter]);
+        assignValueCheckAD(val3, fZTemp[pointCounter]);
+
+        // Set Values
+        vecArrayFX[pointCounter] = val1;
+        vecArrayFY[pointCounter] = val2;
+        vecArrayFZ[pointCounter] = val3;
+        vecArrayPointList[pointCounter] = pointListTemp[pointCounter];
+
+        // Increment counter
+        pointCounter += 1;
+    }
+    VecRestoreArray(fX, &vecArrayFX);
+    VecRestoreArray(fY, &vecArrayFY);
+    VecRestoreArray(fZ, &vecArrayFZ);
+    VecRestoreArray(pointList, &vecArrayPointList);
+#endif
+    return;
+}
+
+void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
+{
+    /*
+    Description:
+        Compute information needed to compute surface forces on walls.
+        This includes total number of nodes and a list of patches to
+        include in the computation.
+
+    Inputs:
+        nPoints: Number of nodes included in the force computation
+
+        patchList: Patches included in the force computation
+
+    Outputs:
+        nPoints and patchList are modified / set in-place
+    */
     // Generate patches, point mesh, and point boundary mesh
     const polyBoundaryMesh& patches = meshPtr_->boundaryMesh();
     const pointMesh& pMesh = pointMesh::New(meshPtr_());
@@ -346,7 +425,7 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
             nWallPatch += 1;
         }
     }
-    List<word> patchList(nWallPatch);
+    patchList.resize(nWallPatch);
 
     label iWallPatch = 0;
     forAll(patches, patchI)
@@ -357,16 +436,49 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
             iWallPatch += 1;
         }
     }
-    SortableList<word> patchListSort(patchList);
 
     // compute size of point and connectivity arrays
-    label nPoints = 0;
-    forAll(patchListSort, cI)
+    nPoints = 0;
+    forAll(patchList, cI)
     {
         // Get number of points in patch
-        label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
+        label patchIPoints = boundaryMesh.findPatchID(patchList[cI]);
         nPoints += boundaryMesh[patchIPoints].size();
     }
+    return;
+}
+
+void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ, List<label>& pointList, List<word>& patchList)
+{
+    /*
+    Description:
+        Wrapped version force computation routine to perform match to compute forces specified patches.
+
+    Inputs:
+        fX: Vector of X-component of forces
+
+        fY: Vector of Y-component of forces
+
+        fZ: Vector of Z-component of forces
+
+        pointList: Global indices of nodes used in force computation
+
+        patchList: Patches on which nodal forces are computed
+
+    Output:
+        fX, fY, fZ, and pointList are modified / set in place.
+    */
+#ifndef SolidDASolver
+    // Get reference pressure
+    scalar pRef;
+    daOptionPtr_->getAllOptions().subDict("fsi").readEntry<scalar>("pRef", pRef);
+
+    SortableList<word> patchListSort(patchList);
+
+    List<scalar> fXTemp = fX.clone();
+    List<scalar> fYTemp = fY.clone();
+    List<scalar> fZTemp = fZ.clone();
+    List<label> pointListTemp = pointList.clone();
 
     // Initialize surface field for face-centered forces
     volVectorField volumeForceField(
@@ -381,7 +493,7 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
         fixedValueFvPatchScalarField::typeName);
 
     // this code is pulled from:
-    // src/functionObjects/forcces/forces.C
+    // src/functionObjects/forces/forces.C
     // modified slightly
     vector force(vector::zero);
 
@@ -418,21 +530,12 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
 
     // The above volumeForceField is face-centered, we need to interpolate it to point-centered
     label pointCounter = 0;
-    List<label> globalIndex(nPoints, -1);
+    List<label> globalIndex = pointList.clone();
+    globalIndex = -1;
 
     pointField meshPoints = meshPtr_->points();
 
     vector nodeForce(vector::zero);
-
-    PetscScalar* vecArrayFX;
-    VecGetArray(fX, &vecArrayFX);
-    PetscScalar* vecArrayFY;
-    VecGetArray(fY, &vecArrayFY);
-    PetscScalar* vecArrayFZ;
-    VecGetArray(fZ, &vecArrayFZ);
-
-    PetscScalar* vecArrayPointList;
-    VecGetArray(pointList, &vecArrayPointList);
 
     forAll(patchListSort, cI)
     {
@@ -456,7 +559,7 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
 
                 // Loop over globalMapping array to check if this node is already included
                 bool found = false;
-                label iPoint;
+                label iPoint = -1;
                 for (label i = 0; i < pointCounter; i++)
                 {
                     if (faceIPointIndexI == globalIndex[i])
@@ -468,26 +571,22 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
                 }
 
                 // If node is already included, add value to its entry
-                PetscScalar val1, val2, val3;
-                assignValueCheckAD(val1, nodeForce[0]);
-                assignValueCheckAD(val2, nodeForce[1]);
-                assignValueCheckAD(val3, nodeForce[2]);
                 if (found)
                 {
                     // Add Force
-                    vecArrayFX[iPoint] += val1;
-                    vecArrayFY[iPoint] += val2;
-                    vecArrayFZ[iPoint] += val3;
+                    fXTemp[iPoint] += nodeForce[0];
+                    fYTemp[iPoint] += nodeForce[1];
+                    fZTemp[iPoint] += nodeForce[2];
                 }
                 // If node is not already included, add it as the newest point and add global index mapping
                 else
                 {
                     // Add Force
-                    vecArrayFX[pointCounter] = val1;
-                    vecArrayFY[pointCounter] = val2;
-                    vecArrayFZ[pointCounter] = val3;
+                    fXTemp[pointCounter] = nodeForce[0];
+                    fYTemp[pointCounter] = nodeForce[1];
+                    fZTemp[pointCounter] = nodeForce[2];
                     // Add to Node Order Array
-                    vecArrayPointList[pointCounter] = faceIPointIndexI;
+                    pointListTemp[pointCounter] = faceIPointIndexI;
                     // Add to Global - Local Mapping
                     globalIndex[pointCounter] = faceIPointIndexI;
 
@@ -497,12 +596,30 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
             }
         }
     }
-    VecRestoreArray(fX, &vecArrayFX);
-    VecRestoreArray(fY, &vecArrayFY);
-    VecRestoreArray(fZ, &vecArrayFZ);
 
-    VecRestoreArray(pointList, &vecArrayPointList);
+    // Sort nodes in increasing order based on pointList
+    SortableList<label> pointListSort(pointListTemp);
 
+    // Iterate through pointList and sort the temp force arrays
+    forAll(pointListSort, i)
+    {
+        // Search for corresponding entry in unsorted array
+        label iPoint = -1;
+        forAll(pointListTemp, j)
+        {
+            if (pointListSort[i] == pointListTemp[j])
+            {
+                iPoint = j;
+                break;
+            }
+        }
+
+        // Enter point in sorted arrays
+        fX[i] = fXTemp[iPoint];
+        fY[i] = fYTemp[iPoint];
+        fZ[i] = fZTemp[iPoint];
+        pointList[i] = pointListTemp[iPoint];
+    }
 #endif
     return;
 }
@@ -2992,6 +3109,88 @@ void DASolver::calcdRdXvTPsiAD(
 #endif
 }
 
+void DASolver::calcdForcedXvAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec fBarVec,
+    Vec dForcedXv)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate dForcedXv using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        fBarVec: the derivative seed vector
+    
+    Output:
+        dForcedXv: dForce/dXv
+    */
+
+    Info << "Calculating dForcedXvAD using reverse-mode AD" << endl;
+
+    VecZeroEntries(dForcedXv);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    pointField meshPoints = meshPtr_->points();
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.registerInput(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+
+    // Allocate arrays
+    label nPoints;
+    List<word> patchList;
+    this->getForcesInfo(nPoints, patchList);
+    List<scalar> fX(nPoints);
+    List<scalar> fY(nPoints);
+    List<scalar> fZ(nPoints);
+    List<label> pointList(nPoints);
+
+    this->getForcesInternal(fX, fY, fZ, pointList, patchList);
+    this->registerForceOutput4AD(fX, fY, fZ);
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ForceGradient(fBarVec, fX, fY, fZ);
+    this->globalADTape_.evaluate();
+
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
+            PetscScalar val = meshPoints[i][j].getGradient();
+            VecSetValue(dForcedXv, rowI, val, INSERT_VALUES);
+        }
+    }
+
+    VecAssemblyBegin(dForcedXv);
+    VecAssemblyEnd(dForcedXv);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
 void DASolver::calcdRdFieldTPsiAD(
     const Vec xvVec,
     const Vec wVec,
@@ -3358,6 +3557,79 @@ void DASolver::calcdRdActTPsiAD(
         DAUtility::writeVectorBinary(dRdActTPsi, outputName);
         DAUtility::writeVectorASCII(dRdActTPsi, outputName);
     }
+#endif
+}
+
+void DASolver::calcdForcedWAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec fBarVec,
+    Vec dForcedW)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate dForcedW using reverse-mode AD
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        fBarVec: the derivative seed vector
+    
+    Output:
+        dForcedW: dForce/dW
+    */
+
+    Info << "Calculating dForcesdW using reverse-mode AD" << endl;
+
+    VecZeroEntries(dForcedW);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD();
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+
+    // Allocate arrays
+    label nPoints;
+    List<word> patchList;
+    this->getForcesInfo(nPoints, patchList);
+    List<scalar> fX(nPoints);
+    List<scalar> fY(nPoints);
+    List<scalar> fZ(nPoints);
+    List<label> pointList(nPoints);
+
+    this->getForcesInternal(fX, fY, fZ, pointList, patchList);
+    this->registerForceOutput4AD(fX, fY, fZ);
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ForceGradient(fBarVec, fX, fY, fZ);
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(dForcedW);
+
+    // NOTE: we need to normalize dForcedW!
+    this->normalizeGradientVec(dForcedW);
+
+    VecAssemblyBegin(dForcedW);
+    VecAssemblyEnd(dForcedW);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
 #endif
 }
 
@@ -3789,6 +4061,33 @@ void DASolver::registerResidualOutput4AD()
 #endif
 }
 
+void DASolver::registerForceOutput4AD(
+    List<scalar>& fX,
+    List<scalar>& fY,
+    List<scalar>& fZ)
+{
+#if defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Register all force components as the output for reverse-mode AD
+
+    Inputs:
+        fX: Vector of X-component of forces
+
+        fY: Vector of Y-component of forces
+
+        fZ: Vector of Z-component of forces
+    */
+    forAll(fX, cI)
+    {
+        // Set seeds
+        this->globalADTape_.registerOutput(fX[cI]);
+        this->globalADTape_.registerOutput(fY[cI]);
+        this->globalADTape_.registerOutput(fZ[cI]);
+    }
+#endif
+}
+
 void DASolver::normalizeGradientVec(Vec vecY)
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
@@ -3965,6 +4264,48 @@ void DASolver::assignVec2ResidualGradient(Vec vecX)
     }
 
     VecRestoreArrayRead(vecX, &vecArray);
+#endif
+}
+
+void DASolver::assignVec2ForceGradient(
+    Vec fBarVec,
+    List<scalar>& fX,
+    List<scalar>& fY,
+    List<scalar>& fZ)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Assign the reverse-mode AD input seeds from fBarVec to the force vectors
+    
+    Inputs:
+        fBarVec: vector storing the input seeds
+
+        fX: Vector of X-component of forces
+
+        fY: Vector of Y-component of forces
+
+        fZ: Vector of Z-component of forces
+    
+    Outputs:
+        All force variables (for computing surface forces) will be set
+    */
+    PetscScalar* vecArrayFBarVec;
+    VecGetArray(fBarVec, &vecArrayFBarVec);
+
+    label i = 0;
+    forAll(fX, cI)
+    {
+        // Set seeds
+        fX[cI].setGradient(vecArrayFBarVec[i]);
+        fY[cI].setGradient(vecArrayFBarVec[i + 1]);
+        fZ[cI].setGradient(vecArrayFBarVec[i + 2]);
+
+        // Increment counter
+        i += 3;
+    }
+
+    VecRestoreArray(fBarVec, &vecArrayFBarVec);
 #endif
 }
 

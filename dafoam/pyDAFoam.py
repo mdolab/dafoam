@@ -2393,22 +2393,18 @@ class PYDAFOAM(object):
         pointListTemp = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         pointListTemp.setSizes((nPts, PETSc.DECIDE), bsize=1)
         pointListTemp.setFromOptions()
-        pointListTemp.zeroEntries()
 
         fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         fX.setSizes((nPts, PETSc.DECIDE), bsize=1)
         fX.setFromOptions()
-        fX.zeroEntries()
 
         fY = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         fY.setSizes((nPts, PETSc.DECIDE), bsize=1)
         fY.setFromOptions()
-        fY.zeroEntries()
 
         fZ = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         fZ.setSizes((nPts, PETSc.DECIDE), bsize=1)
         fZ.setFromOptions()
-        fZ.zeroEntries()
 
         # Compute forces
         self.solver.getForces(fX, fY, fZ, pointListTemp)
@@ -2426,10 +2422,6 @@ class PYDAFOAM(object):
         fY.destroy()
         fZ.destroy()
         pointListTemp.destroy()
-
-        # Reorder points to match sorted convention
-        indices = np.argsort(pointList)
-        forces = forces[indices]
 
         # Print total force
         fXSum = np.sum(forces[:, 0])
