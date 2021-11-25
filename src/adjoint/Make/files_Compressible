@@ -15,6 +15,7 @@ DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
 DAModel/DATurbulenceModel/DAkOmegaFieldInversion.C
 DAModel/DATurbulenceModel/DAkOmegaFieldInversionk.C
+DAModel/DATurbulenceModel/DAkOmegaFieldInversionOmega.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
 DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
 DAModel/DATurbulenceModel/DAkEpsilon.C
@@ -92,6 +93,8 @@ models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionComp
 models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionCompressible.C
 models/kOmegaFieldInversion/makekOmegaFieldInversionCompressible.C
 models/kOmegaFieldInversionk/makekOmegaFieldInversionkCompressible.C
+models/kOmegaFieldInversionOmega/makekOmegaFieldInversionOmegaCompressible.C
+
 
 models/meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
 

@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAkOmegaFieldInversion.H"
+#include "DAkOmegaFieldInversionOmega.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAkOmegaFieldInversion, 0);
-addToRunTimeSelectionTable(DATurbulenceModel, DAkOmegaFieldInversion, dictionary);
+defineTypeNameAndDebug(DAkOmegaFieldInversionOmega, 0);
+addToRunTimeSelectionTable(DATurbulenceModel, DAkOmegaFieldInversionOmega, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAkOmegaFieldInversion::DAkOmegaFieldInversion(
+DAkOmegaFieldInversionOmega::DAkOmegaFieldInversionOmega(
     const word modelType,
     const fvMesh& mesh,
     const DAOption& daOption)
@@ -130,7 +130,7 @@ DAkOmegaFieldInversion::DAkOmegaFieldInversion(
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // Augmented functions
-void DAkOmegaFieldInversion::correctModelStates(wordList& modelStates) const
+void DAkOmegaFieldInversionOmega::correctModelStates(wordList& modelStates) const
 {
     /*
     Description:
@@ -166,7 +166,7 @@ void DAkOmegaFieldInversion::correctModelStates(wordList& modelStates) const
     }
 }
 
-void DAkOmegaFieldInversion::correctNut()
+void DAkOmegaFieldInversionOmega::correctNut()
 {
     /*
     Description:
@@ -184,7 +184,7 @@ void DAkOmegaFieldInversion::correctNut()
     return;
 }
 
-void DAkOmegaFieldInversion::correctBoundaryConditions()
+void DAkOmegaFieldInversionOmega::correctBoundaryConditions()
 {
     /*
     Description:
@@ -196,7 +196,7 @@ void DAkOmegaFieldInversion::correctBoundaryConditions()
     k_.correctBoundaryConditions();
 }
 
-void DAkOmegaFieldInversion::correctOmegaBoundaryConditions()
+void DAkOmegaFieldInversionOmega::correctOmegaBoundaryConditions()
 {
     /*
     Description:
@@ -223,7 +223,7 @@ void DAkOmegaFieldInversion::correctOmegaBoundaryConditions()
     this->setOmegaNearWall();
 }
 
-void DAkOmegaFieldInversion::saveOmegaNearWall()
+void DAkOmegaFieldInversionOmega::saveOmegaNearWall()
 {
     /*
     Description:
@@ -247,7 +247,7 @@ void DAkOmegaFieldInversion::saveOmegaNearWall()
     return;
 }
 
-void DAkOmegaFieldInversion::setOmegaNearWall()
+void DAkOmegaFieldInversionOmega::setOmegaNearWall()
 {
     /*
     Description:
@@ -273,7 +273,7 @@ void DAkOmegaFieldInversion::setOmegaNearWall()
     return;
 }
 
-void DAkOmegaFieldInversion::updateIntermediateVariables()
+void DAkOmegaFieldInversionOmega::updateIntermediateVariables()
 {
     /*
     Description:
@@ -284,7 +284,7 @@ void DAkOmegaFieldInversion::updateIntermediateVariables()
     this->correctNut();
 }
 
-void DAkOmegaFieldInversion::correctStateResidualModelCon(List<List<word>>& stateCon) const
+void DAkOmegaFieldInversionOmega::correctStateResidualModelCon(List<List<word>>& stateCon) const
 {
     /*
     Description:
@@ -383,7 +383,7 @@ void DAkOmegaFieldInversion::correctStateResidualModelCon(List<List<word>>& stat
     }
 }
 
-void DAkOmegaFieldInversion::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
+void DAkOmegaFieldInversionOmega::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
 {
     /*
     Description:
@@ -475,7 +475,7 @@ void DAkOmegaFieldInversion::addModelResidualCon(HashTable<List<List<word>>>& al
 #endif
 }
 
-void DAkOmegaFieldInversion::correct()
+void DAkOmegaFieldInversionOmega::correct()
 {
     /*
     Descroption:
@@ -495,7 +495,7 @@ void DAkOmegaFieldInversion::correct()
     solveTurbState_ = 0;
 }
 
-void DAkOmegaFieldInversion::calcResiduals(const dictionary& options)
+void DAkOmegaFieldInversionOmega::calcResiduals(const dictionary& options)
 {
     /*
     Descroption:
@@ -541,7 +541,7 @@ void DAkOmegaFieldInversion::calcResiduals(const dictionary& options)
     volScalarField divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_)));
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField G("kOmegaFieldInversion:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
+    volScalarField G("kOmegaFieldInversionOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
     tgradU.clear();
 
     if (solveTurbState_)
@@ -598,7 +598,7 @@ void DAkOmegaFieldInversion::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, k_)
             + fvm::div(phaseRhoPhi_, k_, divKScheme)
             - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-        == betaFieldInversion_ * phase_ * rho_ * G
+        == phase_ * rho_ * G
             - fvm::SuSp((2.0 / 3.0) * phase_ * rho_ * divU, k_)
             - fvm::Sp(Cmu_ * phase_ * rho_ * omega_, k_));
 

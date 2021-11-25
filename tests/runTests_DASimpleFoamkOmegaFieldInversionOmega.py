@@ -23,7 +23,7 @@ gcomm = MPI.COMM_WORLD
 
 os.chdir("./input/NACA0012FieldInversion")
 
-replace_text_in_file("constant/turbulenceProperties", "RASModel             SpalartAllmarasFv3Beta;", "RASModel             kOmegaFieldInversion;")
+replace_text_in_file("constant/turbulenceProperties", "RASModel             SpalartAllmarasFv3Beta;", "RASModel             kOmegaFieldInversionOmega;")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
