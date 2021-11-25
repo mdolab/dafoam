@@ -56,6 +56,10 @@ protected:
     /// the reference pressure for Cp calculation
     scalar pRef_;
 
+    /// weighted objective function (especially useful when performing weighted sum multi-objective optimisation)
+    word weightedSum_;  // switch 
+    scalar weight_; 
+
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;
 
