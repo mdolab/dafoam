@@ -64,7 +64,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
     }
-    if (weightedSum_ == True)
+    if (weightedSum_ == true)
     {
         objFuncDict_.readEntry<scalar>("weight", weight_); 
     }
@@ -130,7 +130,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncCellValues[idxI] = scale_ * (sqr(state[cellI] - stateRef[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
-            if (weightedSum_ == True)
+            if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
             }
@@ -147,7 +147,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncCellValues[idxI] = scale_ * (sqr(mag(state[cellI] - stateRef[cellI])));
                 objFuncValue += objFuncCellValues[idxI];
             }
-            if (weightedSum_ == True)
+            if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
             }            
@@ -242,7 +242,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
                 }
 
-                if (weightedSum_ == True)
+                if (weightedSum_ == true)
                 {
                     objFuncValue = weight_ * objFuncValue;
                 }
@@ -294,7 +294,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             objFuncValue += sqr(aeroCoeff - aeroCoeffRef_);
 
             // scale if performing weighted-sum multi-objective optimisation
-            if (weightedSum_ == True)
+            if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
             }
@@ -324,7 +324,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     objFuncValue += sqr(bSurfacePressure - bSurfacePressureRef);
                 }
             }
-            if (weightedSum_ == True)
+            if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
             }
@@ -382,7 +382,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             }
         }
         
-        if (weightedSum_ == True)
+        if (weightedSum_ == true)
         {
             objFuncValue = weight_ * objFuncValue;
         }
