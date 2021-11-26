@@ -58,9 +58,7 @@ protected:
 
     /// weighted objective function (especially useful when performing weighted sum multi-objective optimisation)
     bool weightedSum_;  // switch 
-    
     scalar weight_; 
-
 
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;
