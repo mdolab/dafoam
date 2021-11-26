@@ -45,7 +45,8 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     stateName_ = objFuncDict_.getWord("stateName");
     stateRefName_ = objFuncDict_.getWord("stateRefName");
     scale_ = objFuncDict_.getScalar("scale");
-    weightedSum_ = objFuncDict_.getWord("weightedSum");
+    //weightedSum_ = objFuncDict_.getWord("weightedSum");
+    objFuncDict_.readEntry<bool>("weightedSum", weightedSum_);
     if (varTypeFieldInversion_ == "surface")
     {
         objFuncDict_.readEntry<wordList>("patchNames", patchNames_);
@@ -63,7 +64,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
     }
-    if (weightedSum_ == "on")
+    if (weightedSum_ == True)
     {
         objFuncDict_.readEntry<scalar>("weight", weight_); 
     }
@@ -129,6 +130,10 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncCellValues[idxI] = scale_ * (sqr(state[cellI] - stateRef[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
+            if (weightedSum_ == True)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
         }
@@ -142,6 +147,10 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncCellValues[idxI] = scale_ * (sqr(mag(state[cellI] - stateRef[cellI])));
                 objFuncValue += objFuncCellValues[idxI];
             }
+            if (weightedSum_ == True)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }            
 
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
@@ -233,7 +242,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
                 }
 
-                if (weightedSum_ == "on")
+                if (weightedSum_ == True)
                 {
                     objFuncValue = weight_ * objFuncValue;
                 }
@@ -283,6 +292,12 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
             // compute the objective function
             objFuncValue += sqr(aeroCoeff - aeroCoeffRef_);
+
+            // scale if performing weighted-sum multi-objective optimisation
+            if (weightedSum_ == True)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
         }
 
         else if (stateType_ == "surfacePressure")
@@ -308,6 +323,10 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
                     objFuncValue += sqr(bSurfacePressure - bSurfacePressureRef);
                 }
+            }
+            if (weightedSum_ == True)
+            {
+                objFuncValue = weight_ * objFuncValue;
             }
 
             // need to reduce the sum of all objectives across all processors
@@ -363,7 +382,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             }
         }
         
-        if (weightedSum_ == "on")
+        if (weightedSum_ == True)
         {
             objFuncValue = weight_ * objFuncValue;
         }
