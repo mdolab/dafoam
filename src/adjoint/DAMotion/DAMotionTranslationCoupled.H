@@ -20,7 +20,7 @@
         dy1/dt = V = y2
         dy2/dt = a = (F - C * y2 - K * y1) / M
 
-        We can then use the Euler method to solve the above two ODEs
+        We can then use the RK2 method to solve the above two ODEs
 
 \*---------------------------------------------------------------------------*/
 
