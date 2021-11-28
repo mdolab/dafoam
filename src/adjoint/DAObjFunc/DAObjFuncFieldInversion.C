@@ -130,12 +130,13 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncCellValues[idxI] = scale_ * (sqr(state[cellI] - stateRef[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
             }
-            // need to reduce the sum of all objectives across all processors
-            reduce(objFuncValue, sumOp<scalar>());
         }
         else if (stateType_ == "vector")
         {
@@ -146,14 +147,15 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 const label& cellI = objFuncCellSources[idxI];
                 objFuncCellValues[idxI] = scale_ * (sqr(mag(state[cellI] - stateRef[cellI])));
                 objFuncValue += objFuncCellValues[idxI];
-            }
+            }           
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
             }            
-
-            // need to reduce the sum of all objectives across all processors
-            reduce(objFuncValue, sumOp<scalar>());
         }
         /*else if (stateType_ == "ReynoldsShearStress")
         {
@@ -242,15 +244,15 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
                 }
 
-                if (weightedSum_ == true)
-                {
-                    objFuncValue = weight_ * objFuncValue;
-                }
-
             }
 
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
+                
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
         }
 
         else if (stateType_ == "aeroCoeff")
@@ -324,13 +326,15 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     objFuncValue += sqr(bSurfacePressure - bSurfacePressureRef);
                 }
             }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+            
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
             }
 
-            // need to reduce the sum of all objectives across all processors
-            reduce(objFuncValue, sumOp<scalar>());
         }
         else if (stateType_ == "surfacePressureCustom")
         {
@@ -381,14 +385,14 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncValue += objFuncCellValues[idxI];
             }
         }
-        
+
+        // need to reduce the sum of all objectives across all processors
+        reduce(objFuncValue, sumOp<scalar>());
+    
         if (weightedSum_ == true)
         {
             objFuncValue = weight_ * objFuncValue;
         }
-
-        // need to reduce the sum of all objectives across all processors
-        reduce(objFuncValue, sumOp<scalar>());
     }
     return;
 }
