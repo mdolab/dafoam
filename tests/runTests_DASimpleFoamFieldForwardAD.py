@@ -15,7 +15,7 @@ from testFuncs import *
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/NACA0012betaSA")
+os.chdir("./input/NACA0012BetaSA")
 
 replace_text_in_file("constant/turbulenceProperties", "RASModel             SpalartAllmarasFv3Beta;", "RASModel             SpalartAllmarasFv3FieldInversion;")
 
