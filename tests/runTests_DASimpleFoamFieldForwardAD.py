@@ -76,11 +76,7 @@ aeroOptions = {
                 "stateType": "vector",
                 "scale": 1.0,
                 "addToAdjoint": True,
-<<<<<<< Updated upstream
-                "weightedSum": False,
-=======
                 "weightedSum": false,
->>>>>>> Stashed changes
             },
             "part2": {
                 "type": "fieldInversion",
@@ -92,11 +88,7 @@ aeroOptions = {
                 "stateType": "scalar",
                 "scale": 0.01,
                 "addToAdjoint": True,
-<<<<<<< Updated upstream
-                "weightedSum": False,
-=======
                 "weightedSum": false,
->>>>>>> Stashed changes
             },
         },
         "CMZ": {
