@@ -365,6 +365,11 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
+
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
         }
     }
 
