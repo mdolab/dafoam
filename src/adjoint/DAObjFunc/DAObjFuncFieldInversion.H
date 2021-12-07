@@ -54,9 +54,10 @@ protected:
     scalar aeroCoeffRef_; 
 
     /// the reference pressure for Cp calculation
-    scalar pRef_;
-    vector pRefCellCentre_; 
-    bool cellSpecificPressureRef_; 
+    // scalar pRef_;
+    // the cell-centre coordinates for cases where reference pressure is chosen based on location
+    //vector pRefCellCentre_; 
+    //bool cellSpecificPressureRef_; 
 
     /// weighted objective function (especially useful when performing weighted sum multi-objective optimisation)
     bool weightedSum_;  // switch 
