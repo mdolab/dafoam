@@ -63,6 +63,8 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     if (stateType_ == "surfacePressure" || "surfacePressureCustom")
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
+        
+        objFuncDict_.readEntry<bool>("cellSpecificPressureRef", cellSpecificPressureRef_); 
 
         // for cases where pRef must be extracted from a specific location during simulation
         if (cellSpecificPressureRef_ == true) 
@@ -71,7 +73,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
             objFuncDict_.readEntry<scalarList>("pRefCellCentres", pRefCellCoords_);
             pRefCellCentre_[0] = pRefCellCoords_[0];
             pRefCellCentre_[1] = pRefCellCoords_[1];
-            pRefCellCentre_[2] = pRefCellCoords_[0];
+            pRefCellCentre_[2] = pRefCellCoords_[2];
         }
 
     }
