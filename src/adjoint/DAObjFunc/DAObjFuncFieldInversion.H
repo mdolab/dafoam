@@ -55,6 +55,8 @@ protected:
 
     /// the reference pressure for Cp calculation
     scalar pRef_;
+    vector pRefCellCentre_; 
+    bool cellSpecificPressureRef_; 
 
     /// weighted objective function (especially useful when performing weighted sum multi-objective optimisation)
     bool weightedSum_;  // switch 

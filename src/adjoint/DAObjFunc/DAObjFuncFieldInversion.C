@@ -60,9 +60,20 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
         forceDir_[2] = dir[2];
         objFuncDict_.readEntry<scalar>("aeroCoeffRef", aeroCoeffRef_);
     }
-    if (stateType_ == "surfacePressure")
+    if (stateType_ == "surfacePressure" || "surfacePressureCustom")
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
+
+        // for cases where pRef must be extracted from a specific location during simulation
+        if (cellSpecificPressureRef_ == True) 
+        {
+            scalarList pRefCellCoords_;
+            objFuncDict_.readEntry<scalarList>("pRefCellCentres", pRefCellCoords_);
+            pRefCellCentre_[0] = pRefCellCoords_[0];
+            pRefCellCentre_[1] = pRefCellCoords_[1];
+            pRefCellCentre_[2] = pRefCellCoords_[0];
+        }
+
     }
     if (weightedSum_ == true)
     {
@@ -310,6 +321,18 @@ void DAObjFuncFieldInversion::calcObjFunc(
             // get the ingredient for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
 
+            // extract pRef it has to be for a specific location
+            if (cellSpecificPressureRef_ == True)
+            {
+                forAll(mesh_.C(), cI)
+                {
+                    if (mesh_.C() == pRefCellCentre_)
+                    {
+                        pRef_ = p()[cI]; 
+                    }
+                }
+            }
+
             forAll(patchNames_, cI)
             {
                 label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
@@ -343,6 +366,18 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
             // get the ingredient for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+            // extract pRef it has to be for a specific location
+            if (cellSpecificPressureRef_ == True)
+            {
+                forAll(mesh_.C(), cI)
+                {
+                    if (mesh_.C() == pRefCellCentre_)
+                    {
+                        pRef_ = p()[cI]; 
+                    }
+                }
+            }
 
             forAll(patchNames_, cI)
             {
