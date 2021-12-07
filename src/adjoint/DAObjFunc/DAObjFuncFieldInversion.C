@@ -65,7 +65,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
 
         // for cases where pRef must be extracted from a specific location during simulation
-        if (cellSpecificPressureRef_ == True) 
+        if (cellSpecificPressureRef_ == true) 
         {
             scalarList pRefCellCoords_;
             objFuncDict_.readEntry<scalarList>("pRefCellCentres", pRefCellCoords_);
@@ -322,11 +322,11 @@ void DAObjFuncFieldInversion::calcObjFunc(
             const volScalarField& p = db.lookupObject<volScalarField>("p");
 
             // extract pRef it has to be for a specific location
-            if (cellSpecificPressureRef_ == True)
+            if (cellSpecificPressureRef_ == true)
             {
                 forAll(mesh_.C(), cI)
                 {
-                    if (mesh_.C() == pRefCellCentre_)
+                    if (mesh_.C()[cI] == pRefCellCentre_)
                     {
                         pRef_ = p()[cI]; 
                     }
@@ -368,11 +368,11 @@ void DAObjFuncFieldInversion::calcObjFunc(
             const volScalarField& p = db.lookupObject<volScalarField>("p");
 
             // extract pRef it has to be for a specific location
-            if (cellSpecificPressureRef_ == True)
+            if (cellSpecificPressureRef_ == true)
             {
                 forAll(mesh_.C(), cI)
                 {
-                    if (mesh_.C() == pRefCellCentre_)
+                    if (mesh_.C()[cI] == pRefCellCentre_)
                     {
                         pRef_ = p()[cI]; 
                     }
