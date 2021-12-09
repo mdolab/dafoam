@@ -8,8 +8,8 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncStateErrorNorm_H
-#define DAObjFuncStateErrorNorm_H
+#ifndef DAObjFuncFieldInversion_H
+#define DAObjFuncFieldInversion_H
 
 #include "DAObjFunc.H"
 #include "addToRunTimeSelectionTable.H"
@@ -20,10 +20,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncStateErrorNorm Declaration
+      Class DAObjFuncFieldInversion Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncStateErrorNorm
+class DAObjFuncFieldInversion
     : public DAObjFunc
 {
 
@@ -38,15 +38,37 @@ protected:
     /// state variable type: can be either scalar or vector
     word stateType_;
 
-    /// scaling factor for the whole objective function
-    scalar scale_;
+    /// type of data available for training: can be surface or volume
+    word varTypeFieldInversion_;
+
+    /// scaling factor for the objective function
+    scalar scale_; 
+
+    /// list of pactches for computing varaibles such as skin friction if using surface data
+    wordList patchNames_; 
+    
+    /// direction vector if using aerodynamic coefficient data 
+    vector forceDir_;
+
+    /// the lift, or drag coefficient from data
+    scalar aeroCoeffRef_; 
+
+    /// the reference pressure for Cp calculation
+    scalar pRef_;
+
+    /// weighted objective function (especially useful when performing weighted sum multi-objective optimisation)
+    bool weightedSum_;  // switch 
+    scalar weight_; 
+
+    /// DATurbulenceModel object
+    const DATurbulenceModel& daTurb_;
 
 public:
-    TypeName("stateErrorNorm");
+    TypeName("fieldInversion");
     // Constructors
 
     //- Construct from components
-    DAObjFuncStateErrorNorm(
+    DAObjFuncFieldInversion(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
@@ -57,7 +79,7 @@ public:
         const dictionary& objFuncDict);
 
     //- Destructor
-    virtual ~DAObjFuncStateErrorNorm()
+    virtual ~DAObjFuncFieldInversion()
     {
     }
 

@@ -5,7 +5,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "SpalartAllmarasFv3Beta.H"
+#include "kOmegaFieldInversionk.H"
 #include "fvOptions.H"
 #include "bound.H"
 #include "wallDist.H"
@@ -20,14 +20,14 @@ namespace RASModels
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-void SpalartAllmarasFv3Beta<BasicTurbulenceModel>::correctNut()
+void kOmegaFieldInversionk<BasicTurbulenceModel>::correctNut()
 {
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-SpalartAllmarasFv3Beta<BasicTurbulenceModel>::SpalartAllmarasFv3Beta(
+kOmegaFieldInversionk<BasicTurbulenceModel>::kOmegaFieldInversionk(
     const alphaField& alpha,
     const rhoField& rho,
     const volVectorField& U,
@@ -45,65 +45,74 @@ SpalartAllmarasFv3Beta<BasicTurbulenceModel>::SpalartAllmarasFv3Beta(
         phi,
         transport,
         propertiesName),
-      nuTilda_(
+      omega_(
           IOobject(
-              "nuTilda",
+              "omega",
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
-      betaSA_(
+      k_(
           IOobject(
-              "betaSA",
+              "k",
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
-      betaSATrue_(
+      betaFieldInversion_(
           IOobject(
-              "betaSATrue",
+              "betaFieldInversion",
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
-      UTrue_(
+      betaRefFieldInversion_(
           IOobject(
-              "UTrue",
+              "betaRefFieldInversion",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::MUST_READ,
+              IOobject::AUTO_WRITE),
+          this->mesh_),
+      varRefFieldInversion_(
+          IOobject(
+              "varRefFieldInversion",
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
       y_(wallDist::New(this->mesh_).y())
+
 {
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-bool SpalartAllmarasFv3Beta<BasicTurbulenceModel>::read()
+bool kOmegaFieldInversionk<BasicTurbulenceModel>::read()
 {
+
     return true;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> SpalartAllmarasFv3Beta<BasicTurbulenceModel>::k() const
+tmp<volScalarField> kOmegaFieldInversionk<BasicTurbulenceModel>::k() const
 {
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> SpalartAllmarasFv3Beta<BasicTurbulenceModel>::epsilon() const
+tmp<volScalarField> kOmegaFieldInversionk<BasicTurbulenceModel>::epsilon() const
 {
-
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-void SpalartAllmarasFv3Beta<BasicTurbulenceModel>::correct()
+void kOmegaFieldInversionk<BasicTurbulenceModel>::correct()
 {
 }
 

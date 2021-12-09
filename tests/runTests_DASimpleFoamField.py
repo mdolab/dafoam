@@ -21,7 +21,7 @@ if len(sys.argv) != 1:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/NACA0012BetaSA")
+os.chdir("./input/NACA0012FieldInversion")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
@@ -73,26 +73,31 @@ aeroOptions = {
         },
         "FI": {
             "part1": {
-                "type": "stateErrorNorm",
+                "type": "fieldInversion",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
+                "varTypeFieldInversion": "volume",
                 "stateName": "U",
-                "stateRefName": "UTrue",
+                "stateRefName": "varRefFieldInversion",
                 "stateType": "vector",
                 "scale": 1.0,
                 "addToAdjoint": True,
+                "weightedSum": True,
+                "weight": 1.0,
             },
             "part2": {
-                "type": "stateErrorNorm",
+                "type": "fieldInversion",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "stateName": "betaSA",
-                "stateRefName": "betaSATrue",
+                "varTypeFieldInversion": "volume",
+                "stateName": "betaFieldInversion",
+                "stateRefName": "betaRefFieldInversion",
                 "stateType": "scalar",
                 "scale": 0.01,
                 "addToAdjoint": True,
+                "weightedSum": False,
             },
         },
     },
@@ -101,7 +106,7 @@ aeroOptions = {
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
     "designVar": {
-        "beta": {"designVarType": "Field", "fieldName": "betaSA", "fieldType": "scalar"},
+        "beta": {"designVarType": "Field", "fieldName": "betaFieldInversion", "fieldType": "scalar"},
         "alphaPorosity": {"designVarType": "Field", "fieldName": "alphaPorosity", "fieldType": "scalar"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
     },
@@ -129,10 +134,10 @@ def alpha(val, geo):
     DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
     DASolver.updateDAOption()
 
-def betaSA(val, geo):
+def betaFieldInversion(val, geo):
     for idxI, v in enumerate(val):
-        DASolver.setFieldValue4GlobalCellI(b"betaSA", v, idxI)
-        DASolver.updateBoundaryConditions(b"betaSA", b"scalar")
+        DASolver.setFieldValue4GlobalCellI(b"betaFieldInversion", v, idxI)
+        DASolver.updateBoundaryConditions(b"betaFieldInversion", b"scalar")
 
 def alphaPorosity(val, geo):
     for idxI, v in enumerate(val):
@@ -143,7 +148,7 @@ def alphaPorosity(val, geo):
 DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
 nCells = 4032
 beta0 = np.ones(nCells, dtype="d")
-DVGeo.addGeoDVGlobal("beta", value=beta0, func=betaSA, lower=1e-5, upper=10.0, scale=1.0)
+DVGeo.addGeoDVGlobal("beta", value=beta0, func=betaFieldInversion, lower=1e-5, upper=10.0, scale=1.0)
 
 alphaPorosity0 = np.zeros(nCells, dtype="d")
 DVGeo.addGeoDVGlobal("alphaPorosity", value=alphaPorosity0, func=alphaPorosity, lower=0, upper=100.0, scale=1.0)

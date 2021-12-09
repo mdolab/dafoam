@@ -10,14 +10,20 @@ import os
 from pygeo import *
 from pyspline import *
 from idwarp import *
+from pyoptsparse import Optimization, OPT
 import numpy as np
 from testFuncs import *
 
+calcFDSens = 0
+if len(sys.argv) != 1:
+    if sys.argv[1] == "calcFDSens":
+        calcFDSens = 1
+
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/NACA0012BetaSA")
+os.chdir("./input/NACA0012FieldInversion")
 
-replace_text_in_file("constant/turbulenceProperties", "RASModel             SpalartAllmarasFv3Beta;", "RASModel             SpalartAllmarasFv3FieldInversion;")
+replace_text_in_file("constant/turbulenceProperties", "RASModel             SpalartAllmarasFv3Beta;", "RASModel             kOmegaFieldInversionOmega;")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
@@ -33,9 +39,11 @@ LRef = 1.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleFoam",
+    "useAD": {"mode": "reverse"},
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
-    "useAD": {"mode": "forward", "dvName": "beta", "seedIndex": 0},
+    "writeJacobians": ["all"],
+    "writeSensMap": ["betaSA", "alphaPorosity"],
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
@@ -71,6 +79,7 @@ aeroOptions = {
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
+                "varTypeFieldInversion": "volume",
                 "stateName": "U",
                 "stateRefName": "varRefFieldInversion",
                 "stateType": "vector",
@@ -83,24 +92,14 @@ aeroOptions = {
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
+                "varTypeFieldInversion": "volume",
                 "stateName": "betaFieldInversion",
-                "stateRefName": "betaFieldInversionRef",
+                "stateRefName": "betaRefFieldInversion",
                 "stateType": "scalar",
                 "scale": 0.01,
                 "addToAdjoint": True,
                 "weightedSum": False,
             },
-        },
-        "CMZ": {
-            "part1": {
-                "type": "moment",
-                "source": "patchToFace",
-                "patches": ["wing"],
-                "axis": [0.0, 0.0, 1.0],
-                "center": [0.25, 0.0, 0.05],
-                "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),
-                "addToAdjoint": True,
-            }
         },
     },
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "nuTilda": nuTilda0 * 10.0, "phi": 1.0},
@@ -136,18 +135,15 @@ def alpha(val, geo):
     DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
     DASolver.updateDAOption()
 
-
 def betaFieldInversion(val, geo):
     for idxI, v in enumerate(val):
         DASolver.setFieldValue4GlobalCellI(b"betaFieldInversion", v, idxI)
         DASolver.updateBoundaryConditions(b"betaFieldInversion", b"scalar")
 
-
 def alphaPorosity(val, geo):
     for idxI, v in enumerate(val):
         DASolver.setFieldValue4GlobalCellI(b"alphaPorosity", v, idxI)
         DASolver.updateBoundaryConditions(b"alphaPorosity", b"scalar")
-
 
 # select points
 DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
@@ -183,59 +179,29 @@ optFuncs.DVCon = DVCon
 optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
 
-funcsSens = {}
-funcsSens["CD"] = {}
-funcsSens["CL"] = {}
-funcsSens["CMZ"] = {}
-
 # Run
-# beta0
-DASolver()
-funcsSens["CD"]["beta"] = [] 
-funcsSens["CL"]["beta"] = []
-funcsSens["CMZ"]["beta"] = []
-funcsSens["CD"]["beta"].append(DASolver.getForwardADDerivVal("CD"))
-funcsSens["CL"]["beta"].append(DASolver.getForwardADDerivVal("CL"))
-funcsSens["CMZ"]["beta"].append(DASolver.getForwardADDerivVal("CMZ"))
-# beta100
-DASolver.setOption("useAD", {"dvName": "beta", "seedIndex": 100})
-DASolver.updateDAOption()
-DASolver()
-funcsSens["CD"]["beta"].append(DASolver.getForwardADDerivVal("CD"))
-funcsSens["CL"]["beta"].append(DASolver.getForwardADDerivVal("CL"))
-funcsSens["CMZ"]["beta"].append(DASolver.getForwardADDerivVal("CMZ"))
-# beta1000
-DASolver.setOption("useAD", {"dvName": "beta", "seedIndex": 1000})
-DASolver.updateDAOption()
-DASolver()
-funcsSens["CD"]["beta"].append(DASolver.getForwardADDerivVal("CD"))
-funcsSens["CL"]["beta"].append(DASolver.getForwardADDerivVal("CL"))
-funcsSens["CMZ"]["beta"].append(DASolver.getForwardADDerivVal("CMZ"))
+if calcFDSens == 1:
+    optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValues, fileName="sensFD.txt")
+else:
+    DASolver.runColoring()
+    xDV = DVGeo.getValues()
+    funcs = {}
+    funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    funcsSens = {}
+    funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
+    # we dont want to save all 4K sens, therefore, we compute
+    # the L2 norm of the sens and save it to disk as ref
+    betaSens = funcsSens["FI"]["beta"]
+    funcsSens["FI"]["beta"] = np.zeros(1, "d")
+    funcsSens["FI"]["beta"][0] = np.linalg.norm(betaSens)
 
-# alphaPorosity0
-DASolver.setOption("useAD", {"dvName": "alphaPorosity", "seedIndex": 0})
-DASolver.updateDAOption()
-DASolver()
-funcsSens["CD"]["alphaPorosity"] = [] 
-funcsSens["CL"]["alphaPorosity"] = []
-funcsSens["CMZ"]["alphaPorosity"] = []
-funcsSens["CD"]["alphaPorosity"].append(DASolver.getForwardADDerivVal("CD"))
-funcsSens["CL"]["alphaPorosity"].append(DASolver.getForwardADDerivVal("CL"))
-funcsSens["CMZ"]["alphaPorosity"].append(DASolver.getForwardADDerivVal("CMZ"))
-# alphaPorosity100
-DASolver.setOption("useAD", {"dvName": "alphaPorosity", "seedIndex": 100})
-DASolver.updateDAOption()
-DASolver()
-funcsSens["CD"]["alphaPorosity"].append(DASolver.getForwardADDerivVal("CD"))
-funcsSens["CL"]["alphaPorosity"].append(DASolver.getForwardADDerivVal("CL"))
-funcsSens["CMZ"]["alphaPorosity"].append(DASolver.getForwardADDerivVal("CMZ"))
-# alphaPorosity1000
-DASolver.setOption("useAD", {"dvName": "alphaPorosity", "seedIndex": 1000})
-DASolver.updateDAOption()
-DASolver()
-funcsSens["CD"]["alphaPorosity"].append(DASolver.getForwardADDerivVal("CD"))
-funcsSens["CL"]["alphaPorosity"].append(DASolver.getForwardADDerivVal("CL"))
-funcsSens["CMZ"]["alphaPorosity"].append(DASolver.getForwardADDerivVal("CMZ"))
+    alphaPorositySens = funcsSens["FI"]["alphaPorosity"]
+    funcsSens["FI"]["alphaPorosity"] = np.zeros(1, "d")
+    funcsSens["FI"]["alphaPorosity"][0] = np.linalg.norm(alphaPorositySens)
 
-if gcomm.rank == 0:
-    reg_write_dict(funcsSens, 1e-5, 1e-7)
+    # Do not consider alpha deriv, just assign it to 0
+    funcsSens["FI"]["alpha"] = 0
+
+    if gcomm.rank == 0:
+        reg_write_dict(funcs, 1e-8, 1e-10)
+        reg_write_dict(funcsSens, 1e-4, 1e-6)

@@ -12,10 +12,12 @@ DARegDb/DARegDbTurbulenceModelCompressible.C
 DAModel/DATurbulenceModel/DATurbulenceModel.C
 DAModel/DATurbulenceModel/DASpalartAllmaras.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
-DAModel/DATurbulenceModel/DASpalartAllmarasFv3Beta.C
+DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
+DAModel/DATurbulenceModel/DAkOmegaFieldInversion.C
+DAModel/DATurbulenceModel/DAkOmegaFieldInversionk.C
+DAModel/DATurbulenceModel/DAkOmegaFieldInversionOmega.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
-DAModel/DATurbulenceModel/DAkOmegaSSTLM.C
-DAModel/DATurbulenceModel/DAkOmega.C
+DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
 DAModel/DATurbulenceModel/DAkEpsilon.C
 DAModel/DATurbulenceModel/DADummyTurbulenceModel.C
 
@@ -44,6 +46,7 @@ DAObjFunc/DAObjFuncTotalTemperatureRatio.C
 DAObjFunc/DAObjFuncMassFlowRate.C
 DAObjFunc/DAObjFuncVariableVolSum.C
 DAObjFunc/DAObjFuncMeshQualityKS.C
+DAObjFunc/DAObjFuncFieldInversion.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
@@ -86,7 +89,13 @@ boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
 boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
 models/dummyTurbulenceModel/makeDummyTurbulenceModelCompressible.C
 models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Compressible.C
-models/SpalartAllmarasFv3Beta/makeSpalartAllmarasFv3BetaCompressible.C
+models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionCompressible.C
+models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionCompressible.C
+models/kOmegaFieldInversion/makekOmegaFieldInversionCompressible.C
+models/kOmegaFieldInversionk/makekOmegaFieldInversionkCompressible.C
+models/kOmegaFieldInversionOmega/makekOmegaFieldInversionOmegaCompressible.C
+
+
 models/meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFoamCompressible$(DF_LIB_SUFFIX)

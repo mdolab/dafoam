@@ -4,14 +4,12 @@
     Version : v2
 
     Description:
-    Child class for the SpalartAllmarasFv3 model with a betaSA field multiplying 
-    to the production term. This betaSA term can then be trained to improve the
-    SA turbulence model.
+    Child class for the kOmega model
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DASpalartAllmarasFv3Beta_H
-#define DASpalartAllmarasFv3Beta_H
+#ifndef DAkOmegaFieldInversionOmega_H
+#define DAkOmegaFieldInversionOmega_H
 
 #include "DATurbulenceModel.H"
 #include "addToRunTimeSelectionTable.H"
@@ -22,88 +20,99 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class DASpalartAllmarasFv3Beta Declaration
+                       Class DAkOmegaFieldInversionOmega Declaration
 \*---------------------------------------------------------------------------*/
 
-class DASpalartAllmarasFv3Beta
+class DAkOmegaFieldInversionOmega
     : public DATurbulenceModel
 {
 
 protected:
-    /// \name SA parameters
+    /// \name kOmega parameters
     //@{
-    dimensionedScalar sigmaNut_;
-    dimensionedScalar kappa_;
-    dimensionedScalar Cb1_;
-    dimensionedScalar Cb2_;
-    dimensionedScalar Cw1_;
-    dimensionedScalar Cw2_;
-    dimensionedScalar Cw3_;
-    dimensionedScalar Cv1_;
-    dimensionedScalar Cv2_;
+    dimensionedScalar Cmu_;
+    dimensionedScalar beta_;
+    dimensionedScalar gamma_;
+    dimensionedScalar alphaK_;
+    dimensionedScalar alphaOmega_;
     //@}
 
-    /// \name SA functions
+    /// \name kOmega functions
     //@{
-    tmp<volScalarField> chi() const;
+    //- Return the effective diffusivity for k
+        tmp<volScalarField> DkEff() const
+        {
+            return tmp<volScalarField>
+            (
+                new volScalarField
+                (
+                    "DkEff",
+                    alphaK_*this->nut_ + this->nu()
+                )
+            );
+        }
 
-    tmp<volScalarField> fv1(const volScalarField& chi) const;
-
-    tmp<volScalarField> fv2(
-        const volScalarField& chi,
-        const volScalarField& fv1) const;
-
-    tmp<volScalarField> fv3(
-        const volScalarField& chi,
-        const volScalarField& fv1) const;
-
-    tmp<volScalarField> fw(const volScalarField& Stilda) const;
-
+        //- Return the effective diffusivity for omega
+        tmp<volScalarField> DomegaEff() const
+        {
+            return tmp<volScalarField>
+            (
+                new volScalarField
+                (
+                    "DomegaEff",
+                    alphaOmega_*this->nut_ + this->nu()
+                )
+            );
+        }
     //@}
 
-    /// \name Augmented variables for residual computation
+    /// \name Augmented variables for adjoint residuals
     //@{
-    volScalarField& nuTilda_;
-    volScalarField nuTildaRes_;
+    volScalarField& omega_;
+    volScalarField omegaRes_;
+    volScalarField& k_;
+    volScalarField kRes_;
     //@}
 
-    /// A beta field multiplying to the production term
-    volScalarField& betaSA_; 
-
-    /// a reference beta field
-    volScalarField& betaSATrue_; 
-
-    /// reference velocity
-    volVectorField& UTrue_; 
-
-    /// 3D wall distance
-    const volScalarField& y_;
+    /// cell-center omega values near the wall, this is to fix the issue that the
+    /// omegaWallFunction will try to modify omega values for the cells near walls
+    /// this will cause issue for FD-based partial derivatives, so here we basically
+    /// implement a zeroGradient BC for near wall omega.
+    scalarList omegaNearWall_;
 
     /// whether to solve for turb states
     label solveTurbState_ = 0;
 
     /// time step interval to print residual
     label printInterval_;
+        
+    /// A beta field multiplying to the production term
+    volScalarField& betaFieldInversion_; 
+
+    /// a reference beta field
+    volScalarField betaRefFieldInversion_; 
+
+    /// reference field (e.g. velocity for DNS)
+    volVectorField& varRefFieldInversion_; 
+
+
 
 public:
-    TypeName("SpalartAllmarasFv3Beta");
+    TypeName("kOmegaFieldInversionOmega");
     // Constructors
 
     //- Construct from components
-    DASpalartAllmarasFv3Beta(
+    DAkOmegaFieldInversionOmega(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption);
 
     //- Destructor
-    virtual ~DASpalartAllmarasFv3Beta()
+    virtual ~DAkOmegaFieldInversionOmega()
     {
     }
 
     // Member functions
-
-    /// Return the effective diffusivity for nuTilda
-    tmp<volScalarField> DnuTildaEff() const;
 
     /// update the turbulence state for DAStateInfo::regStates_
     virtual void correctModelStates(wordList& modelStates) const;
@@ -129,8 +138,14 @@ public:
     /// solve the residual equations and update the state
     virtual void correct();
 
-    /// return the value of the production term from the turbulence model 
-    virtual void getTurbProdTerm(scalarList& prodTerm) const;
+    /// save near wall omega values to omegaNearWall_
+    void saveOmegaNearWall();
+
+    /// set omegaNearWall_ to near wall omega values
+    void setOmegaNearWall();
+
+    /// specially treatment to correct epsilon BC
+    void correctOmegaBoundaryConditions();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

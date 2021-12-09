@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DASpalartAllmarasFv3Beta.H"
+#include "DASpalartAllmarasFv3FieldInversion.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DASpalartAllmarasFv3Beta, 0);
-addToRunTimeSelectionTable(DATurbulenceModel, DASpalartAllmarasFv3Beta, dictionary);
+defineTypeNameAndDebug(DASpalartAllmarasFv3FieldInversion, 0);
+addToRunTimeSelectionTable(DATurbulenceModel, DASpalartAllmarasFv3FieldInversion, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DASpalartAllmarasFv3Beta::DASpalartAllmarasFv3Beta(
+DASpalartAllmarasFv3FieldInversion::DASpalartAllmarasFv3FieldInversion(
     const word modelType,
     const fvMesh& mesh,
     const DAOption& daOption)
@@ -74,12 +74,30 @@ DASpalartAllmarasFv3Beta::DASpalartAllmarasFv3Beta(
           dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      betaSA_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("betaSA"))),
-      betaSATrue_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("betaSATrue"))),
-      UTrue_(const_cast<volVectorField&>(
-          mesh.thisDb().lookupObject<volVectorField>("UTrue"))),
+      nuTildaResPartDeriv_(
+          IOobject(
+              "nuTildaResPartDeriv",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::NO_READ,
+              IOobject::NO_WRITE),
+          nuTildaRes_),
+      betaFieldInversion_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("betaFieldInversion"))),
+      betaRefFieldInversion_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("betaRefFieldInversion"))),
+      varRefFieldInversion_(const_cast<volVectorField&>(
+          mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))),
+      surfaceFriction_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFriction"))),
+      surfaceFrictionRef_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFrictionRef"))),
+      surfacePressureRef_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfacePressureRef"))),
+      profileRefFieldInversion_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("profileRefFieldInversion"))),
+      //TauDNS_(const_cast<volSymmTensorField&>(
+      //   mesh.thisDb().lookupObject<volSymmTensorField>("TauDNS"))),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 
@@ -109,26 +127,26 @@ DASpalartAllmarasFv3Beta::DASpalartAllmarasFv3Beta(
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // SA member functions. these functions are copied from
-tmp<volScalarField> DASpalartAllmarasFv3Beta::chi() const
+tmp<volScalarField> DASpalartAllmarasFv3FieldInversion::chi() const
 {
     return nuTilda_ / this->nu();
 }
 
-tmp<volScalarField> DASpalartAllmarasFv3Beta::fv1(
+tmp<volScalarField> DASpalartAllmarasFv3FieldInversion::fv1(
     const volScalarField& chi) const
 {
     const volScalarField chi3(pow3(chi));
     return chi3 / (chi3 + pow3(Cv1_));
 }
 
-tmp<volScalarField> DASpalartAllmarasFv3Beta::fv2(
+tmp<volScalarField> DASpalartAllmarasFv3FieldInversion::fv2(
     const volScalarField& chi,
     const volScalarField& fv1) const
 {
     return 1.0 / pow3(scalar(1) + chi / Cv2_);
 }
 
-tmp<volScalarField> DASpalartAllmarasFv3Beta::fv3(
+tmp<volScalarField> DASpalartAllmarasFv3FieldInversion::fv3(
     const volScalarField& chi,
     const volScalarField& fv1) const
 {
@@ -141,7 +159,7 @@ tmp<volScalarField> DASpalartAllmarasFv3Beta::fv3(
         / pow3(scalar(1) + chiByCv2);
 }
 
-tmp<volScalarField> DASpalartAllmarasFv3Beta::fw(
+tmp<volScalarField> DASpalartAllmarasFv3FieldInversion::fw(
     const volScalarField& Stilda) const
 {
     volScalarField r(
@@ -159,14 +177,14 @@ tmp<volScalarField> DASpalartAllmarasFv3Beta::fw(
     return g * pow((1.0 + pow6(Cw3_)) / (pow6(g) + pow6(Cw3_)), 1.0 / 6.0);
 }
 
-tmp<volScalarField> DASpalartAllmarasFv3Beta::DnuTildaEff() const
+tmp<volScalarField> DASpalartAllmarasFv3FieldInversion::DnuTildaEff() const
 {
     return tmp<volScalarField>(
         new volScalarField("DnuTildaEff", (nuTilda_ + this->nu()) / sigmaNut_));
 }
 
 // Augmented functions
-void DASpalartAllmarasFv3Beta::correctModelStates(wordList& modelStates) const
+void DASpalartAllmarasFv3FieldInversion::correctModelStates(wordList& modelStates) const
 {
     /*
     Description:
@@ -200,7 +218,7 @@ void DASpalartAllmarasFv3Beta::correctModelStates(wordList& modelStates) const
     }
 }
 
-void DASpalartAllmarasFv3Beta::correctNut()
+void DASpalartAllmarasFv3FieldInversion::correctNut()
 {
     /*
     Description:
@@ -220,7 +238,7 @@ void DASpalartAllmarasFv3Beta::correctNut()
     return;
 }
 
-void DASpalartAllmarasFv3Beta::correctBoundaryConditions()
+void DASpalartAllmarasFv3FieldInversion::correctBoundaryConditions()
 {
     /*
     Description:
@@ -231,7 +249,7 @@ void DASpalartAllmarasFv3Beta::correctBoundaryConditions()
     nuTilda_.correctBoundaryConditions();
 }
 
-void DASpalartAllmarasFv3Beta::updateIntermediateVariables()
+void DASpalartAllmarasFv3FieldInversion::updateIntermediateVariables()
 {
     /*
     Description:
@@ -242,7 +260,7 @@ void DASpalartAllmarasFv3Beta::updateIntermediateVariables()
     this->correctNut();
 }
 
-void DASpalartAllmarasFv3Beta::correctStateResidualModelCon(List<List<word>>& stateCon) const
+void DASpalartAllmarasFv3FieldInversion::correctStateResidualModelCon(List<List<word>>& stateCon) const
 {
     /*
     Description:
@@ -292,7 +310,7 @@ void DASpalartAllmarasFv3Beta::correctStateResidualModelCon(List<List<word>>& st
     }
 }
 
-void DASpalartAllmarasFv3Beta::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
+void DASpalartAllmarasFv3FieldInversion::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
 {
     /*
     Description:
@@ -370,7 +388,7 @@ void DASpalartAllmarasFv3Beta::addModelResidualCon(HashTable<List<List<word>>>& 
 #endif
 }
 
-void DASpalartAllmarasFv3Beta::correct()
+void DASpalartAllmarasFv3FieldInversion::correct()
 {
     /*
     Descroption:
@@ -390,7 +408,7 @@ void DASpalartAllmarasFv3Beta::correct()
     solveTurbState_ = 0;
 }
 
-void DASpalartAllmarasFv3Beta::calcResiduals(const dictionary& options)
+void DASpalartAllmarasFv3FieldInversion::calcResiduals(const dictionary& options)
 {
     /*
     Descroption:
@@ -440,7 +458,7 @@ void DASpalartAllmarasFv3Beta::calcResiduals(const dictionary& options)
             + fvm::div(phaseRhoPhi_, nuTilda_, divNuTildaScheme)
             - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaSA_
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFieldInversion_
             - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.ref().relax();
@@ -477,7 +495,7 @@ void DASpalartAllmarasFv3Beta::calcResiduals(const dictionary& options)
     return;
 }
 
-void DASpalartAllmarasFv3Beta::getTurbProdTerm(scalarList& prodTerm) const
+void DASpalartAllmarasFv3FieldInversion::getTurbProdTerm(scalarList& prodTerm) const
 {
     /*
     Description:
