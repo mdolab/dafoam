@@ -90,7 +90,8 @@ void DALinearEqn::createMLRKSP(
         daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresAbsTol");
     label useNonZeroInitGuess =
         daOption_.getSubDictOption<label>("adjEqnOption", "useNonZeroInitGuess");
-    label printInfo = 1;
+    label printInfo =
+        daOption_.getSubDictOption<label>("adjEqnOption", "printInfo");
 
     PC MLRMasterPC, MLRGlobalPC;
     PC MLRsubpc;

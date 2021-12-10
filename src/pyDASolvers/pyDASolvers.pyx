@@ -22,6 +22,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initSolver()
         int solvePrimal(PetscVec, PetscVec)
         void calcdRdWT(PetscVec, PetscVec, int, PetscMat)
+        void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree(PetscVec, PetscVec)
         void destroydRdWTMatrixFree()
         void calcdFdW(PetscVec, PetscVec, char *, PetscVec)
@@ -35,22 +36,34 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdFdAOA(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdFFD(PetscVec, PetscVec, char *, PetscMat)
         void calcdRdXvTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdForcedXvAD(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdRdActTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
+        void calcdForcedWAD(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdFdACT(PetscVec, PetscVec, char *, char*, char*, PetscVec)
+        void calcdFdACTAD(PetscVec, PetscVec, char *, char*, PetscVec)
+        void calcdRdAOATPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
+        void calcdRdBCTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdFdFFD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdFdXvAD(PetscVec, PetscVec, char *, char*, PetscVec)
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
+        void syncDAOptionToActuatorDVs()
         void updateOFField(PetscVec)
         void updateOFMesh(PetscVec)
         void setdXvdFFDMat(PetscMat)
+        void setFFD2XvSeedVec(PetscVec)
         int getGlobalXvIndex(int, int)
         void ofField2StateVec(PetscVec)
         void stateVec2OFField(PetscVec)
         int getNLocalAdjointStates()
+        int getNLocalAdjointBoundaryStates()
         int getNLocalCells()
         int checkMesh()
         double getObjFuncValue(char *)
+        void getForces(PetscVec, PetscVec, PetscVec, PetscVec)
         void printAllOptions()
         void updateDAOption(object)
         double getPrevPrimalSolTime()
@@ -66,9 +79,13 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void readVectorBinary(PetscVec, char *)
         void writeVectorBinary(PetscVec, char *)
         void setTimeInstanceField(int)
+        void setTimeInstanceVar(char *, PetscMat, PetscMat, PetscVec, PetscVec)
         double getTimeInstanceObjFunc(int, char *)
         void setFieldValue4GlobalCellI(char *, double, int, int)
         void updateBoundaryConditions(char *, char *)
+        void calcPrimalResidualStatistics(char *)
+        double getForwardADDerivVal(char *)
+        void calcResidualVec(PetscVec)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -118,6 +135,9 @@ cdef class pyDASolvers:
     def calcdRdWT(self, Vec xvVec, Vec wVec, isPC, Mat dRdWT):
         self._thisptr.calcdRdWT(xvVec.vec, wVec.vec, isPC, dRdWT.mat)
     
+    def calcdRdWTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdWTPsi):
+        self._thisptr.calcdRdWTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdWTPsi.vec)
+    
     def initializedRdWTMatrixFree(self, Vec xvVec, Vec wVec):
         self._thisptr.initializedRdWTMatrixFree(xvVec.vec, wVec.vec)
     
@@ -157,6 +177,27 @@ cdef class pyDASolvers:
     def calcdRdXvTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdXvTPsi):
         self._thisptr.calcdRdXvTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdXvTPsi.vec)
 
+    def calcdForcedXvAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedXv):
+        self._thisptr.calcdForcedXvAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedXv.vec)
+    
+    def calcdRdActTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdActTPsi):
+        self._thisptr.calcdRdActTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdActTPsi.vec)
+
+    def calcdForcedWAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedW):
+        self._thisptr.calcdForcedWAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedW.vec)
+    
+    def calcdFdACTAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdACT):
+        self._thisptr.calcdFdACTAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdACT.vec)
+    
+    def calcdFdACT(self, Vec xvVec, Vec wVec, objFuncName, designVarName, designVarType, Vec dFdACT):
+        self._thisptr.calcdFdACT(xvVec.vec, wVec.vec, objFuncName, designVarName, designVarType, dFdACT.vec)
+    
+    def calcdRdAOATPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdAOATPsi):
+        self._thisptr.calcdRdAOATPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdAOATPsi.vec)
+    
+    def calcdRdBCTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdBCTPsi):
+        self._thisptr.calcdRdBCTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdBCTPsi.vec)
+
     def calcdFdFFD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdFFD):
         self._thisptr.calcdFdFFD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdFFD.vec)
 
@@ -171,9 +212,15 @@ cdef class pyDASolvers:
 
     def calcdFdFieldAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdField):
         self._thisptr.calcdFdFieldAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdField.vec)
+    
+    def calcdRdWOldTPsiAD(self, oldTimeLevel, Vec psi, Vec dRdWOldTPsi):
+        self._thisptr.calcdRdWOldTPsiAD(oldTimeLevel, psi.vec, dRdWOldTPsi.vec)
 
     def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
         self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
+    
+    def syncDAOptionToActuatorDVs(self):
+        self._thisptr.syncDAOptionToActuatorDVs()
 
     def updateOFField(self, Vec wVec):
         self._thisptr.updateOFField(wVec.vec)
@@ -183,6 +230,9 @@ cdef class pyDASolvers:
 
     def setdXvdFFDMat(self, Mat dXvdFFDMat):
         self._thisptr.setdXvdFFDMat(dXvdFFDMat.mat)
+    
+    def setFFD2XvSeedVec(self, Vec FFD2XvSeedVec):
+        self._thisptr.setFFD2XvSeedVec(FFD2XvSeedVec.vec)
     
     def getGlobalXvIndex(self, pointI, coordI):
         return self._thisptr.getGlobalXvIndex(pointI, coordI)
@@ -208,6 +258,9 @@ cdef class pyDASolvers:
     def getNLocalAdjointStates(self):
         return self._thisptr.getNLocalAdjointStates()
     
+    def getNLocalAdjointBoundaryStates(self):
+        return self._thisptr.getNLocalAdjointBoundaryStates()
+    
     def getNLocalCells(self):
         return self._thisptr.getNLocalCells()
     
@@ -216,6 +269,9 @@ cdef class pyDASolvers:
     
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
+
+    def getForces(self, Vec fX, Vec fY, Vec fZ, Vec pointList):
+        self._thisptr.getForces(fX.vec, fY.vec, fZ.vec, pointList.vec)
 
     def printAllOptions(self):
         self._thisptr.printAllOptions()
@@ -247,6 +303,9 @@ cdef class pyDASolvers:
     def setTimeInstanceField(self, instanceI):
         self._thisptr.setTimeInstanceField(instanceI)
     
+    def setTimeInstanceVar(self, mode, Mat stateMat, Mat stateBCMat, Vec timeVec, Vec timeIdxVec):
+        self._thisptr.setTimeInstanceVar(mode, stateMat.mat, stateBCMat.mat, timeVec.vec, timeIdxVec.vec)
+    
     def getTimeInstanceObjFunc(self, instanceI, objFuncName):
         return self._thisptr.getTimeInstanceObjFunc(instanceI, objFuncName)
 
@@ -255,3 +314,12 @@ cdef class pyDASolvers:
     
     def updateBoundaryConditions(self, fieldName, fieldType):
         self._thisptr.updateBoundaryConditions(fieldName, fieldType)
+    
+    def calcPrimalResidualStatistics(self, mode):
+        self._thisptr.calcPrimalResidualStatistics(mode)
+    
+    def getForwardADDerivVal(self, objFuncName):
+        return self._thisptr.getForwardADDerivVal(objFuncName)
+    
+    def calcResidualVec(self, Vec resVec):
+        self._thisptr.calcResidualVec(resVec.vec)

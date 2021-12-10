@@ -24,8 +24,11 @@ solverName = "pyDASolverIncompressible"
 if os.getenv("WM_CODI_AD_MODE") is None:
     libSuffix = ""
     codiADMode = "CODI_AD_NONE"
-else:
-    libSuffix = "AD"
+elif os.getenv("WM_CODI_AD_MODE") == "CODI_AD_FORWARD":
+    libSuffix = "ADF"
+    codiADMode = os.getenv("WM_CODI_AD_MODE")
+elif os.getenv("WM_CODI_AD_MODE") == "CODI_AD_REVERSE":
+    libSuffix = "ADR"
     codiADMode = os.getenv("WM_CODI_AD_MODE")
 
 # These setup should reproduce calling wmake to compile OpenFOAM libraries and solvers
@@ -44,6 +47,10 @@ ext = [
             os.getenv("FOAM_SRC") + "/finiteVolume/lnInclude",
             os.getenv("FOAM_SRC") + "/meshTools/lnInclude",
             os.getenv("FOAM_SRC") + "/sampling/lnInclude",
+            os.getenv("FOAM_SRC") + "/fileFormats/lnInclude",
+            os.getenv("FOAM_SRC") + "/surfMesh/lnInclude",
+            os.getenv("FOAM_SRC") + "/dynamicFvMesh/lnInclude",
+            os.getenv("FOAM_SRC") + "/dynamicMesh/lnInclude",
             # These are common for all OpenFOAM executives
             os.getenv("FOAM_SRC") + "/OpenFOAM/lnInclude",
             os.getenv("FOAM_SRC") + "/OSspecific/POSIX/lnInclude",
@@ -67,6 +74,8 @@ ext = [
             "incompressibleTransportModels" + libSuffix,
             "finiteVolume" + libSuffix,
             "sampling" + libSuffix,
+            "dynamicFvMesh" + libSuffix,
+            "dynamicMesh" + libSuffix,
             "meshTools" + libSuffix,
             "fvOptions" + libSuffix,
             "DAFoamIncompressible" + libSuffix,
@@ -83,6 +92,7 @@ ext = [
         # All other flags for OpenFOAM, users don't need to touch this
         extra_compile_args=[
             "-std=c++11",
+            "-Wno-deprecated-copy",
             "-DIncompressibleFlow",
             "-m64",
             "-DOPENFOAM_PLUS=1812",

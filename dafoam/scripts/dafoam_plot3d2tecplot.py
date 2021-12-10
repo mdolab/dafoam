@@ -2,7 +2,7 @@
 """
 This script converts a Plot3D file to a Tecplot file
 
-Usage: python dafoam-plot3d2tecplot.py plot3d_file_input.xyz tecplot_file_output.dat
+Usage: python dafoam_plot3d2tecplot.py plot3d_file_input.xyz tecplot_file_output.dat
 """
 
 import sys

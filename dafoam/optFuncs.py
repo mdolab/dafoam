@@ -136,10 +136,10 @@ def calcObjFuncValuesMP(xDV):
     return funcsMP, fail
 
 
-def calcObjFuncValuesHybridAdjoint(xDV):
+def calcObjFuncValuesUnsteady(xDV):
     """
     Update the design surface and run the primal solver to get objective function values.
-    This is the hybrid adjoint version of calcObjFuncValues
+    This is the unsteady adjoint version of calcObjFuncValues
     """
 
     Info("\n")
@@ -164,9 +164,12 @@ def calcObjFuncValuesHybridAdjoint(xDV):
     # Solve the CFD problem
     DASolver()
 
-    # Set values for the hybrid adjoint objectives. This function needs to be
+    # Set values for the unsteady adjoint objectives. This function needs to be
     # implemented in run scripts
-    setHybridAdjointObjFuncs(DASolver, funcs, evalFuncs)
+    setObjFuncsUnsteady(DASolver, funcs, evalFuncs)
+
+    # assign state lists to mats
+    DASolver.setTimeInstanceVar(mode="list2Mat")
 
     b = time.time()
 
@@ -192,6 +195,12 @@ def calcObjFuncSens(xDV, funcs):
 
     a = time.time()
 
+    # write the design variable values to file
+    DASolver.writeDesignVariable("designVariableHist.txt", xDV)
+
+    # write the deform FFDs
+    DASolver.writeDeformedFFDs()
+
     # Setup an empty dictionary for the evaluated derivative values
     funcsSens = {}
 
@@ -212,6 +221,9 @@ def calcObjFuncSens(xDV, funcs):
         Info(funcsSens)
         Info("Adjoint Runtime: %g s" % (b - a))
 
+    # write the sensitivity values to file
+    DASolver.writeTotalDeriv("totalDerivHist.txt", funcsSens, evalFuncs)
+
     fail = funcsSens["fail"]
 
     return funcsSens, fail
@@ -231,6 +243,12 @@ def calcObjFuncSensMP(xDV, funcs):
     fail = False
 
     a = time.time()
+
+    # write the design variable values to file
+    DASolver.writeDesignVariable("designVariableHist.txt", xDV)
+
+    # write the deform FFDs
+    DASolver.writeDeformedFFDs()
 
     # Setup an empty dictionary for the evaluated derivative values
     funcsSensMP = {}
@@ -284,10 +302,10 @@ def calcObjFuncSensMP(xDV, funcs):
     return funcsSensMP, fail
 
 
-def calcObjFuncSensHybridAdjoint(xDV, funcs):
+def calcObjFuncSensUnsteady(xDV, funcs):
     """
     Run the adjoint solver and get objective function sensitivities.
-    This is the hybrid adjoint version of calcObjFuncSens
+    This is the unsteady adjoint version of calcObjFuncSens
     """
 
     Info("\n")
@@ -299,14 +317,38 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
 
     a = time.time()
 
+    # write the design variable values to file
+    DASolver.writeDesignVariable("designVariableHist.txt", xDV)
+
+    # write the deform FFDs
+    DASolver.writeDeformedFFDs()
+
+    # assign the state mats to lists
+    DASolver.setTimeInstanceVar(mode="mat2List")
+
     # Setup an empty dictionary for the evaluated derivative values
     funcsSensCombined = {}
 
     funcsSensAllInstances = []
 
-    nTimeInstances = DASolver.getOption("hybridAdjoint")["nTimeInstances"]
+    mode = DASolver.getOption("unsteadyAdjoint")["mode"]
+    nTimeInstances = DASolver.getOption("unsteadyAdjoint")["nTimeInstances"]
+    if mode == "hybridAdjoint":
+        iEnd = -1
+    elif mode == "timeAccurateAdjoint":
+        iEnd = 0
 
-    for i in range(nTimeInstances):
+    # NOTE: calling calcRes here is critical because it will setup the correct
+    # old time levels for setTimeInstanceField. Otherwise, the residual for the
+    # first adjoint time instance will be incorrect because the residuals have
+    # not been computed and the old time levels will be zeros for all variables,
+    # this will create issues for the setTimeInstanceField call (nOldTimes)
+    DASolver.calcPrimalResidualStatistics("calc")
+
+    # set these vectors zeros
+    DASolver.zeroTimeAccurateAdjointVectors()
+
+    for i in range(nTimeInstances - 1, iEnd, -1):
 
         Info("--Solving Adjoint for Time Instance %d--" % i)
 
@@ -334,13 +376,13 @@ def calcObjFuncSensHybridAdjoint(xDV, funcs):
 
         funcsSensAllInstances.append(funcsSens)
 
-    setHybridAdjointObjFuncsSens(DASolver, funcs, funcsSensAllInstances, funcsSensCombined)
+    setObjFuncsSensUnsteady(DASolver, funcs, funcsSensAllInstances, funcsSensCombined)
 
     funcsSensCombined["fail"] = fail
 
     # Print the current solution to the screen
     with np.printoptions(precision=16, threshold=5, suppress=True):
-        Info("Objective Function Sensitivity Hybrid Adjoint: ")
+        Info("Objective Function Sensitivity Unsteady Adjoint: ")
         Info(funcsSensCombined)
 
     b = time.time()
@@ -357,6 +399,8 @@ def runPrimal(objFun=calcObjFuncValues):
     xDV = DVGeo.getValues()
     funcs = {}
     funcs, fail = objFun(xDV)
+
+    return funcs, fail
 
 
 def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None):
@@ -388,26 +432,48 @@ def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None)
                         fOut.flush()
             fOut.close()
 
+    return funcsSens, fail
 
-def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues):
+def runForwardAD(dvName="None", seedIndex=-1):
+    """
+    Run the forward mode AD for the primal solver to compute the brute force total
+    derivative. This is primarily used in verification of the adjoint accuracy
+    """
 
-    DASolver.setOption("adjUseColoring", False)
+    if not DASolver.getOption("useAD")["mode"] == "forward":
+        Info("runForwardAD only supports useAD->mode=forward!")
+        Info("Please set useAD->mode to forward and rerun!")
+        exit(1)
+    DASolver.setOption("useAD",{"dvName": dvName, "seedIndex": seedIndex})
+    DASolver.updateDAOption()
+    DASolver()
+
+def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues, eps=1e-2, tol=1e-4, maxit=10):
+    """
+    Adjust the angle of attack or pitch to match the target lift.
+    This is usually needed for wing aerodynamic optimization
+    """
+
+    Info("\n")
+    Info("+--------------------------------------------------------------------------+")
+    Info("|              Running SolveCL to find alpha that matches target CL        |")
+    Info("+--------------------------------------------------------------------------+")
+    Info("eps: %g  tol: %g  maxit: %g" % (eps, tol, maxit))
 
     xDVs = DVGeo.getValues()
     alpha = xDVs[alphaName]
 
-    for i in range(10):
+    for i in range(maxit):
         # Solve the CFD problem
         xDVs[alphaName] = alpha
         funcs = {}
         funcs, fail = objFun(xDVs)
         CL0 = funcs[liftName]
         Info("alpha: %f, CL: %f" % (alpha.real, CL0))
-        if abs(CL0 - CL_star) / CL_star < 1e-5:
+        if abs(CL0 - CL_star) / CL_star < tol:
             Info("Completed! alpha = %f" % alpha.real)
-            break
+            return alpha.real
         # compute sens
-        eps = 1e-2
         alphaVal = alpha + eps
         xDVs[alphaName] = alphaVal
         funcsP = {}
@@ -416,14 +482,7 @@ def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues):
         deltaAlpha = (CL_star - CL0) * eps / (CLP - CL0)
         alpha += deltaAlpha
 
-
-def verifySens(objFun=calcObjFuncValues, sensFun=calcObjFuncSens):
-    """
-    Verify the FFD sensitivity against finite-difference references
-    """
-
-    runAdjoint(objFun, sensFun, "sensAdjoint.txt")
-    calcFDSens(objFun, "sensFD.txt")
+    return alpha.real
 
 
 def calcFDSens(objFun=calcObjFuncValues, fileName=None):
@@ -443,7 +502,7 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
             gradFD[funcName][shapeVar] = np.zeros(len(xDV[shapeVar]))
     if gcomm.rank == 0:
         print("-------FD----------", deltaX, flush=True)
-            
+
     for shapeVar in xDV:
         try:
             nDVs = len(xDV[shapeVar])
@@ -477,6 +536,7 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
                         fOut.write(line)
                         fOut.flush()
             fOut.close()
+
 
 class Info(object):
     """

@@ -36,22 +36,10 @@ daOptions = {
     "solverName": "DAPisoFoam",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
+    "writeJacobians": ["all"],
+    "useAD": {"mode": "fd"},
     "adjPCLag": 3,
-    "hybridAdjoint": {"active": True, "nTimeInstances": 3, "periodicity": 1.0},
-    "intmdVar" : {
-         "UMean" : {
-             "operation": "Mean",
-             "fieldType": "volVectorField",
-             "baseField": "U",
-             "restartSteps": 1000
-         },
-         "pMean" : {
-             "operation": "Mean",
-             "fieldType": "volScalarField",
-             "baseField": "p",
-             "restartSteps": 1000
-          },
-    },
+    "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 1.0},
     "fvSource": {
         "line1": {
             "type": "actuatorLine",
@@ -189,8 +177,8 @@ surf = [p0, v1, v2]
 DVCon.setSurface(surf)
 
 # optFuncs
-def setHybridAdjointObjFuncs(DASolver, funcs, evalFuncs):
-    nTimeInstances = DASolver.getOption("hybridAdjoint")["nTimeInstances"]
+def setObjFuncsUnsteady(DASolver, funcs, evalFuncs):
+    nTimeInstances = DASolver.getOption("unsteadyAdjoint")["nTimeInstances"]
     for func in evalFuncs:
         avgObjVal = 0.0
         for i in range(nTimeInstances):
@@ -200,7 +188,7 @@ def setHybridAdjointObjFuncs(DASolver, funcs, evalFuncs):
     funcs["fail"] = False
 
 
-def setHybridAdjointObjFuncsSens(CFDSolver, funcs, funcsSensAllTimeInstances, funcsSensCombined):
+def setObjFuncsSensUnsteady(CFDSolver, funcs, funcsSensAllTimeInstances, funcsSensCombined):
 
     nTimeInstances = 1.0 * len(funcsSensAllTimeInstances)
     for funcsSens in funcsSensAllTimeInstances:
@@ -228,19 +216,19 @@ optFuncs.DVGeo = DVGeo
 optFuncs.DVCon = DVCon
 optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
-optFuncs.setHybridAdjointObjFuncs = setHybridAdjointObjFuncs
-optFuncs.setHybridAdjointObjFuncsSens = setHybridAdjointObjFuncsSens
+optFuncs.setObjFuncsUnsteady = setObjFuncsUnsteady
+optFuncs.setObjFuncsSensUnsteady = setObjFuncsSensUnsteady
 
 # Run
 if calcFDSens == 1:
-    optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValuesHybridAdjoint, fileName="sensFD.txt")
+    optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValuesUnsteady, fileName="sensFD.txt")
 else:
     DASolver.runColoring()
     xDV = DVGeo.getValues()
     funcs = {}
-    funcs, fail = optFuncs.calcObjFuncValuesHybridAdjoint(xDV)
+    funcs, fail = optFuncs.calcObjFuncValuesUnsteady(xDV)
     funcsSens = {}
-    funcsSens, fail = optFuncs.calcObjFuncSensHybridAdjoint(xDV, funcs)
+    funcsSens, fail = optFuncs.calcObjFuncSensUnsteady(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-6, 1e-8)
+        reg_write_dict(funcsSens, 1e-4, 1e-6)

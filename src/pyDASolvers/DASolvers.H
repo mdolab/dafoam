@@ -119,6 +119,48 @@ public:
         DASolverPtr_->calcdRdXvTPsiAD(xvVec, wVec, psi, dRdXvTPsi);
     }
 
+    /// compute dForcedXv
+    void calcdForcedXvAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dForcedW)
+    {
+        DASolverPtr_->calcdForcedXvAD(xvVec, wVec, fBarVec, dForcedW);
+    }
+
+    /// compute dRdAct^T*Psi
+    void calcdRdActTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdActTPsi)
+    {
+        DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
+    }
+
+    /// compute dForcedW
+    void calcdForcedWAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dForcedW)
+    {
+        DASolverPtr_->calcdForcedWAD(xvVec, wVec, fBarVec, dForcedW);
+    }
+
+    /// compute dRdAOA^T*Psi
+    void calcdRdAOATPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdAOATPsi)
+    {
+        DASolverPtr_->calcdRdAOATPsiAD(xvVec, wVec, psi, designVarName, dRdAOATPsi);
+    }
+
     /// create the multi-level Richardson KSP for solving linear equation
     void createMLRKSP(
         const Mat jacMat,
@@ -188,6 +230,17 @@ public:
         DASolverPtr_->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
     }
 
+    /// compute dRdBC^T*Psi
+    void calcdRdBCTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdBCTPsi)
+    {
+        DASolverPtr_->calcdRdBCTPsiAD(xvVec, wVec, psi, designVarName, dRdBCTPsi);
+    }
+
     /// compute dRdAOA
     void calcdRdAOA(
         const Vec xvVec,
@@ -241,6 +294,29 @@ public:
         DASolverPtr_->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
     }
 
+    /// compute dFdACT
+    void calcdFdACTAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdACT)
+    {
+        DASolverPtr_->calcdFdACTAD(xvVec, wVec, objFuncName, designVarName, dFdACT);
+    }
+
+    /// compute dFdACT
+    void calcdFdACT(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        const word designVarType,
+        Vec dFdACT)
+    {
+        DASolverPtr_->calcdFdACT(xvVec, wVec, objFuncName, designVarName, designVarType, dFdACT);
+    }
+
     /// compute dRdField
     void calcdRdFieldTPsiAD(
         const Vec xvVec,
@@ -261,6 +337,25 @@ public:
         Vec dFdField)
     {
         DASolverPtr_->calcdFdFieldAD(xvVec, wVec, objFuncName, designVarName, dFdField);
+    }
+
+    /// compute dRdWOld^T*Psi
+    void calcdRdWOldTPsiAD(
+        const label oldTimeLevel,
+        const Vec psi,
+        Vec dRdWOldTPsi)
+    {
+        DASolverPtr_->calcdRdWOldTPsiAD(oldTimeLevel, psi, dRdWOldTPsi);
+    }
+
+    /// compute [dRdW]^T*Psi
+    void calcdRdWTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        Vec dRdWTPsi)
+    {
+        DASolverPtr_->calcdRdWTPsiAD(xvVec, wVec, psi, dRdWTPsi);
     }
 
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
@@ -307,10 +402,22 @@ public:
         return DASolverPtr_->getNLocalAdjointStates();
     }
 
+    /// return the number of local adjoint boundary states
+    label getNLocalAdjointBoundaryStates() const
+    {
+        return DASolverPtr_->getNLocalAdjointBoundaryStates();
+    }
+
     /// return the number of local cells
     label getNLocalCells() const
     {
         return DASolverPtr_->getNLocalCells();
+    }
+
+    /// synchronize the values in DAOption and actuatorDiskDVs_
+    void syncDAOptionToActuatorDVs()
+    {
+        DASolverPtr_->syncDAOptionToActuatorDVs();
     }
 
     /// return the value of objective
@@ -319,6 +426,12 @@ public:
         double returnVal = 0.0;
         assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValue(objFuncName));
         return returnVal;
+    }
+
+    /// return the value of objective
+    void getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
+    {
+        DASolverPtr_->getForces(fX, fY, fZ, pointList);
     }
 
     /// call DASolver::printAllOptions
@@ -331,6 +444,12 @@ public:
     void setdXvdFFDMat(const Mat dXvdFFDMat)
     {
         DASolverPtr_->setdXvdFFDMat(dXvdFFDMat);
+    }
+
+    /// set the value for DASolver::FFD2XvSeedVec_
+    void setFFD2XvSeedVec(Vec vecIn)
+    {
+        DASolverPtr_->setFFD2XvSeedVec(vecIn);
     }
 
     /// update the allOptions_ dict in DAOption based on the pyOptions from pyDAFoam
@@ -425,6 +544,17 @@ public:
         DASolverPtr_->setTimeInstanceField(instanceI);
     }
 
+    /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
+    void setTimeInstanceVar(
+        const word mode,
+        Mat stateMat,
+        Mat stateBCMat,
+        Vec timeVec,
+        Vec timeIdxVec)
+    {
+        DASolverPtr_->setTimeInstanceVar(mode, stateMat, stateBCMat, timeVec, timeIdxVec);
+    }
+
     /// return the value of objective function at the given time instance and name
     double getTimeInstanceObjFunc(
         const label instanceI,
@@ -451,6 +581,24 @@ public:
         const word fieldType)
     {
         DASolverPtr_->updateBoundaryConditions(fieldName, fieldType);
+    }
+
+    /// Calculate the mean, max, and norm2 for all residuals and print it to screen
+    void calcPrimalResidualStatistics(const word mode)
+    {
+        DASolverPtr_->calcPrimalResidualStatistics(mode, 0);
+    }
+
+    /// get forwardADDerivVal_
+    PetscScalar getForwardADDerivVal(const word objFuncName)
+    {
+        return DASolverPtr_->getForwardADDerivVal(objFuncName);
+    }
+
+    /// calculate the residual and assign it to the resVec vector
+    void calcResidualVec(Vec resVec)
+    {
+        DASolverPtr_->calcResidualVec(resVec);
     }
 };
 

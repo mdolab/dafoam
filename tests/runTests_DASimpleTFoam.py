@@ -37,6 +37,7 @@ epsilon0 = 42.0
 aeroOptions = {
     "solverName": "DASimpleTFoam",
     "designSurfaceFamily": "designSurface",
+    "useAD": {"mode": "fd"},
     "designSurfaces": ["ubend"],
     "primalMinResTol": 1e-12,
     "primalBC": {
@@ -138,4 +139,4 @@ else:
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-6, 1e-8)
+        reg_write_dict(funcsSens, 1e-3, 1e-5)

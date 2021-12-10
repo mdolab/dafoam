@@ -2,6 +2,7 @@ DAUtility/DAUtility.C
 
 DACheckMesh/DACheckMesh.C
 DACheckMesh/checkGeometry.C
+DACheckMesh/checkTools.C
 
 DAOption/DAOption.C
 
@@ -9,6 +10,8 @@ DAModel/DAModel.C
 
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoSolidDisplacementFoam.C
+DAStateInfo/DAStateInfoLaplacianFoam.C
+DAStateInfo/DAStateInfoScalarTransportFoam.C
 
 DAIndex/DAIndex.C
 
@@ -17,10 +20,16 @@ DAField/DAField.C
 DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncVonMisesStressKS.C
 DAObjFunc/DAObjFuncMass.C
+DAObjFunc/DAObjFuncVariableVolSum.C
+DAObjFunc/DAObjFuncMeshQualityKS.C
+
+DAFvSource/DAFvSource.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C
 DAResidual/DAResidualSolidDisplacementFoam.C
+DAResidual/DAResidualLaplacianFoam.C
+DAResidual/DAResidualScalarTransportFoam.C
 
 DAColoring/DAColoring.C
 
@@ -41,6 +50,8 @@ DALinearEqn/DALinearEqn.C
 
 DASolver/DASolver.C
 DASolver/DASolidDisplacementFoam/DASolidDisplacementFoam.C
+DASolver/DALaplacianFoam/DALaplacianFoam.C
+DASolver/DAScalarTransportFoam/DAScalarTransportFoam.C
 
 boundaryConditions/tractionDisplacement/tractionDisplacementFvPatchVectorField.C
 

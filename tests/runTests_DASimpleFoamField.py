@@ -37,9 +37,11 @@ LRef = 1.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleFoam",
-    "adjJacobianOption": "JacobianFree",
+    "useAD": {"mode": "reverse"},
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
+    "writeJacobians": ["all"],
+    "writeSensMap": ["betaSA", "alphaPorosity"],
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
@@ -71,7 +73,7 @@ aeroOptions = {
         },
         "FI": {
             "part1": {
-                "type": "stateErrorNorm",
+                "type": "fieldInversion",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
@@ -81,9 +83,11 @@ aeroOptions = {
                 "stateType": "vector",
                 "scale": 1.0,
                 "addToAdjoint": True,
+                "weightedSum": True,
+                "weight": 1.0,
             },
             "part2": {
-                "type": "stateErrorNorm",
+                "type": "fieldInversion",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
@@ -93,6 +97,7 @@ aeroOptions = {
                 "stateType": "scalar",
                 "scale": 0.01,
                 "addToAdjoint": True,
+                "weightedSum": False,
             },
         },
     },
@@ -192,6 +197,10 @@ else:
     alphaPorositySens = funcsSens["FI"]["alphaPorosity"]
     funcsSens["FI"]["alphaPorosity"] = np.zeros(1, "d")
     funcsSens["FI"]["alphaPorosity"][0] = np.linalg.norm(alphaPorositySens)
+
+    # Do not consider alpha deriv, just assign it to 0
+    funcsSens["FI"]["alpha"] = 0
+
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-4, 1e-6)

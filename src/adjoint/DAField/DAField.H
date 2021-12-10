@@ -100,10 +100,11 @@ public:
     /// assign the fields in OpenFOAM based on the scalar list of states
     void list2OFField(
         const scalarList& stateList,
-        const scalarList& stateBounaryList) const;
+        const scalarList& stateBounaryList,
+        const label oldTimeLevel) const;
 
     /// set the boundary conditions based on parameters defined in DAOption
-    void setPrimalBoundaryConditions();
+    void setPrimalBoundaryConditions(const label printInfo = 1);
 
     /// apply special treatment for boundary conditions
     void specialBCTreatment();
@@ -113,7 +114,6 @@ public:
 
     /// a list that contains the names of detected special boundary conditions
     wordList specialBCs;
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

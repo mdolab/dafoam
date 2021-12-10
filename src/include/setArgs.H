@@ -28,4 +28,3 @@ for (int i = 0; i < argc; i++)
 {
     argv[i] = const_cast<char*>(argvList[i].c_str());
 }
-//argv = n_argv;

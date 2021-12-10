@@ -54,6 +54,8 @@ void DATurboFoam::initSolver()
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+
+    this->setDAObjFuncList();
 }
 
 label DATurboFoam::solvePrimal(
@@ -105,6 +107,9 @@ label DATurboFoam::solvePrimal(
 
     // set the rotating wall velocity after the mesh is updated (if MRF is active)
     this->setRotingWallVelocity();
+
+    // if the forwardModeAD is active, we need to set the seed here
+#include "setForwardADSeeds.H"
 
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");

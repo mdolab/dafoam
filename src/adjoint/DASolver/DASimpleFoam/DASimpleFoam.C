@@ -52,6 +52,8 @@ void DASimpleFoam::initSolver()
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+    
+    this->setDAObjFuncList();
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -116,12 +118,15 @@ label DASimpleFoam::solvePrimal(
     // set the rotating wall velocity after the mesh is updated (if MRF is active)
     this->setRotingWallVelocity();
 
+    // if the forwardModeAD is active, we need to set the seed here
+#include "setForwardADSeeds.H"
+
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        
+
         printToScreen = this->isPrintTime(runTime, printInterval);
 
         if (printToScreen)
@@ -143,7 +148,7 @@ label DASimpleFoam::solvePrimal(
         if (printToScreen)
         {
             daTurbulenceModelPtr_->printYPlus();
-            
+
             this->printAllObjFuncs();
 
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"

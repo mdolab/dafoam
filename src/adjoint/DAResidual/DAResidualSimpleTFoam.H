@@ -33,20 +33,19 @@ protected:
     //@{
     volVectorField& U_;
     volVectorField URes_;
-    volVectorField UResPartDeriv_;
 
     volScalarField& p_;
     volScalarField pRes_;
-    volScalarField pResPartDeriv_;
 
     volScalarField& T_;
     volScalarField TRes_;
-    volScalarField TResPartDeriv_;
 
     surfaceScalarField& phi_;
     surfaceScalarField phiRes_;
-    surfaceScalarField phiResPartDeriv_;
     //@}
+
+    /// alpha porosity term
+    volScalarField& alphaPorosity_;
 
     volScalarField& alphat_;
 

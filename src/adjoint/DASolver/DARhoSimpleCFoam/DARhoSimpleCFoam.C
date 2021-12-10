@@ -52,6 +52,8 @@ void DARhoSimpleCFoam::initSolver()
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+
+    this->setDAObjFuncList();
 }
 
 label DARhoSimpleCFoam::solvePrimal(
@@ -101,6 +103,9 @@ label DARhoSimpleCFoam::solvePrimal(
         return 1;
     }
 
+    // if the forwardModeAD is active, we need to set the seed here
+#include "setForwardADSeeds.H"
+
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
@@ -136,7 +141,6 @@ label DARhoSimpleCFoam::solvePrimal(
         }
 
         runTime.write();
-
     }
 
     this->calcPrimalResidualStatistics("print");

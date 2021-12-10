@@ -174,7 +174,7 @@ public:
         scalarList& objFuncCellValues,
         scalar& objFuncValue) = 0;
 
-    /// calcluate the value of objective function
+    /// calculate the value of objective function
     scalar getObjFuncValue();
 
     /// the master function to compute objective function given the state and point vectors

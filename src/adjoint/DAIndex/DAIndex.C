@@ -177,8 +177,7 @@ DAIndex::DAIndex(
     // calculate some local lists for indexing
     this->calcLocalIdxLists(adjStateName4LocalAdjIdx, cellIFaceI4LocalAdjIdx);
 
-    if (daOption_.getOption<label>("writeJacobians")
-        || daOption_.getOption<label>("debug"))
+    if (daOption_.getOption<label>("debug"))
     {
         this->writeAdjointIndexing();
     }
@@ -349,9 +348,13 @@ void DAIndex::calcStateLocalIndexOffset(HashTable<label>& offset)
         forAll(phiAccumulatdOffset, idxI)
         {
             if (idxI == 0)
+            {
                 phiAccumulatdOffset[idxI] = 0;
+            }
             else
+            {
                 phiAccumulatdOffset[idxI] = cellOwnedFaces[idxI - 1].size() + phiAccumulatdOffset[idxI - 1];
+            }
         }
         //Info<<"phiAccumulatdOffset "<<phiAccumulatdOffset<<endl;
 
@@ -740,6 +743,28 @@ label DAIndex::getLocalXvIndex(
     return localXvIdx;
 }
 
+label DAIndex::getLocalCellIndex(const label cellI) const
+{
+    /*
+    Description:
+        Returns the local cell index for a given local cell index
+
+    Input:
+        cellI: local mesh cell index
+
+    Example:
+        Image we have three cells, the local vector reads
+    
+        cVec = [c0, c1, c2] <- c0 means the 0th cell
+                 0   1   2  <- local cell index
+    
+        Then, getLocalCellIndex(1) returns 1
+        NOTE: we essentially just return cellI
+
+    */
+    return cellI;
+}
+
 label DAIndex::getGlobalCellIndex(const label cellI) const
 {
     /*
@@ -753,16 +778,121 @@ label DAIndex::getGlobalCellIndex(const label cellI) const
         Image we have nine cells, running on two CPU cores, and the proc0 owns
         three cell and proc1 owns six cell, and the cell vector reads
     
-        Xv = [c0, c1, c2 | c0, c1, c2, c3, c4, c5] <- c0 means the 0th cell
-               0   1   2    3   4   5   6   7   8  <- global cell index
-              -- proc0 --|--------- proc1 ------- 
+        cVec = [c0, c1, c2 | c0, c1, c2, c3, c4, c5] <- c0 means the 0th cell
+                 0   1   2    3   4   5   6   7   8  <- global cell index
+                -- proc0 --|--------- proc1 ------- 
         Then, on proc0, getGlobalCellIndex(1) returns 1
           and on proc1, getGlobalCellIndex(1) returns 4
 
     */
 
-    label globalCellIdx = globalCellNumbering.toGlobal(cellI);
-    return globalCellIdx;
+    label localIdx = this->getLocalCellIndex(cellI);
+    label globalIdx = globalCellNumbering.toGlobal(localIdx);
+    return globalIdx;
+}
+
+label DAIndex::getLocalCellVectorIndex(
+    const label cellI,
+    const label comp) const
+{
+    /*
+    Description:
+        Returns the local cell index for a given local cell vector index
+
+    Input:
+        cellI: local mesh cell index
+
+        comp: the vector component 
+
+    Example:
+        Image we have two cells, the local vector reads
+    
+        cVec = [c0a, c0b, c0c, c1a, c1b, c1c] <- c0b means the 0th cell, 1st vector component
+                 0    1    2    3    4    5   <- local cell vector index
+    
+        Then, getLocalCellIndex(1,1) returns 4
+
+    */
+    label localIdx = cellI * 3 + comp;
+    return localIdx;
+}
+
+label DAIndex::getGlobalCellVectorIndex(
+    const label cellI,
+    const label comp) const
+{
+    /*
+    Description:
+        Returns the global cell index for a given local cell vector index
+
+    Input:
+        cellI: local cell index
+
+        comp: the vector component 
+
+    Example:
+        Image we have three cells, running on two CPU cores, and the proc0 owns
+        two cells and proc1 owns one cell, and the cell vector reads
+    
+        cVec = [c0a, c0b, c0c, c1a, c1b, c1c | c0a, c0b, c0c] <- c0b means the 0th cell, 1st vector component
+                 0   1     2    3    4    5     6    7    8  <- global cell index
+                --------- proc0 -------------|---- proc1 ---
+        Then, on proc0, getGlobalCellVectorIndex(0, 1) returns 1
+          and on proc1, getGlobalCellVectorIndex(0, 1) returns 7
+
+    */
+
+    label localIdx = this->getLocalCellVectorIndex(cellI, comp);
+    label globalIdx = globalCellVectorNumbering.toGlobal(localIdx);
+    return globalIdx;
+}
+
+label DAIndex::getLocalFaceIndex(const label faceI) const
+{
+    /*
+    Description:
+        Returns the local face index for a given local face index
+
+    Input:
+        faceI: local mesh face index (including the boundary faces)
+
+    Example:
+        Image we have three faces, the local vector reads
+    
+        fVec = [f0, f1, f2] <- f0 means the 0th face
+                 0   1   2  <- local face index
+    
+        Then, getLocalFaceIndex(1) returns 1
+        NOTE: we essentially just return faceI
+
+    */
+    return faceI;
+}
+
+label DAIndex::getGlobalFaceIndex(const label faceI) const
+{
+    /*
+    Description:
+        Returns the global face index for a given local face index
+
+    Input:
+        faceI: local mesh face index (including the boundary faces)
+
+    Example:
+        Image we have nine faces, running on two CPU cores, and the proc0 owns
+        three faces and proc1 owns six faces, and the face vector reads
+    
+        fVec = [f0, f1, f2 | f0, f1, f2, f3, f4, f5] <- f0 means the 0th face
+                 0   1   2    3   4   5   6   7   8  <- global face index
+                -- proc0 --|--------- proc1 ------- 
+        Then, on proc0, getGlobalFaceIndex(1) returns 1
+          and on proc1, getGlobalFaceIndex(1) returns 4
+
+    */
+
+    label localIdx = this->getLocalFaceIndex(faceI);
+    label globalIdx = globalFaceNumbering.toGlobal(localIdx);
+    return globalIdx;
 }
 
 void DAIndex::calcAdjStateID4GlobalAdjIdx(labelList& adjStateID4GlobalAdjIdx) const

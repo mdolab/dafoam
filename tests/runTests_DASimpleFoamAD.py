@@ -40,12 +40,14 @@ LRef = 1.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleFoam",
-    "adjJacobianOption": "JacobianFree",
     "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
+    "useAD": {"mode": "reverse"},
+    "writeJacobians": ["all"],
+    "writeSensMap": ["shapey"],
     "primalMinResTol": 1e-12,
     "primalBC": {
-        "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
         "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
         "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},
@@ -71,6 +73,18 @@ aeroOptions = {
                 "directionMode": "normalToFlow",
                 "alphaName": "alpha",
                 "scale": 1.0 / (0.5 * U0 * U0 * A0),
+                "addToAdjoint": True,
+            }
+        },
+        "COP": {
+            "part1": {
+                "type": "centerOfPressure",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "axis": [1.0, 0.0, 0.0],
+                "forceAxis": [0.0, 1.0, 0.0],
+                "center": [0, 0, 0],
+                "scale": 1.0,
                 "addToAdjoint": True,
             }
         },
@@ -106,6 +120,7 @@ def alpha(val, geo):
     inletU = [float(U0 * np.cos(aoa)), float(U0 * np.sin(aoa)), 0]
     DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
     DASolver.updateDAOption()
+
 
 # select points
 pts = DVGeo.getLocalIndex(0)
@@ -144,11 +159,55 @@ if calcFDSens == 1:
     optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValues, fileName="sensFD.txt")
 else:
     DASolver.runColoring()
-    xDV = DVGeo.getValues()
+    alphaSet = optFuncs.solveCL(0.5, "alpha", "CL", tol=1e-2)
+    if abs(alphaSet - 5.139885) > 1e-3:
+        exit(1)
+    alpha([alpha0], None)
+    xDVs = DVGeo.getValues()
+    xDVs["alpha"][0] = alpha0
+    DVGeo.setDesignVars(xDVs)
     funcs = {}
-    funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    funcs, fail = optFuncs.runPrimal()
     funcsSens = {}
-    funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
+    funcsSens, fail = optFuncs.runAdjoint(fileName="totalSens.txt")
+    optFuncs.calcFDSens(fileName="totalSensFD.txt")
+
+    # Force calculation routines
+    # Compute force
+    forces = DASolver.getForces()
+    fNorm = np.linalg.norm(forces.flatten())
+    fNormSum = gcomm.allreduce(fNorm, op=MPI.SUM)
+    funcs["forces"] = fNormSum
+
+    # Compute dForcedxV
+    fBar = np.ones(np.size(forces.flatten()))
+    fBarVec = DASolver.array2Vec(fBar)
+    dForcedXv = DASolver.xvVec.duplicate()
+    dForcedXv.zeroEntries()
+    DASolver.solverAD.calcdForcedXvAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedXv)
+    xVBar = DASolver.vec2Array(dForcedXv)
+    xVBarNorm = np.linalg.norm(xVBar.flatten())
+    xVBarNormSum = gcomm.allreduce(xVBarNorm, op=MPI.SUM)
+    funcsSens["dForcedxV"] = xVBarNormSum
+
+    # Compute dForcedW
+    fBar = np.ones(np.size(forces.flatten()))
+    fBarVec = DASolver.array2Vec(fBar)
+    dForcedW = DASolver.wVec.duplicate()
+    dForcedW.zeroEntries()
+    DASolver.solverAD.calcdForcedWAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedW)
+    wBar = DASolver.vec2Array(dForcedW)
+    wBarNorm = np.linalg.norm(wBar.flatten())
+    wBarNormSum = gcomm.allreduce(wBarNorm, op=MPI.SUM)
+    funcsSens["dForcedW"] = wBarNormSum
+
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-6, 1e-8)
+        reg_write_dict(funcsSens, 1e-5, 1e-7)
+
+        f = open("totalSensFD.txt")
+        lines = f.readlines()
+        f.close()
+        line4 = float(lines[4])
+        if abs(line4 - 0.002349192076814971) / line4 > 1e-3:
+            exit(1)

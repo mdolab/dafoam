@@ -73,9 +73,9 @@ void DAObjFuncMass::calcObjFunc(
     */
 
     // initialize faceValues to zero
-    forAll(objFuncFaceValues, idxI)
+    forAll(objFuncCellValues, idxI)
     {
-        objFuncFaceValues[idxI] = 0.0;
+        objFuncCellValues[idxI] = 0.0;
     }
     // initialize objFunValue
     objFuncValue = 0.0;

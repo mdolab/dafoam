@@ -2,6 +2,7 @@ DAUtility/DAUtility.C
 
 DACheckMesh/DACheckMesh.C
 DACheckMesh/checkGeometry.C
+DACheckMesh/checkTools.C
 
 DAOption/DAOption.C
 
@@ -12,6 +13,9 @@ DAModel/DATurbulenceModel/DATurbulenceModel.C
 DAModel/DATurbulenceModel/DASpalartAllmaras.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
+DAModel/DATurbulenceModel/DAkOmegaFieldInversion.C
+DAModel/DATurbulenceModel/DAkOmegaFieldInversionk.C
+DAModel/DATurbulenceModel/DAkOmegaFieldInversionOmega.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
 DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
 DAModel/DATurbulenceModel/DAkEpsilon.C
@@ -35,10 +39,14 @@ DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncForce.C
 DAObjFunc/DAObjFuncMoment.C
 DAObjFunc/DAObjFuncWallHeatFlux.C
+DAObjFunc/DAObjFuncCenterOfPressure.C
 DAObjFunc/DAObjFuncTotalPressure.C
 DAObjFunc/DAObjFuncTotalPressureRatio.C
 DAObjFunc/DAObjFuncTotalTemperatureRatio.C
 DAObjFunc/DAObjFuncMassFlowRate.C
+DAObjFunc/DAObjFuncVariableVolSum.C
+DAObjFunc/DAObjFuncMeshQualityKS.C
+DAObjFunc/DAObjFuncFieldInversion.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
@@ -68,6 +76,7 @@ DAPartDeriv/DAPartDerivdRdAOA.C
 DAPartDeriv/DAPartDerivdRdACTP.C
 DAPartDeriv/DAPartDerivdRdACTD.C
 DAPartDeriv/DAPartDerivdRdACTL.C
+DAPartDeriv/DAPartDerivdFdACTD.C
 
 DALinearEqn/DALinearEqn.C
 
@@ -82,5 +91,11 @@ models/dummyTurbulenceModel/makeDummyTurbulenceModelCompressible.C
 models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Compressible.C
 models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionCompressible.C
 models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionCompressible.C
+models/kOmegaFieldInversion/makekOmegaFieldInversionCompressible.C
+models/kOmegaFieldInversionk/makekOmegaFieldInversionkCompressible.C
+models/kOmegaFieldInversionOmega/makekOmegaFieldInversionOmegaCompressible.C
+
+
+models/meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFoamCompressible$(DF_LIB_SUFFIX)

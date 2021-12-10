@@ -41,8 +41,10 @@ LRef = 1.0
 aeroOptions = {
     "solverName": "DASimpleFoam",
     "designSurfaceFamily": "designSurface",
+    "useAD": {"mode": "fd"},
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
+    "writeJacobians": ["all"],
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
@@ -64,6 +66,7 @@ aeroOptions = {
             "eps": 0.1,  # eps should be of cell size
             "expM": 1.0,
             "expN": 0.5,
+            "adjustThrust": 0,
         },
     },
     "objFunc": {
@@ -99,6 +102,34 @@ aeroOptions = {
                 "scale": 1.0 / (0.5 * U0 * U0 * A0 * LRef),
                 "addToAdjoint": True,
             }
+        },
+        "THRUST": {
+            "part1": {
+                "type": "variableVolSum",
+                "source": "boxToCell",
+                "min": [-50.0, -50.0, -50.0],
+                "max": [50.0, 50.0, 50.0],
+                "varName": "fvSource",
+                "varType": "vector",
+                "component": 0,
+                "isSquare": 0,
+                "scale": 1.0,
+                "addToAdjoint": True,
+            },
+        },
+        "VOL": {
+            "part1": {
+                "type": "variableVolSum",
+                "source": "boxToCell",
+                "min": [-50.0, -50.0, -50.0],
+                "max": [50.0, 50.0, 50.0],
+                "varName": "p",
+                "varType": "scalar",
+                "component": 0,
+                "isSquare": 1,
+                "scale": 1.0,
+                "addToAdjoint": True,
+            },
         },
     },
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
@@ -161,6 +192,7 @@ def actuator(val, geo):
                 "eps": 0.1,  # eps should be of cell size
                 "expM": actExpM,
                 "expN": actExpN,
+                "adjustThrust": 0,
             },
         },
     )
@@ -216,8 +248,12 @@ else:
     xDV = DVGeo.getValues()
     funcs = {}
     funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    forces = DASolver.getForces()
+    fNorm = np.linalg.norm(forces.flatten())
+    fNormSum = gcomm.allreduce(fNorm, op=MPI.SUM)
+    funcs["forces"] = fNormSum
     funcsSens = {}
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-6, 1e-8)
+        reg_write_dict(funcsSens, 1e-4, 1e-6)
