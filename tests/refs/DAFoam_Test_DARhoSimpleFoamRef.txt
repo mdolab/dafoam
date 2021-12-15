@@ -1,0 +1,24 @@
+Dictionary Key: CD
+@value  0.09084626022005476 1e-08 1e-10
+Dictionary Key: CL
+@value   0.3304878903763182 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10
+Dictionary Key: CD
+Dictionary Key: shapey
+@value   0.2125351330069156 1e-04 1e-06
+@value   0.1780152462220735 1e-04 1e-06
+@value    2.376356190880319 1e-04 1e-06
+@value     1.88949857276801 1e-04 1e-06
+Dictionary Key: uin
+@value 0.003747752666385211 1e-04 1e-06
+Dictionary Key: CL
+Dictionary Key: shapey
+@value   0.5355908807229974 1e-04 1e-06
+@value   0.4425505807722847 1e-04 1e-06
+@value   0.4449741622842366 1e-04 1e-06
+@value   0.3619240288380361 1e-04 1e-06
+Dictionary Key: uin
+@value  0.01343529283859845 1e-04 1e-06
+Dictionary Key: fail
+@value                    0 1e-04 1e-06

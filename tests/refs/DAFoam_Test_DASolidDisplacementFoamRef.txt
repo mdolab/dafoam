@@ -1,0 +1,26 @@
+Dictionary Key: M
+@value    11950.18306038293 1e-08 1e-10
+Dictionary Key: VMS
+@value     29161.9458956538 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10
+Dictionary Key: M
+Dictionary Key: shapex
+@value   -134.4036118061922 1e-04 1e-06
+@value   -355.6352710656938 1e-04 1e-06
+@value    -134.317198273493 1e-04 1e-06
+Dictionary Key: shapey
+@value     133.578083714383 1e-04 1e-06
+@value    351.9087685690465 1e-04 1e-06
+@value    133.8341984392173 1e-04 1e-06
+Dictionary Key: VMS
+Dictionary Key: shapex
+@value   -992.0355945685246 1e-04 1e-06
+@value   -2602.054125021486 1e-04 1e-06
+@value   -1269.444213538443 1e-04 1e-06
+Dictionary Key: shapey
+@value    -734.173963930622 1e-04 1e-06
+@value   -6354.753651965501 1e-04 1e-06
+@value   -1169.305994848094 1e-04 1e-06
+Dictionary Key: fail
+@value                    0 1e-04 1e-06
