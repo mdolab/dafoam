@@ -1,9 +1,0 @@
-Dictionary Key: TVOL
-@value 1.040374899271551e-07 1e-08 1e-10
-Dictionary Key: fail
-@value                    0 1e-08 1e-10
-Dictionary Key: TVOL
-Dictionary Key: tbc
-@value    528106698373.1962 1e-04 1e-06
-Dictionary Key: fail
-@value                    0 1e-04 1e-06

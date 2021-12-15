@@ -1,9 +1,0 @@
-Dictionary Key: CD
-@value    2.398448339935712 1e-08 1e-10
-Dictionary Key: fail
-@value                    0 1e-08 1e-10
-Dictionary Key: CD
-Dictionary Key: shapey
-@value                    0 1e-05 1e-07
-Dictionary Key: fail
-@value                    0 1e-05 1e-07

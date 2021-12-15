@@ -1,3 +1,0 @@
-[coverage:run]
-parallel = true
-include = /home/dafoamuser/dafoam/packages/miniconda3/lib/python3.6/site-packages/dafoam/pyDAFoam.py, /home/dafoamuser/dafoam/packages/miniconda3/lib/python3.6/site-packages/dafoam/optFuncs.py
