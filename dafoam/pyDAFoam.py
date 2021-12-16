@@ -596,6 +596,9 @@ class DAOPTION(object):
     ## Whether to write deformed FFDs to the disk during optimization
     writeDeformedFFDs = False
 
+    ## The max number of correctBoundaryConditions calls in the updateOFField function.
+    maxCorrectBCCalls = 10
+
     def __init__(self):
         """
         Nothing needs to be done for initializing DAOPTION
@@ -3528,10 +3531,10 @@ class PYDAFOAM(object):
         self.wVec.assemblyBegin()
         self.wVec.assemblyEnd()
 
-        self.solver.stateVec2OFField(self.wVec)
+        self.solver.updateOFField(self.wVec)
 
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.stateVec2OFField(self.wVec)
+            self.solverAD.updateOFField(self.wVec)
 
         return
 
