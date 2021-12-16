@@ -2616,7 +2616,10 @@ void DASolver::updateOFField(const Vec wVec)
     Output:
         OpenFoam flow fields (internal and boundary)
     */
-    Info << "Updating the OpenFOAM field..." << endl;
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        Info << "Updating the OpenFOAM field..." << endl;
+    }
     //Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
     daFieldPtr_->setPrimalBoundaryConditions(0);
     daFieldPtr_->stateVec2OFField(wVec);
@@ -2644,7 +2647,10 @@ void DASolver::updateOFMesh(const Vec xvVec)
     Output:
         OpenFoam flow fields (internal and boundary)
     */
-    Info << "Updating the OpenFOAM mesh..." << endl;
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        Info << "Updating the OpenFOAM mesh..." << endl;
+    }
     daFieldPtr_->pointVec2OFMesh(xvVec);
 }
 
