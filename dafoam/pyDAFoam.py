@@ -3528,10 +3528,10 @@ class PYDAFOAM(object):
         self.wVec.assemblyBegin()
         self.wVec.assemblyEnd()
 
-        self.solver.stateVec2OFField(self.wVec)
+        self.solver.updateOFField(self.wVec)
 
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.stateVec2OFField(self.wVec)
+            self.solverAD.updateOFField(self.wVec)
 
         return
 
