@@ -596,6 +596,9 @@ class DAOPTION(object):
     ## Whether to write deformed FFDs to the disk during optimization
     writeDeformedFFDs = False
 
+    ## The max number of correctBoundaryConditions calls in the updateOFField function.
+    maxCorrectBCCalls = 10
+
     def __init__(self):
         """
         Nothing needs to be done for initializing DAOPTION

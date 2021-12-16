@@ -2626,7 +2626,8 @@ void DASolver::updateOFField(const Vec wVec)
     // We need to call correctBC multiple times to reproduce
     // the exact residual, this is needed for some boundary conditions
     // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
-    for (label i = 0; i < 10; i++)
+    label maxCorrectBCCalls = daOptionPtr_->getOption<label>("maxCorrectBCCalls");
+    for (label i = 0; i < maxCorrectBCCalls; i++)
     {
         daResidualPtr_->correctBoundaryConditions();
         daResidualPtr_->updateIntermediateVariables();
