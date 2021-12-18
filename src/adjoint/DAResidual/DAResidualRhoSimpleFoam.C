@@ -32,6 +32,7 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       fvSourceEnergy_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("fvSourceEnergy"))),
+      fvOptions_(fv::options::New(mesh)),
       thermo_(const_cast<fluidThermo&>(daModel.getThermo())),
       he_(thermo_.he()),
       rho_(const_cast<volScalarField&>(
@@ -100,10 +101,6 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
         URes_, pRes_, TRes_, phiRes_: residual field variables
     */
 
-    // look up fvOptions in the mesh db
-    fv::options& fvOptions =
-        const_cast<fv::options&>(mesh_.thisDb().lookupObject<fv::options>("fvOptions"));
-
     label isPC = options.getLabel("isPC");
 
     word divUScheme = "div(phi,U)";
@@ -135,12 +132,12 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
         + MRF_.DDt(rho_, U_)
         + daTurb_.divDevRhoReff(U_)
         - fvSource_
-        - fvOptions(rho_, U_));
+        - fvOptions_(rho_, U_));
     fvVectorMatrix& UEqn = tUEqn.ref();
 
     UEqn.relax();
 
-    fvOptions.constrain(UEqn);
+    fvOptions_.constrain(UEqn);
 
     URes_ = (UEqn & U_) + fvc::grad(p_);
     normalizeResiduals(URes);
@@ -161,11 +158,11 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
                : fvc::div(phi_, volScalarField("K", 0.5 * magSqr(U_))))
         - fvm::laplacian(alphaEff, he_)
         - fvSourceEnergy_
-        - fvOptions(rho_, he_));
+        - fvOptions_(rho_, he_));
 
     EEqn.relax();
 
-    fvOptions.constrain(EEqn);
+    fvOptions_.constrain(EEqn);
 
     TRes_ = EEqn & he_;
     normalizeResiduals(TRes);
@@ -198,7 +195,7 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
     fvScalarMatrix pEqn(
         fvc::div(phiHbyA)
         - fvm::laplacian(rhorAUf, p_)
-        - fvOptions(psi_, p_, rho_.name()));
+        - fvOptions_(psi_, p_, rho_.name()));
 
     pEqn.setReference(pressureControl_.refCell(), pressureControl_.refValue());
 

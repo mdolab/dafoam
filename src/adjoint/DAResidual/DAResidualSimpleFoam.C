@@ -31,6 +31,7 @@ DAResidualSimpleFoam::DAResidualSimpleFoam(
           mesh_.thisDb().lookupObject<volScalarField>("alphaPorosity"))),
       fvSource_(const_cast<volVectorField&>(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
+      fvOptions_(fv::options::New(mesh)),
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
       // create simpleControl
       simple_(const_cast<fvMesh&>(mesh)),
@@ -75,10 +76,6 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
         URes_, pRes_, phiRes_: residual field variables
     */
 
-    // look up fvOptions in the mesh db
-    fv::options& fvOptions =
-        const_cast<fv::options&>(mesh_.thisDb().lookupObject<fv::options>("fvOptions"));
-
     // ******** U Residuals **********
     // copied and modified from UEqn.H
 
@@ -104,12 +101,12 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
         + MRF_.DDt(U_)
         + daTurb_.divDevReff(U_)
         - fvSource_
-        - fvOptions(U_));
+        - fvOptions_(U_));
     fvVectorMatrix& UEqn = tUEqn.ref();
 
     UEqn.relax();
 
-    fvOptions.constrain(UEqn);
+    fvOptions_.constrain(UEqn);
 
     URes_ = (UEqn & U_) + fvc::grad(p_);
     normalizeResiduals(URes);
