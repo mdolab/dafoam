@@ -32,6 +32,7 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       fvSourceEnergy_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("fvSourceEnergy"))),
+      fvOptions_(fv::options::New(mesh)),
       thermo_(const_cast<fluidThermo&>(daModel.getThermo())),
       he_(thermo_.he()),
       rho_(const_cast<volScalarField&>(
@@ -100,9 +101,6 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
         URes_, pRes_, TRes_, phiRes_: residual field variables
     */
 
-    // We dont support MRF and fvOptions so all the related lines are commented
-    // out for now
-
     label isPC = options.getLabel("isPC");
 
     word divUScheme = "div(phi,U)";
@@ -125,7 +123,7 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
     if (hasFvSource_)
     {
         DAFvSource& daFvSource(const_cast<DAFvSource&>(
-          mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
+            mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
         daFvSource.calcFvSource(fvSource_);
     }
 
@@ -133,10 +131,13 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
         fvm::div(phi_, U_, divUScheme)
         + MRF_.DDt(rho_, U_)
         + daTurb_.divDevRhoReff(U_)
-        - fvSource_);
+        - fvSource_
+        - fvOptions_(rho_, U_));
     fvVectorMatrix& UEqn = tUEqn.ref();
 
     UEqn.relax();
+
+    fvOptions_.constrain(UEqn);
 
     URes_ = (UEqn & U_) + fvc::grad(p_);
     normalizeResiduals(URes);
@@ -156,9 +157,12 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
                ? fvc::div(phi_, volScalarField("Ekp", 0.5 * magSqr(U_) + p_ / rho_))
                : fvc::div(phi_, volScalarField("K", 0.5 * magSqr(U_))))
         - fvm::laplacian(alphaEff, he_)
-        - fvSourceEnergy_);
+        - fvSourceEnergy_
+        - fvOptions_(rho_, he_));
 
     EEqn.relax();
+
+    fvOptions_.constrain(EEqn);
 
     TRes_ = EEqn & he_;
     normalizeResiduals(TRes);
@@ -190,7 +194,8 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
 
     fvScalarMatrix pEqn(
         fvc::div(phiHbyA)
-        - fvm::laplacian(rhorAUf, p_));
+        - fvm::laplacian(rhorAUf, p_)
+        - fvOptions_(psi_, p_, rho_.name()));
 
     pEqn.setReference(pressureControl_.refCell(), pressureControl_.refValue());
 
