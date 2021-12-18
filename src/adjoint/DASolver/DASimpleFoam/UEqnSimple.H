@@ -12,10 +12,13 @@ tmp<fvVectorMatrix> tUEqn(
     + fvm::Sp(alphaPorosity, U)
     + MRF.DDt(U)
     + turbulencePtr_->divDevReff(U)
-    - fvSource);
+    - fvSource
+    - fvOptions(U));
 fvVectorMatrix& UEqn = tUEqn.ref();
 
 UEqn.relax();
+
+fvOptions.constrain(UEqn);
 
 if (simple.momentumPredictor())
 {

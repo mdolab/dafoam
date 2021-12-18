@@ -88,6 +88,7 @@ label DARhoSimpleFoam::solvePrimal(
     */
 
 #include "createRefsRhoSimple.H"
+#include "createFvOptions.H"
 
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");

@@ -75,8 +75,9 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
         URes_, pRes_, phiRes_: residual field variables
     */
 
-    // We dont support MRF and fvOptions so all the related lines are commented
-    // out for now
+    // look up fvOptions in the mesh db
+    fv::options& fvOptions =
+        const_cast<fv::options&>(mesh_.thisDb().lookupObject<fv::options>("fvOptions"));
 
     // ******** U Residuals **********
     // copied and modified from UEqn.H
@@ -102,10 +103,13 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
         + fvm::Sp(alphaPorosity_, U_)
         + MRF_.DDt(U_)
         + daTurb_.divDevReff(U_)
-        - fvSource_);
+        - fvSource_
+        - fvOptions(U_));
     fvVectorMatrix& UEqn = tUEqn.ref();
 
     UEqn.relax();
+
+    fvOptions.constrain(UEqn);
 
     URes_ = (UEqn & U_) + fvc::grad(p_);
     normalizeResiduals(URes);
