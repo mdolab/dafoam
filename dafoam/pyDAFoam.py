@@ -599,6 +599,13 @@ class DAOPTION(object):
     ## The max number of correctBoundaryConditions calls in the updateOFField function.
     maxCorrectBCCalls = 10
 
+    ## Whether to write the primal solutions for minor iterations (i.e., line search).
+    ## The default is False. If set it to True, it will write flow fields (and the deformed geometry)
+    ## for each primal solution. This will significantly increases the IO runtime, so it should never
+    ## be True for production runs. However, it is useful for debugging purpose (e.g., to find out
+    ## the poor quality mesh during line search)
+    writeMinorIterations = False
+
     def __init__(self):
         """
         Nothing needs to be done for initializing DAOPTION
@@ -679,8 +686,8 @@ class PYDAFOAM(object):
         self._initSolver()
 
         # initialize the number of primal and adjoint calls
-        self.nSolvePrimals = 0
-        self.nSolveAdjoints = 0
+        self.nSolvePrimals = 1
+        self.nSolveAdjoints = 1
 
         # flags for primal and adjoint failure
         self.primalFail = 0
@@ -1099,7 +1106,7 @@ class PYDAFOAM(object):
         """
         # Write the design variable history to files
         if self.comm.rank == 0:
-            if self.nSolveAdjoints == 0:
+            if self.nSolveAdjoints == 1:
                 f = open(fileName, "w")
             else:
                 f = open(fileName, "a")
@@ -1144,7 +1151,7 @@ class PYDAFOAM(object):
         """
         # Write the sens history to files
         if self.comm.rank == 0:
-            if self.nSolveAdjoints == 1:
+            if self.nSolveAdjoints == 2:
                 f = open(fileName, "w")
             else:
                 f = open(fileName, "a")
@@ -1855,6 +1862,9 @@ class PYDAFOAM(object):
         else:
             self.primalFail = self.solver.solvePrimal(self.xvVec, self.wVec)
 
+        if self.getOption("writeMinorIterations"):
+            self.renameSolution(self.nSolvePrimals)
+
         self.nSolvePrimals += 1
 
         return
@@ -1889,7 +1899,8 @@ class PYDAFOAM(object):
         if self.getOption("useAD")["mode"] == "forward":
             raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
 
-        solutionTime = self.renameSolution(self.nSolveAdjoints)
+        if not self.getOption("writeMinorIterations"):
+            solutionTime = self.renameSolution(self.nSolveAdjoints)
 
         Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
 
@@ -1912,7 +1923,7 @@ class PYDAFOAM(object):
 
         # calculate dRdWTPC
         adjPCLag = self.getOption("adjPCLag")
-        if self.nSolveAdjoints == 0 or self.nSolveAdjoints % adjPCLag == 0:
+        if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
             self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
             self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
 
@@ -2334,7 +2345,7 @@ class PYDAFOAM(object):
         self.nSolveAdjoints += 1
 
         # we destroy dRdWTPC only when we need to recompute it next time
-        if self.nSolveAdjoints % adjPCLag == 0:
+        if (self.nSolveAdjoints - 1) % adjPCLag == 0:
             self.dRdWTPC.destroy()
 
         return
@@ -2714,7 +2725,7 @@ class PYDAFOAM(object):
             Info("Solution time %g less than 1e-6, not moved." % float(solutionTime))
             return solutionTime
 
-        distTime = "%.8f" % ((solIndex + 1) / 1e8)
+        distTime = "%.8f" % (solIndex / 1e8)
 
         src = os.path.join(checkPath, solutionTime)
         dst = os.path.join(checkPath, distTime)
