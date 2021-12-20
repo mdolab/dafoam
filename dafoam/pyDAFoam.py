@@ -459,8 +459,10 @@ class DAOPTION(object):
     # ************************************ Advance Options ****************************************
     # *********************************************************************************************
 
-    ## The root directory is usually ./
-    rootDir = "./"
+    ## The root directory for the DAFoam case. If rooDir = "None" (default), we will assign os.getcwd() to rootDir
+    ## If we want to have multiple cases running at the same time, e.g., coupled wing propeller case, we may
+    ## set different rootDirs for each case. NOTE: if we set rootDir, we need to set an absolute path!
+    rootDir = "None"
 
     ## The run status which can be solvePrimal, solveAdjoint, or calcTotalDeriv. This parameter is
     ## used internally, so users should never change this option in the Python layer.
@@ -649,6 +651,13 @@ class PYDAFOAM(object):
         # initialize comm for parallel communication
         self._initializeComm(comm)
 
+        # the absolute path where the run script is located at
+        if self.getOption("rootDir") == "None":
+            self.rootDir = os.getcwd()
+        else:
+            self.rootDir = self.getOption("rootDir")
+        os.chdir(self.rootDir)
+
         # Initialize families
         self.families = OrderedDict()
 
@@ -781,6 +790,8 @@ class PYDAFOAM(object):
 
         # update the mesh coordinates if DVGeo is set
         # add point set and update the mesh based on the DV values
+
+        os.chdir(self.rootDir)
 
         if self.DVGeo is not None:
 
@@ -1607,7 +1618,9 @@ class PYDAFOAM(object):
             The Petsc vector that contains the sensitivity
         """
 
-        workingDir = os.getcwd()
+        os.chdir(self.rootDir)
+
+        workingDir = self.rootDir
         if self.parallel:
             sensDir = "processor%d/%.8f/" % (self.rank, solutionTime)
         else:
@@ -1682,7 +1695,9 @@ class PYDAFOAM(object):
         conn, faceSizes = self.getSurfaceConnectivity(self.allWallsGroup)
         conn = np.array(conn).flatten()
 
-        workingDir = os.getcwd()
+        os.chdir(self.rootDir)
+
+        workingDir = self.rootDir
         if self.parallel:
             meshDir = "processor%d/%.11f/polyMesh/" % (self.rank, solutionTime)
             sensDir = "processor%d/%.11f/" % (self.rank, solutionTime)
@@ -1885,6 +1900,8 @@ class PYDAFOAM(object):
         viewerW = PETSc.Viewer().createBinary("wVec_%03d.bin" % self.nSolveAdjoints, mode="w", comm=PETSc.COMM_WORLD)
         viewerW(self.wVec)
         """
+
+        os.chdir(self.rootDir)
 
         if self.getOption("useAD")["mode"] == "forward":
             raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
@@ -2605,6 +2622,8 @@ class PYDAFOAM(object):
         Info("|                       Running Coloring Solver                            |")
         Info("+--------------------------------------------------------------------------+")
 
+        os.chdir(self.rootDir)
+
         solverName = self.getOption("solverName")
         if solverName in self.solverRegistry["Incompressible"]:
 
@@ -2660,7 +2679,8 @@ class PYDAFOAM(object):
 
         solTime = self.solver.getPrevPrimalSolTime()
 
-        rootDir = os.getcwd()
+        os.chdir(self.rootDir)
+        rootDir = self.rootDir
         if self.parallel:
             checkPath = os.path.join(rootDir, "processor%d/%g" % (self.comm.rank, solTime))
         else:
@@ -2693,7 +2713,8 @@ class PYDAFOAM(object):
         """
 
         allSolutions = []
-        rootDir = os.getcwd()
+        os.chdir(self.rootDir)
+        rootDir = self.rootDir
         if self.parallel:
             checkPath = os.path.join(rootDir, "processor%d" % self.comm.rank)
         else:
@@ -2879,7 +2900,8 @@ class PYDAFOAM(object):
         Initialize mesh information and read mesh information
         """
 
-        dirName = os.getcwd()
+        os.chdir(self.rootDir)
+        dirName = self.rootDir
 
         self.fileNames, self.xv0, self.faces, self.boundaries, self.owners, self.neighbours = self._readOFGrid(dirName)
         self.xv = copy.copy(self.xv0)
@@ -3603,7 +3625,8 @@ class PYDAFOAM(object):
         """
         if self.comm.rank == 0:
             # Open the options file for writing
-            workingDirectory = os.getcwd()
+            os.chdir(self.rootDir)
+            workingDirectory = self.rootDir
             sysDir = "system"
             varDir = os.path.join(workingDirectory, sysDir)
             fileName = "decomposeParDict"
