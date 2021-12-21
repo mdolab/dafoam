@@ -659,7 +659,7 @@ class PYDAFOAM(object):
             self.rootDir = os.getcwd()
         else:
             self.rootDir = self.getOption("rootDir")
-        os.chdir(self.rootDir)
+        self.cdRoot()
 
         # Initialize families
         self.families = OrderedDict()
@@ -794,7 +794,7 @@ class PYDAFOAM(object):
         # update the mesh coordinates if DVGeo is set
         # add point set and update the mesh based on the DV values
 
-        os.chdir(self.rootDir)
+        self.cdRoot()
 
         if self.DVGeo is not None:
 
@@ -1620,7 +1620,7 @@ class PYDAFOAM(object):
             The Petsc vector that contains the sensitivity
         """
 
-        os.chdir(self.rootDir)
+        self.cdRoot()
 
         workingDir = self.rootDir
         if self.parallel:
@@ -1697,7 +1697,7 @@ class PYDAFOAM(object):
         conn, faceSizes = self.getSurfaceConnectivity(self.allWallsGroup)
         conn = np.array(conn).flatten()
 
-        os.chdir(self.rootDir)
+        self.cdRoot()
 
         workingDir = self.rootDir
         if self.parallel:
@@ -1906,7 +1906,7 @@ class PYDAFOAM(object):
         viewerW(self.wVec)
         """
 
-        os.chdir(self.rootDir)
+        self.cdRoot()
 
         if self.getOption("useAD")["mode"] == "forward":
             raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
@@ -2628,7 +2628,7 @@ class PYDAFOAM(object):
         Info("|                       Running Coloring Solver                            |")
         Info("+--------------------------------------------------------------------------+")
 
-        os.chdir(self.rootDir)
+        self.cdRoot()
 
         solverName = self.getOption("solverName")
         if solverName in self.solverRegistry["Incompressible"]:
@@ -2685,7 +2685,7 @@ class PYDAFOAM(object):
 
         solTime = self.solver.getPrevPrimalSolTime()
 
-        os.chdir(self.rootDir)
+        self.cdRoot()
         rootDir = self.rootDir
         if self.parallel:
             checkPath = os.path.join(rootDir, "processor%d/%g" % (self.comm.rank, solTime))
@@ -2719,7 +2719,7 @@ class PYDAFOAM(object):
         """
 
         allSolutions = []
-        os.chdir(self.rootDir)
+        self.cdRoot()
         rootDir = self.rootDir
         if self.parallel:
             checkPath = os.path.join(rootDir, "processor%d" % self.comm.rank)
@@ -2906,7 +2906,7 @@ class PYDAFOAM(object):
         Initialize mesh information and read mesh information
         """
 
-        os.chdir(self.rootDir)
+        self.cdRoot()
         dirName = self.rootDir
 
         self.fileNames, self.xv0, self.faces, self.boundaries, self.owners, self.neighbours = self._readOFGrid(dirName)
@@ -3600,6 +3600,12 @@ class PYDAFOAM(object):
 
         return vec
 
+    def cdRoot(self):
+        """
+        Go to the case root dir, as set in self.rootDir
+        """
+        os.chdir(self.rootDir)
+
     def _printCurrentOptions(self):
         """
         Prints a nicely formatted dictionary of all the current solver
@@ -3631,7 +3637,7 @@ class PYDAFOAM(object):
         """
         if self.comm.rank == 0:
             # Open the options file for writing
-            os.chdir(self.rootDir)
+            self.cdRoot()
             workingDirectory = self.rootDir
             sysDir = "system"
             varDir = os.path.join(workingDirectory, sysDir)
