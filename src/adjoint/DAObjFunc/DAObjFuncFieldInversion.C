@@ -336,6 +336,40 @@ void DAObjFuncFieldInversion::calcObjFunc(
             }
 
         }
+        else if (stateType_ == "surfacePressureShifted")
+        {
+            // get ref surface pressure "fields"
+            const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
+
+            // get the ingredient for computations
+            const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+
+                    scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI]) + pRef_;
+
+                    // calculate the objective function
+                    // extract the reference surface pressure at the boundary
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
+
+                    objFuncValue += sqr(bSurfacePressure - bSurfacePressureRef);
+                }
+            }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+            
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
+
+        }
         else if (stateType_ == "surfacePressureCustom")
         {
             // get ref surface pressure "fields"
