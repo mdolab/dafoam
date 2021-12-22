@@ -17,5 +17,5 @@ fi
 
 cd src/adjoint && ./Allmake8 $argm && cd -
 cd src/pyDASolvers && ./Allmake $argm && cd -
-cd src/utilities/coloring && ./Allmake8 $argm && cd -
-cd src/utilities/postProcessing && ./Allmake8 $argm && cd -
+cd src/utilities/coloring && ./Allmake $argm && cd -
+cd src/utilities/postProcessing && ./Allmake $argm && cd -
