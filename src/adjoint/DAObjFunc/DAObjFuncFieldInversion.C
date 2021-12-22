@@ -145,7 +145,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             forAll(objFuncCellSources, idxI)
             {
                 const label& cellI = objFuncCellSources[idxI];
-                objFuncCellValues[idxI] = scale_ * (sqr(mag(state[cellI] - stateRef[cellI])));
+                objFuncCellValues[idxI] = (sqr(mag(scale_ * state[cellI] - stateRef[cellI])));
                 objFuncValue += objFuncCellValues[idxI];
             }           
 
