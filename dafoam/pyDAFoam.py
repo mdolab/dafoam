@@ -47,560 +47,568 @@ class DAOPTION(object):
       very special situation.
     """
 
-    # *********************************************************************************************
-    # *************************************** Basic Options ***************************************
-    # *********************************************************************************************
-
-    ## The name of the DASolver to use for primal and adjoint computation.
-    ## See dafoam/src/adjoint/DASolver for more details
-    ## Currently support:
-    ## - DASimpleFoam:            Incompressible steady-state flow solver for Navier-Stokes equations
-    ## - DASimpleTFoam:           Incompressible steady-state flow solver for Navier-Stokes equations with temperature
-    ## - DAPisoFoam:              Incompressible transient flow solver for Navier-Stokes equations
-    ## - DAPimpleFoam:            Incompressible transient flow solver for Navier-Stokes equations
-    ## - DARhoSimpleFoam:         Compressible steady-state flow solver for Navier-Stokes equations (subsonic)
-    ## - DARhoSimpleCFoam:        Compressible steady-state flow solver for Navier-Stokes equations (transonic)
-    ## - DATurboFoam:             Compressible steady-state flow solver for Navier-Stokes equations (turbomachinery)
-    ## - DASolidDisplacementFoam: Steady-state structural solver for linear elastic equations
-    solverName = "DASimpleFoam"
-
-    ## The convergence tolerance for the primal solver. If the primal can not converge to 2 orders
-    ## of magnitude (default) higher than this tolerance, the primal solution will return fail=True
-    primalMinResTol = 1.0e-8
-
-    ## The boundary condition for primal solution. The keys should include "variable", "patch",
-    ## and "value". For turbulence variable, one can also set "useWallFunction" [bool].
-    ## Note that setting "primalBC" will overwrite any values defined in the "0" folder.
-    ## The primalBC setting will be printed to screen for each primal solution during the optimization
-    ## Example
-    ##    "primalBC": {
-    ##        "U0": {"variable": "U", "patches": ["inlet"], "value": [10.0, 0.0, 0.0]},
-    ##        "p0": {"variable": "p", "patches": ["outlet"], "value": [101325.0]},
-    ##        "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [1.5e-4]},
-    ##        "useWallFunction": True,
-    ##    },
-    primalBC = {}
-
-    ## State normalization for dRdWT computation. Typically, we set far field value for each state
-    ## variable. NOTE: If you forget to set normalization value for a state variable, the adjoint
-    ## may not converge or it may be inaccurate! For "phi", use 1.0 to normalization
-    ## Example
-    ##     normalizeStates = {"U": 10.0, "p": 101325.0, "phi": 1.0, "nuTilda": 1.e-4}
-    normalizeStates = {
-        "p": 1.0,
-        "phi": 1.0,
-        "U": 1.0,
-        "T": 1.0,
-        "nuTilda": 1.0,
-        "k": 1.0,
-        "epsilon": 1.0,
-        "omega": 1.0,
-        "p_rgh": 1.0,
-        "D": 1.0,
-    }
-
-    ## Information on objective function. Each objective function requires a different input forma
-    ## But for all objectives, we need to give a name to the objective function, e.g., CD or any
-    ## other preferred name, and the information for each part of the objective function. Most of
-    ## the time, the objective has only one part (in this case part1), but one can also combine two
-    ## parts of objectives, e.g., we can define a new objective that is the sum of force and moment.
-    ## For each part, we need to define the type of objective (e.g., force, moment; we need to use
-    ## the reserved type names), how to select the discrete mesh faces to compute the objective
-    ## (e.g., we select them from the name of a patch patchToFace), the name of the patch (wing)
-    ## for patchToFace, the scaling factor "scale", and whether to compute adjoint for this
-    ## objective "addToAdjoint". For force objectives, we need to project the force vector to a
-    ## specific direction. The following example defines that CD is the force that is parallel to flow
-    ## (parallelToFlow). Alternative, we can also use fixedDirection and provide a direction key for
-    ## force, i.e., "directionMode": "fixedDirection", "direction": [1.0, 0.0, 0.0]. Since we select
-    ## parallelToFlow, we need to prescribe the name of angle of attack design variable to determine
-    ## the flow direction. Here alpha will be defined in runScript.py:
-    ## DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0).
-    ## NOTE: if no alpha is added in DVGeo.addGeoDVGlobal, we can NOT use parallelToFlow.
-    ## For this case, we have to use "directionMode": "fixedDirection".
-    ## Example
-    ##     "objFunc": {
-    ##         "CD": {
-    ##             "part1": {
-    ##                 "type": "force",
-    ##                 "source": "patchToFace",
-    ##                 "patches": ["wing"],
-    ##                 "directionMode": "parallelToFlow",
-    ##                 "alphaName": "alpha",
-    ##                 "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef),
-    ##                 "addToAdjoint": True,
-    ##             }
-    ##         },
-    ##         "CL": {
-    ##             "part1": {
-    ##                 "type": "force",
-    ##                 "source": "patchToFace",
-    ##                 "patches": ["wing"],
-    ##                 "directionMode": "normalToFlow",
-    ##                 "alphaName": "alpha",
-    ##                 "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef),
-    ##                 "addToAdjoint": True,
-    ##             }
-    ##         },
-    ##         "CMZ": {
-    ##             "part1": {
-    ##                 "type": "moment",
-    ##                 "source": "patchToFace",
-    ##                 "patches": ["wing"],
-    ##                 "axis": [0.0, 0.0, 1.0],
-    ##                 "center": [0.25, 0.0, 0.05],
-    ##                 "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef * LRef),
-    ##                 "addToAdjoint": True,
-    ##             }
-    ##         },
-    ##         "TPR": {
-    ##             "part1": {
-    ##                 "type": "totalPressureRatio",
-    ##                 "source": "patchToFace",
-    ##                 "patches": ["inlet", "outlet"],
-    ##                 "inletPatches": ["inlet"],
-    ##                 "outletPatches": ["outlet"],
-    ##                 "scale": 1.0,
-    ##                 "addToAdjoint": True,
-    ##             }
-    ##         },
-    ##         "TTR": {
-    ##             "part1": {
-    ##                 "type": "totalTemperatureRatio",
-    ##                 "source": "patchToFace",
-    ##                 "patches": ["inlet", "outlet"],
-    ##                 "inletPatches": ["inlet"],
-    ##                 "outletPatches": ["outlet"],
-    ##                 "scale": 1.0,
-    ##                 "addToAdjoint": False,
-    ##             }
-    ##         },
-    ##         "MFR": {
-    ##             "part1": {
-    ##                 "type": "massFlowRate",
-    ##                 "source": "patchToFace",
-    ##                 "patches": ["inlet"],
-    ##                 "scale": -1.0,
-    ##                 "addToAdjoint": True,
-    ##             }
-    ##         },
-    ##        "PL": {
-    ##            "part1": {
-    ##                "type": "totalPressure",
-    ##                "source": "patchToFace",
-    ##                "patches": ["inlet"],
-    ##                "scale": 1.0 / (0.5 * U0 * U0),
-    ##                "addToAdjoint": True,
-    ##            },
-    ##            "part2": {
-    ##                "type": "totalPressure",
-    ##                "source": "patchToFace",
-    ##                "patches": ["outlet"],
-    ##                "scale": -1.0 / (0.5 * U0 * U0),
-    ##                "addToAdjoint": True,
-    ##            }
-    ##        },
-    ##        "NU": {
-    ##            "part1": {
-    ##                "type": "wallHeatFlux",
-    ##                "source": "patchToFace",
-    ##                "patches": ["ubend"],
-    ##                "scale": 1.0,
-    ##                "addToAdjoint": True,
-    ##            }
-    ##        },
-    ##        "VMS": {
-    ##            "part1": {
-    ##                "type": "vonMisesStressKS",
-    ##                "source": "boxToCell",
-    ##                "min": [-10.0, -10.0, -10.0],
-    ##                "max": [10.0, 10.0, 10.0],
-    ##                "scale": 1.0,
-    ##                "coeffKS": 2.0e-3,
-    ##                "addToAdjoint": True,
-    ##            }
-    ##        },
-    ##        "M": {
-    ##            "part1": {
-    ##                "type": "mass",
-    ##                "source": "boxToCell",
-    ##                "min": [-10.0, -10.0, -10.0],
-    ##                "max": [10.0, 10.0, 10.0],
-    ##                "scale": 1.0,
-    ##                "addToAdjoint": True,
-    ##            }
-    ##        },
-    ##        "THRUST": {
-    ##            "part1": {
-    ##                "type": "variableVolSum",
-    ##                "source": "boxToCell",
-    ##                "min": [-50.0, -50.0, -50.0],
-    ##                "max": [50.0, 50.0, 50.0],
-    ##                "varName": "fvSource",
-    ##                "varType": "vector",
-    ##                "component": 0,
-    ##                "isSquare": 0,
-    ##                "scale": 1.0,
-    ##                "addToAdjoint": True,
-    ##            },
-    ##        },
-    ##        "FI": {
-    ##            "part1": {
-    ##                "type": "stateErrorNorm",
-    ##                "source": "boxToCell",
-    ##                "min": [-100.0, -100.0, -100.0],
-    ##                "max": [100.0, 100.0, 100.0],
-    ##                "stateName": "U",
-    ##                "stateRefName": "UTrue",
-    ##                "stateType": "vector",
-    ##                "scale": 1.0,
-    ##                "addToAdjoint": True,
-    ##            },
-    ##            "part2": {
-    ##                "type": "stateErrorNorm",
-    ##                "source": "boxToCell",
-    ##                "min": [-100.0, -100.0, -100.0],
-    ##                "max": [100.0, 100.0, 100.0],
-    ##                "stateName": "betaSA",
-    ##                "stateRefName": "betaSATrue",
-    ##                "stateType": "scalar",
-    ##                "scale": 0.01,
-    ##                "addToAdjoint": True,
-    ##            },
-    ##        },
-    ##        "COP": {
-    ##            "part1": {
-    ##                "type": "centerOfPressure",
-    ##                "source": "patchToFace",
-    ##                "patches": ["wing"],
-    ##                "axis": [1.0, 0.0, 0.0],
-    ##                "forceAxis": [0.0, 1.0, 0.0],
-    ##                "center": [0, 0, 0],
-    ##                "scale": 1.0,
-    ##                "addToAdjoint": True,
-    ##            },
-    ##        },
-    ##    },
-    objFunc = {}
-
-    ## Design variable information. Different type of design variables require different keys
-    ## For alpha, we need to prescribe a list of far field patch names from which the angle of
-    ## attack is computed, this is usually a far field patch. Also, we need to prescribe
-    ## flow and normal axies, and alpha = atan( U_normal / U_flow ) at patches
-    ## Example
-    ##     designVar = {
-    ##         "shapey" : {"designVarType": "FFD"},
-    ##         "twist": {"designVarType": "FFD"},
-    ##         "alpha" = {
-    ##             "designVarType": "AOA",
-    ##             "patches": ["farField"],
-    ##             "flowAxis": "x",
-    ##             "normalAxis": "y"
-    ##         },
-    ##         "ux0" = {
-    ##             "designVarType": "BC",
-    ##             "patches": ["inlet"],
-    ##             "variable": "U",
-    ##             "comp": 0
-    ##         },
-    ##     }
-    designVar = {}
-
-    ## List of patch names for the design surface. These patch names need to be of wall type
-    ## and shows up in the constant/polyMesh/boundary file
-    designSurfaces = ["None"]
-
-    ## Fluid-structure interatcion (FSI) options. This dictionary takes in the required values for
-    ## an FSI case to be used throughout the simulation.
-    fsi = {"pRef": 0.0}
-
-    ## An option to run the primal only; no adjoint or optimization will be run
-    primalOnly = False
-
-    # *********************************************************************************************
-    # ****************************** Intermediate Options *****************************************
-    # *********************************************************************************************
-
-    ## Information for the finite volume source term, which will be added in the momentum equation
-    ## We support multiple source terms
-    ## Example
-    ## "fvSource": {
-    ##     "disk1": {
-    ##         "type": "actuatorDisk", # Actuator disk source. This is a child class in DAFvSource
-    ##         "source": "cylinderAnnulusToCell", # Define a volume to add the fvSource term
-    ##         "p1": [-0.4, -0.1, 0.05],  # p1 and p2 define the axis and width
-    ##         "p2": [-0.1, -0.1, 0.05],  # p2-p1 should be streamwise
-    ##         "innerRadius": 0.01,
-    ##         "outerRadius": 0.5,
-    ##         "rotDir": "left",
-    ##         "scale": 50.0,
-    ##         "POD": 0.7, # pitch/diameter
-    ##     },
-    ##     "disk2": {
-    ##         "type": "actuatorDisk",
-    ##         "source": "cylinderAnnulusToCell",
-    ##         "p1": [-0.4, 0.1, 0.05],
-    ##         "p2": [-0.1, 0.1, 0.05],
-    ##         "innerRadius": 0.01,
-    ##         "outerRadius": 0.5,
-    ##         "rotDir": "right",
-    ##         "scale": 25.0,  # scale the source such the integral equals desired thrust
-    ##         "POD": 1.0,
-    ##     },
-    ##    "line1":
-    ##    {
-    ##        "type": "actuatorPoint",
-    ##        "smoothFunction": "hyperbolic", # or gaussian
-    ##        "center": [-0.55, 0.0, 0.05],  # center and size define a rectangular
-    ##        "size": [0.2, 0.2, 0.1],
-    ##        "amplitude": [0.0, 0.2, 0.0],
-    ##        "thrustDirIdx": 0,
-    ##        "periodicity": 0.1,
-    ##        "eps": 10.0,
-    ##        "scale": 10.0  # scale the source such the integral equals desired thrust
-    ##    },
-    ##    "gradP"
-    ##    {
-    ##        "type": "uniformPressureGradient",
-    ##        "value": 1e-3,
-    ##        "direction": [1.0, 0.0, 0.0],
-    ##    },
-    ## },
-    fvSource = {}
-
-    ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
-    ## Setting the bounds increases the robustness of primal solution for compressible solvers.
-    ## Also, we set lower bounds for turbulence variables to ensure they are physical
-    ## Example
-    ##     primalValBounds = {"UMax": 1000, "UMin": -1000, "pMax": 1000000}
-    primalVarBounds = {
-        "UMax": 1e16,
-        "UMin": -1e16,
-        "pMax": 1e16,
-        "pMin": -1e16,
-        "p_rghMax": 1e16,
-        "p_rghMin": -1e16,
-        "eMax": 1e16,
-        "eMin": -1e16,
-        "TMax": 1e16,
-        "TMin": -1e16,
-        "hMax": 1e16,
-        "hMin": -1e16,
-        "DMax": 1e16,
-        "DMin": -1e16,
-        "rhoMax": 1e16,
-        "rhoMin": -1e16,
-        "nuTildaMax": 1e16,
-        "nuTildaMin": 1e-16,
-        "kMax": 1e16,
-        "kMin": 1e-16,
-        "omegaMax": 1e16,
-        "omegaMin": 1e-16,
-        "epsilonMax": 1e16,
-        "epsilonMin": 1e-16,
-        "ReThetatMax": 1e16,
-        "ReThetatMin": 1e-16,
-        "gammaIntMax": 1e16,
-        "gammaIntMin": 1e-16,
-    }
-
-    ## Whether to perform multipoint optimization.
-    multiPoint = False
-
-    ## If multiPoint = True, how many primal configurations for the multipoint optimization.
-    nMultiPoints = 1
-
-    ## The step size for finite-difference computation of partial derivatives. The default values
-    ## will work for most of the case.
-    adjPartDerivFDStep = {
-        "State": 1.0e-6,
-        "FFD": 1.0e-3,
-        "BC": 1.0e-2,
-        "AOA": 1.0e-3,
-        "ACTP": 1.0e-2,
-        "ACTD": 1.0e-2,
-        "ACTL": 1.0e-2,
-    }
-
-    ## Which options to use to improve the adjoint equation convergence of transonic conditions
-    ## This is used only for transonic solvers such as DARhoSimpleCFoam
-    transonicPCOption = -1
-
-    ## Options for unsteady adjoint. mode can be hybridAdjoint or timeAccurateAdjoint
-    ## Here nTimeInstances is the number of time instances and periodicity is the
-    ## periodicity of flow oscillation (hybrid adjoint only)
-    unsteadyAdjoint = {"mode": "None", "nTimeInstances": -1, "periodicity": -1.0}
-
-    ## At which iteration should we start the averaging of objective functions.
-    ## This is only used for unsteady solvers
-    objFuncAvgStart = 1
-
-    ## The interval of recomputing the pre-conditioner matrix dRdWTPC for solveAdjoint
-    ## By default, dRdWTPC will be re-computed each time the solveAdjoint function is called
-    ## However, one can increase the lag to skip it and reuse the dRdWTPC computed previously.
-    ## This obviously increses the speed because the dRdWTPC computation takes about 30% of
-    ## the adjoint total runtime. However, setting a too large lag value will decreases the speed
-    ## of solving the adjoint equations. One needs to balance these factors
-    adjPCLag = 1
-
-    ## Whether to use AD: Mode options: forward, reverse, or fd. If forward mode AD is used
-    ## the seedIndex will be set to compute derivative by running the whole primal solver.
-    ## dvName is the name of design variable to set the seed for the forward AD
-    ## setting seedIndex to -1 for dFdField will assign seeds for all design variables.
-    ## If reverse mode is used, the adjoint will be computed by a Jacobian free approach
-    ## refer to: Kenway et al. Effective adjoint approach for computational fluid dynamics,
-    ## Progress in Aerospace Science, 2019.
-    useAD = {"mode": "reverse", "dvName": "None", "seedIndex": -9999}
-
-    ## Rigid body motion for dynamic mesh
-    ## This option will be used in DAPimpleDyMFoam to simulate dynamicMesh motion
-    rigidBodyMotion = {"mode": "dummy"}
-
-    # *********************************************************************************************
-    # ************************************ Advance Options ****************************************
-    # *********************************************************************************************
-
-    ## The root directory is usually ./
-    rootDir = "./"
-
-    ## The run status which can be solvePrimal, solveAdjoint, or calcTotalDeriv. This parameter is
-    ## used internally, so users should never change this option in the Python layer.
-    runStatus = "None"
-
-    ## Whether to print all options defined in pyDAFoam to screen before optimization.
-    printPYDAFOAMOptions = False
-
-    ## Whether to print all DAOption defined in the C++ layer to screen before optimization.
-    printDAOptions = True
-
-    ## Whether running the optimization in the debug mode, which prints extra information.
-    debug = False
-
-    ## Whether to write Jacobian matrices to file for debugging
-    ## Example:
-    ##    writeJacobians = ["dRdWT", "dFdW"]
-    ## This will write the dRdWT and dFdW matrices to the disk
-    writeJacobians = ["None"]
-
-    ## The print interval of primal and adjoint solution, e.g., how frequent to print the primal
-    ## solution steps, how frequent to print the dRdWT partial derivative computation.
-    printInterval = 100
-
-    ## The print interval of unsteady primal solvers, e.g., for DAPisoFoam
-    printIntervalUnsteady = 500
-
-    ## Users can adjust primalMinResTolDiff to tweak how much difference between primalMinResTol
-    ## and the actual primal convergence is consider to be fail=True for the primal solution.
-    primalMinResTolDiff = 1.0e2
-
-    ## Whether to use graph coloring to accelerate partial derivative computation. Unless you are
-    ## debugging the accuracy of partial computation, always set it to True
-    adjUseColoring = True
-
-    ## The Petsc options for solving the adjoint linear equation. These options should work for
-    ## most of the case. If the adjoint does not converge, try to increase pcFillLevel to 2, or
-    ## try "jacMatReOrdering": "nd"
-    adjEqnOption = {
-        "globalPCIters": 0,
-        "asmOverlap": 1,
-        "localPCIters": 1,
-        "jacMatReOrdering": "rcm",
-        "pcFillLevel": 1,
-        "gmresMaxIters": 1000,
-        "gmresRestart": 1000,
-        "gmresRelTol": 1.0e-6,
-        "gmresAbsTol": 1.0e-14,
-        "gmresTolDiff": 1.0e2,
-        "useNonZeroInitGuess": False,
-        "printInfo": 1,
-    }
-
-    ## Normalization for residuals. We should normalize all residuals!
-    normalizeResiduals = [
-        "URes",
-        "pRes",
-        "p_rghRes",
-        "nuTildaRes",
-        "phiRes",
-        "TRes",
-        "DRes",
-        "kRes",
-        "omegaRes",
-        "epsilonRes",
-    ]
-
-    ## The maximal connectivity level for the dRdWTPC matrix. Reducing the connectivity level
-    ## reduce the memory usage, however, it may slow down the adjoint equation convergence.
-    ## The default value should have the best convergence speed but not optimal memory usage.
-    maxResConLv4JacPCMat = {
-        "pRes": 2,
-        "phiRes": 1,
-        "URes": 2,
-        "TRes": 2,
-        "nuTildaRes": 2,
-        "kRes": 2,
-        "epsilonRes": 2,
-        "omegaRes": 2,
-        "p_rghRes": 2,
-        "DRes": 2,
-    }
-
-    ## The min bound for Jacobians, any value that is smaller than the bound will be set to 0
-    ## Setting a large lower bound for preconditioner (PC) can help to reduce memory.
-    jacLowerBounds = {
-        "dRdW": 1.0e-30,
-        "dRdWPC": 1.0e-30,
-    }
-
-    ## The maximal iterations of tractionDisplacement boundary conditions
-    maxTractionBCIters = 100
-
-    ## decomposeParDict option. This file will be automatically written such that users
-    ## can run optimization with any number of CPU cores without the need to manually
-    ## change decomposeParDict
-    decomposeParDict = {
-        "method": "scotch",
-        "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001},
-        "preservePatches": ["None"],
-    }
-
-    ## The ordering of state variable. Options are: state or cell. Most of the case, the state
-    ## odering is the best choice.
-    adjStateOrdering = "state"
-
-    ## Default name for the mesh surface family. Users typically don't need to change
-    meshSurfaceFamily = "None"
-
-    ## Default name for the design surface family. Users typically don't need to change
-    designSurfaceFamily = "designSurfaces"
-
-    ## The threshold for check mesh call
-    checkMeshThreshold = {
-        "maxAspectRatio": 1000.0,
-        "maxNonOrth": 70.0,
-        "maxSkewness": 4.0,
-        "maxIncorrectlyOrientedFaces": 0,
-    }
-
-    ## The sensitivity map will be saved to disk during optimization for the given design variable
-    ## names in the list. Currently only support design variable type FFD and Field
-    ## The surface sensitivity map is separated from the primal solution because they only have surface mesh.
-    ## They will be saved to folders such as 1e-11, 2e-11, 3e-11, etc,
-    ## When loading in paraview, you need to uncheck the "internalMesh", and check "allWalls" on the left panel
-    ## If your design variable is of field type, the sensitivity map will be saved along with the primal
-    ## solution because they share the same mesh. The sensitivity files read sens_objFuncName_designVarName
-    ## NOTE: this function only supports useAD->mode:reverse
-    ## Example:
-    ##     "writeSensMap" : ["shapex", "shapey"]
-    writeSensMap = ["NONE"]
-
-    ## Whether to write deformed FFDs to the disk during optimization
-    writeDeformedFFDs = False
-
     def __init__(self):
-        """
-        Nothing needs to be done for initializing DAOPTION
-        """
-        pass
+
+        # *********************************************************************************************
+        # *************************************** Basic Options ***************************************
+        # *********************************************************************************************
+
+        ## The name of the DASolver to use for primal and adjoint computation.
+        ## See dafoam/src/adjoint/DASolver for more details
+        ## Currently support:
+        ## - DASimpleFoam:            Incompressible steady-state flow solver for Navier-Stokes equations
+        ## - DASimpleTFoam:           Incompressible steady-state flow solver for Navier-Stokes equations with temperature
+        ## - DAPisoFoam:              Incompressible transient flow solver for Navier-Stokes equations
+        ## - DAPimpleFoam:            Incompressible transient flow solver for Navier-Stokes equations
+        ## - DARhoSimpleFoam:         Compressible steady-state flow solver for Navier-Stokes equations (subsonic)
+        ## - DARhoSimpleCFoam:        Compressible steady-state flow solver for Navier-Stokes equations (transonic)
+        ## - DATurboFoam:             Compressible steady-state flow solver for Navier-Stokes equations (turbomachinery)
+        ## - DASolidDisplacementFoam: Steady-state structural solver for linear elastic equations
+        self.solverName = "DASimpleFoam"
+
+        ## The convergence tolerance for the primal solver. If the primal can not converge to 2 orders
+        ## of magnitude (default) higher than this tolerance, the primal solution will return fail=True
+        self.primalMinResTol = 1.0e-8
+
+        ## The boundary condition for primal solution. The keys should include "variable", "patch",
+        ## and "value". For turbulence variable, one can also set "useWallFunction" [bool].
+        ## Note that setting "primalBC" will overwrite any values defined in the "0" folder.
+        ## The primalBC setting will be printed to screen for each primal solution during the optimization
+        ## Example
+        ##    "primalBC": {
+        ##        "U0": {"variable": "U", "patches": ["inlet"], "value": [10.0, 0.0, 0.0]},
+        ##        "p0": {"variable": "p", "patches": ["outlet"], "value": [101325.0]},
+        ##        "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [1.5e-4]},
+        ##        "useWallFunction": True,
+        ##    },
+        self.primalBC = {}
+
+        ## State normalization for dRdWT computation. Typically, we set far field value for each state
+        ## variable. NOTE: If you forget to set normalization value for a state variable, the adjoint
+        ## may not converge or it may be inaccurate! For "phi", use 1.0 to normalization
+        ## Example
+        ##     normalizeStates = {"U": 10.0, "p": 101325.0, "phi": 1.0, "nuTilda": 1.e-4}
+        self.normalizeStates = {
+            "p": 1.0,
+            "phi": 1.0,
+            "U": 1.0,
+            "T": 1.0,
+            "nuTilda": 1.0,
+            "k": 1.0,
+            "epsilon": 1.0,
+            "omega": 1.0,
+            "p_rgh": 1.0,
+            "D": 1.0,
+        }
+
+        ## Information on objective function. Each objective function requires a different input forma
+        ## But for all objectives, we need to give a name to the objective function, e.g., CD or any
+        ## other preferred name, and the information for each part of the objective function. Most of
+        ## the time, the objective has only one part (in this case part1), but one can also combine two
+        ## parts of objectives, e.g., we can define a new objective that is the sum of force and moment.
+        ## For each part, we need to define the type of objective (e.g., force, moment; we need to use
+        ## the reserved type names), how to select the discrete mesh faces to compute the objective
+        ## (e.g., we select them from the name of a patch patchToFace), the name of the patch (wing)
+        ## for patchToFace, the scaling factor "scale", and whether to compute adjoint for this
+        ## objective "addToAdjoint". For force objectives, we need to project the force vector to a
+        ## specific direction. The following example defines that CD is the force that is parallel to flow
+        ## (parallelToFlow). Alternative, we can also use fixedDirection and provide a direction key for
+        ## force, i.e., "directionMode": "fixedDirection", "direction": [1.0, 0.0, 0.0]. Since we select
+        ## parallelToFlow, we need to prescribe the name of angle of attack design variable to determine
+        ## the flow direction. Here alpha will be defined in runScript.py:
+        ## DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0).
+        ## NOTE: if no alpha is added in DVGeo.addGeoDVGlobal, we can NOT use parallelToFlow.
+        ## For this case, we have to use "directionMode": "fixedDirection".
+        ## Example
+        ##     "objFunc": {
+        ##         "CD": {
+        ##             "part1": {
+        ##                 "type": "force",
+        ##                 "source": "patchToFace",
+        ##                 "patches": ["wing"],
+        ##                 "directionMode": "parallelToFlow",
+        ##                 "alphaName": "alpha",
+        ##                 "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef),
+        ##                 "addToAdjoint": True,
+        ##             }
+        ##         },
+        ##         "CL": {
+        ##             "part1": {
+        ##                 "type": "force",
+        ##                 "source": "patchToFace",
+        ##                 "patches": ["wing"],
+        ##                 "directionMode": "normalToFlow",
+        ##                 "alphaName": "alpha",
+        ##                 "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef),
+        ##                 "addToAdjoint": True,
+        ##             }
+        ##         },
+        ##         "CMZ": {
+        ##             "part1": {
+        ##                 "type": "moment",
+        ##                 "source": "patchToFace",
+        ##                 "patches": ["wing"],
+        ##                 "axis": [0.0, 0.0, 1.0],
+        ##                 "center": [0.25, 0.0, 0.05],
+        ##                 "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef * LRef),
+        ##                 "addToAdjoint": True,
+        ##             }
+        ##         },
+        ##         "TPR": {
+        ##             "part1": {
+        ##                 "type": "totalPressureRatio",
+        ##                 "source": "patchToFace",
+        ##                 "patches": ["inlet", "outlet"],
+        ##                 "inletPatches": ["inlet"],
+        ##                 "outletPatches": ["outlet"],
+        ##                 "scale": 1.0,
+        ##                 "addToAdjoint": True,
+        ##             }
+        ##         },
+        ##         "TTR": {
+        ##             "part1": {
+        ##                 "type": "totalTemperatureRatio",
+        ##                 "source": "patchToFace",
+        ##                 "patches": ["inlet", "outlet"],
+        ##                 "inletPatches": ["inlet"],
+        ##                 "outletPatches": ["outlet"],
+        ##                 "scale": 1.0,
+        ##                 "addToAdjoint": False,
+        ##             }
+        ##         },
+        ##         "MFR": {
+        ##             "part1": {
+        ##                 "type": "massFlowRate",
+        ##                 "source": "patchToFace",
+        ##                 "patches": ["inlet"],
+        ##                 "scale": -1.0,
+        ##                 "addToAdjoint": True,
+        ##             }
+        ##         },
+        ##        "PL": {
+        ##            "part1": {
+        ##                "type": "totalPressure",
+        ##                "source": "patchToFace",
+        ##                "patches": ["inlet"],
+        ##                "scale": 1.0 / (0.5 * U0 * U0),
+        ##                "addToAdjoint": True,
+        ##            },
+        ##            "part2": {
+        ##                "type": "totalPressure",
+        ##                "source": "patchToFace",
+        ##                "patches": ["outlet"],
+        ##                "scale": -1.0 / (0.5 * U0 * U0),
+        ##                "addToAdjoint": True,
+        ##            }
+        ##        },
+        ##        "NU": {
+        ##            "part1": {
+        ##                "type": "wallHeatFlux",
+        ##                "source": "patchToFace",
+        ##                "patches": ["ubend"],
+        ##                "scale": 1.0,
+        ##                "addToAdjoint": True,
+        ##            }
+        ##        },
+        ##        "VMS": {
+        ##            "part1": {
+        ##                "type": "vonMisesStressKS",
+        ##                "source": "boxToCell",
+        ##                "min": [-10.0, -10.0, -10.0],
+        ##                "max": [10.0, 10.0, 10.0],
+        ##                "scale": 1.0,
+        ##                "coeffKS": 2.0e-3,
+        ##                "addToAdjoint": True,
+        ##            }
+        ##        },
+        ##        "M": {
+        ##            "part1": {
+        ##                "type": "mass",
+        ##                "source": "boxToCell",
+        ##                "min": [-10.0, -10.0, -10.0],
+        ##                "max": [10.0, 10.0, 10.0],
+        ##                "scale": 1.0,
+        ##                "addToAdjoint": True,
+        ##            }
+        ##        },
+        ##        "THRUST": {
+        ##            "part1": {
+        ##                "type": "variableVolSum",
+        ##                "source": "boxToCell",
+        ##                "min": [-50.0, -50.0, -50.0],
+        ##                "max": [50.0, 50.0, 50.0],
+        ##                "varName": "fvSource",
+        ##                "varType": "vector",
+        ##                "component": 0,
+        ##                "isSquare": 0,
+        ##                "scale": 1.0,
+        ##                "addToAdjoint": True,
+        ##            },
+        ##        },
+        ##        "FI": {
+        ##            "part1": {
+        ##                "type": "stateErrorNorm",
+        ##                "source": "boxToCell",
+        ##                "min": [-100.0, -100.0, -100.0],
+        ##                "max": [100.0, 100.0, 100.0],
+        ##                "stateName": "U",
+        ##                "stateRefName": "UTrue",
+        ##                "stateType": "vector",
+        ##                "scale": 1.0,
+        ##                "addToAdjoint": True,
+        ##            },
+        ##            "part2": {
+        ##                "type": "stateErrorNorm",
+        ##                "source": "boxToCell",
+        ##                "min": [-100.0, -100.0, -100.0],
+        ##                "max": [100.0, 100.0, 100.0],
+        ##                "stateName": "betaSA",
+        ##                "stateRefName": "betaSATrue",
+        ##                "stateType": "scalar",
+        ##                "scale": 0.01,
+        ##                "addToAdjoint": True,
+        ##            },
+        ##        },
+        ##        "COP": {
+        ##            "part1": {
+        ##                "type": "centerOfPressure",
+        ##                "source": "patchToFace",
+        ##                "patches": ["wing"],
+        ##                "axis": [1.0, 0.0, 0.0],
+        ##                "forceAxis": [0.0, 1.0, 0.0],
+        ##                "center": [0, 0, 0],
+        ##                "scale": 1.0,
+        ##                "addToAdjoint": True,
+        ##            },
+        ##        },
+        ##    },
+        self.objFunc = {}
+
+        ## Design variable information. Different type of design variables require different keys
+        ## For alpha, we need to prescribe a list of far field patch names from which the angle of
+        ## attack is computed, this is usually a far field patch. Also, we need to prescribe
+        ## flow and normal axies, and alpha = atan( U_normal / U_flow ) at patches
+        ## Example
+        ##     designVar = {
+        ##         "shapey" : {"designVarType": "FFD"},
+        ##         "twist": {"designVarType": "FFD"},
+        ##         "alpha" = {
+        ##             "designVarType": "AOA",
+        ##             "patches": ["farField"],
+        ##             "flowAxis": "x",
+        ##             "normalAxis": "y"
+        ##         },
+        ##         "ux0" = {
+        ##             "designVarType": "BC",
+        ##             "patches": ["inlet"],
+        ##             "variable": "U",
+        ##             "comp": 0
+        ##         },
+        ##     }
+        self.designVar = {}
+
+        ## List of patch names for the design surface. These patch names need to be of wall type
+        ## and shows up in the constant/polyMesh/boundary file
+        self.designSurfaces = ["None"]
+
+        ## Fluid-structure interatcion (FSI) options. This dictionary takes in the required values for
+        ## an FSI case to be used throughout the simulation.
+        self.fsi = {"pRef": 0.0}
+
+        ## An option to run the primal only; no adjoint or optimization will be run
+        self.primalOnly = False
+
+        # *********************************************************************************************
+        # ****************************** Intermediate Options *****************************************
+        # *********************************************************************************************
+
+        ## Information for the finite volume source term, which will be added in the momentum equation
+        ## We support multiple source terms
+        ## Example
+        ## "fvSource": {
+        ##     "disk1": {
+        ##         "type": "actuatorDisk", # Actuator disk source. This is a child class in DAFvSource
+        ##         "source": "cylinderAnnulusToCell", # Define a volume to add the fvSource term
+        ##         "p1": [-0.4, -0.1, 0.05],  # p1 and p2 define the axis and width
+        ##         "p2": [-0.1, -0.1, 0.05],  # p2-p1 should be streamwise
+        ##         "innerRadius": 0.01,
+        ##         "outerRadius": 0.5,
+        ##         "rotDir": "left",
+        ##         "scale": 50.0,
+        ##         "POD": 0.7, # pitch/diameter
+        ##     },
+        ##     "disk2": {
+        ##         "type": "actuatorDisk",
+        ##         "source": "cylinderAnnulusToCell",
+        ##         "p1": [-0.4, 0.1, 0.05],
+        ##         "p2": [-0.1, 0.1, 0.05],
+        ##         "innerRadius": 0.01,
+        ##         "outerRadius": 0.5,
+        ##         "rotDir": "right",
+        ##         "scale": 25.0,  # scale the source such the integral equals desired thrust
+        ##         "POD": 1.0,
+        ##     },
+        ##    "line1":
+        ##    {
+        ##        "type": "actuatorPoint",
+        ##        "smoothFunction": "hyperbolic", # or gaussian
+        ##        "center": [-0.55, 0.0, 0.05],  # center and size define a rectangular
+        ##        "size": [0.2, 0.2, 0.1],
+        ##        "amplitude": [0.0, 0.2, 0.0],
+        ##        "thrustDirIdx": 0,
+        ##        "periodicity": 0.1,
+        ##        "eps": 10.0,
+        ##        "scale": 10.0  # scale the source such the integral equals desired thrust
+        ##    },
+        ##    "gradP"
+        ##    {
+        ##        "type": "uniformPressureGradient",
+        ##        "value": 1e-3,
+        ##        "direction": [1.0, 0.0, 0.0],
+        ##    },
+        ## },
+        self.fvSource = {}
+
+        ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
+        ## Setting the bounds increases the robustness of primal solution for compressible solvers.
+        ## Also, we set lower bounds for turbulence variables to ensure they are physical
+        ## Example
+        ##     primalValBounds = {"UMax": 1000, "UMin": -1000, "pMax": 1000000}
+        self.primalVarBounds = {
+            "UMax": 1e16,
+            "UMin": -1e16,
+            "pMax": 1e16,
+            "pMin": -1e16,
+            "p_rghMax": 1e16,
+            "p_rghMin": -1e16,
+            "eMax": 1e16,
+            "eMin": -1e16,
+            "TMax": 1e16,
+            "TMin": -1e16,
+            "hMax": 1e16,
+            "hMin": -1e16,
+            "DMax": 1e16,
+            "DMin": -1e16,
+            "rhoMax": 1e16,
+            "rhoMin": -1e16,
+            "nuTildaMax": 1e16,
+            "nuTildaMin": 1e-16,
+            "kMax": 1e16,
+            "kMin": 1e-16,
+            "omegaMax": 1e16,
+            "omegaMin": 1e-16,
+            "epsilonMax": 1e16,
+            "epsilonMin": 1e-16,
+            "ReThetatMax": 1e16,
+            "ReThetatMin": 1e-16,
+            "gammaIntMax": 1e16,
+            "gammaIntMin": 1e-16,
+        }
+
+        ## Whether to perform multipoint optimization.
+        self.multiPoint = False
+
+        ## If multiPoint = True, how many primal configurations for the multipoint optimization.
+        self.nMultiPoints = 1
+
+        ## The step size for finite-difference computation of partial derivatives. The default values
+        ## will work for most of the case.
+        self.adjPartDerivFDStep = {
+            "State": 1.0e-6,
+            "FFD": 1.0e-3,
+            "BC": 1.0e-2,
+            "AOA": 1.0e-3,
+            "ACTP": 1.0e-2,
+            "ACTD": 1.0e-2,
+            "ACTL": 1.0e-2,
+        }
+
+        ## Which options to use to improve the adjoint equation convergence of transonic conditions
+        ## This is used only for transonic solvers such as DARhoSimpleCFoam
+        self.transonicPCOption = -1
+
+        ## Options for unsteady adjoint. mode can be hybridAdjoint or timeAccurateAdjoint
+        ## Here nTimeInstances is the number of time instances and periodicity is the
+        ## periodicity of flow oscillation (hybrid adjoint only)
+        self.unsteadyAdjoint = {"mode": "None", "nTimeInstances": -1, "periodicity": -1.0}
+
+        ## At which iteration should we start the averaging of objective functions.
+        ## This is only used for unsteady solvers
+        self.objFuncAvgStart = 1
+
+        ## The interval of recomputing the pre-conditioner matrix dRdWTPC for solveAdjoint
+        ## By default, dRdWTPC will be re-computed each time the solveAdjoint function is called
+        ## However, one can increase the lag to skip it and reuse the dRdWTPC computed previously.
+        ## This obviously increses the speed because the dRdWTPC computation takes about 30% of
+        ## the adjoint total runtime. However, setting a too large lag value will decreases the speed
+        ## of solving the adjoint equations. One needs to balance these factors
+        self.adjPCLag = 1
+
+        ## Whether to use AD: Mode options: forward, reverse, or fd. If forward mode AD is used
+        ## the seedIndex will be set to compute derivative by running the whole primal solver.
+        ## dvName is the name of design variable to set the seed for the forward AD
+        ## setting seedIndex to -1 for dFdField will assign seeds for all design variables.
+        ## If reverse mode is used, the adjoint will be computed by a Jacobian free approach
+        ## refer to: Kenway et al. Effective adjoint approach for computational fluid dynamics,
+        ## Progress in Aerospace Science, 2019.
+        self.useAD = {"mode": "reverse", "dvName": "None", "seedIndex": -9999}
+
+        ## Rigid body motion for dynamic mesh
+        ## This option will be used in DAPimpleDyMFoam to simulate dynamicMesh motion
+        self.rigidBodyMotion = {"mode": "dummy"}
+
+        # *********************************************************************************************
+        # ************************************ Advance Options ****************************************
+        # *********************************************************************************************
+
+        ## The root directory for the DAFoam case. If rooDir = "None" (default), we will assign os.getcwd() to rootDir
+        ## If we want to have multiple cases running at the same time, e.g., coupled wing propeller case, we may
+        ## set different rootDirs for each case. NOTE: if we set rootDir, we need to set an absolute path!
+        self.rootDir = "None"
+
+        ## The run status which can be solvePrimal, solveAdjoint, or calcTotalDeriv. This parameter is
+        ## used internally, so users should never change this option in the Python layer.
+        self.runStatus = "None"
+
+        ## Whether to print all options defined in pyDAFoam to screen before optimization.
+        self.printPYDAFOAMOptions = False
+
+        ## Whether to print all DAOption defined in the C++ layer to screen before optimization.
+        self.printDAOptions = True
+
+        ## Whether running the optimization in the debug mode, which prints extra information.
+        self.debug = False
+
+        ## Whether to write Jacobian matrices to file for debugging
+        ## Example:
+        ##    writeJacobians = ["dRdWT", "dFdW"]
+        ## This will write the dRdWT and dFdW matrices to the disk
+        self.writeJacobians = ["None"]
+
+        ## The print interval of primal and adjoint solution, e.g., how frequent to print the primal
+        ## solution steps, how frequent to print the dRdWT partial derivative computation.
+        self.printInterval = 100
+
+        ## The print interval of unsteady primal solvers, e.g., for DAPisoFoam
+        self.printIntervalUnsteady = 500
+
+        ## Users can adjust primalMinResTolDiff to tweak how much difference between primalMinResTol
+        ## and the actual primal convergence is consider to be fail=True for the primal solution.
+        self.primalMinResTolDiff = 1.0e2
+
+        ## Whether to use graph coloring to accelerate partial derivative computation. Unless you are
+        ## debugging the accuracy of partial computation, always set it to True
+        self.adjUseColoring = True
+
+        ## The Petsc options for solving the adjoint linear equation. These options should work for
+        ## most of the case. If the adjoint does not converge, try to increase pcFillLevel to 2, or
+        ## try "jacMatReOrdering": "nd"
+        self.adjEqnOption = {
+            "globalPCIters": 0,
+            "asmOverlap": 1,
+            "localPCIters": 1,
+            "jacMatReOrdering": "rcm",
+            "pcFillLevel": 1,
+            "gmresMaxIters": 1000,
+            "gmresRestart": 1000,
+            "gmresRelTol": 1.0e-6,
+            "gmresAbsTol": 1.0e-14,
+            "gmresTolDiff": 1.0e2,
+            "useNonZeroInitGuess": False,
+            "printInfo": 1,
+        }
+
+        ## Normalization for residuals. We should normalize all residuals!
+        self.normalizeResiduals = [
+            "URes",
+            "pRes",
+            "p_rghRes",
+            "nuTildaRes",
+            "phiRes",
+            "TRes",
+            "DRes",
+            "kRes",
+            "omegaRes",
+            "epsilonRes",
+        ]
+
+        ## The maximal connectivity level for the dRdWTPC matrix. Reducing the connectivity level
+        ## reduce the memory usage, however, it may slow down the adjoint equation convergence.
+        ## The default value should have the best convergence speed but not optimal memory usage.
+        self.maxResConLv4JacPCMat = {
+            "pRes": 2,
+            "phiRes": 1,
+            "URes": 2,
+            "TRes": 2,
+            "nuTildaRes": 2,
+            "kRes": 2,
+            "epsilonRes": 2,
+            "omegaRes": 2,
+            "p_rghRes": 2,
+            "DRes": 2,
+        }
+
+        ## The min bound for Jacobians, any value that is smaller than the bound will be set to 0
+        ## Setting a large lower bound for preconditioner (PC) can help to reduce memory.
+        self.jacLowerBounds = {
+            "dRdW": 1.0e-30,
+            "dRdWPC": 1.0e-30,
+        }
+
+        ## The maximal iterations of tractionDisplacement boundary conditions
+        self.maxTractionBCIters = 100
+
+        ## decomposeParDict option. This file will be automatically written such that users
+        ## can run optimization with any number of CPU cores without the need to manually
+        ## change decomposeParDict
+        self.decomposeParDict = {
+            "method": "scotch",
+            "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001},
+            "preservePatches": ["None"],
+        }
+
+        ## The ordering of state variable. Options are: state or cell. Most of the case, the state
+        ## odering is the best choice.
+        self.adjStateOrdering = "state"
+
+        ## Default name for the mesh surface family. Users typically don't need to change
+        self.meshSurfaceFamily = "None"
+
+        ## Default name for the design surface family. Users typically don't need to change
+        self.designSurfaceFamily = "designSurfaces"
+
+        ## The threshold for check mesh call
+        self.checkMeshThreshold = {
+            "maxAspectRatio": 1000.0,
+            "maxNonOrth": 70.0,
+            "maxSkewness": 4.0,
+            "maxIncorrectlyOrientedFaces": 0,
+        }
+
+        ## The sensitivity map will be saved to disk during optimization for the given design variable
+        ## names in the list. Currently only support design variable type FFD and Field
+        ## The surface sensitivity map is separated from the primal solution because they only have surface mesh.
+        ## They will be saved to folders such as 1e-11, 2e-11, 3e-11, etc,
+        ## When loading in paraview, you need to uncheck the "internalMesh", and check "allWalls" on the left panel
+        ## If your design variable is of field type, the sensitivity map will be saved along with the primal
+        ## solution because they share the same mesh. The sensitivity files read sens_objFuncName_designVarName
+        ## NOTE: this function only supports useAD->mode:reverse
+        ## Example:
+        ##     "writeSensMap" : ["shapex", "shapey"]
+        self.writeSensMap = ["NONE"]
+
+        ## Whether to write deformed FFDs to the disk during optimization
+        self.writeDeformedFFDs = False
+
+        ## The max number of correctBoundaryConditions calls in the updateOFField function.
+        self.maxCorrectBCCalls = 10
+
+        ## Whether to write the primal solutions for minor iterations (i.e., line search).
+        ## The default is False. If set it to True, it will write flow fields (and the deformed geometry)
+        ## for each primal solution. This will significantly increases the IO runtime, so it should never
+        ## be True for production runs. However, it is useful for debugging purpose (e.g., to find out
+        ## the poor quality mesh during line search)
+        self.writeMinorIterations = False
 
 
 class PYDAFOAM(object):
@@ -646,6 +654,13 @@ class PYDAFOAM(object):
         # initialize comm for parallel communication
         self._initializeComm(comm)
 
+        # the absolute path where the run script is located at
+        if self.getOption("rootDir") == "None":
+            self.rootDir = os.getcwd()
+        else:
+            self.rootDir = self.getOption("rootDir")
+        self.cdRoot()
+
         # Initialize families
         self.families = OrderedDict()
 
@@ -676,8 +691,8 @@ class PYDAFOAM(object):
         self._initSolver()
 
         # initialize the number of primal and adjoint calls
-        self.nSolvePrimals = 0
-        self.nSolveAdjoints = 0
+        self.nSolvePrimals = 1
+        self.nSolveAdjoints = 1
 
         # flags for primal and adjoint failure
         self.primalFail = 0
@@ -779,6 +794,8 @@ class PYDAFOAM(object):
         # update the mesh coordinates if DVGeo is set
         # add point set and update the mesh based on the DV values
 
+        self.cdRoot()
+
         if self.DVGeo is not None:
 
             # if the point set is not in DVGeo add it first
@@ -840,10 +857,9 @@ class PYDAFOAM(object):
         defOpts = {}
 
         # assign all the attribute of daOptoin to defOpts
-        for key in daOption.__dir__():
-            if "__" not in key:
-                value = getattr(DAOPTION, key)
-                defOpts[key] = [type(value), value]
+        for key in vars(daOption):
+            value = getattr(daOption, key)
+            defOpts[key] = [type(value), value]
 
         return defOpts
 
@@ -1096,7 +1112,7 @@ class PYDAFOAM(object):
         """
         # Write the design variable history to files
         if self.comm.rank == 0:
-            if self.nSolveAdjoints == 0:
+            if self.nSolveAdjoints == 1:
                 f = open(fileName, "w")
             else:
                 f = open(fileName, "a")
@@ -1141,7 +1157,7 @@ class PYDAFOAM(object):
         """
         # Write the sens history to files
         if self.comm.rank == 0:
-            if self.nSolveAdjoints == 1:
+            if self.nSolveAdjoints == 2:
                 f = open(fileName, "w")
             else:
                 f = open(fileName, "a")
@@ -1604,7 +1620,9 @@ class PYDAFOAM(object):
             The Petsc vector that contains the sensitivity
         """
 
-        workingDir = os.getcwd()
+        self.cdRoot()
+
+        workingDir = self.rootDir
         if self.parallel:
             sensDir = "processor%d/%.8f/" % (self.rank, solutionTime)
         else:
@@ -1679,7 +1697,9 @@ class PYDAFOAM(object):
         conn, faceSizes = self.getSurfaceConnectivity(self.allWallsGroup)
         conn = np.array(conn).flatten()
 
-        workingDir = os.getcwd()
+        self.cdRoot()
+
+        workingDir = self.rootDir
         if self.parallel:
             meshDir = "processor%d/%.11f/polyMesh/" % (self.rank, solutionTime)
             sensDir = "processor%d/%.11f/" % (self.rank, solutionTime)
@@ -1852,6 +1872,9 @@ class PYDAFOAM(object):
         else:
             self.primalFail = self.solver.solvePrimal(self.xvVec, self.wVec)
 
+        if self.getOption("writeMinorIterations"):
+            self.renameSolution(self.nSolvePrimals)
+
         self.nSolvePrimals += 1
 
         return
@@ -1883,10 +1906,13 @@ class PYDAFOAM(object):
         viewerW(self.wVec)
         """
 
+        self.cdRoot()
+
         if self.getOption("useAD")["mode"] == "forward":
             raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
 
-        solutionTime = self.renameSolution(self.nSolveAdjoints)
+        if not self.getOption("writeMinorIterations"):
+            solutionTime = self.renameSolution(self.nSolveAdjoints)
 
         Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
 
@@ -1909,7 +1935,7 @@ class PYDAFOAM(object):
 
         # calculate dRdWTPC
         adjPCLag = self.getOption("adjPCLag")
-        if self.nSolveAdjoints == 0 or self.nSolveAdjoints % adjPCLag == 0:
+        if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
             self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
             self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
 
@@ -2331,7 +2357,7 @@ class PYDAFOAM(object):
         self.nSolveAdjoints += 1
 
         # we destroy dRdWTPC only when we need to recompute it next time
-        if self.nSolveAdjoints % adjPCLag == 0:
+        if (self.nSolveAdjoints - 1) % adjPCLag == 0:
             self.dRdWTPC.destroy()
 
         return
@@ -2602,6 +2628,8 @@ class PYDAFOAM(object):
         Info("|                       Running Coloring Solver                            |")
         Info("+--------------------------------------------------------------------------+")
 
+        self.cdRoot()
+
         solverName = self.getOption("solverName")
         if solverName in self.solverRegistry["Incompressible"]:
 
@@ -2657,7 +2685,8 @@ class PYDAFOAM(object):
 
         solTime = self.solver.getPrevPrimalSolTime()
 
-        rootDir = os.getcwd()
+        self.cdRoot()
+        rootDir = self.rootDir
         if self.parallel:
             checkPath = os.path.join(rootDir, "processor%d/%g" % (self.comm.rank, solTime))
         else:
@@ -2690,7 +2719,8 @@ class PYDAFOAM(object):
         """
 
         allSolutions = []
-        rootDir = os.getcwd()
+        self.cdRoot()
+        rootDir = self.rootDir
         if self.parallel:
             checkPath = os.path.join(rootDir, "processor%d" % self.comm.rank)
         else:
@@ -2711,7 +2741,7 @@ class PYDAFOAM(object):
             Info("Solution time %g less than 1e-6, not moved." % float(solutionTime))
             return solutionTime
 
-        distTime = "%.8f" % ((solIndex + 1) / 1e8)
+        distTime = "%.8f" % (solIndex / 1e8)
 
         src = os.path.join(checkPath, solutionTime)
         dst = os.path.join(checkPath, distTime)
@@ -2876,7 +2906,8 @@ class PYDAFOAM(object):
         Initialize mesh information and read mesh information
         """
 
-        dirName = os.getcwd()
+        self.cdRoot()
+        dirName = self.rootDir
 
         self.fileNames, self.xv0, self.faces, self.boundaries, self.owners, self.neighbours = self._readOFGrid(dirName)
         self.xv = copy.copy(self.xv0)
@@ -3528,10 +3559,10 @@ class PYDAFOAM(object):
         self.wVec.assemblyBegin()
         self.wVec.assemblyEnd()
 
-        self.solver.stateVec2OFField(self.wVec)
+        self.solver.updateOFField(self.wVec)
 
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.stateVec2OFField(self.wVec)
+            self.solverAD.updateOFField(self.wVec)
 
         return
 
@@ -3569,6 +3600,12 @@ class PYDAFOAM(object):
 
         return vec
 
+    def cdRoot(self):
+        """
+        Go to the case root dir, as set in self.rootDir
+        """
+        os.chdir(self.rootDir)
+
     def _printCurrentOptions(self):
         """
         Prints a nicely formatted dictionary of all the current solver
@@ -3600,7 +3637,8 @@ class PYDAFOAM(object):
         """
         if self.comm.rank == 0:
             # Open the options file for writing
-            workingDirectory = os.getcwd()
+            self.cdRoot()
+            workingDirectory = self.rootDir
             sysDir = "system"
             varDir = os.path.join(workingDirectory, sysDir)
             fileName = "decomposeParDict"

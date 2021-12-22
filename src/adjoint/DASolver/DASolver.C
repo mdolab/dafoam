@@ -2616,14 +2616,18 @@ void DASolver::updateOFField(const Vec wVec)
     Output:
         OpenFoam flow fields (internal and boundary)
     */
-    Info << "Updating the OpenFOAM field..." << endl;
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        Info << "Updating the OpenFOAM field..." << endl;
+    }
     //Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
     daFieldPtr_->setPrimalBoundaryConditions(0);
     daFieldPtr_->stateVec2OFField(wVec);
     // We need to call correctBC multiple times to reproduce
     // the exact residual, this is needed for some boundary conditions
     // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
-    for (label i = 0; i < 10; i++)
+    label maxCorrectBCCalls = daOptionPtr_->getOption<label>("maxCorrectBCCalls");
+    for (label i = 0; i < maxCorrectBCCalls; i++)
     {
         daResidualPtr_->correctBoundaryConditions();
         daResidualPtr_->updateIntermediateVariables();
@@ -2644,7 +2648,10 @@ void DASolver::updateOFMesh(const Vec xvVec)
     Output:
         OpenFoam flow fields (internal and boundary)
     */
-    Info << "Updating the OpenFOAM mesh..." << endl;
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        Info << "Updating the OpenFOAM mesh..." << endl;
+    }
     daFieldPtr_->pointVec2OFMesh(xvVec);
 }
 

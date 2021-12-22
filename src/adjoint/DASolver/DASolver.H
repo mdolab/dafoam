@@ -19,6 +19,7 @@
 #include "runTimeSelectionTables.H"
 #include "OFstream.H"
 #include "functionObjectList.H"
+#include "fvOptions.H"
 #include "DAUtility.H"
 #include "DACheckMesh.H"
 #include "DAOption.H"

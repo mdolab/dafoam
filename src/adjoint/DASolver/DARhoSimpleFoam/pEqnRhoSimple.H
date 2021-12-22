@@ -27,7 +27,8 @@ while (simple.correctNonOrthogonal())
 {
     fvScalarMatrix pEqn(
         fvc::div(phiHbyA)
-        - fvm::laplacian(rhorAUf, p));
+        - fvm::laplacian(rhorAUf, p)
+        - fvOptions(psi, p, rho.name()));
 
     pEqn.setReference(
         pressureControl.refCell(),

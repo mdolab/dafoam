@@ -49,6 +49,9 @@ protected:
     /// fvSource term
     volVectorField& fvSource_;
 
+    /// fvOptions term
+    fv::options& fvOptions_;
+
     /// DATurbulenceModel object
     DATurbulenceModel& daTurb_;
 
