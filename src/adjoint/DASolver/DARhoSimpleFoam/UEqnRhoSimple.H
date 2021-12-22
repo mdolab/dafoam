@@ -11,10 +11,13 @@ tmp<fvVectorMatrix> tUEqn(
     fvm::div(phi, U)
     + MRF.DDt(rho, U)
     + turbulencePtr_->divDevRhoReff(U)
-    - fvSource);
+    - fvSource
+    - fvOptions(rho, U));
 fvVectorMatrix& UEqn = tUEqn.ref();
 
 UEqn.relax();
+
+fvOptions.constrain(UEqn);
 
 // get the solver performance info such as initial
 // and final residuals

@@ -55,6 +55,9 @@ protected:
     /// fvSource term for the energy equation
     volScalarField& fvSourceEnergy_;
 
+    /// fvOptions term
+    fv::options& fvOptions_;
+
     /// thermophysical property
     fluidThermo& thermo_;
 
