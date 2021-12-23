@@ -6,7 +6,7 @@
     Description:
         Child class for DATurboFoam
         A steady-state compressible solver for turbomachinery
-        Modified based on TCFD redSolver
+        This class is modified based on TCFD redSolver (www.cfdsupport.com)
 
 \*---------------------------------------------------------------------------*/
 
