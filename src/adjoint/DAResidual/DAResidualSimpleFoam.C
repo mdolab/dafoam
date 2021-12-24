@@ -35,7 +35,8 @@ DAResidualSimpleFoam::DAResidualSimpleFoam(
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
       // create simpleControl
       simple_(const_cast<fvMesh&>(mesh)),
-      MRF_(mesh)
+      MRF_(const_cast<IOMRFZoneListDF&>(
+          mesh_.thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties")))
 {
     // initialize fvSource
     const dictionary& allOptions = daOption.getAllOptions();
@@ -88,6 +89,8 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
         divUScheme = "div(pc)";
     }
 
+    DAUtility::setRotingWallVelocity(MRF_, mesh_);
+ 
     if (hasFvSource_)
     {
         DAFvSource& daFvSource(const_cast<DAFvSource&>(

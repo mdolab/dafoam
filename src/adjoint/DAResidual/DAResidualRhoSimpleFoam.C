@@ -121,6 +121,8 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
     // ******** U Residuals **********
     // copied and modified from UEqn.H
 
+    DAUtility::setRotingWallVelocity(MRF_, mesh_);
+
     if (hasFvSource_)
     {
         DAFvSource& daFvSource(const_cast<DAFvSource&>(

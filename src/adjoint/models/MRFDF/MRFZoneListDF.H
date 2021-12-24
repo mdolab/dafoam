@@ -165,7 +165,16 @@ public:
     void update();
 
     //- Get the reference of the rotation speed omega from MRFZone
-    scalar& getOmegaRef();
+    const scalar& getOmegaRef() const;
+
+    //- Get the reference of the rotation origin from MRFZone
+    const vector& getOriginRef() const;
+
+    //- Get the reference of the rotation axis from MRFZone
+    const vector& getAxisRef() const;
+
+    //- Get the nonRotationPatches from MRFZone
+    const wordRes& getExcludedPatchNamesRef() const;
 
     // I-O
 

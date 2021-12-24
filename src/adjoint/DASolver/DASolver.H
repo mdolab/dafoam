@@ -160,9 +160,6 @@ protected:
         const dictionary& maxResConLv4JacPCMat,
         HashTable<List<List<word>>>& stateResConInfo) const;
 
-    /// set velocity boundary condition for rotating walls
-    void setRotingWallVelocity(const scalar& omega);
-
     /// write associated fields such as relative velocity
     void writeAssociatedFields();
 

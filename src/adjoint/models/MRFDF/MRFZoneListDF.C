@@ -355,7 +355,7 @@ void Foam::MRFZoneListDF::correctBoundaryFlux(
     }
 }
 
-Foam::scalar& Foam::MRFZoneListDF::getOmegaRef()
+const Foam::scalar& Foam::MRFZoneListDF::getOmegaRef() const
 {
     label nObjs = 0;
     forAll(*this, i)
@@ -371,6 +371,60 @@ Foam::scalar& Foam::MRFZoneListDF::getOmegaRef()
     }
 
     return operator[](0).getOmegaRef();
+}
+
+const Foam::vector& Foam::MRFZoneListDF::getOriginRef() const
+{
+    label nObjs = 0;
+    forAll(*this, i)
+    {
+        nObjs++;
+    }
+
+    if (nObjs > 1)
+    {
+        FatalErrorInFunction
+            << "Do not support more than one MRF zones!"
+            << exit(FatalError);
+    }
+
+    return operator[](0).getOriginRef();
+}
+
+const Foam::vector& Foam::MRFZoneListDF::getAxisRef() const
+{
+    label nObjs = 0;
+    forAll(*this, i)
+    {
+        nObjs++;
+    }
+
+    if (nObjs > 1)
+    {
+        FatalErrorInFunction
+            << "Do not support more than one MRF zones!"
+            << exit(FatalError);
+    }
+
+    return operator[](0).getAxisRef();
+}
+
+const Foam::wordRes& Foam::MRFZoneListDF::getExcludedPatchNamesRef() const
+{
+    label nObjs = 0;
+    forAll(*this, i)
+    {
+        nObjs++;
+    }
+
+    if (nObjs > 1)
+    {
+        FatalErrorInFunction
+            << "Do not support more than one MRF zones!"
+            << exit(FatalError);
+    }
+
+    return operator[](0).getExcludedPatchNamesRef();
 }
 
 void Foam::MRFZoneListDF::update()

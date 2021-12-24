@@ -17,6 +17,7 @@
 #include "Python.h"
 #include "fvOptions.H"
 #include "globalIndex.H"
+#include "IOMRFZoneListDF.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -117,6 +118,11 @@ public:
 
     /// generate global index numbering for local-global index transferring
     static globalIndex genGlobalIndex(const label localIndexSize);
+
+    /// set velocity boundary condition for rotating walls
+    static void setRotingWallVelocity(
+        const IOMRFZoneListDF& MRF,
+        const fvMesh& mesh);
 
     /// angle of attack in radian
     static scalar angleOfAttackRadForwardAD;

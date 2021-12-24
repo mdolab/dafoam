@@ -4665,65 +4665,6 @@ label DASolver::isPrintTime(
     }
 }
 
-void DASolver::setRotingWallVelocity(const scalar& omega)
-{
-    /*
-    Description:
-        If MRF active, set velocity boundary condition for rotating walls
-        This function should be called once for each primal solution.
-        It should be called AFTER the mesh points are updated
-    */
-
-    IOobject MRFIO(
-        "MRFProperties",
-        runTimePtr_->constant(),
-        meshPtr_(),
-        IOobject::MUST_READ,
-        IOobject::NO_WRITE,
-        false); // do not register
-
-    if (MRFIO.typeHeaderOk<IOdictionary>(true))
-    {
-
-        IOdictionary MRFProperties(MRFIO);
-
-        bool activeMRF(MRFProperties.subDict("MRF").lookupOrDefault("active", true));
-
-        if (activeMRF)
-        {
-            volVectorField& U = const_cast<volVectorField&>(
-                meshPtr_->thisDb().lookupObject<volVectorField>("U"));
-
-            wordList nonRotatingPatches;
-            MRFProperties.subDict("MRF").readEntry<wordList>("nonRotatingPatches", nonRotatingPatches);
-
-            vector origin;
-            MRFProperties.subDict("MRF").readEntry<vector>("origin", origin);
-            vector axis;
-            MRFProperties.subDict("MRF").readEntry<vector>("axis", axis);
-
-            forAll(meshPtr_->boundaryMesh(), patchI)
-            {
-                word bcName = meshPtr_->boundaryMesh()[patchI].name();
-                word bcType = meshPtr_->boundaryMesh()[patchI].type();
-                if (!DAUtility::isInList<word>(bcName, nonRotatingPatches) && bcType != "processor")
-                {
-                    Info << "Setting rotating wall velocity for " << bcName << endl;
-                    if (U.boundaryField()[patchI].size() > 0)
-                    {
-                        forAll(U.boundaryField()[patchI], faceI)
-                        {
-                            vector patchCf = meshPtr_->Cf().boundaryField()[patchI][faceI];
-                            U.boundaryFieldRef()[patchI][faceI] =
-                                -omega * ((patchCf - origin) ^ (axis / mag(axis)));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 void DASolver::writeAssociatedFields()
 {
     /*

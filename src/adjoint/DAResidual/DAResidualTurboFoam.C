@@ -42,7 +42,8 @@ DAResidualTurboFoam::DAResidualTurboFoam(
       // create simpleControl
       simple_(const_cast<fvMesh&>(mesh)),
       pressureControl_(p_, rho_, simple_.dict()),
-      MRF_(mesh)
+      MRF_(const_cast<IOMRFZoneListDF&>(
+          mesh_.thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties")))
 {
 
     // get molWeight and Cp from thermophysicalProperties
@@ -114,6 +115,8 @@ void DAResidualTurboFoam::calcResiduals(const dictionary& options)
 
     // ******** U Residuals **********
     // copied and modified from UEqn.H
+
+    DAUtility::setRotingWallVelocity(MRF_, mesh_);
 
     tmp<fvVectorMatrix> tUEqn(
         fvm::div(phi_, U_, divUScheme)

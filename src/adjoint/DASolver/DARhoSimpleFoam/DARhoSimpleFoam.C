@@ -146,7 +146,7 @@ label DARhoSimpleFoam::solvePrimal(
 #include "setForwardADSeeds.H"
 
     // set the rotating wall velocity after the mesh is updated (if MRF is active)
-    this->setRotingWallVelocity(MRF.getOmegaRef());
+    DAUtility::setRotingWallVelocity(MRF, mesh);
 
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");

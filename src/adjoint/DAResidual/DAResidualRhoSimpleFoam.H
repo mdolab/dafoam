@@ -17,7 +17,6 @@
 #include "adjustPhi.H"
 #include "thermodynamicConstants.H"
 #include "pressureControl.H"
-#include "IOMRFZoneList.H"
 #include "constrainPressure.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
