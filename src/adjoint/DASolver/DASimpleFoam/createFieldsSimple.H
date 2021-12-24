@@ -63,4 +63,6 @@ singlePhaseTransportModel& laminarTransport = laminarTransportPtr_();
 turbulencePtr_.reset(
     incompressible::turbulenceModel::New(U, phi, laminarTransport));
 
-#include "createMRFPython.H"
+// create MRF
+MRFPtr_.reset(new IOMRFZoneListDF(mesh));
+

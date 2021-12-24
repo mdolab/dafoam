@@ -12,4 +12,4 @@ scalar& cumulativeContErr = cumulativeContErr_;
 label& pRefCell = pRefCell_;
 scalar& pRefValue = pRefValue_;
 volVectorField& fvSource = fvSourcePtr_();
-IOMRFZoneList& MRF = MRFPtr_();
+IOMRFZoneListDF& MRF = MRFPtr_();

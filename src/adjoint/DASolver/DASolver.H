@@ -34,6 +34,7 @@
 #include "DAPartDeriv.H"
 #include "DALinearEqn.H"
 #include "volPointInterpolation.H"
+#include "IOMRFZoneListDF.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -160,7 +161,7 @@ protected:
         HashTable<List<List<word>>>& stateResConInfo) const;
 
     /// set velocity boundary condition for rotating walls
-    void setRotingWallVelocity();
+    void setRotingWallVelocity(const scalar& omega);
 
     /// write associated fields such as relative velocity
     void writeAssociatedFields();

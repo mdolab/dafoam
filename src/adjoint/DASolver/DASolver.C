@@ -4665,7 +4665,7 @@ label DASolver::isPrintTime(
     }
 }
 
-void DASolver::setRotingWallVelocity()
+void DASolver::setRotingWallVelocity(const scalar& omega)
 {
     /*
     Description:
@@ -4701,7 +4701,6 @@ void DASolver::setRotingWallVelocity()
             MRFProperties.subDict("MRF").readEntry<vector>("origin", origin);
             vector axis;
             MRFProperties.subDict("MRF").readEntry<vector>("axis", axis);
-            scalar omega = MRFProperties.subDict("MRF").getScalar("omega");
 
             forAll(meshPtr_->boundaryMesh(), patchI)
             {

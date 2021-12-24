@@ -45,7 +45,8 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
       // create simpleControl
       simple_(const_cast<fvMesh&>(mesh)),
       pressureControl_(p_, rho_, simple_.dict()),
-      MRF_(mesh)
+      MRF_(const_cast<IOMRFZoneListDF&>(
+          mesh_.thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties")))
 {
 
     // initialize fvSource

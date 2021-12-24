@@ -67,7 +67,7 @@ protected:
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
 
     /// MRF pointer
-    autoPtr<IOMRFZoneList> MRFPtr_;
+    autoPtr<IOMRFZoneListDF> MRFPtr_;
 
     /// initial mass
     dimensionedScalar initialMass_;

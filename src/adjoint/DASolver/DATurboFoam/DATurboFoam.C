@@ -106,7 +106,7 @@ label DATurboFoam::solvePrimal(
     }
 
     // set the rotating wall velocity after the mesh is updated (if MRF is active)
-    this->setRotingWallVelocity();
+    this->setRotingWallVelocity(MRF.getOmegaRef());
 
     // if the forwardModeAD is active, we need to set the seed here
 #include "setForwardADSeeds.H"

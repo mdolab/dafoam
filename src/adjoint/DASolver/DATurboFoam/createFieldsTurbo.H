@@ -60,4 +60,6 @@ turbulencePtr_.reset(
 
 initialMass_ = fvc::domainIntegrate(rho);
 
-#include "createMRFPython.H"
+// create MRF
+MRFPtr_.reset(new IOMRFZoneListDF(mesh));
+
