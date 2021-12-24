@@ -705,7 +705,7 @@ void DAUtility::setRotingWallVelocity(
         {
             word bcName = mesh.boundaryMesh()[patchI].name();
             word bcType = mesh.boundaryMesh()[patchI].type();
-            if (nonRotatingPatches.found(bcName) && bcType != "processor")
+            if (!nonRotatingPatches.found(bcName) && bcType != "processor")
             {
                 Info << "Setting rotating wall velocity for " << bcName << endl;
                 if (U.boundaryField()[patchI].size() > 0)
