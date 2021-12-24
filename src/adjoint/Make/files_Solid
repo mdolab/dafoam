@@ -54,5 +54,8 @@ DASolver/DALaplacianFoam/DALaplacianFoam.C
 DASolver/DAScalarTransportFoam/DAScalarTransportFoam.C
 
 boundaryConditions/tractionDisplacement/tractionDisplacementFvPatchVectorField.C
+models/MRFDF/MRFZoneDF.C
+models/MRFDF/MRFZoneListDF.C
+models/MRFDF/IOMRFZoneListDF.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFoamSolid$(DF_LIB_SUFFIX)
