@@ -81,7 +81,7 @@ case $argm in
       runTests DARhoSimpleCFoamAD
     fi
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADF.so" ]; then
-      runTests runTests_DARhoSimpleFoamMRFForwardAD.py
+      runTests DARhoSimpleFoamMRFForwardAD
     fi
     runTests DATurboFoamSubsonic
     runTests DATurboFoamTransonic
@@ -156,7 +156,7 @@ case $argm in
       runTests DASimpleFoamFieldForwardAD
     fi
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADF.so" ]; then
-      runTests runTests_DARhoSimpleFoamMRFForwardAD.py
+      runTests DARhoSimpleFoamMRFForwardAD
     fi
     echo " "
     echo "************************************************************"
