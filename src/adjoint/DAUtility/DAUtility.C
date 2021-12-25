@@ -674,54 +674,6 @@ label DAUtility::isValueCloseToRef(
     }
 }
 
-
-void DAUtility::setRotingWallVelocity(
-    const IOMRFZoneListDF& MRF,
-    const fvMesh& mesh)
-{
-    /*
-    Description:
-        If MRF active, set velocity boundary condition for rotating walls
-        This function should be called once for each primal solution.
-        It should be called AFTER the mesh points are updated
-    */
-
-    if (MRF.active())
-    {
-        volVectorField& U = const_cast<volVectorField&>(
-            mesh.thisDb().lookupObject<volVectorField>("U"));
-
-        const wordRes& excludedPatchNames = MRF.getExcludedPatchNamesRef();
-        const vector& origin = MRF.getOriginRef();
-        const vector& axis = MRF.getAxisRef();
-        const scalar& omega = MRF.getOmegaRef();
-        wordList nonRotatingPatches(excludedPatchNames.size());
-        forAll(nonRotatingPatches, idxI)
-        {
-            nonRotatingPatches[idxI] = excludedPatchNames[idxI];
-        }
-
-        forAll(mesh.boundaryMesh(), patchI)
-        {
-            word bcName = mesh.boundaryMesh()[patchI].name();
-            word bcType = mesh.boundaryMesh()[patchI].type();
-            if (!nonRotatingPatches.found(bcName) && bcType != "processor")
-            {
-                Info << "Setting rotating wall velocity for " << bcName << endl;
-                if (U.boundaryField()[patchI].size() > 0)
-                {
-                    forAll(U.boundaryField()[patchI], faceI)
-                    {
-                        vector patchCf = mesh.Cf().boundaryField()[patchI][faceI];
-                        U.boundaryFieldRef()[patchI][faceI] =
-                            -omega * ((patchCf - origin) ^ (axis / mag(axis)));
-                    }
-                }
-            }
-        }
-    }
-}
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

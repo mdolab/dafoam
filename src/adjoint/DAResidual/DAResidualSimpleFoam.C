@@ -89,8 +89,6 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
         divUScheme = "div(pc)";
     }
 
-    DAUtility::setRotingWallVelocity(MRF_, mesh_);
- 
     if (hasFvSource_)
     {
         DAFvSource& daFvSource(const_cast<DAFvSource&>(

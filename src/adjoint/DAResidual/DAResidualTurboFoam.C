@@ -116,8 +116,6 @@ void DAResidualTurboFoam::calcResiduals(const dictionary& options)
     // ******** U Residuals **********
     // copied and modified from UEqn.H
 
-    DAUtility::setRotingWallVelocity(MRF_, mesh_);
-
     tmp<fvVectorMatrix> tUEqn(
         fvm::div(phi_, U_, divUScheme)
         + MRF_.DDt(rho_, U_)

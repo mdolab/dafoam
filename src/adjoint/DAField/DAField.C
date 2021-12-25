@@ -568,7 +568,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                 "variable": "p", 
                 "value": [101325.0],
             },
-            useWallFunction True
+            "useWallFunction": True,
+            "MRF": 1000.0
         }
     */
 
@@ -588,6 +589,15 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
         {
             setTurbWallBCs = 1;
             useWallFunction = bcDict.getLabel("useWallFunction");
+            continue;
+        }
+        else if (bcKey == "MRF")
+        {
+            // change the rotation speed in MRF
+            scalar omegaNew = bcDict.getScalar("MRF");
+            const IOMRFZoneListDF& MRF = db.lookupObject<IOMRFZoneListDF>("MRFProperties");
+            scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
+            omega = omegaNew;
             continue;
         }
 

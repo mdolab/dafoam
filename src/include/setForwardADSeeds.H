@@ -236,119 +236,136 @@ if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
     {
         scalar BCForwardAD = -1e16;
 
-        // get info from dvSubDict. This needs to be defined in the pyDAFoam
-        // name of the variable for changing the boundary condition
-        word varName = dvSubDict.getWord("variable");
-        // name of the boundary patch
-        wordList patches;
-        dvSubDict.readEntry<wordList>("patches", patches);
-        // the compoent of a vector variable, ignore when it is a scalar
-        label comp = dvSubDict.getLabel("comp");
-
-        // Now get the BC value
-        forAll(patches, idxI)
+        if (designVarName == "MRF")
         {
-            word patchName = patches[idxI];
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
-            {
-                volVectorField& state(const_cast<volVectorField&>(
-                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        BCForwardAD = state.boundaryFieldRef()[patchI][0][comp];
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<vector>& inletOutletPatch =
-                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                        BCForwardAD = inletOutletPatch.refValue()[0][comp];
-                    }
-                }
-            }
-            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
-            {
-                volScalarField& state(const_cast<volScalarField&>(
-                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        BCForwardAD = state.boundaryFieldRef()[patchI][0];
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<scalar>& inletOutletPatch =
-                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                        BCForwardAD = inletOutletPatch.refValue()[0];
-                    }
-                }
-            }
+            const IOMRFZoneListDF& MRF = meshPtr_->thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties");
+
+            // first, we get the current value of omega and assign it to BC
+            scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
+            BCForwardAD = omega;
+
+            Info << "Setting the seed for BCForwardAD: " << BCForwardAD << endl;
+            BCForwardAD.setGradient(1.0);
+            // now set BC to omega
+            omega = BCForwardAD;
         }
-        // need to reduce the BC value across all processors, this is because some of
-        // the processors might not own the prescribed patches so their BC value will be still -1e16, but
-        // when calling the following reduce function, they will get the correct BC from other processors
-        reduce(BCForwardAD, maxOp<scalar>());
-
-        Info << "Setting the seed for BCForwardAD: " << BCForwardAD << endl;
-        BCForwardAD.setGradient(1.0);
-
-        // ******* now set BC ******
-        forAll(patches, idxI)
+        else
         {
-            word patchName = patches[idxI];
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+
+            // get info from dvSubDict. This needs to be defined in the pyDAFoam
+            // name of the variable for changing the boundary condition
+            word varName = dvSubDict.getWord("variable");
+            // name of the boundary patch
+            wordList patches;
+            dvSubDict.readEntry<wordList>("patches", patches);
+            // the compoent of a vector variable, ignore when it is a scalar
+            label comp = dvSubDict.getLabel("comp");
+
+            // Now get the BC value
+            forAll(patches, idxI)
             {
-                volVectorField& state(const_cast<volVectorField&>(
-                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+                word patchName = patches[idxI];
+                label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+                if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
                 {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                    volVectorField& state(const_cast<volVectorField&>(
+                        meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+                    // for decomposed domain, don't set BC if the patch is empty
+                    if (meshPtr_->boundaryMesh()[patchI].size() > 0)
                     {
-                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
                         {
-                            state.boundaryFieldRef()[patchI][faceI][comp] = BCForwardAD;
+                            BCForwardAD = state.boundaryFieldRef()[patchI][0][comp];
+                        }
+                        else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                                 || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                        {
+                            mixedFvPatchField<vector>& inletOutletPatch =
+                                refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                            BCForwardAD = inletOutletPatch.refValue()[0][comp];
                         }
                     }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                }
+                else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+                {
+                    volScalarField& state(const_cast<volScalarField&>(
+                        meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+                    // for decomposed domain, don't set BC if the patch is empty
+                    if (meshPtr_->boundaryMesh()[patchI].size() > 0)
                     {
-                        mixedFvPatchField<vector>& inletOutletPatch =
-                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                        vector val = inletOutletPatch.refValue()[0];
-                        val[comp] = BCForwardAD;
-                        inletOutletPatch.refValue() = val;
+                        if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                        {
+                            BCForwardAD = state.boundaryFieldRef()[patchI][0];
+                        }
+                        else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                                 || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                        {
+                            mixedFvPatchField<scalar>& inletOutletPatch =
+                                refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                            BCForwardAD = inletOutletPatch.refValue()[0];
+                        }
                     }
                 }
             }
-            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+            // need to reduce the BC value across all processors, this is because some of
+            // the processors might not own the prescribed patches so their BC value will be still -1e16, but
+            // when calling the following reduce function, they will get the correct BC from other processors
+            reduce(BCForwardAD, maxOp<scalar>());
+
+            Info << "Setting the seed for BCForwardAD: " << BCForwardAD << endl;
+            BCForwardAD.setGradient(1.0);
+
+            // ******* now set BC ******
+            forAll(patches, idxI)
             {
-                volScalarField& state(const_cast<volScalarField&>(
-                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+                word patchName = patches[idxI];
+                label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+                if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
                 {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                    volVectorField& state(const_cast<volVectorField&>(
+                        meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+                    // for decomposed domain, don't set BC if the patch is empty
+                    if (meshPtr_->boundaryMesh()[patchI].size() > 0)
                     {
-                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
                         {
-                            state.boundaryFieldRef()[patchI][faceI] = BCForwardAD;
+                            forAll(state.boundaryFieldRef()[patchI], faceI)
+                            {
+                                state.boundaryFieldRef()[patchI][faceI][comp] = BCForwardAD;
+                            }
+                        }
+                        else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                                 || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                        {
+                            mixedFvPatchField<vector>& inletOutletPatch =
+                                refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                            vector val = inletOutletPatch.refValue()[0];
+                            val[comp] = BCForwardAD;
+                            inletOutletPatch.refValue() = val;
                         }
                     }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                }
+                else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+                {
+                    volScalarField& state(const_cast<volScalarField&>(
+                        meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+                    // for decomposed domain, don't set BC if the patch is empty
+                    if (meshPtr_->boundaryMesh()[patchI].size() > 0)
                     {
-                        mixedFvPatchField<scalar>& inletOutletPatch =
-                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                        inletOutletPatch.refValue() = BCForwardAD;
+                        if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                        {
+                            forAll(state.boundaryFieldRef()[patchI], faceI)
+                            {
+                                state.boundaryFieldRef()[patchI][faceI] = BCForwardAD;
+                            }
+                        }
+                        else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                                 || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                        {
+                            mixedFvPatchField<scalar>& inletOutletPatch =
+                                refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                            inletOutletPatch.refValue() = BCForwardAD;
+                        }
                     }
                 }
             }

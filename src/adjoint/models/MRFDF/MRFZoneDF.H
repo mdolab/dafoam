@@ -175,23 +175,6 @@ public:
         return omega_;
     }
 
-    //- Return the reference of rotation origin
-    const vector& getOriginRef() const
-    {
-        return origin_;
-    }
-
-    //- Return the reference of rotation axis
-    const vector& getAxisRef() const
-    {
-        return axis_;
-    }
-
-    const wordRes& getExcludedPatchNamesRef() const
-    {
-        return excludedPatchNames_;
-    }
-
     //- Update the mesh corresponding to given map
     void updateMesh(const mapPolyMesh& mpm)
     {
