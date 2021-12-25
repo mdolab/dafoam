@@ -32,6 +32,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void solveLinearEqn(PetscKSP, PetscVec, PetscVec)
         void calcdRdBC(PetscVec, PetscVec, char *, PetscMat)
         void calcdFdBC(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdFdBCAD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdAOA(PetscVec, PetscVec, char *, PetscMat)
         void calcdFdAOA(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdFFD(PetscVec, PetscVec, char *, PetscMat)
@@ -164,6 +165,9 @@ cdef class pyDASolvers:
     
     def calcdFdBC(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdBC):
         self._thisptr.calcdFdBC(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdBC.vec)
+    
+    def calcdFdBCAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdBC):
+        self._thisptr.calcdFdBCAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdBC.vec)
 
     def calcdRdAOA(self, Vec xvVec, Vec wVec, designVarName, Mat dRdAOA):
         self._thisptr.calcdRdAOA(xvVec.vec, wVec.vec, designVarName, dRdAOA.mat)

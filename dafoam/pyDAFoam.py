@@ -2038,7 +2038,9 @@ class PYDAFOAM(object):
                             dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
                             dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                             dFdBC.setFromOptions()
-                            dFdBC.zeroEntries()  # dFdBC assumes to be zero
+                            self.solverAD.calcdFdBCAD(
+                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
+                            )
                             # Calculate dRBCT^Psi
                             totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                             totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
