@@ -1746,7 +1746,7 @@ void DASolver::calcdFdBCAD(
     const word designVarName,
     Vec dFdBC)
 {
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#ifdef CODI_AD_REVERSE
     /*
     Description:
         This function computes partials derivatives dFdBC
