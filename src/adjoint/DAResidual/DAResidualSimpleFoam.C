@@ -35,7 +35,8 @@ DAResidualSimpleFoam::DAResidualSimpleFoam(
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
       // create simpleControl
       simple_(const_cast<fvMesh&>(mesh)),
-      MRF_(mesh)
+      MRF_(const_cast<IOMRFZoneListDF&>(
+          mesh_.thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties")))
 {
     // initialize fvSource
     const dictionary& allOptions = daOption.getAllOptions();

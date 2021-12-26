@@ -230,6 +230,17 @@ public:
         DASolverPtr_->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
     }
 
+    /// compute dFdBCAD
+    void calcdFdBCAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdBC)
+    {
+        DASolverPtr_->calcdFdBCAD(xvVec, wVec, objFuncName, designVarName, dFdBC);
+    }
+
     /// compute dRdBC^T*Psi
     void calcdRdBCTPsiAD(
         const Vec xvVec,

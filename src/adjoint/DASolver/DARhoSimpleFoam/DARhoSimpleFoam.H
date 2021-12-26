@@ -100,7 +100,7 @@ protected:
     dimensionedScalar initialMass_;
 
     /// MRF pointer
-    autoPtr<IOMRFZoneList> MRFPtr_;
+    autoPtr<IOMRFZoneListDF> MRFPtr_;
 
     /// continuity error
     scalar cumulativeContErr_ = 0.0;

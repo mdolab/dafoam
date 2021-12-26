@@ -88,7 +88,7 @@ protected:
     autoPtr<volVectorField> fvSourcePtr_;
 
     /// MRF pointer
-    autoPtr<IOMRFZoneList> MRFPtr_;
+    autoPtr<IOMRFZoneListDF> MRFPtr_;
 
     /// whether to have fvSource term
     label hasFvSource_ = 0;
