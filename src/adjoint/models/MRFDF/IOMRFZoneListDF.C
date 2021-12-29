@@ -74,15 +74,8 @@ Foam::IOMRFZoneListDF::IOMRFZoneListDF(
 
 bool Foam::IOMRFZoneListDF::read()
 {
-    if (regIOobject::read())
-    {
-        MRFZoneListDF::read(*this);
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    // do nothing
+    return true;
 }
 
 // ************************************************************************* //
