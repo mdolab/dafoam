@@ -159,6 +159,39 @@ void Foam::MRFZoneListDF::makeRelative(surfaceScalarField& phi) const
     }
 }
 
+Foam::tmp<Foam::surfaceScalarField> Foam::MRFZoneListDF::relative(
+    const tmp<surfaceScalarField>& tphi) const
+{
+    // this function should not be called, if yes, return an error
+    FatalErrorInFunction
+        << "This is unexpected!"
+        << exit(FatalError);
+    return tmp<surfaceScalarField>(tphi, true);
+}
+
+Foam::tmp<Foam::FieldField<Foam::fvsPatchField, Foam::scalar>>
+Foam::MRFZoneListDF::relative(
+    const tmp<FieldField<fvsPatchField, scalar>>& tphi) const
+{
+    // this function should not be called, if yes, return an error
+    FatalErrorInFunction
+        << "This is unexpected!"
+        << exit(FatalError);
+    return tmp<FieldField<fvsPatchField, scalar>>(tphi, true);
+}
+
+Foam::tmp<Foam::Field<Foam::scalar>>
+Foam::MRFZoneListDF::relative(
+    const tmp<Field<scalar>>& tphi,
+    const label patchi) const
+{
+    // this function should not be called, if yes, return an error
+    FatalErrorInFunction
+        << "This is unexpected!"
+        << exit(FatalError);
+    return tmp<Field<scalar>>(tphi, true);
+}
+
 void Foam::MRFZoneListDF::makeRelative(
     const surfaceScalarField& rho,
     surfaceScalarField& phi) const

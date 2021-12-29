@@ -109,4 +109,40 @@ void Foam::MRFZoneDF::makeRelativeRhoFlux(
     }
 }
 
+template<class RhoFieldType>
+void Foam::MRFZoneDF::makeRelativeRhoFlux(
+    const RhoFieldType& rho,
+    Field<scalar>& phi,
+    const label patchi) const
+{
+    if (!active_)
+    {
+        return;
+    }
+
+    const surfaceVectorField& Cf = mesh_.Cf();
+    const surfaceVectorField& Sf = mesh_.Sf();
+
+    const vector Omega = omega_ * axis_;
+
+    // Included patches
+    forAll(includedFaces_[patchi], i)
+    {
+        label patchFacei = includedFaces_[patchi][i];
+
+        phi[patchFacei] = 0.0;
+    }
+
+    // Excluded patches
+    forAll(excludedFaces_[patchi], i)
+    {
+        label patchFacei = excludedFaces_[patchi][i];
+
+        phi[patchFacei] -=
+            rho[patchFacei]
+                * (Omega ^ (Cf.boundaryField()[patchi][patchFacei] - origin_))
+            & Sf.boundaryField()[patchi][patchFacei];
+    }
+}
+
 // ************************************************************************* //

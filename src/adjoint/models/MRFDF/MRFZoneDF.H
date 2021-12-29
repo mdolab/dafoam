@@ -126,12 +126,6 @@ class MRFZoneDF
         Field<scalar>& phi,
         const label patchi) const;
 
-    //- Make the given relative mass/vol flux absolute within the MRF region
-    template<class RhoFieldType>
-    void makeAbsoluteRhoFlux(
-        const RhoFieldType& rho,
-        surfaceScalarField& phi) const;
-
     //- No copy construct
     MRFZoneDF(const MRFZoneDF&) = delete;
 
