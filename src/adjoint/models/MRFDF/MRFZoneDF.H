@@ -126,12 +126,6 @@ class MRFZoneDF
         Field<scalar>& phi,
         const label patchi) const;
 
-    //- Make the given relative mass/vol flux absolute within the MRF region
-    template<class RhoFieldType>
-    void makeAbsoluteRhoFlux(
-        const RhoFieldType& rho,
-        surfaceScalarField& phi) const;
-
     //- No copy construct
     MRFZoneDF(const MRFZoneDF&) = delete;
 
@@ -187,19 +181,6 @@ public:
         const volVectorField& U,
         volVectorField& ddtU) const;
 
-    //- Add the Coriolis force contribution to the momentum equation
-    //  Adds to the lhs of the equation; optionally add to rhs
-    void addCoriolis(
-        fvVectorMatrix& UEqn,
-        const bool rhs = false) const;
-
-    //- Add the Coriolis force contribution to the momentum equation
-    //  Adds to the lhs of the equation; optionally add to rhs
-    void addCoriolis(
-        const volScalarField& rho,
-        fvVectorMatrix& UEqn,
-        const bool rhs = false) const;
-
     //- Make the given absolute velocity relative within the MRF region
     void makeRelative(volVectorField& U) const;
 
@@ -219,23 +200,8 @@ public:
         const surfaceScalarField& rho,
         surfaceScalarField& phi) const;
 
-    //- Make the given relative velocity absolute within the MRF region
-    void makeAbsolute(volVectorField& U) const;
-
-    //- Make the given relative flux absolute within the MRF region
-    void makeAbsolute(surfaceScalarField& phi) const;
-
-    //- Make the given relative mass-flux absolute within the MRF region
-    void makeAbsolute(
-        const surfaceScalarField& rho,
-        surfaceScalarField& phi) const;
-
     //- Correct the boundary velocity for the rotation of the MRF region
     void correctBoundaryVelocity(volVectorField& U) const;
-
-    //- Zero the MRF region of the given field
-    template<class Type>
-    void zero(GeometricField<Type, fvsPatchField, surfaceMesh>& phi) const;
 
     //- Update MRFZoneDF faces if the mesh topology changes
     void update();
