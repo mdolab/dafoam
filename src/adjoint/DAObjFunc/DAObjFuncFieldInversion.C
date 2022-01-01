@@ -405,6 +405,61 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncValue = weight_ * objFuncValue;
             }
         }
+        else if (stateType_ == "surfaceFrictionCustom")
+        {
+            // get surface friction "fields"
+            volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
+            const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
+
+            // ingredients for surface friction computation
+            const volVectorField& U = db.lookupObject<volVectorField>("U");
+            tmp<volTensorField> gradU = fvc::grad(U);
+            const volTensorField::Boundary& bGradU = gradU().boundaryField();
+
+            const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
+            const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
+
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+                    scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
+
+                    if (bSurfaceFrictionRef < 1e16)
+                    {
+                        // normal vector at wall, use -ve sign to ensure vector pointing into the domain
+                        vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
+
+                        // tangent vector, computed from normal: tangent = p x normal; where p is a unit vector perpidicular to the plane
+                        // NOTE: make this more general
+                        vector tangent(normal.y(), -normal.x(), 0.0);
+
+                        // velocity gradient at wall
+                        tensor fGradU = bGradU[patchI][faceI];
+
+                        tensor fGradUT = fGradU.T();
+                        scalar bSurfaceFriction = scale_ * (tangent & (fGradUT & normal));
+
+                        surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
+
+                        // calculate the objective function
+                        objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
+                    }
+
+                }
+
+            }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+                
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
+        }
     }
 
     else if (varTypeFieldInversion_ == "profile")
