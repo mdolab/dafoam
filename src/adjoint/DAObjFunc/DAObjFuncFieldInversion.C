@@ -427,8 +427,6 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 {
                     scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
 
-                    if (bSurfaceFrictionRef < 1e16)
-                    {
                         // normal vector at wall, use -ve sign to ensure vector pointing into the domain
                         vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
 
@@ -444,6 +442,8 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
                         surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
 
+                    if (bSurfaceFrictionRef < 1e16)
+                    {
                         // calculate the objective function
                         objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
                     }
