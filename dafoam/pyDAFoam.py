@@ -3676,11 +3676,11 @@ class PYDAFOAM(object):
                 for pPatch in decomDict["preservePatches"]:
                     f.write("%s " % pPatch)
                 f.write(");\n")
-            if decomDict["singleProcessorFaceSets"][0] == "None":
+            if decomDict["singleProcessorFaceSets"][0] != "None":
                 f.write("singleProcessorFaceSets  (")
                 for pPatch in decomDict["singleProcessorFaceSets"]:
                     f.write(" (%s -1) " % pPatch)
-                f.write("); } }\n")
+                f.write(");\n")
             f.write("\n")
             f.write("// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n")
 
