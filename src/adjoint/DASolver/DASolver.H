@@ -324,7 +324,7 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdBCTPsi);
-    
+
     /// compute dFdBCAD
     void calcdFdBCAD(
         const Vec xvVec,
@@ -652,6 +652,20 @@ public:
 
     /// compute the forces of the desired fluid-structure-interation patches
     void getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ, List<label>& pointList, List<word>& patchList);
+
+    /// calculate the radial profile of the force on the propeller surface
+    void calcForceRadialProfile(
+        scalarList& xForce,
+        scalarList& yForce,
+        scalarList& zForce);
+    
+    /// calculate the fvSource based on the radial force profile
+    void calcFvSource(
+        const scalarList& xForce,
+        const scalarList& yForce,
+        const scalarList& zForce,
+        volVectorField& fvSource
+    );
 
     /// print all DAOption
     void printAllOptions()

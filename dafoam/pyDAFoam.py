@@ -315,6 +315,9 @@ class DAOPTION(object):
         ## an FSI case to be used throughout the simulation.
         self.fsi = {"pRef": 0.0}
 
+        ## Aero-propulsive options
+        self.aeroPro = {}
+
         ## An option to run the primal only; no adjoint or optimization will be run
         self.primalOnly = False
 
@@ -565,6 +568,7 @@ class DAOPTION(object):
             "method": "scotch",
             "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001},
             "preservePatches": ["None"],
+            "singleProcessorFaceSets": ["None"],
         }
 
         ## The ordering of state variable. Options are: state or cell. Most of the case, the state
@@ -3672,6 +3676,11 @@ class PYDAFOAM(object):
                 for pPatch in decomDict["preservePatches"]:
                     f.write("%s " % pPatch)
                 f.write(");\n")
+            if decomDict["singleProcessorFaceSets"][0] == "None":
+                f.write("singleProcessorFaceSets  (")
+                for pPatch in decomDict["singleProcessorFaceSets"]:
+                    f.write(" (%s -1) " % pPatch)
+                f.write("); } }\n")
             f.write("\n")
             f.write("// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n")
 

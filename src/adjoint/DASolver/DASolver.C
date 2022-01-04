@@ -624,6 +624,43 @@ void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar
     return;
 }
 
+void DASolver::calcForceRadialProfile(
+    scalarList& xForce,
+    scalarList& yForce,
+    scalarList& zForce)
+{
+    /*
+    Description:
+        Calculate the radial profile of forces on the propeller surface
+
+    Input:
+        State variables
+
+    Output:
+        xForce, the radial profile of force in the x direction
+
+    */
+}
+
+void DASolver::calcFvSource(
+    const scalarList& xForce,
+    const scalarList& yForce,
+    const scalarList& zForce,
+    volVectorField& fvSource)
+{
+    /*
+    Description:
+        Calculate the fvSource based on the radial force profile
+
+    Input:
+        xForce, yForce, zForce: The radial profile of force on the profile, calculated 
+        from calcForceRadialProfile
+
+    Output:
+        fvSource: a volVectorField variable that will be added to the momentum eqn
+    */
+}
+
 void DASolver::reduceStateResConLevel(
     const dictionary& maxResConLv4JacPCMat,
     HashTable<List<List<word>>>& stateResConInfo) const
