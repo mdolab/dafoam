@@ -51,6 +51,7 @@ aeroOptions = {
         "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
         "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},
         "useWallFunction": False,
+        "transport:nu": 1.5e-5
     },
     "fvSource": {
         "disk1": {
