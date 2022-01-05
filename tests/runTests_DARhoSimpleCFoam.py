@@ -53,6 +53,7 @@ aeroOptions = {
         "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
         "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},
         "useWallFunction": True,
+        "thermo:mu": 1.8e-5
     },
     "primalVarBounds": {
         "UMax": 1000.0,
