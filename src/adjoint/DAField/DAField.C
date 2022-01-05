@@ -609,7 +609,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
         else if (bcKey == "transport:nu")
         {
             // change the nu field
-            scalar nu = bcDict.getScalar("nu");
+            scalar nu = bcDict.getScalar("transport:nu");
             volScalarField& nuField = const_cast<volScalarField&>(
                 db.lookupObject<volScalarField>("nu"));
             forAll(nuField, cellI)
@@ -635,7 +635,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
         else if (bcKey == "thermo:mu")
         {
             // change the nu field
-            scalar mu = bcDict.getScalar("mu");
+            scalar mu = bcDict.getScalar("thermo:mu");
             volScalarField& muField = const_cast<volScalarField&>(
                 db.lookupObject<volScalarField>("thermo:mu"));
             forAll(muField, cellI)
