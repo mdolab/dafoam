@@ -2906,12 +2906,14 @@ void DASolver::updateOFField(const Vec wVec)
     Output:
         OpenFoam flow fields (internal and boundary)
     */
+
+    label printInfo = 0;
     if (daOptionPtr_->getOption<label>("debug"))
     {
         Info << "Updating the OpenFOAM field..." << endl;
+        printInfo = 1;
     }
-    //Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
-    daFieldPtr_->setPrimalBoundaryConditions(0);
+    this->setPrimalBoundaryConditions(printInfo);
     daFieldPtr_->stateVec2OFField(wVec);
     // We need to call correctBC multiple times to reproduce
     // the exact residual, this is needed for some boundary conditions
