@@ -835,6 +835,9 @@ class PYDAFOAM(object):
                 if dvType == "FFD":
                     self.calcFFD2XvSeedVec()
 
+        # update the primal boundary condition right before calling solvePrimal
+        self.setPrimalBoundaryConditions()
+
         # solve the primal to get new state variables
         self.solvePrimal()
 
@@ -3008,6 +3011,14 @@ class PYDAFOAM(object):
             nPts += len(bc["indicesRed"])
 
         return nPts, nCells
+
+    def setPrimalBoundaryConditions(self, printInfo=1, printInfoAD=0):
+        """
+        Assign the boundary condition defined in primalBC to the OF fields
+        """
+        self.solver.setPrimalBoundaryConditions(printInfo)
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.setPrimalBoundaryConditions(printInfoAD)
 
     def _computeBasicFamilyInfo(self):
         """
