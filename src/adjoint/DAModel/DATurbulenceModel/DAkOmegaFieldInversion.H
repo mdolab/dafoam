@@ -95,7 +95,8 @@ protected:
     /// reference field (e.g. velocity for DNS)
     volVectorField& varRefFieldInversion_; 
 
-
+    /// reference field for profile data
+    volScalarField profileRefFieldInversion_; 
 
 public:
     TypeName("kOmegaFieldInversion");
