@@ -94,7 +94,6 @@ kOmegaFieldInversionk<BasicTurbulenceModel>::kOmegaFieldInversionk(
           this->mesh_,
           dimensionedScalar("profileRefFieldInversion", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
-
           this->mesh_),
       y_(wallDist::New(this->mesh_).y())
 

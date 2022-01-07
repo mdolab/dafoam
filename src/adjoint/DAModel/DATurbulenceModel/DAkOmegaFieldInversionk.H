@@ -91,13 +91,13 @@ protected:
 
     /// a reference beta field
     volScalarField betaRefFieldInversion_; 
-
-    /// reference field (e.g. velocity for DNS)
-    volVectorField& varRefFieldInversion_; 
     
     /// reference field for profile data
     volScalarField profileRefFieldInversion_; 
 
+    /// reference field (e.g. velocity for DNS)
+    volVectorField& varRefFieldInversion_; 
+    
 public:
     TypeName("kOmegaFieldInversionk");
     // Constructors
