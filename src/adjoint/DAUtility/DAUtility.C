@@ -114,25 +114,26 @@ void DAUtility::pyDict2OFDict(
         //PyObject_Print(value1,stdout,0);Info<<endl;
         // get the type of value1
         const char* valueType = Py_TYPE(value1)->tp_name;
+        bool overwrite = true;
         if (word(valueType) == "str")
         {
             const char* valSet = PyUnicode_AsUTF8(value1);
-            ofDict.add(keyUTF8, word(valSet));
+            ofDict.add(keyUTF8, word(valSet), overwrite);
         }
         else if (word(valueType) == "int")
         {
             long valSet = PyLong_AsLong(value1);
-            ofDict.add(keyUTF8, label(valSet));
+            ofDict.add(keyUTF8, label(valSet), overwrite);
         }
         else if (word(valueType) == "bool")
         {
             label valSet = PyObject_IsTrue(value1);
-            ofDict.add(keyUTF8, valSet);
+            ofDict.add(keyUTF8, valSet, overwrite);
         }
         else if (word(valueType) == "float")
         {
             scalar valSet = PyFloat_AS_DOUBLE(value1);
-            ofDict.add(keyUTF8, valSet);
+            ofDict.add(keyUTF8, valSet, overwrite);
         }
         else if (word(valueType) == "list")
         {
@@ -190,19 +191,19 @@ void DAUtility::pyDict2OFDict(
             // add the list to the ofDict dict
             if (tmpTypeWord == "str")
             {
-                ofDict.add(keyUTF8, valSetWord);
+                ofDict.add(keyUTF8, valSetWord, overwrite);
             }
             else if (tmpTypeWord == "int")
             {
-                ofDict.add(keyUTF8, valSetLabel);
+                ofDict.add(keyUTF8, valSetLabel, overwrite);
             }
             else if (tmpTypeWord == "float")
             {
-                ofDict.add(keyUTF8, valSetScalar);
+                ofDict.add(keyUTF8, valSetScalar, overwrite);
             }
             else if (tmpTypeWord == "bool")
             {
-                ofDict.add(keyUTF8, valSetLabel);
+                ofDict.add(keyUTF8, valSetLabel, overwrite);
             }
         }
         else if (word(valueType) == "dict")
@@ -210,7 +211,7 @@ void DAUtility::pyDict2OFDict(
             // if its a subdict, recursely call this function
             dictionary subDict;
             DAUtility::pyDict2OFDict(value1, subDict);
-            ofDict.add(keyUTF8, subDict);
+            ofDict.add(keyUTF8, subDict, overwrite);
         }
         else
         {
