@@ -87,6 +87,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcPrimalResidualStatistics(char *)
         double getForwardADDerivVal(char *)
         void calcResidualVec(PetscVec)
+        void setPrimalBoundaryConditions(int)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -327,3 +328,6 @@ cdef class pyDASolvers:
     
     def calcResidualVec(self, Vec resVec):
         self._thisptr.calcResidualVec(resVec.vec)
+    
+    def setPrimalBoundaryConditions(self, printInfo):
+        self._thisptr.setPrimalBoundaryConditions(printInfo)

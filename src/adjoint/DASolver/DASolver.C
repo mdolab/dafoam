@@ -266,7 +266,7 @@ void DASolver::setDAObjFuncList()
 
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
 
-    dictionary objFuncDict = allOptions.subDict("objFunc");
+    const dictionary& objFuncDict = allOptions.subDict("objFunc");
 
     // loop over all objFuncs and parts and calc the number of
     // DAObjFunc instances we need
@@ -274,7 +274,7 @@ void DASolver::setDAObjFuncList()
     forAll(objFuncDict.toc(), idxI)
     {
         word objFunI = objFuncDict.toc()[idxI];
-        dictionary objFuncSubDict = objFuncDict.subDict(objFunI);
+        const dictionary& objFuncSubDict = objFuncDict.subDict(objFunI);
         forAll(objFuncSubDict.toc(), idxJ)
         {
             nObjFuncInstances++;
@@ -289,12 +289,12 @@ void DASolver::setDAObjFuncList()
     forAll(objFuncDict.toc(), idxI)
     {
         word objFunI = objFuncDict.toc()[idxI];
-        dictionary objFuncSubDict = objFuncDict.subDict(objFunI);
+        const dictionary& objFuncSubDict = objFuncDict.subDict(objFunI);
         forAll(objFuncSubDict.toc(), idxJ)
         {
 
             word objPart = objFuncSubDict.toc()[idxJ];
-            dictionary objFuncSubDictPart = objFuncSubDict.subDict(objPart);
+            const dictionary& objFuncSubDictPart = objFuncSubDict.subDict(objPart);
 
             fvMesh& mesh = meshPtr_();
 
@@ -2943,12 +2943,14 @@ void DASolver::updateOFField(const Vec wVec)
     Output:
         OpenFoam flow fields (internal and boundary)
     */
+
+    label printInfo = 0;
     if (daOptionPtr_->getOption<label>("debug"))
     {
         Info << "Updating the OpenFOAM field..." << endl;
+        printInfo = 1;
     }
-    //Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
-    daFieldPtr_->setPrimalBoundaryConditions(0);
+    this->setPrimalBoundaryConditions(printInfo);
     daFieldPtr_->stateVec2OFField(wVec);
     // We need to call correctBC multiple times to reproduce
     // the exact residual, this is needed for some boundary conditions
@@ -5440,6 +5442,27 @@ scalar DASolver::getTimeInstanceObjFunc(
     */
 
     return objFuncsAllInstances_[instanceI].getScalar(objFuncName);
+}
+
+void DASolver::setPrimalBoundaryConditions(const label printInfo)
+{
+    /*
+    Description:
+        Update the state boundary conditions based on the ones defined in primalBC
+    */
+
+    // first check if we need to change the boundary conditions based on
+    // the primalBC dict in DAOption. NOTE: this will overwrite whatever
+    // boundary conditions defined in the "0" folder
+    dictionary bcDict = daOptionPtr_->getAllOptions().subDict("primalBC");
+    if (bcDict.toc().size() != 0)
+    {
+        if (printInfo)
+        {
+            Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
+        }
+        daFieldPtr_->setPrimalBoundaryConditions(printInfo);
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

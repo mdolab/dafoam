@@ -784,6 +784,9 @@ public:
         return forwardADDerivVal_[objFuncName];
     }
 
+    /// update the primal state boundary condition based on the primalBC dict
+    void setPrimalBoundaryConditions(const label printInfo = 1);
+
     /// calculate the residual and assign it to the resVec vector
     void calcResidualVec(Vec resVec);
 

@@ -611,6 +611,11 @@ public:
     {
         DASolverPtr_->calcResidualVec(resVec);
     }
+
+    void setPrimalBoundaryConditions(const label printInfo = 1)
+    {
+        DASolverPtr_->setPrimalBoundaryConditions(printInfo);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

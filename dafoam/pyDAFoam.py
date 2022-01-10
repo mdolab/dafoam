@@ -762,6 +762,9 @@ class PYDAFOAM(object):
         # preconditioner matrix
         self.dRdWTPC = None
 
+        # a KSP object which may be used outside of the pyDAFoam class
+        self.ksp = None
+
         # the surface geometry/mesh displacement computed by the structural solver
         # this is used in FSI. Here self.surfGeoDisp is a N by 3 numpy array
         # that stores the displacement vector for each surface mesh point. The order of
@@ -838,6 +841,9 @@ class PYDAFOAM(object):
                 dvType = self.getOption("designVar")[dvName]["designVarType"]
                 if dvType == "FFD":
                     self.calcFFD2XvSeedVec()
+
+        # update the primal boundary condition right before calling solvePrimal
+        self.setPrimalBoundaryConditions()
 
         # solve the primal to get new state variables
         self.solvePrimal()
@@ -2531,7 +2537,7 @@ class PYDAFOAM(object):
                 for objFuncPart in objFuncDict[objFuncNameNeeded]:
                     if objFuncDict[objFuncNameNeeded][objFuncPart]["type"] == "force":
                         if objFuncDict[objFuncNameNeeded][objFuncPart]["directionMode"] == neededMode:
-                            val = self.objFuncValuePrevIter[objFuncNameNeeded]
+                            val = self.solver.getObjFuncValue(objFuncNameNeeded.encode())
                             if neededMode == "parallelToFlow":
                                 dFdAOA[0] = -val * np.pi / 180.0
                             elif neededMode == "normalToFlow":
@@ -3012,6 +3018,14 @@ class PYDAFOAM(object):
             nPts += len(bc["indicesRed"])
 
         return nPts, nCells
+
+    def setPrimalBoundaryConditions(self, printInfo=1, printInfoAD=0):
+        """
+        Assign the boundary condition defined in primalBC to the OF fields
+        """
+        self.solver.setPrimalBoundaryConditions(printInfo)
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.setPrimalBoundaryConditions(printInfoAD)
 
     def _computeBasicFamilyInfo(self):
         """
