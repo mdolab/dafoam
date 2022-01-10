@@ -266,7 +266,7 @@ void DASolver::setDAObjFuncList()
 
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
 
-    dictionary objFuncDict = allOptions.subDict("objFunc");
+    const dictionary& objFuncDict = allOptions.subDict("objFunc");
 
     // loop over all objFuncs and parts and calc the number of
     // DAObjFunc instances we need
@@ -274,7 +274,7 @@ void DASolver::setDAObjFuncList()
     forAll(objFuncDict.toc(), idxI)
     {
         word objFunI = objFuncDict.toc()[idxI];
-        dictionary objFuncSubDict = objFuncDict.subDict(objFunI);
+        const dictionary& objFuncSubDict = objFuncDict.subDict(objFunI);
         forAll(objFuncSubDict.toc(), idxJ)
         {
             nObjFuncInstances++;
@@ -289,12 +289,12 @@ void DASolver::setDAObjFuncList()
     forAll(objFuncDict.toc(), idxI)
     {
         word objFunI = objFuncDict.toc()[idxI];
-        dictionary objFuncSubDict = objFuncDict.subDict(objFunI);
+        const dictionary& objFuncSubDict = objFuncDict.subDict(objFunI);
         forAll(objFuncSubDict.toc(), idxJ)
         {
 
             word objPart = objFuncSubDict.toc()[idxJ];
-            dictionary objFuncSubDictPart = objFuncSubDict.subDict(objPart);
+            const dictionary& objFuncSubDictPart = objFuncSubDict.subDict(objPart);
 
             fvMesh& mesh = meshPtr_();
 
