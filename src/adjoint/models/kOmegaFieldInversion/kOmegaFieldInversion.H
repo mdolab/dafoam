@@ -57,6 +57,13 @@ protected:
 
     volScalarField profileRefFieldInversion_; 
 
+    volScalarField surfaceFriction_;
+
+    volScalarField surfaceFrictionRef_; 
+
+    volScalarField surfacePressureRef_; 
+
+
     //- Wall distance
     //  Note: different to wall distance in parent RASModel
     //  which is for near-wall cells only
