@@ -15,4 +15,4 @@ const volScalarField& psi = thermo.psi();
 const dictionary& allOptions = daOptionPtr_->getAllOptions();
 volVectorField& fvSource = fvSourcePtr_();
 volScalarField& fvSourceEnergy = fvSourceEnergyPtr_();
-IOMRFZoneList& MRF = MRFPtr_();
+IOMRFZoneListDF& MRF = MRFPtr_();

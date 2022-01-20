@@ -3,6 +3,28 @@
     DAFoam  : Discrete Adjoint with OpenFOAM
     Version : v2
 
+    This class is modified from OpenFOAM's source code
+    applications/solvers/incompressible/simpleFoam
+
+    OpenFOAM: The Open Source CFD Toolbox
+
+    Copyright (C): 2011-2016 OpenFOAM Foundation
+
+    OpenFOAM License:
+
+        OpenFOAM is free software: you can redistribute it and/or modify it
+        under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+    
+        OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+        ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+        FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+        for more details.
+    
+        You should have received a copy of the GNU General Public License
+        along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
 \*---------------------------------------------------------------------------*/
 
 #include "DASimpleTFoam.H"
@@ -76,16 +98,6 @@ label DASimpleTFoam::solvePrimal(
 
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
-
-    // first check if we need to change the boundary conditions based on
-    // the primalBC dict in DAOption. NOTE: this will overwrite whatever
-    // boundary conditions defined in the "0" folder
-    dictionary bcDict = daOptionPtr_->getAllOptions().subDict("primalBC");
-    if (bcDict.toc().size() != 0)
-    {
-        Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
-        daFieldPtr_->setPrimalBoundaryConditions();
-    }
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();

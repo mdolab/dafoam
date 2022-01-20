@@ -58,8 +58,6 @@ void DAOption::updateDAOption(PyObject* pyOptions)
         allOptions_: the OpenFOAM dictionary used in DAOption
     */
 
-    // clear up the existing allOptions_
-    allOptions_.clear();
     // assign allOptions_ based on pyOptions
     DAUtility::pyDict2OFDict(pyOptions, allOptions_);
 }

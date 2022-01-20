@@ -34,6 +34,7 @@
 #include "DAPartDeriv.H"
 #include "DALinearEqn.H"
 #include "volPointInterpolation.H"
+#include "IOMRFZoneListDF.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -158,9 +159,6 @@ protected:
     void reduceStateResConLevel(
         const dictionary& maxResConLv4JacPCMat,
         HashTable<List<List<word>>>& stateResConInfo) const;
-
-    /// set velocity boundary condition for rotating walls
-    void setRotingWallVelocity();
 
     /// write associated fields such as relative velocity
     void writeAssociatedFields();
@@ -326,6 +324,14 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdBCTPsi);
+    
+    /// compute dFdBCAD
+    void calcdFdBCAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdBC);
 
     /// compute dRdAOA
     void calcdRdAOA(
@@ -763,6 +769,9 @@ public:
     {
         return forwardADDerivVal_[objFuncName];
     }
+
+    /// update the primal state boundary condition based on the primalBC dict
+    void setPrimalBoundaryConditions(const label printInfo = 1);
 
     /// calculate the residual and assign it to the resVec vector
     void calcResidualVec(Vec resVec);

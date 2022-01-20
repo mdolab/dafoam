@@ -15,7 +15,6 @@
 #include "addToRunTimeSelectionTable.H"
 #include "simpleControl.H"
 #include "adjustPhi.H"
-#include "IOMRFZoneList.H"
 #include "constrainPressure.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -59,7 +58,7 @@ protected:
     simpleControl simple_;
 
     /// Multiple Reference Frame 
-    IOMRFZoneList MRF_;
+    IOMRFZoneListDF& MRF_;
 
     /// whether to have fvSource term
     label hasFvSource_ = 0;

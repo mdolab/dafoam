@@ -78,16 +78,6 @@ label DATurboFoam::solvePrimal(
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
-    // first check if we need to change the boundary conditions based on
-    // the primalBC dict in DAOption. NOTE: this will overwrite whatever
-    // boundary conditions defined in the "0" folder
-    dictionary bcDict = daOptionPtr_->getAllOptions().subDict("primalBC");
-    if (bcDict.toc().size() != 0)
-    {
-        Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
-        daFieldPtr_->setPrimalBoundaryConditions();
-    }
-
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
 
@@ -104,9 +94,6 @@ label DATurboFoam::solvePrimal(
     {
         return 1;
     }
-
-    // set the rotating wall velocity after the mesh is updated (if MRF is active)
-    this->setRotingWallVelocity();
 
     // if the forwardModeAD is active, we need to set the seed here
 #include "setForwardADSeeds.H"
