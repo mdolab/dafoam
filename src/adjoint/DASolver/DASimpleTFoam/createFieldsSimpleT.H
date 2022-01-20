@@ -51,6 +51,20 @@ alphaPorosityPtr_.reset(
         dimensionedScalar("alphaPorosity", dimensionSet(0, 0, -1, 0, 0, 0, 0), pTraits<scalar>::zero),
         zeroGradientFvPatchField<scalar>::typeName));
 
+// actuator related stuff
+Info << "Creating source term. " << endl;
+fvSourcePtr_.reset(
+    new volVectorField(
+        IOobject(
+            "fvSource",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE),
+        mesh,
+        dimensionedVector("fvSource", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
+        zeroGradientFvPatchField<vector>::typeName));
+
 setRefCell(p, simple.dict(), pRefCell_, pRefValue_);
 mesh.setFluxRequired(p.name());
 
@@ -81,3 +95,6 @@ alphatPtr_.reset(
 
 turbulencePtr_.reset(
     incompressible::turbulenceModel::New(U, phi, laminarTransport));
+
+// create MRF
+MRFPtr_.reset(new IOMRFZoneListDF(mesh));
