@@ -81,6 +81,18 @@ protected:
     /// DATurbulenceModel pointer
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
 
+    /// DASource pointer
+    autoPtr<DAFvSource> daFvSourcePtr_;
+
+    /// fvSource term 
+    autoPtr<volVectorField> fvSourcePtr_;
+
+    /// MRF pointer
+    autoPtr<IOMRFZoneListDF> MRFPtr_;
+
+    /// whether to have fvSource term
+    label hasFvSource_ = 0;
+
     /// continuity error
     scalar cumulativeContErr_ = 0.0;
 
