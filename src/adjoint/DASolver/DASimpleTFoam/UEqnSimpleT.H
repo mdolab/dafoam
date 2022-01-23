@@ -1,9 +1,19 @@
 // Momentum predictor
 
+MRF.correctBoundaryVelocity(U);
+
+if (hasFvSource_)
+{
+    daFvSourcePtr_->calcFvSource(fvSource);
+}
+
 tmp<fvVectorMatrix> tUEqn(
     fvm::div(phi, U)
     + fvm::Sp(alphaPorosity, U)
-    + turbulencePtr_->divDevReff(U));
+    + MRF.DDt(U)
+    + turbulencePtr_->divDevReff(U)
+    - fvSource
+    - fvOptions(U));
 fvVectorMatrix& UEqn = tUEqn.ref();
 
 UEqn.relax();
