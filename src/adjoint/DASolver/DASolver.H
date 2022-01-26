@@ -660,7 +660,7 @@ public:
         scalarList& zForce);
     
     /// calculate the fvSource based on the radial force profile
-    void calcFvSource(
+    void calcFvSourceFromForceProfile(
         const scalarList& xForce,
         const scalarList& yForce,
         const scalarList& zForce,

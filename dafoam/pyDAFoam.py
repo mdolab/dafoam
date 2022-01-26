@@ -316,7 +316,7 @@ class DAOPTION(object):
         self.fsi = {"pRef": 0.0}
 
         ## Aero-propulsive options
-        self.aeroPro = {}
+        self.aeroPropulsive = {}
 
         ## An option to run the primal only; no adjoint or optimization will be run
         self.primalOnly = False

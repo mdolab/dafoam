@@ -632,17 +632,17 @@ void DASolver::calcForceRadialProfile(
     /*
     Description:
         Calculate the radial profile of forces on the propeller surface
+        We need to call this function from the propeller component
 
     Input:
         State variables
 
     Output:
         xForce, the radial profile of force in the x direction
-
     */
 }
 
-void DASolver::calcFvSource(
+void DASolver::calcFvSourceFromForceProfile(
     const scalarList& xForce,
     const scalarList& yForce,
     const scalarList& zForce,
@@ -651,6 +651,7 @@ void DASolver::calcFvSource(
     /*
     Description:
         Calculate the fvSource based on the radial force profile
+        We need to call this function from the wing component
 
     Input:
         xForce, yForce, zForce: The radial profile of force on the profile, calculated 
