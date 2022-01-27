@@ -60,6 +60,14 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
         forceDir_[2] = dir[2];
         objFuncDict_.readEntry<scalar>("aeroCoeffRef", aeroCoeffRef_);
     }
+    if (stateType_ == "wallShearStress")
+    {
+        scalarList dir;
+        objFuncDict_.readEntry<scalarList>("wssDir", dir);
+        wssDir_[0] = dir[0];
+        wssDir_[1] = dir[1];
+        wssDir_[2] = dir[2];
+    }
     if (stateType_ == "surfacePressure")
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
@@ -455,6 +463,62 @@ void DAObjFuncFieldInversion::calcObjFunc(
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
                 
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
+        }
+        else if (stateType_ == "wallShearStress")
+        {
+            // Based on the OpenFOAM wallShearStress utility.
+            // We use it both for wallShearStress data (only one component - i.e. not the full vector) 
+            // and surfaceFriction field inversion.
+            // Currently us the surfaceFriction/Ref fields with the models, will improve this in the future.
+            // Use the direction vector to decide which component of wallShearStress to use for Cf calculations.
+
+            volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
+            const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
+
+            // ingredients for the computation
+            tmp<volSymmTensorField> Reff = daTurb_.devRhoReff(); 
+            volSymmTensorField::Boundary bReff = Reff().boundaryField(); 
+            const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
+            const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
+
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+                        scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
+
+                        // normal vector at wall, use -ve sign to ensure vector pointing into the domain
+                        vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
+
+                        // wall shear stress
+                        vector wss = normal & bReff[patchI][faceI];
+
+                        // wallShearStress or surfaceFriction (use surfaceFriction label to match the fields)
+                        scalar bSurfaceFriction = scale_ * (wss & wssDir_);
+
+                        surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
+                    
+                    // The following will allow to only use the Cf data at certain cells.
+                    // If you want to exclude cells, then given them a cell value of 1e16.
+                    if (bSurfaceFrictionRef < 1e16)
+                    {
+                        // calculate the objective function
+                        objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
+                    }
+
+                }
+
+            }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+    
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
