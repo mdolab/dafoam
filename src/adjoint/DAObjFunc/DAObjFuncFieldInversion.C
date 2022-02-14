@@ -552,6 +552,33 @@ void DAObjFuncFieldInversion::calcObjFunc(
             objFuncValue = weight_ * objFuncValue;
         }
     }
+    else if (varTypeFieldInversion_ == "weightedProfileData")
+    {
+        // get the velocity field
+        const volVectorField& state = db.lookupObject<volVectorField>(stateName_);
+        const volScalarField& weights = db.lookupObject<volScalarField>("weightsObjFunc");
+
+        // get the reference velocity field  (only x-component, hence volScalarField)
+        const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
+
+        forAll(objFuncCellSources, idxI)
+        {
+            const label& cellI = objFuncCellSources[idxI];
+            if (stateRef[cellI] < 1e16)
+            {
+                objFuncCellValues[idxI] = weights[cellI] * (sqr(scale_ * state[cellI].x() - stateRef[cellI]));
+                objFuncValue += objFuncCellValues[idxI];
+            }
+        }
+
+        // need to reduce the sum of all objectives across all processors
+        reduce(objFuncValue, sumOp<scalar>());
+    
+        if (weightedSum_ == true)
+        {
+            objFuncValue = weight_ * objFuncValue;
+        }
+    }
     return;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
