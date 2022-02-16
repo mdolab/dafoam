@@ -615,7 +615,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 if (bSurfaceFrictionRef < 1e16)
                 {
                     // calculate the objective function
-                    objFuncValue += weightsSurface[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
+                    objFuncValue += weightsSurface.boundaryField()[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
                 }
             }
         }
@@ -650,7 +650,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
                     if (bSurfacePressureRef < 1e16)
                     {
-                        objFuncValue += weightsSurface[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
+                        objFuncValue += weightsSurface.boundaryField()[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
                     }
                 }
             }
