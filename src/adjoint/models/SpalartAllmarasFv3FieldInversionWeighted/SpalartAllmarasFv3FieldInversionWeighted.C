@@ -126,9 +126,7 @@ SpalartAllmarasFv3FieldInversionWeighted<BasicTurbulenceModel>::SpalartAllmarasF
               this->mesh_,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
-          this->mesh_,
-          dimensionedScalar("weightsObjFunc", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
-          zeroGradientFvPatchField<scalar>::typeName),
+          this->mesh_),
       y_(wallDist::New(this->mesh_).y())
 {
 }
