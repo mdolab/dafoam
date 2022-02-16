@@ -579,6 +579,90 @@ void DAObjFuncFieldInversion::calcObjFunc(
             objFuncValue = weight_ * objFuncValue;
         }
     }
+    else if (stateType_ == "weightedWallShearStress")
+    {
+        volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
+        const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
+        const volScalarField& weightsSurface = db.lookupObject<volScalarField>("weightsObjFunc"); 
+
+        // ingredients for the computation
+        tmp<volSymmTensorField> Reff = daTurb_.devRhoReff(); 
+        volSymmTensorField::Boundary bReff = Reff().boundaryField(); 
+        const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
+        const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
+
+        forAll(patchNames_, cI)
+        {
+            label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+            const fvPatch& patch = mesh_.boundary()[patchI];
+            forAll(patch, faceI)
+           {
+                scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
+
+                // normal vector at wall, use -ve sign to ensure vector pointing into the domain
+                vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
+
+                // wall shear stress
+                vector wss = normal & bReff[patchI][faceI];
+
+                // wallShearStress or surfaceFriction (use surfaceFriction label to match the fields)
+                scalar bSurfaceFriction = scale_ * (wss & wssDir_);
+
+                surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
+                    
+                // The following will allow to only use the Cf data at certain cells.
+                // If you want to exclude cells, then given them a cell value of 1e16.
+                if (bSurfaceFrictionRef < 1e16)
+                {
+                    // calculate the objective function
+                    objFuncValue += weightsSurface[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
+                }
+            }
+        }
+
+        // need to reduce the sum of all objectives across all processors
+        reduce(objFuncValue, sumOp<scalar>());
+        if (weightedSum_ == true)
+        {
+             objFuncValue = weight_ * objFuncValue;
+        }
+    }
+    else if (stateType_ == "weightedSurfacePressure")
+        {
+            // get ref surface pressure "fields"
+            const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
+            const volScalarField& weightsSurface = db.lookupObject<volScalarField>("weightsObjFunc");
+
+            // get the ingredient for computations
+            const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+
+                    scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
+
+                    // calculate the objective function
+                    // extract the reference surface pressure at the boundary
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
+                    if (bSurfacePressureRef < 1e16)
+                    {
+                        objFuncValue += weightsSurface[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
+                    }
+                }
+            }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
+        }
     return;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
