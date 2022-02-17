@@ -579,7 +579,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             objFuncValue = weight_ * objFuncValue;
         }
     }
-    else if (stateType_ == "weightedWallShearStress")
+    else if (varTypeFieldInversion_ == "weightedWallShearStress")
     {
         volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
         const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
@@ -627,7 +627,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
              objFuncValue = weight_ * objFuncValue;
         }
     }
-    else if (stateType_ == "weightedSurfacePressure")
+    else if (varTypeFieldInversion_ == "weightedSurfacePressure")
         {
             // get ref surface pressure "fields"
             const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
