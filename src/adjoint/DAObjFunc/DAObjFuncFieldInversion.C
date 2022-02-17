@@ -583,7 +583,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
     {
         volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
         const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
-        const volScalarField& weightsSurface = db.lookupObject<volScalarField>("weightsObjFunc"); 
+        const volScalarField& weights = db.lookupObject<volScalarField>("weightsObjFunc"); 
 
         // ingredients for the computation
         tmp<volSymmTensorField> Reff = daTurb_.devRhoReff(); 
@@ -615,7 +615,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 if (bSurfaceFrictionRef < 1e16)
                 {
                     // calculate the objective function
-                    objFuncValue += weightsSurface.boundaryField()[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
+                    objFuncValue += weights.boundaryField()[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
                 }
             }
         }
@@ -631,7 +631,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
         {
             // get ref surface pressure "fields"
             const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
-            const volScalarField& weightsSurface = db.lookupObject<volScalarField>("weightsObjFunc");
+            const volScalarField& weights = db.lookupObject<volScalarField>("weightsObjFunc");
 
             // get the ingredient for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
@@ -650,7 +650,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
                     if (bSurfacePressureRef < 1e16)
                     {
-                        objFuncValue += weightsSurface.boundaryField()[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
+                        objFuncValue += weights.boundaryField()[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
                     }
                 }
             }
