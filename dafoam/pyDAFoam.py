@@ -1572,7 +1572,7 @@ class PYDAFOAM(object):
             self.options[key] = self.defaultOptions[key]
         # now set options to self.options
         for key in options:
-            self.setOption(key, options[key])
+            self._initOption(key, options[key])
 
         return
 
@@ -3358,7 +3358,8 @@ class PYDAFOAM(object):
 
 
         NOTE: if 'value' is of dict type, we will set all the subKey values in
-        'value' dict to self.options, instead of overiding it
+        'value' dict to self.options, instead of overiding it. This works for
+        only THREE levels of subDicts
 
         For example, if self.options reads
         self.options =
@@ -3385,6 +3386,59 @@ class PYDAFOAM(object):
         {
             'objFunc': [dict, {'name': 'CL'}]
         }
+        """
+
+        try:
+            self.defaultOptions[name]
+        except KeyError:
+            Error("Option '%-30s' is not a valid %s option." % (name, self.name))
+
+        # Make sure we are not trying to change an immutable option if
+        # we are not allowed to.
+        if name in self.imOptions:
+            raise Error("Option '%-35s' cannot be modified after the solver " "is created." % name)
+
+        # Now we know the option exists, lets check if the type is ok:
+        if isinstance(value, self.defaultOptions[name][0]):
+            # the type matches, now we need to check if the 'value' is of dict type, if yes, we only
+            # replace the subKey values of 'value', instead of overiding all the subKey values
+            # NOTE. we only check 3 levels of subKeys
+            if isinstance(value, dict):
+                for subKey1 in value:
+                    # check if this subKey is still a dict.
+                    if isinstance(value[subKey1], dict):
+                        for subKey2 in value[subKey1]:
+                            # check if this subKey is still a dict.
+                            if isinstance(value[subKey1][subKey2], dict):
+                                for subKey3 in value[subKey1][subKey2]:
+                                    self.options[name][1][subKey1][subKey2][subKey3] = value[subKey1][subKey2][subKey3]
+                            else:
+                                self.options[name][1][subKey1][subKey2] = value[subKey1][subKey2]
+                    else:
+                        # no need to set self.options[name][0] since it has the right type
+                        self.options[name][1][subKey1] = value[subKey1]
+            else:
+                # It is not dict, just set
+                # no need to set self.options[name][0] since it has the right type
+                self.options[name][1] = value
+        else:
+            raise Error(
+                "Datatype for Option %-35s was not valid \n "
+                "Expected data type is %-47s \n "
+                "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
+            )
+    
+    def _initOption(self, name, value):
+        """
+        Set a value to options. This function will be used only for initializing the options internally.
+        Do NOT call this function from the run script!
+
+        Parameters
+        ----------
+        name : str
+           Name of option to set. Not case sensitive
+        value : varies
+           Value to set. Type is checked for consistency.
         """
 
         try:
