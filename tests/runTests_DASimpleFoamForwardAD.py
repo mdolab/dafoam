@@ -157,7 +157,7 @@ def actuator(val, geo):
 
 def ubc(val, geo):
     inletU = float(val[0])
-    DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": [inletU, 0.0, 0.0]}})
+    DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": [9.986295347545738, 0.5233595624294384, 0.0]}})
     DASolver.updateDAOption()
 
 def pbc(val, geo):
