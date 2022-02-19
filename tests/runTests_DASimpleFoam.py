@@ -46,7 +46,7 @@ aeroOptions = {
     "primalMinResTol": 1e-12,
     "writeJacobians": ["all"],
     "primalBC": {
-        "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
         "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
         "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},

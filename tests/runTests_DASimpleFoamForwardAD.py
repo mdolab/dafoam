@@ -36,8 +36,8 @@ daOptions = {
     "primalMinResTol": 1e-12,
     "useAD": {"mode": "forward", "dvName": "shape", "seedIndex": 0},
     "primalBC": {
-        "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
-        "pIn": {"variable": "p", "patches": ["inout"], "value": [0.0]},
+        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "p0": {"variable": "p", "patches": ["inout"], "value": [0.0]},
         "useWallFunction": False,
     },
     "fvSource": {
