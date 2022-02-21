@@ -293,3 +293,7 @@ else:
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-5, 1e-7)
+    
+    # just run runLowOrderPrimal4PC
+    DASolver.setOption("runLowOrderPrimal4PC", {"active": True})
+    optFuncs.runLowOrderPrimal4PC()
