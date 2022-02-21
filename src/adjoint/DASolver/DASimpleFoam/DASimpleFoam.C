@@ -74,7 +74,7 @@ void DASimpleFoam::initSolver()
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
-    
+
     this->setDAObjFuncList();
 
     // initialize fvSource and compute the source term
@@ -130,6 +130,14 @@ label DASimpleFoam::solvePrimal(
 
     // if the forwardModeAD is active, we need to set the seed here
 #include "setForwardADSeeds.H"
+
+    word divUScheme = "div(phi,U)";
+    if (daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "active")
+        && daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "isPC"))
+    {
+        Info << "Using low order div scheme for primal solution .... " << endl;
+        divUScheme = "div(pc)";
+    }
 
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");

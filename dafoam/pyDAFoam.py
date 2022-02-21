@@ -610,6 +610,12 @@ class DAOPTION(object):
         ## the poor quality mesh during line search)
         self.writeMinorIterations = False
 
+        ## whether to run the primal using the first order div scheme. This can be used to generate smoother
+        ## flow field for computing the preconditioner matrix to avoid singularity. It can help the adjoint
+        ## convergence for y+ = 1 meshes. If True, we will run the primal using low order scheme when computing
+        ## or updating the PC mat. To enable this option, set "active" to True.
+        self.runLowOrderPrimal4PC = {"active": False}
+
 
 class PYDAFOAM(object):
 
@@ -1018,6 +1024,9 @@ class PYDAFOAM(object):
         if "NONE" not in self.getOption("writeSensMap"):
             if not self.getOption("useAD")["mode"] in ["reverse"]:
                 raise Error("writeSensMap is only compatible with useAD->mode=reverse")
+            
+        if self.getOption("runLowOrderPrimal4PC")["active"]:
+            self.setOption("runLowOrderPrimal4PC", {"active": True, "isPC": False})
 
         # check other combinations...
 
@@ -1939,11 +1948,13 @@ class PYDAFOAM(object):
         elif self.getOption("useAD")["mode"] == "reverse":
             self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
 
-        # calculate dRdWTPC
-        adjPCLag = self.getOption("adjPCLag")
-        if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
-            self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
-            self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
+        # calculate dRdWTPC. If runLowOrderPrimal4PC is true, we compute the PC mat
+        # before solving the primal, so we will skip it here
+        if not self.getOption("runLowOrderPrimal4PC")["active"]:
+            adjPCLag = self.getOption("adjPCLag")
+            if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
+                self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
 
         # Initialize the KSP object
         ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
@@ -3427,7 +3438,7 @@ class PYDAFOAM(object):
                 "Expected data type is %-47s \n "
                 "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
             )
-    
+
     def _initOption(self, name, value):
         """
         Set a value to options. This function will be used only for initializing the options internally.

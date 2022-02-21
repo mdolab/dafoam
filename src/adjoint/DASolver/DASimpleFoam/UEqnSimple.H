@@ -8,7 +8,7 @@ if (hasFvSource_)
 }
 
 tmp<fvVectorMatrix> tUEqn(
-    fvm::div(phi, U)
+    fvm::div(phi, U, divUScheme)
     + fvm::Sp(alphaPorosity, U)
     + MRF.DDt(U)
     + turbulencePtr_->divDevReff(U)

@@ -8,7 +8,7 @@ if (hasFvSource_)
 }
 
 tmp<fvVectorMatrix> tUEqn(
-    fvm::div(phi, U)
+    fvm::div(phi, U, divUScheme)
     + MRF.DDt(rho, U)
     + turbulencePtr_->divDevRhoReff(U)
     - fvSource

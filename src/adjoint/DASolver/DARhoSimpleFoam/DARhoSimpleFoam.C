@@ -135,6 +135,14 @@ label DARhoSimpleFoam::solvePrimal(
     // if the forwardModeAD is active, we need to set the seed here
 #include "setForwardADSeeds.H"
 
+    word divUScheme = "div(phi,U)";
+    if (daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "active")
+        && daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "isPC"))
+    {
+        Info << "Using low order div scheme for primal solution .... " << endl;
+        divUScheme = "div(pc)";
+    }
+
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
