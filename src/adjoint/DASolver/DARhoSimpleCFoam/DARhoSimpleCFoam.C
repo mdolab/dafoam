@@ -119,11 +119,13 @@ label DARhoSimpleCFoam::solvePrimal(
 #include "setForwardADSeeds.H"
 
     word divUScheme = "div(phi,U)";
-    if (daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "active")
-        && daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "isPC"))
+    if (daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "active"))
     {
-        Info << "Using low order div scheme for primal solution .... " << endl;
-        divUScheme = "div(pc)";
+        if (daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "isPC"))
+        {
+            Info << "Using low order div scheme for primal solution .... " << endl;
+            divUScheme = "div(pc)";
+        }
     }
 
     primalMinRes_ = 1e10;
