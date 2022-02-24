@@ -614,7 +614,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
             
             // get the weights for the first iteration (this is just a dummy field)
-            const volScalarField& weights = db.lookupObject<volScalarField>("weightsObjFunc");
+            volScalarField& weights = const_cast<volScalarField&>(db.lookupObject<volScalarField>("weightsObjFunc"));
             volScalarField difference = weights;
 
             // get the ingredient for computations
@@ -631,7 +631,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     if (bSurfacePressureRef < 1e16)
                     {
                         scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
-                        scalar difference = abs(bSurfacePressure - bSurfacePressureRef);                         
+                        difference.boundaryField()[patchI][faceI] = abs(bSurfacePressure - bSurfacePressureRef);                         
                     }
                 }
             }
