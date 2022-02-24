@@ -615,7 +615,6 @@ void DAObjFuncFieldInversion::calcObjFunc(
             
             // get the weights for the first iteration (this is just a dummy field)
             volScalarField& weights = const_cast<volScalarField&>(db.lookupObject<volScalarField>("weightsObjFunc"));
-            volScalarField difference = weights;
 
             // get the ingredient for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
@@ -631,7 +630,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     if (bSurfacePressureRef < 1e16)
                     {
                         scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
-                        difference.boundaryField()[patchI][faceI] = abs(bSurfacePressure - bSurfacePressureRef);                         
+                        weights.boundaryFieldRef()[patchI][faceI] = abs(bSurfacePressure - bSurfacePressureRef);                         
                     }
                 }
             }
@@ -643,7 +642,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             {
                 label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
                 const fvPatch& patch = mesh_.boundary()[patchI];
-                scalar patchMaxDifference = max(difference.boundaryField()[patchI]); 
+                scalar patchMaxDifference = max(weights.boundaryField()[patchI]); 
                 if (patchMaxDifference > maxDifference)
                 {
                     maxDifference = patchMaxDifference; 
@@ -660,7 +659,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI]; 
                     if (bSurfacePressureRef < 1e16)
                     {
-                        weights.boundaryFieldRef()[patchI][faceI] = difference.boundaryField()[patchI][faceI] / maxDifference;
+                        weights.boundaryFieldRef()[patchI][faceI] = weights.boundaryField()[patchI][faceI] / maxDifference;
                     }
                 }
             }
