@@ -608,8 +608,91 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     objFuncValue = weight_ * objFuncValue;
                 }
             }
-    }
+        else if (stateType_ == "adaptiveWeightedSurfacePressure")
+        {
+            // get ref surface pressure "fields"
+            const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
+            
+            // get the weights for the first iteration (this is just a dummy field)
+            const volScalarField& weights = db.lookupObject<volScalarField>("weightsObjFunc");
+            volScalarField difference = weights;
 
+            // get the ingredient for computations
+            const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+            // compute the difference between model and data
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI]; 
+                    if bSurfacePressureRef < 1e16)
+                    {
+                        scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
+                        scalar difference = abs(bSurfacePressure - bSurfacePressureRef);                         
+                    }
+                }
+            }
+        
+            
+            // compute the max difference for normalisation
+            scalar maxDifference = 0.0; 
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                patchMaxDifference = max(difference.boundaryField()[patchI]); 
+                if (patchMaxDifference > maxDifference)
+                {
+                    maxDifference = patchMaxDifference; 
+                }
+            }
+
+            // normalise the difference by max difference and write weight field
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI]; 
+                    if bSurfacePressureRef < 1e16)
+                    {
+                        weights.boundaryFieldRef()[patchI][faceI] = difference.boundaryField()[patchI][faceI] / maxDifference;
+                    }
+                }
+            }
+
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+
+                    scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
+
+                    // calculate the objective function
+                    // extract the reference surface pressure at the boundary
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
+                    if (bSurfacePressureRef < 1e16)
+                    {
+                        objFuncValue += weights.boundaryField()[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
+                    }
+                }
+            }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }    
+        }
+    }
     else if (varTypeFieldInversion_ == "profile")
     {
         // get the velocity field
