@@ -74,7 +74,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     }
     if (weightedSum_ == true)
     {
-        objFuncDict_.readEntry<scalar>("weight", weight_); 
+        objFuncDict_.readEntry<scalar>("weight", weight_);
     }
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
     // this objFunc only depends on the state variable at the zero level cell
@@ -155,7 +155,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 const label& cellI = objFuncCellSources[idxI];
                 objFuncCellValues[idxI] = (sqr(mag(scale_ * state[cellI] - stateRef[cellI])));
                 objFuncValue += objFuncCellValues[idxI];
-            }           
+            }
 
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
@@ -163,7 +163,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
-            }            
+            }
         }
         /*else if (stateType_ == "ReynoldsShearStress")
         {
@@ -251,12 +251,11 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
                     objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
                 }
-
             }
 
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
-                
+
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
@@ -337,12 +336,11 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
-            
+
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
             }
-
         }
         else if (stateType_ == "surfacePressureShifted")
         {
@@ -371,12 +369,11 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
-            
+
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
             }
-
         }
         else if (stateType_ == "surfacePressureCustom")
         {
@@ -435,34 +432,32 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 {
                     scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
 
-                        // normal vector at wall, use -ve sign to ensure vector pointing into the domain
-                        vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
+                    // normal vector at wall, use -ve sign to ensure vector pointing into the domain
+                    vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
 
-                        // tangent vector, computed from normal: tangent = p x normal; where p is a unit vector perpidicular to the plane
-                        // NOTE: make this more general
-                        vector tangent(normal.y(), -normal.x(), 0.0);
+                    // tangent vector, computed from normal: tangent = p x normal; where p is a unit vector perpidicular to the plane
+                    // NOTE: make this more general
+                    vector tangent(normal.y(), -normal.x(), 0.0);
 
-                        // velocity gradient at wall
-                        tensor fGradU = bGradU[patchI][faceI];
+                    // velocity gradient at wall
+                    tensor fGradU = bGradU[patchI][faceI];
 
-                        tensor fGradUT = fGradU.T();
-                        scalar bSurfaceFriction = scale_ * (tangent & (fGradUT & normal));
+                    tensor fGradUT = fGradU.T();
+                    scalar bSurfaceFriction = scale_ * (tangent & (fGradUT & normal));
 
-                        surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
+                    surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
 
                     if (bSurfaceFrictionRef < 1e16)
                     {
                         // calculate the objective function
                         objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
                     }
-
                 }
-
             }
 
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
-                
+
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
@@ -471,7 +466,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
         else if (stateType_ == "wallShearStress")
         {
             // Based on the OpenFOAM wallShearStress utility.
-            // We use it both for wallShearStress data (only one component - i.e. not the full vector) 
+            // We use it both for wallShearStress data (only one component - i.e. not the full vector)
             // and surfaceFriction field inversion.
             // Currently us the surfaceFriction/Ref fields with the models, will improve this in the future.
             // Use the direction vector to decide which component of wallShearStress to use for Cf calculations.
@@ -480,8 +475,8 @@ void DAObjFuncFieldInversion::calcObjFunc(
             const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
 
             // ingredients for the computation
-            tmp<volSymmTensorField> Reff = daTurb_.devRhoReff(); 
-            volSymmTensorField::Boundary bReff = Reff().boundaryField(); 
+            tmp<volSymmTensorField> Reff = daTurb_.devRhoReff();
+            volSymmTensorField::Boundary bReff = Reff().boundaryField();
             const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
             const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
 
@@ -491,57 +486,6 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 const fvPatch& patch = mesh_.boundary()[patchI];
                 forAll(patch, faceI)
                 {
-                        scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
-
-                        // normal vector at wall, use -ve sign to ensure vector pointing into the domain
-                        vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
-
-                        // wall shear stress
-                        vector wss = normal & bReff[patchI][faceI];
-
-                        // wallShearStress or surfaceFriction (use surfaceFriction label to match the fields)
-                        scalar bSurfaceFriction = scale_ * (wss & wssDir_);
-
-                        surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
-                    
-                    // The following will allow to only use the Cf data at certain cells.
-                    // If you want to exclude cells, then given them a cell value of 1e16.
-                    if (bSurfaceFrictionRef < 1e16)
-                    {
-                        // calculate the objective function
-                        objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
-                    }
-
-                }
-
-            }
-
-            // need to reduce the sum of all objectives across all processors
-            reduce(objFuncValue, sumOp<scalar>());
-    
-            if (weightedSum_ == true)
-            {
-                objFuncValue = weight_ * objFuncValue;
-            }
-        }
-        else if (stateType_ == "weightedWallShearStress")
-        {
-            volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
-            const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
-            const volScalarField& weights = db.lookupObject<volScalarField>("weightsObjFunc"); 
-
-            // ingredients for the computation
-            tmp<volSymmTensorField> Reff = daTurb_.devRhoReff(); 
-            volSymmTensorField::Boundary bReff = Reff().boundaryField(); 
-            const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
-            const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
-
-            forAll(patchNames_, cI)
-            {
-                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
-                const fvPatch& patch = mesh_.boundary()[patchI];
-                forAll(patch, faceI)
-            {
                     scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
 
                     // normal vector at wall, use -ve sign to ensure vector pointing into the domain
@@ -554,13 +498,62 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     scalar bSurfaceFriction = scale_ * (wss & wssDir_);
 
                     surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
-                        
+
                     // The following will allow to only use the Cf data at certain cells.
                     // If you want to exclude cells, then given them a cell value of 1e16.
                     if (bSurfaceFrictionRef < 1e16)
                     {
                         // calculate the objective function
-                        objFuncValue += weights.boundaryField()[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
+                        objFuncValue += sqr(bSurfaceFriction - bSurfaceFrictionRef);
+                    }
+                }
+            }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
+        }
+        else if (stateType_ == "weightedWallShearStress")
+        {
+            volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
+            const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
+            const volScalarField& weightsObjFunc = db.lookupObject<volScalarField>("weightsObjFunc");
+
+            // ingredients for the computation
+            tmp<volSymmTensorField> Reff = daTurb_.devRhoReff();
+            volSymmTensorField::Boundary bReff = Reff().boundaryField();
+            const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
+            const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
+
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+                    scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
+
+                    // normal vector at wall, use -ve sign to ensure vector pointing into the domain
+                    vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
+
+                    // wall shear stress
+                    vector wss = normal & bReff[patchI][faceI];
+
+                    // wallShearStress or surfaceFriction (use surfaceFriction label to match the fields)
+                    scalar bSurfaceFriction = scale_ * (wss & wssDir_);
+
+                    surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
+
+                    // The following will allow to only use the Cf data at certain cells.
+                    // If you want to exclude cells, then given them a cell value of 1e16.
+                    if (bSurfaceFrictionRef < 1e16)
+                    {
+                        // calculate the objective function
+                        objFuncValue += weightsObjFunc.boundaryField()[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
                     }
                 }
             }
@@ -573,48 +566,48 @@ void DAObjFuncFieldInversion::calcObjFunc(
             }
         }
         else if (stateType_ == "weightedSurfacePressure")
+        {
+            // get ref surface pressure "fields"
+            const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
+            const volScalarField& weightsObjFunc = db.lookupObject<volScalarField>("weightsObjFunc");
+
+            // get the ingredient for computations
+            const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+            forAll(patchNames_, cI)
             {
-                // get ref surface pressure "fields"
-                const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
-                const volScalarField& weights = db.lookupObject<volScalarField>("weightsObjFunc");
-
-                // get the ingredient for computations
-                const volScalarField& p = db.lookupObject<volScalarField>("p");
-
-                forAll(patchNames_, cI)
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
                 {
-                    label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
-                    const fvPatch& patch = mesh_.boundary()[patchI];
-                    forAll(patch, faceI)
+
+                    scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
+
+                    // calculate the objective function
+                    // extract the reference surface pressure at the boundary
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
+                    if (bSurfacePressureRef < 1e16)
                     {
-
-                        scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
-
-                        // calculate the objective function
-                        // extract the reference surface pressure at the boundary
-                        scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
-                        if (bSurfacePressureRef < 1e16)
-                        {
-                            objFuncValue += weights.boundaryField()[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
-                        }
+                        objFuncValue += weightsObjFunc.boundaryField()[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
                     }
                 }
-
-                // need to reduce the sum of all objectives across all processors
-                reduce(objFuncValue, sumOp<scalar>());
-
-                if (weightedSum_ == true)
-                {
-                    objFuncValue = weight_ * objFuncValue;
-                }
             }
+
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
+
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
+        }
         else if (stateType_ == "adaptiveWeightedSurfacePressure")
         {
             // get ref surface pressure "fields"
             const volScalarField& surfacePressureRef = db.lookupObject<volScalarField>(stateRefName_);
-            
-            // get the weights for the first iteration (this is just a dummy field)
-            volScalarField& weights = const_cast<volScalarField&>(db.lookupObject<volScalarField>("weightsObjFunc"));
+
+            // get the weightsObjFunc for the first iteration (this is just a dummy field)
+            volScalarField& weightsObjFunc = const_cast<volScalarField&>(db.lookupObject<volScalarField>("weightsObjFunc"));
 
             // get the ingredient for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
@@ -626,26 +619,24 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 const fvPatch& patch = mesh_.boundary()[patchI];
                 forAll(patch, faceI)
                 {
-                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI]; 
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
                     if (bSurfacePressureRef < 1e16)
                     {
                         scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
-                        weights.boundaryFieldRef()[patchI][faceI] = abs(bSurfacePressure - bSurfacePressureRef);                         
+                        weightsObjFunc.boundaryFieldRef()[patchI][faceI] = abs(bSurfacePressure - bSurfacePressureRef);
                     }
                 }
             }
-        
-            
+
             // compute the max difference for normalisation
-            scalar maxDifference = 0.0; 
+            scalar maxDifference = 0.0;
             forAll(patchNames_, cI)
             {
                 label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
-                const fvPatch& patch = mesh_.boundary()[patchI];
-                scalar patchMaxDifference = max(weights.boundaryField()[patchI]); 
+                scalar patchMaxDifference = max(weightsObjFunc.boundaryField()[patchI]);
                 if (patchMaxDifference > maxDifference)
                 {
-                    maxDifference = patchMaxDifference; 
+                    maxDifference = patchMaxDifference;
                 }
             }
 
@@ -656,10 +647,10 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 const fvPatch& patch = mesh_.boundary()[patchI];
                 forAll(patch, faceI)
                 {
-                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI]; 
+                    scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
                     if (bSurfacePressureRef < 1e16)
                     {
-                        weights.boundaryFieldRef()[patchI][faceI] = weights.boundaryField()[patchI][faceI] / maxDifference;
+                        weightsObjFunc.boundaryFieldRef()[patchI][faceI] = weightsObjFunc.boundaryField()[patchI][faceI] / maxDifference;
                     }
                 }
             }
@@ -678,7 +669,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI];
                     if (bSurfacePressureRef < 1e16)
                     {
-                        objFuncValue += weights.boundaryField()[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
+                        objFuncValue += weightsObjFunc.boundaryField()[patchI][faceI] * sqr(bSurfacePressure - bSurfacePressureRef);
                     }
                 }
             }
@@ -689,7 +680,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
-            }    
+            }
         }
     }
     else if (varTypeFieldInversion_ == "profile")
@@ -712,7 +703,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
         // need to reduce the sum of all objectives across all processors
         reduce(objFuncValue, sumOp<scalar>());
-    
+
         if (weightedSum_ == true)
         {
             objFuncValue = weight_ * objFuncValue;
@@ -722,7 +713,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
     {
         // get the velocity field
         const volVectorField& state = db.lookupObject<volVectorField>(stateName_);
-        const volScalarField& weights = db.lookupObject<volScalarField>("weightsObjFunc");
+        const volScalarField& weightsObjFunc = db.lookupObject<volScalarField>("weightsObjFunc");
 
         // get the reference velocity field  (only x-component, hence volScalarField)
         const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
@@ -732,14 +723,61 @@ void DAObjFuncFieldInversion::calcObjFunc(
             const label& cellI = objFuncCellSources[idxI];
             if (stateRef[cellI] < 1e16)
             {
-                objFuncCellValues[idxI] = weights[cellI] * (sqr(scale_ * state[cellI].x() - stateRef[cellI]));
+                objFuncCellValues[idxI] = weightsObjFunc[cellI] * (sqr(scale_ * state[cellI].x() - stateRef[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
         }
 
         // need to reduce the sum of all objectives across all processors
         reduce(objFuncValue, sumOp<scalar>());
-    
+
+        if (weightedSum_ == true)
+        {
+            objFuncValue = weight_ * objFuncValue;
+        }
+    }
+
+    else if (varTypeFieldInversion_ == "adaptiveWeightedProfileData")
+    {
+        // get the velocity field
+        const volVectorField& state = db.lookupObject<volVectorField>(stateName_);
+        volScalarField& weightsObjFunc = const_cast<volScalarField&>(db.lookupObject<volScalarField>("weightsObjFunc"));
+
+        const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
+
+        // compute the difference
+        forAll(objFuncCellSources, idxI)
+        {
+            const label& cellI = objFuncCellSources[idxI];
+            if (stateRef[cellI] < 1e16)
+            {
+                weightsObjFunc[cellI] = abs(state[cellI] - stateRef[cellI]);
+            }
+        }
+        scalar maxDifference = max(weightsObjFunc);
+        forAll(objFuncCellSources, idxI)
+        {
+            const label& cellI = objFuncCellSources[idxI];
+            if (stateRef[cellI] < 1e16)
+            {
+                weightsObjFunc[cellI] = weightsObjFunc[cellI] / maxDifference;
+            }
+        }
+
+
+        forAll(objFuncCellSources, idxI)
+        {
+            const label& cellI = objFuncCellSources[idxI];
+            if (stateRef[cellI] < 1e16)
+            {
+                objFuncCellValues[idxI] = weightsObjFunc[cellI] * (sqr(scale_ * state[cellI].x() - stateRef[cellI]));
+                objFuncValue += objFuncCellValues[idxI];
+            }
+        }
+
+        // need to reduce the sum of all objectives across all processors
+        reduce(objFuncValue, sumOp<scalar>());
+
         if (weightedSum_ == true)
         {
             objFuncValue = weight_ * objFuncValue;
