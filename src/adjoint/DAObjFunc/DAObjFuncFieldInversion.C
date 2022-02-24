@@ -751,7 +751,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             const label& cellI = objFuncCellSources[idxI];
             if (stateRef[cellI] < 1e16)
             {
-                weightsObjFunc[cellI] = abs(state[cellI] - stateRef[cellI]);
+                weightsObjFunc[cellI] = abs(state[cellI].x() - stateRef[cellI]);
             }
         }
         scalar maxDifference = max(weightsObjFunc);
