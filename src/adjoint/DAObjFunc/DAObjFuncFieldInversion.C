@@ -628,7 +628,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 forAll(patch, faceI)
                 {
                     scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI]; 
-                    if bSurfacePressureRef < 1e16)
+                    if (bSurfacePressureRef < 1e16)
                     {
                         scalar bSurfacePressure = scale_ * (p.boundaryField()[patchI][faceI] - pRef_);
                         scalar difference = abs(bSurfacePressure - bSurfacePressureRef);                         
@@ -643,7 +643,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             {
                 label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
                 const fvPatch& patch = mesh_.boundary()[patchI];
-                patchMaxDifference = max(difference.boundaryField()[patchI]); 
+                scalar patchMaxDifference = max(difference.boundaryField()[patchI]); 
                 if (patchMaxDifference > maxDifference)
                 {
                     maxDifference = patchMaxDifference; 
@@ -658,7 +658,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 forAll(patch, faceI)
                 {
                     scalar bSurfacePressureRef = surfacePressureRef.boundaryField()[patchI][faceI]; 
-                    if bSurfacePressureRef < 1e16)
+                    if (bSurfacePressureRef < 1e16)
                     {
                         weights.boundaryFieldRef()[patchI][faceI] = difference.boundaryField()[patchI][faceI] / maxDifference;
                     }
