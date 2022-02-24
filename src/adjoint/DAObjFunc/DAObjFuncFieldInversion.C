@@ -633,7 +633,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             forAll(patchNames_, cI)
             {
                 label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
-                scalar patchMaxDifference = max(weightsObjFunc.boundaryField()[patchI]);
+                scalar patchMaxDifference = gMax(weightsObjFunc.boundaryField()[patchI]);
                 if (patchMaxDifference > maxDifference)
                 {
                     maxDifference = patchMaxDifference;
@@ -754,7 +754,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 weightsObjFunc[cellI] = abs(state[cellI].x() - stateRef[cellI]);
             }
         }
-        scalar maxDifference = max(weightsObjFunc);
+        scalar maxDifference = gMax(weightsObjFunc);
         forAll(objFuncCellSources, idxI)
         {
             const label& cellI = objFuncCellSources[idxI];
