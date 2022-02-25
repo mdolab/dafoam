@@ -655,6 +655,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 }
             }
 
+            // compute the objective function
             forAll(patchNames_, cI)
             {
                 label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
@@ -751,7 +752,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             const label& cellI = objFuncCellSources[idxI];
             if (stateRef[cellI] < 1e16)
             {
-                weightsObjFunc[cellI] = abs(state[cellI].x() - stateRef[cellI]);
+                weightsObjFunc[cellI] = abs(scale_ * state[cellI].x() - stateRef[cellI]);
             }
         }
         scalar maxDifference = gMax(weightsObjFunc);
