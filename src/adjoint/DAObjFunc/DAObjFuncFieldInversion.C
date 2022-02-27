@@ -646,7 +646,6 @@ void DAObjFuncFieldInversion::calcObjFunc(
                         objFuncValue += weightsObjFunc.boundaryField()[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
                     }
                 }
-                }
             }
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
@@ -654,7 +653,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             {
                 objFuncValue = weight_ * objFuncValue;
             }
-        }
+        }   
         else if (stateType_ == "weightedSurfacePressure")
         {
             // get ref surface pressure "fields"
