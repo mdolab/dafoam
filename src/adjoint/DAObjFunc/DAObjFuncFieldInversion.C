@@ -921,7 +921,6 @@ void DAObjFuncFieldInversion::calcObjFunc(
             objFuncValue = weight_ * objFuncValue;
         }
     }
-
     else if (varTypeFieldInversion_ == "adaptiveWeightedProfileData")
     {
         // get the velocity field
