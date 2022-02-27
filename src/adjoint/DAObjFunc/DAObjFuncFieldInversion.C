@@ -569,7 +569,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
         {
             volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
             const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
-            const volScalarField& weightsObjFunc = db.lookupObject<volScalarField>("weightsObjFunc");
+            volScalarField& weightsObjFunc = const_cast<volScalarField&>(db.lookupObject<volScalarField>("weightsObjFunc"));
 
             // compute the baselin surface friction 
             tmp<volSymmTensorField> Reff = daTurb_.devRhoReff();
@@ -599,7 +599,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
                     if (bSurfaceFrictionRef < 1e16)
                     {
-                        bSurfaceFriction = surfaceFriction.boundaryField()[patchI][faceI];
+                        scalar bSurfaceFriction = surfaceFriction.boundaryField()[patchI][faceI];
                         weightsObjFunc.boundaryFieldRef()[patchI][faceI] = abs(bSurfaceFriction - bSurfaceFrictionRef);
                     }
                 }
@@ -642,7 +642,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
                     if (bSurfaceFrictionRef < 1e16)
                     {
-                        bSurfaceFriction = surfaceFriction.boundaryField()[patchI][faceI];
+                        scalar bSurfaceFriction = surfaceFriction.boundaryField()[patchI][faceI];
                         objFuncValue += weightsObjFunc.boundaryField()[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
                     }
                 }
@@ -685,6 +685,101 @@ void DAObjFuncFieldInversion::calcObjFunc(
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
 
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
+        }
+        else if (stateType_ == "adaptiveWeightedSurfaceFriction")
+        {
+            // get surface friction "fields"
+            volScalarField& surfaceFriction = const_cast<volScalarField&>(db.lookupObject<volScalarField>(stateName_));
+            const volScalarField& surfaceFrictionRef = db.lookupObject<volScalarField>(stateRefName_);
+            volScalarField& weightsObjFunc = const_cast<volScalarField&>(db.lookupObject<volScalarField>("weightsObjFunc"));
+
+            // ingredients for surface friction computation
+            const volVectorField& U = db.lookupObject<volVectorField>("U");
+            tmp<volTensorField> gradU = fvc::grad(U);
+            const volTensorField::Boundary& bGradU = gradU().boundaryField();
+
+            const surfaceVectorField::Boundary& Sfp = mesh_.Sf().boundaryField();
+            const surfaceScalarField::Boundary& magSfp = mesh_.magSf().boundaryField();
+
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+                    vector normal = -Sfp[patchI][faceI] / magSfp[patchI][faceI];
+                    vector tangent(normal.y(), -normal.x(), 0.0);
+                    tensor fGradU = bGradU[patchI][faceI];
+                    tensor fGradUT = fGradU.T();
+                    scalar bSurfaceFriction = scale_ * (tangent & (fGradUT & normal));
+                    surfaceFriction.boundaryFieldRef()[patchI][faceI] = bSurfaceFriction;
+                }
+            }
+            
+            // compute the difference
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+                    scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
+                    if (bSurfaceFrictionRef < 1e16)
+                    {
+                        scalar bSurfaceFriction = surfaceFriction.boundaryField()[patchI][faceI];
+                        weightsObjFunc.boundaryFieldRef()[patchI][faceI] = abs(bSurfaceFriction - bSurfaceFrictionRef);
+                    }
+                }
+            }
+
+            // compute the max difference for normalisation
+            scalar maxDifference = 0.0;
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                scalar patchMaxDifference = gMax(weightsObjFunc.boundaryField()[patchI]);
+                if (patchMaxDifference > maxDifference)
+                {
+                    maxDifference = patchMaxDifference;
+                }
+            }
+
+            // normalise the difference by max difference and write weight field
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+                    scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
+                    if (bSurfaceFrictionRef < 1e16)
+                    {
+                        weightsObjFunc.boundaryFieldRef()[patchI][faceI] = weightsObjFunc.boundaryField()[patchI][faceI] / maxDifference;
+                    }
+                }
+            }
+
+            // compute the adatively weighted objective function
+            forAll(patchNames_, cI)
+            {
+                label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
+                const fvPatch& patch = mesh_.boundary()[patchI];
+                forAll(patch, faceI)
+                {
+                    scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
+                    if (bSurfaceFrictionRef < 1e16)
+                    {
+                        scalar bSurfaceFriction = surfaceFriction.boundaryField()[patchI][faceI];
+                        objFuncValue += weightsObjFunc.boundaryField()[patchI][faceI] * sqr(bSurfaceFriction - bSurfaceFrictionRef);
+                    }
+                }
+            }
+            // need to reduce the sum of all objectives across all processors
+            reduce(objFuncValue, sumOp<scalar>());
             if (weightedSum_ == true)
             {
                 objFuncValue = weight_ * objFuncValue;
