@@ -625,7 +625,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 forAll(patch, faceI)
                 {
                     scalar bSurfaceFrictionRef = surfaceFrictionRef.boundaryField()[patchI][faceI];
-                    if (bSurfacePressureRef < 1e16)
+                    if (bSurfaceFrictionRef < 1e16)
                     {
                         weightsObjFunc.boundaryFieldRef()[patchI][faceI] = weightsObjFunc.boundaryField()[patchI][faceI] / maxDifference;
                     }
