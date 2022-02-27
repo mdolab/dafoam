@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "2.2.9"
+__version__ = "2.2.10"
 
 import subprocess
 import os
@@ -610,6 +610,12 @@ class DAOPTION(object):
         ## the poor quality mesh during line search)
         self.writeMinorIterations = False
 
+        ## whether to run the primal using the first order div scheme. This can be used to generate smoother
+        ## flow field for computing the preconditioner matrix to avoid singularity. It can help the adjoint
+        ## convergence for y+ = 1 meshes. If True, we will run the primal using low order scheme when computing
+        ## or updating the PC mat. To enable this option, set "active" to True.
+        self.runLowOrderPrimal4PC = {"active": False}
+
 
 class PYDAFOAM(object):
 
@@ -1018,6 +1024,9 @@ class PYDAFOAM(object):
         if "NONE" not in self.getOption("writeSensMap"):
             if not self.getOption("useAD")["mode"] in ["reverse"]:
                 raise Error("writeSensMap is only compatible with useAD->mode=reverse")
+            
+        if self.getOption("runLowOrderPrimal4PC")["active"]:
+            self.setOption("runLowOrderPrimal4PC", {"active": True, "isPC": False})
 
         # check other combinations...
 
@@ -1572,7 +1581,7 @@ class PYDAFOAM(object):
             self.options[key] = self.defaultOptions[key]
         # now set options to self.options
         for key in options:
-            self.setOption(key, options[key])
+            self._initOption(key, options[key])
 
         return
 
@@ -1939,11 +1948,13 @@ class PYDAFOAM(object):
         elif self.getOption("useAD")["mode"] == "reverse":
             self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
 
-        # calculate dRdWTPC
-        adjPCLag = self.getOption("adjPCLag")
-        if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
-            self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
-            self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
+        # calculate dRdWTPC. If runLowOrderPrimal4PC is true, we compute the PC mat
+        # before solving the primal, so we will skip it here
+        if not self.getOption("runLowOrderPrimal4PC")["active"]:
+            adjPCLag = self.getOption("adjPCLag")
+            if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
+                self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
 
         # Initialize the KSP object
         ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
@@ -3358,7 +3369,8 @@ class PYDAFOAM(object):
 
 
         NOTE: if 'value' is of dict type, we will set all the subKey values in
-        'value' dict to self.options, instead of overiding it
+        'value' dict to self.options, instead of overiding it. This works for
+        only THREE levels of subDicts
 
         For example, if self.options reads
         self.options =
@@ -3385,6 +3397,59 @@ class PYDAFOAM(object):
         {
             'objFunc': [dict, {'name': 'CL'}]
         }
+        """
+
+        try:
+            self.defaultOptions[name]
+        except KeyError:
+            Error("Option '%-30s' is not a valid %s option." % (name, self.name))
+
+        # Make sure we are not trying to change an immutable option if
+        # we are not allowed to.
+        if name in self.imOptions:
+            raise Error("Option '%-35s' cannot be modified after the solver " "is created." % name)
+
+        # Now we know the option exists, lets check if the type is ok:
+        if isinstance(value, self.defaultOptions[name][0]):
+            # the type matches, now we need to check if the 'value' is of dict type, if yes, we only
+            # replace the subKey values of 'value', instead of overiding all the subKey values
+            # NOTE. we only check 3 levels of subKeys
+            if isinstance(value, dict):
+                for subKey1 in value:
+                    # check if this subKey is still a dict.
+                    if isinstance(value[subKey1], dict):
+                        for subKey2 in value[subKey1]:
+                            # check if this subKey is still a dict.
+                            if isinstance(value[subKey1][subKey2], dict):
+                                for subKey3 in value[subKey1][subKey2]:
+                                    self.options[name][1][subKey1][subKey2][subKey3] = value[subKey1][subKey2][subKey3]
+                            else:
+                                self.options[name][1][subKey1][subKey2] = value[subKey1][subKey2]
+                    else:
+                        # no need to set self.options[name][0] since it has the right type
+                        self.options[name][1][subKey1] = value[subKey1]
+            else:
+                # It is not dict, just set
+                # no need to set self.options[name][0] since it has the right type
+                self.options[name][1] = value
+        else:
+            raise Error(
+                "Datatype for Option %-35s was not valid \n "
+                "Expected data type is %-47s \n "
+                "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
+            )
+
+    def _initOption(self, name, value):
+        """
+        Set a value to options. This function will be used only for initializing the options internally.
+        Do NOT call this function from the run script!
+
+        Parameters
+        ----------
+        name : str
+           Name of option to set. Not case sensitive
+        value : varies
+           Value to set. Type is checked for consistency.
         """
 
         try:

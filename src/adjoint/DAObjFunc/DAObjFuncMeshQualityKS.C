@@ -89,10 +89,8 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
                 mesh_.cellCentres()));
 
         // calculate the KS mesh quality
-        forAll(objFuncCellSources, idxI)
+        forAll(faceOrthogonality, cellI)
         {
-            const label& cellI = objFuncCellSources[idxI];
-
             objFuncValue += exp(coeffKS_ * faceOrthogonality[cellI]);
 
             if (objFuncValue > 1e200)
@@ -135,9 +133,8 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
         }
 
         // calculate the KS mesh quality
-        forAll(objFuncCellSources, idxI)
+        forAll(nonOrthoAngle, cellI)
         {
-            const label& cellI = objFuncCellSources[idxI];
 
             objFuncValue += exp(coeffKS_ * nonOrthoAngle[cellI]);
 
@@ -147,6 +144,7 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
                                   << "Reduce coeffKS! " << abort(FatalError);
             }
         }
+
     }
     else if (metric_ == "faceSkewness")
     {
@@ -159,9 +157,8 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
                 mesh_.cellCentres()));
 
         // calculate the KS mesh quality
-        forAll(objFuncCellSources, idxI)
+        forAll(faceSkewness, cellI)
         {
-            const label& cellI = objFuncCellSources[idxI];
 
             objFuncValue += exp(coeffKS_ * faceSkewness[cellI]);
 
@@ -171,6 +168,7 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
                                   << "Reduce coeffKS! " << abort(FatalError);
             }
         }
+
     }
     else
     {

@@ -18,6 +18,7 @@ import sys
 import numpy as np
 import warnings
 import copy
+from petsc4py import PETSc
 
 warnings.filterwarnings("once")
 np.set_printoptions(precision=16, suppress=True)
@@ -434,6 +435,7 @@ def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None)
 
     return funcsSens, fail
 
+
 def runForwardAD(dvName="None", seedIndex=-1):
     """
     Run the forward mode AD for the primal solver to compute the brute force total
@@ -444,9 +446,10 @@ def runForwardAD(dvName="None", seedIndex=-1):
         Info("runForwardAD only supports useAD->mode=forward!")
         Info("Please set useAD->mode to forward and rerun!")
         exit(1)
-    DASolver.setOption("useAD",{"dvName": dvName, "seedIndex": seedIndex})
+    DASolver.setOption("useAD", {"dvName": dvName, "seedIndex": seedIndex})
     DASolver.updateDAOption()
     DASolver()
+
 
 def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues, eps=1e-2, tol=1e-4, maxit=10):
     """
@@ -536,6 +539,18 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
                         fOut.write(line)
                         fOut.flush()
             fOut.close()
+
+
+def runLowOrderPrimal4PC():
+
+    if DASolver.getOption("runLowOrderPrimal4PC")["active"]:
+        DASolver.setOption("runLowOrderPrimal4PC", {"isPC": True})
+        DASolver.updateDAOption()
+        DASolver()
+        DASolver.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+        DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
+        DASolver.setOption("runLowOrderPrimal4PC", {"isPC": False})
+        DASolver.updateDAOption()
 
 
 class Info(object):
