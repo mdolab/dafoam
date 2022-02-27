@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 from mpi4py import MPI
 from openmdao.api import Group, ImplicitComponent, ExplicitComponent, AnalysisError
 from dafoam import PYDAFOAM
@@ -205,6 +206,9 @@ class DAFoamSolver(ImplicitComponent):
         # add rotation speed variable
         if "MRF" in DASolver.getOption("designVar"):
             self.add_input("omega", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
+        # add actuator parameter variables
+        if "actuator" in DASolver.getOption("designVar"):
+            self.add_input("actuator", distributed=False, shape=9, tags=["mphys_coupling"])
 
     def set_options(self, optionDict):
         # here optionDict should be a dictionary that has a consistent format
@@ -359,6 +363,18 @@ class DAFoamSolver(ImplicitComponent):
                     omegaBar = 0.0
 
                 d_inputs["omega"] += self.comm.bcast(omegaBar, root=0)
+
+            # compute [dRdAct]^T*Psi using reverse mode AD
+            if "actuator" in d_inputs:
+                prodVec = PETSc.Vec().create(self.comm)
+                prodVec.setSizes((PETSc.DECIDE, 9), bsize=1)
+                prodVec.setFromOptions()
+                DASolver.solverAD.calcdRdActTPsiAD(
+                    DASolver.xvVec, DASolver.wVec, resBarVec, "actuator".encode(), prodVec
+                )
+                # we will convert the MPI prodVec to seq array for all procs
+                actuatorBar = DASolver.convertMPIVec2SeqArray(prodVec)
+                d_inputs["actuator"] += actuatorBar
 
     def solve_linear(self, d_outputs, d_residuals, mode):
         # solve the adjoint equation [dRdW]^T * Psi = dFdW
@@ -539,6 +555,9 @@ class DAFoamFunctions(ExplicitComponent):
         # add rotation speed variable
         if "MRF" in self.DASolver.getOption("designVar"):
             self.add_input("omega", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
+        # add actuator parameters
+        if "actuator" in self.DASolver.getOption("designVar"):
+            self.add_input("actuator", distributed=False, shape=9, tags=["mphys_coupling"])
 
     # add the function names to this component, called from runScript.py
     def mphys_add_funcs(self, funcs):
@@ -657,6 +676,16 @@ class DAFoamFunctions(ExplicitComponent):
                 omegaBar = 0.0
 
             d_inputs["omega"] += self.comm.bcast(omegaBar, root=0)
+
+        # compute dFdAct
+        if "actuator" in d_inputs:
+            dFdActuator = PETSc.Vec().create(self.comm)
+            dFdActuator.setSizes((PETSc.DECIDE, 9), bsize=1)
+            dFdActuator.setFromOptions()
+            DASolver.calcdFdACTAD(DASolver.xvVec, DASolver.wVec, objFuncName.encode(), "actuator".encode(), dFdActuator)
+            # we will convert the MPI dFdActuator to seq array for all procs
+            actuatorBar = DASolver.convertMPIVec2SeqArray(dFdActuator)
+            d_inputs["actuator"] += actuatorBar
 
 
 class DAFoamWarper(ExplicitComponent):
