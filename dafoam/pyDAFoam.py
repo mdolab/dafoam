@@ -1024,7 +1024,7 @@ class PYDAFOAM(object):
         if "NONE" not in self.getOption("writeSensMap"):
             if not self.getOption("useAD")["mode"] in ["reverse"]:
                 raise Error("writeSensMap is only compatible with useAD->mode=reverse")
-            
+
         if self.getOption("runLowOrderPrimal4PC")["active"]:
             self.setOption("runLowOrderPrimal4PC", {"active": True, "isPC": False})
 
@@ -3646,6 +3646,20 @@ class PYDAFOAM(object):
             self.solverAD.updateOFField(self.wVec)
 
         return
+
+    def convertMPIVec2SeqArray(self, mpiVec):
+        """
+        Convert a MPI vector to a seq array
+        """
+        vecSize = mpiVec.getSize()
+        seqVec = PETSc.Vec().createSeq(vecSize, bsize=1, comm=PETSc.COMM_SELF)
+        self.solver.convertMPIVec2SeqVec(mpiVec, seqVec)
+
+        array1 = np.zeros(vecSize, self.dtype)
+        for i in range(vecSize):
+            array1[i] = seqVec[i]
+
+        return array1
 
     def vec2Array(self, vec):
         """
