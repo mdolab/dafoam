@@ -53,7 +53,8 @@ jobs:
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADF_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && ./Allmake opt 2> makeWarnings.txt && cd ../pyDASolversAD && ./Allmake opt 2> makeWarnings.txt"
         elif [ "${{matrix.args}}" = "mphys" ]; then
-           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake 2> makeWarnings.txt"
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && ./Allmake 2> makeWarnings.txt && cd ../pyDASolversAD && ./Allmake 2> makeWarnings.txt"
         else
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake ${{matrix.args}}"
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && ./Allmake ${{matrix.args}} 2> makeWarnings.txt && cd ../pyDASolversAD && ./Allmake ${{matrix.args}} 2> makeWarnings.txt"
