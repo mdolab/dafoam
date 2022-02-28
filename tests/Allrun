@@ -30,6 +30,9 @@ function runTests()
       echo "${1}: Failed!"
       exit 1
     fi
+    # need to replace the "[0m" for mphys tests 
+    sed -i 's/\[0m//g' DAFoam_Test_${1}.txt
+    sed -i 's/[^[:print:]\t]//g' DAFoam_Test_${1}.txt
     python testFuncs.py refs/DAFoam_Test_${1}Ref.txt DAFoam_Test_${1}.txt
     if [ "$?" -ne "0" ]; then 
       echo "${1}: Failed!"
@@ -88,6 +91,7 @@ case $argm in
     runTests DASolidDisplacementFoam
     runTests DAScalarTransportFoam
     runTests DALaplacianFoam
+    runTests MphysAeroStruct
     echo " "
     echo "************************************************************"
     echo "**************** All DAFoam tests passed! ******************"
@@ -164,8 +168,20 @@ case $argm in
     echo "************************************************************"
     echo " "
     ;;
+  "mphys")
+    echo "Running Mphys tests...."
+    sleep 3
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
+      runTests MphysAeroStruct
+    fi
+    echo " "
+    echo "************************************************************"
+    echo "******************* Mphys tests passed! ********************"
+    echo "************************************************************"
+    echo " "
+    ;;
   *)
-    echo "Argument not valid! Options are: all, incompressible, compressible, solid, or forward"
+    echo "Argument not valid! Options are: all, incompressible, compressible, solid, forward, or mphys"
     echo "Example: ./Allrun all"
     exit 1
     ;;
