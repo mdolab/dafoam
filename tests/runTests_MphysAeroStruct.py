@@ -11,7 +11,7 @@ from testFuncs import *
 import openmdao.api as om
 from mphys.multipoint import Multipoint
 from dafoam.mphys_dafoam import DAFoamBuilder
-from mphys.solver_builders.mphys_tacs import TacsBuilder
+from tacs.mphys.mphys_tacs import TacsBuilder
 from mphys.solver_builders.mphys_meld import MeldBuilder
 from mphys.scenario_aerostructural import ScenarioAeroStructural
 from mphys.solver_builders.mphys_dvgeo import OM_DVGEOCOMP
