@@ -217,9 +217,9 @@ class Top(Multipoint):
         self.geometry.nom_addVolumeConstraint("volcon", leList, teList, nSpan=10, nChord=10)
         self.geometry.nom_add_LETEConstraint("lecon", 0, "iLow")
         self.geometry.nom_add_LETEConstraint("tecon", 0, "iHigh")
-        self.geometry.nom_addCurvatureConstraint1D(
-            "curvature", start=[3, 0, 0], end=[8, 0, 12], nPts=20, axis=[0, 1, 0], curvatureType="mean", scaled=False
-        )
+        #self.geometry.nom_addCurvatureConstraint1D(
+        #    "curvature", start=[3, 0, 0], end=[8, 0, 12], nPts=20, axis=[0, 1, 0], curvatureType="mean", scaled=False
+        #)
         self.geometry.nom_addLERadiusConstraints(
             "radius", leList=[[0.1, 0, 0], [7.0, 0, 13]], nSpan=10, axis=[0, 1, 0], chordDir=[1, 0, 0]
         )
@@ -247,7 +247,7 @@ class Top(Multipoint):
         self.add_constraint("geometry.volcon", lower=1.0, scaler=1.0)
         self.add_constraint("geometry.tecon", equals=0.0, scaler=1.0, linear=True)
         self.add_constraint("geometry.lecon", equals=0.0, scaler=1.0, linear=True)
-        self.add_constraint("geometry.curvature", lower=0.0, upper=0.02, scaler=1.0)
+        #self.add_constraint("geometry.curvature", lower=0.0, upper=0.02, scaler=1.0)
         self.add_constraint("geometry.radius", lower=1.0, scaler=1.0)
 
 
