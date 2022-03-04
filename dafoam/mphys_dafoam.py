@@ -173,8 +173,8 @@ class DAFoamSolver(ImplicitComponent):
         # objFunc and primalBC options
         self.optionDict = None
 
-        # Initialize AOA option
-        self.aoa_func = None
+        # Initialize the design variable functions, e.g., aoa, actuator
+        self.dv_funcs = {}
 
         # initialize the dRdWT matrix-free matrix in DASolver
         DASolver.solverAD.initializedRdWTMatrixFree(DASolver.xvVec, DASolver.wVec)
@@ -225,6 +225,16 @@ class DAFoamSolver(ImplicitComponent):
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
 
+    def add_dv_func(self, dvName, dv_func):
+        # add a design variable function to self.dv_func
+        # we need to call this function in runScript.py everytime we define a new dv_func, e.g., aoa, actuator
+        # no need to call this for the shape variables because they will be handled in the geometry component
+        # the dv_func should have two inputs, (dvVal, DASolver)
+        if dvName in self.dv_funcs:
+            raise AnalysisError("dvName %s is already in self.dv_funcs! " % dvName)
+        else:
+            self.dv_funcs[dvName] = dv_func
+
     def set_options(self, optionDict):
         # here optionDict should be a dictionary that has a consistent format
         # with the daOptions defined in the run script
@@ -261,10 +271,12 @@ class DAFoamSolver(ImplicitComponent):
 
         # assign the optionDict to the solver
         self.apply_options(self.optionDict)
-        # Compute and set angle of attack
-        if callable(self.aoa_func):
-            aoa = inputs["aoa"]
-            self.aoa_func(aoa, DASolver)
+
+        # now call the dv_funcs to update the design variables
+        for dvName in self.dv_funcs:
+            func = self.dv_funcs[dvName]
+            dvVal = inputs[dvName]
+            func(dvVal, DASolver)
 
         DASolver.updateDAOption()
 
@@ -317,10 +329,13 @@ class DAFoamSolver(ImplicitComponent):
 
         # assign the optionDict to the solver
         self.apply_options(self.optionDict)
-        # Compute and set angle of attack
-        if callable(self.aoa_func):
-            aoa = inputs["aoa"]
-            self.aoa_func(aoa, DASolver)
+        
+        # now call the dv_funcs to update the design variables
+        for dvName in self.dv_funcs:
+            func = self.dv_funcs[dvName]
+            dvVal = inputs[dvName]
+            func(dvVal, DASolver)
+
         # assign the states in outputs to the OpenFOAM flow fields
         DASolver.setStates(outputs["dafoam_states"])
 
@@ -577,8 +592,8 @@ class DAFoamFunctions(ExplicitComponent):
 
         self.DASolver = self.options["solver"]
 
-        # Initialze AOA option
-        self.aoa_func = None
+        # init the dv_funcs
+        self.dv_funcs = {}
 
         self.optionDict = None
 
@@ -623,6 +638,16 @@ class DAFoamFunctions(ExplicitComponent):
         # loop over the functions here and create the output
         for f_name in funcs:
             self.add_output(f_name, distributed=False, shape=1, units=None, tags=["mphys_result"])
+    
+    def add_dv_func(self, dvName, dv_func):
+        # add a design variable function to self.dv_func
+        # we need to call this function in runScript.py everytime we define a new dv_func, e.g., aoa, actuator
+        # no need to call this for the shape variables because they will be handled in the geometry component
+        # the dv_func should have two inputs, (dvVal, DASolver)
+        if dvName in self.dv_funcs:
+            raise AnalysisError("dvName %s is already in self.dv_funcs! " % dvName)
+        else:
+            self.dv_funcs[dvName] = dv_func
 
     def mphys_set_options(self, optionDict):
         # here optionDict should be a dictionary that has a consistent format
@@ -659,10 +684,11 @@ class DAFoamFunctions(ExplicitComponent):
 
         # assign the optionDict to the solver
         self.apply_options(self.optionDict)
-        # Compute and set angle of attack
-        if callable(self.aoa_func):
-            aoa = inputs["aoa"]
-            self.aoa_func(aoa, DASolver)
+        # now call the dv_funcs to update the design variables
+        for dvName in self.dv_funcs:
+            func = self.dv_funcs[dvName]
+            dvVal = inputs[dvName]
+            func(dvVal, DASolver)
         DASolver.setStates(inputs["dafoam_states"])
 
         # we do not support forward mode AD
