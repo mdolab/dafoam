@@ -43,7 +43,7 @@ aeroOptions = {
     "writeJacobians": ["all"],
     "writeSensMap": ["betaSA", "alphaPorosity"],
     "primalBC": {
-        "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
         "useWallFunction": True,
