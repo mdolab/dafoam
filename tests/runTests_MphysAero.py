@@ -10,7 +10,7 @@ from testFuncs import *
 
 import openmdao.api as om
 from mphys.multipoint import Multipoint
-from dafoam.mphys_dafoam import DAFoamBuilder
+from dafoam.mphys_dafoam import DAFoamBuilder, checkDesignVarSetup
 from mphys.scenario_aerodynamic import ScenarioAerodynamic
 from mphys.solver_builders.mphys_dvgeo import OM_DVGEOCOMP
 from pygeo import *
@@ -31,95 +31,95 @@ pitch0 = 2.0
 rho0 = 1.0
 A0 = 45.5
 
+daOptions = {
+    "designSurfaces": ["wing"],
+    "solverName": "DASimpleFoam",
+    "primalMinResTol": 1.0e-10,
+    "primalBC": {
+        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
+        "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
+        "useWallFunction": True,
+    },
+    "fvSource": {
+        "disk1": {
+            "type": "actuatorDisk",
+            "source": "cylinderAnnulusSmooth",
+            "center": [-1.0, 0.0, 5.0],
+            "direction": [1.0, 0.0, 0.0],
+            "innerRadius": 0.5,
+            "outerRadius": 5.0,
+            "rotDir": "right",
+            "scale": 1.0,
+            "POD": 0.0,
+            "eps": 3.0,  # eps should be of cell size
+            "expM": 1.0,
+            "expN": 0.5,
+            "adjustThrust": 1,
+            "targetThrust": 100.0,
+        },
+    },
+    "objFunc": {
+        "CD": {
+            "part1": {
+                "type": "force",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "directionMode": "fixedDirection",
+                "direction": [1.0, 0.0, 0.0],
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
+                "addToAdjoint": True,
+            }
+        },
+        "CL": {
+            "part1": {
+                "type": "force",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "directionMode": "fixedDirection",
+                "direction": [0.0, 1.0, 0.0],
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
+                "addToAdjoint": True,
+            }
+        },
+    },
+    "adjEqnOption": {
+        "gmresRelTol": 1.0e-8,
+        "pcFillLevel": 1,
+        "jacMatReOrdering": "rcm",
+    },
+    "normalizeStates": {
+        "U": U0,
+        "p": U0 * U0 / 2.0,
+        "nuTilda": 1e-3,
+        "phi": 1.0,
+    },
+    "adjPartDerivFDStep": {"State": 1e-6},
+    "checkMeshThreshold": {
+        "maxAspectRatio": 5000.0,
+        "maxNonOrth": 70.0,
+        "maxSkewness": 8.0,
+        "maxIncorrectlyOrientedFaces": 0,
+    },
+    "designVar": {
+        "twist": {"designVarType": "FFD"},
+        "shape": {"designVarType": "FFD"},
+        "actuator": {"designVarType": "ACTD", "actuatorName": "disk1"},
+        "uin": {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0},
+    },
+}
+
+meshOptions = {
+    "gridFile": os.getcwd(),
+    "fileType": "OpenFOAM",
+    "useRotations": False,
+    # point and normal for the symmetry plane
+    "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]],
+}
+
 
 class Top(Multipoint):
     def setup(self):
-        daOptions = {
-            "designSurfaces": ["wing"],
-            "solverName": "DASimpleFoam",
-            "primalMinResTol": 1.0e-10,
-            "primalBC": {
-                "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
-                "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
-                "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
-                "useWallFunction": True,
-            },
-            "fvSource": {
-                "disk1": {
-                    "type": "actuatorDisk",
-                    "source": "cylinderAnnulusSmooth",
-                    "center": [-1.0, 0.0, 5.0],
-                    "direction": [1.0, 0.0, 0.0],
-                    "innerRadius": 0.5,
-                    "outerRadius": 5.0,
-                    "rotDir": "right",
-                    "scale": 1.0,
-                    "POD": 0.0,
-                    "eps": 3.0,  # eps should be of cell size
-                    "expM": 1.0,
-                    "expN": 0.5,
-                    "adjustThrust": 1,
-                    "targetThrust": 100.0,
-                },
-            },
-            "objFunc": {
-                "CD": {
-                    "part1": {
-                        "type": "force",
-                        "source": "patchToFace",
-                        "patches": ["wing"],
-                        "directionMode": "fixedDirection",
-                        "direction": [1.0, 0.0, 0.0],
-                        "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
-                        "addToAdjoint": True,
-                    }
-                },
-                "CL": {
-                    "part1": {
-                        "type": "force",
-                        "source": "patchToFace",
-                        "patches": ["wing"],
-                        "directionMode": "fixedDirection",
-                        "direction": [0.0, 1.0, 0.0],
-                        "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
-                        "addToAdjoint": True,
-                    }
-                },
-            },
-            "adjEqnOption": {
-                "gmresRelTol": 1.0e-8,
-                "pcFillLevel": 1,
-                "jacMatReOrdering": "rcm",
-            },
-            "normalizeStates": {
-                "U": U0,
-                "p": U0 * U0 / 2.0,
-                "nuTilda": 1e-3,
-                "phi": 1.0,
-            },
-            "adjPartDerivFDStep": {"State": 1e-6},
-            "checkMeshThreshold": {
-                "maxAspectRatio": 5000.0,
-                "maxNonOrth": 70.0,
-                "maxSkewness": 8.0,
-                "maxIncorrectlyOrientedFaces": 0,
-            },
-            "designVar": {
-                "twist": {"designVarType": "FFD"},
-                "shape": {"designVarType": "FFD"},
-                "actuator": {"designVarType": "ACTD", "actuatorName": "disk1"},
-                "uin": {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0},
-            },
-        }
-
-        meshOptions = {
-            "gridFile": os.getcwd(),
-            "fileType": "OpenFOAM",
-            "useRotations": False,
-            # point and normal for the symmetry plane
-            "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]],
-        }
-
         dafoam_builder = DAFoamBuilder(daOptions, meshOptions, scenario="aerodynamic")
         dafoam_builder.initialize(self.comm)
 
@@ -217,9 +217,9 @@ class Top(Multipoint):
         self.geometry.nom_addVolumeConstraint("volcon", leList, teList, nSpan=10, nChord=10)
         self.geometry.nom_add_LETEConstraint("lecon", 0, "iLow")
         self.geometry.nom_add_LETEConstraint("tecon", 0, "iHigh")
-        #self.geometry.nom_addCurvatureConstraint1D(
+        # self.geometry.nom_addCurvatureConstraint1D(
         #    "curvature", start=[3, 0, 0], end=[8, 0, 12], nPts=20, axis=[0, 1, 0], curvatureType="mean", scaled=False
-        #)
+        # )
         self.geometry.nom_addLERadiusConstraints(
             "radius", leList=[[0.1, 0, 0], [7.0, 0, 13]], nSpan=10, axis=[0, 1, 0], chordDir=[1, 0, 0]
         )
@@ -247,7 +247,7 @@ class Top(Multipoint):
         self.add_constraint("geometry.volcon", lower=1.0, scaler=1.0)
         self.add_constraint("geometry.tecon", equals=0.0, scaler=1.0, linear=True)
         self.add_constraint("geometry.lecon", equals=0.0, scaler=1.0, linear=True)
-        #self.add_constraint("geometry.curvature", lower=0.0, upper=0.02, scaler=1.0)
+        # self.add_constraint("geometry.curvature", lower=0.0, upper=0.02, scaler=1.0)
         self.add_constraint("geometry.radius", lower=1.0, scaler=1.0)
 
 
@@ -271,6 +271,9 @@ prob.recording_options["record_constraints"] = True
 
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aerostruct.html")
+
+# check if the design variable dict is properly set
+checkDesignVarSetup(daOptions, prob.model.get_design_vars())
 
 prob.run_driver()
 

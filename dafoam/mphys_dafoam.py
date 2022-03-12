@@ -329,7 +329,7 @@ class DAFoamSolver(ImplicitComponent):
 
         # assign the optionDict to the solver
         self.apply_options(self.optionDict)
-        
+
         # now call the dv_funcs to update the design variables
         for dvName in self.dv_funcs:
             func = self.dv_funcs[dvName]
@@ -638,7 +638,7 @@ class DAFoamFunctions(ExplicitComponent):
         # loop over the functions here and create the output
         for f_name in funcs:
             self.add_output(f_name, distributed=False, shape=1, units=None, tags=["mphys_result"])
-    
+
     def add_dv_func(self, dvName, dv_func):
         # add a design variable function to self.dv_func
         # we need to call this function in runScript.py everytime we define a new dv_func, e.g., aoa, actuator
@@ -899,3 +899,19 @@ class DAFoamForces(ExplicitComponent):
                 DASolver.solverAD.calcdForcedWAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedW)
                 wBar = DASolver.vec2Array(dForcedW)
                 d_inputs["dafoam_states"] += wBar
+
+
+def checkDesignVarSetup(daOptions, modelDesignVars):
+    # we need to check if the design variable set in the OM model is also set
+    # in the designVar key in DAOptions. If they are not consistent, we print
+    # an error and exit because it will produce wrong gradient
+    DADesignVars = daOptions["designVar"]
+    for modelDV in modelDesignVars:
+        dvFound = False
+        for dv in DADesignVars:
+            if dv in modelDV:
+                dvFound = True
+        if dvFound is not True:
+            raise AnalysisError(
+                "Design variable %s is defined in the model but not found in designVar in DAOptions! " % modelDV
+            )
