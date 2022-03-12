@@ -10,7 +10,7 @@ from testFuncs import *
 
 import openmdao.api as om
 from mphys.multipoint import Multipoint
-from dafoam.mphys_dafoam import DAFoamBuilder
+from dafoam.mphys_dafoam import DAFoamBuilder, checkDesignVarSetup
 from tacs.mphys.mphys_tacs import TacsBuilder
 from mphys.solver_builders.mphys_meld import MeldBuilder
 from mphys.scenario_aerostructural import ScenarioAeroStructural
@@ -44,119 +44,112 @@ t = 0.003
 tMin = 0.002
 tMax = 0.05
 
+daOptions = {
+    "designSurfaces": ["wing"],
+    "solverName": "DARhoSimpleFoam",
+    "fsi": {
+        "pRef": p0,
+    },
+    "primalMinResTol": 1.0e-8,
+    "primalBC": {
+        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
+        "T0": {"variable": "T", "patches": ["inout"], "value": [T0]},
+        "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
+        "useWallFunction": False,
+    },
+    # variable bounds for compressible flow conditions
+    "primalVarBounds": {
+        "UMax": 1000.0,
+        "UMin": -1000.0,
+        "pMax": 500000.0,
+        "pMin": 20000.0,
+        "eMax": 500000.0,
+        "eMin": 100000.0,
+        "rhoMax": 5.0,
+        "rhoMin": 0.2,
+    },
+    "objFunc": {
+        "CD": {
+            "part1": {
+                "type": "force",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "directionMode": "parallelToFlow",
+                "alphaName": "aoa",
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
+                "addToAdjoint": True,
+            }
+        },
+        "CL": {
+            "part1": {
+                "type": "force",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "directionMode": "normalToFlow",
+                "alphaName": "aoa",
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
+                "addToAdjoint": True,
+            }
+        },
+    },
+    "adjEqnOption": {
+        "gmresRelTol": 1.0e-2,
+        "pcFillLevel": 1,
+        "jacMatReOrdering": "rcm",
+        "useNonZeroInitGuess": True,
+    },
+    "normalizeStates": {
+        "U": U0,
+        "p": p0,
+        "T": T0,
+        "nuTilda": 1e-3,
+        "phi": 1.0,
+    },
+    "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
+    "checkMeshThreshold": {
+        "maxAspectRatio": 5000.0,
+        "maxNonOrth": 70.0,
+        "maxSkewness": 8.0,
+        "maxIncorrectlyOrientedFaces": 0,
+    },
+    "designVar": {
+        "aoa": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+        "twist": {"designVarType": "FFD"},
+        "shape": {"designVarType": "FFD"},
+    },
+}
 
-def element_callback(dvNum, compID, compDescript, elemDescripts, specialDVs, **kwargs):
-    prop = constitutive.MaterialProperties(rho=rho, E=E, nu=nu, ys=ys)
-    con = constitutive.IsoShellConstitutive(prop, t=t, tNum=dvNum, tlb=tMin, tub=tMax)
-    transform = None
-    elem = elements.Quad4Shell(transform, con)
-
-    return elem
-
-
-def problem_setup(scenario_name, fea_assembler, problem):
-
-    problem.addFunction("mass", functions.StructuralMass)
-    problem.addFunction("ks_vmfailure", functions.KSFailure, safetyFactor=1.0, ksWeight=50.0)
-
-    g = np.array([0.0, 0.0, -9.81])
-    problem.addInertialLoad(g)
+meshOptions = {
+    "gridFile": os.getcwd(),
+    "fileType": "OpenFOAM",
+    "useRotations": False,
+    # point and normal for the symmetry plane
+    "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]],
+}
 
 
 class Top(Multipoint):
     def setup(self):
-        daOptions = {
-            "designSurfaces": ["wing"],
-            "solverName": "DARhoSimpleFoam",
-            "fsi": {
-                "pRef": p0,
-            },
-            "primalMinResTol": 1.0e-8,
-            "primalBC": {
-                "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
-                "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
-                "T0": {"variable": "T", "patches": ["inout"], "value": [T0]},
-                "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
-                "useWallFunction": False,
-            },
-            # variable bounds for compressible flow conditions
-            "primalVarBounds": {
-                "UMax": 1000.0,
-                "UMin": -1000.0,
-                "pMax": 500000.0,
-                "pMin": 20000.0,
-                "eMax": 500000.0,
-                "eMin": 100000.0,
-                "rhoMax": 5.0,
-                "rhoMin": 0.2,
-            },
-            "objFunc": {
-                "CD": {
-                    "part1": {
-                        "type": "force",
-                        "source": "patchToFace",
-                        "patches": ["wing"],
-                        "directionMode": "parallelToFlow",
-                        "alphaName": "aoa",
-                        "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
-                        "addToAdjoint": True,
-                    }
-                },
-                "CL": {
-                    "part1": {
-                        "type": "force",
-                        "source": "patchToFace",
-                        "patches": ["wing"],
-                        "directionMode": "normalToFlow",
-                        "alphaName": "aoa",
-                        "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
-                        "addToAdjoint": True,
-                    }
-                },
-            },
-            "adjEqnOption": {
-                "gmresRelTol": 1.0e-2,
-                "pcFillLevel": 1,
-                "jacMatReOrdering": "rcm",
-                "useNonZeroInitGuess": True,
-            },
-            "normalizeStates": {
-                "U": U0,
-                "p": p0,
-                "T": T0,
-                "nuTilda": 1e-3,
-                "phi": 1.0,
-            },
-            "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
-            "checkMeshThreshold": {
-                "maxAspectRatio": 5000.0,
-                "maxNonOrth": 70.0,
-                "maxSkewness": 8.0,
-                "maxIncorrectlyOrientedFaces": 0,
-            },
-            "designVar": {
-                "aoa": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
-                "twist": {"designVarType": "FFD"},
-                "shape": {"designVarType": "FFD"},
-            },
-        }
-
-        meshOptions = {
-            "gridFile": os.getcwd(),
-            "fileType": "OpenFOAM",
-            "useRotations": False,
-            # point and normal for the symmetry plane
-            "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]],
-        }
-
+        # DAFoam setup
         aero_builder = DAFoamBuilder(daOptions, meshOptions, scenario="aerostructural")
         aero_builder.initialize(self.comm)
         self.add_subsystem("mesh_aero", aero_builder.get_mesh_coordinate_subsystem())
 
-        ################################################################################
-        # TACS options
-        ################################################################################
         # TACS Setup
+        def element_callback(dvNum, compID, compDescript, elemDescripts, specialDVs, **kwargs):
+            prop = constitutive.MaterialProperties(rho=rho, E=E, nu=nu, ys=ys)
+            con = constitutive.IsoShellConstitutive(prop, t=t, tNum=dvNum, tlb=tMin, tub=tMax)
+            transform = None
+            elem = elements.Quad4Shell(transform, con)
+            return elem
+
+        def problem_setup(scenario_name, fea_assembler, problem):
+            problem.addFunction("mass", functions.StructuralMass)
+            problem.addFunction("ks_vmfailure", functions.KSFailure, safetyFactor=1.0, ksWeight=50.0)
+            g = np.array([0.0, 0.0, -9.81])
+            problem.addInertialLoad(g)
+
         tacs_options = {
             "element_callback": element_callback,
             "problem_setup": problem_setup,
@@ -295,6 +288,9 @@ prob.recording_options["record_constraints"] = True
 
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aerostruct.html")
+
+# check if the design variable dict is properly set
+checkDesignVarSetup(daOptions, prob.model.get_design_vars())
 
 prob.run_driver()
 
