@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import re
 
 __version__ = re.findall(
@@ -23,7 +23,7 @@ setup(
     author_email="",
     url="https://github.com/mdolab/dafoam",
     license="GPL version 3",
-    packages=["dafoam"],
+    packages=find_packages(include=["dafoam*"]),
     package_data={"dafoam": ["*.so"]},
     scripts=[
         "dafoam/scripts/dafoam_matdiff.py",
