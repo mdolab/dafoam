@@ -10,8 +10,7 @@ from testFuncs import *
 
 import openmdao.api as om
 from mphys.multipoint import Multipoint
-from dafoam.mphys import DAFoamBuilder
-from dafoam.mphys.mphys_dafoam import checkDesignVarSetup
+from dafoam.mphys import DAFoamBuilder, checkDesignVarSetup
 from mphys.scenario_aerodynamic import ScenarioAerodynamic
 from mphys.solver_builders.mphys_dvgeo import OM_DVGEOCOMP
 from pygeo import *
