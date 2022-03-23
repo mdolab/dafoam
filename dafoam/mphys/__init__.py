@@ -1,3 +1,3 @@
 from .mphys_dafoam import DAFoamBuilder
 
-__all__ = ["DAFoamBuilder", "checkDesignVarSetup"]
+__all__ = ["DAFoamBuilder"]
