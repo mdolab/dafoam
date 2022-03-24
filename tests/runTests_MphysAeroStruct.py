@@ -10,7 +10,7 @@ from testFuncs import *
 
 import openmdao.api as om
 from mphys.multipoint import Multipoint
-from dafoam.mphys_dafoam import DAFoamBuilder, checkDesignVarSetup
+from dafoam.mphys import DAFoamBuilder, checkDesignVarSetup
 from tacs.mphys.mphys_tacs import TacsBuilder
 from mphys.solver_builders.mphys_meld import MeldBuilder
 from mphys.scenario_aerostructural import ScenarioAeroStructural
