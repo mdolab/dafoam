@@ -2809,7 +2809,7 @@ class PYDAFOAM(object):
         xSDot0 = self.mapVector(xSDot0, self.allFamilies, self.designFamilyGroup)
 
         # get xSDot
-        xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName=self.ptSetName, comm=self.comm).reshape(xSDot0.shape)
+        xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName=self.ptSetName).reshape(xSDot0.shape)
         # get xVDot
         xVDot = self.mesh.warpDerivFwd(xSDot)
 
