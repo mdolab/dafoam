@@ -68,7 +68,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
         wssDir_[1] = dir[1];
         wssDir_[2] = dir[2];
     }
-    if (stateType_ == "surfacePressure")
+    if (stateType_ == "surfacePressure" || "surfacePressureCustom")
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
     }
