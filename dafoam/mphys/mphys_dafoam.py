@@ -427,6 +427,9 @@ class DAFoamSolver(ImplicitComponent):
         if not DASolver.getOption("writeMinorIterations"):
             solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
             if renamed:
+                # write the deformed FFD for post-processing
+                DASolver.writeDeformedFFDs(self.solution_counter)
+                # print the solution counter
                 if self.comm.rank == 0:
                     print("Driver total derivatives for iteration: %d" % self.solution_counter)
                     print("---------------------------------------------")

@@ -1159,12 +1159,15 @@ class PYDAFOAM(object):
             f.write("},\n")
             f.close()
 
-    def writeDeformedFFDs(self):
+    def writeDeformedFFDs(self, counter=None):
         """
         Write the deformed FFDs to the disk during optimization
         """
         if self.getOption("writeDeformedFFDs"):
-            self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % self.nSolveAdjoints)
+            if counter is None:
+                self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % self.nSolveAdjoints)
+            else:
+                self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % counter)
 
     def writeTotalDeriv(self, fileName, sens, evalFuncs):
         """
@@ -1890,6 +1893,7 @@ class PYDAFOAM(object):
 
         if self.getOption("writeMinorIterations"):
             self.renameSolution(self.nSolvePrimals)
+            self.writeDeformedFFDs(self.nSolvePrimals)
 
         self.nSolvePrimals += 1
 
