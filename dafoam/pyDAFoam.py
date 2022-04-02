@@ -1159,12 +1159,15 @@ class PYDAFOAM(object):
             f.write("},\n")
             f.close()
 
-    def writeDeformedFFDs(self):
+    def writeDeformedFFDs(self, counter=None):
         """
         Write the deformed FFDs to the disk during optimization
         """
         if self.getOption("writeDeformedFFDs"):
-            self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % self.nSolveAdjoints)
+            if counter is None:
+                self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % self.nSolveAdjoints)
+            else:
+                self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % counter)
 
     def writeTotalDeriv(self, fileName, sens, evalFuncs):
         """
@@ -1890,6 +1893,7 @@ class PYDAFOAM(object):
 
         if self.getOption("writeMinorIterations"):
             self.renameSolution(self.nSolvePrimals)
+            self.writeDeformedFFDs(self.nSolvePrimals)
 
         self.nSolvePrimals += 1
 
@@ -1928,7 +1932,7 @@ class PYDAFOAM(object):
             raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
 
         if not self.getOption("writeMinorIterations"):
-            solutionTime = self.renameSolution(self.nSolveAdjoints)
+            solutionTime, renamed = self.renameSolution(self.nSolveAdjoints)
 
         Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
 
@@ -2758,8 +2762,9 @@ class PYDAFOAM(object):
         solutionTime = allSolutions[0]
 
         if float(solutionTime) < 1e-6:
-            Info("Solution time %g less than 1e-6, not moved." % float(solutionTime))
-            return solutionTime
+            Info("Solution time %g less than 1e-6, not renamed." % float(solutionTime))
+            renamed = False
+            return solutionTime, renamed
 
         distTime = "%.8f" % (solIndex / 1e8)
 
@@ -2776,7 +2781,8 @@ class PYDAFOAM(object):
             except Exception:
                 raise Error("Can not move %s to %s" % (src, dst))
 
-        return distTime
+        renamed = True
+        return distTime, renamed
 
     def calcFFD2XvSeedVec(self):
         """

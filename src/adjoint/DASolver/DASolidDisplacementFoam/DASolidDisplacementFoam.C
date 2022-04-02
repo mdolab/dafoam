@@ -108,6 +108,7 @@ label DASolidDisplacementFoam::solvePrimal(
 
     if (!meshOK)
     {
+        this->writeFailedMesh();
         return 1;
     }
 

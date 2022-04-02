@@ -129,6 +129,7 @@ label DASimpleTFoam::solvePrimal(
 
     if (!meshOK)
     {
+        this->writeFailedMesh();
         return 1;
     }
 

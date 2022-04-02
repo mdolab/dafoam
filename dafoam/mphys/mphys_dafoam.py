@@ -167,6 +167,8 @@ class DAFoamSolver(ImplicitComponent):
         self.DASolver = self.options["solver"]
         DASolver = self.DASolver
 
+        self.solution_counter = 1
+
         # by default, we will not have a separate optionDict attached to this
         # solver. But if we do multipoint optimization, we need to use the
         # optionDict for each point because each point may have different
@@ -260,11 +262,6 @@ class DAFoamSolver(ImplicitComponent):
     def solve_nonlinear(self, inputs, outputs):
 
         DASolver = self.DASolver
-        if self.comm.rank == 0:
-            print("\n", flush=True)
-            print("+------------------------------------------------------+", flush=True)
-            print("|          Evaluating Objective Functions %03d          |" % DASolver.nSolvePrimals, flush=True)
-            print("+------------------------------------------------------+", flush=True)
 
         # set the runStatus, this is useful when the actuator term is activated
         DASolver.setOption("runStatus", "solvePrimal")
@@ -298,24 +295,7 @@ class DAFoamSolver(ImplicitComponent):
     def linearize(self, inputs, outputs, residuals):
         # NOTE: we do not do any computation in this function, just print some information
 
-        DASolver = self.DASolver
-
-        if self.comm.rank == 0:
-            print("\n", flush=True)
-            print("+------------------------------------------------------+", flush=True)
-            print("|    Evaluating Objective Function Sensitivities %03d   |" % DASolver.nSolveAdjoints, flush=True)
-            print("+------------------------------------------------------+", flush=True)
-
-        # move the solution folder to 0.000000x
-        DASolver.renameSolution(DASolver.nSolveAdjoints)
-
-        # set the runStatus, this is useful when the actuator term is activated
-        DASolver.setOption("runStatus", "solveAdjoint")
-        DASolver.updateDAOption()
-
-        DASolver.setStates(outputs["dafoam_states"])
-
-        DASolver.nSolveAdjoints += 1
+        self.DASolver.setStates(outputs["dafoam_states"])
 
     def apply_linear(self, inputs, outputs, d_inputs, d_outputs, d_residuals, mode):
         # compute the matrix vector products for states and volume mesh coordinates
@@ -439,6 +419,21 @@ class DAFoamSolver(ImplicitComponent):
             raise AnalysisError("fwd mode not implemented!")
 
         DASolver = self.DASolver
+
+        # set the runStatus, this is useful when the actuator term is activated
+        DASolver.setOption("runStatus", "solveAdjoint")
+        DASolver.updateDAOption()
+
+        if not DASolver.getOption("writeMinorIterations"):
+            solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
+            if renamed:
+                # write the deformed FFD for post-processing
+                DASolver.writeDeformedFFDs(self.solution_counter)
+                # print the solution counter
+                if self.comm.rank == 0:
+                    print("Driver total derivatives for iteration: %d" % self.solution_counter)
+                    print("---------------------------------------------")
+                self.solution_counter += 1
 
         # compute the preconditioiner matrix for the adjoint linear equation solution
         # NOTE: we compute this only once and will reuse it during optimization
@@ -597,8 +592,6 @@ class DAFoamFunctions(ExplicitComponent):
 
         self.optionDict = None
 
-        self.solution_counter = 0
-
         # get the dvType dict
         designVariables = self.DASolver.getOption("designVar")
         self.dvType = {}
@@ -681,6 +674,10 @@ class DAFoamFunctions(ExplicitComponent):
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
         DASolver = self.DASolver
+
+        # set the runStatus, this is useful when the actuator term is activated
+        DASolver.setOption("runStatus", "solveAdjoint")
+        DASolver.updateDAOption()
 
         # assign the optionDict to the solver
         self.apply_options(self.optionDict)

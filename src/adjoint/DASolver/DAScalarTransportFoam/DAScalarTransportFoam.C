@@ -156,6 +156,7 @@ label DAScalarTransportFoam::solvePrimal(
 
     if (!meshOK)
     {
+        this->writeFailedMesh();
         return 1;
     }
 
