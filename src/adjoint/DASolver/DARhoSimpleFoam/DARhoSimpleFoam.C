@@ -129,6 +129,7 @@ label DARhoSimpleFoam::solvePrimal(
 
     if (!meshOK)
     {
+        this->writeFailedMesh();
         return 1;
     }
 

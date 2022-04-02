@@ -776,6 +776,9 @@ public:
     /// calculate the residual and assign it to the resVec vector
     void calcResidualVec(Vec resVec);
 
+    /// write the failed mesh to disk
+    void writeFailedMesh();
+
 #ifdef CODI_AD_REVERSE
 
     /// global tape for reverse-mode AD

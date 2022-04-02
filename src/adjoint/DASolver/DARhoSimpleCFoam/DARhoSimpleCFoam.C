@@ -112,6 +112,7 @@ label DARhoSimpleCFoam::solvePrimal(
 
     if (!meshOK)
     {
+        this->writeFailedMesh();
         return 1;
     }
 
