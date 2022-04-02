@@ -589,8 +589,6 @@ class DAFoamFunctions(ExplicitComponent):
 
         self.optionDict = None
 
-        self.solution_counter = 1
-
         # get the dvType dict
         designVariables = self.DASolver.getOption("designVar")
         self.dvType = {}
@@ -658,13 +656,6 @@ class DAFoamFunctions(ExplicitComponent):
     def compute(self, inputs, outputs):
 
         DASolver = self.DASolver
-
-        if DASolver.getOption("writeMinorIterations"):
-            DASolver.renameSolution(self.solution_counter)
-            if self.comm.rank == 0:
-                print("Driver primal solution for iteration: %d" % self.solution_counter)
-                print("-------------------------------------------")
-            self.solution_counter += 1
 
         DASolver.setStates(inputs["dafoam_states"])
 
