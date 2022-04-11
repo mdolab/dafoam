@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 \*---------------------------------------------------------------------------*/
 
@@ -90,6 +90,8 @@ void DALinearEqn::createMLRKSP(
         daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresAbsTol");
     label useNonZeroInitGuess =
         daOption_.getSubDictOption<label>("adjEqnOption", "useNonZeroInitGuess");
+    label useMGSO = 
+        daOption_.getSubDictOption<label>("adjEqnOption", "useMGSO");
     label printInfo =
         daOption_.getSubDictOption<label>("adjEqnOption", "printInfo");
 
@@ -155,6 +157,13 @@ void DALinearEqn::createMLRKSP(
     KSPGMRESSetRestart(ksp, restartGMRES);
     // Set the GMRES refinement type
     KSPGMRESSetCGSRefinementType(ksp, KSP_GMRES_CGS_REFINE_IFNEEDED);
+
+    // set orthogonalization for the GMRES, useMGSO=1: modified Gram Schmidt
+    // useMGSO=0: classical Gram Schmidt
+    if (useMGSO)
+    {
+        KSPGMRESSetOrthogonalization(ksp, KSPGMRESModifiedGramSchmidtOrthogonalization);
+    }
 
     // Set the preconditioner side
     KSPSetPCSide(ksp, PC_RIGHT);

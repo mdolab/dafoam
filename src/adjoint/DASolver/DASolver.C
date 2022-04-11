@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 \*---------------------------------------------------------------------------*/
 
@@ -5431,6 +5431,21 @@ void DASolver::setTimeInstanceVar(
 
     VecRestoreArray(timeVec, &timeVecArray);
     VecRestoreArray(timeIdxVec, &timeIdxVecArray);
+}
+
+void DASolver::writeFailedMesh()
+{
+    /*
+    Description:
+        If the mesh fails, we set the time to 10000 and write the results to the disk.
+        This way, the results will be renamed to 0.00000x during optimization, so that we 
+        can visualize them in Paraview to debug which part of the mesh is failing.
+    */
+    if (daOptionPtr_->getOption<label>("writeMinorIterations"))
+    {
+        runTimePtr_->setTime(10000.0, 10000);
+        runTimePtr_->writeNow();
+    }
 }
 
 scalar DASolver::getTimeInstanceObjFunc(

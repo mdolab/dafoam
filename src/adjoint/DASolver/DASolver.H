@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
         Solver class that calls primal and adjoint solvers,
@@ -789,6 +789,9 @@ public:
 
     /// calculate the residual and assign it to the resVec vector
     void calcResidualVec(Vec resVec);
+
+    /// write the failed mesh to disk
+    void writeFailedMesh();
 
 #ifdef CODI_AD_REVERSE
 

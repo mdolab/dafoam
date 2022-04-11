@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     This file is modified from OpenFOAM's source code
     src/TurbulenceModels/compressible/turbulentFluidThermoModels/turbulentFluidThermoModels.H

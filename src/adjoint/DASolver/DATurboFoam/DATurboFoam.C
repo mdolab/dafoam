@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 \*---------------------------------------------------------------------------*/
 
@@ -92,6 +92,7 @@ label DATurboFoam::solvePrimal(
 
     if (!meshOK)
     {
+        this->writeFailedMesh();
         return 1;
     }
 
