@@ -3,12 +3,11 @@ DAFoam: Discrete Adjoint with OpenFOAM
 
 [![tests](https://github.com/mdolab/dafoam/actions/workflows/reg_tests.yml/badge.svg)](https://github.com/mdolab/dafoam/actions/workflows/reg_tests.yml) [![codecov](https://codecov.io/gh/mdolab/dafoam/branch/master/graph/badge.svg?token=8F8E7FAFGA)](https://codecov.io/gh/mdolab/dafoam)
 
-DAFoam implements an efficient discrete adjoint method to perform high-fidelity gradient-based design optimization with the [MACH-Aero](https://github.com/mdolab/MACH-Aero) framework. DAFoam has the following features:
+DAFoam develops an efficient discrete adjoint method to perform high-fidelity multidisciplinary design optimization. DAFoam has the following features:
 
 - It uses a popular open-source package [OpenFOAM](https://www.openfoam.com) for multiphysics analysis.
 - It implements an efficient discrete adjoint approach with competitive speed, scalability, accuracy, and compatibility.
-- It allows rapid discrete adjoint development for any steady and unsteady OpenFOAM primal solvers with modifying only a few hundred lines of source codes.
-- It supports design optimizations for a wide range of disciplines such as aerodynamics, heat transfer, solid mechanics, hydrodynamics, and radiation.
+- It has a convenient Python interface to couple with [OpenMDAO](https://openmdao.org) for multidisciplinary design optimization.
 
 ![](cover.png)
 
