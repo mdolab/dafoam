@@ -10,7 +10,7 @@ from testFuncs import *
 
 import openmdao.api as om
 from mphys.multipoint import Multipoint
-from dafoam.mphys import DAFoamBuilder, checkDesignVarSetup
+from dafoam.mphys import DAFoamBuilder, OptFuncs
 from tacs.mphys.mphys_tacs import TacsBuilder
 from mphys.solver_builders.mphys_meld import MeldBuilder
 from mphys.scenario_aerostructural import ScenarioAeroStructural
@@ -289,8 +289,7 @@ prob.recording_options["record_constraints"] = True
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aerostruct.html")
 
-# check if the design variable dict is properly set
-checkDesignVarSetup(daOptions, prob.model.get_design_vars())
+optFuncs = OptFuncs(daOptions, prob)
 
 prob.run_driver()
 

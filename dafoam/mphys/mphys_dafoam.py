@@ -5,6 +5,8 @@ from idwarp import USMesh
 from mphys.builder import Builder
 import petsc4py
 from petsc4py import PETSc
+import numpy as np
+from mpi4py import MPI
 
 petsc4py.init(sys.argv)
 
@@ -898,17 +900,141 @@ class DAFoamForces(ExplicitComponent):
                 d_inputs["dafoam_states"] += wBar
 
 
-def checkDesignVarSetup(daOptions, modelDesignVars):
-    # we need to check if the design variable set in the OM model is also set
-    # in the designVar key in DAOptions. If they are not consistent, we print
-    # an error and exit because it will produce wrong gradient
-    DADesignVars = daOptions["designVar"]
-    for modelDV in modelDesignVars:
-        dvFound = False
-        for dv in DADesignVars:
-            if dv in modelDV:
-                dvFound = True
-        if dvFound is not True:
-            raise AnalysisError(
-                "Design variable %s is defined in the model but not found in designVar in DAOptions! " % modelDV
-            )
+class OptFuncs(object):
+    """
+    Some utility functions
+    """
+
+    def __init__(self, daOptions, om_prob):
+        self.daOptions = daOptions
+        self.om_prob = om_prob
+        self.comm = MPI.COMM_WORLD
+
+        # we need to check if the design variable set in the OM model is also set
+        # in the designVar key in DAOptions. If they are not consistent, we print
+        # an error and exit because it will produce wrong gradient
+
+        modelDesignVars = self.om_prob.model.get_design_vars()
+
+        DADesignVars = self.daOptions["designVar"]
+        for modelDV in modelDesignVars:
+            dvFound = False
+            for dv in DADesignVars:
+                if dv in modelDV:
+                    dvFound = True
+            if dvFound is not True:
+                raise RuntimeError(
+                    "Design variable %s is defined in the model but not found in designVar in DAOptions! " % modelDV
+                )
+
+    def findFeasibleDesign(
+        self,
+        constraints,
+        designVars,
+        targets,
+        constraintsComp=None,
+        designVarsComp=None,
+        step=None,
+        maxIter=10,
+        tol=1e-4,
+    ):
+        """
+        Find the design variables that meet the prescribed constraints. This can be used to get a
+        feasible design to start the optimization. For example, finding the angle of attack and
+        tail rotation angle that give the target lift and pitching moment. The sizes of cons and
+        designvars have to be the same.
+        NOTE: we use the Newton method to find the feasible design.
+        """
+
+        if self.comm.rank == 0:
+            print("Finding a feasible design using the Newton method. ")
+            print("Constraints: ", constraints)
+            print("Design Vars: ", designVars)
+            print("Target: ", targets)
+
+        if len(constraints) != len(designVars):
+            raise RuntimeError("Sizes of the constraints and designVars lists need to be the same! ")
+
+        size = len(constraints)
+
+        # if the component is empty, set it to 0
+        if constraintsComp is None:
+            constraintsComp = size * [0]
+        if designVarsComp is None:
+            designVarsComp = size * [0]
+        # if the FD step size is None, set it to 1e-3
+        if step is None:
+            step = size * [1e-3]
+
+        # main Newton loop
+        for n in range(maxIter):
+
+            # Newton Jacobian
+            jacMat = np.zeros((size, size))
+
+            # run the primal for the reference dvs
+            self.om_prob.run_model()
+
+            # get the reference design vars and constraints values
+            dv0 = np.zeros(size)
+            for i in range(size):
+                dvName = designVars[i]
+                comp = designVarsComp[i]
+                val = self.om_prob.get_val(dvName)
+                dv0[i] = val[comp]
+            con0 = np.zeros(size)
+            for i in range(size):
+                conName = constraints[i]
+                comp = constraintsComp[i]
+                val = self.om_prob.get_val(conName)
+                con0[i] = val[comp]
+
+            # calculate the residual. Constraints - Targets
+            res = con0 - targets
+
+            # compute the residual norm
+            norm = np.linalg.norm(res / targets)
+
+            if self.comm.rank == 0:
+                print("FindFeasibleDesign Iter: ", n)
+                print("DesignVars: ", dv0)
+                print("Constraints: ", con0)
+                print("Residual Norm: ", norm)
+
+            # break the loop if residual is already smaller than the tolerance
+            if norm < tol:
+                if self.comm.rank == 0:
+                    print("FindFeasibleDesign Converged! ")
+                break
+
+            # perturb design variables and compute the Jacobian matrix
+            for i in range(size):
+                dvName = designVars[i]
+                comp = designVarsComp[i]
+                # perturb  +step
+                dvP = dv0[i] + step[i]
+                self.om_prob.set_val(dvName, dvP, indices=comp)
+                # run the primal
+                self.om_prob.run_model()
+                # reset the perturbation
+                self.om_prob.set_val(dvName, dv0[i], indices=comp)
+
+                # get the perturb constraints and compute the Jacobian
+                for j in range(size):
+                    conName = constraints[j]
+                    comp = constraintsComp[j]
+                    val = self.om_prob.get_val(conName)
+                    conP = val[comp]
+
+                    deriv = (conP - con0[j]) / step[i]
+                    jacMat[j][i] = deriv
+
+            # calculate the deltaDV using the Newton method
+            deltaDV = -np.linalg.inv(jacMat).dot(res)
+
+            # update the dv
+            dv1 = dv0 + deltaDV
+            for i in range(size):
+                dvName = designVars[i]
+                comp = designVarsComp[i]
+                self.om_prob.set_val(dvName, dv1[i], indices=comp)
