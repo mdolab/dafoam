@@ -203,7 +203,7 @@ class Top(Multipoint):
     def configure(self):
         super().configure()
 
-        self.cruise.aero_post.mphys_add_funcs(["CD", "CL"])
+        self.cruise.aero_post.mphys_add_funcs()
 
         # create geometric DV setup
         points = self.mesh_aero.mphys_get_surface_mesh()

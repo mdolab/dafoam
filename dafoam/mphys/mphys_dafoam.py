@@ -625,13 +625,19 @@ class DAFoamFunctions(ExplicitComponent):
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
 
-    # add the function names to this component, called from runScript.py
-    def mphys_add_funcs(self, funcs):
+    def mphys_add_funcs(self):
+        # add the function names to this component, called from runScript.py
 
-        self.funcs = funcs
+        # it is called objFunc in DAOptions but it contains both objective and constraint functions
+        objFuncs = self.DASolver.getOption("objFunc")
+
+        self.funcs = []
+
+        for objFunc in objFuncs:
+            self.funcs.append(objFunc)
 
         # loop over the functions here and create the output
-        for f_name in funcs:
+        for f_name in self.funcs:
             self.add_output(f_name, distributed=False, shape=1, units=None, tags=["mphys_result"])
 
     def add_dv_func(self, dvName, dv_func):
@@ -934,9 +940,10 @@ class OptFuncs(object):
         targets,
         constraintsComp=None,
         designVarsComp=None,
-        step=None,
+        epsFD=None,
         maxIter=10,
         tol=1e-4,
+        maxNewtonStep=None,
     ):
         """
         Find the design variables that meet the prescribed constraints. This can be used to get a
@@ -963,8 +970,11 @@ class OptFuncs(object):
         if designVarsComp is None:
             designVarsComp = size * [0]
         # if the FD step size is None, set it to 1e-3
-        if step is None:
-            step = size * [1e-3]
+        if epsFD is None:
+            epsFD = size * [1e-3]
+        # if the max Newton step is None, set it to a very large value
+        if maxNewtonStep is None:
+            maxNewtonStep = size * [1e16]
 
         # main Newton loop
         for n in range(maxIter):
@@ -1012,7 +1022,7 @@ class OptFuncs(object):
                 dvName = designVars[i]
                 comp = designVarsComp[i]
                 # perturb  +step
-                dvP = dv0[i] + step[i]
+                dvP = dv0[i] + epsFD[i]
                 self.om_prob.set_val(dvName, dvP, indices=comp)
                 # run the primal
                 self.om_prob.run_model()
@@ -1026,11 +1036,19 @@ class OptFuncs(object):
                     val = self.om_prob.get_val(conName)
                     conP = val[comp]
 
-                    deriv = (conP - con0[j]) / step[i]
+                    deriv = (conP - con0[j]) / epsFD[i]
                     jacMat[j][i] = deriv
 
             # calculate the deltaDV using the Newton method
             deltaDV = -np.linalg.inv(jacMat).dot(res)
+
+            # we can bound the delta change to ensure a more robust Newton solver.
+            for i in range(size):
+                if abs(deltaDV[i]) > abs(maxNewtonStep[i]):
+                    if deltaDV[i] > 0:
+                        deltaDV[i] = abs(maxNewtonStep[i])
+                    else:
+                        deltaDV[i] = -abs(maxNewtonStep[i])
 
             # update the dv
             dv1 = dv0 + deltaDV
