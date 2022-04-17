@@ -375,22 +375,22 @@ class DAOPTION(object):
         ## Example
         ##     primalValBounds = {"UMax": 1000, "UMin": -1000, "pMax": 1000000}
         self.primalVarBounds = {
-            "UMax": 1e16,
-            "UMin": -1e16,
-            "pMax": 1e16,
-            "pMin": -1e16,
-            "p_rghMax": 1e16,
-            "p_rghMin": -1e16,
-            "eMax": 1e16,
-            "eMin": -1e16,
-            "TMax": 1e16,
-            "TMin": -1e16,
-            "hMax": 1e16,
-            "hMin": -1e16,
+            "UMax": 1000.0,
+            "UMin": -1000.0,
+            "pMax": 500000.0,
+            "pMin": 20000.0,
+            "p_rghMax": 500000.0,
+            "p_rghMin": 20000.0,
+            "eMax": 500000.0,
+            "eMin": 100000.0,
+            "TMax": 1000.0,
+            "TMin": 100.0,
+            "hMax": 500000.0,
+            "hMin": 100000.0,
             "DMax": 1e16,
             "DMin": -1e16,
-            "rhoMax": 1e16,
-            "rhoMin": -1e16,
+            "rhoMax": 5.0,
+            "rhoMin": 0.2,
             "nuTildaMax": 1e16,
             "nuTildaMin": 1e-16,
             "kMax": 1e16,
@@ -442,7 +442,7 @@ class DAOPTION(object):
         ## This obviously increses the speed because the dRdWTPC computation takes about 30% of
         ## the adjoint total runtime. However, setting a too large lag value will decreases the speed
         ## of solving the adjoint equations. One needs to balance these factors
-        self.adjPCLag = 1
+        self.adjPCLag = 10
 
         ## Whether to use AD: Mode options: forward, reverse, or fd. If forward mode AD is used
         ## the seedIndex will be set to compute derivative by running the whole primal solver.
@@ -2761,8 +2761,8 @@ class PYDAFOAM(object):
         # choose the latst solution to rename
         solutionTime = allSolutions[0]
 
-        if float(solutionTime) < 1e-6:
-            Info("Solution time %g less than 1e-6, not renamed." % float(solutionTime))
+        if float(solutionTime) < 1e-4:
+            Info("Solution time %g less than 1e-4, not renamed." % float(solutionTime))
             renamed = False
             return solutionTime, renamed
 

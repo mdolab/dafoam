@@ -1,1 +1,1 @@
-from .mphys_dafoam import DAFoamBuilder, checkDesignVarSetup
+from .mphys_dafoam import DAFoamBuilder, OptFuncs

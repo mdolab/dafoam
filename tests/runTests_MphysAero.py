@@ -10,7 +10,7 @@ from testFuncs import *
 
 import openmdao.api as om
 from mphys.multipoint import Multipoint
-from dafoam.mphys import DAFoamBuilder, checkDesignVarSetup
+from dafoam.mphys import DAFoamBuilder, OptFuncs
 from mphys.scenario_aerodynamic import ScenarioAerodynamic
 from mphys.solver_builders.mphys_dvgeo import OM_DVGEOCOMP
 from pygeo import *
@@ -82,6 +82,17 @@ daOptions = {
                 "addToAdjoint": True,
             }
         },
+        "CMZ": {
+            "part1": {
+                "type": "moment",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.0, 0.0, 0.0],
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),
+                "addToAdjoint": True,
+            }
+        },
     },
     "adjEqnOption": {
         "gmresRelTol": 1.0e-8,
@@ -107,6 +118,7 @@ daOptions = {
         "actuator": {"designVarType": "ACTD", "actuatorName": "disk1"},
         "uin": {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0},
     },
+    "adjPCLag": 1,
 }
 
 meshOptions = {
@@ -144,7 +156,7 @@ class Top(Multipoint):
     def configure(self):
         super().configure()
 
-        self.cruise.aero_post.mphys_add_funcs(["CD", "CL"])
+        self.cruise.aero_post.mphys_add_funcs()
 
         # create geometric DV setup
         points = self.mesh.mphys_get_surface_mesh()
@@ -272,8 +284,7 @@ prob.recording_options["record_constraints"] = True
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aerostruct.html")
 
-# check if the design variable dict is properly set
-checkDesignVarSetup(daOptions, prob.model.get_design_vars())
+optFuncs = OptFuncs(daOptions, prob)
 
 prob.run_driver()
 
@@ -298,3 +309,15 @@ for key in finalCon.keys():
 if gcomm.rank == 0:
     reg_write_dict(finalObj, 1e-6, 1e-8)
     reg_write_dict(finalCL, 1e-6, 1e-8)
+
+# test the find feasible design function
+optFuncs.findFeasibleDesign(
+    ["cruise.aero_post.CL", "cruise.aero_post.CMZ"], ["twist", "twist"], designVarsComp=[0, 1], targets=[0.35, 1.5]
+)
+CL = prob.get_val("cruise.aero_post.CL")[0]
+CMZ = prob.get_val("cruise.aero_post.CMZ")[0]
+error = np.array([CL - 0.35, CMZ - 1.5])
+error_norm = np.linalg.norm(error)
+if error_norm > 2e-4:
+    print("findFeasibleDesign Failed!!!")
+    exit(1)
