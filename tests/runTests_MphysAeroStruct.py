@@ -118,6 +118,7 @@ daOptions = {
         "twist": {"designVarType": "FFD"},
         "shape": {"designVarType": "FFD"},
     },
+    "adjPCLag": 1,
 }
 
 meshOptions = {

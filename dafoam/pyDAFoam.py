@@ -442,7 +442,7 @@ class DAOPTION(object):
         ## This obviously increses the speed because the dRdWTPC computation takes about 30% of
         ## the adjoint total runtime. However, setting a too large lag value will decreases the speed
         ## of solving the adjoint equations. One needs to balance these factors
-        self.adjPCLag = 1
+        self.adjPCLag = 10
 
         ## Whether to use AD: Mode options: forward, reverse, or fd. If forward mode AD is used
         ## the seedIndex will be set to compute derivative by running the whole primal solver.
@@ -2761,8 +2761,8 @@ class PYDAFOAM(object):
         # choose the latst solution to rename
         solutionTime = allSolutions[0]
 
-        if float(solutionTime) < 1e-6:
-            Info("Solution time %g less than 1e-6, not renamed." % float(solutionTime))
+        if float(solutionTime) < 1e-4:
+            Info("Solution time %g less than 1e-4, not renamed." % float(solutionTime))
             renamed = False
             return solutionTime, renamed
 

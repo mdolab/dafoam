@@ -118,6 +118,7 @@ daOptions = {
         "actuator": {"designVarType": "ACTD", "actuatorName": "disk1"},
         "uin": {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0},
     },
+    "adjPCLag": 1,
 }
 
 meshOptions = {
