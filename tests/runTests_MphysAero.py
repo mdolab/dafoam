@@ -12,8 +12,8 @@ import openmdao.api as om
 from mphys.multipoint import Multipoint
 from dafoam.mphys import DAFoamBuilder, OptFuncs
 from mphys.scenario_aerodynamic import ScenarioAerodynamic
-from mphys.solver_builders.mphys_dvgeo import OM_DVGEOCOMP
-from pygeo import *
+from pygeo.mphys import OM_DVGEOCOMP
+from pygeo import geo_utils
 
 gcomm = MPI.COMM_WORLD
 

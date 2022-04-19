@@ -11,10 +11,10 @@ from testFuncs import *
 import openmdao.api as om
 from mphys.multipoint import Multipoint
 from dafoam.mphys import DAFoamBuilder, OptFuncs
-from tacs.mphys.mphys_tacs import TacsBuilder
+from tacs.mphys import TacsBuilder
 from mphys.solver_builders.mphys_meld import MeldBuilder
 from mphys.scenario_aerostructural import ScenarioAeroStructural
-from mphys.solver_builders.mphys_dvgeo import OM_DVGEOCOMP
+from pygeo.mphys import OM_DVGEOCOMP
 from tacs import elements, constitutive, functions
 
 gcomm = MPI.COMM_WORLD
