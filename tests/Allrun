@@ -91,7 +91,12 @@ case $argm in
     runTests DASolidDisplacementFoam
     runTests DAScalarTransportFoam
     runTests DALaplacianFoam
-    runTests MphysAeroStruct
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
+      runTests MphysAero
+    fi
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
+      runTests MphysAeroStruct
+    fi
     echo " "
     echo "************************************************************"
     echo "**************** All DAFoam tests passed! ******************"
