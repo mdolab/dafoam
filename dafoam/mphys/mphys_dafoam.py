@@ -426,7 +426,20 @@ class DAFoamSolver(ImplicitComponent):
         DASolver.setOption("runStatus", "solveAdjoint")
         DASolver.updateDAOption()
 
-        if not DASolver.getOption("writeMinorIterations"):
+        # if writeMinorIterations=True, we rename the solution in pyDAFoam.py. So we don't recompute the PC
+        if DASolver.getOption("writeMinorIterations"):
+            if DASolver.dRdWTPC is None or DASolver.ksp is None:
+                DASolver.cdRoot()
+                DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
+                DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
+                DASolver.ksp = PETSc.KSP().create(self.comm)
+                DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
+        # otherwise, we need to recompute the PC mat based on adjPCLag
+        else:
+            # NOTE: this function will be called multiple times (one time for one obj func) in each opt iteration
+            # so we don't want to print the total info and recompute PC for each obj, we need to use renamed
+            # to check if a recompute is needed. In other words, we only recompute the PC for the first obj func
+            # adjoint solution
             solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
             if renamed:
                 # write the deformed FFD for post-processing
@@ -437,18 +450,22 @@ class DAFoamSolver(ImplicitComponent):
                     print("---------------------------------------------")
                 self.solution_counter += 1
 
-        # compute the preconditioiner matrix for the adjoint linear equation solution
-        # NOTE: we compute this only once and will reuse it during optimization
-        # similarly, we will create the ksp once and reuse
-        if DASolver.dRdWTPC is None:
-            DASolver.cdRoot()
-            DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
-            DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
-
-        # NOTE: here we reuse the KSP object defined in pyDAFoam.py
-        if DASolver.ksp is None:
-            DASolver.ksp = PETSc.KSP().create(self.comm)
-            DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
+            # compute the preconditioner matrix for the adjoint linear equation solution
+            # and initialize the ksp object. We reinitialize them every adjPCLag
+            adjPCLag = DASolver.getOption("adjPCLag")
+            if DASolver.dRdWTPC is None or DASolver.ksp is None or (self.solution_counter - 1) % adjPCLag == 0:
+                if renamed:
+                    DASolver.cdRoot()
+                    # calculate the PC mat
+                    if DASolver.dRdWTPC is not None:
+                        DASolver.dRdWTPC.destroy()
+                    DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
+                    DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
+                    # reset the KSP
+                    if DASolver.ksp is not None:
+                        DASolver.ksp.destroy()
+                    DASolver.ksp = PETSc.KSP().create(self.comm)
+                    DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
 
         # right hand side array from d_outputs
         dFdWArray = d_outputs["dafoam_states"]
