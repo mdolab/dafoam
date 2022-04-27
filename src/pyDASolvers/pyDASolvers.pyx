@@ -88,7 +88,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getForwardADDerivVal(char *)
         void calcResidualVec(PetscVec)
         void setPrimalBoundaryConditions(int)
-        void calcFvSourceFromForceProfile(PetscVec, PetscVec, PetscVec)
+        void calcFvSourceFromForceProfile(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdFvSourcedInputsTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -333,5 +334,8 @@ cdef class pyDASolvers:
     def setPrimalBoundaryConditions(self, printInfo):
         self._thisptr.setPrimalBoundaryConditions(printInfo)
     
-    def calcFvSourceFromForceProfile(self, Vec p, Vec f, Vec fvSource):
-        self._thisptr.calcFvSourceFromForceProfile(p.vec, f.vec, fvSource.vec)
+    def calcFvSourceFromForceProfile(self, Vec c, Vec r, Vec f, Vec fvSource):
+        self._thisptr.calcFvSourceFromForceProfile(c.vec, r.vec, f.vec, fvSource.vec)
+    
+    def calcdFvSourcedInputsTPsiAD(self, mode, Vec c, Vec r, Vec f, Vec psi, Vec prod):
+        self._thisptr.calcdFvSourcedInputsTPsiAD(mode, c.vec, r.vec, f.vec, psi.vec, prod.vec)

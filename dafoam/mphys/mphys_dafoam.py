@@ -21,6 +21,7 @@ class DAFoamBuilder(Builder):
         options,  # DAFoam options
         mesh_options=None,  # IDWarp options
         scenario="aerodynamic",  # scenario type to configure the groups
+        prop_coupling=False,
     ):
 
         # options dictionary for DAFoam
@@ -41,6 +42,9 @@ class DAFoamBuilder(Builder):
         self.warp_in_solver = False
         # flag for aerostructural coupling variables
         self.struct_coupling = False
+
+        # flag for aero-propulsive coupling variables
+        self.prop_coupling = prop_coupling
 
         # depending on the scenario we are building for, we adjust a few internal parameters:
         if scenario.lower() == "aerodynamic":
@@ -73,7 +77,10 @@ class DAFoamBuilder(Builder):
     # api level method for all builders
     def get_coupling_group_subsystem(self, scenario_name=None):
         dafoam_group = DAFoamGroup(
-            solver=self.DASolver, use_warper=self.warp_in_solver, struct_coupling=self.struct_coupling
+            solver=self.DASolver,
+            use_warper=self.warp_in_solver,
+            struct_coupling=self.struct_coupling,
+            prop_coupling=self.prop_coupling,
         )
         return dafoam_group
 
@@ -115,12 +122,14 @@ class DAFoamGroup(Group):
         self.options.declare("solver", recordable=False)
         self.options.declare("struct_coupling", default=False)
         self.options.declare("use_warper", default=True)
+        self.options.declare("prop_coupling", default=False)
 
     def setup(self):
 
         self.DASolver = self.options["solver"]
         self.struct_coupling = self.options["struct_coupling"]
         self.use_warper = self.options["use_warper"]
+        self.prop_coupling = self.options["prop_coupling"]
 
         if self.use_warper:
             # if we dont have geo_disp, we also need to promote the x_a as x_a0 from the deformer component
@@ -133,10 +142,18 @@ class DAFoamGroup(Group):
                 promotes_outputs=["dafoam_vol_coords"],
             )
 
+        if self.prop_coupling:
+            self.add_subsystem(
+                "source",
+                DAFoamFvSource(solver=self.DASolver),
+                promotes_inputs=["prop_center", "prop_radii", "force_profile"],
+                promotes_outputs=["fv_source"],
+            )
+
         # add the solver implicit component
         self.add_subsystem(
             "solver",
-            DAFoamSolver(solver=self.DASolver),
+            DAFoamSolver(solver=self.DASolver, prop_coupling=self.prop_coupling),
             promotes_inputs=["*"],
             promotes_outputs=["dafoam_states"],
         )
@@ -162,9 +179,12 @@ class DAFoamSolver(ImplicitComponent):
 
     def initialize(self):
         self.options.declare("solver", recordable=False)
+        self.options.declare("prop_coupling", recordable=False)
 
     def setup(self):
         # NOTE: the setup function will be called everytime a new scenario is created.
+
+        self.prop_coupling = self.options["prop_coupling"]
 
         self.DASolver = self.options["solver"]
         DASolver = self.DASolver
@@ -228,6 +248,9 @@ class DAFoamSolver(ImplicitComponent):
                 self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
+
+        if self.prop_coupling:
+            self.add_input("fv_source", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
     def add_dv_func(self, dvName, dv_func):
         # add a design variable function to self.dv_func
@@ -906,10 +929,9 @@ class DAFoamForces(ExplicitComponent):
                 d_inputs["dafoam_states"] += wBar
 
 
-class DAFoamCalcFvSource(ExplicitComponent):
+class DAFoamFvSource(ExplicitComponent):
     """
-    DAFoam component that computes the actuator source term based on force profiles
-
+    DAFoam component that computes the actuator source term based on force profiles and prop center and radii
     """
 
     def initialize(self):
@@ -919,67 +941,82 @@ class DAFoamCalcFvSource(ExplicitComponent):
 
         self.DASolver = self.options["solver"]
 
-        self.add_input("parameters", distributed=False, shape=5, tags=["mphys_coupling"])
-        self.add_input("force", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input("prop_center", distributed=False, shape=3, tags=["mphys_coupling"])
+        self.add_input("prop_radii", distributed=False, shape=2, tags=["mphys_coupling"])
+        self.add_input("force_profile", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
 
-        self.nLocalCells = self.DASolver.getNLocalCells()
-        self.add_output("source", distributed=True, shape=self.nLocalCells * 3, tags=["mphys_coupling"])
+        self.nLocalCells = self.DASolver.solver.getNLocalCells()
+        self.add_output("fv_source", distributed=True, shape=self.nLocalCells * 3, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):
 
         DASolver = self.DASolver
 
-        DASolver.setStates(inputs["dafoam_states"])
-        p = inputs["parameters"]
-        f = inputs["force"]
+        c = inputs["prop_center"]
+        r = inputs["prop_radii"]
+        f = inputs["force_profile"]
 
         fVec = DASolver.array2Vec(f)
-        pVec = DASolver.array2Vec(p)
+        cVec = DASolver.array2Vec(c)
+        rVec = DASolver.array2Vec(r)
 
         fvSourceVec = PETSc.Vec().create(self.comm)
         fvSourceVec.setSizes((self.nLocalCells * 3, PETSc.DECIDE), bsize=1)
         fvSourceVec.setFromOptions()
         fvSourceVec.zeroEntries()
 
-        DASolver.solver.calcFvSourceFromForceProfile(pVec, fVec, fvSourceVec)
+        DASolver.solver.calcFvSourceFromForceProfile(cVec, rVec, fVec, fvSourceVec)
 
-        outputs["source"] = DASolver.vec2Array(fvSourceVec)
+        outputs["fv_source"] = DASolver.vec2Array(fvSourceVec)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         DASolver = self.DASolver
 
-        p = inputs["parameters"]
-        f = inputs["force"]
+        c = inputs["prop_center"]
+        r = inputs["prop_radii"]
+        f = inputs["force_profile"]
 
         fSize = len(f)
 
         fVec = DASolver.array2Vec(f)
-        pVec = DASolver.array2Vec(p)
+        cVec = DASolver.array2Vec(c)
+        rVec = DASolver.array2Vec(r)
 
         if mode == "fwd":
             raise AnalysisError("fwd not implemented!")
 
         if "source" in d_outputs:
-            sBar = d_outputs["source"]
+            sBar = d_outputs["fv_source"]
             sBarVec = DASolver.array2Vec(sBar)
 
-            if "parameters" in d_inputs:
+            if "prop_center" in d_inputs:
                 prodVec = PETSc.Vec().create(self.comm)
-                prodVec.setSizes((PETSc.DECIDE, 5), bsize=1)
+                prodVec.setSizes((PETSc.DECIDE, 3), bsize=1)
                 prodVec.setFromOptions()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdFvSourcedParametersAD(pVec, fVec, sBarVec, prodVec)
-                pBar = DASolver.vec2Array(prodVec)
-                d_inputs["parameters"] += pBar
+                DASolver.solverAD.calcdFvSourcedInputsTPsiAD("prop_center".encode(), cVec, rVec, fVec, sBarVec, prodVec)
+                cBar = DASolver.vec2Array(prodVec)
+                d_inputs["prop_center"] += cBar
 
-            if "force" in d_inputs:
+            if "prop_radii" in d_inputs:
+                prodVec = PETSc.Vec().create(self.comm)
+                prodVec.setSizes((PETSc.DECIDE, 2), bsize=1)
+                prodVec.setFromOptions()
+                prodVec.zeroEntries()
+                DASolver.solverAD.calcdFvSourcedInputsTPsiAD("prop_radii".encode(), cVec, rVec, fVec, sBarVec, prodVec)
+                rBar = DASolver.vec2Array(prodVec)
+                d_inputs["prop_radii"] += rBar
+
+            if "force_profile" in d_inputs:
                 prodVec = PETSc.Vec().create(self.comm)
                 prodVec.setSizes((PETSc.DECIDE, fSize), bsize=1)
                 prodVec.setFromOptions()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdFvSourcedForceAD(pVec, fVec, sBarVec, prodVec)
+                DASolver.solverAD.calcdFvSourcedInputsTPsiAD(
+                    "force_profile".encode(), cVec, rVec, fVec, sBarVec, prodVec
+                )
                 fBar = DASolver.vec2Array(prodVec)
-                d_inputs["force"] += fBar
+                d_inputs["force_profile"] += fBar
 
 
 class OptFuncs(object):

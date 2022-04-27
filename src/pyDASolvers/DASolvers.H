@@ -619,11 +619,23 @@ public:
 
     /// calculate the fvSource based on the force profile
     void calcFvSourceFromForceProfile(
-        Vec parameters,
+        Vec center,
+        Vec radii,
         Vec force,
         Vec fvSource)
     {
-        DASolverPtr_->calcFvSourceFromForceProfile(parameters, force, fvSource);
+        DASolverPtr_->calcFvSourceFromForceProfile(center, radii, force, fvSource);
+    }
+
+    void calcdFvSourcedInputsTPsiAD(
+        const word mode,
+        Vec center,
+        Vec radii,
+        Vec force,
+        Vec psi,
+        Vec prod)
+    {
+        DASolverPtr_->calcdFvSourcedInputsTPsiAD(mode, center, radii, force, psi, prod);
     }
 };
 

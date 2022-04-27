@@ -643,7 +643,8 @@ void DASolver::calcForceRadialProfile(
 }
 
 void DASolver::calcFvSourceFromForceProfileInternal(
-    const scalarList& parameters,
+    const scalarList& center,
+    const scalarList& radii,
     const scalarList& forcce,
     volVectorField& fvSource)
 {
@@ -654,7 +655,8 @@ void DASolver::calcFvSourceFromForceProfileInternal(
 }
 
 void DASolver::calcFvSourceFromForceProfile(
-    Vec parameterVec,
+    Vec centerVec,
+    Vec radiiVec,
     Vec forceVec,
     Vec fvSource)
 {
@@ -670,6 +672,20 @@ void DASolver::calcFvSourceFromForceProfile(
 
     Output:
         fvSource: a volVectorField variable that will be added to the momentum eqn
+    */
+}
+
+void DASolver::calcdFvSourcedInputsTPsiAD(
+    const word mode,
+    Vec centerVec,
+    Vec radiiVec,
+    Vec forceVec,
+    Vec psiVec,
+    Vec prodVec)
+{
+    /*
+    Description:
+        Calculate the matrix-vector product for either [dFvSource/dParameters]^T * psi, or [dFvSource/dForce]^T * psi
     */
 }
 

@@ -658,19 +658,27 @@ public:
         scalarList& xForce,
         scalarList& yForce,
         scalarList& zForce);
-    
+
     /// calculate the fvSource based on the radial force profile
     void calcFvSourceFromForceProfileInternal(
-        const scalarList& parameters,
+        const scalarList& center,
+        const scalarList& radii,
         const scalarList& forcce,
-        volVectorField& fvSource
-    );
+        volVectorField& fvSource);
 
     void calcFvSourceFromForceProfile(
-        Vec parameterVec,
+        Vec centerVec,
+        Vec radiiVec,
         Vec forceVec,
-        Vec fvSource
-    );
+        Vec fvSource);
+
+    void calcdFvSourcedInputsTPsiAD(
+        const word mode,
+        Vec centerVec,
+        Vec radiiVec,
+        Vec forceVec,
+        Vec psiVec,
+        Vec prodVec);
 
     /// print all DAOption
     void printAllOptions()
