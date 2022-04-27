@@ -906,6 +906,82 @@ class DAFoamForces(ExplicitComponent):
                 d_inputs["dafoam_states"] += wBar
 
 
+class DAFoamCalcFvSource(ExplicitComponent):
+    """
+    DAFoam component that computes the actuator source term based on force profiles
+
+    """
+
+    def initialize(self):
+        self.options.declare("solver", recordable=False)
+
+    def setup(self):
+
+        self.DASolver = self.options["solver"]
+
+        self.add_input("parameters", distributed=False, shape=5, tags=["mphys_coupling"])
+        self.add_input("force", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
+
+        self.nLocalCells = self.DASolver.getNLocalCells()
+        self.add_output("source", distributed=True, shape=self.nLocalCells * 3, tags=["mphys_coupling"])
+
+    def compute(self, inputs, outputs):
+
+        DASolver = self.DASolver
+
+        DASolver.setStates(inputs["dafoam_states"])
+        p = inputs["parameters"]
+        f = inputs["force"]
+
+        fVec = DASolver.array2Vec(f)
+        pVec = DASolver.array2Vec(p)
+
+        fvSourceVec = PETSc.Vec().create(self.comm)
+        fvSourceVec.setSizes((self.nLocalCells * 3, PETSc.DECIDE), bsize=1)
+        fvSourceVec.setFromOptions()
+        fvSourceVec.zeroEntries()
+
+        DASolver.solver.calcFvSourceFromForceProfile(pVec, fVec, fvSourceVec)
+
+        outputs["source"] = DASolver.vec2Array(fvSourceVec)
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+        DASolver = self.DASolver
+
+        p = inputs["parameters"]
+        f = inputs["force"]
+
+        fSize = len(f)
+
+        fVec = DASolver.array2Vec(f)
+        pVec = DASolver.array2Vec(p)
+
+        if mode == "fwd":
+            raise AnalysisError("fwd not implemented!")
+
+        if "source" in d_outputs:
+            sBar = d_outputs["source"]
+            sBarVec = DASolver.array2Vec(sBar)
+
+            if "parameters" in d_inputs:
+                prodVec = PETSc.Vec().create(self.comm)
+                prodVec.setSizes((PETSc.DECIDE, 5), bsize=1)
+                prodVec.setFromOptions()
+                prodVec.zeroEntries()
+                DASolver.solverAD.calcdFvSourcedParametersAD(pVec, fVec, sBarVec, prodVec)
+                pBar = DASolver.vec2Array(prodVec)
+                d_inputs["parameters"] += pBar
+
+            if "force" in d_inputs:
+                prodVec = PETSc.Vec().create(self.comm)
+                prodVec.setSizes((PETSc.DECIDE, fSize), bsize=1)
+                prodVec.setFromOptions()
+                prodVec.zeroEntries()
+                DASolver.solverAD.calcdFvSourcedForceAD(pVec, fVec, sBarVec, prodVec)
+                fBar = DASolver.vec2Array(prodVec)
+                d_inputs["force"] += fBar
+
+
 class OptFuncs(object):
     """
     Some utility functions

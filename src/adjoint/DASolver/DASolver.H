@@ -660,11 +660,16 @@ public:
         scalarList& zForce);
     
     /// calculate the fvSource based on the radial force profile
-    void calcFvSourceFromForceProfile(
-        const scalarList& xForce,
-        const scalarList& yForce,
-        const scalarList& zForce,
+    void calcFvSourceFromForceProfileInternal(
+        const scalarList& parameters,
+        const scalarList& forcce,
         volVectorField& fvSource
+    );
+
+    void calcFvSourceFromForceProfile(
+        Vec parameterVec,
+        Vec forceVec,
+        Vec fvSource
     );
 
     /// print all DAOption

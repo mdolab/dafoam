@@ -616,6 +616,15 @@ public:
     {
         DASolverPtr_->setPrimalBoundaryConditions(printInfo);
     }
+
+    /// calculate the fvSource based on the force profile
+    void calcFvSourceFromForceProfile(
+        Vec parameters,
+        Vec force,
+        Vec fvSource)
+    {
+        DASolverPtr_->calcFvSourceFromForceProfile(parameters, force, fvSource);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -642,20 +642,31 @@ void DASolver::calcForceRadialProfile(
     */
 }
 
-void DASolver::calcFvSourceFromForceProfile(
-    const scalarList& xForce,
-    const scalarList& yForce,
-    const scalarList& zForce,
+void DASolver::calcFvSourceFromForceProfileInternal(
+    const scalarList& parameters,
+    const scalarList& forcce,
     volVectorField& fvSource)
 {
     /*
     Description:
-        Calculate the fvSource based on the radial force profile
+        Same as calcFvSourceFromForceProfile, but this internal function will be called for the AD.
+    */
+}
+
+void DASolver::calcFvSourceFromForceProfile(
+    Vec parameterVec,
+    Vec forceVec,
+    Vec fvSource)
+{
+    /*
+    Description:
+        Calculate the fvSource based on the radial force profile and the propeller parameters
         We need to call this function from the wing component
 
     Input:
-        xForce, yForce, zForce: The radial profile of force on the profile, calculated 
-        from calcForceRadialProfile
+        parameters: propeller parameters, i.e., center_x, center_y, center_z, r_inner, r_outer
+        
+        force: the radial force profiles (fx1, fy1, fz1, fx2, fy2, fz2, ... )
 
     Output:
         fvSource: a volVectorField variable that will be added to the momentum eqn
