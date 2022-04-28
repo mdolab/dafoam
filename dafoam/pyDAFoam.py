@@ -621,6 +621,9 @@ class DAOPTION(object):
         ## or updating the PC mat. To enable this option, set "active" to True.
         self.runLowOrderPrimal4PC = {"active": False}
 
+        ## Parameters for wing-propeller coupling optimizations
+        self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0]}
+
 
 class PYDAFOAM(object):
 

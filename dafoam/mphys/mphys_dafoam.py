@@ -21,7 +21,7 @@ class DAFoamBuilder(Builder):
         options,  # DAFoam options
         mesh_options=None,  # IDWarp options
         scenario="aerodynamic",  # scenario type to configure the groups
-        prop_coupling=False,
+        prop_coupling=None,
     ):
 
         # options dictionary for DAFoam
@@ -122,7 +122,7 @@ class DAFoamGroup(Group):
         self.options.declare("solver", recordable=False)
         self.options.declare("struct_coupling", default=False)
         self.options.declare("use_warper", default=True)
-        self.options.declare("prop_coupling", default=False)
+        self.options.declare("prop_coupling", default=None)
 
     def setup(self):
 
@@ -142,13 +142,23 @@ class DAFoamGroup(Group):
                 promotes_outputs=["dafoam_vol_coords"],
             )
 
-        if self.prop_coupling:
-            self.add_subsystem(
-                "source",
-                DAFoamFvSource(solver=self.DASolver),
-                promotes_inputs=["prop_center", "prop_radii", "force_profile"],
-                promotes_outputs=["fv_source"],
-            )
+        if self.prop_coupling is not None:
+            if self.prop_coupling == "Prop":
+                self.add_subsystem(
+                    "profile",
+                    DAFoamPropForce(solver=self.DASolver),
+                    promotes_inputs=["dafoam_states"],
+                    promotes_outputs=["force_profile"],
+                )
+            elif self.prop_coupling == "Wing":
+                self.add_subsystem(
+                    "source",
+                    DAFoamFvSource(solver=self.DASolver),
+                    promotes_inputs=["prop_center", "prop_radii", "force_profile"],
+                    promotes_outputs=["fv_source"],
+                )
+            else:
+                raise AnalysisError("prop_coupling can be either Wing or Prop, while %s is given!" % self.prop_coupling)
 
         # add the solver implicit component
         self.add_subsystem(
@@ -249,7 +259,7 @@ class DAFoamSolver(ImplicitComponent):
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
 
-        if self.prop_coupling:
+        if self.prop_coupling == "Wing":
             self.add_input("fv_source", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
     def add_dv_func(self, dvName, dv_func):
@@ -929,6 +939,63 @@ class DAFoamForces(ExplicitComponent):
                 d_inputs["dafoam_states"] += wBar
 
 
+class DAFoamPropForce(ExplicitComponent):
+    """
+    DAFoam component that computes the propeller force and force profile based on the CFD surface states
+    """
+
+    def initialize(self):
+        self.options.declare("solver", recordable=False)
+
+    def setup(self):
+
+        self.DASolver = self.options["solver"]
+
+        self.add_input("dafoam_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+
+        self.nForceSections = self.DASolver.getOption("wingProp")["nForceSections"]
+        self.add_output("force_profile", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
+
+    def compute(self, inputs, outputs):
+
+        DASolver = self.DASolver
+
+        dafoam_states = inputs["dafoam_states"]
+
+        stateVec = DASolver.array2Vec(dafoam_states)
+
+        fProfileVec = PETSc.Vec().create(self.comm)
+        fProfileVec.setSizes((PETSc.DECIDE, self.nForceSections), bsize=1)
+        fProfileVec.setFromOptions()
+        fProfileVec.zeroEntries()
+
+        DASolver.solver.calcForceProfile(stateVec, fProfileVec)
+
+        outputs["force_profile"] = DASolver.vec2Array(fProfileVec)
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+        DASolver = self.DASolver
+
+        dafoam_states = inputs["dafoam_states"]
+
+        stateVec = DASolver.array2Vec(dafoam_states)
+
+        local_state_size = DASolver.getNLocalAdjointStates()
+
+        if "force_profile" in d_outputs:
+            fBar = d_outputs["force_profile"]
+            fBarVec = DASolver.array2Vec(fBar)
+
+            if "dafoam_states" in d_inputs:
+                prodVec = PETSc.Vec().create(self.comm)
+                prodVec.setSizes((local_state_size, PETSc.DECIDE), bsize=1)
+                prodVec.setFromOptions()
+                prodVec.zeroEntries()
+                DASolver.solverAD.calcdForcedStateTPsiAD(stateVec, fBarVec, prodVec)
+                pBar = DASolver.vec2Array(prodVec)
+                d_inputs["dafoam_states"] += pBar
+
+
 class DAFoamFvSource(ExplicitComponent):
     """
     DAFoam component that computes the actuator source term based on force profiles and prop center and radii
@@ -941,9 +1008,11 @@ class DAFoamFvSource(ExplicitComponent):
 
         self.DASolver = self.options["solver"]
 
+        nForceSections = self.DASolver.getOption("wingProp")["nForceSections"]
+
         self.add_input("prop_center", distributed=False, shape=3, tags=["mphys_coupling"])
         self.add_input("prop_radii", distributed=False, shape=2, tags=["mphys_coupling"])
-        self.add_input("force_profile", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input("force_profile", distributed=False, shape=nForceSections, tags=["mphys_coupling"])
 
         self.nLocalCells = self.DASolver.solver.getNLocalCells()
         self.add_output("fv_source", distributed=True, shape=self.nLocalCells * 3, tags=["mphys_coupling"])

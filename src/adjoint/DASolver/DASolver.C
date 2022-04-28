@@ -624,10 +624,9 @@ void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar
     return;
 }
 
-void DASolver::calcForceRadialProfile(
-    scalarList& xForce,
-    scalarList& yForce,
-    scalarList& zForce)
+void DASolver::calcForceProfile(
+    Vec stateVec,
+    Vec fProfileVec)
 {
     /*
     Description:
@@ -642,7 +641,24 @@ void DASolver::calcForceRadialProfile(
     */
 }
 
-void DASolver::calcFvSourceFromForceProfileInternal(
+void DASolver::calcForceProfileInternal(
+    scalarList& state,
+    scalarList& fProfile)
+{
+    /*
+    Description:
+        Same as calcForceProfile but for internal AD
+    */
+}
+
+void DASolver::calcdForcedStateTPsiAD(
+    Vec stateVec,
+    Vec psiVec,
+    Vec prodVec)
+{
+}
+
+void DASolver::calcFvSourceInternal(
     const scalarList& center,
     const scalarList& radii,
     const scalarList& forcce,
@@ -654,7 +670,7 @@ void DASolver::calcFvSourceFromForceProfileInternal(
     */
 }
 
-void DASolver::calcFvSourceFromForceProfile(
+void DASolver::calcFvSource(
     Vec centerVec,
     Vec radiiVec,
     Vec forceVec,

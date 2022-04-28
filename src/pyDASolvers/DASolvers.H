@@ -618,13 +618,13 @@ public:
     }
 
     /// calculate the fvSource based on the force profile
-    void calcFvSourceFromForceProfile(
+    void calcFvSource(
         Vec center,
         Vec radii,
         Vec force,
         Vec fvSource)
     {
-        DASolverPtr_->calcFvSourceFromForceProfile(center, radii, force, fvSource);
+        DASolverPtr_->calcFvSource(center, radii, force, fvSource);
     }
 
     void calcdFvSourcedInputsTPsiAD(
@@ -636,6 +636,21 @@ public:
         Vec prod)
     {
         DASolverPtr_->calcdFvSourcedInputsTPsiAD(mode, center, radii, force, psi, prod);
+    }
+
+    void calcForceProfile(
+        Vec stateVec,
+        Vec fProfileVec)
+    {
+        DASolverPtr_->calcForceProfile(stateVec, fProfileVec);
+    }
+
+    void calcdForcedStateTPsiAD(
+        Vec stateVec,
+        Vec psiVec,
+        Vec prodVec)
+    {
+        DASolverPtr_->calcdForcedStateTPsiAD(stateVec, psiVec, prodVec);
     }
 };
 

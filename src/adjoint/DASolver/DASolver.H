@@ -659,14 +659,27 @@ public:
         scalarList& yForce,
         scalarList& zForce);
 
+    void calcForceProfile(
+        Vec stateVec,
+        Vec fProfileVec);
+
+    void calcForceProfileInternal(
+        scalarList& state,
+        scalarList& fProfile);
+
+    void calcdForcedStateTPsiAD(
+        Vec stateVec,
+        Vec psiVec,
+        Vec prodVec);
+
     /// calculate the fvSource based on the radial force profile
-    void calcFvSourceFromForceProfileInternal(
+    void calcFvSourceInternal(
         const scalarList& center,
         const scalarList& radii,
         const scalarList& forcce,
         volVectorField& fvSource);
 
-    void calcFvSourceFromForceProfile(
+    void calcFvSource(
         Vec centerVec,
         Vec radiiVec,
         Vec forceVec,
