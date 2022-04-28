@@ -654,20 +654,21 @@ public:
     void getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ, List<label>& pointList, List<word>& patchList);
 
     /// calculate the radial profile of the force on the propeller surface
-    void calcForceRadialProfile(
-        scalarList& xForce,
-        scalarList& yForce,
-        scalarList& zForce);
-
     void calcForceProfile(
+        Vec xvVec,
         Vec stateVec,
-        Vec fProfileVec);
+        Vec fProfileVec,
+        Vec rProfileVec);
 
     void calcForceProfileInternal(
+        scalarList& xv,
         scalarList& state,
-        scalarList& fProfile);
+        scalarList& fProfile,
+        scalarList& rProfile);
 
     void calcdForcedStateTPsiAD(
+        const word mode,
+        Vec xvVec,
         Vec stateVec,
         Vec psiVec,
         Vec prodVec);
@@ -675,20 +676,20 @@ public:
     /// calculate the fvSource based on the radial force profile
     void calcFvSourceInternal(
         const scalarList& center,
-        const scalarList& radii,
+        const scalarList& radius,
         const scalarList& forcce,
         volVectorField& fvSource);
 
     void calcFvSource(
         Vec centerVec,
-        Vec radiiVec,
+        Vec radiusVec,
         Vec forceVec,
         Vec fvSource);
 
     void calcdFvSourcedInputsTPsiAD(
         const word mode,
         Vec centerVec,
-        Vec radiiVec,
+        Vec radiusVec,
         Vec forceVec,
         Vec psiVec,
         Vec prodVec);

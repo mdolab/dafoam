@@ -90,8 +90,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void setPrimalBoundaryConditions(int)
         void calcFvSource(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdFvSourcedInputsTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
-        void calcForceProfile(PetscVec, PetscVec)
-        void calcdForcedStateTPsiAD(PetscVec, PetscVec, PetscVec)
+        void calcForceProfile(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -342,8 +342,8 @@ cdef class pyDASolvers:
     def calcdFvSourcedInputsTPsiAD(self, mode, Vec c, Vec r, Vec f, Vec psi, Vec prod):
         self._thisptr.calcdFvSourcedInputsTPsiAD(mode, c.vec, r.vec, f.vec, psi.vec, prod.vec)
     
-    def calcForceProfile(self, Vec state, Vec forceProfile):
-        self._thisptr.calcForceProfile(state.vec, forceProfile.vec)
+    def calcForceProfile(self, Vec xv, Vec state, Vec forceProfile, Vec radiusProfile):
+        self._thisptr.calcForceProfile(xv.vec, state.vec, forceProfile.vec, radiusProfile.vec)
     
-    def calcdForcedStateTPsiAD(self, Vec state, Vec psi, Vec prod):
-        self._thisptr.calcdForcedStateTPsiAD(state.vec, psi.vec, prod.vec)
+    def calcdForcedStateTPsiAD(self, mode, Vec xv, Vec state, Vec psi, Vec prod):
+        self._thisptr.calcdForcedStateTPsiAD(mode, xv.vec, state.vec, psi.vec, prod.vec)

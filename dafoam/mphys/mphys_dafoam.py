@@ -131,6 +131,10 @@ class DAFoamGroup(Group):
         self.use_warper = self.options["use_warper"]
         self.prop_coupling = self.options["prop_coupling"]
 
+        if self.prop_coupling is not None:
+            if self.prop_coupling not in ["Prop", "Wing"]:
+                raise AnalysisError("prop_coupling can be either Wing or Prop, while %s is given!" % self.prop_coupling)
+
         if self.use_warper:
             # if we dont have geo_disp, we also need to promote the x_a as x_a0 from the deformer component
             self.add_subsystem(
@@ -143,22 +147,13 @@ class DAFoamGroup(Group):
             )
 
         if self.prop_coupling is not None:
-            if self.prop_coupling == "Prop":
-                self.add_subsystem(
-                    "profile",
-                    DAFoamPropForce(solver=self.DASolver),
-                    promotes_inputs=["dafoam_states", "dafoam_vol_coords"],
-                    promotes_outputs=["force_profile", "radius_profile"],
-                )
-            elif self.prop_coupling == "Wing":
+            if self.prop_coupling == "Wing":
                 self.add_subsystem(
                     "source",
                     DAFoamFvSource(solver=self.DASolver),
                     promotes_inputs=["prop_center", "radius_profile", "force_profile"],
                     promotes_outputs=["fv_source"],
                 )
-            else:
-                raise AnalysisError("prop_coupling can be either Wing or Prop, while %s is given!" % self.prop_coupling)
 
         # add the solver implicit component
         self.add_subsystem(
@@ -167,6 +162,15 @@ class DAFoamGroup(Group):
             promotes_inputs=["*"],
             promotes_outputs=["dafoam_states"],
         )
+
+        if self.prop_coupling is not None:
+            if self.prop_coupling == "Prop":
+                self.add_subsystem(
+                    "profile",
+                    DAFoamPropForce(solver=self.DASolver),
+                    promotes_inputs=["dafoam_states", "dafoam_vol_coords"],
+                    promotes_outputs=["force_profile", "radius_profile"],
+                )
 
         if self.struct_coupling:
             self.add_subsystem(
@@ -941,7 +945,7 @@ class DAFoamForces(ExplicitComponent):
 
 class DAFoamPropForce(ExplicitComponent):
     """
-    DAFoam component that computes the propeller force and force profile based on the CFD surface states
+    DAFoam component that computes the propeller force and radius profile based on the CFD surface states
     """
 
     def initialize(self):
@@ -956,7 +960,7 @@ class DAFoamPropForce(ExplicitComponent):
 
         self.nForceSections = self.DASolver.getOption("wingProp")["nForceSections"]
         self.add_output("force_profile", distributed=False, shape=3 * self.nForceSections, tags=["mphys_coupling"])
-        self.add_output("section_radius", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
+        self.add_output("radius_profile", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):
 
@@ -1027,7 +1031,7 @@ class DAFoamPropForce(ExplicitComponent):
 
 class DAFoamFvSource(ExplicitComponent):
     """
-    DAFoam component that computes the actuator source term based on force profiles and prop center and radii
+    DAFoam component that computes the actuator source term based on force and radius profiles and prop center
     """
 
     def initialize(self):
