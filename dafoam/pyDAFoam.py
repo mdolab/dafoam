@@ -3709,6 +3709,34 @@ class PYDAFOAM(object):
 
         return vec
 
+    def array2VecSeq(self, array1):
+        """
+        Convert a numpy array to Petsc vector in serial mode
+        """
+        size = len(array1)
+
+        vec = PETSc.Vec().createSeq(size, bsize=1, comm=PETSc.COMM_SELF)
+        vec.zeroEntries()
+
+        for i in range(size):
+            vec[i] = array1[i]
+
+        vec.assemblyBegin()
+        vec.assemblyEnd()
+
+        return vec
+    
+    def vec2ArraySeq(self, vec):
+        """
+        Convert a Petsc vector to numpy array in serial mode
+        """
+
+        size = vec.getSize()
+        array1 = np.zeros(size, self.dtype)
+        for i in range(size):
+            array1[i] = vec[i]
+        return array1
+
     def cdRoot(self):
         """
         Go to the case root dir, as set in self.rootDir
