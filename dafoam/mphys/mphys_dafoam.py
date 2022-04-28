@@ -1034,7 +1034,7 @@ class DAFoamFvSource(ExplicitComponent):
         fvSourceVec.setFromOptions()
         fvSourceVec.zeroEntries()
 
-        DASolver.solver.calcFvSourceFromForceProfile(cVec, rVec, fVec, fvSourceVec)
+        DASolver.solver.calcFvSource(cVec, rVec, fVec, fvSourceVec)
 
         outputs["fv_source"] = DASolver.vec2Array(fvSourceVec)
 
