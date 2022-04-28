@@ -263,9 +263,6 @@ class DAFoamSolver(ImplicitComponent):
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
 
-        if self.prop_coupling == "Wing":
-            self.add_input("fv_source", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-
     def add_dv_func(self, dvName, dv_func):
         # add a design variable function to self.dv_func
         # we need to call this function in runScript.py everytime we define a new dv_func, e.g., aoa, actuator
@@ -432,7 +429,7 @@ class DAFoamSolver(ImplicitComponent):
 
                     # compute dRdFieldT*Psi using reverse mode AD
                     elif self.dvType[inputName] == "Field":
-                        nLocalCells = self.solver.getNLocalCells()
+                        nLocalCells = self.DASolver.solver.getNLocalCells()
                         fieldType = DASolver.getOption("designVar")[inputName]["fieldType"]
                         fieldComp = 1
                         if fieldType == "vector":
@@ -824,7 +821,7 @@ class DAFoamFunctions(ExplicitComponent):
 
                 # compute dFdField
                 elif self.dvType[inputName] == "Field":
-                    nLocalCells = self.solver.getNLocalCells()
+                    nLocalCells = self.DASolver.solver.getNLocalCells()
                     fieldType = DASolver.getOption("designVar")[inputName]["fieldType"]
                     fieldComp = 1
                     if fieldType == "vector":

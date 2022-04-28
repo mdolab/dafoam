@@ -2472,7 +2472,8 @@ class PYDAFOAM(object):
         forces[:, 1] = np.copy(fY.getArray())
         forces[:, 2] = np.copy(fZ.getArray())
 
-        pointList = np.copy(pointListTemp.getArray())
+        # comment out this var since it is not used.
+        # pointList = np.copy(pointListTemp.getArray())
 
         # Cleanup PETSc vectors
         fX.destroy()
@@ -3725,7 +3726,7 @@ class PYDAFOAM(object):
         vec.assemblyEnd()
 
         return vec
-    
+
     def vec2ArraySeq(self, vec):
         """
         Convert a Petsc vector to numpy array in serial mode
