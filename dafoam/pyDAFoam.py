@@ -315,6 +315,9 @@ class DAOPTION(object):
         ## an FSI case to be used throughout the simulation.
         self.fsi = {"pRef": 0.0}
 
+        ## Aero-propulsive options
+        self.aeroPropulsive = {}
+
         ## An option to run the primal only; no adjoint or optimization will be run
         self.primalOnly = False
 
@@ -566,6 +569,7 @@ class DAOPTION(object):
             "method": "scotch",
             "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001},
             "preservePatches": ["None"],
+            "singleProcessorFaceSets": ["None"],
         }
 
         ## The ordering of state variable. Options are: state or cell. Most of the case, the state
@@ -616,6 +620,9 @@ class DAOPTION(object):
         ## convergence for y+ = 1 meshes. If True, we will run the primal using low order scheme when computing
         ## or updating the PC mat. To enable this option, set "active" to True.
         self.runLowOrderPrimal4PC = {"active": False}
+
+        ## Parameters for wing-propeller coupling optimizations
+        self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0]}
 
 
 class PYDAFOAM(object):
@@ -2465,7 +2472,8 @@ class PYDAFOAM(object):
         forces[:, 1] = np.copy(fY.getArray())
         forces[:, 2] = np.copy(fZ.getArray())
 
-        pointList = np.copy(pointListTemp.getArray())
+        # comment out this var since it is not used.
+        # pointList = np.copy(pointListTemp.getArray())
 
         # Cleanup PETSc vectors
         fX.destroy()
@@ -3702,6 +3710,34 @@ class PYDAFOAM(object):
 
         return vec
 
+    def array2VecSeq(self, array1):
+        """
+        Convert a numpy array to Petsc vector in serial mode
+        """
+        size = len(array1)
+
+        vec = PETSc.Vec().createSeq(size, bsize=1, comm=PETSc.COMM_SELF)
+        vec.zeroEntries()
+
+        for i in range(size):
+            vec[i] = array1[i]
+
+        vec.assemblyBegin()
+        vec.assemblyEnd()
+
+        return vec
+
+    def vec2ArraySeq(self, vec):
+        """
+        Convert a Petsc vector to numpy array in serial mode
+        """
+
+        size = vec.getSize()
+        array1 = np.zeros(size, self.dtype)
+        for i in range(size):
+            array1[i] = vec[i]
+        return array1
+
     def cdRoot(self):
         """
         Go to the case root dir, as set in self.rootDir
@@ -3771,6 +3807,11 @@ class PYDAFOAM(object):
                 f.write("preservePatches        (")
                 for pPatch in decomDict["preservePatches"]:
                     f.write("%s " % pPatch)
+                f.write(");\n")
+            if decomDict["singleProcessorFaceSets"][0] != "None":
+                f.write("singleProcessorFaceSets  (")
+                for pPatch in decomDict["singleProcessorFaceSets"]:
+                    f.write(" (%s -1) " % pPatch)
                 f.write(");\n")
             f.write("\n")
             f.write("// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n")

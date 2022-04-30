@@ -616,6 +616,46 @@ public:
     {
         DASolverPtr_->setPrimalBoundaryConditions(printInfo);
     }
+
+    /// calculate the fvSource based on the force profile
+    void calcFvSource(
+        Vec center,
+        Vec radius,
+        Vec force,
+        Vec fvSource)
+    {
+        DASolverPtr_->calcFvSource(center, radius, force, fvSource);
+    }
+
+    void calcdFvSourcedInputsTPsiAD(
+        const word mode,
+        Vec center,
+        Vec radius,
+        Vec force,
+        Vec psi,
+        Vec prod)
+    {
+        DASolverPtr_->calcdFvSourcedInputsTPsiAD(mode, center, radius, force, psi, prod);
+    }
+
+    void calcForceProfile(
+        Vec xvVec,
+        Vec stateVec,
+        Vec fProfileVec,
+        Vec rProfileVec)
+    {
+        DASolverPtr_->calcForceProfile(xvVec, stateVec, fProfileVec, rProfileVec);
+    }
+
+    void calcdForcedStateTPsiAD(
+        const word mode,
+        Vec xvVec,
+        Vec stateVec,
+        Vec psiVec,
+        Vec prodVec)
+    {
+        DASolverPtr_->calcdForcedStateTPsiAD(mode, xvVec, stateVec, psiVec, prodVec);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
