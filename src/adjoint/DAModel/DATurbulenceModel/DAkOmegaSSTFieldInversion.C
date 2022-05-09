@@ -788,7 +788,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
             fvm::ddt(phase_, rho_, omega_)
                 + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
                 - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_) 
-            == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * (1.0 / betaFieldInversion_())
+            == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2())
                 - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
                 - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
                 - fvm::SuSp(
