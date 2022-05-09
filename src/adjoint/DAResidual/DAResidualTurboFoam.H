@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
         Child class for DATurboFoam
@@ -17,7 +17,6 @@
 #include "adjustPhi.H"
 #include "thermodynamicConstants.H"
 #include "pressureControl.H"
-#include "IOMRFZoneList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -72,7 +71,7 @@ protected:
     pressureControl pressureControl_;
 
     /// Multiple Reference Frame 
-    IOMRFZoneList MRF_;
+    IOMRFZoneListDF& MRF_;
 
     /// \name These are constants to update the intermediate variables
     //@{

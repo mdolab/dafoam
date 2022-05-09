@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 \*---------------------------------------------------------------------------*/
 
@@ -149,6 +149,9 @@ void DAObjFuncForce::calcObjFunc(
     {
         this->updateForceDir(forceDir_);
     }
+
+    // reload the scale, which may be needed for multipoint optimization
+    objFuncDict_.readEntry<scalar>("scale", scale_);
 
     // initialize faceValues to zero
     forAll(objFuncFaceValues, idxI)

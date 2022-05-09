@@ -25,11 +25,14 @@ function runTests()
   rm -rf input DAFoam_Test_${1}.txt
   tar -zxf input.tar.gz
   if [ -z "$DF_CHECK_COVERAGE" ]; then
-    mpirun -np 4 python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    mpirun --oversubscribe -np 4 python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
       echo "${1}: Failed!"
       exit 1
     fi
+    # need to replace the "[0m" for mphys tests 
+    sed -i 's/\[0m//g' DAFoam_Test_${1}.txt
+    sed -i 's/[^[:print:]\t]//g' DAFoam_Test_${1}.txt
     python testFuncs.py refs/DAFoam_Test_${1}Ref.txt DAFoam_Test_${1}.txt
     if [ "$?" -ne "0" ]; then 
       echo "${1}: Failed!"
@@ -38,7 +41,7 @@ function runTests()
       echo "${1}: Success!"
     fi
   elif [ "$DF_CHECK_COVERAGE" = "1" ]; then
-    mpirun -np 4 coverage run runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    mpirun --oversubscribe -np 4 coverage run runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
       echo "${1}: Failed!"
       exit 1
@@ -75,18 +78,27 @@ case $argm in
     runTests DAPimpleFoam
     runTests DAPimpleDyMFoam
     runTests DARhoSimpleFoam
-    runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
+      runTests DARhoSimpleFoamMRFAD
       runTests DARhoSimpleFoamAD
       runTests DARhoSimpleCFoamAD
+    fi
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADF.so" ]; then
+      runTests DARhoSimpleFoamMRFForwardAD
     fi
     runTests DATurboFoamSubsonic
     runTests DATurboFoamTransonic
     runTests DASolidDisplacementFoam
     runTests DAScalarTransportFoam
     runTests DALaplacianFoam
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
+      runTests MphysAero
+    fi
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
+      runTests MphysAeroStruct
+    fi
     echo " "
     echo "************************************************************"
     echo "**************** All DAFoam tests passed! ******************"
@@ -120,10 +132,10 @@ case $argm in
     echo "Running compressible tests...."
     sleep 3
     runTests DARhoSimpleFoam
-    runTests DARhoSimpleFoamMRF
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
+      runTests DARhoSimpleFoamMRFAD
       runTests DARhoSimpleFoamAD
       runTests DARhoSimpleCFoamAD
     fi
@@ -154,14 +166,32 @@ case $argm in
       runTests DASimpleFoamForwardAD
       runTests DASimpleFoamFieldForwardAD
     fi
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADF.so" ]; then
+      runTests DARhoSimpleFoamMRFForwardAD
+    fi
     echo " "
     echo "************************************************************"
     echo "**************** Forward AD tests passed! ******************"
     echo "************************************************************"
     echo " "
     ;;
+  "mphys")
+    echo "Running Mphys tests...."
+    sleep 3
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
+      runTests MphysAero
+    fi
+    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
+      runTests MphysAeroStruct
+    fi
+    echo " "
+    echo "************************************************************"
+    echo "******************* Mphys tests passed! ********************"
+    echo "************************************************************"
+    echo " "
+    ;;
   *)
-    echo "Argument not valid! Options are: all, incompressible, compressible, solid, or forward"
+    echo "Argument not valid! Options are: all, incompressible, compressible, solid, forward, or mphys"
     echo "Example: ./Allrun all"
     exit 1
     ;;

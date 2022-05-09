@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 \*---------------------------------------------------------------------------*/
 
@@ -30,12 +30,24 @@ DAResidualSimpleTFoam::DAResidualSimpleTFoam(
       setResidualClassMemberPhi(phi),
       alphaPorosity_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("alphaPorosity"))),
+      fvSource_(const_cast<volVectorField&>(
+          mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
+      fvOptions_(fv::options::New(mesh)),
       alphat_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("alphat"))),
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
       // create simpleControl
-      simple_(const_cast<fvMesh&>(mesh))
+      simple_(const_cast<fvMesh&>(mesh)),
+      MRF_(const_cast<IOMRFZoneListDF&>(
+          mesh_.thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties")))
 {
+    // initialize fvSource
+    const dictionary& allOptions = daOption.getAllOptions();
+    if (allOptions.subDict("fvSource").toc().size() != 0)
+    {
+        hasFvSource_ = 1;
+    }
+
     // initialize the Prandtl number from transportProperties
     IOdictionary transportProperties(
         IOobject(
@@ -96,13 +108,25 @@ void DAResidualSimpleTFoam::calcResiduals(const dictionary& options)
         divUScheme = "div(pc)";
     }
 
+    if (hasFvSource_)
+    {
+        DAFvSource& daFvSource(const_cast<DAFvSource&>(
+            mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
+        daFvSource.calcFvSource(fvSource_);
+    }
+
     tmp<fvVectorMatrix> tUEqn(
         fvm::div(phi_, U_, divUScheme)
         + fvm::Sp(alphaPorosity_, U_)
-        + daTurb_.divDevReff(U_));
+        + MRF_.DDt(U_)
+        + daTurb_.divDevReff(U_)
+        - fvSource_
+        - fvOptions_(U_));
     fvVectorMatrix& UEqn = tUEqn.ref();
 
     UEqn.relax();
+
+    fvOptions_.constrain(UEqn);
 
     URes_ = (UEqn & U_) + fvc::grad(p_);
     normalizeResiduals(URes);
@@ -125,6 +149,8 @@ void DAResidualSimpleTFoam::calcResiduals(const dictionary& options)
 
     surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
 
+    MRF_.makeRelative(phiHbyA);
+
     adjustPhi(phiHbyA, U_, p_);
 
     tmp<volScalarField> rAtU(rAU);
@@ -137,6 +163,9 @@ void DAResidualSimpleTFoam::calcResiduals(const dictionary& options)
     }
 
     tUEqn.clear();
+
+    // Update the pressure BCs to ensure flux consistency
+    constrainPressure(p_, U_, phiHbyA, rAtU(), MRF_);
 
     fvScalarMatrix pEqn(
         fvm::laplacian(rAtU(), p_)
@@ -174,6 +203,8 @@ void DAResidualSimpleTFoam::updateIntermediateVariables()
 
     alphat_ = daTurb_.getNut() / Prt_;
     alphat_.correctBoundaryConditions();
+
+    MRF_.correctBoundaryVelocity(U_);
 }
 
 void DAResidualSimpleTFoam::correctBoundaryConditions()

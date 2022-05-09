@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 \*---------------------------------------------------------------------------*/
 
@@ -568,7 +568,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                 "variable": "p", 
                 "value": [101325.0],
             },
-            useWallFunction True
+            "useWallFunction": True,
+            "MRF": 1000.0
         }
     */
 
@@ -588,6 +589,73 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
         {
             setTurbWallBCs = 1;
             useWallFunction = bcDict.getLabel("useWallFunction");
+            continue;
+        }
+        else if (bcKey == "MRF")
+        {
+            // change the rotation speed in MRF
+            scalar omegaNew = bcDict.getScalar("MRF");
+            const IOMRFZoneListDF& MRF = db.lookupObject<IOMRFZoneListDF>("MRFProperties");
+            scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
+            omega = omegaNew;
+            
+            if (printInfo)
+            {
+                Info << "Setting MRF omega to " << omegaNew << endl;
+            }
+
+            continue;
+        }
+        else if (bcKey == "transport:nu")
+        {
+            // change the nu field
+            scalar nu = bcDict.getScalar("transport:nu");
+            volScalarField& nuField = const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("nu"));
+            forAll(nuField, cellI)
+            {
+                nuField[cellI] = nu;
+            }
+            forAll(nuField.boundaryField(), patchI)
+            {
+                forAll(nuField.boundaryField()[patchI], faceI)
+                {
+                    nuField.boundaryFieldRef()[patchI][faceI] = nu;
+                }
+            }
+            nuField.correctBoundaryConditions();
+
+            if (printInfo)
+            {
+                Info << "Setting transportProperties nu to " << nu << endl;
+            }
+
+            continue;
+        }
+        else if (bcKey == "thermo:mu")
+        {
+            // change the nu field
+            scalar mu = bcDict.getScalar("thermo:mu");
+            volScalarField& muField = const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("thermo:mu"));
+            forAll(muField, cellI)
+            {
+                muField[cellI] = mu;
+            }
+            forAll(muField.boundaryField(), patchI)
+            {
+                forAll(muField.boundaryField()[patchI], faceI)
+                {
+                    muField.boundaryFieldRef()[patchI][faceI] = mu;
+                }
+            }
+            muField.correctBoundaryConditions();
+
+            if (printInfo)
+            {
+                Info << "Setting thermalphysicalProperties mu to " << mu << endl;
+            }
+
             continue;
         }
 

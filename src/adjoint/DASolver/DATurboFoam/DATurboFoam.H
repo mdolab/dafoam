@@ -1,12 +1,12 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
         Child class for DATurboFoam
         A steady-state compressible solver for turbomachinery
-        Modified based on TCFD redSolver
+        This class is modified based on TCFD redSolver (www.cfdsupport.com)
 
 \*---------------------------------------------------------------------------*/
 
@@ -67,7 +67,7 @@ protected:
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
 
     /// MRF pointer
-    autoPtr<IOMRFZoneList> MRFPtr_;
+    autoPtr<IOMRFZoneListDF> MRFPtr_;
 
     /// initial mass
     dimensionedScalar initialMass_;

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 \*---------------------------------------------------------------------------*/
 
@@ -9,7 +9,7 @@
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 // initialize the static variable, which will be used in forward mode AD
-// computation for AOA derivatives
+// computation for AOA and BC derivatives
 scalar Foam::DAUtility::angleOfAttackRadForwardAD = -9999.0;
 
 namespace Foam
@@ -266,7 +266,7 @@ void DASolver::setDAObjFuncList()
 
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
 
-    dictionary objFuncDict = allOptions.subDict("objFunc");
+    const dictionary& objFuncDict = allOptions.subDict("objFunc");
 
     // loop over all objFuncs and parts and calc the number of
     // DAObjFunc instances we need
@@ -274,7 +274,7 @@ void DASolver::setDAObjFuncList()
     forAll(objFuncDict.toc(), idxI)
     {
         word objFunI = objFuncDict.toc()[idxI];
-        dictionary objFuncSubDict = objFuncDict.subDict(objFunI);
+        const dictionary& objFuncSubDict = objFuncDict.subDict(objFunI);
         forAll(objFuncSubDict.toc(), idxJ)
         {
             nObjFuncInstances++;
@@ -289,12 +289,12 @@ void DASolver::setDAObjFuncList()
     forAll(objFuncDict.toc(), idxI)
     {
         word objFunI = objFuncDict.toc()[idxI];
-        dictionary objFuncSubDict = objFuncDict.subDict(objFunI);
+        const dictionary& objFuncSubDict = objFuncDict.subDict(objFunI);
         forAll(objFuncSubDict.toc(), idxJ)
         {
 
             word objPart = objFuncSubDict.toc()[idxJ];
-            dictionary objFuncSubDictPart = objFuncSubDict.subDict(objPart);
+            const dictionary& objFuncSubDictPart = objFuncSubDict.subDict(objPart);
 
             fvMesh& mesh = meshPtr_();
 
@@ -622,6 +622,93 @@ void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar
     }
 #endif
     return;
+}
+
+void DASolver::calcForceProfile(
+    Vec xvVec,
+    Vec stateVec,
+    Vec fProfileVec,
+    Vec rProfileVec)
+{
+    /*
+    Description:
+        Calculate the radial profile of forces on the propeller surface
+        We need to call this function from the propeller component
+
+    Input:
+        State variables
+
+    Output:
+        xForce, the radial profile of force in the x direction
+    */
+}
+
+void DASolver::calcForceProfileInternal(
+    scalarList& xv,
+    scalarList& state,
+    scalarList& fProfile,
+    scalarList& rProfile)
+{
+    /*
+    Description:
+        Same as calcForceProfile but for internal AD
+    */
+}
+
+void DASolver::calcdForcedStateTPsiAD(
+    const word mode,
+    Vec xvVec,
+    Vec stateVec,
+    Vec psiVec,
+    Vec prodVec)
+{
+}
+
+void DASolver::calcFvSourceInternal(
+    const scalarList& center,
+    const scalarList& radius,
+    const scalarList& forcce,
+    volVectorField& fvSource)
+{
+    /*
+    Description:
+        Same as calcFvSourceFromForceProfile, but this internal function will be called for the AD.
+    */
+}
+
+void DASolver::calcFvSource(
+    Vec centerVec,
+    Vec radiusVec,
+    Vec forceVec,
+    Vec fvSource)
+{
+    /*
+    Description:
+        Calculate the fvSource based on the radial force profile and the propeller parameters
+        We need to call this function from the wing component
+
+    Input:
+        parameters: propeller parameters, i.e., center_x, center_y, center_z, r_inner, r_outer
+        
+        force: the radial force profiles (fx1, fy1, fz1, fx2, fy2, fz2, ... )
+
+    Output:
+        fvSource: a volVectorField variable that will be added to the momentum eqn
+    */
+}
+
+void DASolver::calcdFvSourcedInputsTPsiAD(
+    const word mode,
+    Vec centerVec,
+    Vec radiusVec,
+    Vec forceVec,
+    Vec psiVec,
+    Vec prodVec)
+{
+    /*
+    Description:
+        Calculate the matrix-vector product for either [dFvSource/dParameters]^T * psi, or [dFvSource/dForce]^T * psi
+    */
 }
 
 void DASolver::reduceStateResConLevel(
@@ -1560,121 +1647,142 @@ void DASolver::calcdRdBCTPsiAD(
     // get the subDict for this dvName
     dictionary dvSubDict = designVarDict.subDict(designVarName);
 
-    // get info from dvSubDict. This needs to be defined in the pyDAFoam
-    // name of the variable for changing the boundary condition
-    word varName = dvSubDict.getWord("variable");
-    // name of the boundary patch
-    wordList patches;
-    dvSubDict.readEntry<wordList>("patches", patches);
-    // the component of a vector variable, ignore when it is a scalar
-    label comp = dvSubDict.getLabel("comp");
-
-    // Now get the BC value
+    // create a common variable BC, it will be the input of the AD
     scalar BC = -1e16;
-    forAll(patches, idxI)
-    {
-        word patchName = patches[idxI];
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-        if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
-        {
-            volVectorField& state(const_cast<volVectorField&>(
-                meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-            // for decomposed domain, don't set BC if the patch is empty
-            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-            {
-                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                {
-                    BC = state.boundaryFieldRef()[patchI][0][comp];
-                }
-                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                {
-                    mixedFvPatchField<vector>& inletOutletPatch =
-                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                    BC = inletOutletPatch.refValue()[0][comp];
-                }
-            }
-        }
-        else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
-        {
-            volScalarField& state(const_cast<volScalarField&>(
-                meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-            // for decomposed domain, don't set BC if the patch is empty
-            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-            {
-                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                {
-                    BC = state.boundaryFieldRef()[patchI][0];
-                }
-                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                {
-                    mixedFvPatchField<scalar>& inletOutletPatch =
-                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                    BC = inletOutletPatch.refValue()[0];
-                }
-            }
-        }
-    }
-    // need to reduce the BC value across all processors, this is because some of
-    // the processors might not own the prescribed patches so their BC value will be still -1e16, but
-    // when calling the following reduce function, they will get the correct BC from other processors
-    reduce(BC, maxOp<scalar>());
 
-    this->globalADTape_.reset();
-    this->globalADTape_.setActive();
-    // register BC as the input
-    this->globalADTape_.registerInput(BC);
-    // ******* now set BC ******
-    forAll(patches, idxI)
+    if (designVarName == "MRF")
     {
-        word patchName = patches[idxI];
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-        if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+        const IOMRFZoneListDF& MRF = meshPtr_->thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties");
+
+        // first, we get the current value of omega and assign it to BC
+        scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
+        BC = omega;
+
+        this->globalADTape_.reset();
+        this->globalADTape_.setActive();
+        // register BC as the input
+        this->globalADTape_.registerInput(BC);
+        // ******* now set BC ******
+        omega = BC;
+    }
+    else
+    {
+
+        // get info from dvSubDict. This needs to be defined in the pyDAFoam
+        // name of the variable for changing the boundary condition
+        word varName = dvSubDict.getWord("variable");
+        // name of the boundary patch
+        wordList patches;
+        dvSubDict.readEntry<wordList>("patches", patches);
+        // the component of a vector variable, ignore when it is a scalar
+        label comp = dvSubDict.getLabel("comp");
+
+        // Now get the BC value
+        forAll(patches, idxI)
         {
-            volVectorField& state(const_cast<volVectorField&>(
-                meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-            // for decomposed domain, don't set BC if the patch is empty
-            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            word patchName = patches[idxI];
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
             {
-                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                volVectorField& state(const_cast<volVectorField&>(
+                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+                // for decomposed domain, don't set BC if the patch is empty
+                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
                 {
-                    forAll(state.boundaryFieldRef()[patchI], faceI)
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
                     {
-                        state.boundaryFieldRef()[patchI][faceI][comp] = BC;
+                        BC = state.boundaryFieldRef()[patchI][0][comp];
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                    {
+                        mixedFvPatchField<vector>& inletOutletPatch =
+                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                        BC = inletOutletPatch.refValue()[0][comp];
                     }
                 }
-                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+            }
+            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+            {
+                volScalarField& state(const_cast<volScalarField&>(
+                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+                // for decomposed domain, don't set BC if the patch is empty
+                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
                 {
-                    mixedFvPatchField<vector>& inletOutletPatch =
-                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                    vector val = inletOutletPatch.refValue()[0];
-                    val[comp] = BC;
-                    inletOutletPatch.refValue() = val;
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                    {
+                        BC = state.boundaryFieldRef()[patchI][0];
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                    {
+                        mixedFvPatchField<scalar>& inletOutletPatch =
+                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                        BC = inletOutletPatch.refValue()[0];
+                    }
                 }
             }
         }
-        else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+        // need to reduce the BC value across all processors, this is because some of
+        // the processors might not own the prescribed patches so their BC value will be still -1e16, but
+        // when calling the following reduce function, they will get the correct BC from other processors
+        reduce(BC, maxOp<scalar>());
+
+        this->globalADTape_.reset();
+        this->globalADTape_.setActive();
+        // register BC as the input
+        this->globalADTape_.registerInput(BC);
+        // ******* now set BC ******
+        forAll(patches, idxI)
         {
-            volScalarField& state(const_cast<volScalarField&>(
-                meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-            // for decomposed domain, don't set BC if the patch is empty
-            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            word patchName = patches[idxI];
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
             {
-                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                volVectorField& state(const_cast<volVectorField&>(
+                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+                // for decomposed domain, don't set BC if the patch is empty
+                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
                 {
-                    forAll(state.boundaryFieldRef()[patchI], faceI)
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
                     {
-                        state.boundaryFieldRef()[patchI][faceI] = BC;
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI][comp] = BC;
+                        }
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                    {
+                        mixedFvPatchField<vector>& inletOutletPatch =
+                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                        vector val = inletOutletPatch.refValue()[0];
+                        val[comp] = BC;
+                        inletOutletPatch.refValue() = val;
                     }
                 }
-                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+            }
+            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+            {
+                volScalarField& state(const_cast<volScalarField&>(
+                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+                // for decomposed domain, don't set BC if the patch is empty
+                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
                 {
-                    mixedFvPatchField<scalar>& inletOutletPatch =
-                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                    inletOutletPatch.refValue() = BC;
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                    {
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI] = BC;
+                        }
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                    {
+                        mixedFvPatchField<scalar>& inletOutletPatch =
+                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                        inletOutletPatch.refValue() = BC;
+                    }
                 }
             }
         }
@@ -1714,6 +1822,275 @@ void DASolver::calcdRdBCTPsiAD(
         word outputName = "dRdBCTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdBCTPsi, outputName);
         DAUtility::writeVectorASCII(dRdBCTPsi, outputName);
+    }
+#endif
+}
+
+void DASolver::calcdFdBCAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdBC)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        This function computes partials derivatives dFdBC
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+        wVec: the state variable vector
+        objFuncName: name of the objective function F
+        designVarName: the name of the design variable
+    
+    Output:
+        dFdBC: the partial derivative vector dF/dBC
+        NOTE: You need to fully initialize the dF vec before calliing this function,
+        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
+    */
+
+    Info << "Calculating dFdBC using reverse-mode AD for " << designVarName << endl;
+
+    VecZeroEntries(dFdBC);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
+
+    // get the subDict for this dvName
+    dictionary dvSubDict = designVarDict.subDict(designVarName);
+
+    scalar BC = -1e16;
+
+    // now we need to get the BC value
+    if (designVarName == "MRF")
+    {
+        const IOMRFZoneListDF& MRF = meshPtr_->thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties");
+        // first, we get the current value of omega and assign it to BC
+        scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
+        BC = omega;
+    }
+    else
+    {
+        // get info from dvSubDict. This needs to be defined in the pyDAFoam
+        // name of the variable for changing the boundary condition
+        word varName = dvSubDict.getWord("variable");
+        // name of the boundary patch
+        wordList patches;
+        dvSubDict.readEntry<wordList>("patches", patches);
+        // the compoent of a vector variable, ignore when it is a scalar
+        label comp = dvSubDict.getLabel("comp");
+
+        // Now get the BC value
+        forAll(patches, idxI)
+        {
+            word patchName = patches[idxI];
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+            {
+                volVectorField& state(const_cast<volVectorField&>(
+                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+                // for decomposed domain, don't set BC if the patch is empty
+                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+                {
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                    {
+                        BC = state.boundaryFieldRef()[patchI][0][comp];
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                    {
+                        mixedFvPatchField<vector>& inletOutletPatch =
+                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                        BC = inletOutletPatch.refValue()[0][comp];
+                    }
+                }
+            }
+            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+            {
+                volScalarField& state(const_cast<volScalarField&>(
+                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+                // for decomposed domain, don't set BC if the patch is empty
+                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+                {
+                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                    {
+                        BC = state.boundaryFieldRef()[patchI][0];
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                    {
+                        mixedFvPatchField<scalar>& inletOutletPatch =
+                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                        BC = inletOutletPatch.refValue()[0];
+                    }
+                }
+            }
+        }
+        // need to reduce the BC value across all processors, this is because some of
+        // the processors might not own the prescribed patches so their BC value will be still -1e16, but
+        // when calling the following reduce function, they will get the correct BC from other processors
+        reduce(BC, maxOp<scalar>());
+    }
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+    // loop over all parts of this objFuncName
+    forAll(objFuncSubDict.toc(), idxK)
+    {
+        word objFuncPart = objFuncSubDict.toc()[idxK];
+        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
+
+        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
+        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            objFuncName,
+            objFuncPart,
+            objFuncSubDictPart));
+
+        // reset tape
+        this->globalADTape_.reset();
+        // activate tape, start recording
+        this->globalADTape_.setActive();
+        // register BC as the input
+        this->globalADTape_.registerInput(BC);
+        // now set BC
+        if (designVarName == "MRF")
+        {
+            const IOMRFZoneListDF& MRF = meshPtr_->thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties");
+            // first, we get the current value of omega and assign it to BC
+            scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
+            omega = BC;
+        }
+        else
+        {
+            // get info from dvSubDict. This needs to be defined in the pyDAFoam
+            // name of the variable for changing the boundary condition
+            word varName = dvSubDict.getWord("variable");
+            // name of the boundary patch
+            wordList patches;
+            dvSubDict.readEntry<wordList>("patches", patches);
+            // the compoent of a vector variable, ignore when it is a scalar
+            label comp = dvSubDict.getLabel("comp");
+            forAll(patches, idxI)
+            {
+                word patchName = patches[idxI];
+                label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+                if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+                {
+                    volVectorField& state(const_cast<volVectorField&>(
+                        meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+                    // for decomposed domain, don't set BC if the patch is empty
+                    if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+                    {
+                        if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                        {
+                            forAll(state.boundaryFieldRef()[patchI], faceI)
+                            {
+                                state.boundaryFieldRef()[patchI][faceI][comp] = BC;
+                            }
+                        }
+                        else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                                 || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                        {
+                            mixedFvPatchField<vector>& inletOutletPatch =
+                                refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                            vector val = inletOutletPatch.refValue()[0];
+                            val[comp] = BC;
+                            inletOutletPatch.refValue() = val;
+                        }
+                    }
+                }
+                else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+                {
+                    volScalarField& state(const_cast<volScalarField&>(
+                        meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+                    // for decomposed domain, don't set BC if the patch is empty
+                    if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+                    {
+                        if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                        {
+                            forAll(state.boundaryFieldRef()[patchI], faceI)
+                            {
+                                state.boundaryFieldRef()[patchI][faceI] = BC;
+                            }
+                        }
+                        else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                                 || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                        {
+                            mixedFvPatchField<scalar>& inletOutletPatch =
+                                refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                            inletOutletPatch.refValue() = BC;
+                        }
+                    }
+                }
+            }
+        }
+        // update all intermediate variables and boundary conditions
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+        // compute the objective function
+        scalar fRef = daObjFunc->getObjFuncValue();
+        // register f as the output
+        this->globalADTape_.registerOutput(fRef);
+        // stop recording
+        this->globalADTape_.setPassive();
+        // Note: since we used reduced objFunc, we only need to
+        // assign the seed for master proc
+        if (Pstream::master())
+        {
+            fRef.setGradient(1.0);
+        }
+        // evaluate tape to compute derivative
+        this->globalADTape_.evaluate();
+
+        // assign the computed derivatives from the OpenFOAM variable to dFdFieldPart
+        Vec dFdBCPart;
+        VecDuplicate(dFdBC, &dFdBCPart);
+        VecZeroEntries(dFdBCPart);
+        PetscScalar derivVal = BC.getGradient();
+        // we need to do ADD_VALUES to get contribution from all procs
+        VecSetValue(dFdBCPart, 0, derivVal, ADD_VALUES);
+        VecAssemblyBegin(dFdBCPart);
+        VecAssemblyEnd(dFdBCPart);
+
+        // need to clear adjoint and tape after the computation is done!
+        this->globalADTape_.clearAdjoints();
+        this->globalADTape_.reset();
+
+        // we need to add dFdBCPart to dFdBC because we want to sum
+        // all dFdBCPart for all parts of this objFuncName.
+        VecAXPY(dFdBC, 1.0, dFdBCPart);
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "In calcdFdBCAD" << endl;
+            this->calcPrimalResidualStatistics("print");
+            Info << objFuncName << ": " << fRef << endl;
+        }
+
+        VecDestroy(&dFdBCPart);
+    }
+
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdBC") || writeJacobians.found("all"))
+    {
+        word outputName = "dFdBC_" + designVarName + "_" + objFuncName;
+        DAUtility::writeVectorBinary(dFdBC, outputName);
+        DAUtility::writeVectorASCII(dFdBC, outputName);
     }
 #endif
 }
@@ -2616,12 +2993,14 @@ void DASolver::updateOFField(const Vec wVec)
     Output:
         OpenFoam flow fields (internal and boundary)
     */
+
+    label printInfo = 0;
     if (daOptionPtr_->getOption<label>("debug"))
     {
         Info << "Updating the OpenFOAM field..." << endl;
+        printInfo = 1;
     }
-    //Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
-    daFieldPtr_->setPrimalBoundaryConditions(0);
+    this->setPrimalBoundaryConditions(printInfo);
     daFieldPtr_->stateVec2OFField(wVec);
     // We need to call correctBC multiple times to reproduce
     // the exact residual, this is needed for some boundary conditions
@@ -4665,66 +5044,6 @@ label DASolver::isPrintTime(
     }
 }
 
-void DASolver::setRotingWallVelocity()
-{
-    /*
-    Description:
-        If MRF active, set velocity boundary condition for rotating walls
-        This function should be called once for each primal solution.
-        It should be called AFTER the mesh points are updated
-    */
-
-    IOobject MRFIO(
-        "MRFProperties",
-        runTimePtr_->constant(),
-        meshPtr_(),
-        IOobject::MUST_READ,
-        IOobject::NO_WRITE,
-        false); // do not register
-
-    if (MRFIO.typeHeaderOk<IOdictionary>(true))
-    {
-
-        IOdictionary MRFProperties(MRFIO);
-
-        bool activeMRF(MRFProperties.subDict("MRF").lookupOrDefault("active", true));
-
-        if (activeMRF)
-        {
-            volVectorField& U = const_cast<volVectorField&>(
-                meshPtr_->thisDb().lookupObject<volVectorField>("U"));
-
-            wordList nonRotatingPatches;
-            MRFProperties.subDict("MRF").readEntry<wordList>("nonRotatingPatches", nonRotatingPatches);
-
-            vector origin;
-            MRFProperties.subDict("MRF").readEntry<vector>("origin", origin);
-            vector axis;
-            MRFProperties.subDict("MRF").readEntry<vector>("axis", axis);
-            scalar omega = MRFProperties.subDict("MRF").getScalar("omega");
-
-            forAll(meshPtr_->boundaryMesh(), patchI)
-            {
-                word bcName = meshPtr_->boundaryMesh()[patchI].name();
-                word bcType = meshPtr_->boundaryMesh()[patchI].type();
-                if (!DAUtility::isInList<word>(bcName, nonRotatingPatches) && bcType != "processor")
-                {
-                    Info << "Setting rotating wall velocity for " << bcName << endl;
-                    if (U.boundaryField()[patchI].size() > 0)
-                    {
-                        forAll(U.boundaryField()[patchI], faceI)
-                        {
-                            vector patchCf = meshPtr_->Cf().boundaryField()[patchI][faceI];
-                            U.boundaryFieldRef()[patchI][faceI] =
-                                -omega * ((patchCf - origin) ^ (axis / mag(axis)));
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 void DASolver::writeAssociatedFields()
 {
     /*
@@ -5163,6 +5482,21 @@ void DASolver::setTimeInstanceVar(
     VecRestoreArray(timeIdxVec, &timeIdxVecArray);
 }
 
+void DASolver::writeFailedMesh()
+{
+    /*
+    Description:
+        If the mesh fails, we set the time to 10000 and write the results to the disk.
+        This way, the results will be renamed to 0.00000x during optimization, so that we 
+        can visualize them in Paraview to debug which part of the mesh is failing.
+    */
+    if (daOptionPtr_->getOption<label>("writeMinorIterations"))
+    {
+        runTimePtr_->setTime(10000.0, 10000);
+        runTimePtr_->writeNow();
+    }
+}
+
 scalar DASolver::getTimeInstanceObjFunc(
     const label instanceI,
     const word objFuncName)
@@ -5173,6 +5507,27 @@ scalar DASolver::getTimeInstanceObjFunc(
     */
 
     return objFuncsAllInstances_[instanceI].getScalar(objFuncName);
+}
+
+void DASolver::setPrimalBoundaryConditions(const label printInfo)
+{
+    /*
+    Description:
+        Update the state boundary conditions based on the ones defined in primalBC
+    */
+
+    // first check if we need to change the boundary conditions based on
+    // the primalBC dict in DAOption. NOTE: this will overwrite whatever
+    // boundary conditions defined in the "0" folder
+    dictionary bcDict = daOptionPtr_->getAllOptions().subDict("primalBC");
+    if (bcDict.toc().size() != 0)
+    {
+        if (printInfo)
+        {
+            Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
+        }
+        daFieldPtr_->setPrimalBoundaryConditions(printInfo);
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

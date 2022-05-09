@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
         Python wrapper library for DASolver
@@ -228,6 +228,17 @@ public:
         Vec dFdBC)
     {
         DASolverPtr_->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
+    }
+
+    /// compute dFdBCAD
+    void calcdFdBCAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdBC)
+    {
+        DASolverPtr_->calcdFdBCAD(xvVec, wVec, objFuncName, designVarName, dFdBC);
     }
 
     /// compute dRdBC^T*Psi
@@ -599,6 +610,51 @@ public:
     void calcResidualVec(Vec resVec)
     {
         DASolverPtr_->calcResidualVec(resVec);
+    }
+
+    void setPrimalBoundaryConditions(const label printInfo = 1)
+    {
+        DASolverPtr_->setPrimalBoundaryConditions(printInfo);
+    }
+
+    /// calculate the fvSource based on the force profile
+    void calcFvSource(
+        Vec center,
+        Vec radius,
+        Vec force,
+        Vec fvSource)
+    {
+        DASolverPtr_->calcFvSource(center, radius, force, fvSource);
+    }
+
+    void calcdFvSourcedInputsTPsiAD(
+        const word mode,
+        Vec center,
+        Vec radius,
+        Vec force,
+        Vec psi,
+        Vec prod)
+    {
+        DASolverPtr_->calcdFvSourcedInputsTPsiAD(mode, center, radius, force, psi, prod);
+    }
+
+    void calcForceProfile(
+        Vec xvVec,
+        Vec stateVec,
+        Vec fProfileVec,
+        Vec rProfileVec)
+    {
+        DASolverPtr_->calcForceProfile(xvVec, stateVec, fProfileVec, rProfileVec);
+    }
+
+    void calcdForcedStateTPsiAD(
+        const word mode,
+        Vec xvVec,
+        Vec stateVec,
+        Vec psiVec,
+        Vec prodVec)
+    {
+        DASolverPtr_->calcdForcedStateTPsiAD(mode, xvVec, stateVec, psiVec, prodVec);
     }
 };
 

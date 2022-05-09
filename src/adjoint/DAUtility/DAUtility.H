@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
         DAUtility contains basic functions such as matrix file IO, and
@@ -17,6 +17,7 @@
 #include "Python.h"
 #include "fvOptions.H"
 #include "globalIndex.H"
+#include "IOMRFZoneListDF.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -118,7 +119,7 @@ public:
     /// generate global index numbering for local-global index transferring
     static globalIndex genGlobalIndex(const label localIndexSize);
 
-    /// angle of attack in radian
+    /// angle of attack in radian used in forward mode AD
     static scalar angleOfAttackRadForwardAD;
 };
 

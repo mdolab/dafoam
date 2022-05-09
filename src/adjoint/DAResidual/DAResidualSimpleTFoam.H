@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
         Child class for DASimpleTFoam
@@ -15,6 +15,7 @@
 #include "addToRunTimeSelectionTable.H"
 #include "simpleControl.H"
 #include "adjustPhi.H"
+#include "constrainPressure.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -47,6 +48,12 @@ protected:
     /// alpha porosity term
     volScalarField& alphaPorosity_;
 
+    /// fvSource term
+    volVectorField& fvSource_;
+
+    /// fvOptions term
+    fv::options& fvOptions_;
+
     volScalarField& alphat_;
 
     scalar Pr_ = -9999.0;
@@ -58,6 +65,12 @@ protected:
 
     /// simpleControl object which will be initialized in this class
     simpleControl simple_;
+
+    /// Multiple Reference Frame
+    IOMRFZoneListDF& MRF_;
+
+    /// whether to have fvSource term
+    label hasFvSource_ = 0;
 
 public:
     TypeName("DASimpleTFoam");

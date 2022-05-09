@@ -5,11 +5,11 @@ Dictionary Key: CL
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: nonOrtho
-@value    23.89343244046593 1e-08 1e-10
+@value    23.89377994730954 1e-08 1e-10
 Dictionary Key: orthoRad
-@value     1.41411810851811 1e-08 1e-10
+@value     1.484757853865919 1e-08 1e-10
 Dictionary Key: skewness
-@value   0.4547324168387174 1e-08 1e-10
+@value   1.467122151236883 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: alpha
 @value 0.004409101138894869 1e-05 1e-07
@@ -30,20 +30,20 @@ Dictionary Key: nonOrtho
 Dictionary Key: alpha
 @value                    0 1e-05 1e-07
 Dictionary Key: shapey
-@value -4.351836963875649e-05 1e-05 1e-07
-@value -0.008942056656943212 1e-05 1e-07
-@value  -0.6722866048357456 1e-05 1e-07
+@value -0.07388849776051332 1e-05 1e-07
+@value -0.08423117111160026 1e-05 1e-07
+@value  -0.8572278278801386 1e-05 1e-07
 Dictionary Key: orthoRad
 Dictionary Key: alpha
 @value                    0 1e-05 1e-07
 Dictionary Key: shapey
-@value 0.0006241251824462747 1e-05 1e-07
-@value 0.000384720616943713 1e-05 1e-07
-@value 0.0004138033509249855 1e-05 1e-07
+@value 0.0006857030509432343 1e-05 1e-07
+@value 0.0004366437734835483 1e-05 1e-07
+@value 0.0005061981270364382 1e-05 1e-07
 Dictionary Key: skewness
 Dictionary Key: alpha
 @value                    0 1e-05 1e-07
 Dictionary Key: shapey
-@value    4.427224681084727 1e-05 1e-07
-@value  0.00934592179463456 1e-05 1e-07
-@value   -1.742387347111162 1e-05 1e-07
+@value -2.596047266215193e-09 1e-05 1e-07
+@value -5.445060369264464e-05 1e-05 1e-07
+@value -0.01256019654533069 1e-05 1e-07

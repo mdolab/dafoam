@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 
     Description:
@@ -9,6 +9,28 @@
         initialise=false because we don't want to print the long OpenFOAM header
         We also add a -python bool option to tell UPstream.C not to call
         MPI_Finalize because we want mpi4py to call it instead
+    
+    This file is modified from OpenFOAM's source code
+    src/OpenFOAM/include/setRootCase.H
+
+    OpenFOAM: The Open Source CFD Toolbox
+
+    Copyright (C): 2011-2016 OpenFOAM Foundation
+
+    OpenFOAM License:
+
+        OpenFOAM is free software: you can redistribute it and/or modify it
+        under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+    
+        OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+        ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+        FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+        for more details.
+    
+        You should have received a copy of the GNU General Public License
+        along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 

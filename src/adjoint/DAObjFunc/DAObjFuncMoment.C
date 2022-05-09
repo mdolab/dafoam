@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 \*---------------------------------------------------------------------------*/
 
@@ -121,6 +121,9 @@ void DAObjFuncMoment::calcObjFunc(
     
         objFuncValue: the sum of objective, reduced across all processsors and scaled by "scale"
     */
+
+    // reload the scale, which may be needed for multipoint optimization
+    objFuncDict_.readEntry<scalar>("scale", scale_);
 
     // initialize faceValues to zero
     forAll(objFuncFaceValues, idxI)

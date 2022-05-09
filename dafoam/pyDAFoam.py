@@ -3,7 +3,7 @@
 """
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
     The Python interface to DAFoam. It controls the adjoint
@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "2.2.9"
+__version__ = "3.0.0"
 
 import subprocess
 import os
@@ -315,6 +315,9 @@ class DAOPTION(object):
         ## an FSI case to be used throughout the simulation.
         self.fsi = {"pRef": 0.0}
 
+        ## Aero-propulsive options
+        self.aeroPropulsive = {}
+
         ## An option to run the primal only; no adjoint or optimization will be run
         self.primalOnly = False
 
@@ -375,22 +378,22 @@ class DAOPTION(object):
         ## Example
         ##     primalValBounds = {"UMax": 1000, "UMin": -1000, "pMax": 1000000}
         self.primalVarBounds = {
-            "UMax": 1e16,
-            "UMin": -1e16,
-            "pMax": 1e16,
-            "pMin": -1e16,
-            "p_rghMax": 1e16,
-            "p_rghMin": -1e16,
-            "eMax": 1e16,
-            "eMin": -1e16,
-            "TMax": 1e16,
-            "TMin": -1e16,
-            "hMax": 1e16,
-            "hMin": -1e16,
+            "UMax": 1000.0,
+            "UMin": -1000.0,
+            "pMax": 500000.0,
+            "pMin": 20000.0,
+            "p_rghMax": 500000.0,
+            "p_rghMin": 20000.0,
+            "eMax": 500000.0,
+            "eMin": 100000.0,
+            "TMax": 1000.0,
+            "TMin": 100.0,
+            "hMax": 500000.0,
+            "hMin": 100000.0,
             "DMax": 1e16,
             "DMin": -1e16,
-            "rhoMax": 1e16,
-            "rhoMin": -1e16,
+            "rhoMax": 5.0,
+            "rhoMin": 0.2,
             "nuTildaMax": 1e16,
             "nuTildaMin": 1e-16,
             "kMax": 1e16,
@@ -442,7 +445,7 @@ class DAOPTION(object):
         ## This obviously increses the speed because the dRdWTPC computation takes about 30% of
         ## the adjoint total runtime. However, setting a too large lag value will decreases the speed
         ## of solving the adjoint equations. One needs to balance these factors
-        self.adjPCLag = 1
+        self.adjPCLag = 10
 
         ## Whether to use AD: Mode options: forward, reverse, or fd. If forward mode AD is used
         ## the seedIndex will be set to compute derivative by running the whole primal solver.
@@ -515,6 +518,7 @@ class DAOPTION(object):
             "gmresAbsTol": 1.0e-14,
             "gmresTolDiff": 1.0e2,
             "useNonZeroInitGuess": False,
+            "useMGSO": False,
             "printInfo": 1,
         }
 
@@ -565,6 +569,7 @@ class DAOPTION(object):
             "method": "scotch",
             "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001},
             "preservePatches": ["None"],
+            "singleProcessorFaceSets": ["None"],
         }
 
         ## The ordering of state variable. Options are: state or cell. Most of the case, the state
@@ -609,6 +614,15 @@ class DAOPTION(object):
         ## be True for production runs. However, it is useful for debugging purpose (e.g., to find out
         ## the poor quality mesh during line search)
         self.writeMinorIterations = False
+
+        ## whether to run the primal using the first order div scheme. This can be used to generate smoother
+        ## flow field for computing the preconditioner matrix to avoid singularity. It can help the adjoint
+        ## convergence for y+ = 1 meshes. If True, we will run the primal using low order scheme when computing
+        ## or updating the PC mat. To enable this option, set "active" to True.
+        self.runLowOrderPrimal4PC = {"active": False}
+
+        ## Parameters for wing-propeller coupling optimizations
+        self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0]}
 
 
 class PYDAFOAM(object):
@@ -758,6 +772,9 @@ class PYDAFOAM(object):
         # preconditioner matrix
         self.dRdWTPC = None
 
+        # a KSP object which may be used outside of the pyDAFoam class
+        self.ksp = None
+
         # the surface geometry/mesh displacement computed by the structural solver
         # this is used in FSI. Here self.surfGeoDisp is a N by 3 numpy array
         # that stores the displacement vector for each surface mesh point. The order of
@@ -834,6 +851,9 @@ class PYDAFOAM(object):
                 dvType = self.getOption("designVar")[dvName]["designVarType"]
                 if dvType == "FFD":
                     self.calcFFD2XvSeedVec()
+
+        # update the primal boundary condition right before calling solvePrimal
+        self.setPrimalBoundaryConditions()
 
         # solve the primal to get new state variables
         self.solvePrimal()
@@ -1013,6 +1033,9 @@ class PYDAFOAM(object):
             if not self.getOption("useAD")["mode"] in ["reverse"]:
                 raise Error("writeSensMap is only compatible with useAD->mode=reverse")
 
+        if self.getOption("runLowOrderPrimal4PC")["active"]:
+            self.setOption("runLowOrderPrimal4PC", {"active": True, "isPC": False})
+
         # check other combinations...
 
     def saveMultiPointField(self, indexMP):
@@ -1143,12 +1166,15 @@ class PYDAFOAM(object):
             f.write("},\n")
             f.close()
 
-    def writeDeformedFFDs(self):
+    def writeDeformedFFDs(self, counter=None):
         """
         Write the deformed FFDs to the disk during optimization
         """
         if self.getOption("writeDeformedFFDs"):
-            self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % self.nSolveAdjoints)
+            if counter is None:
+                self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % self.nSolveAdjoints)
+            else:
+                self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % counter)
 
     def writeTotalDeriv(self, fileName, sens, evalFuncs):
         """
@@ -1566,7 +1592,7 @@ class PYDAFOAM(object):
             self.options[key] = self.defaultOptions[key]
         # now set options to self.options
         for key in options:
-            self.setOption(key, options[key])
+            self._initOption(key, options[key])
 
         return
 
@@ -1874,6 +1900,7 @@ class PYDAFOAM(object):
 
         if self.getOption("writeMinorIterations"):
             self.renameSolution(self.nSolvePrimals)
+            self.writeDeformedFFDs(self.nSolvePrimals)
 
         self.nSolvePrimals += 1
 
@@ -1912,7 +1939,7 @@ class PYDAFOAM(object):
             raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
 
         if not self.getOption("writeMinorIterations"):
-            solutionTime = self.renameSolution(self.nSolveAdjoints)
+            solutionTime, renamed = self.renameSolution(self.nSolveAdjoints)
 
         Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
 
@@ -1933,11 +1960,13 @@ class PYDAFOAM(object):
         elif self.getOption("useAD")["mode"] == "reverse":
             self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
 
-        # calculate dRdWTPC
-        adjPCLag = self.getOption("adjPCLag")
-        if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
-            self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
-            self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
+        # calculate dRdWTPC. If runLowOrderPrimal4PC is true, we compute the PC mat
+        # before solving the primal, so we will skip it here
+        if not self.getOption("runLowOrderPrimal4PC")["active"]:
+            adjPCLag = self.getOption("adjPCLag")
+            if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
+                self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
 
         # Initialize the KSP object
         ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
@@ -2038,7 +2067,9 @@ class PYDAFOAM(object):
                             dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
                             dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
                             dFdBC.setFromOptions()
-                            dFdBC.zeroEntries()  # dFdBC assumes to be zero
+                            self.solverAD.calcdFdBCAD(
+                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
+                            )
                             # Calculate dRBCT^Psi
                             totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                             totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
@@ -2441,7 +2472,8 @@ class PYDAFOAM(object):
         forces[:, 1] = np.copy(fY.getArray())
         forces[:, 2] = np.copy(fZ.getArray())
 
-        pointList = np.copy(pointListTemp.getArray())
+        # comment out this var since it is not used.
+        # pointList = np.copy(pointListTemp.getArray())
 
         # Cleanup PETSc vectors
         fX.destroy()
@@ -2525,7 +2557,7 @@ class PYDAFOAM(object):
                 for objFuncPart in objFuncDict[objFuncNameNeeded]:
                     if objFuncDict[objFuncNameNeeded][objFuncPart]["type"] == "force":
                         if objFuncDict[objFuncNameNeeded][objFuncPart]["directionMode"] == neededMode:
-                            val = self.objFuncValuePrevIter[objFuncNameNeeded]
+                            val = self.solver.getObjFuncValue(objFuncNameNeeded.encode())
                             if neededMode == "parallelToFlow":
                                 dFdAOA[0] = -val * np.pi / 180.0
                             elif neededMode == "normalToFlow":
@@ -2737,9 +2769,10 @@ class PYDAFOAM(object):
         # choose the latst solution to rename
         solutionTime = allSolutions[0]
 
-        if float(solutionTime) < 1e-6:
-            Info("Solution time %g less than 1e-6, not moved." % float(solutionTime))
-            return solutionTime
+        if float(solutionTime) < 1e-4:
+            Info("Solution time %g less than 1e-4, not renamed." % float(solutionTime))
+            renamed = False
+            return solutionTime, renamed
 
         distTime = "%.8f" % (solIndex / 1e8)
 
@@ -2756,7 +2789,8 @@ class PYDAFOAM(object):
             except Exception:
                 raise Error("Can not move %s to %s" % (src, dst))
 
-        return distTime
+        renamed = True
+        return distTime, renamed
 
     def calcFFD2XvSeedVec(self):
         """
@@ -2789,7 +2823,7 @@ class PYDAFOAM(object):
         xSDot0 = self.mapVector(xSDot0, self.allFamilies, self.designFamilyGroup)
 
         # get xSDot
-        xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName=self.ptSetName, comm=self.comm).reshape(xSDot0.shape)
+        xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName=self.ptSetName).reshape(xSDot0.shape)
         # get xVDot
         xVDot = self.mesh.warpDerivFwd(xSDot)
 
@@ -3006,6 +3040,14 @@ class PYDAFOAM(object):
             nPts += len(bc["indicesRed"])
 
         return nPts, nCells
+
+    def setPrimalBoundaryConditions(self, printInfo=1, printInfoAD=0):
+        """
+        Assign the boundary condition defined in primalBC to the OF fields
+        """
+        self.solver.setPrimalBoundaryConditions(printInfo)
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.setPrimalBoundaryConditions(printInfoAD)
 
     def _computeBasicFamilyInfo(self):
         """
@@ -3342,7 +3384,8 @@ class PYDAFOAM(object):
 
 
         NOTE: if 'value' is of dict type, we will set all the subKey values in
-        'value' dict to self.options, instead of overiding it
+        'value' dict to self.options, instead of overiding it. This works for
+        only THREE levels of subDicts
 
         For example, if self.options reads
         self.options =
@@ -3369,6 +3412,59 @@ class PYDAFOAM(object):
         {
             'objFunc': [dict, {'name': 'CL'}]
         }
+        """
+
+        try:
+            self.defaultOptions[name]
+        except KeyError:
+            Error("Option '%-30s' is not a valid %s option." % (name, self.name))
+
+        # Make sure we are not trying to change an immutable option if
+        # we are not allowed to.
+        if name in self.imOptions:
+            raise Error("Option '%-35s' cannot be modified after the solver " "is created." % name)
+
+        # Now we know the option exists, lets check if the type is ok:
+        if isinstance(value, self.defaultOptions[name][0]):
+            # the type matches, now we need to check if the 'value' is of dict type, if yes, we only
+            # replace the subKey values of 'value', instead of overiding all the subKey values
+            # NOTE. we only check 3 levels of subKeys
+            if isinstance(value, dict):
+                for subKey1 in value:
+                    # check if this subKey is still a dict.
+                    if isinstance(value[subKey1], dict):
+                        for subKey2 in value[subKey1]:
+                            # check if this subKey is still a dict.
+                            if isinstance(value[subKey1][subKey2], dict):
+                                for subKey3 in value[subKey1][subKey2]:
+                                    self.options[name][1][subKey1][subKey2][subKey3] = value[subKey1][subKey2][subKey3]
+                            else:
+                                self.options[name][1][subKey1][subKey2] = value[subKey1][subKey2]
+                    else:
+                        # no need to set self.options[name][0] since it has the right type
+                        self.options[name][1][subKey1] = value[subKey1]
+            else:
+                # It is not dict, just set
+                # no need to set self.options[name][0] since it has the right type
+                self.options[name][1] = value
+        else:
+            raise Error(
+                "Datatype for Option %-35s was not valid \n "
+                "Expected data type is %-47s \n "
+                "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
+            )
+
+    def _initOption(self, name, value):
+        """
+        Set a value to options. This function will be used only for initializing the options internally.
+        Do NOT call this function from the run script!
+
+        Parameters
+        ----------
+        name : str
+           Name of option to set. Not case sensitive
+        value : varies
+           Value to set. Type is checked for consistency.
         """
 
         try:
@@ -3566,6 +3662,20 @@ class PYDAFOAM(object):
 
         return
 
+    def convertMPIVec2SeqArray(self, mpiVec):
+        """
+        Convert a MPI vector to a seq array
+        """
+        vecSize = mpiVec.getSize()
+        seqVec = PETSc.Vec().createSeq(vecSize, bsize=1, comm=PETSc.COMM_SELF)
+        self.solver.convertMPIVec2SeqVec(mpiVec, seqVec)
+
+        array1 = np.zeros(vecSize, self.dtype)
+        for i in range(vecSize):
+            array1[i] = seqVec[i]
+
+        return array1
+
     def vec2Array(self, vec):
         """
         Convert a Petsc vector to numpy array
@@ -3599,6 +3709,34 @@ class PYDAFOAM(object):
         vec.assemblyEnd()
 
         return vec
+
+    def array2VecSeq(self, array1):
+        """
+        Convert a numpy array to Petsc vector in serial mode
+        """
+        size = len(array1)
+
+        vec = PETSc.Vec().createSeq(size, bsize=1, comm=PETSc.COMM_SELF)
+        vec.zeroEntries()
+
+        for i in range(size):
+            vec[i] = array1[i]
+
+        vec.assemblyBegin()
+        vec.assemblyEnd()
+
+        return vec
+
+    def vec2ArraySeq(self, vec):
+        """
+        Convert a Petsc vector to numpy array in serial mode
+        """
+
+        size = vec.getSize()
+        array1 = np.zeros(size, self.dtype)
+        for i in range(size):
+            array1[i] = vec[i]
+        return array1
 
     def cdRoot(self):
         """
@@ -3669,6 +3807,11 @@ class PYDAFOAM(object):
                 f.write("preservePatches        (")
                 for pPatch in decomDict["preservePatches"]:
                     f.write("%s " % pPatch)
+                f.write(");\n")
+            if decomDict["singleProcessorFaceSets"][0] != "None":
+                f.write("singleProcessorFaceSets  (")
+                for pPatch in decomDict["singleProcessorFaceSets"]:
+                    f.write(" (%s -1) " % pPatch)
                 f.write(");\n")
             f.write("\n")
             f.write("// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n")

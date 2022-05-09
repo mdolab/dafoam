@@ -93,6 +93,7 @@ aeroOptions = {
         "shapey": {"designVarType": "FFD"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
     },
+    "adjPCLag": 1,
 }
 
 # mesh warping parameters, users need to manually specify the symmetry plane

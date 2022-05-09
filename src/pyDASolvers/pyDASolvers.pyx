@@ -4,7 +4,7 @@
 
 """
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
         Cython wrapper functions that call OpenFOAM libraries defined
@@ -32,6 +32,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void solveLinearEqn(PetscKSP, PetscVec, PetscVec)
         void calcdRdBC(PetscVec, PetscVec, char *, PetscMat)
         void calcdFdBC(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdFdBCAD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdAOA(PetscVec, PetscVec, char *, PetscMat)
         void calcdFdAOA(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdFFD(PetscVec, PetscVec, char *, PetscMat)
@@ -86,6 +87,11 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcPrimalResidualStatistics(char *)
         double getForwardADDerivVal(char *)
         void calcResidualVec(PetscVec)
+        void setPrimalBoundaryConditions(int)
+        void calcFvSource(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdFvSourcedInputsTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcForceProfile(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -164,6 +170,9 @@ cdef class pyDASolvers:
     
     def calcdFdBC(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdBC):
         self._thisptr.calcdFdBC(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdBC.vec)
+    
+    def calcdFdBCAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdBC):
+        self._thisptr.calcdFdBCAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdBC.vec)
 
     def calcdRdAOA(self, Vec xvVec, Vec wVec, designVarName, Mat dRdAOA):
         self._thisptr.calcdRdAOA(xvVec.vec, wVec.vec, designVarName, dRdAOA.mat)
@@ -323,3 +332,18 @@ cdef class pyDASolvers:
     
     def calcResidualVec(self, Vec resVec):
         self._thisptr.calcResidualVec(resVec.vec)
+    
+    def setPrimalBoundaryConditions(self, printInfo):
+        self._thisptr.setPrimalBoundaryConditions(printInfo)
+    
+    def calcFvSource(self, Vec c, Vec r, Vec f, Vec fvSource):
+        self._thisptr.calcFvSource(c.vec, r.vec, f.vec, fvSource.vec)
+    
+    def calcdFvSourcedInputsTPsiAD(self, mode, Vec c, Vec r, Vec f, Vec psi, Vec prod):
+        self._thisptr.calcdFvSourcedInputsTPsiAD(mode, c.vec, r.vec, f.vec, psi.vec, prod.vec)
+    
+    def calcForceProfile(self, Vec xv, Vec state, Vec forceProfile, Vec radiusProfile):
+        self._thisptr.calcForceProfile(xv.vec, state.vec, forceProfile.vec, radiusProfile.vec)
+    
+    def calcdForcedStateTPsiAD(self, mode, Vec xv, Vec state, Vec psi, Vec prod):
+        self._thisptr.calcdForcedStateTPsiAD(mode, xv.vec, state.vec, psi.vec, prod.vec)
