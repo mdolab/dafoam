@@ -89,6 +89,9 @@ DAPartDeriv/DAPartDerivdFdACTD.C
 
 DALinearEqn/DALinearEqn.C
 
+DAFPAdj/DAFPAdj.C
+DAFPAdj/DAFPAdjSimpleFoam.C
+
 DASolver/DASolver.C
 DASolver/DASimpleFoam/DASimpleFoam.C
 DASolver/DASimpleTFoam/DASimpleTFoam.C
