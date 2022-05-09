@@ -40,3 +40,5 @@ daIndexPtr_->printIndices();
 daFieldPtr_.reset(new DAField(mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
 
 daResidualPtr_.reset(DAResidual::New(solverName, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
+
+daFPAdjPtr_.reset(DAFPAdj::New(solverName, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));

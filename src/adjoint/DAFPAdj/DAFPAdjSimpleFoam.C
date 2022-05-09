@@ -31,6 +31,27 @@ DAFPAdjSimpleFoam::DAFPAdjSimpleFoam(
 {
 }
 
+label DAFPAdjSimpleFoam::run(
+    Vec dFdW,
+    Vec psi)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Solve the adjoint using the fixed-point iteration method
+    
+    dFdW:
+        The dF/dW vector 
+
+    psi:
+        The adjoint solution vector
+    */
+
+    Info << "Solving the adjoint using fixed-point iteration method..." << endl;
+#endif
+    return 0;
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

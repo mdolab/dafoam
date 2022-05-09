@@ -27,7 +27,6 @@ class DAFPAdjSimpleFoam
     : public DAFPAdj
 {
 
-protected:
 public:
     TypeName("DASimpleFoam");
     // Constructors
@@ -44,6 +43,11 @@ public:
     virtual ~DAFPAdjSimpleFoam()
     {
     }
+
+    /// solve the adjoint using the fixed-point iteration method
+    virtual label run(
+        Vec dFdW,
+        Vec psi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -99,6 +99,11 @@ public:
     virtual ~DAFPAdj()
     {
     }
+
+    /// solve the adjoint using the fixed-point iteration method
+    virtual label run(
+        Vec dFdW,
+        Vec psi) = 0;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

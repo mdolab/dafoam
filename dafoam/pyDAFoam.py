@@ -372,6 +372,9 @@ class DAOPTION(object):
         ## },
         self.fvSource = {}
 
+        ## The adjoint equation solution method. Options are: Krylov or fixedPoint
+        self.adjEqnSolMethod = "Krylov"
+
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
         ## Setting the bounds increases the robustness of primal solution for compressible solvers.
         ## Also, we set lower bounds for turbulence variables to ensure they are physical
