@@ -38,7 +38,7 @@ defineTypeNameAndDebug(DASpalartAllmarasFieldInversion, 0);
 addToRunTimeSelectionTable(DATurbulenceModel, DASpalartAllmarasFieldInversion, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DASpalartAllmaras::DASpalartAllmarasFieldInversion(
+DASpalartAllmarasFieldInversion::DASpalartAllmarasFieldInversion(
     const word modelType,
     const fvMesh& mesh,
     const DAOption& daOption)
