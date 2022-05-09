@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
 \*---------------------------------------------------------------------------*/
 
@@ -622,6 +622,93 @@ void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar
     }
 #endif
     return;
+}
+
+void DASolver::calcForceProfile(
+    Vec xvVec,
+    Vec stateVec,
+    Vec fProfileVec,
+    Vec rProfileVec)
+{
+    /*
+    Description:
+        Calculate the radial profile of forces on the propeller surface
+        We need to call this function from the propeller component
+
+    Input:
+        State variables
+
+    Output:
+        xForce, the radial profile of force in the x direction
+    */
+}
+
+void DASolver::calcForceProfileInternal(
+    scalarList& xv,
+    scalarList& state,
+    scalarList& fProfile,
+    scalarList& rProfile)
+{
+    /*
+    Description:
+        Same as calcForceProfile but for internal AD
+    */
+}
+
+void DASolver::calcdForcedStateTPsiAD(
+    const word mode,
+    Vec xvVec,
+    Vec stateVec,
+    Vec psiVec,
+    Vec prodVec)
+{
+}
+
+void DASolver::calcFvSourceInternal(
+    const scalarList& center,
+    const scalarList& radius,
+    const scalarList& forcce,
+    volVectorField& fvSource)
+{
+    /*
+    Description:
+        Same as calcFvSourceFromForceProfile, but this internal function will be called for the AD.
+    */
+}
+
+void DASolver::calcFvSource(
+    Vec centerVec,
+    Vec radiusVec,
+    Vec forceVec,
+    Vec fvSource)
+{
+    /*
+    Description:
+        Calculate the fvSource based on the radial force profile and the propeller parameters
+        We need to call this function from the wing component
+
+    Input:
+        parameters: propeller parameters, i.e., center_x, center_y, center_z, r_inner, r_outer
+        
+        force: the radial force profiles (fx1, fy1, fz1, fx2, fy2, fz2, ... )
+
+    Output:
+        fvSource: a volVectorField variable that will be added to the momentum eqn
+    */
+}
+
+void DASolver::calcdFvSourcedInputsTPsiAD(
+    const word mode,
+    Vec centerVec,
+    Vec radiusVec,
+    Vec forceVec,
+    Vec psiVec,
+    Vec prodVec)
+{
+    /*
+    Description:
+        Calculate the matrix-vector product for either [dFvSource/dParameters]^T * psi, or [dFvSource/dForce]^T * psi
+    */
 }
 
 void DASolver::reduceStateResConLevel(
@@ -5393,6 +5480,21 @@ void DASolver::setTimeInstanceVar(
 
     VecRestoreArray(timeVec, &timeVecArray);
     VecRestoreArray(timeIdxVec, &timeIdxVecArray);
+}
+
+void DASolver::writeFailedMesh()
+{
+    /*
+    Description:
+        If the mesh fails, we set the time to 10000 and write the results to the disk.
+        This way, the results will be renamed to 0.00000x during optimization, so that we 
+        can visualize them in Paraview to debug which part of the mesh is failing.
+    */
+    if (daOptionPtr_->getOption<label>("writeMinorIterations"))
+    {
+        runTimePtr_->setTime(10000.0, 10000);
+        runTimePtr_->writeNow();
+    }
 }
 
 scalar DASolver::getTimeInstanceObjFunc(

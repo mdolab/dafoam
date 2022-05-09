@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
         DAModel is a general class for handling physical models in DAFoam. 

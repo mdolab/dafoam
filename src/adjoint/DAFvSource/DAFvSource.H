@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     Description:
         Compute the source term (e.g., actuator disk) for the primal 

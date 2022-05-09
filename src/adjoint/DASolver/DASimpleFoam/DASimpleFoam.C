@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v2
+    Version : v3
 
     This class is modified from OpenFOAM's source code
     applications/solvers/incompressible/simpleFoam
@@ -125,6 +125,7 @@ label DASimpleFoam::solvePrimal(
 
     if (!meshOK)
     {
+        this->writeFailedMesh();
         return 1;
     }
 
