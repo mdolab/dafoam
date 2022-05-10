@@ -37,7 +37,8 @@ public:
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
-        const DAIndex& daIndex);
+        const DAIndex& daIndex,
+        const DAResidual& daResidual);
 
     //- Destructor
     virtual ~DAFPAdjSimpleFoam()

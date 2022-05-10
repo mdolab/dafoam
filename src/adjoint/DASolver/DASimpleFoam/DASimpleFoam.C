@@ -90,7 +90,7 @@ void DASimpleFoam::initSolver()
     }
 
     // initialize the fixed-point adjoint pointer
-    daFPAdjPtr_.reset(DAFPAdj::New(solverName, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
+    daFPAdjPtr_.reset(DAFPAdj::New(solverName, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_(), daResidualPtr_()));
 }
 
 label DASimpleFoam::solvePrimal(

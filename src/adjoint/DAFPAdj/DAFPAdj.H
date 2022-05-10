@@ -17,6 +17,7 @@
 #include "DAModel.H"
 #include "DAIndex.H"
 #include "DAField.H"
+#include "DAResidual.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -50,6 +51,9 @@ protected:
     /// DAIndex object
     const DAIndex& daIndex_;
 
+    /// DAResidual object
+    const DAResidual& daResidual_;
+
     /// DAField object
     DAField daField_;
 
@@ -67,13 +71,15 @@ public:
             const fvMesh& mesh,
             const DAOption& daOption,
             const DAModel& daModel,
-            const DAIndex& daIndex),
+            const DAIndex& daIndex,
+            const DAResidual& daResidual),
         (
             modelType,
             mesh,
             daOption,
             daModel,
-            daIndex));
+            daIndex,
+            daResidual));
 
     // Constructors
 
@@ -83,7 +89,8 @@ public:
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
-        const DAIndex& daIndex);
+        const DAIndex& daIndex,
+        const DAResidual& daResidual);
 
     // Selectors
 
@@ -93,7 +100,8 @@ public:
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
-        const DAIndex& daIndex);
+        const DAIndex& daIndex,
+        const DAResidual& daResidual);
 
     //- Destructor
     virtual ~DAFPAdj()

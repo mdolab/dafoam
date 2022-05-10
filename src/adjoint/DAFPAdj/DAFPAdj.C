@@ -24,11 +24,13 @@ DAFPAdj::DAFPAdj(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
-    const DAIndex& daIndex)
+    const DAIndex& daIndex,
+    const DAResidual& daResidual)
     : mesh_(mesh),
       daOption_(daOption),
       daModel_(daModel),
       daIndex_(daIndex),
+      daResidual_(daResidual),
       daField_(mesh, daOption, daModel, daIndex)
 {
 }
@@ -40,7 +42,8 @@ autoPtr<DAFPAdj> DAFPAdj::New(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
-    const DAIndex& daIndex)
+    const DAIndex& daIndex,
+    const DAResidual& daResidual)
 {
     // standard setup for runtime selectable classes
 
@@ -63,6 +66,7 @@ autoPtr<DAFPAdj> DAFPAdj::New(
             "    const DAOption&,"
             "    const DAModel&,"
             "    const DAIndex&,"
+            "    const DAResidual&,"
             ")")
             << "Unknown DAFPAdj type "
             << modelType << nl << nl
@@ -77,7 +81,8 @@ autoPtr<DAFPAdj> DAFPAdj::New(
                    mesh,
                    daOption,
                    daModel,
-                   daIndex));
+                   daIndex,
+                   daResidual));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

@@ -21,13 +21,15 @@ DAFPAdjSimpleFoam::DAFPAdjSimpleFoam(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
-    const DAIndex& daIndex)
+    const DAIndex& daIndex,
+    const DAResidual& daResidual)
     : DAFPAdj(
         modelType,
         mesh,
         daOption,
         daModel,
-        daIndex)
+        daIndex,
+        daResidual)
 {
 }
 
