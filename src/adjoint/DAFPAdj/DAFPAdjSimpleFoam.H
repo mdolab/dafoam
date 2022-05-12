@@ -45,6 +45,11 @@ public:
     {
     }
 
+    /// Describe what this function does
+    void invTranProd_UEqn(
+        const List<vector>& mySource,
+        volVectorField& pseudo_U);
+
     /// solve the adjoint using the fixed-point iteration method
     virtual label run(
         Vec dFdW,
