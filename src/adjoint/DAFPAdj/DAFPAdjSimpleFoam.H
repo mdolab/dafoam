@@ -50,6 +50,10 @@ public:
         const List<vector>& mySource,
         volVectorField& pseudo_U);
 
+    void invTranProd_pEqn(
+        const List<scalar>& mySource,
+        volScalarField& pseudo_p);
+
     /// solve the adjoint using the fixed-point iteration method
     virtual label run(
         Vec dFdW,
