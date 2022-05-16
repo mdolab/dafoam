@@ -73,7 +73,9 @@ void DAFPAdjSimpleFoam::invTranProd_UEqn(
 {
     /*
     Description:
-        Describe what this function does
+        Inverse transpose product, MU^(-T)
+        Based on inverseProduct_UEqn from simpleFoamPrimal, but swaping upper() and lower()
+        We won't ADR this function, so we can treat most of the arguments as const
     */
 
     const objectRegistry& db = mesh_.thisDb();
@@ -126,7 +128,9 @@ void DAFPAdjSimpleFoam::invTranProd_pEqn(
 {
     /*
     Description:
-        Describe what this function does
+        Inverse transpose product, Mp^(-T)
+        Based on inverseProduct_pEqn from simpleFoamPrimal, but swaping upper() and lower()
+        We won't ADR this function, so we can treat most of the arguments as const
     */
 
     const objectRegistry& db = mesh_.thisDb();

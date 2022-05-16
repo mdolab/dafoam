@@ -492,6 +492,20 @@ void DATurbulenceModel::getTurbProdTerm(scalarList& prodTerm) const
         << abort(FatalError);
 }
 
+void DATurbulenceModel::invTranProd_nuTildaEqn(
+    const List<scalar>& mySource,
+    volScalarField& pseudo_nuTilda)
+{
+    /*
+    Description:
+        Inverse transpose product, M_nuTilda^(-T)
+    */
+
+    FatalErrorIn("DATurbulenceModel::invTranProd_nuTildaEqn")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

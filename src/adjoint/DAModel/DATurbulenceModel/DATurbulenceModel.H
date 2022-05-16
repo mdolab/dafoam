@@ -284,6 +284,10 @@ public:
     label isPrintTime(
         const Time& runTime,
         const label printInterval) const;
+    
+    virtual void invTranProd_nuTildaEqn(
+        const List<scalar>& mySource,
+        volScalarField& pseudo_nuTilda);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

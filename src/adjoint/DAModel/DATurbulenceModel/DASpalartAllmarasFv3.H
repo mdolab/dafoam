@@ -139,6 +139,10 @@ public:
 
     /// solve the residual equations and update the state
     virtual void correct();
+
+    virtual void invTranProd_nuTildaEqn(
+        const List<scalar>& mySource,
+        volScalarField& pseudo_nuTilda);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
