@@ -515,11 +515,11 @@ class DAFoamSolver(ImplicitComponent):
             self._updateKSPTolerances(self.psi, dFdW, DASolver.ksp)
             # actually solving the adjoint linear equation using Petsc
             fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
-        elif adjEqnSolMethod == "fixedPoint":
+        elif adjEqnSolMethod in ["fixedPoint", "fixedPointC"]:
             # solve the adjoint equation using the fixed-point adjoint approach
             fail = DASolver.solverAD.runFPAdj(dFdW, self.psi)
         else:
-            raise RuntimeError("adjEqnSolMethod=%s not valid! Options are: Krylov or fixedPoint" % adjEqnSolMethod)
+            raise RuntimeError("adjEqnSolMethod=%s not valid! Options are: Krylov, fixedPoint, or fixedPointC" % adjEqnSolMethod)
 
         # convert the solution vector to array and assign it to d_residuals
         d_residuals["dafoam_states"] = DASolver.vec2Array(self.psi)

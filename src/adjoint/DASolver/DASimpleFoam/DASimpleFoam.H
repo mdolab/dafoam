@@ -56,7 +56,6 @@ class DASimpleFoam
 {
 
 protected:
-
     /// simple pointer
     autoPtr<simpleControl> simplePtr_;
 
@@ -84,7 +83,7 @@ protected:
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;
 
-    /// fvSource term 
+    /// fvSource term
     autoPtr<volVectorField> fvSourcePtr_;
 
     /// MRF pointer
@@ -102,7 +101,6 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
-    
 public:
     TypeName("DASimpleFoam");
     // Constructors
@@ -125,6 +123,20 @@ public:
         const Vec xvVec,
         Vec wVec);
 
+    /// solve the adjoint equation using the fixed-point iteration method
+    virtual label runFPAdj(
+        Vec dFdW,
+        Vec psi);
+
+    /// Inverse transpose product, MU^(-T)
+    void invTranProd_UEqn(
+        const List<vector>& mySource,
+        volVectorField& pseudo_U);
+
+    /// Inverse transpose product, Mp^(-T)
+    void invTranProd_pEqn(
+        const List<scalar>& mySource,
+        volScalarField& pseudo_p);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

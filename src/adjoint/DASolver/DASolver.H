@@ -30,7 +30,6 @@
 #include "DAJacCon.H"
 #include "DAColoring.H"
 #include "DAResidual.H"
-#include "DAFPAdj.H"
 #include "DAField.H"
 #include "DAPartDeriv.H"
 #include "DALinearEqn.H"
@@ -95,9 +94,6 @@ protected:
 
     /// DAResidual pointer
     autoPtr<DAResidual> daResidualPtr_;
-
-    /// DAFPAdj pointer
-    autoPtr<DAFPAdj> daFPAdjPtr_;
 
     /// DAStateInfo pointer
     autoPtr<DAStateInfo> daStateInfoPtr_;
@@ -242,6 +238,11 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec) = 0;
+
+    /// solve the adjoint equation using the fixed-point iteration method
+    virtual label runFPAdj(
+        Vec dFdW,
+        Vec psi);
 
     /// assign primal variables based on the current time instance
     void setTimeInstanceField(const label instanceI);
@@ -643,14 +644,6 @@ public:
     label checkMesh() const
     {
         return daCheckMeshPtr_->run();
-    }
-
-    /// solve the adjoint equation using the fixed-point iteration method
-    label runFPAdj(
-        Vec dFdW,
-        Vec psi)
-    {
-        return daFPAdjPtr_->run(dFdW, psi);
     }
 
     /// return the value of the objective function

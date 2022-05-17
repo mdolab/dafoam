@@ -36,8 +36,7 @@ DASolver::DASolver(
       daFieldPtr_(nullptr),
       daCheckMeshPtr_(nullptr),
       daLinearEqnPtr_(nullptr),
-      daResidualPtr_(nullptr),
-      daFPAdjPtr_(nullptr)
+      daResidualPtr_(nullptr)
 #ifdef CODI_AD_REVERSE
       ,
       globalADTape_(codi::RealReverse::getGlobalTape())
@@ -5529,6 +5528,22 @@ void DASolver::setPrimalBoundaryConditions(const label printInfo)
         }
         daFieldPtr_->setPrimalBoundaryConditions(printInfo);
     }
+}
+
+label DASolver::runFPAdj(
+    Vec dFdW,
+    Vec psi)
+{
+     /*
+    Description:
+        Solve the adjoint using the fixed-point iteration approach
+    */
+
+    FatalErrorIn("DASolver::runFPAdj")
+        << "Child class not implemented!"
+        << abort(FatalError);
+    
+    return 1;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
