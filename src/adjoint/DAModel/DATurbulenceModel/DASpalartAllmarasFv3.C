@@ -493,9 +493,9 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
     return;
 }
 
-void DASpalartAllmarasFv3::invTranProd_nuTildaEqn(
+void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
     const List<scalar>& mySource,
-    volScalarField& pseudo_nuTilda)
+    volScalarField& pseudoNuTilda)
 {
     /*
     Description:
@@ -504,8 +504,8 @@ void DASpalartAllmarasFv3::invTranProd_nuTildaEqn(
         We won't ADR this function, so we can treat most of the arguments as const
     */
 
-    // Make sure pseudo_nuTilda = nuTilda;
-    pseudo_nuTilda = nuTilda_;
+    // Make sure pseudoNuTilda = nuTilda;
+    pseudoNuTilda = nuTilda_;
 
     const volScalarField chi(this->chi());
     const volScalarField fv1(this->fv1(chi));
@@ -515,45 +515,45 @@ void DASpalartAllmarasFv3::invTranProd_nuTildaEqn(
         this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
         + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
 
-    // Get the pseudo_nuTildaEqn,
+    // Get the pseudoNuTildaEqn,
     // the most important thing here is to make sure the l.h.s. mathces that of nuTildaEqn.
     // Some explicit terms that only contributes to the r.h.s. are diabled
-    fvScalarMatrix pseudo_nuTildaEqn(
-        fvm::ddt(pseudo_nuTilda)
-            + fvm::div(phi_, pseudo_nuTilda)
-            - fvm::laplacian(DnuTildaEff(), pseudo_nuTilda)
+    fvScalarMatrix pseudoNuTildaEqn(
+        fvm::ddt(pseudoNuTilda)
+            + fvm::div(phi_, pseudoNuTilda)
+            - fvm::laplacian(DnuTildaEff(), pseudoNuTilda)
         ==
-        -fvm::Sp(Cw1_ * fw(Stilda) * pseudo_nuTilda / sqr(y_), pseudo_nuTilda));
-    pseudo_nuTildaEqn.relax();
+        -fvm::Sp(Cw1_ * fw(Stilda) * pseudoNuTilda / sqr(y_), pseudoNuTilda));
+    pseudoNuTildaEqn.relax();
 
     // Swap upper() and lower()
-    List<scalar> temp = pseudo_nuTildaEqn.upper();
-    pseudo_nuTildaEqn.upper() = pseudo_nuTildaEqn.lower();
-    pseudo_nuTildaEqn.lower() = temp;
+    List<scalar> temp = pseudoNuTildaEqn.upper();
+    pseudoNuTildaEqn.upper() = pseudoNuTildaEqn.lower();
+    pseudoNuTildaEqn.lower() = temp;
 
     // Overwrite the r.h.s.
-    pseudo_nuTildaEqn.source() = mySource;
+    pseudoNuTildaEqn.source() = mySource;
 
     // Make sure that boundary contribution to source is zero,
     // Alternatively, we can deduct source by boundary contribution, so that it would cancel out during solve.
-    forAll(pseudo_nuTilda.boundaryField(), patchI)
+    forAll(pseudoNuTilda.boundaryField(), patchI)
     {
-        const fvPatch& pp = pseudo_nuTilda.boundaryField()[patchI].patch();
+        const fvPatch& pp = pseudoNuTilda.boundaryField()[patchI].patch();
         forAll(pp, faceI)
         {
             label cellI = pp.faceCells()[faceI];
-            pseudo_nuTildaEqn.source()[cellI] -= pseudo_nuTildaEqn.boundaryCoeffs()[patchI][faceI];
+            pseudoNuTildaEqn.source()[cellI] -= pseudoNuTildaEqn.boundaryCoeffs()[patchI][faceI];
         }
     }
 
     // Before solve, force xxEqn.psi to be solved into all zero
     // This ensures the zero (internal) initial guess
-    forAll(pseudo_nuTilda.primitiveFieldRef(), cellI)
+    forAll(pseudoNuTilda.primitiveFieldRef(), cellI)
     {
-        pseudo_nuTilda.primitiveFieldRef()[cellI] = 0;
+        pseudoNuTilda.primitiveFieldRef()[cellI] = 0;
     }
     // Solve using the zero (internal) initial guess
-    pseudo_nuTildaEqn.solve();
+    pseudoNuTildaEqn.solve();
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

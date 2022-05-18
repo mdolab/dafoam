@@ -211,11 +211,151 @@ label DASimpleFoam::runFPAdj(
     psi:
         The adjoint solution vector
     */
+
+    VecZeroEntries(psi);
+
     word adjEqnSolMethod = daOptionPtr_->getOption<word>("adjEqnSolMethod");
 
     if (adjEqnSolMethod == "fixedPoint")
     {
         Info << "Solving the adjoint using fixed-point iteration method..." << endl;
+        label fpMaxIters = daOptionPtr_->getSubDictOption<label>("adjEqnOption", "fpMaxIters");
+
+        const objectRegistry& db = meshPtr_->thisDb();
+        const volVectorField& U = db.lookupObject<volVectorField>("U");
+        const volScalarField& p = db.lookupObject<volScalarField>("p");
+        const surfaceScalarField& phi = db.lookupObject<surfaceScalarField>("phi");
+        const volScalarField& nuTilda = db.lookupObject<volScalarField>("nuTilda");
+
+        // adjoint residuals for all vars
+        Vec adjRes;
+        VecDuplicate(dFdW, &adjRes);
+        VecZeroEntries(adjRes);
+        // adjoint residual array
+        const PetscScalar* adjResArray;
+        // adjoint residual for U
+        List<vector> adjURes(meshPtr_->nCells(), vector::zero);
+        // adjoint residual for p
+        List<scalar> adjPRes(meshPtr_->nCells(), 0.0);
+        // adjoint residual for nuTilda
+        List<scalar> adjNuTildaRes(meshPtr_->nCells(), 0.0);
+
+        // adjoint var psi array
+        PetscScalar* psiArray;
+
+        // delta psi for U
+        volVectorField dPsiU("dPsiU", U);
+        volScalarField dPsiP("dPsiP", p);
+        volScalarField dPsiNuTilda("dPsiNuTilda", nuTilda);
+
+        // calculate the initial residual and record the tape: R = -dR/dWT*psi + dF/dW
+        this->calcdRdWTPsiAD(1, psi, adjRes);
+        VecAYPX(adjRes, -1.0, dFdW);
+
+        for (label n = 0; n < fpMaxIters; n++)
+        {
+            Info << "Time Step: " << n << "        Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+
+            // ************ U **************
+            // now calculate the residual
+            this->calcdRdWTPsiAD(0, psi, adjRes);
+            VecAYPX(adjRes, -1.0, dFdW);
+
+            // assign adjRes to adjURes
+            VecGetArrayRead(adjRes, &adjResArray);
+            forAll(meshPtr_->cells(), cellI)
+            {
+                for (label comp = 0; comp < 3; comp++)
+                {
+                    label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("U", cellI, comp);
+                    adjURes[cellI][comp] = adjResArray[adjLocalIdx];
+                }
+            }
+            VecRestoreArrayRead(adjRes, &adjResArray);
+
+            // calculate the dPsiU
+            invTranProdUEqn(adjURes, dPsiU);
+
+            // now add dPsiU to psi
+            VecGetArray(psi, &psiArray);
+            forAll(meshPtr_->cells(), cellI)
+            {
+                for (label comp = 0; comp < 3; comp++)
+                {
+                    label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("U", cellI, comp);
+                    psiArray[adjLocalIdx] += dPsiU[cellI][comp].value();
+                }
+            }
+            VecRestoreArray(psi, &psiArray);
+
+            // ************ p **************
+            // now calculate the residual
+            this->calcdRdWTPsiAD(0, psi, adjRes);
+            VecAYPX(adjRes, -1.0, dFdW);
+
+            // assign adjRes to adjPRes
+            VecGetArrayRead(adjRes, &adjResArray);
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
+                adjPRes[cellI] = adjResArray[adjLocalIdx];
+            }
+            VecRestoreArrayRead(adjRes, &adjResArray);
+
+            // calculate the dPsiP
+            invTranProdPEqn(adjPRes, dPsiP);
+
+            // now add dPsiP to psi
+            VecGetArray(psi, &psiArray);
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
+                psiArray[adjLocalIdx] += dPsiP[cellI].value();
+            }
+            VecRestoreArray(psi, &psiArray);
+
+            // ************ phi **************
+            // now calculate the residual
+            this->calcdRdWTPsiAD(0, psi, adjRes);
+            VecAYPX(adjRes, -1.0, dFdW);
+
+            // assign adjRes to adjPhiRes
+            VecGetArrayRead(adjRes, &adjResArray);
+            VecGetArray(psi, &psiArray);
+            forAll(meshPtr_->faces(), faceI)
+            {
+                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("phi", faceI);
+                psiArray[adjLocalIdx] += adjResArray[adjLocalIdx];
+            }
+            VecRestoreArray(psi, &psiArray);
+            VecRestoreArrayRead(adjRes, &adjResArray);
+
+            // ************ nuTilda **************
+            // now calculate the residual
+            this->calcdRdWTPsiAD(0, psi, adjRes);
+            VecAYPX(adjRes, -1.0, dFdW);
+
+            // assign adjRes to adjNuTildaRes
+            VecGetArrayRead(adjRes, &adjResArray);
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("nuTilda", cellI);
+                adjNuTildaRes[cellI] = adjResArray[adjLocalIdx];
+            }
+            VecRestoreArrayRead(adjRes, &adjResArray);
+
+            // calculate the dPsiNuTilda
+            daTurbulenceModelPtr_->invTranProdNuTildaEqn(adjNuTildaRes, dPsiNuTilda);
+
+            // now add dPsiNuTilda to psi
+            VecGetArray(psi, &psiArray);
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
+                psiArray[adjLocalIdx] += dPsiNuTilda[cellI].value();
+            }
+            VecRestoreArray(psi, &psiArray);
+        }
     }
     else if (adjEqnSolMethod == "fixedPointC")
     {
@@ -230,9 +370,9 @@ label DASimpleFoam::runFPAdj(
     return 0;
 }
 
-void DASimpleFoam::invTranProd_UEqn(
+void DASimpleFoam::invTranProdUEqn(
     const List<vector>& mySource,
-    volVectorField& pseudo_U)
+    volVectorField& pseudoU)
 {
     /*
     Description:
@@ -245,48 +385,48 @@ void DASimpleFoam::invTranProd_UEqn(
     const surfaceScalarField& phi = db.lookupObject<surfaceScalarField>("phi");
     volScalarField nuEff = daTurbulenceModelPtr_->nuEff();
 
-    // Get the pseudo_UEqn,
+    // Get the pseudoUEqn,
     // the most important thing here is to make sure the l.h.s. matches that of UEqn.
-    fvVectorMatrix pseudo_UEqn(
-        fvm::div(phi, pseudo_U)
-        - fvm::laplacian(nuEff, pseudo_U)
-        - fvc::div(nuEff * dev2(T(fvc::grad(pseudo_U)))));
-    pseudo_UEqn.relax();
+    fvVectorMatrix pseudoUEqn(
+        fvm::div(phi, pseudoU)
+        - fvm::laplacian(nuEff, pseudoU)
+        - fvc::div(nuEff * dev2(T(fvc::grad(pseudoU)))));
+    pseudoUEqn.relax();
 
     // Swap upper() and lower()
-    List<scalar> temp = pseudo_UEqn.upper();
-    pseudo_UEqn.upper() = pseudo_UEqn.lower();
-    pseudo_UEqn.lower() = temp;
+    List<scalar> temp = pseudoUEqn.upper();
+    pseudoUEqn.upper() = pseudoUEqn.lower();
+    pseudoUEqn.lower() = temp;
 
     // Overwrite the r.h.s.
-    pseudo_UEqn.source() = mySource;
+    pseudoUEqn.source() = mySource;
 
     // Make sure that boundary contribution to source is zero,
     // Alternatively, we can deduct source by boundary contribution, so that it would cancel out during solve.
-    forAll(pseudo_U.boundaryField(), patchI)
+    forAll(pseudoU.boundaryField(), patchI)
     {
-        const fvPatch& pp = pseudo_U.boundaryField()[patchI].patch();
+        const fvPatch& pp = pseudoU.boundaryField()[patchI].patch();
         forAll(pp, faceI)
         {
             label cellI = pp.faceCells()[faceI];
-            pseudo_UEqn.source()[cellI] -= pseudo_UEqn.boundaryCoeffs()[patchI][faceI];
+            pseudoUEqn.source()[cellI] -= pseudoUEqn.boundaryCoeffs()[patchI][faceI];
         }
     }
 
     // Before solve, force xEqn.psi() to be solved into all zero
-    forAll(pseudo_U.primitiveFieldRef(), cellI)
+    forAll(pseudoU.primitiveFieldRef(), cellI)
     {
-        pseudo_U.primitiveFieldRef()[cellI][0] = 0;
-        pseudo_U.primitiveFieldRef()[cellI][1] = 0;
-        pseudo_U.primitiveFieldRef()[cellI][2] = 0;
+        pseudoU.primitiveFieldRef()[cellI][0] = 0;
+        pseudoU.primitiveFieldRef()[cellI][1] = 0;
+        pseudoU.primitiveFieldRef()[cellI][2] = 0;
     }
 
-    pseudo_UEqn.solve();
+    pseudoUEqn.solve();
 }
 
-void DASimpleFoam::invTranProd_pEqn(
+void DASimpleFoam::invTranProdPEqn(
     const List<scalar>& mySource,
-    volScalarField& pseudo_p)
+    volScalarField& pseudoP)
 {
     /*
     Description:
@@ -311,42 +451,42 @@ void DASimpleFoam::invTranProd_pEqn(
     // create a scalar field with 1/A, reverse of A() of U
     volScalarField rAU(1.0 / UEqn.A());
 
-    // Get the pseudo_pEqn,
+    // Get the pseudoPEqn,
     // the most important thing here is to make sure the l.h.s. matches that of pEqn.
-    fvScalarMatrix pseudo_pEqn(fvm::laplacian(rAU, pseudo_p));
+    fvScalarMatrix pseudoPEqn(fvm::laplacian(rAU, pseudoP));
 
     // Swap upper() and lower()
-    List<scalar> temp = pseudo_pEqn.upper();
-    pseudo_pEqn.upper() = pseudo_pEqn.lower();
-    pseudo_pEqn.lower() = temp;
+    List<scalar> temp = pseudoPEqn.upper();
+    pseudoPEqn.upper() = pseudoPEqn.lower();
+    pseudoPEqn.lower() = temp;
 
     // Overwrite the r.h.s.
-    pseudo_pEqn.source() = mySource;
+    pseudoPEqn.source() = mySource;
 
     // pEqn.setReference(pRefCell, pRefValue);
     // Here, pRefCell is a label, and pRefValue is a scalar
     // In actual implementation, they need to passed into this function.
-    pseudo_pEqn.setReference(0, 0.0);
+    pseudoPEqn.setReference(0, 0.0);
 
     // Make sure that boundary contribution to source is zero,
     // Alternatively, we can deduct source by boundary contribution, so that it would cancel out during solve.
-    forAll(pseudo_p.boundaryField(), patchI)
+    forAll(pseudoP.boundaryField(), patchI)
     {
-        const fvPatch& pp = pseudo_p.boundaryField()[patchI].patch();
+        const fvPatch& pp = pseudoP.boundaryField()[patchI].patch();
         forAll(pp, faceI)
         {
             label cellI = pp.faceCells()[faceI];
-            pseudo_pEqn.source()[cellI] -= pseudo_pEqn.boundaryCoeffs()[patchI][faceI];
+            pseudoPEqn.source()[cellI] -= pseudoPEqn.boundaryCoeffs()[patchI][faceI];
         }
     }
 
     // Before solve, force xEqn.psi() to be solved into all zero
-    forAll(pseudo_p.primitiveFieldRef(), cellI)
+    forAll(pseudoP.primitiveFieldRef(), cellI)
     {
-        pseudo_p.primitiveFieldRef()[cellI] = 0;
+        pseudoP.primitiveFieldRef()[cellI] = 0;
     }
 
-    pseudo_pEqn.solve();
+    pseudoPEqn.solve();
 }
 
 } // End namespace Foam

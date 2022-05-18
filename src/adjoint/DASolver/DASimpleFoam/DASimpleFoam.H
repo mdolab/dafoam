@@ -129,12 +129,12 @@ public:
         Vec psi);
 
     /// Inverse transpose product, MU^(-T)
-    void invTranProd_UEqn(
+    void invTranProdUEqn(
         const List<vector>& mySource,
         volVectorField& pseudo_U);
 
     /// Inverse transpose product, Mp^(-T)
-    void invTranProd_pEqn(
+    void invTranProdPEqn(
         const List<scalar>& mySource,
         volScalarField& pseudo_p);
 };

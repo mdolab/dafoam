@@ -285,9 +285,10 @@ public:
         const Time& runTime,
         const label printInterval) const;
     
-    virtual void invTranProd_nuTildaEqn(
+    /// Inverse transpose product, M_nuTilda^(-T)
+    virtual void invTranProdNuTildaEqn(
         const List<scalar>& mySource,
-        volScalarField& pseudo_nuTilda);
+        volScalarField& pseudoNuTilda);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

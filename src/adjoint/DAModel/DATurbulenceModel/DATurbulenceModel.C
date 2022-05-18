@@ -492,16 +492,16 @@ void DATurbulenceModel::getTurbProdTerm(scalarList& prodTerm) const
         << abort(FatalError);
 }
 
-void DATurbulenceModel::invTranProd_nuTildaEqn(
+void DATurbulenceModel::invTranProdNuTildaEqn(
     const List<scalar>& mySource,
-    volScalarField& pseudo_nuTilda)
+    volScalarField& pseudoNuTilda)
 {
     /*
     Description:
         Inverse transpose product, M_nuTilda^(-T)
     */
 
-    FatalErrorIn("DATurbulenceModel::invTranProd_nuTildaEqn")
+    FatalErrorIn("DATurbulenceModel::invTranProdNuTildaEqn")
         << "Child class not implemented!"
         << abort(FatalError);
 }

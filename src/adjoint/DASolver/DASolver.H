@@ -277,6 +277,12 @@ public:
         const Vec psi,
         Vec dRdWTPsi);
 
+    /// compute [dRdW]^T*Psi but without updating xvVec and wVec to the OF fields
+    void calcdRdWTPsiAD(
+        const label isInit,
+        const Vec psi,
+        Vec dRdWTPsi);
+
     /// compute dFdW
     void calcdFdW(
         const Vec xvVec,

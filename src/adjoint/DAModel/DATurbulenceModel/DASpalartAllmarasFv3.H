@@ -140,9 +140,10 @@ public:
     /// solve the residual equations and update the state
     virtual void correct();
 
-    virtual void invTranProd_nuTildaEqn(
+    /// Inverse transpose product, M_nuTilda^(-T)
+    virtual void invTranProdNuTildaEqn(
         const List<scalar>& mySource,
-        volScalarField& pseudo_nuTilda);
+        volScalarField& pseudoNuTilda);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
