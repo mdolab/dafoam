@@ -220,6 +220,10 @@ label DASimpleFoam::runFPAdj(
     {
         Info << "Solving the adjoint using fixed-point iteration method..." << endl;
         label fpMaxIters = daOptionPtr_->getSubDictOption<label>("adjEqnOption", "fpMaxIters");
+        scalar relaxU = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxU");
+        scalar relaxP = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxP");
+        scalar relaxPhi = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxPhi");
+        scalar relaxNuTilda = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxNuTilda");
 
         const objectRegistry& db = meshPtr_->thisDb();
         const volVectorField& U = db.lookupObject<volVectorField>("U");
@@ -252,6 +256,7 @@ label DASimpleFoam::runFPAdj(
         this->calcdRdWTPsiAD(1, psi, adjRes);
         VecAYPX(adjRes, -1.0, dFdW);
 
+        PetscScalar adjResNorm;
         for (label n = 0; n < fpMaxIters; n++)
         {
             Info << "Time Step: " << n << "        Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
@@ -260,6 +265,9 @@ label DASimpleFoam::runFPAdj(
             // now calculate the residual
             this->calcdRdWTPsiAD(0, psi, adjRes);
             VecAYPX(adjRes, -1.0, dFdW);
+
+            VecNorm(adjRes, NORM_2, &adjResNorm);
+            Info << "adjResNorm: " << adjResNorm << endl;
 
             // assign adjRes to adjURes
             VecGetArrayRead(adjRes, &adjResArray);
@@ -283,7 +291,7 @@ label DASimpleFoam::runFPAdj(
                 for (label comp = 0; comp < 3; comp++)
                 {
                     label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("U", cellI, comp);
-                    psiArray[adjLocalIdx] += dPsiU[cellI][comp].value();
+                    psiArray[adjLocalIdx] += relaxU.value() * dPsiU[cellI][comp].value();
                 }
             }
             VecRestoreArray(psi, &psiArray);
@@ -292,6 +300,9 @@ label DASimpleFoam::runFPAdj(
             // now calculate the residual
             this->calcdRdWTPsiAD(0, psi, adjRes);
             VecAYPX(adjRes, -1.0, dFdW);
+
+            VecNorm(adjRes, NORM_2, &adjResNorm);
+            Info << "adjResNorm: " << adjResNorm << endl;
 
             // assign adjRes to adjPRes
             VecGetArrayRead(adjRes, &adjResArray);
@@ -310,7 +321,7 @@ label DASimpleFoam::runFPAdj(
             forAll(meshPtr_->cells(), cellI)
             {
                 label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
-                psiArray[adjLocalIdx] += dPsiP[cellI].value();
+                psiArray[adjLocalIdx] += relaxP.value() * dPsiP[cellI].value();
             }
             VecRestoreArray(psi, &psiArray);
 
@@ -319,13 +330,16 @@ label DASimpleFoam::runFPAdj(
             this->calcdRdWTPsiAD(0, psi, adjRes);
             VecAYPX(adjRes, -1.0, dFdW);
 
+            VecNorm(adjRes, NORM_2, &adjResNorm);
+            Info << "adjResNorm: " << adjResNorm << endl;
+
             // assign adjRes to adjPhiRes
             VecGetArrayRead(adjRes, &adjResArray);
             VecGetArray(psi, &psiArray);
             forAll(meshPtr_->faces(), faceI)
             {
                 label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("phi", faceI);
-                psiArray[adjLocalIdx] += adjResArray[adjLocalIdx];
+                psiArray[adjLocalIdx] -= relaxPhi.value() * adjResArray[adjLocalIdx];
             }
             VecRestoreArray(psi, &psiArray);
             VecRestoreArrayRead(adjRes, &adjResArray);
@@ -334,6 +348,9 @@ label DASimpleFoam::runFPAdj(
             // now calculate the residual
             this->calcdRdWTPsiAD(0, psi, adjRes);
             VecAYPX(adjRes, -1.0, dFdW);
+
+            VecNorm(adjRes, NORM_2, &adjResNorm);
+            Info << "adjResNorm: " << adjResNorm << endl;
 
             // assign adjRes to adjNuTildaRes
             VecGetArrayRead(adjRes, &adjResArray);
@@ -352,7 +369,7 @@ label DASimpleFoam::runFPAdj(
             forAll(meshPtr_->cells(), cellI)
             {
                 label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
-                psiArray[adjLocalIdx] += dPsiNuTilda[cellI].value();
+                psiArray[adjLocalIdx] += relaxNuTilda.value() * dPsiNuTilda[cellI].value();
             }
             VecRestoreArray(psi, &psiArray);
         }
