@@ -102,7 +102,7 @@ DAkEpsilonFieldInversionEpsilon::DAkEpsilonFieldInversionEpsilon(
 #ifdef IncompressibleFlow
           dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
 #endif
-          zeroGradientFvPatchField<scalar>::typeName)
+          zeroGradientFvPatchField<scalar>::typeName),
       /// field inversion parameters
       betaFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("betaFieldInversion"))),

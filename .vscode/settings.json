@@ -6,6 +6,7 @@
         "kEpsilonFieldInversionEpsilon.C": "cpp",
         "kEpsilonFieldInversionEpsilon.H": "cpp",
         "makekEpsilonFieldInversionEpsilonCompressible.C": "cpp",
-        "makekEpsilonFieldInversionEpsilonIncompressible.C": "cpp"
+        "makekEpsilonFieldInversionEpsilonIncompressible.C": "cpp",
+        "SpalartAllmarasFieldInversion.H": "cpp"
     }
 }

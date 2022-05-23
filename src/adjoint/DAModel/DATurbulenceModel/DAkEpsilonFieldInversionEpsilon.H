@@ -102,7 +102,7 @@ protected:
     label printInterval_;
 
     /// A beta field multiplying to the production term
-    volScalarField& betaFieldInversion_; 
+    volScalarField betaFieldInversion_; 
 
     /// a reference beta field
     volScalarField betaRefFieldInversion_; 
@@ -120,7 +120,7 @@ protected:
     volScalarField surfacePressureRef_; 
         
     /// reference field (e.g. velocity for DNS)
-    volVectorField& varRefFieldInversion_; 
+    volVectorField&= varRefFieldInversion_; 
 
 public:
     TypeName("kEpsilonFieldInversionEpsilon");

@@ -41,8 +41,8 @@ protected:
 
     // Fields
 
-    /// turbulence variables for k-omega SST
-    volScalarField omega_;
+    /// turbulence variables for k-epsilon
+    volScalarField epsilon_;
 
     volScalarField k_; 
 
