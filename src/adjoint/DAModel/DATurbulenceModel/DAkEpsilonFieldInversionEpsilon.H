@@ -120,7 +120,7 @@ protected:
     volScalarField surfacePressureRef_; 
         
     /// reference field (e.g. velocity for DNS)
-    volVectorField&= varRefFieldInversion_; 
+    volVectorField varRefFieldInversion_; 
 
 public:
     TypeName("kEpsilonFieldInversionEpsilon");
