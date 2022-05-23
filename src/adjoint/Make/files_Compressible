@@ -21,6 +21,7 @@ DAModel/DATurbulenceModel/DAkOmegaFieldInversionOmega.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
 DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
 DAModel/DATurbulenceModel/DAkEpsilon.C
+DAModel/DATurbulenceModel/DAkEpsilonFieldInversionEpsilon.C
 DAModel/DATurbulenceModel/DADummyTurbulenceModel.C
 
 DAModel/DARadiationModel/DARadiationModel.C
@@ -98,6 +99,7 @@ models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionCompressible.C
 models/kOmegaFieldInversion/makekOmegaFieldInversionCompressible.C
 models/kOmegaFieldInversionk/makekOmegaFieldInversionkCompressible.C
 models/kOmegaFieldInversionOmega/makekOmegaFieldInversionOmegaCompressible.C
+models/kEpsilonFieldInversionEpsilon/makekEpsilonFieldInversionEpsilonCompressible.C
 
 models/MRFDF/MRFZoneDF.C
 models/MRFDF/MRFZoneListDF.C
