@@ -45,9 +45,9 @@ kEpsilonFieldInversionEpsilon<BasicTurbulenceModel>::kEpsilonFieldInversionEpsil
         phi,
         transport,
         propertiesName),
-      omega_(
+      epsilon_(
           IOobject(
-              "omega",
+              "epsilon",
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
