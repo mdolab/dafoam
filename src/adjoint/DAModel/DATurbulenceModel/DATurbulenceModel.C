@@ -506,6 +506,18 @@ void DATurbulenceModel::invTranProdNuTildaEqn(
         << abort(FatalError);
 }
 
+void DATurbulenceModel::calcLduResidualTurb(volScalarField& nuTildaRes)
+{
+    /*
+    Description:
+        calculate the turbulence residual using LDU matrix
+    */
+
+    FatalErrorIn("DATurbulenceModel::calcLduResidualTurb")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

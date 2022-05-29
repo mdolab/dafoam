@@ -144,6 +144,9 @@ public:
     virtual void invTranProdNuTildaEqn(
         const List<scalar>& mySource,
         volScalarField& pseudoNuTilda);
+    
+    /// calculate the turbulence residual using LDU matrix
+    virtual void calcLduResidualTurb(volScalarField& nuTildaRes);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

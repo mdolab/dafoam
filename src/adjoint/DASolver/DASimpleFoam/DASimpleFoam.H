@@ -137,6 +137,31 @@ public:
     void invTranProdPEqn(
         const List<scalar>& mySource,
         volScalarField& pseudo_p);
+
+    /// calculate all the flow residuals except for the turbulence one
+    void calcLduResiduals(
+        volVectorField& URes,
+        volScalarField& pRes,
+        surfaceScalarField& phiRes);
+
+    void calcAdjointResidual(
+        volVectorField& URes,
+        volScalarField& pRes,
+        surfaceScalarField& phiRes,
+        volScalarField& nuTildaRes,
+        List<vector>& dfdU,
+        List<scalar>& dfdp,
+        surfaceScalarField& dfdphi,
+        List<scalar>& dfdnuTilda,
+        List<vector>& UPsi,
+        List<scalar>& pPsi,
+        surfaceScalarField& phiPsi,
+        List<scalar>& nuTildaPsi,
+        List<vector>& adjURes,
+        List<scalar>& adjpRes,
+        surfaceScalarField& adjphiRes,
+        List<scalar>& adjnuTildaRes,
+        label& cnt);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
