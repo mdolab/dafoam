@@ -144,6 +144,16 @@ public:
         volScalarField& pRes,
         surfaceScalarField& phiRes);
 
+    /// assign coupled petsc vec to fields or vice versa
+    void vec2Fields(
+        const word mode,
+        Vec cVec,
+        volVectorField& UField,
+        volScalarField& pField,
+        surfaceScalarField& phiField,
+        volScalarField& nuTildaField
+    );
+
     void calcAdjointResidual(
         volVectorField& URes,
         volScalarField& pRes,

@@ -42,147 +42,92 @@ label DASimpleFoam::runFPAdj(
         const surfaceScalarField& phi = db.lookupObject<surfaceScalarField>("phi");
         const volScalarField& nuTilda = db.lookupObject<volScalarField>("nuTilda");
 
-        // adjoint residuals for all vars
-        Vec adjRes;
-        VecDuplicate(dFdW, &adjRes);
-        VecZeroEntries(adjRes);
-        // adjoint residual array
-        const PetscScalar* adjResArray;
-        // adjoint residual for U
-        List<vector> adjURes(meshPtr_->nCells(), vector::zero);
-        // adjoint residual for p
-        List<scalar> adjPRes(meshPtr_->nCells(), 0.0);
-        // adjoint residual for nuTilda
-        List<scalar> adjNuTildaRes(meshPtr_->nCells(), 0.0);
+        volVectorField dFdU("dFdU", 0.0 * U);
+        volScalarField dFdP("dFdP", 0.0 * p);
+        surfaceScalarField dFdPhi("dFdPhi", 0.0 * phi);
+        volScalarField dFdNuTilda("dFdNuTilda", 0.0 * nuTilda);
 
-        // adjoint var psi array
-        PetscScalar* psiArray;
+        volVectorField URes("URes", 0.0 * U);
+        volScalarField pRes("pRes", 0.0 * p);
+        surfaceScalarField phiRes("phiRes", 0.0 * phi);
+        volScalarField nuTildaRes("nuTildaRes", 0.0 * nuTilda);
 
-        // delta psi for U
-        volVectorField dPsiU("dPsiU", U);
-        volScalarField dPsiP("dPsiP", p);
-        volScalarField dPsiNuTilda("dPsiNuTilda", nuTilda);
+        this->vec2Fields("vec2Field", dFdW, dFdU, dFdP, dFdPhi, dFdNuTilda);
 
-        // calculate the initial residual and record the tape: R = -dR/dWT*psi + dF/dW
-        this->calcdRdWTPsiAD(1, psi, adjRes);
-        VecAYPX(adjRes, -1.0, dFdW);
+        List<vector> UPsi(U.size(), vector::zero);
+        List<scalar> pPsi(p.size(), 0.0);
+        surfaceScalarField phiPsi("phiPsi", 0.0 * phi);
+        List<scalar> nuTildaPsi(nuTilda.size(), 0.0);
 
-        PetscScalar adjResNorm;
-        for (label n = 0; n < fpMaxIters; n++)
+        volVectorField pseudo_U("pseudo_U", U);
+        volScalarField pseudo_p("pseudo_p", p);
+        surfaceScalarField pseudo_phi("pseudo_phi", phi);
+        volScalarField pseudo_nuTilda("pseudo_nuTilda", nuTilda);
+
+        List<vector> adjURes(U.size(), vector::zero);
+        List<scalar> adjpRes(p.size(), 0.0);
+        surfaceScalarField adjphiRes("adjphiRes", 0.0 * phi);
+        List<scalar> adjnuTildaRes(nuTilda.size(), 0.0);
+
+        // Initiate the initial L2norm for adjURes, adjpRes, adjphiRes, adjnuTildaRes
+        vector initNorm_adjURes = vector::zero;
+        scalar initNorm_adjpRes = 0.0;
+        scalar initNorm_adjphiRes = 0.0;
+        scalar initNorm_adjnuTildaRes = 0.0;
+
+        label cnt = 0;
+        while (cnt < fpMaxIters)
         {
-            Info << "Time Step: " << n << "        Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+            Info << "Step = " << cnt << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
 
-            // ************ U **************
-            // now calculate the residual
-            this->calcdRdWTPsiAD(0, psi, adjRes);
-            VecAYPX(adjRes, -1.0, dFdW);
-
-            VecNorm(adjRes, NORM_2, &adjResNorm);
-            Info << "adjResNorm: " << adjResNorm << endl;
-
-            // assign adjRes to adjURes
-            VecGetArrayRead(adjRes, &adjResArray);
-            forAll(meshPtr_->cells(), cellI)
+            // ------ U -----
+            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjpRes, adjphiRes, adjnuTildaRes, cnt);
+            invTranProdUEqn(adjURes, pseudo_U);
+            forAll(pseudo_U, cellI)
             {
-                for (label comp = 0; comp < 3; comp++)
+                // the definition of adjURes has opposite sign than the formulation on Overleaf, so we do -= here
+                UPsi[cellI] -= relaxU * pseudo_U[cellI];
+            }
+
+            //  ------- p ----
+            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjpRes, adjphiRes, adjnuTildaRes, cnt);
+            invTranProdPEqn(adjpRes, pseudo_p);
+            forAll(pseudo_p, cellI)
+            {
+                pPsi[cellI] -= relaxP * pseudo_p[cellI];
+            }
+
+            // -------- phi  --------
+            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjpRes, adjphiRes, adjnuTildaRes, cnt);
+
+            forAll(adjphiRes, faceI)
+            {
+                phiPsi[faceI] += relaxPhi * adjphiRes[faceI];
+            }
+            forAll(adjphiRes.boundaryField(), patchI)
+            {
+                forAll(adjphiRes.boundaryField()[patchI], faceI)
                 {
-                    label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("U", cellI, comp);
-                    adjURes[cellI][comp] = adjResArray[adjLocalIdx];
+                    phiPsi.boundaryFieldRef()[patchI][faceI] += relaxPhi * adjphiRes.boundaryField()[patchI][faceI];
                 }
             }
-            VecRestoreArrayRead(adjRes, &adjResArray);
 
-            // calculate the dPsiU
-            invTranProdUEqn(adjURes, dPsiU);
+            // -------- nuTilda  --------
+            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjpRes, adjphiRes, adjnuTildaRes, cnt);
+            // Solve, using the inverse transpose product function
+            daTurbulenceModelPtr_->invTranProdNuTildaEqn(adjnuTildaRes, pseudo_nuTilda);
 
-            // now add dPsiU to psi
-            VecGetArray(psi, &psiArray);
-            forAll(meshPtr_->cells(), cellI)
+            forAll(pseudo_nuTilda, cellI)
             {
-                for (label comp = 0; comp < 3; comp++)
-                {
-                    label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("U", cellI, comp);
-                    psiArray[adjLocalIdx] += relaxU.value() * dPsiU[cellI][comp].value();
-                }
+                nuTildaPsi[cellI] -= relaxNuTilda * pseudo_nuTilda[cellI];
             }
-            VecRestoreArray(psi, &psiArray);
 
-            // ************ p **************
-            // now calculate the residual
-            this->calcdRdWTPsiAD(0, psi, adjRes);
-            VecAYPX(adjRes, -1.0, dFdW);
+            Info << "adjURes " << gSumCmptMag(adjURes) << endl;
+            Info << "adjPRes " << gSumCmptMag(adjpRes) << endl;
+            Info << "adjPhiRes " << gSumCmptMag(adjphiRes) << endl;
+            Info << "adjNuTildaRes " << gSumCmptMag(adjnuTildaRes) << endl;
 
-            VecNorm(adjRes, NORM_2, &adjResNorm);
-            Info << "adjResNorm: " << adjResNorm << endl;
-
-            // assign adjRes to adjPRes
-            VecGetArrayRead(adjRes, &adjResArray);
-            forAll(meshPtr_->cells(), cellI)
-            {
-                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
-                adjPRes[cellI] = adjResArray[adjLocalIdx];
-            }
-            VecRestoreArrayRead(adjRes, &adjResArray);
-
-            // calculate the dPsiP
-            invTranProdPEqn(adjPRes, dPsiP);
-
-            // now add dPsiP to psi
-            VecGetArray(psi, &psiArray);
-            forAll(meshPtr_->cells(), cellI)
-            {
-                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
-                psiArray[adjLocalIdx] += relaxP.value() * dPsiP[cellI].value();
-            }
-            VecRestoreArray(psi, &psiArray);
-
-            // ************ phi **************
-            // now calculate the residual
-            this->calcdRdWTPsiAD(0, psi, adjRes);
-            VecAYPX(adjRes, -1.0, dFdW);
-
-            VecNorm(adjRes, NORM_2, &adjResNorm);
-            Info << "adjResNorm: " << adjResNorm << endl;
-
-            // assign adjRes to adjPhiRes
-            VecGetArrayRead(adjRes, &adjResArray);
-            VecGetArray(psi, &psiArray);
-            forAll(meshPtr_->faces(), faceI)
-            {
-                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("phi", faceI);
-                psiArray[adjLocalIdx] -= relaxPhi.value() * adjResArray[adjLocalIdx];
-            }
-            VecRestoreArray(psi, &psiArray);
-            VecRestoreArrayRead(adjRes, &adjResArray);
-
-            // ************ nuTilda **************
-            // now calculate the residual
-            this->calcdRdWTPsiAD(0, psi, adjRes);
-            VecAYPX(adjRes, -1.0, dFdW);
-
-            VecNorm(adjRes, NORM_2, &adjResNorm);
-            Info << "adjResNorm: " << adjResNorm << endl;
-
-            // assign adjRes to adjNuTildaRes
-            VecGetArrayRead(adjRes, &adjResArray);
-            forAll(meshPtr_->cells(), cellI)
-            {
-                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("nuTilda", cellI);
-                adjNuTildaRes[cellI] = adjResArray[adjLocalIdx];
-            }
-            VecRestoreArrayRead(adjRes, &adjResArray);
-
-            // calculate the dPsiNuTilda
-            daTurbulenceModelPtr_->invTranProdNuTildaEqn(adjNuTildaRes, dPsiNuTilda);
-
-            // now add dPsiNuTilda to psi
-            VecGetArray(psi, &psiArray);
-            forAll(meshPtr_->cells(), cellI)
-            {
-                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
-                psiArray[adjLocalIdx] += relaxNuTilda.value() * dPsiNuTilda[cellI].value();
-            }
-            VecRestoreArray(psi, &psiArray);
+            cnt++;
         }
     }
     else if (adjEqnSolMethod == "fixedPointC")
@@ -196,6 +141,69 @@ label DASimpleFoam::runFPAdj(
 
 #endif
     return 0;
+}
+
+void DASimpleFoam::vec2Fields(
+    const word mode,
+    Vec cVec,
+    volVectorField& UField,
+    volScalarField& pField,
+    surfaceScalarField& phiField,
+    volScalarField& nuTildaField)
+{
+    PetscScalar* cVecArray;
+    if (mode == "vec2Field")
+    {
+        VecGetArray(cVec, &cVecArray);
+
+        // U
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("U", cellI, comp);
+                UField[cellI][comp] = cVecArray[adjLocalIdx];
+            }
+        }
+        // p
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
+            pField[cellI] = cVecArray[adjLocalIdx];
+        }
+        // phi
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("phi", faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                phiField[faceI] = cVecArray[adjLocalIdx];
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                phiField.boundaryFieldRef()[patchIdx][faceIdx] = cVecArray[adjLocalIdx];
+            }
+        }
+        // nuTilda
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label adjLocalIdx = daIndexPtr_->getLocalAdjointStateIndex("nuTilda", cellI);
+            nuTildaField[cellI] = cVecArray[adjLocalIdx];
+        }
+
+        VecRestoreArray(cVec, &cVecArray);
+    }
+    else if (mode == "field2Vec")
+    {
+    }
+    else
+    {
+        FatalErrorIn("mode not valid") << exit(FatalError);
+    }
 }
 
 void DASimpleFoam::invTranProdUEqn(
