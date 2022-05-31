@@ -493,7 +493,7 @@ void DATurbulenceModel::getTurbProdTerm(scalarList& prodTerm) const
 }
 
 void DATurbulenceModel::invTranProdNuTildaEqn(
-    const List<scalar>& mySource,
+    const volScalarField& mySource,
     volScalarField& pseudoNuTilda)
 {
     /*

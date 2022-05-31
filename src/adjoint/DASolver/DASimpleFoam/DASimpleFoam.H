@@ -130,12 +130,12 @@ public:
 
     /// Inverse transpose product, MU^(-T)
     void invTranProdUEqn(
-        const List<vector>& mySource,
+        const volVectorField& mySource,
         volVectorField& pseudo_U);
 
     /// Inverse transpose product, Mp^(-T)
     void invTranProdPEqn(
-        const List<scalar>& mySource,
+        const volScalarField& mySource,
         volScalarField& pseudo_p);
 
     /// calculate all the flow residuals except for the turbulence one
@@ -151,27 +151,32 @@ public:
         volVectorField& UField,
         volScalarField& pField,
         surfaceScalarField& phiField,
-        volScalarField& nuTildaField
-    );
+        volScalarField& nuTildaField);
 
     void calcAdjointResidual(
         volVectorField& URes,
         volScalarField& pRes,
         surfaceScalarField& phiRes,
         volScalarField& nuTildaRes,
-        List<vector>& dfdU,
-        List<scalar>& dfdp,
+        volVectorField& dfdU,
+        volScalarField& dfdp,
         surfaceScalarField& dfdphi,
-        List<scalar>& dfdnuTilda,
-        List<vector>& UPsi,
-        List<scalar>& pPsi,
+        volScalarField& dfdnuTilda,
+        volVectorField& UPsi,
+        volScalarField& pPsi,
         surfaceScalarField& phiPsi,
-        List<scalar>& nuTildaPsi,
-        List<vector>& adjURes,
-        List<scalar>& adjpRes,
+        volScalarField& nuTildaPsi,
+        volVectorField& adjURes,
+        volScalarField& adjpRes,
         surfaceScalarField& adjphiRes,
-        List<scalar>& adjnuTildaRes,
+        volScalarField& adjnuTildaRes,
         label& cnt);
+
+    scalar L2norm(const volScalarField& v);
+
+    vector L2norm(const volVectorField& U);
+
+    scalar L2norm(const surfaceScalarField& Phi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

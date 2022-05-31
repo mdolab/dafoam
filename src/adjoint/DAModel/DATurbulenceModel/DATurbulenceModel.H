@@ -287,7 +287,7 @@ public:
     
     /// Inverse transpose product, M_nuTilda^(-T)
     virtual void invTranProdNuTildaEqn(
-        const List<scalar>& mySource,
+        const volScalarField& mySource,
         volScalarField& pseudoNuTilda);
     
     /// calculate the turbulence residual using LDU matrix

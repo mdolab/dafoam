@@ -372,7 +372,7 @@ class DAOPTION(object):
         ## },
         self.fvSource = {}
 
-        ## The adjoint equation solution method. Options are: Krylov or fixedPoint
+        ## The adjoint equation solution method. Options are: Krylov, fixedPoint, or fixedPointC
         self.adjEqnSolMethod = "Krylov"
 
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".

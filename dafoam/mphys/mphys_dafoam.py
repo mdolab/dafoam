@@ -516,6 +516,15 @@ class DAFoamSolver(ImplicitComponent):
             # actually solving the adjoint linear equation using Petsc
             fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
         elif adjEqnSolMethod in ["fixedPoint", "fixedPointC"]:
+            solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
+            if renamed:
+                # write the deformed FFD for post-processing
+                DASolver.writeDeformedFFDs(self.solution_counter)
+                # print the solution counter
+                if self.comm.rank == 0:
+                    print("Driver total derivatives for iteration: %d" % self.solution_counter)
+                    print("---------------------------------------------")
+                self.solution_counter += 1
             # solve the adjoint equation using the fixed-point adjoint approach
             fail = DASolver.solverAD.runFPAdj(dFdW, self.psi)
         else:

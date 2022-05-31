@@ -494,7 +494,7 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
 }
 
 void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
-    const List<scalar>& mySource,
+    const volScalarField& mySource,
     volScalarField& pseudoNuTilda)
 {
     /*
