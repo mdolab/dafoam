@@ -180,13 +180,21 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           k_),
-    /// field inversion variables
+   /// field inversion parameters
       betaFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("betaFieldInversion"))),
       betaRefFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("betaRefFieldInversion"))),
+      profileRefFieldInversion_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("profileRefFieldInversion"))),
+      surfaceFriction_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFriction"))),
+      surfaceFrictionRef_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFrictionRef"))),
+      surfacePressureRef_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfacePressureRef"))),
       varRefFieldInversion_(const_cast<volVectorField&>(
-          mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))), 
+          mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))),
       y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")) 
 {
 
