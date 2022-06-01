@@ -175,7 +175,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
         }
         else if (stateType_ == "ReynoldsStress")
         {
-            const volSymmTensorField& tauDNS = db.lookupObject<volSymmTensorField>(stateRefName_);
+            const volSymmTensorField& tauDNS_ = db.lookupObject<volSymmTensorField>(stateRefName_);
             volSymmTensorField& tauRANS_ = const_cast<volSymmTensorField&>(db.lookupObject<volSymmTensorField>(stateName_));
 
             const volScalarField& k = db.lookupObject<volScalarField>("k");
@@ -186,18 +186,18 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
             if (tauComponent_ == "XX")
             {
-                volScalarField tauDNSComponent(tauDNS.component(symmTensor::XX));
-                volScalarField tauRANSComponent(tauRANS.component(symmTensor:XX));
+                volScalarField tauDNSComponent(tauDNS_.component(symmTensor::XX));
+                volScalarField tauRANSComponent(tauRANS_.component(symmTensor:XX));
             }
             else if (tauComponent_ == "YY")
             {
-                volScalarField tauDNSComponent(tauDNS.component(symmTensor::YY));
-                volScalarField tauRANSComponent(tauRANS.component(symmTensor:YY));
+                volScalarField tauDNSComponent(tauDNS_.component(symmTensor::YY));
+                volScalarField tauRANSComponent(tauRANS_.component(symmTensor:YY));
             }
             else if (tauComponent_ == "XY")
             {
-                volScalarField tauDNSComponent(tauDNS.component(symmTensor::XY));
-                volScalarField tauRANSComponent(tauRANS.component(symmTensor:XY));
+                volScalarField tauDNSComponent(tauDNS_.component(symmTensor::XY));
+                volScalarField tauRANSComponent(tauRANS_.component(symmTensor:XY));
             }
 
             const label& cellI = objFuncCellSources[idxI];
