@@ -199,14 +199,16 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 volScalarField tauDNSComponent(tauDNS_.component(symmTensor::XY));
                 volScalarField tauRANSComponent(tauRANS_.component(symmTensor::XY));
             }
-
-            const label& cellI = objFuncCellSources[idxI];
-            if (tauDNSComponent[cellI] < 1e16)
+            forAll(objFuncCellSources, idxI)
             {
-                objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
-                objFuncValue += objFuncCellValues[idxI];
+                const label& cellI = objFuncCellSources[idxI];
+                if (tauDNSComponent[cellI] < 1e16)
+                {
+                    objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
+                    objFuncValue += objFuncCellValues[idxI];
+                }
             }
-
+            
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
 
