@@ -130,10 +130,10 @@ protected:
     volVectorField& varRefFieldInversion_; 
 
     /// reference Reynolds stress field
-    volSymmTensorField tauDNS
+    volSymmTensorField tauDNS;
 
     /// RANS Reynolds stress field
-    volSymmTensorField tauRANS
+    volSymmTensorField tauRANS;
 
 public:
     TypeName("kOmegaFieldInversionOmega");
