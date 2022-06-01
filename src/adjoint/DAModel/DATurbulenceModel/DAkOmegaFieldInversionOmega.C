@@ -114,7 +114,11 @@ DAkOmegaFieldInversionOmega::DAkOmegaFieldInversionOmega(
       surfacePressureRef_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("surfacePressureRef"))),
       varRefFieldInversion_(const_cast<volVectorField&>(
-          mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion")))
+          mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))),
+      tauDNS_(const_cast<volSymmTensorField&>(
+          mesh.thisDb().lookupObject<volVectorField>("tauDNS"))),
+      tauRANS_(const_cast<volSymmTensorField&>(
+          mesh.thisDb().lookupObject<volVectorField>("tauRANS"))) 
 {
 
     // initialize printInterval_ we need to check whether it is a steady state

@@ -63,6 +63,10 @@ protected:
 
     volScalarField surfacePressureRef_; 
 
+    volSymmTensorField tauDNS_;
+
+    volSymmTensorField tauRANS_;
+
     //- Wall distance
     //  Note: different to wall distance in parent RASModel
     //  which is for near-wall cells only

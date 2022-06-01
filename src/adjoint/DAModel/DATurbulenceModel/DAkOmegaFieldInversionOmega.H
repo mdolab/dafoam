@@ -129,6 +129,12 @@ protected:
     /// reference field (e.g. velocity for DNS)
     volVectorField& varRefFieldInversion_; 
 
+    /// reference Reynolds stress field
+    volSymmTensorField tauDNS
+
+    /// RANS Reynolds stress field
+    volSymmTensorField tauRANS
+
 public:
     TypeName("kOmegaFieldInversionOmega");
     // Constructors

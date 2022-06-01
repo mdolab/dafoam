@@ -63,6 +63,9 @@ protected:
     bool weightedSum_;  // switch 
     scalar weight_; 
 
+    /// label for Reynolds stress component
+    word tauComponent_; 
+
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;
 

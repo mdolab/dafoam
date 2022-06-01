@@ -85,6 +85,22 @@ kOmegaFieldInversionOmega<BasicTurbulenceModel>::kOmegaFieldInversionOmega(
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
+      tauDNS_(
+          IOobject(
+              "tauDNS",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::MUST_READ,
+              IOobject::AUTO_WRITE),
+          this->mesh_),
+      tauRANS_(
+          IOobject(
+              "tauRANS",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::MUST_READ,
+              IOobject::AUTO_WRITE),
+          this->mesh_),
       surfaceFriction_(
           IOobject(
               "surfaceFriction",

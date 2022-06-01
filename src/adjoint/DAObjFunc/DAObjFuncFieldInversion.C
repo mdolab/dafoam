@@ -68,13 +68,21 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
         wssDir_[1] = dir[1];
         wssDir_[2] = dir[2];
     }
-    if (stateType_ == "surfacePressure" || "surfacePressureCustom")
+    if (stateType_ == "surfacePressure")
+    {
+        objFuncDict_.readEntry<scalar>("pRef", pRef_);
+    }
+    if (stateType_ == "surfacePressureCustom")
     {
         objFuncDict_.readEntry<scalar>("pRef", pRef_);
     }
     if (weightedSum_ == true)
     {
         objFuncDict_.readEntry<scalar>("weight", weight_);
+    }
+    if (stateType_ == "ReynoldsStress")
+    {
+        objFuncDict_.readEntry<word>("tauComponent", tauComponent_);
     }
     // setup the connectivity, this is needed in Foam::DAJacCondFdW
     // this objFunc only depends on the state variable at the zero level cell
@@ -165,31 +173,44 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncValue = weight_ * objFuncValue;
             }
         }
-        /*else if (stateType_ == "ReynoldsShearStress")
+        else if (stateType_ == "ReynoldsStress")
         {
-            const volSymmTensorField& stateRef = db.lookupObject<volSymmTensorField>(stateRefName_);
+            const volSymmTensorField& tauDNS = db.lookupObject<volSymmTensorField>(stateRefName_);
+            volSymmTensorField& tauRANS_ = const_cast<volSymmTensorField&>(db.lookupObject<volSymmTensorField>(stateName_));
 
-            volScalarField TauXYDNS(stateRef.component(symmTensor::XY)); 
+            const volScalarField& k = db.lookupObject<volScalarField>("k");
+            const volScalarField& nut = db.lookupObject<volScalarField>("nut");
+            const volVectorField& U = db.lookupObject<volVectorField>("U");
 
-            // read velocity and eddy viscosity field to compute the Reynold stresses
-            const volVectorField& U_ = db.lookupObject<volVectorField>("U");
-            const volScalarField& nut_ = db.lookupObject<volScalarField>("nut");
+            tauRANS_ = 2.0/3.0 * I * k - nut * twoSymm(fvc::grad(U)); 
 
-            // compute the Reynolds stress, assume ((2.0/3.0)*I)*tk() term is zero (true for S-A model)
-            volSymmTensorField Tau(-(nut_)*dev(twoSymm(fvc::grad(U_))));
-            // extract the XY component
-            volScalarField TauXY(Tau.component(symmTensor::XY)); 
-
-            forAll(objFuncCellSources, idxI)
+            if (tauComponent_ == "XX")
             {
-                const label& cellI = objFuncCellSources[idxI];
-                objFuncCellValues[idxI] = (sqr(TauXY[cellI] - TauXYDNS[cellI]));
+                volScalarField tauDNSComponent(tauDNS.component(symmTensor::XX));
+                volScalarField tauRANSComponent(tauRANS.component(symmTensor:XX));
+            }
+            else if (tauComponent_ == "YY")
+            {
+                volScalarField tauDNSComponent(tauDNS.component(symmTensor::YY));
+                volScalarField tauRANSComponent(tauRANS.component(symmTensor:YY));
+            }
+            else if (tauComponent_ == "XY")
+            {
+                volScalarField tauDNSComponent(tauDNS.component(symmTensor::XY));
+                volScalarField tauRANSComponent(tauRANS.component(symmTensor:XY));
+            }
+
+            const label& cellI = objFuncCellSources[idxI];
+            if (tauDNSComponent[cellI] < 1e16)
+            {
+                objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
+
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
 
-        }*/
+        }
     }
 
     else if (varTypeFieldInversion_ == "surface")
