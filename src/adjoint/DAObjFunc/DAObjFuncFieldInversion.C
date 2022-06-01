@@ -190,23 +190,34 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 {
                     volScalarField tauDNSComponent = tauDNS_.component(symmTensor::XX);
                     volScalarField tauRANSComponent = tauRANS_.component(symmTensor::XX);
+                    const label& cellI = objFuncCellSources[idxI];
+                    if (tauDNSComponent[cellI] < 1e16)
+                    {
+                        objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
+                        objFuncValue += objFuncCellValues[idxI];
+                    }
                 }
                 else if (tauComponent_ == "YY")
                 {
                     volScalarField tauDNSComponent = tauDNS_.component(symmTensor::YY);
                     volScalarField tauRANSComponent = tauRANS_.component(symmTensor::YY);
+                    const label& cellI = objFuncCellSources[idxI];
+                    if (tauDNSComponent[cellI] < 1e16)
+                    {
+                        objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
+                        objFuncValue += objFuncCellValues[idxI];
+                    }
                 }
                 else if (tauComponent_ == "XY")
                 {
                     volScalarField tauDNSComponent = tauDNS_.component(symmTensor::XY);
                     volScalarField tauRANSComponent = tauRANS_.component(symmTensor::XY);
-                    
-                }
-                const label& cellI = objFuncCellSources[idxI];
-                if (tauDNSComponent[cellI] < 1e16)
-                {
-                    objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
-                    objFuncValue += objFuncCellValues[idxI];
+                    const label& cellI = objFuncCellSources[idxI];
+                    if (tauDNSComponent[cellI] < 1e16)
+                    {
+                        objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
+                        objFuncValue += objFuncCellValues[idxI];
+                    }
                 }
             }
             
