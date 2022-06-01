@@ -187,17 +187,17 @@ void DAObjFuncFieldInversion::calcObjFunc(
             if (tauComponent_ == "XX")
             {
                 volScalarField tauDNSComponent(tauDNS_.component(symmTensor::XX));
-                volScalarField tauRANSComponent(tauRANS_.component(symmTensor:XX));
+                volScalarField tauRANSComponent(tauRANS_.component(symmTensor::XX));
             }
             else if (tauComponent_ == "YY")
             {
                 volScalarField tauDNSComponent(tauDNS_.component(symmTensor::YY));
-                volScalarField tauRANSComponent(tauRANS_.component(symmTensor:YY));
+                volScalarField tauRANSComponent(tauRANS_.component(symmTensor::YY));
             }
             else if (tauComponent_ == "XY")
             {
                 volScalarField tauDNSComponent(tauDNS_.component(symmTensor::XY));
-                volScalarField tauRANSComponent(tauRANS_.component(symmTensor:XY));
+                volScalarField tauRANSComponent(tauRANS_.component(symmTensor::XY));
             }
 
             const label& cellI = objFuncCellSources[idxI];
