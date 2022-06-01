@@ -182,25 +182,25 @@ void DAObjFuncFieldInversion::calcObjFunc(
             const volScalarField& nut = db.lookupObject<volScalarField>("nut");
             const volVectorField& U = db.lookupObject<volVectorField>("U");
 
-            tauRANS_ = 2.0/3.0 * I * k - nut * twoSymm(fvc::grad(U)); 
+            tauRANS_ = 2.0/3.0 * I * k - nut * twoSymm(fvc::grad(U));
 
-            if (tauComponent_ == "XX")
-            {
-                volScalarField tauDNSComponent(tauDNS_.component(symmTensor::XX));
-                volScalarField tauRANSComponent(tauRANS_.component(symmTensor::XX));
-            }
-            else if (tauComponent_ == "YY")
-            {
-                volScalarField tauDNSComponent(tauDNS_.component(symmTensor::YY));
-                volScalarField tauRANSComponent(tauRANS_.component(symmTensor::YY));
-            }
-            else if (tauComponent_ == "XY")
-            {
-                volScalarField tauDNSComponent(tauDNS_.component(symmTensor::XY));
-                volScalarField tauRANSComponent(tauRANS_.component(symmTensor::XY));
-            }
             forAll(objFuncCellSources, idxI)
             {
+                if (tauComponent_ == "XX")
+                {
+                    volScalarField tauDNSComponent(tauDNS_.component(symmTensor::XX));
+                    volScalarField tauRANSComponent(tauRANS_.component(symmTensor::XX));
+                }
+                else if (tauComponent_ == "YY")
+                {
+                    volScalarField tauDNSComponent(tauDNS_.component(symmTensor::YY));
+                    volScalarField tauRANSComponent(tauRANS_.component(symmTensor::YY));
+                }
+                else if (tauComponent_ == "XY")
+                {
+                    volScalarField tauDNSComponent(tauDNS_.component(symmTensor::XY));
+                    volScalarField tauRANSComponent(tauRANS_.component(symmTensor::XY));
+                }
                 const label& cellI = objFuncCellSources[idxI];
                 if (tauDNSComponent[cellI] < 1e16)
                 {
