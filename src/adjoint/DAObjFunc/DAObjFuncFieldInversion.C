@@ -193,7 +193,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     const label& cellI = objFuncCellSources[idxI];
                     if (tauDNSComponent[cellI] < 1e16)
                     {
-                        objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
+                        objFuncCellValues[idxI] = (sqr(scale_ * tauRANSComponent[cellI] - tauDNSComponent[cellI]));
                         objFuncValue += objFuncCellValues[idxI];
                     }
                 }
@@ -204,7 +204,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     const label& cellI = objFuncCellSources[idxI];
                     if (tauDNSComponent[cellI] < 1e16)
                     {
-                        objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
+                        objFuncCellValues[idxI] = (sqr(scale_ * tauRANSComponent[cellI] - tauDNSComponent[cellI]));
                         objFuncValue += objFuncCellValues[idxI];
                     }
                 }
@@ -215,7 +215,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                     const label& cellI = objFuncCellSources[idxI];
                     if (tauDNSComponent[cellI] < 1e16)
                     {
-                        objFuncCellValues[idxI] = (sqr(tauRANSComponent[cellI] - tauDNSComponent[cellI]));
+                        objFuncCellValues[idxI] = (sqr(scale_ * tauRANSComponent[cellI] - tauDNSComponent[cellI]));
                         objFuncValue += objFuncCellValues[idxI];
                     }
                 }
@@ -223,6 +223,11 @@ void DAObjFuncFieldInversion::calcObjFunc(
             
             // need to reduce the sum of all objectives across all processors
             reduce(objFuncValue, sumOp<scalar>());
+
+            if (weightedSum_ == true)
+            {
+                objFuncValue = weight_ * objFuncValue;
+            }
 
         }
     }
