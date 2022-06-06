@@ -492,6 +492,123 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
 
     return;
 }
+
+void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
+    const volScalarField& mySource,
+    volScalarField& pseudoNuTilda)
+{
+    /*
+    Description:
+        Inverse transpose product, M_nuTilda^(-T)
+        Based on inverseProduct_nuTildaEqn from simpleFoamSAPrimal, but swaping upper() and lower()
+        We won't ADR this function, so we can treat most of the arguments as const
+    */
+
+    // Make sure pseudoNuTilda = nuTilda;
+    pseudoNuTilda = nuTilda_;
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    // Get myStilda
+    const volScalarField Stilda(
+        this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
+        + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
+
+    // Get the pseudoNuTildaEqn,
+    // the most important thing here is to make sure the l.h.s. mathces that of nuTildaEqn.
+    // Some explicit terms that only contributes to the r.h.s. are diabled
+    fvScalarMatrix pseudoNuTildaEqn(
+        fvm::ddt(pseudoNuTilda)
+            + fvm::div(phi_, pseudoNuTilda)
+            - fvm::laplacian(DnuTildaEff(), pseudoNuTilda)
+        == -fvm::Sp(Cw1_ * fw(Stilda) * pseudoNuTilda / sqr(y_), pseudoNuTilda));
+    pseudoNuTildaEqn.relax();
+
+    // Swap upper() and lower()
+    List<scalar> temp = pseudoNuTildaEqn.upper();
+    pseudoNuTildaEqn.upper() = pseudoNuTildaEqn.lower();
+    pseudoNuTildaEqn.lower() = temp;
+
+    // Overwrite the r.h.s.
+    pseudoNuTildaEqn.source() = mySource;
+
+    // Make sure that boundary contribution to source is zero,
+    // Alternatively, we can deduct source by boundary contribution, so that it would cancel out during solve.
+    forAll(pseudoNuTilda.boundaryField(), patchI)
+    {
+        const fvPatch& pp = pseudoNuTilda.boundaryField()[patchI].patch();
+        forAll(pp, faceI)
+        {
+            label cellI = pp.faceCells()[faceI];
+            pseudoNuTildaEqn.source()[cellI] -= pseudoNuTildaEqn.boundaryCoeffs()[patchI][faceI];
+        }
+    }
+
+    // Before solve, force xxEqn.psi to be solved into all zero
+    // This ensures the zero (internal) initial guess
+    forAll(pseudoNuTilda.primitiveFieldRef(), cellI)
+    {
+        pseudoNuTilda.primitiveFieldRef()[cellI] = 0;
+    }
+    // Solve using the zero (internal) initial guess
+    pseudoNuTildaEqn.solve();
+}
+
+void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)
+{
+    /*
+    Description:
+        calculate the turbulence residual using LDU matrix
+    */
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    // Get myStilda
+    const volScalarField Stilda(
+        this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
+        + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
+
+    // Construct nuTildaEqn using our own SA implementation
+    fvScalarMatrix nuTildaEqn(
+        fvm::ddt(nuTilda_)
+            + fvm::div(phi_, nuTilda_)
+            - fvm::laplacian(DnuTildaEff(), nuTilda_)
+            - Cb2_ / sigmaNut_ * magSqr(fvc::grad(nuTilda_))
+        == Cb1_ * Stilda * nuTilda_
+            - fvm::Sp(Cw1_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
+
+    List<scalar>& nuTildaSource = nuTildaEqn.source();
+    List<scalar>& nuTildaDiag = nuTildaEqn.diag();
+
+    // Initiate nuTildaRes, with no boundary contribution
+    for (label i = 0; i < nuTilda_.size(); i++)
+    {
+        nuTildaRes[i] = nuTildaDiag[i] * nuTilda_[i] - nuTildaSource[i];
+    }
+    nuTildaRes.primitiveFieldRef() -= nuTildaEqn.lduMatrix::H(nuTilda_);
+
+    // Boundary correction
+    forAll(nuTilda_.boundaryField(), patchI)
+    {
+        const fvPatch& pp = nuTilda_.boundaryField()[patchI].patch();
+        forAll(pp, faceI)
+        {
+            // Both ways of getting cellI work
+            // Below is the previous way of getting the address
+            label cellI = pp.faceCells()[faceI];
+            // Below is using lduAddr().patchAddr(patchi)
+            //label cellI = nuTildaEqn.lduAddr().patchAddr(patchI)[faceI];
+            //myDiag[cellI] += TEqn.internalCoeffs()[patchI][faceI];
+            nuTildaRes[cellI] += nuTildaEqn.internalCoeffs()[patchI][faceI] * nuTilda_[cellI];
+            nuTildaRes[cellI] -= nuTildaEqn.boundaryCoeffs()[patchI][faceI];
+        }
+    }
+
+    // Below is not necessary, but it doesn't hurt
+    nuTildaRes.correctBoundaryConditions();
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
