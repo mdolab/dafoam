@@ -35,6 +35,8 @@
 #include "DALinearEqn.H"
 #include "volPointInterpolation.H"
 #include "IOMRFZoneListDF.H"
+#include "interpolateSplineXY.H"
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -686,10 +688,12 @@ public:
 
     /// calculate the fvSource based on the radial force profile
     void calcFvSourceInternal(
-        const scalarList& center,
-        const scalarList& radius,
-        const scalarList& forcce,
-        volVectorField& fvSource);
+    const scalarList& aForceL, // axial force
+    const scalarList& tForceL, // tangential force
+    const scalarList& rDistL,  // radius distribution, first one is inner and the last one is outer radii
+    const vector& center,      // propeller center
+    const vector& axis,        // propeller rotation axis
+    volVectorField& fvSource);
 
     void calcFvSource(
         Vec centerVec,
