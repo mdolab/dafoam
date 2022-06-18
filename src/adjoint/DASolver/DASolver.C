@@ -665,25 +665,41 @@ void DASolver::calcdForcedStateTPsiAD(
 }
 
 void DASolver::calcFvSourceInternal(
-    const scalarList& aForceL, // axial force
-    const scalarList& tForceL, // tangential force
-    const scalarList& rDistL,  // radius distribution, first one is inner and the last one is outer radii
-    const vector& center,      // propeller center
-    const vector& axis,        // propeller rotation axis
+    const scalarList& aForceL,
+    const scalarList& tForceL,
+    const scalarList& rDistL,
+    const vector& center,
     volVectorField& fvSource)
 {
-    string Rotation = "right";
-    scalar FixedForce = 55;
-    scalar eps = 0.05;
+    /*
+    Description:
+        Smoothing the force distribution on propeller blade on the entire mesh to ensure that it will not diverge during optimization.
+        Forces are smoothed using polynomial distribution for inner radius, normal distribution for outer radius, and Gaussiam distribution for axial direction.
 
-    scalar RotDir;
-    if (Rotation == "right")
+    Inputs:
+        aForceL: Axis force didtribution on propeller blade
+
+        tForceL: Tangential force distribution on propeller blade
+
+        rDist: Force distribution locations and radii of propeller (first element is inner radius, last element is outer radius)
+
+    Output:
+        fvSource: Smoothed forces in each mesh cell
+    */
+
+    scalar actEps = daOptionPtr_->getOption<scalar>("actEps");
+    word rotDir = daOptionPtr_->getOption<word>("rotDir");
+    vector axis = daOptionPtr_->getOption<vector>("axis");
+    scalarField targetForce = daOptionPtr_->getOption<scalarField>("targetForce");
+
+    scalar rotDirCon;
+    if (rotDir == "right")
     {
-        RotDir = 1.0;
+        rotDirCon = -1.0;
     }
-    else if (Rotation == "left")
+    else if (rotDir == "left")
     {
-        RotDir = -1.0;
+        rotDirCon = 1.0;
     }
     else
     {
@@ -697,10 +713,12 @@ void DASolver::calcFvSourceInternal(
     const volVectorField& meshC = fvSource.mesh().C();
     const scalarField& meshV = fvSource.mesh().V();
 
+    // dummy vector field for storing the tangential vector of each cell
+    volVectorField meshTanDir = meshC * 0;
+
     // Conversion of scalarLists to scalarFields
     scalarField aForce = aForceL * 1.0;
     scalarField tForce = tForceL * 1.0;
-    scalarField rDistd = rDistL * 1.0;
 
     // Extraction of inner and outer radii, and resizing of the blade radius distribution.
     scalar rInner = rDistL[0];
@@ -737,118 +755,100 @@ void DASolver::calcFvSourceInternal(
     // Polynomial (inner) and Normal (outer) distribution  parameters' computation
     // Axial Outer
     scalar mu = 2 * r1 - r2;
-    scalar muold = mu * 2;
     scalar maxI = 100;
     scalar sigmaS = 0;
     scalar i = 0;
     for(i = 0; i < maxI; i++)
     {
-        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * Foam:: log(f1 / f2));
-        muold = mu;
-        mu = r1 - Foam:: sqrt(-2 * sigmaS * Foam:: log(f1 * Foam:: sqrt(2 * degToRad(180) * sigmaS)));
+        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * Foam::log(f1 / f2));
+        mu = r1 - Foam::sqrt(-2 * sigmaS * Foam::log(f1 * Foam::sqrt(2 * degToRad(180) * sigmaS)));
         if (mu > r1)
         {
             mu = 2 * r1 - mu;
         }
     }
-    scalar sigma_axial_out = Foam:: sqrt(sigmaS);
-    scalar mu_axial_out = mu;
+    scalar sigmaAxialOut = Foam:: sqrt(sigmaS);
+    scalar muAxialOut = mu;
 
     // Tangential Outer
     mu = 2 * r1 - r2;
-    muold = mu * 2;
     for(i = 0; i < maxI; i++)
     {
-        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * Foam:: log(g1 / g2));
-        muold = mu;
-        mu = r1 - Foam:: sqrt(-2 * sigmaS * Foam:: log(g1 * Foam:: sqrt(2 * degToRad(180) * sigmaS)));
+        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * Foam::log(g1 / g2));
+        mu = r1 - Foam::sqrt(-2 * sigmaS * Foam::log(g1 * Foam::sqrt(2 * degToRad(180) * sigmaS)));
         if (mu > r1)
         {
             mu = 2 * r1 - mu;
         }
     }
-    scalar sigma_tangential_out = Foam:: sqrt(sigmaS);
-    scalar mu_tangential_out = mu;
+    scalar sigmaTangentialOut = Foam::sqrt(sigmaS);
+    scalar muTangentialOut = mu;
 
     // Axial Inner
-    scalar CoefA_axial_in = (f3 * r4 - f4 * r3) / (r3 * r4 * (r3 - r4));
-    scalar CoefB_axial_in = (f3 - CoefA_axial_in * r3 * r3) / r3;
+    scalar coefAAxialIn = (f3 * r4 - f4 * r3) / (r3 * r4 * (r3 - r4));
+    scalar coefBAxialIn = (f3 - coefAAxialIn * r3 * r3) / r3;
 
     // Tangential Inner
-    scalar CoefA_tangential_in = (f3 * r4 - f4 * r3) / (r3 * r4 * (r3 - r4));
-    scalar CoefB_tangential_in = (f3 - CoefA_tangential_in * r3 * r3) / r3;
+    scalar coefATangentialIn = (f3 * r4 - f4 * r3) / (r3 * r4 * (r3 - r4));
+    scalar coefBTangentialIn = (f3 - coefATangentialIn * r3 * r3) / r3;
 
     // Cell 3D force computation loop
     forAll(meshC, cellI)
     {
         // Finding directional vector from mesh cell to the actuator center
-        scalar x1 = meshC[cellI][0] - center[0];
-        scalar y1 = meshC[cellI][1] - center[1];
-        scalar z1 = meshC[cellI][2] - center[2];
-        scalar length = Foam:: sqrt(sqr(x1)+sqr(y1)+sqr(z1));
-        x1 = x1 / length;
-        y1 = y1 / length;
-        z1 = z1 / length;
-        vector celldir = {x1, y1, z1};
+        vector cellDir = meshC[cellI] - center;
+        scalar length = Foam:: sqrt(sqr(cellDir[0])+sqr(cellDir[1])+sqr(cellDir[2]));
+        cellDir = cellDir / length;
 
         // Finding axial distance from mesh cell to the actuator center & projected point of mesh cell on the axis
-        scalar meshDist = (axis & celldir) * length;
-        vector Pproj = {center[0] - axis[0] * meshDist, center[1] - axis[1] * meshDist, center[2] - axis[2] * meshDist};
+        scalar meshDist = (axis & cellDir) * length;
+        vector projP = {center[0] - axis[0] * meshDist, center[1] - axis[1] * meshDist, center[2] - axis[2] * meshDist};
         meshDist = mag(meshDist); 
 
         // Finding the radius of the point
-        scalar meshR = Foam:: sqrt(sqr(meshC[cellI][0] - Pproj[0]) + sqr(meshC[cellI][1] - Pproj[1]) + sqr(meshC[cellI][2] - Pproj[2]));
+        scalar meshR = Foam::sqrt(sqr(meshC[cellI][0] - projP[0]) + sqr(meshC[cellI][1] - projP[1]) + sqr(meshC[cellI][2] - projP[2]));
 
         // Tangential component of the radius vector of the cell center
-        vector cellaxdir = axis ^ celldir;
+        vector cellAxDir = cellDir ^ axis;
+
+        // Storing the tangential component
+        meshTanDir[cellI] = cellAxDir;
 
         scalar rStar = meshR / rOuter;
 
         if (rStar < rStarMin)
         {
-            fvSource[cellI][0] = (CoefA_axial_in * rStar * rStar + CoefB_axial_in * rStar) * axis[0];
-            fvSource[cellI][1] = (CoefA_axial_in * rStar * rStar + CoefB_axial_in * rStar) * axis[1];
-            fvSource[cellI][2] = (CoefA_axial_in * rStar * rStar + CoefB_axial_in * rStar) * axis[2];
-            fvSource[cellI][0] = fvSource[cellI][0] + (CoefA_tangential_in * rStar * rStar + CoefB_tangential_in * rStar) * cellaxdir[0] * RotDir;
-            fvSource[cellI][1] = fvSource[cellI][1] + (CoefA_tangential_in * rStar * rStar + CoefB_tangential_in * rStar) * cellaxdir[1] * RotDir;
-            fvSource[cellI][2] = fvSource[cellI][2] + (CoefA_tangential_in * rStar * rStar + CoefB_tangential_in * rStar) * cellaxdir[2] * RotDir;
-            fvSource[cellI][0] = fvSource[cellI][0] * Foam:: exp(-sqr(meshDist/eps));
-            fvSource[cellI][1] = fvSource[cellI][1] * Foam:: exp(-sqr(meshDist/eps));
-            fvSource[cellI][2] = fvSource[cellI][2] * Foam:: exp(-sqr(meshDist/eps));
+            fvSource[cellI] = ((coefAAxialIn * rStar * rStar + coefBAxialIn * rStar) * axis + (coefATangentialIn * rStar * rStar + coefBTangentialIn * rStar) * cellAxDir * rotDirCon) * Foam::exp(-sqr(meshDist/actEps));
         }
         else if (rStar > rStarMax)
         {
-            fvSource[cellI][0] = (1 / (sigma_axial_out * Foam:: sqrt(2 * degToRad(180)))) * Foam:: exp(-0.5 * sqr((rStar - mu_axial_out) / sigma_axial_out)) * axis[0];
-            fvSource[cellI][1] = (1 / (sigma_axial_out * Foam:: sqrt(2 * degToRad(180)))) * Foam:: exp(-0.5 * sqr((rStar - mu_axial_out) / sigma_axial_out)) * axis[1];
-            fvSource[cellI][2] = (1 / (sigma_axial_out * Foam:: sqrt(2 * degToRad(180)))) * Foam:: exp(-0.5 * sqr((rStar - mu_axial_out) / sigma_axial_out)) * axis[2];
-            fvSource[cellI][0] = fvSource[cellI][0] + (1 / (sigma_tangential_out * Foam:: sqrt(2 * degToRad(180)))) * Foam:: exp(-0.5 * sqr((rStar - mu_tangential_out) / sigma_tangential_out)) * cellaxdir[0] * RotDir;
-            fvSource[cellI][1] = fvSource[cellI][1] + (1 / (sigma_tangential_out * Foam:: sqrt(2 * degToRad(180)))) * Foam:: exp(-0.5 * sqr((rStar - mu_tangential_out) / sigma_tangential_out)) * cellaxdir[1] * RotDir;
-            fvSource[cellI][2] = fvSource[cellI][2] + (1 / (sigma_tangential_out * Foam:: sqrt(2 * degToRad(180)))) * Foam:: exp(-0.5 * sqr((rStar - mu_tangential_out) / sigma_tangential_out)) * cellaxdir[2] * RotDir;
-            fvSource[cellI][0] = fvSource[cellI][0] * Foam:: exp(-sqr(meshDist/eps));
-            fvSource[cellI][1] = fvSource[cellI][1] * Foam:: exp(-sqr(meshDist/eps));
-            fvSource[cellI][2] = fvSource[cellI][2] * Foam:: exp(-sqr(meshDist/eps));
+            fvSource[cellI] = (1 / (sigmaAxialOut * Foam::sqrt(2 * degToRad(180)))) * Foam::exp(-0.5 * sqr((rStar - muAxialOut) / sigmaAxialOut)) * axis;
+            fvSource[cellI] = fvSource[cellI] + (1 / (sigmaTangentialOut * Foam::sqrt(2 * degToRad(180)))) * Foam::exp(-0.5 * sqr((rStar - muTangentialOut) / sigmaTangentialOut)) * cellAxDir * rotDirCon;
+            fvSource[cellI] = fvSource[cellI] * Foam::exp(-sqr(meshDist/actEps));
         }
         else
         {
-            fvSource[cellI][0] = (interpolateSplineXY(rStar, rNorm, aForce) * axis[0] + interpolateSplineXY(rStar, rNorm, tForce) * cellaxdir[0] * RotDir) * Foam:: exp(-sqr(meshDist/eps));
-            fvSource[cellI][1] = (interpolateSplineXY(rStar, rNorm, aForce) * axis[1] + interpolateSplineXY(rStar, rNorm, tForce) * cellaxdir[1] * RotDir) * Foam:: exp(-sqr(meshDist/eps));
-            fvSource[cellI][2] = (interpolateSplineXY(rStar, rNorm, aForce) * axis[2] + interpolateSplineXY(rStar, rNorm, tForce) * cellaxdir[2] * RotDir) * Foam:: exp(-sqr(meshDist/eps));
+            fvSource[cellI] = (interpolateSplineXY(rStar, rNorm, aForce) * axis + interpolateSplineXY(rStar, rNorm, tForce) * cellAxDir * rotDirCon) * Foam::exp(-sqr(meshDist/actEps));
         }
     }
 
     // Scale factor computation loop
-    scalar Scale = 0;
+    scalar scaleAxial = 0;
+    scalar scaleTangential = 0;
     forAll(meshV, cellI)
     {
-        Scale = Scale + (fvSource[cellI][0] * axis[0] + fvSource[cellI][1] * axis[1] + fvSource[cellI][2] * axis[2]) * meshV[cellI];
+        scaleAxial = scaleAxial + (fvSource[cellI] & axis) * meshV[cellI];
+        scaleTangential = scaleTangential + (fvSource[cellI] & meshTanDir[cellI]) * meshV[cellI];
     }
+    scaleAxial = targetForce[0] / scaleAxial;
+    scaleTangential = targetForce[1] / scaleTangential;
 
     // Cell 3D force scaling loop
     forAll(meshV, cellI)
     {
-        fvSource[cellI][0] = fvSource[cellI][0] / Scale * FixedForce;
-        fvSource[cellI][1] = fvSource[cellI][1] / Scale * FixedForce;
-        fvSource[cellI][2] = fvSource[cellI][2] / Scale * FixedForce;
+        fvSource[cellI][0] = fvSource[cellI][0] * mag(axis[0]) * scaleAxial + fvSource[cellI][0] * mag(meshTanDir[cellI][0]) * scaleTangential;
+        fvSource[cellI][1] = fvSource[cellI][1] * mag(axis[1]) * scaleAxial + fvSource[cellI][1] * mag(meshTanDir[cellI][1]) * scaleTangential;
+        fvSource[cellI][2] = fvSource[cellI][2] * mag(axis[2]) * scaleAxial + fvSource[cellI][2] * mag(meshTanDir[cellI][2]) * scaleTangential;
     }
 }
 
