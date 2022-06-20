@@ -665,9 +665,10 @@ void DASolver::calcdForcedStateTPsiAD(
 }
 
 void DASolver::calcFvSourceInternal(
-    const scalarList& aForceL,
-    const scalarList& tForceL,
-    const scalarList& rDistL,
+    const scalarField& aForce,
+    const scalarField& tForce,
+    const scalarField& rDistExt,
+    const scalarField& targetForce,
     const vector& center,
     volVectorField& fvSource)
 {
@@ -687,10 +688,9 @@ void DASolver::calcFvSourceInternal(
         fvSource: Smoothed forces in each mesh cell
     */
 
-    scalar actEps = daOptionPtr_->getOption<scalar>("actEps");
-    word rotDir = daOptionPtr_->getOption<word>("rotDir");
-    vector axis = daOptionPtr_->getOption<vector>("axis");
-    scalarField targetForce = daOptionPtr_->getOption<scalarField>("targetForce");
+    scalar actEps = daOptionPtr_->getSubDictOption<scalar>("wingProp", "actEps");
+    word rotDir = daOptionPtr_->getSubDictOption<word>("wingProp", "rotDir");
+    vector axis = daOptionPtr_->getSubDictOption<vector>("wingProp", "axis");
 
     scalar rotDirCon;
     if (rotDir == "right")
@@ -703,11 +703,9 @@ void DASolver::calcFvSourceInternal(
     }
     else
     {
-        Info << endl;
-        Info << "Rotation direction must be either right of left" << endl;
-        Info << endl;
+        FatalErrorIn("calcFvSourceInternal") << "Rotation direction must be either right of left"
+                                             << abort(FatalError);
     }
-
 
     // meshC is the cell center coordinates & meshV is the cell volume
     const volVectorField& meshC = fvSource.mesh().C();
@@ -716,18 +714,14 @@ void DASolver::calcFvSourceInternal(
     // dummy vector field for storing the tangential vector of each cell
     volVectorField meshTanDir = meshC * 0;
 
-    // Conversion of scalarLists to scalarFields
-    scalarField aForce = aForceL * 1.0;
-    scalarField tForce = tForceL * 1.0;
-
     // Extraction of inner and outer radii, and resizing of the blade radius distribution.
-    scalar rInner = rDistL[0];
-    scalar rOuter = rDistL[rDistL.size()-1];
+    scalar rInner = rDistExt[0];
+    scalar rOuter = rDistExt[rDistExt.size()-1];
     scalarField rDist = aForce * 0.0;         // real blade radius distribution
     scalarField rNorm = rDist;                // normalized blade radius distribution
     forAll(aForce, index)
     {
-        rDist[index] = rDistL [index+1];
+        rDist[index] = rDistExt [index+1];
     }
     forAll(rDist, index)
     {
@@ -841,7 +835,7 @@ void DASolver::calcFvSourceInternal(
         scaleTangential = scaleTangential + (fvSource[cellI] & meshTanDir[cellI]) * meshV[cellI];
     }
     scaleAxial = targetForce[0] / scaleAxial;
-    scaleTangential = targetForce[1] / scaleTangential;
+    scaleTangential = targetForce[1] / scaleTangential * rotDirCon;
 
     // Cell 3D force scaling loop
     forAll(meshV, cellI)
