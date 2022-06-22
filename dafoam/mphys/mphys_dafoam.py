@@ -7,6 +7,7 @@ import petsc4py
 from petsc4py import PETSc
 import numpy as np
 from mpi4py import MPI
+from mphys import MaskedConverter, UnmaskedConverter, MaskedVariableDescription
 
 petsc4py.init(sys.argv)
 
@@ -59,6 +60,7 @@ class DAFoamBuilder(Builder):
 
     # api level method for all builders
     def initialize(self, comm):
+        self.comm = comm
         # initialize the PYDAFOAM class, defined in pyDAFoam.py
         self.DASolver = PYDAFOAM(options=self.options, comm=comm)
         # always set the mesh
@@ -92,8 +94,40 @@ class DAFoamBuilder(Builder):
     def get_pre_coupling_subsystem(self, scenario_name=None):
         # we warp as a pre-processing step
         if self.warp_in_solver:
-            # if we warp in the solver, then we wont have any pre-coupling systems
-            return None
+            # # if we warp in the solver, then we wont have any pre-coupling systems
+            # return None
+
+            # TEMPORARY -- Adding here to do MPHYS propeller masking
+            nodes_prop = 5
+            masking = True
+            if masking:
+                number_of_nodes = self.get_number_of_nodes()
+
+                if self.comm.rank == 0:
+                    mesh_mask = np.zeros([(number_of_nodes + nodes_prop)*3], dtype=bool)
+                    mesh_mask[:] = True
+                    mesh_mask[-3*nodes_prop:] = False
+
+                    prop_mask = np.zeros([(number_of_nodes + nodes_prop)*3], dtype=bool)
+                    prop_mask[:] = False
+                    prop_mask[-3*nodes_prop:] = True
+
+                    unmask_output = MaskedVariableDescription("x_aero0_unmasked", shape=(number_of_nodes + nodes_prop)*3,tags=['mphys_coupling'])
+                    unmask_input_prop = MaskedVariableDescription("x_aero_prop", shape=(nodes_prop)*3, tags=['mphys_coupling'])
+
+                else:
+                    mesh_mask = np.zeros([number_of_nodes*3], dtype=bool)
+                    mesh_mask[:] = True
+
+                    prop_mask = np.zeros([number_of_nodes*3], dtype=bool)
+                    prop_mask[:] = False
+                    unmask_output = MaskedVariableDescription("x_aero0_unmasked", shape=(number_of_nodes)*3,tags=['mphys_coupling'])
+                    unmask_input_prop = MaskedVariableDescription("x_aero_prop", shape=(0)*3, tags=['mphys_coupling'])
+
+                unmask_input_mesh = MaskedVariableDescription("x_aero0", shape=(number_of_nodes)*3, tags=['mphys_coupling'])
+
+                return UnmaskedConverter(input=[unmask_input_mesh, unmask_input_prop], output=unmask_output, mask=[mesh_mask, prop_mask], distributed=True, default_values=0.0)
+
         else:
             # we warp as a pre-processing step
             return DAFoamWarper(solver=self.DASolver)
