@@ -690,15 +690,17 @@ public:
     void calcFvSourceInternal(
     const scalarField& aForce,
     const scalarField& tForce,
-    const scalarField& rDistExt,
-    const scalarField& targetForce,
+    const scalarList& rDistExt,
+    const scalarList& targetForce,
     const vector& center,
     volVectorField& fvSource);
 
     void calcFvSource(
-        Vec centerVec,
-        Vec radiusVec,
-        Vec forceVec,
+        Vec aForce,
+        Vec tForce,
+        Vec rDistExt,
+        Vec targetForce,
+        Vec center,
         Vec fvSource);
 
     void calcdFvSourcedInputsTPsiAD(

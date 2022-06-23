@@ -88,7 +88,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getForwardADDerivVal(char *)
         void calcResidualVec(PetscVec)
         void setPrimalBoundaryConditions(int)
-        void calcFvSource(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcFvSource(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdFvSourcedInputsTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcForceProfile(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
@@ -337,8 +337,8 @@ cdef class pyDASolvers:
     def setPrimalBoundaryConditions(self, printInfo):
         self._thisptr.setPrimalBoundaryConditions(printInfo)
     
-    def calcFvSource(self, Vec c, Vec r, Vec f, Vec fvSource):
-        self._thisptr.calcFvSource(c.vec, r.vec, f.vec, fvSource.vec)
+    def calcFvSource(self, Vec aForce, Vec tForce, Vec rDistExt, Vec targetForce, Vec center, Vec fvSource):
+        self._thisptr.calcFvSource(aForce.vec, tForce.vec, rDistExt.vec, targetForce.vec, center.vec, fvSource.vec)
     
     def calcdFvSourcedInputsTPsiAD(self, mode, Vec c, Vec r, Vec f, Vec psi, Vec prod):
         self._thisptr.calcdFvSourcedInputsTPsiAD(mode, c.vec, r.vec, f.vec, psi.vec, prod.vec)

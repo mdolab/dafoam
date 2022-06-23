@@ -667,8 +667,8 @@ void DASolver::calcdForcedStateTPsiAD(
 void DASolver::calcFvSourceInternal(
     const scalarField& aForce,
     const scalarField& tForce,
-    const scalarField& rDistExt,
-    const scalarField& targetForce,
+    const scalarList& rDistExt,
+    const scalarList& targetForce,
     const vector& center,
     volVectorField& fvSource)
 {
@@ -847,9 +847,11 @@ void DASolver::calcFvSourceInternal(
 }
 
 void DASolver::calcFvSource(
-    Vec centerVec,
-    Vec radiusVec,
-    Vec forceVec,
+    Vec aForce,
+    Vec tForce,
+    Vec rDistExt,
+    Vec targetForce,
+    Vec center,
     Vec fvSource)
 {
     /*
@@ -865,6 +867,87 @@ void DASolver::calcFvSource(
     Output:
         fvSource: a volVectorField variable that will be added to the momentum eqn
     */
+
+    // Get Data
+    label nPoints = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
+    label meshSize = meshPtr_->nCells();
+
+    // Allocate Arrays
+    Field<scalar> aForceTemp(nPoints);
+    Field<scalar> tForceTemp(nPoints);
+    List<scalar> rDistExtTemp(nPoints+2);
+    List<scalar> targetForceTemp(2);
+    Vector<scalar> centerTemp;
+    volVectorField fvSourceTemp(
+        IOobject(
+            "fvSourceTemp",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        meshPtr_(),
+        dimensionedVector("surfaceForce", dimensionSet(0, 0, 0, 0, 0, 0, 0), vector::zero),
+        fixedValueFvPatchScalarField::typeName);
+
+    // Get PETSc Arrays
+    PetscScalar* vecArrayAForce;
+    VecGetArray(aForce, &vecArrayAForce);
+    PetscScalar* vecArrayTForce;
+    VecGetArray(tForce, &vecArrayTForce);
+    PetscScalar* vecArrayRDistExt;
+    VecGetArray(rDistExt, &vecArrayRDistExt);
+    PetscScalar* vecArrayTargetForce;
+    VecGetArray(targetForce, &vecArrayTargetForce);
+    PetscScalar* vecArrayCenter;
+    VecGetArray(center, &vecArrayCenter);
+
+    // Set Values
+    forAll(aForceTemp, cI)
+    {
+        aForceTemp[cI] = vecArrayAForce[cI];
+        tForceTemp[cI] = vecArrayTForce[cI];
+    }
+
+    forAll(rDistExtTemp, cI)
+    {
+        rDistExtTemp[cI] = vecArrayRDistExt[cI];
+    }
+    targetForceTemp[0] = vecArrayTargetForce[0];
+    targetForceTemp[1] = vecArrayTargetForce[1];
+    centerTemp[0] = vecArrayCenter[0];
+    centerTemp[1] = vecArrayCenter[1];
+    centerTemp[2] = vecArrayCenter[2];
+
+    // Compute fvSource
+    this->calcFvSourceInternal(aForceTemp, tForceTemp, rDistExtTemp, targetForceTemp, centerTemp, fvSourceTemp);
+
+    VecZeroEntries(fvSource);
+    PetscScalar* vecArrayFvSource;
+    VecGetArray(fvSource, &vecArrayFvSource);
+
+    // Tranfer to PETSc Array for fvSource
+    forAll(fvSourceTemp, cI)
+    {
+        // Get Values
+        PetscScalar val1, val2, val3;
+        assignValueCheckAD(val1, fvSourceTemp[cI][0]);
+        assignValueCheckAD(val2, fvSourceTemp[cI][1]);
+        assignValueCheckAD(val3, fvSourceTemp[cI][2]);
+
+        // Set Values
+        vecArrayFvSource[3*cI] = val1;
+        vecArrayFvSource[3*cI+1] = val2;
+        vecArrayFvSource[3*cI+2] = val3;
+    }
+
+    VecRestoreArray(aForce, &vecArrayAForce);
+    VecRestoreArray(tForce, &vecArrayTForce);
+    VecRestoreArray(rDistExt, &vecArrayRDistExt);
+    VecRestoreArray(targetForce, &vecArrayTargetForce);
+    VecRestoreArray(center, &vecArrayCenter);
+    VecRestoreArray(fvSource, &vecArrayFvSource);
+
+    return;
 }
 
 void DASolver::calcdFvSourcedInputsTPsiAD(
