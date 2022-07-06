@@ -1410,7 +1410,7 @@ class DAFoamPropNodes(ExplicitComponent):
                         theta = i / n_theta * 2 * np.pi
                         nodes_x[i+1,:] = center + radial_loc*y_local*np.cos(theta) + radial_loc*z_local*np.sin(theta)
                         nodes_f[i+1,:] = -self.fvSourceDict[fvSource]["targetThrust"] * direction / n_theta
-                print(nodes_f)
+
                 outputs["x_prop0_nodes_%s" % fvSource] = nodes_x
                 outputs["f_prop_%s" % fvSource] = nodes_f
 
