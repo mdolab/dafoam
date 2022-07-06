@@ -101,6 +101,18 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
+    /// tape positions for consistent fixed-point adjoint
+    typename codi::RealReverse::TapeType::Position adjResStart;
+    typename codi::RealReverse::TapeType::Position adjResEnd;
+    typename codi::RealReverse::TapeType::Position gradPStart;
+    typename codi::RealReverse::TapeType::Position gradPEnd;
+    typename codi::RealReverse::TapeType::Position pEqnFluxStart;
+    typename codi::RealReverse::TapeType::Position pEqnFluxEnd;
+    typename codi::RealReverse::TapeType::Position divPhiStart;
+    typename codi::RealReverse::TapeType::Position divPhiEnd;
+    typename codi::RealReverse::TapeType::Position fluxUStart;
+    typename codi::RealReverse::TapeType::Position fluxUEnd;
+
 public:
     TypeName("DASimpleFoam");
     // Constructors
@@ -125,11 +137,6 @@ public:
 
     /// solve the adjoint equation using the fixed-point iteration method
     virtual label runFPAdj(
-        Vec dFdW,
-        Vec psi);
-
-    /// solve the adjoint equation using the consistent fixed-point iteration method
-    virtual label runCFPAdj(
         Vec dFdW,
         Vec psi);
 
@@ -182,6 +189,8 @@ public:
     vector L2norm(const volVectorField& U);
 
     scalar L2norm(const surfaceScalarField& Phi);
+
+    void swap(List<scalar>& a, List<scalar>& b);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
