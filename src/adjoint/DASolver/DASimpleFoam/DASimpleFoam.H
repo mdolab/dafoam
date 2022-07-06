@@ -128,6 +128,11 @@ public:
         Vec dFdW,
         Vec psi);
 
+    /// solve the adjoint equation using the consistent fixed-point iteration method
+    virtual label runCFPAdj(
+        Vec dFdW,
+        Vec psi);
+
     /// Inverse transpose product, MU^(-T)
     void invTranProdUEqn(
         const volVectorField& mySource,

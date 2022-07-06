@@ -5607,6 +5607,22 @@ label DASolver::runFPAdj(
     return 1;
 }
 
+label DASolver::runCFPAdj(
+    Vec dFdW,
+    Vec psi)
+{
+    /*
+    Description:
+        Solve the adjoint using the consistent fixed-point iteration approach
+    */
+
+    FatalErrorIn("DASolver::runCFPAdj")
+        << "Child class not implemented!"
+        << abort(FatalError);
+
+    return 1;
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
