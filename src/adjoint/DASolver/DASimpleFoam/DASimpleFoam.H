@@ -102,16 +102,17 @@ protected:
     scalar pRefValue_ = 0.0;
 
     /// tape positions for consistent fixed-point adjoint
-    typename codi::RealReverse::TapeType::Position adjResStart;
-    typename codi::RealReverse::TapeType::Position adjResEnd;
-    typename codi::RealReverse::TapeType::Position gradPStart;
-    typename codi::RealReverse::TapeType::Position gradPEnd;
-    typename codi::RealReverse::TapeType::Position pEqnFluxStart;
-    typename codi::RealReverse::TapeType::Position pEqnFluxEnd;
-    typename codi::RealReverse::TapeType::Position divPhiStart;
-    typename codi::RealReverse::TapeType::Position divPhiEnd;
-    typename codi::RealReverse::TapeType::Position fluxUStart;
-    typename codi::RealReverse::TapeType::Position fluxUEnd;
+    using Position = typename codi::RealReverse::TapeType::Position;
+    Position adjResStart_;
+    Position adjResEnd_;
+    Position gradPStart_;
+    Position gradPEnd_;
+    Position pEqnFluxStart_;
+    Position pEqnFluxEnd_;
+    Position divPhiStart_;
+    Position divPhiEnd_;
+    Position fluxUStart_;
+    Position fluxUEnd_;
 
 public:
     TypeName("DASimpleFoam");
