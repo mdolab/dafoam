@@ -144,12 +144,12 @@ public:
     /// Inverse transpose product, MU^(-T)
     void invTranProdUEqn(
         const volVectorField& mySource,
-        volVectorField& pseudo_U);
+        volVectorField& pseudoU);
 
     /// Inverse transpose product, Mp^(-T)
     void invTranProdPEqn(
         const volScalarField& mySource,
-        volScalarField& pseudo_p);
+        volScalarField& pseudoP);
 
     /// calculate all the flow residuals except for the turbulence one
     void calcLduResiduals(
@@ -171,18 +171,18 @@ public:
         volScalarField& pRes,
         surfaceScalarField& phiRes,
         volScalarField& nuTildaRes,
-        volVectorField& dfdU,
-        volScalarField& dfdp,
-        surfaceScalarField& dfdphi,
-        volScalarField& dfdnuTilda,
+        volVectorField& dFdU,
+        volScalarField& dFdP,
+        surfaceScalarField& dFdPhi,
+        volScalarField& dFdNuTilda,
         volVectorField& UPsi,
         volScalarField& pPsi,
         surfaceScalarField& phiPsi,
         volScalarField& nuTildaPsi,
         volVectorField& adjURes,
-        volScalarField& adjpRes,
-        surfaceScalarField& adjphiRes,
-        volScalarField& adjnuTildaRes,
+        volScalarField& adjPRes,
+        surfaceScalarField& adjPhiRes,
+        volScalarField& adjNuTildaRes,
         label& cnt);
 
     scalar L2norm(const volScalarField& v);
