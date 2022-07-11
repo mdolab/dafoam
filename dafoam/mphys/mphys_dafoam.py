@@ -1411,27 +1411,29 @@ class DAFoamPropNodes(ExplicitComponent):
                         nodes_x[i+1,:] = center + radial_loc*y_local*np.cos(theta) + radial_loc*z_local*np.sin(theta)
                         nodes_f[i+1,:] = -self.fvSourceDict[fvSource]["targetThrust"] * direction / n_theta
 
-                outputs["x_prop0_nodes_%s" % fvSource] = nodes_x
-                outputs["f_prop_%s" % fvSource] = nodes_f
+                outputs["x_prop0_nodes_%s" % fvSource] = nodes_x.flatten()
+                outputs["f_prop_%s" % fvSource] = nodes_f.flatten()
 
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         if mode == 'fwd':
-            for fvSource, _ in self.fsiDict["fvSource"].items():
+            for fvSource, parameters in self.fsiDict["fvSource"].items():
                 if "x_prop0_%s" % fvSource in d_inputs:
                     if "x_prop0_nodes_%s" % fvSource in d_outputs:
                         if self.comm.rank == 0:
-                            d_outputs["x_prop0_nodes_%s" % fvSource] += d_inputs["x_prop0_%s" % fvSource]
+                            for i in range(parameters["nNodes"]):
+                                d_outputs["x_prop0_nodes_%s" % fvSource][3*i:3*i+3] += d_inputs["x_prop0_%s" % fvSource]
 
         elif mode == 'rev':
-            for fvSource, _ in self.fsiDict["fvSource"].items():
+            for fvSource, parameters in self.fsiDict["fvSource"].items():
                 if "x_prop0_%s" % fvSource in d_inputs:
                     if "x_prop0_nodes_%s" % fvSource in d_outputs:
-                        temp = np.zeros(3)
+                        temp = np.zeros((parameters["nNodes"]+1)*3)
                         if self.comm.rank == 0:
                             temp[:] = d_outputs["x_prop0_nodes_%s" % fvSource]
                         self.comm.Bcast(temp, root=0)
-                        d_inputs["x_prop0_%s" % fvSource] += temp
+                        for i in range(parameters["nNodes"]):
+                            d_inputs["x_prop0_%s" % fvSource] += temp[3*i:3*i+3]
 
 
 class DAFoamActuator(ExplicitComponent):
