@@ -676,23 +676,23 @@ void DASolver::calcFvSourceInternal(
     Description:
         Smoothing the force distribution on propeller blade on the entire mesh to ensure that it will not diverge during optimization.
         Forces are smoothed using polynomial distribution for inner radius, normal distribution for outer radius, and Gaussiam distribution for axial direction.
-
     Inputs:
         aForceL: Axis force didtribution on propeller blade
-
         tForceL: Tangential force distribution on propeller blade
-
         rDist: Force distribution locations and radii of propeller (first element is inner radius, last element is outer radius)
-
     Output:
         fvSource: Smoothed forces in each mesh cell
     */
 
+    vector axis;
     scalar actEps = daOptionPtr_->getSubDictOption<scalar>("wingProp", "actEps");
     word rotDir = daOptionPtr_->getSubDictOption<word>("wingProp", "rotDir");
-    vector axis = daOptionPtr_->getSubDictOption<vector>("wingProp", "axis");
+    scalarList axisDummy = daOptionPtr_->getSubDictOption<scalarList>("wingProp", "axis");
+    axis[0] = axisDummy[0];
+    axis[1] = axisDummy[1];
+    axis[2] = axisDummy[2];
 
-    scalar rotDirCon;
+    scalar rotDirCon = 0.0;
     if (rotDir == "right")
     {
         rotDirCon = -1.0;
@@ -715,7 +715,7 @@ void DASolver::calcFvSourceInternal(
     volVectorField meshTanDir = meshC * 0;
 
     // Extraction of inner and outer radii, and resizing of the blade radius distribution.
-    scalar rInner = rDistExt[0];
+    // scalar rInner = rDistExt[0];
     scalar rOuter = rDistExt[rDistExt.size()-1];
     scalarField rDist = aForce * 0.0;         // real blade radius distribution
     scalarField rNorm = rDist;                // normalized blade radius distribution
@@ -783,8 +783,8 @@ void DASolver::calcFvSourceInternal(
     scalar coefBAxialIn = (f3 - coefAAxialIn * r3 * r3) / r3;
 
     // Tangential Inner
-    scalar coefATangentialIn = (f3 * r4 - f4 * r3) / (r3 * r4 * (r3 - r4));
-    scalar coefBTangentialIn = (f3 - coefATangentialIn * r3 * r3) / r3;
+    scalar coefATangentialIn = (g3 * r4 - g4 * r3) / (r3 * r4 * (r3 - r4));
+    scalar coefBTangentialIn = (g3 - coefATangentialIn * r3 * r3) / r3;
 
     // Cell 3D force computation loop
     forAll(meshC, cellI)
@@ -870,7 +870,7 @@ void DASolver::calcFvSource(
 
     // Get Data
     label nPoints = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
-    label meshSize = meshPtr_->nCells();
+    // label meshSize = meshPtr_->nCells();
 
     // Allocate Arrays
     Field<scalar> aForceTemp(nPoints);

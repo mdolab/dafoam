@@ -688,12 +688,12 @@ public:
 
     /// calculate the fvSource based on the radial force profile
     void calcFvSourceInternal(
-    const scalarField& aForce,
-    const scalarField& tForce,
-    const scalarList& rDistExt,
-    const scalarList& targetForce,
-    const vector& center,
-    volVectorField& fvSource);
+        const scalarField& aForce,
+        const scalarField& tForce,
+        const scalarList& rDistExt,
+        const scalarList& targetForce,
+        const vector& center,
+        volVectorField& fvSource);
 
     void calcFvSource(
         Vec aForce,
