@@ -90,17 +90,21 @@ kOmegaFieldInversionOmega<BasicTurbulenceModel>::kOmegaFieldInversionOmega(
               "tauDNS",
               this->runTime_.timeName(),
               this->mesh_,
-              IOobject::MUST_READ,
+              IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
-          this->mesh_),
+          this->mesh_,
+          dimensionedSymmTensor("tauDNS", dimensionSet(0, 0, 0, 0, 0, 0, 0), symmTensor(0, 0, 0, 0, 0, 0)),
+          "zeroGradient"),
       tauRANS_(
           IOobject(
               "tauRANS",
               this->runTime_.timeName(),
               this->mesh_,
-              IOobject::MUST_READ,
+              IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
-          this->mesh_),
+          this->mesh_,
+          dimensionedSymmTensor("tauRANS", dimensionSet(0, 0, 0, 0, 0, 0, 0), symmTensor(0, 0, 0, 0, 0, 0)),
+          "zeroGradient"),
       surfaceFriction_(
           IOobject(
               "surfaceFriction",
