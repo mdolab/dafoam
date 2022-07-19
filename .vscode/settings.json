@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "DAkEpsilonFieldInversionEpsilon.C": "cpp",
+        "DAkOmegaFieldInversion.C": "cpp",
+        "DAkOmegaFieldInversion.H": "cpp",
+        "kEpsilonFieldInversionEpsilon.C": "cpp",
+        "kEpsilonFieldInversionEpsilon.H": "cpp",
+        "makekEpsilonFieldInversionEpsilonCompressible.C": "cpp",
+        "makekEpsilonFieldInversionEpsilonIncompressible.C": "cpp",
+        "SpalartAllmarasFieldInversion.H": "cpp"
+    }
+}

@@ -113,12 +113,21 @@ protected:
 
     /// a reference beta field
     volScalarField betaRefFieldInversion_; 
+    
+    /// reference field for profile data
+    volScalarField profileRefFieldInversion_;
+     
+    /// a surface friction 'field' when using skin friction data for field inversion
+    volScalarField surfaceFriction_;
 
+    /// the reference field for surfaceFriction
+    volScalarField surfaceFrictionRef_; 
+
+    /// the reference field for surfacePressure
+    volScalarField surfacePressureRef_; 
     /// reference field (e.g. velocity for DNS)
     volVectorField& varRefFieldInversion_; 
-
-
-
+    
 public:
     TypeName("kOmegaFieldInversionk");
     // Constructors

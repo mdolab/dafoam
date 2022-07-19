@@ -175,14 +175,26 @@ protected:
     volScalarField kRef_;
     //@}
 
-    /// A beta field multiplying the production term of the omega equation
-    volScalarField& betaFieldInversion_;
+    /// A beta field multiplying to the production term
+    volScalarField& betaFieldInversion_; 
 
-    /// A reference beta field
-    volScalarField& betaRefFieldInversion_; 
+    /// a reference beta field
+    volScalarField betaRefFieldInversion_; 
 
-    /// Reference velocity
-    volVectorField& varRefFieldInversion_;
+    /// reference field for profile data
+    volScalarField profileRefFieldInversion_; 
+
+    /// a surface friction 'field' when using skin friction data for field inversion
+    volScalarField surfaceFriction_;
+
+    /// the reference field for surfaceFriction
+    volScalarField surfaceFrictionRef_; 
+
+    /// the reference field for surfacePressure
+    volScalarField surfacePressureRef_; 
+    
+    /// reference field (e.g. velocity for DNS)
+    volVectorField& varRefFieldInversion_; 
     
     /// Name of turbulent transport equation to modify: can be k, omega, or all
     /// if k OR omega is selected the field inversion modification is: ProdTerm(k or omega)*betaFieldInversion
