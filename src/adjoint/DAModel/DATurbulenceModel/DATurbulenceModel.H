@@ -284,6 +284,14 @@ public:
     label isPrintTime(
         const Time& runTime,
         const label printInterval) const;
+    
+    /// Inverse transpose product, M_nuTilda^(-T)
+    virtual void invTranProdNuTildaEqn(
+        const volScalarField& mySource,
+        volScalarField& pseudoNuTilda);
+    
+    /// calculate the turbulence residual using LDU matrix
+    virtual void calcLduResidualTurb(volScalarField& nuTildaRes);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

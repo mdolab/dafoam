@@ -656,6 +656,13 @@ public:
     {
         DASolverPtr_->calcdForcedStateTPsiAD(mode, xvVec, stateVec, psiVec, prodVec);
     }
+
+    label runFPAdj(
+        Vec dFdW,
+        Vec psi)
+    {
+        return DASolverPtr_->runFPAdj(dFdW, psi);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

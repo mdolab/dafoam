@@ -492,6 +492,32 @@ void DATurbulenceModel::getTurbProdTerm(scalarList& prodTerm) const
         << abort(FatalError);
 }
 
+void DATurbulenceModel::invTranProdNuTildaEqn(
+    const volScalarField& mySource,
+    volScalarField& pseudoNuTilda)
+{
+    /*
+    Description:
+        Inverse transpose product, M_nuTilda^(-T)
+    */
+
+    FatalErrorIn("DATurbulenceModel::invTranProdNuTildaEqn")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
+void DATurbulenceModel::calcLduResidualTurb(volScalarField& nuTildaRes)
+{
+    /*
+    Description:
+        calculate the turbulence residual using LDU matrix
+    */
+
+    FatalErrorIn("DATurbulenceModel::calcLduResidualTurb")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

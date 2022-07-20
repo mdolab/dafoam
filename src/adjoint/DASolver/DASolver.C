@@ -4020,6 +4020,67 @@ void DASolver::calcdForcedWAD(
 }
 
 void DASolver::calcdRdWTPsiAD(
+    const label isInit,
+    const Vec psi,
+    Vec dRdWTPsi)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute the matrix-vector products dRdW^T*Psi using reverse-mode AD
+        Note that this function does not assign wVec and xVec to OF fields
+    
+    Input:
+
+        mode: either "init" or "run"
+
+        psi: the vector to multiply dRdW0^T
+    
+    Output:
+        dRdWTPsi: the matrix-vector products dRdW^T * Psi
+    */
+
+    Info << "Calculating [dRdW]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdWTPsi);
+
+    if (isInit)
+    {
+        this->globalADTape_.reset();
+        this->globalADTape_.setActive();
+
+        this->registerStateVariableInput4AD();
+
+        // compute residuals
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+        label isPC = 0;
+        dictionary options;
+        options.set("isPC", isPC);
+        daResidualPtr_->calcResiduals(options);
+        daModelPtr_->calcResiduals(options);
+
+        this->registerResidualOutput4AD();
+        this->globalADTape_.setPassive();
+    }
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(dRdWTPsi);
+
+    VecAssemblyBegin(dRdWTPsi);
+    VecAssemblyEnd(dRdWTPsi);
+
+    this->globalADTape_.clearAdjoints();
+
+#endif
+}
+
+void DASolver::calcdRdWTPsiAD(
     const Vec xvVec,
     const Vec wVec,
     const Vec psi,
@@ -5528,6 +5589,22 @@ void DASolver::setPrimalBoundaryConditions(const label printInfo)
         }
         daFieldPtr_->setPrimalBoundaryConditions(printInfo);
     }
+}
+
+label DASolver::runFPAdj(
+    Vec dFdW,
+    Vec psi)
+{
+    /*
+    Description:
+        Solve the adjoint using the fixed-point iteration approach
+    */
+
+    FatalErrorIn("DASolver::runFPAdj")
+        << "Child class not implemented!"
+        << abort(FatalError);
+
+    return 1;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -372,6 +372,9 @@ class DAOPTION(object):
         ## },
         self.fvSource = {}
 
+        ## The adjoint equation solution method. Options are: Krylov, fixedPoint, or fixedPointC
+        self.adjEqnSolMethod = "Krylov"
+
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
         ## Setting the bounds increases the robustness of primal solution for compressible solvers.
         ## Also, we set lower bounds for turbulence variables to ensure they are physical
@@ -520,6 +523,7 @@ class DAOPTION(object):
             "useNonZeroInitGuess": False,
             "useMGSO": False,
             "printInfo": 1,
+            "fpMaxIters": 1000,
         }
 
         ## Normalization for residuals. We should normalize all residuals!
