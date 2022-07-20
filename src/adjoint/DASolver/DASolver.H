@@ -239,6 +239,11 @@ public:
         const Vec xvVec,
         Vec wVec) = 0;
 
+    /// solve the adjoint equation using the fixed-point iteration method
+    virtual label runFPAdj(
+        Vec dFdW,
+        Vec psi);
+
     /// assign primal variables based on the current time instance
     void setTimeInstanceField(const label instanceI);
 
@@ -269,6 +274,12 @@ public:
     void calcdRdWTPsiAD(
         const Vec xvVec,
         const Vec wVec,
+        const Vec psi,
+        Vec dRdWTPsi);
+
+    /// compute [dRdW]^T*Psi but without updating xvVec and wVec to the OF fields
+    void calcdRdWTPsiAD(
+        const label isInit,
         const Vec psi,
         Vec dRdWTPsi);
 

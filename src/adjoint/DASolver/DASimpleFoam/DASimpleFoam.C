@@ -196,6 +196,8 @@ label DASimpleFoam::solvePrimal(
     return this->checkResidualTol();
 }
 
+#include "fixedPointAdjoint.H"
+
 } // End namespace Foam
 
 // ************************************************************************* //
