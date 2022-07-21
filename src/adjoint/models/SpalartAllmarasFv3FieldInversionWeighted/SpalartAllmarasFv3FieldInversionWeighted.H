@@ -1,16 +1,18 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v2
 
     Description:
-        kOmegaSST turbulence model with a multiplicative betaFieldInversion
-        field.
+    SpalartAllmaras turbulence model with Fv3 term and the beta
+    NOTE: this is just a dummy turbulence model implementation, just to 
+    create the variable nuTilda. We shouldn't call any function in this class
+    Instead, we should call the correct function in DAModel/DATurbulenceModel
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef kOmegaFieldInversion_H
-#define kOmegaFieldInversion_H
+#ifndef SpalartAllmarasFv3FieldInversionWeighted_H
+#define SpalartAllmarasFv3FieldInversionWeighted_H
 
 #include "RASModel.H"
 #include "eddyViscosity.H"
@@ -23,39 +25,35 @@ namespace RASModels
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class kOmegaFieldInversion Declaration
+                      Class SpalartAllmarasFv3FieldInversionWeighted Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicTurbulenceModel>
-class kOmegaFieldInversion
+class SpalartAllmarasFv3FieldInversionWeighted
     : public eddyViscosity<RASModel<BasicTurbulenceModel>>
 {
     // Private Member Functions
 
     // Disallow default bitwise copy construct and assignment
-    kOmegaFieldInversion(const kOmegaFieldInversion&);
-    void operator=(const kOmegaFieldInversion&);
+    SpalartAllmarasFv3FieldInversionWeighted(const SpalartAllmarasFv3FieldInversionWeighted&);
+    void operator=(const SpalartAllmarasFv3FieldInversionWeighted&);
 
 protected:
     // Protected data
 
     // Fields
 
-    /// turbulence variables for k-omega SST
-    volScalarField omega_;
+    /// turbulence variable for SA
+    volScalarField nuTilda_;
 
-    volScalarField k_; 
-
-    /// beta field that will be multiplied to the omega production term
+    /// betaFieldInversion field that will be multiplied to the SA production term
     volScalarField betaFieldInversion_;
 
-    /// the prior beta field, usually 1
+    /// the reference betaFieldInversion, usually be 1
     volScalarField betaRefFieldInversion_;
 
-    /// the reference velocity field, usually from experiment or higher fidelity sims
+    /// the reference field (e.g. velocity field from DNS)
     volVectorField varRefFieldInversion_;
-
-    volScalarField profileRefFieldInversion_; 
 
     volScalarField surfaceFriction_;
 
@@ -63,12 +61,13 @@ protected:
 
     volScalarField surfacePressureRef_; 
 
+    volScalarField profileRefFieldInversion_; 
 
+    volScalarField weightsObjFunc_; 
     //- Wall distance
     //  Note: different to wall distance in parent RASModel
     //  which is for near-wall cells only
     const volScalarField& y_;
-
 
     virtual void correctNut();
 
@@ -78,12 +77,12 @@ public:
     typedef typename BasicTurbulenceModel::transportModel transportModel;
 
     //- Runtime type information
-    TypeName("kOmegaFieldInversion");
+    TypeName("SpalartAllmarasFv3FieldInversionWeighted");
 
     // Constructors
 
     //- Construct from components
-    kOmegaFieldInversion(
+    SpalartAllmarasFv3FieldInversionWeighted(
         const alphaField& alpha,
         const rhoField& rho,
         const volVectorField& U,
@@ -94,7 +93,7 @@ public:
         const word& type = typeName);
 
     //- Destructor
-    virtual ~kOmegaFieldInversion()
+    virtual ~SpalartAllmarasFv3FieldInversionWeighted()
     {
     }
 
@@ -121,7 +120,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-#include "kOmegaFieldInversion.C"
+#include "SpalartAllmarasFv3FieldInversionWeighted.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

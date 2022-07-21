@@ -41,7 +41,7 @@ protected:
 
     // Fields
 
-    /// turbulence variables for k-omega SST
+    /// turbulence variables for k-omega
     volScalarField omega_;
 
     volScalarField k_; 
@@ -54,6 +54,18 @@ protected:
 
     /// the reference velocity field, usually from experiment or higher fidelity sims
     volVectorField varRefFieldInversion_;
+
+    volScalarField profileRefFieldInversion_; 
+
+    volScalarField surfaceFriction_;
+
+    volScalarField surfaceFrictionRef_; 
+
+    volScalarField surfacePressureRef_; 
+
+    volSymmTensorField tauDNS_;
+
+    volSymmTensorField tauRANS_;
 
     //- Wall distance
     //  Note: different to wall distance in parent RASModel

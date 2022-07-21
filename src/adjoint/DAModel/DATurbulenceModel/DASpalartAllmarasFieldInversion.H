@@ -1,13 +1,15 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v2
 
     Description:
-    Child class for the kOmega model
+    Child class for the SpalartAllmaras model with a betaFieldInversion field multiplying 
+    to the production term. This betaFieldInversion term can then be trained to improve the
+    SA turbulence model.
 
     This file is modified from OpenFOAM's source code
-    src/TurbulenceModels/turbulenceModels/RAS/kOmega/kOmega.H
+    src/TurbulenceModels/turbulenceModels/RAS/SpalartAllmaras/SpalartAllmaras.H
 
     OpenFOAM: The Open Source CFD Toolbox
 
@@ -30,8 +32,8 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAkOmegaFieldInversion_H
-#define DAkOmegaFieldInversion_H
+#ifndef DASpalartAllmarasFieldInversion_H
+#define DASpalartAllmarasFieldInversion_H
 
 #include "DATurbulenceModel.H"
 #include "addToRunTimeSelectionTable.H"
@@ -42,80 +44,62 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class DAkOmegaFieldInversion Declaration
+                       Class DASpalartAllmarasFieldInversion Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAkOmegaFieldInversion
+class DASpalartAllmarasFieldInversion
     : public DATurbulenceModel
 {
 
 protected:
-    /// \name kOmega parameters
+    /// \name SA parameters
     //@{
-    dimensionedScalar Cmu_;
-    dimensionedScalar beta_;
-    dimensionedScalar gamma_;
-    dimensionedScalar alphaK_;
-    dimensionedScalar alphaOmega_;
+    dimensionedScalar sigmaNut_;
+    dimensionedScalar kappa_;
+    dimensionedScalar Cb1_;
+    dimensionedScalar Cb2_;
+    dimensionedScalar Cw1_;
+    dimensionedScalar Cw2_;
+    dimensionedScalar Cw3_;
+    dimensionedScalar Cv1_;
+    dimensionedScalar Cs_;
     //@}
 
-    /// \name kOmega functions
+    /// \name SA functions
     //@{
-    //- Return the effective diffusivity for k
-        tmp<volScalarField> DkEff() const
-        {
-            return tmp<volScalarField>
-            (
-                new volScalarField
-                (
-                    "DkEff",
-                    alphaK_*this->nut_ + this->nu()
-                )
-            );
-        }
+    tmp<volScalarField> chi() const;
 
-        //- Return the effective diffusivity for omega
-        tmp<volScalarField> DomegaEff() const
-        {
-            return tmp<volScalarField>
-            (
-                new volScalarField
-                (
-                    "DomegaEff",
-                    alphaOmega_*this->nut_ + this->nu()
-                )
-            );
-        }
+    tmp<volScalarField> fv1(const volScalarField& chi) const;
+
+    tmp<volScalarField> fv2(
+        const volScalarField& chi,
+        const volScalarField& fv1) const;
+
+    tmp<volScalarField> Stilda(
+        const volScalarField& chi,
+        const volScalarField& fv1) const;
+
+    tmp<volScalarField> fw(const volScalarField& Stilda) const;
+
     //@}
 
-    /// \name Augmented variables for adjoint residuals
+    /// \name Augmented variables for residual computation
     //@{
-    volScalarField& omega_;
-    volScalarField omegaRes_;
-    volScalarField& k_;
-    volScalarField kRes_;
+    volScalarField& nuTilda_;
+    volScalarField nuTildaRes_;
     //@}
 
-    /// cell-center omega values near the wall, this is to fix the issue that the
-    /// omegaWallFunction will try to modify omega values for the cells near walls
-    /// this will cause issue for FD-based partial derivatives, so here we basically
-    /// implement a zeroGradient BC for near wall omega.
-    scalarList omegaNearWall_;
-
-    /// whether to solve for turb states
-    label solveTurbState_ = 0;
-
-    /// time step interval to print residual
-    label printInterval_;
-        
     /// A beta field multiplying to the production term
     volScalarField& betaFieldInversion_; 
 
     /// a reference beta field
     volScalarField betaRefFieldInversion_; 
 
-    /// reference field for profile data
-    volScalarField profileRefFieldInversion_; 
+    /// reference field (e.g. velocity for DNS)
+    volVectorField& varRefFieldInversion_; 
+
+    /// reference Reynolds stress field
+    //volSymmTensorField TauDNS_;
 
     /// a surface friction 'field' when using skin friction data for field inversion
     volScalarField surfaceFriction_;
@@ -125,26 +109,38 @@ protected:
 
     /// the reference field for surfacePressure
     volScalarField surfacePressureRef_; 
-        
-    /// reference field (e.g. velocity for DNS)
-    volVectorField& varRefFieldInversion_; 
+
+    /// reference field for profile data
+    volScalarField profileRefFieldInversion_; 
+
+    /// 3D wall distance
+    const volScalarField& y_;
+
+    /// whether to solve for turb states
+    label solveTurbState_ = 0;
+
+    /// time step interval to print residual
+    label printInterval_;
 
 public:
-    TypeName("kOmegaFieldInversion");
+    TypeName("SpalartAllmarasFieldInversion");
     // Constructors
 
     //- Construct from components
-    DAkOmegaFieldInversion(
+    DASpalartAllmarasFieldInversion(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption);
 
     //- Destructor
-    virtual ~DAkOmegaFieldInversion()
+    virtual ~DASpalartAllmarasFieldInversion()
     {
     }
 
     // Member functions
+
+    /// Return the effective diffusivity for nuTilda
+    tmp<volScalarField> DnuTildaEff() const;
 
     /// update the turbulence state for DAStateInfo::regStates_
     virtual void correctModelStates(wordList& modelStates) const;
@@ -169,15 +165,6 @@ public:
 
     /// solve the residual equations and update the state
     virtual void correct();
-
-    /// save near wall omega values to omegaNearWall_
-    void saveOmegaNearWall();
-
-    /// set omegaNearWall_ to near wall omega values
-    void setOmegaNearWall();
-
-    /// specially treatment to correct epsilon BC
-    void correctOmegaBoundaryConditions();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

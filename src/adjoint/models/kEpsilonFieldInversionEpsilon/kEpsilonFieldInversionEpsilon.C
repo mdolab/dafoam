@@ -5,7 +5,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "kOmegaFieldInversionk.H"
+#include "kEpsilonFieldInversionEpsilon.H"
 #include "fvOptions.H"
 #include "bound.H"
 #include "wallDist.H"
@@ -20,14 +20,14 @@ namespace RASModels
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-void kOmegaFieldInversionk<BasicTurbulenceModel>::correctNut()
+void kEpsilonFieldInversionEpsilon<BasicTurbulenceModel>::correctNut()
 {
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-kOmegaFieldInversionk<BasicTurbulenceModel>::kOmegaFieldInversionk(
+kEpsilonFieldInversionEpsilon<BasicTurbulenceModel>::kEpsilonFieldInversionEpsilon(
     const alphaField& alpha,
     const rhoField& rho,
     const volVectorField& U,
@@ -45,9 +45,9 @@ kOmegaFieldInversionk<BasicTurbulenceModel>::kOmegaFieldInversionk(
         phi,
         transport,
         propertiesName),
-      omega_(
+      epsilon_(
           IOobject(
-              "omega",
+              "epsilon",
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
@@ -83,7 +83,7 @@ kOmegaFieldInversionk<BasicTurbulenceModel>::kOmegaFieldInversionk(
               this->runTime_.timeName(),
               this->mesh_,
               IOobject::MUST_READ,
-              IOobject::AUTO_WRITE),
+              IOobject::AUTO_WRITE),              
           this->mesh_),
       surfaceFriction_(
           IOobject(
@@ -133,26 +133,26 @@ kOmegaFieldInversionk<BasicTurbulenceModel>::kOmegaFieldInversionk(
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-bool kOmegaFieldInversionk<BasicTurbulenceModel>::read()
+bool kEpsilonFieldInversionEpsilon<BasicTurbulenceModel>::read()
 {
 
     return true;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> kOmegaFieldInversionk<BasicTurbulenceModel>::k() const
+tmp<volScalarField> kEpsilonFieldInversionEpsilon<BasicTurbulenceModel>::k() const
 {
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> kOmegaFieldInversionk<BasicTurbulenceModel>::epsilon() const
+tmp<volScalarField> kEpsilonFieldInversionEpsilon<BasicTurbulenceModel>::epsilon() const
 {
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-void kOmegaFieldInversionk<BasicTurbulenceModel>::correct()
+void kEpsilonFieldInversionEpsilon<BasicTurbulenceModel>::correct()
 {
 }
 

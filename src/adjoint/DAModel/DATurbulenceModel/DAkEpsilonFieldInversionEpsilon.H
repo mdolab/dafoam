@@ -4,10 +4,10 @@
     Version : v3
 
     Description:
-    Child class for the kOmega model
+    Child class for the kEpsilonFieldInversionEpsilon model
 
     This file is modified from OpenFOAM's source code
-    src/TurbulenceModels/turbulenceModels/RAS/kOmega/kOmega.H
+    src/TurbulenceModels/turbulenceModels/RAS/kEpsilon/kEpsilon.H
 
     OpenFOAM: The Open Source CFD Toolbox
 
@@ -30,8 +30,8 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAkOmegaFieldInversion_H
-#define DAkOmegaFieldInversion_H
+#ifndef DAkEpsilonFieldInversionEpsilon_H
+#define DAkEpsilonFieldInversionEpsilon_H
 
 #include "DATurbulenceModel.H"
 #include "addToRunTimeSelectionTable.H"
@@ -42,74 +42,67 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class DAkOmegaFieldInversion Declaration
+                       Class DAkEpsilonFieldInversionEpsilon Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAkOmegaFieldInversion
+class DAkEpsilonFieldInversionEpsilon
     : public DATurbulenceModel
 {
 
 protected:
-    /// \name kOmega parameters
+    /// \name SST parameters
     //@{
     dimensionedScalar Cmu_;
-    dimensionedScalar beta_;
-    dimensionedScalar gamma_;
-    dimensionedScalar alphaK_;
-    dimensionedScalar alphaOmega_;
+    dimensionedScalar C1_;
+    dimensionedScalar C2_;
+    dimensionedScalar C3_;
+    dimensionedScalar sigmak_;
+    dimensionedScalar sigmaEps_;
     //@}
 
-    /// \name kOmega functions
+    /// \name SST functions
     //@{
+    tmp<fvScalarMatrix> kSource() const;
+    tmp<fvScalarMatrix> epsilonSource() const;
     //- Return the effective diffusivity for k
-        tmp<volScalarField> DkEff() const
-        {
-            return tmp<volScalarField>
-            (
-                new volScalarField
-                (
-                    "DkEff",
-                    alphaK_*this->nut_ + this->nu()
-                )
-            );
-        }
+    tmp<volScalarField> DkEff() const;
+    //- Return the effective diffusivity for epsilon
+    tmp<volScalarField> DepsilonEff() const;
+    //- Return the turbulence kinetic energy
+    virtual tmp<volScalarField> k() const
+    {
+        return k_;
+    }
 
-        //- Return the effective diffusivity for omega
-        tmp<volScalarField> DomegaEff() const
-        {
-            return tmp<volScalarField>
-            (
-                new volScalarField
-                (
-                    "DomegaEff",
-                    alphaOmega_*this->nut_ + this->nu()
-                )
-            );
-        }
+    //- Return the turbulence kinetic energy dissipation rate
+    virtual tmp<volScalarField> epsilon() const
+    {
+        return epsilon_;
+    }
     //@}
 
     /// \name Augmented variables for adjoint residuals
     //@{
-    volScalarField& omega_;
-    volScalarField omegaRes_;
+    volScalarField& epsilon_;
+    volScalarField epsilonRes_;
     volScalarField& k_;
     volScalarField kRes_;
     //@}
 
-    /// cell-center omega values near the wall, this is to fix the issue that the
-    /// omegaWallFunction will try to modify omega values for the cells near walls
+    /// cell-center epsilon values near the wall, this is to fix the issue that the
+    /// epsilonWallFunction will try to modify epsilon values for the cells near walls
     /// this will cause issue for FD-based partial derivatives, so here we basically
-    /// implement a zeroGradient BC for near wall omega.
-    scalarList omegaNearWall_;
+    /// implement a zeroGradient BC for near wall epsilon.
+    scalarList epsilonNearWall_;
 
     /// whether to solve for turb states
     label solveTurbState_ = 0;
 
     /// time step interval to print residual
     label printInterval_;
-        
+
     /// A beta field multiplying to the production term
-    volScalarField& betaFieldInversion_; 
+    volScalarField betaFieldInversion_; 
 
     /// a reference beta field
     volScalarField betaRefFieldInversion_; 
@@ -127,20 +120,20 @@ protected:
     volScalarField surfacePressureRef_; 
         
     /// reference field (e.g. velocity for DNS)
-    volVectorField& varRefFieldInversion_; 
+    volVectorField varRefFieldInversion_; 
 
 public:
-    TypeName("kOmegaFieldInversion");
+    TypeName("kEpsilonFieldInversionEpsilon");
     // Constructors
 
     //- Construct from components
-    DAkOmegaFieldInversion(
+    DAkEpsilonFieldInversionEpsilon(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption);
 
     //- Destructor
-    virtual ~DAkOmegaFieldInversion()
+    virtual ~DAkEpsilonFieldInversionEpsilon()
     {
     }
 
@@ -170,14 +163,14 @@ public:
     /// solve the residual equations and update the state
     virtual void correct();
 
-    /// save near wall omega values to omegaNearWall_
-    void saveOmegaNearWall();
+    /// save near wall epsilon values to epsilonNearWall_
+    void saveEpsilonNearWall();
 
-    /// set omegaNearWall_ to near wall omega values
-    void setOmegaNearWall();
+    /// set epsilonNearWall_ to near wall epsilon values
+    void setEpsilonNearWall();
 
     /// specially treatment to correct epsilon BC
-    void correctOmegaBoundaryConditions();
+    void correctEpsilonBoundaryConditions();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

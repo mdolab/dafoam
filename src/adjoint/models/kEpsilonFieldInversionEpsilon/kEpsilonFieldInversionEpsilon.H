@@ -9,8 +9,8 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef kOmegaFieldInversion_H
-#define kOmegaFieldInversion_H
+#ifndef kEpsilonFieldInversionEpsilon_H
+#define kEpsilonFieldInversionEpsilon_H
 
 #include "RASModel.H"
 #include "eddyViscosity.H"
@@ -23,26 +23,26 @@ namespace RASModels
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class kOmegaFieldInversion Declaration
+                      Class kEpsilonFieldInversionEpsilon Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicTurbulenceModel>
-class kOmegaFieldInversion
+class kEpsilonFieldInversionEpsilon
     : public eddyViscosity<RASModel<BasicTurbulenceModel>>
 {
     // Private Member Functions
 
     // Disallow default bitwise copy construct and assignment
-    kOmegaFieldInversion(const kOmegaFieldInversion&);
-    void operator=(const kOmegaFieldInversion&);
+    kEpsilonFieldInversionEpsilon(const kEpsilonFieldInversionEpsilon&);
+    void operator=(const kEpsilonFieldInversionEpsilon&);
 
 protected:
     // Protected data
 
     // Fields
 
-    /// turbulence variables for k-omega SST
-    volScalarField omega_;
+    /// turbulence variables for k-epsilon
+    volScalarField epsilon_;
 
     volScalarField k_; 
 
@@ -78,12 +78,12 @@ public:
     typedef typename BasicTurbulenceModel::transportModel transportModel;
 
     //- Runtime type information
-    TypeName("kOmegaFieldInversion");
+    TypeName("kEpsilonFieldInversionEpsilon");
 
     // Constructors
 
     //- Construct from components
-    kOmegaFieldInversion(
+    kEpsilonFieldInversionEpsilon(
         const alphaField& alpha,
         const rhoField& rho,
         const volVectorField& U,
@@ -94,7 +94,7 @@ public:
         const word& type = typeName);
 
     //- Destructor
-    virtual ~kOmegaFieldInversion()
+    virtual ~kEpsilonFieldInversionEpsilon()
     {
     }
 
@@ -121,7 +121,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-#include "kOmegaFieldInversion.C"
+#include "kEpsilonFieldInversionEpsilon.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

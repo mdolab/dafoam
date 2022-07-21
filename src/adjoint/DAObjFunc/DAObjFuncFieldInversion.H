@@ -50,6 +50,9 @@ protected:
     /// direction vector if using aerodynamic coefficient data 
     vector forceDir_;
 
+    /// vector to decide the component of wallShearStress vector used for calculating surfaceFriction
+    vector wssDir_;
+
     /// the lift, or drag coefficient from data
     scalar aeroCoeffRef_; 
 
@@ -59,6 +62,9 @@ protected:
     /// weighted objective function (especially useful when performing weighted sum multi-objective optimisation)
     bool weightedSum_;  // switch 
     scalar weight_; 
+
+    /// label for Reynolds stress component
+    word tauComponent_; 
 
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;
