@@ -1,0 +1,13 @@
+Dictionary Key: FI
+@value    750.2490259162058 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10
+Dictionary Key: FI
+Dictionary Key: alpha
+@value                    0 0.0001 1e-06
+Dictionary Key: alphaPorosity
+@value    10108.90613601328 0.0001 1e-06
+Dictionary Key: beta
+@value    63.62415240726151 0.0001 1e-06
+Dictionary Key: fail
+@value                    0 0.0001 1e-06

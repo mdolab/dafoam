@@ -180,13 +180,21 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           k_),
-    /// field inversion variables
+   /// field inversion parameters
       betaFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("betaFieldInversion"))),
       betaRefFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("betaRefFieldInversion"))),
+      profileRefFieldInversion_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("profileRefFieldInversion"))),
+      surfaceFriction_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFriction"))),
+      surfaceFrictionRef_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFrictionRef"))),
+      surfacePressureRef_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfacePressureRef"))),
       varRefFieldInversion_(const_cast<volVectorField&>(
-          mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))), 
+          mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))),
       y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")) 
 {
 
@@ -788,7 +796,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
             fvm::ddt(phase_, rho_, omega_)
                 + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
                 - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_) 
-            == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * (1.0 / betaFieldInversion_())
+            == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFieldInversion_()
                 - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
                 - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
                 - fvm::SuSp(
@@ -833,7 +841,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, k_)
             + fvm::div(phaseRhoPhi_, k_, divKScheme)
             - fvm::laplacian(phase_ * rho_ * DkEff(F1), k_)
-        == phase_() * rho_() * Pk(G) * betaFieldInversion_()
+        == phase_() * rho_() * Pk(G) 
             - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
             - fvm::Sp(phase_() * rho_() * epsilonByk(F1, tgradU()), k_)
             + kSource());
