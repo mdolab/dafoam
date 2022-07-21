@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Run Python tests for DASimpleFoam
+Run Python tests for DASimpleFoamFieldInversionObjectiveFunctions
 """
 
 from mpi4py import MPI
@@ -26,9 +26,23 @@ os.chdir("./input/NACA0012FieldInversion")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.incompressible 0")
+    # create dummy reference fields for field inversion
+    os.system("cp 0/p 0/surfacePressure")
+    os.system("cp 0/p 0/surfacePressureRef")
+    os.system("cp 0/p 0/surfaceFriction")
+    os.system("cp 0/p 0/surfaceFrictionRef")
+    os.system("cp 0/p 0/profileRefFieldInversion")
+
+    
+replace_text_in_file("0/surfacePressure", "    object      p;", "    object      surfacePressure;")
+replace_text_in_file("0/surfacePressureRef", "    object      p;", "    object      surfacePressureRef;")
+replace_text_in_file("0/surfaceFriction", "    object      p;", "    object      surfaceFriction;")
+replace_text_in_file("0/surfaceFrictionRef", "    object      p;", "    object      surfaceFrictionRef;")
+replace_text_in_file("0/profileRefFieldInversion", "    object      p;", "    object      profileRefFieldInversion;")
 
 U0 = 10.0
 p0 = 0.0
+rho0 = 1.0
 nuTilda0 = 4.5e-5
 A0 = 0.1
 alpha0 = 5.139186
@@ -64,17 +78,17 @@ aeroOptions = {
                 "weightedSum": True,
                 "weight": 1.0,
             },
-            "surfacePressure": {
+            "profileRefFieldInversion":
+            {
                 "type": "fieldInversion",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "varTypeFieldInversion": "surface",
-                "stateType": "surfacePressure",
-                "stateName": "surfacePressure",
-                "stateRefName": "surfacePressureRef",
-                "pRef": 0,
-                "scale": 1.0 / (p0 * U0 * U0),
+                "varTypeFieldInversion": "profile",
+                "stateName": "U",
+                "stateRefName": "profileRefFieldInversion", # dummy 
+                "stateType": "scalar",
+                "scale": 1.0,
                 "addToAdjoint": True,
                 "weightedSum": True,
                 "weight": 1.0,
@@ -87,9 +101,58 @@ aeroOptions = {
                 "varTypeFieldInversion": "surface",
                 "stateType": "surfacePressure",
                 "stateName": "surfacePressure",
-                "stateRefName": "surfacePressureRef",
+                "stateRefName": "surfacePressureRef", # dummy
+                "patchNames": ["wing"],
                 "pRef": 0,
-                "scale": 1.0 / (p0 * U0 * U0),
+                "scale": 1.0 / (rho0 * U0 * U0),
+                "addToAdjoint": True,
+                "weightedSum": True,
+                "weight": 1.0,
+            },
+            "surfaceFriction": {
+                "type": "fieldInversion",
+                "source": "boxToCell",
+                "min": [-100.0, -100.0, -100.0],
+                "max": [100.0, 100.0, 100.0],
+                "varTypeFieldInversion": "surface",
+                "stateType": "surfaceFriction",
+                "stateName": "surfaceFriction",
+                "stateRefName": "surfaceFrictionRef", # dummy
+                "patchNames": ["wing"],
+                "scale": 1.0 / (rho0 * U0 * U0),
+                "addToAdjoint": True,
+                "weightedSum": True,
+                "weight": 1.0,
+            },
+            "wallShearStress": {
+                "type": "fieldInversion",
+                "source": "boxToCell",
+                "min": [-100.0, -100.0, -100.0],
+                "max": [100.0, 100.0, 100.0],
+                "varTypeFieldInversion": "surface",
+                "stateType": "wallShearStress",
+                "stateName": "surfaceFriction",
+                "stateRefName": "surfaceFrictionRef", # dummy
+                "patchNames": ["wing"],
+                "scale": 1.0 / (rho0 * U0 * U0),
+                "wssDir": [-1.0, 0.0, 0.0],
+                "addToAdjoint": True,
+                "weightedSum": True,
+                "weight": 1.0,
+            },
+            "aeroCoeff":{
+                "type": "fieldInversion",
+                "source": "boxToCell",
+                "min": [-100.0, -100.0, -100.0],
+                "max": [100.0, 100.0, 100.0],
+                "varTypeFieldInversion": "surface",
+                "stateType": "aeroCoeff",
+                "stateName": "aeroCoeff",
+                "stateRefName": "aeroCoeff",
+                "aeroCoeffRef": 1, # dummy
+                "direction": [1.0, 0.0, 0.0], 
+                "patchNames": ["wing"],
+                "scale": 1.0 / (rho0 * U0 * U0 * A0),
                 "addToAdjoint": True,
                 "weightedSum": True,
                 "weight": 1.0,
@@ -115,8 +178,6 @@ aeroOptions = {
     # Design variable setup
     "designVar": {
         "beta": {"designVarType": "Field", "fieldName": "betaFieldInversion", "fieldType": "scalar"},
-        "alphaPorosity": {"designVarType": "Field", "fieldName": "alphaPorosity", "fieldType": "scalar"},
-        "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
     },
 }
 
@@ -136,30 +197,16 @@ DVGeo = DVGeometry(FFDFile)
 nTwists = DVGeo.addRefAxis("bodyAxis", xFraction=0.25, alignIndex="k")
 
 
-def alpha(val, geo):
-    aoa = val[0] * np.pi / 180.0
-    inletU = [float(U0 * np.cos(aoa)), float(U0 * np.sin(aoa)), 0]
-    DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
-    DASolver.updateDAOption()
-
 def betaFieldInversion(val, geo):
     for idxI, v in enumerate(val):
         DASolver.setFieldValue4GlobalCellI(b"betaFieldInversion", v, idxI)
         DASolver.updateBoundaryConditions(b"betaFieldInversion", b"scalar")
 
-def alphaPorosity(val, geo):
-    for idxI, v in enumerate(val):
-        DASolver.setFieldValue4GlobalCellI(b"alphaPorosity", v, idxI)
-        DASolver.updateBoundaryConditions(b"alphaPorosity", b"scalar")
-
 # select points
-DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
 nCells = 4032
 beta0 = np.ones(nCells, dtype="d")
 DVGeo.addGeoDVGlobal("beta", value=beta0, func=betaFieldInversion, lower=1e-5, upper=10.0, scale=1.0)
 
-alphaPorosity0 = np.zeros(nCells, dtype="d")
-DVGeo.addGeoDVGlobal("alphaPorosity", value=alphaPorosity0, func=alphaPorosity, lower=0, upper=100.0, scale=1.0)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
@@ -202,12 +249,6 @@ else:
     funcsSens["FI"]["beta"] = np.zeros(1, "d")
     funcsSens["FI"]["beta"][0] = np.linalg.norm(betaSens)
 
-    alphaPorositySens = funcsSens["FI"]["alphaPorosity"]
-    funcsSens["FI"]["alphaPorosity"] = np.zeros(1, "d")
-    funcsSens["FI"]["alphaPorosity"][0] = np.linalg.norm(alphaPorositySens)
-
-    # Do not consider alpha deriv, just assign it to 0
-    funcsSens["FI"]["alpha"] = 0
 
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
