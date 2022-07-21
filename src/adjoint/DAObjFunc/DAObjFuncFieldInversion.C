@@ -375,6 +375,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
                 objFuncValue = weight_ * objFuncValue;
             }
         }
+    }
     else if (varTypeFieldInversion_ == "profile")
     {
         // get the velocity field
