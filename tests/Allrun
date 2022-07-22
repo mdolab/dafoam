@@ -77,6 +77,9 @@ case $argm in
     runTests DAPisoFoamACTL
     runTests DAPimpleFoam
     runTests DAPimpleDyMFoam
+    if [ -n "$TENSOR_FLOW_INCLUDE_PATH" ]; then
+      runTests DASimpleFoamkOmegaSSTFIML
+    fi
     runTests DARhoSimpleFoam
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
@@ -122,6 +125,9 @@ case $argm in
     runTests DAPisoFoamACTL
     runTests DAPimpleFoam
     runTests DAPimpleDyMFoam
+    if [ -n "$TENSOR_FLOW_INCLUDE_PATH" ]; then
+      runTests DASimpleFoamkOmegaSSTFIML
+    fi
     echo " "
     echo "************************************************************"
     echo "************** Incompressible tests passed! ****************"
