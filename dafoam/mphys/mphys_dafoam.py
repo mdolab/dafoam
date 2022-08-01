@@ -326,10 +326,15 @@ class DAFoamPrecouplingGroup(Group):
         self.DASolver = self.options["solver"]
         self.warp_in_solver = self.options['warp_in_solver']
 
-        if self.warp_in_solver:
-            fsiDict = self.DASolver.getOption("fsi")
-            fvSourceDict = self.DASolver.getOption("fvSource")
+        fsiDict = self.DASolver.getOption("fsi")
+        if not self.warp_in_solver:
+            if fsiDict["propMovement"]:
+                raise RuntimeError("Propeller movement not possible when the warper is outside of the solver. Check for a valid scenario.")
 
+            self.add_subsystem('warper', DAFoamWarper(solver=self.DASolver), promotes_inputs=['x_aero'], promotes_outputs=['dafoam_vol_coords'])
+
+        else:
+            fvSourceDict = self.DASolver.getOption("fvSource")
             nodes_prop = 0
             if "propMovement" in fsiDict.keys() and fsiDict["propMovement"]:
                 self.add_subsystem("prop_nodes", DAFoamPropNodes(solver=self.DASolver), promotes_inputs=['*'], promotes_outputs=['*'])
@@ -383,8 +388,6 @@ class DAFoamPrecouplingGroup(Group):
 
             unmasker = UnmaskedConverter(input=input, output=output, mask=mask, distributed=True, default_values=0.0)
             self.add_subsystem('unmasker', unmasker, promotes_inputs=promotes_inputs, promotes_outputs=['x_aero0'])
-        else:
-            self.add_subsystem('warper', DAFoamWarper(solver=self.DASolver), promotes_inputs=['x_aero'], promotes_outputs=['dafoam_vol_coords'])
 
 
 class DAFoamSolver(ImplicitComponent):
