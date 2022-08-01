@@ -1,0 +1,6 @@
+Dictionary Key: CD
+@value  0.01713111510949656 1e-08 1e-10
+Dictionary Key: CL
+@value   0.0601480206801374 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10

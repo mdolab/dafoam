@@ -54,7 +54,7 @@ createBaseTurbulenceModel(
 #define makeLESModel(Type) \
     makeTemplatedTurbulenceModel(transportModelIncompressibleTurbulenceModel, LES, Type)
 
-#include "kOmegaFieldInversionk.H"
-makeRASModel(kOmegaFieldInversionk);
+#include "kOmegaSSTFIML.H"
+makeRASModel(kOmegaSSTFIML);
 
 // ************************************************************************* //

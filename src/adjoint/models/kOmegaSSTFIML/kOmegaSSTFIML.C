@@ -5,7 +5,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "kOmegaFieldInversion.H"
+#include "kOmegaSSTFIML.H"
 #include "fvOptions.H"
 #include "bound.H"
 #include "wallDist.H"
@@ -20,14 +20,14 @@ namespace RASModels
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-void kOmegaFieldInversion<BasicTurbulenceModel>::correctNut()
+void kOmegaSSTFIML<BasicTurbulenceModel>::correctNut()
 {
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-kOmegaFieldInversion<BasicTurbulenceModel>::kOmegaFieldInversion(
+kOmegaSSTFIML<BasicTurbulenceModel>::kOmegaSSTFIML(
     const alphaField& alpha,
     const rhoField& rho,
     const volVectorField& U,
@@ -61,30 +61,6 @@ kOmegaFieldInversion<BasicTurbulenceModel>::kOmegaFieldInversion(
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
-      betaFieldInversion_(
-          IOobject(
-              "betaFieldInversion",
-              this->runTime_.timeName(),
-              this->mesh_,
-              IOobject::MUST_READ,
-              IOobject::AUTO_WRITE),
-          this->mesh_),
-      betaRefFieldInversion_(
-          IOobject(
-              "betaRefFieldInversion",
-              this->runTime_.timeName(),
-              this->mesh_,
-              IOobject::MUST_READ,
-              IOobject::AUTO_WRITE),
-          this->mesh_),
-      varRefFieldInversion_(
-          IOobject(
-              "varRefFieldInversion",
-              this->runTime_.timeName(),
-              this->mesh_,
-              IOobject::MUST_READ,
-              IOobject::AUTO_WRITE),
-          this->mesh_),
       y_(wallDist::New(this->mesh_).y())
 
 {
@@ -93,26 +69,26 @@ kOmegaFieldInversion<BasicTurbulenceModel>::kOmegaFieldInversion(
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 template<class BasicTurbulenceModel>
-bool kOmegaFieldInversion<BasicTurbulenceModel>::read()
+bool kOmegaSSTFIML<BasicTurbulenceModel>::read()
 {
 
     return true;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> kOmegaFieldInversion<BasicTurbulenceModel>::k() const
+tmp<volScalarField> kOmegaSSTFIML<BasicTurbulenceModel>::k() const
 {
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-tmp<volScalarField> kOmegaFieldInversion<BasicTurbulenceModel>::epsilon() const
+tmp<volScalarField> kOmegaSSTFIML<BasicTurbulenceModel>::epsilon() const
 {
     return this->nut_;
 }
 
 template<class BasicTurbulenceModel>
-void kOmegaFieldInversion<BasicTurbulenceModel>::correct()
+void kOmegaSSTFIML<BasicTurbulenceModel>::correct()
 {
 }
 

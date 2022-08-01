@@ -9,8 +9,8 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef kOmegaFieldInversion_H
-#define kOmegaFieldInversion_H
+#ifndef kOmegaSSTFIML_H
+#define kOmegaSSTFIML_H
 
 #include "RASModel.H"
 #include "eddyViscosity.H"
@@ -23,18 +23,18 @@ namespace RASModels
 {
 
 /*---------------------------------------------------------------------------*\
-                      Class kOmegaFieldInversion Declaration
+                      Class kOmegaSSTFIML Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class BasicTurbulenceModel>
-class kOmegaFieldInversion
+class kOmegaSSTFIML
     : public eddyViscosity<RASModel<BasicTurbulenceModel>>
 {
     // Private Member Functions
 
     // Disallow default bitwise copy construct and assignment
-    kOmegaFieldInversion(const kOmegaFieldInversion&);
-    void operator=(const kOmegaFieldInversion&);
+    kOmegaSSTFIML(const kOmegaSSTFIML&);
+    void operator=(const kOmegaSSTFIML&);
 
 protected:
     // Protected data
@@ -44,22 +44,12 @@ protected:
     /// turbulence variables for k-omega SST
     volScalarField omega_;
 
-    volScalarField k_; 
-
-    /// beta field that will be multiplied to the omega production term
-    volScalarField betaFieldInversion_;
-
-    /// the prior beta field, usually 1
-    volScalarField betaRefFieldInversion_;
-
-    /// the reference velocity field, usually from experiment or higher fidelity sims
-    volVectorField varRefFieldInversion_;
+    volScalarField k_;
 
     //- Wall distance
     //  Note: different to wall distance in parent RASModel
     //  which is for near-wall cells only
     const volScalarField& y_;
-
 
     virtual void correctNut();
 
@@ -69,12 +59,12 @@ public:
     typedef typename BasicTurbulenceModel::transportModel transportModel;
 
     //- Runtime type information
-    TypeName("kOmegaFieldInversion");
+    TypeName("kOmegaSSTFIML");
 
     // Constructors
 
     //- Construct from components
-    kOmegaFieldInversion(
+    kOmegaSSTFIML(
         const alphaField& alpha,
         const rhoField& rho,
         const volVectorField& U,
@@ -85,7 +75,7 @@ public:
         const word& type = typeName);
 
     //- Destructor
-    virtual ~kOmegaFieldInversion()
+    virtual ~kOmegaSSTFIML()
     {
     }
 
@@ -112,7 +102,7 @@ public:
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-#include "kOmegaFieldInversion.C"
+#include "kOmegaSSTFIML.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

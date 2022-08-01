@@ -41,10 +41,10 @@ protected:
 
     // Fields
 
-    /// turbulence variables for k-omega SST
+    /// turbulence variables for k-omega
     volScalarField omega_;
 
-    volScalarField k_; 
+    volScalarField k_;
 
     /// beta field that will be multiplied to the omega production term
     volScalarField betaFieldInversion_;
@@ -55,11 +55,22 @@ protected:
     /// the reference velocity field, usually from experiment or higher fidelity sims
     volVectorField varRefFieldInversion_;
 
+    volSymmTensorField tauDNS_;
+
+    volSymmTensorField tauRANS_;
+
+    volScalarField surfaceFriction_;
+
+    volScalarField surfaceFrictionRef_;
+
+    volScalarField surfacePressureRef_;
+
+    volScalarField profileRefFieldInversion_;
+
     //- Wall distance
     //  Note: different to wall distance in parent RASModel
     //  which is for near-wall cells only
     const volScalarField& y_;
-
 
     virtual void correctNut();
 
