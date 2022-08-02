@@ -104,10 +104,12 @@ class DAFoamBuilder(Builder):
         return int(self.DASolver.getSurfaceCoordinates(groupName=groupName).size / 3)
 
     def get_number_of_nodes(self, groupName=None):
+        # Get number of aerodynamic nodes
         if groupName is None:
             groupName = self.DASolver.designFamilyGroup
         nodes = int(self.DASolver.getSurfaceCoordinates(groupName=groupName).size / 3)
 
+        # Add fictitious nodes to root proc, if they are used
         if self.comm.rank == 0:
             fsiDict = self.DASolver.getOption("fsi")
             fvSourceDict = self.DASolver.getOption("fvSource")
@@ -146,10 +148,12 @@ class DAFoamGroup(Group):
             if self.prop_coupling not in ["Prop", "Wing"]:
                 raise AnalysisError("prop_coupling can be either Wing or Prop, while %s is given!" % self.prop_coupling)
 
+        fsiDict = self.DASolver.getOption("fsi")
         if self.use_warper:
+            # Setup node masking
             self.mphys_set_masking()
 
-            fsiDict = self.DASolver.getOption("fsi")
+            # Add propeller movement, if enabled
             if "propMovement" in fsiDict.keys() and fsiDict["propMovement"]:
                 prop_movement = DAFoamActuator(solver=self.DASolver)
                 self.add_subsystem('prop_movement', prop_movement, promotes_inputs=['*'], promotes_outputs=['*'])
@@ -163,6 +167,8 @@ class DAFoamGroup(Group):
                 promotes_inputs=[("x_aero","x_aero_masked")],
                 promotes_outputs=["dafoam_vol_coords"],
             )
+        elif "propMovement" in fsiDict.keys() and fsiDict["propMovement"]:
+            raise RuntimeError("Propeller movement not possible when the warper is outside of the solver. Check for a valid scenario.")
 
         if self.prop_coupling is not None:
             if self.prop_coupling == "Wing":
@@ -198,6 +204,7 @@ class DAFoamGroup(Group):
                 promotes_outputs=[("f_aero","f_aero_masked")],
             )
 
+        # Setup unmasking
         self.mphys_set_unmasking(forces=self.struct_coupling)
 
     def mphys_compute_nodes(self):
@@ -218,12 +225,15 @@ class DAFoamGroup(Group):
                         # Count Nodes
                         nodes_prop += (1 + parameters["nNodes"])
 
+        # Compute number of aerodynamic nodes
         nodes_aero = int(self.DASolver.getSurfaceCoordinates(groupName=self.DASolver.designFamilyGroup).size / 3)
-        nodes_total = nodes_aero + nodes_prop
 
+        # Sum nodes and return all values
+        nodes_total = nodes_aero + nodes_prop
         return nodes_total, nodes_aero, nodes_prop
 
     def mphys_set_masking(self):
+        # Retrieve number of nodes in each category
         nodes_total, nodes_aero, nodes_prop = self.mphys_compute_nodes()
 
         fsiDict = self.DASolver.getOption("fsi")
@@ -261,15 +271,17 @@ class DAFoamGroup(Group):
                     promotes_outputs.append("x_prop_%s" % fvSource)
 
 
+        # Define Mask
         input = MaskedVariableDescription("x_aero", shape=(nodes_total)*3,tags=['mphys_coupling'])
         promotes_inputs.append("x_aero")
-
         masker = MaskedConverter(input=input, output=output, mask=mask, distributed=True, init_output=0.0)
         self.add_subsystem('masker', masker, promotes_inputs=promotes_inputs, promotes_outputs=promotes_outputs)
 
     def mphys_set_unmasking(self, forces=False):
+        # Retrieve number of nodes in each category
         nodes_total, nodes_aero, nodes_prop = self.mphys_compute_nodes()
 
+        # If forces are active, generate mask
         if forces:
             fsiDict = self.DASolver.getOption("fsi")
 
@@ -304,9 +316,9 @@ class DAFoamGroup(Group):
                             input.append(MaskedVariableDescription("f_prop_%s" % fvSource, shape=(0), tags=['mphys_coupling']))
                         promotes_inputs.append("f_prop_%s" % fvSource)
 
+            # Define Mask
             output = MaskedVariableDescription("f_aero", shape=(nodes_total)*3,tags=['mphys_coupling'])
             promotes_outputs.append("f_aero")
-
             unmasker = UnmaskedConverter(input=input, output=output, mask=mask, distributed=True, default_values=0.0)
             self.add_subsystem('force_unmasker', unmasker, promotes_inputs=promotes_inputs, promotes_outputs=promotes_outputs)
 
@@ -317,6 +329,9 @@ class DAFoamGroup(Group):
 
 
 class DAFoamPrecouplingGroup(Group):
+    """
+    Pre-coupling group that configures any components that happen before the solver and post-processor.
+    """
 
     def initialize(self):
         self.options.declare("solver", default=None, recordable=False)
@@ -327,15 +342,20 @@ class DAFoamPrecouplingGroup(Group):
         self.warp_in_solver = self.options['warp_in_solver']
 
         fsiDict = self.DASolver.getOption("fsi")
+
+        # Return the warper only if it is not in the solver
         if not self.warp_in_solver:
-            if fsiDict["propMovement"]:
+            if "propMovement" in fsiDict.keys() and fsiDict["propMovement"]:
                 raise RuntimeError("Propeller movement not possible when the warper is outside of the solver. Check for a valid scenario.")
 
             self.add_subsystem('warper', DAFoamWarper(solver=self.DASolver), promotes_inputs=['x_aero'], promotes_outputs=['dafoam_vol_coords'])
 
+        # If the warper is in the solver, add other pre-coupling groups if desired
         else:
             fvSourceDict = self.DASolver.getOption("fvSource")
             nodes_prop = 0
+
+            # Add propeller nodes and subsystem if needed
             if "propMovement" in fsiDict.keys() and fsiDict["propMovement"]:
                 self.add_subsystem("prop_nodes", DAFoamPropNodes(solver=self.DASolver), promotes_inputs=['*'], promotes_outputs=['*'])
 
@@ -366,6 +386,7 @@ class DAFoamPrecouplingGroup(Group):
             input.append(MaskedVariableDescription("x_aero0_masked", shape=(nodes_aero)*3, tags=['mphys_coordinates']))
             promotes_inputs.append("x_aero0_masked")
 
+            # Add propeller movement nodes mask if needed
             if "propMovement" in fsiDict.keys() and fsiDict["propMovement"]:
                 # Add Propeller Masks
                 if "fvSource" in fsiDict.keys():
@@ -1359,6 +1380,9 @@ class DAFoamFvSource(ExplicitComponent):
 
 
 class DAFoamPropNodes(ExplicitComponent):
+    """
+    Component that computes propeller aero-node locations that link with structural nodes in aerostructural cases.
+    """
 
     def initialize(self):
         self.options.declare("solver", default=None, recordable=False)
@@ -1388,10 +1412,13 @@ class DAFoamPropNodes(ExplicitComponent):
                     self.add_output("f_prop_%s" % fvSource, shape=(0), distributed=True, tags=['mphys_coordinates'])
 
     def compute(self, inputs, outputs):
+        # Loop over all actuator disks to generate ring of nodes for each
         for fvSource, parameters in self.fsiDict["fvSource"].items():
+            # Nodes should only be on root proc
             if self.comm.rank == 0:
                 center = inputs["x_prop0_%s" % fvSource]
 
+                # Compute local coordinate frame for ring of nodes
                 direction = self.fvSourceDict[fvSource]["direction"]
                 direction = direction / np.linalg.norm(direction, 2)
                 temp_vec = np.array([1.0, 0.0, 0.0])
@@ -1405,6 +1432,8 @@ class DAFoamPropNodes(ExplicitComponent):
 
                 n_theta = parameters["nNodes"]
                 radial_loc = parameters["radialLoc"]
+
+                # Set ring of nodes location and force values
                 nodes_x = np.zeros((n_theta+1,3))
                 nodes_x[0,:] = center
                 nodes_f = np.zeros((n_theta+1,3))
@@ -1429,6 +1458,7 @@ class DAFoamPropNodes(ExplicitComponent):
             if "x_prop0_%s" % fvSource in d_inputs:
                 if "x_prop0_nodes_%s" % fvSource in d_outputs:
                     temp = np.zeros((parameters["nNodes"]+1)*3)
+                    # Take ring of node seeds, broadcast them, and add them to all procs
                     if self.comm.rank == 0:
                         temp[:] = d_outputs["x_prop0_nodes_%s" % fvSource]
                     self.comm.Bcast(temp, root=0)
@@ -1437,6 +1467,10 @@ class DAFoamPropNodes(ExplicitComponent):
 
 
 class DAFoamActuator(ExplicitComponent):
+    """
+    Component that updates actuator disk definition variables when actuator disks are displaced in an aerostructural case.
+    """
+
     def initialize(self):
         self.options.declare("solver", recordable=False)
 
@@ -1453,25 +1487,30 @@ class DAFoamActuator(ExplicitComponent):
         self.add_output("actuator_%s" % fvSource, shape_by_conn=(9), distributed=False, tags=['mphys_coupling'])
 
     def compute(self, inputs, outputs):
+        # Loop over all actuator disks
         for fvSource, _ in self.fsiDict["fvSource"].items():
             actuator = np.zeros(9)
+            # Update variables on root proc
             if self.comm.rank == 0:
                 actuator[3:] = inputs["dv_actuator_%s" % fvSource][:]
                 actuator[:3] = inputs["x_prop_%s" % fvSource][:3]
 
+            # Broadcast variables to all procs and set as output
             self.comm.Bcast(actuator, root=0)
-
             outputs["actuator_%s" % fvSource] = actuator
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         if mode == 'fwd':
                 raise AnalysisError("fwd not implemented!")
 
+        # Loop over all actuator disks
         for fvSource, _ in self.fsiDict["fvSource"].items():
             if "actuator_%s" % fvSource in d_outputs:
                 if "dv_actuator_%s" % fvSource in d_inputs:
+                    # Add non-location seeds to all procs
                     d_inputs["dv_actuator_%s" % fvSource][:] += d_outputs["actuator_%s" % fvSource][3:]
                 if "x_prop_%s" % fvSource in d_inputs:
+                    # Add location seeds to only root proc
                     if self.comm.rank == 0:
                         d_inputs["x_prop_%s" % fvSource][:3] += d_outputs["actuator_%s" % fvSource][:3]
 
