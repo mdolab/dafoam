@@ -1231,6 +1231,9 @@ class DAFoamPropForce(ExplicitComponent):
         stateVec = DASolver.array2Vec(dafoam_states)
         xvVec = DASolver.array2Vec(dafoam_xv)
 
+        if mode == "fwd":
+            raise AnalysisError("fwd not implemented!")
+
         if "force_profile" in d_outputs:
             fBar = d_outputs["force_profile"]
             fBarVec = DASolver.array2VecSeq(fBar)
@@ -1420,23 +1423,17 @@ class DAFoamPropNodes(ExplicitComponent):
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         if mode == 'fwd':
-            for fvSource, parameters in self.fsiDict["fvSource"].items():
-                if "x_prop0_%s" % fvSource in d_inputs:
-                    if "x_prop0_nodes_%s" % fvSource in d_outputs:
-                        if self.comm.rank == 0:
-                            for i in range(parameters["nNodes"]):
-                                d_outputs["x_prop0_nodes_%s" % fvSource][3*i:3*i+3] += d_inputs["x_prop0_%s" % fvSource]
+            raise AnalysisError("fwd not implemented!")
 
-        elif mode == 'rev':
-            for fvSource, parameters in self.fsiDict["fvSource"].items():
-                if "x_prop0_%s" % fvSource in d_inputs:
-                    if "x_prop0_nodes_%s" % fvSource in d_outputs:
-                        temp = np.zeros((parameters["nNodes"]+1)*3)
-                        if self.comm.rank == 0:
-                            temp[:] = d_outputs["x_prop0_nodes_%s" % fvSource]
-                        self.comm.Bcast(temp, root=0)
-                        for i in range(parameters["nNodes"]):
-                            d_inputs["x_prop0_%s" % fvSource] += temp[3*i:3*i+3]
+        for fvSource, parameters in self.fsiDict["fvSource"].items():
+            if "x_prop0_%s" % fvSource in d_inputs:
+                if "x_prop0_nodes_%s" % fvSource in d_outputs:
+                    temp = np.zeros((parameters["nNodes"]+1)*3)
+                    if self.comm.rank == 0:
+                        temp[:] = d_outputs["x_prop0_nodes_%s" % fvSource]
+                    self.comm.Bcast(temp, root=0)
+                    for i in range(parameters["nNodes"]):
+                        d_inputs["x_prop0_%s" % fvSource] += temp[3*i:3*i+3]
 
 
 class DAFoamActuator(ExplicitComponent):
@@ -1467,24 +1464,16 @@ class DAFoamActuator(ExplicitComponent):
             outputs["actuator_%s" % fvSource] = actuator
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+        if mode == 'fwd':
+                raise AnalysisError("fwd not implemented!")
+
         for fvSource, _ in self.fsiDict["fvSource"].items():
-            if mode == 'fwd':
-                if "actuator_%s" % fvSource in d_outputs:
-                    if 'dv_actuator_%s' %fvSource in d_inputs:
-                        d_outputs["actuator_%s" % fvSource][3:] += d_inputs["dv_actuator_%s" %fvSource][:]
-                    if "x_prop_%s" % fvSource in d_inputs:
-                        temp = np.zeros(3)
-                        if self.comm.rank == 0:
-                            temp[:] = d_inputs["x_prop_%s" % fvSource][:3]
-                        self.comm.Bcast(temp, root=0)
-                        d_outputs["actuator_%s" % fvSource][:3] += temp
-            elif mode == 'rev':
-                if "actuator_%s" % fvSource in d_outputs:
-                    if "dv_actuator_%s" % fvSource in d_inputs:
-                        d_inputs["dv_actuator_%s" % fvSource][:] += d_outputs["actuator_%s" % fvSource][3:]
-                    if "x_prop_%s" % fvSource in d_inputs:
-                        if self.comm.rank == 0:
-                            d_inputs["x_prop_%s" % fvSource][:3] += d_outputs["actuator_%s" % fvSource][:3]
+            if "actuator_%s" % fvSource in d_outputs:
+                if "dv_actuator_%s" % fvSource in d_inputs:
+                    d_inputs["dv_actuator_%s" % fvSource][:] += d_outputs["actuator_%s" % fvSource][3:]
+                if "x_prop_%s" % fvSource in d_inputs:
+                    if self.comm.rank == 0:
+                        d_inputs["x_prop_%s" % fvSource][:3] += d_outputs["actuator_%s" % fvSource][:3]
 
 
 class OptFuncs(object):
