@@ -17,6 +17,13 @@ case $1 in
   "opt")
     cp Make/files_Incompressible Make/files
     cp Make/options_Incompressible Make/options
+    if [ -n "$TENSOR_FLOW_INCLUDE_PATH" ]; then
+      echo "Tensor flow include path found."
+      sed -i s#"DAModel/DATurbulenceModel/DAkOmegaSST.C"#"DAModel/DATurbulenceModel/DAkOmegaSST.C DAModel/DATurbulenceModel/DAkOmegaSSTFIML.C"#g Make/files
+      sed -i s#"models/pimpleControlDF/pimpleControlDF.C"#"models/pimpleControlDF/pimpleControlDF.C models/kOmegaSSTFIML/makekOmegaSSTFIMLIncompressible.C models/TensorFlow/tf_utils.C"#g Make/files
+      sed -i 's/$(shell python3-config --includes)/$(shell python3-config --includes) -I$(TENSOR_FLOW_INCLUDE_PATH)/g' Make/options
+      sed -i 's/-fno-lto/-fno-lto -ltensorflow/g' Make/options
+    fi
     wmake -j 8 || exit 1
     ./Allclean
     cp Make/files_Compressible Make/files
