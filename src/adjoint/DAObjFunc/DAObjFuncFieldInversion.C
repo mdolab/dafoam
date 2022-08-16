@@ -402,6 +402,32 @@ void DAObjFuncFieldInversion::calcObjFunc(
             objFuncValue = weight_ * objFuncValue;
         }
     }
+    else if (varTypeFieldInversion_ == "discretePressure")
+    {
+        // get the pressure field
+        const volScalarField& state = db.lookupObject<volVectorField>(stateName_);
+
+        // get the reference pressure field
+        const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
+
+        forAll(objFuncCellSources, idxI)
+        {
+            const label& cellI = objFuncCellSources[idxI];
+            if (stateRef[cellI] < 1e16)
+            {
+                objFuncCellValues[idxI] = (sqr(scale_ * state[cellI].x() - stateRef[cellI]));
+                objFuncValue += objFuncCellValues[idxI];
+            }
+        }
+
+        // need to reduce the sum of all objectives across all processors
+        reduce(objFuncValue, sumOp<scalar>());
+
+        if (weightedSum_ == true)
+        {
+            objFuncValue = weight_ * objFuncValue;
+        }
+    }
     return;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

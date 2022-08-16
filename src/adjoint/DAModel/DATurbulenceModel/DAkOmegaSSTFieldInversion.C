@@ -195,6 +195,8 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
           mesh.thisDb().lookupObject<volScalarField>("surfacePressureRef"))),
       varRefFieldInversion_(const_cast<volVectorField&>(
           mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))),
+      pressureRefFieldInversion_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("pressureRefFieldInversion"))),
       y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")) 
 {
 

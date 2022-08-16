@@ -125,6 +125,16 @@ kOmegaSSTFieldInversion<BasicTurbulenceModel>::kOmegaSSTFieldInversion(
           this->mesh_,
           dimensionedScalar("profileRefFieldInversion", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
+      pressureRefFieldInversion_(
+          IOobject(
+              "pressureRefFieldInversion",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          this->mesh_,
+          dimensionedScalar("pressureRefFieldInversion", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
       y_(wallDist::New(this->mesh_).y())
 
 {
