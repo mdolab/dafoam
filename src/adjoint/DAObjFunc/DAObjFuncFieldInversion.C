@@ -405,7 +405,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
     else if (varTypeFieldInversion_ == "discretePressure")
     {
         // get the pressure field
-        const volScalarField& state = db.lookupObject<volVectorField>(stateName_);
+        const volScalarField& state = db.lookupObject<volScalarField>(stateName_);
 
         // get the reference pressure field
         const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
