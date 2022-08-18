@@ -69,7 +69,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     }
     if (stateType_ == "surfacePressure")
     {
-        objFuncDict_.readEnty<bool>("nonZeroPRef", nonZeroPRefFlag_);
+        objFuncDict_.readEntry<bool>("nonZeroPRef", nonZeroPRefFlag_);
         if (nonZeroPRefFlag_ == true)
         {
             scalarList pRefCoords;
