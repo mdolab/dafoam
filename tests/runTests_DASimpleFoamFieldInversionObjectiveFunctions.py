@@ -103,7 +103,7 @@ aeroOptions = {
                 "stateName": "surfacePressure",
                 "stateRefName": "surfacePressureRef", # dummy
                 "patchNames": ["wing"],
-                "pRef": 0,
+                "nonZeroPRef": False,
                 "scale": 1.0 / (rho0 * U0 * U0),
                 "addToAdjoint": True,
                 "weightedSum": True,

@@ -68,8 +68,15 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
         wssDir_[2] = dir[2];
     }
     if (stateType_ == "surfacePressure")
-    {
-        objFuncDict_.readEntry<scalar>("pRef", pRef_);
+        objFuncDict_.readEnty<bool>("nonZeroPRef", nonZeroPRefFlag_);
+        if nonZeroPRefFlag_ == true
+        {
+            scalarList pRefCoords;
+            objFuncDict_.readEntry<scalarList>("pRefCoords", pRefCoords);
+            pRefCoords_[0] = pRefCoords[0];
+            pRefCoords_[1] = pRefCoords[1];
+            pRefCoords_[2] = pRefCoords[2];
+        }
     }
     if (weightedSum_ == true)
     {
@@ -293,6 +300,16 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
             // get the ingredient for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+            if nonZeroPRefFlag_ == true
+            {
+                label cellID = mesh_.findCell(pRefCoords_); 
+                pRef_ = p[cellID];
+            }
+            elseif nonZeroPRefFlag_== false
+            {
+                pRef_ = 0;
+            }
 
             forAll(patchNames_, cI)
             {

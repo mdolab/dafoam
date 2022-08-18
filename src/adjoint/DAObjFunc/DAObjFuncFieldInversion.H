@@ -56,7 +56,9 @@ protected:
     /// the lift, or drag coefficient from data
     scalar aeroCoeffRef_; 
 
-    /// the reference pressure for Cp calculation
+    /// the Cell coordinates of location where pRef value should be taken from
+    bool nonZeroPRefFlag_; 
+    vector pRefCoords_;
     scalar pRef_;
 
     /// weighted objective function (especially useful when performing weighted sum multi-objective optimisation)
