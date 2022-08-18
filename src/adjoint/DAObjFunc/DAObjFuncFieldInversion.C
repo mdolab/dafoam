@@ -301,17 +301,18 @@ void DAObjFuncFieldInversion::calcObjFunc(
 
             // get the ingredient for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
-
+            pRef_ = 0.0;
             if (nonZeroPRefFlag_ == true)
             {
-                label cellID = mesh_.findCell(pRefCoords_); 
-                pRef_ = p[cellID];
+                label cellID = mesh_.findCell(pRefCoords_);
+                // only assign pRef if the required cell is found in processor
+                if (cellID != -1}
+                {
+                    pRef_ = p[cellID];
+                }
+                reduce(pRef_, maxOp<scalar>());
             }
-            else if (nonZeroPRefFlag_== false)
-            {
-                pRef_ = 0;
-            }
-
+            
             forAll(patchNames_, cI)
             {
                 label patchI = mesh_.boundaryMesh().findPatchID(patchNames_[cI]);
