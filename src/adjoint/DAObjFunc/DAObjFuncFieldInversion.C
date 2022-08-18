@@ -306,7 +306,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             {
                 label cellID = mesh_.findCell(pRefCoords_);
                 // only assign pRef if the required cell is found in processor
-                if (cellID != -1}
+                if (cellID != -1)
                 {
                     pRef_ = p[cellID];
                 }
