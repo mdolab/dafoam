@@ -101,12 +101,6 @@ class DAFoamBuilder(Builder):
     def get_post_coupling_subsystem(self, scenario_name=None):
         return DAFoamFunctions(solver=self.DASolver)
 
-    # TODO the get_nnodes is deprecated. will remove
-    def get_nnodes(self, groupName=None):
-        if groupName is None:
-            groupName = self.DASolver.designFamilyGroup
-        return int(self.DASolver.getSurfaceCoordinates(groupName=groupName).size / 3)
-
     def get_number_of_nodes(self, groupName=None):
         if groupName is None:
             groupName = self.DASolver.designFamilyGroup
@@ -946,7 +940,7 @@ class DAFoamForces(ExplicitComponent):
         self.add_input("dafoam_vol_coords", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input("dafoam_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
-        local_surface_coord_size = self.DASolver.mesh.getSurfaceCoordinates().size
+        local_surface_coord_size = self.DASolver.getSurfaceCoordinates(self.DASolver.designFamilyGroup).size
         self.add_output("f_aero", distributed=True, shape=local_surface_coord_size, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):
