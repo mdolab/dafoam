@@ -68,6 +68,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
         wssDir_[2] = dir[2];
     }
     if (stateType_ == "surfacePressure")
+    {
         objFuncDict_.readEnty<bool>("nonZeroPRef", nonZeroPRefFlag_);
         if nonZeroPRefFlag_ == true
         {
