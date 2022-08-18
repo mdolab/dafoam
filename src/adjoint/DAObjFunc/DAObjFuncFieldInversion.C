@@ -70,7 +70,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     if (stateType_ == "surfacePressure")
     {
         objFuncDict_.readEnty<bool>("nonZeroPRef", nonZeroPRefFlag_);
-        if nonZeroPRefFlag_ == true
+        if (nonZeroPRefFlag_ == true)
         {
             scalarList pRefCoords;
             objFuncDict_.readEntry<scalarList>("pRefCoords", pRefCoords);
@@ -302,12 +302,12 @@ void DAObjFuncFieldInversion::calcObjFunc(
             // get the ingredient for computations
             const volScalarField& p = db.lookupObject<volScalarField>("p");
 
-            if nonZeroPRefFlag_ == true
+            if (nonZeroPRefFlag_ == true)
             {
                 label cellID = mesh_.findCell(pRefCoords_); 
                 pRef_ = p[cellID];
             }
-            elseif nonZeroPRefFlag_== false
+            else if (nonZeroPRefFlag_== false)
             {
                 pRef_ = 0;
             }
