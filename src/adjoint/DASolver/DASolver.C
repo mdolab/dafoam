@@ -416,26 +416,25 @@ void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
     const pointMesh& pMesh = pointMesh::New(meshPtr_());
     const pointBoundaryMesh& boundaryMesh = pMesh.boundary();
 
-    // Find wall patches and sort in alphabetical order
-    label nWallPatch = 0;
-    forAll(patches, patchI)
-    {
-        if (patches[patchI].type() == "wall")
-        {
-            nWallPatch += 1;
-        }
-    }
-    patchList.resize(nWallPatch);
+    // we get the forces for the design surfaces
+    wordList designSurfaces;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", designSurfaces);
 
-    label iWallPatch = 0;
+    // Find wall patches and sort in alphabetical order
+    patchList.resize(designSurfaces.size());
+
+    label iDVPatch = 0;
     forAll(patches, patchI)
     {
-        if (patches[patchI].type() == "wall")
+        word patchName = patches[patchI].name();
+        if (designSurfaces.found(patchName))
         {
-            patchList[iWallPatch] = patches[patchI].name();
-            iWallPatch += 1;
+            patchList[iDVPatch] = patchName;
+            iDVPatch += 1;
         }
     }
+    // sort patchList
+    sort(patchList);
 
     // compute size of point and connectivity arrays
     nPoints = 0;
@@ -448,7 +447,12 @@ void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
     return;
 }
 
-void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ, List<label>& pointList, List<word>& patchList)
+void DASolver::getForcesInternal(
+    List<scalar>& fX,
+    List<scalar>& fY,
+    List<scalar>& fZ,
+    List<label>& pointList,
+    List<word>& patchList)
 {
     /*
     Description:

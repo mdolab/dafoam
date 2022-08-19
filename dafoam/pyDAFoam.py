@@ -2448,7 +2448,9 @@ class PYDAFOAM(object):
         """
         Info("Computing surface forces")
         # Calculate number of surface points
-        nPts, _ = self._getSurfaceSize(self.allWallsGroup)
+        if groupName is None:
+            groupName = self.designFamilyGroup
+        nPts, _ = self._getSurfaceSize(groupName)
 
         # Initialize PETSc vectors
         pointListTemp = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
@@ -2499,11 +2501,8 @@ class PYDAFOAM(object):
         Info("Fy = %e" % fYTot)
         Info("Fz = %e" % fZTot)
 
-        if groupName is None:
-            groupName = self.allWallsGroup
-
         # Finally map the vector as required.
-        return self.mapVector(forces, self.allWallsGroup, groupName)
+        return forces
 
     def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
