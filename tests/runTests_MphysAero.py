@@ -215,13 +215,13 @@ class Top(Multipoint):
         self.cruise.coupling.solver.add_dv_func("actuator", actuator)
         self.cruise.aero_post.add_dv_func("actuator", actuator)
 
-        self.geometry.nom_addGeoDVGlobal(dvName="twist", value=np.array([pitch0] * nRefAxPts), func=twist)
+        self.geometry.nom_addGlobalDV(dvName="twist", value=np.array([pitch0] * nRefAxPts), func=twist)
 
         # Select all points
         pts = self.geometry.DVGeo.getLocalIndex(0)
         indexList = pts[:, :, :].flatten()
         PS = geo_utils.PointSelect("list", indexList)
-        nShapes = self.geometry.nom_addGeoDVLocal(dvName="shape", pointSelect=PS)
+        nShapes = self.geometry.nom_addLocalDV(dvName="shape", pointSelect=PS)
 
         leList = [[0.1, 0, 0.01], [7.5, 0, 13.9]]
         teList = [[4.9, 0, 0.01], [8.9, 0, 13.9]]
