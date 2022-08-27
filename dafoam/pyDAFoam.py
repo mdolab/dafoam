@@ -1176,9 +1176,9 @@ class PYDAFOAM(object):
         """
         if self.getOption("writeDeformedFFDs"):
             if counter is None:
-                self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % self.nSolveAdjoints)
+                self.DVGeo.writeTecplot("deformedFFD.dat", self.nSolveAdjoints)
             else:
-                self.DVGeo.writeTecplot("deformedFFD_%03d.dat" % counter)
+                self.DVGeo.writeTecplot("deformedFFD.dat", counter)
 
     def writeTotalDeriv(self, fileName, sens, evalFuncs):
         """
