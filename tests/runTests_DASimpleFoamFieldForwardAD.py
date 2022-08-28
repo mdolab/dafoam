@@ -150,13 +150,13 @@ def alphaPorosity(val, geo):
 
 
 # select points
-DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
+DVGeo.addGlobalDV("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
 nCells = 4032
 beta0 = np.ones(nCells, dtype="d")
-DVGeo.addGeoDVGlobal("beta", value=beta0, func=betaFieldInversion, lower=1e-5, upper=10.0, scale=1.0)
+DVGeo.addGlobalDV("beta", value=beta0, func=betaFieldInversion, lower=1e-5, upper=10.0, scale=1.0)
 
 alphaPorosity0 = np.zeros(nCells, dtype="d")
-DVGeo.addGeoDVGlobal("alphaPorosity", value=alphaPorosity0, func=alphaPorosity, lower=0, upper=100.0, scale=1.0)
+DVGeo.addGlobalDV("alphaPorosity", value=alphaPorosity0, func=alphaPorosity, lower=0, upper=100.0, scale=1.0)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
