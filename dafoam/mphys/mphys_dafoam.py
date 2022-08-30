@@ -270,6 +270,7 @@ class DAFoamGroup(Group):
 
                     promotes_outputs.append("x_prop_%s" % fvSource)
 
+                    i_fvSource += 1
 
         # Define Mask
         input = MaskedVariableDescription("x_aero", shape=(nodes_total)*3,tags=['mphys_coupling'])
@@ -315,6 +316,8 @@ class DAFoamGroup(Group):
                         else:
                             input.append(MaskedVariableDescription("f_prop_%s" % fvSource, shape=(0), tags=['mphys_coupling']))
                         promotes_inputs.append("f_prop_%s" % fvSource)
+
+                        i_fvSource += 1
 
             # Define Mask
             output = MaskedVariableDescription("f_aero", shape=(nodes_total)*3,tags=['mphys_coupling'])
@@ -404,6 +407,8 @@ class DAFoamPrecouplingGroup(Group):
                         else:
                             input.append(MaskedVariableDescription("x_prop0_nodes_%s" % fvSource, shape=(0), tags=['mphys_coordinates']))
                         promotes_inputs.append("x_prop0_nodes_%s" % fvSource)
+
+                        i_fvSource += 1
 
             output = MaskedVariableDescription("x_aero0", shape=(nodes_total)*3,tags=['mphys_coordinates'])
 
@@ -1484,7 +1489,7 @@ class DAFoamActuator(ExplicitComponent):
             self.add_input("dv_actuator_%s" % fvSource, shape=(6), distributed=False, tags=['mphys_coupling'])
             self.add_input("x_prop_%s" % fvSource, shape_by_conn=True, distributed=True, tags=['mphys_coupling'])
 
-        self.add_output("actuator_%s" % fvSource, shape_by_conn=(9), distributed=False, tags=['mphys_coupling'])
+            self.add_output("actuator_%s" % fvSource, shape_by_conn=(9), distributed=False, tags=['mphys_coupling'])
 
     def compute(self, inputs, outputs):
         # Loop over all actuator disks
