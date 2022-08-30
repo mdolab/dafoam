@@ -67,6 +67,14 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
         wssDir_[1] = dir[1];
         wssDir_[2] = dir[2];
     }
+    if (stateType_ == "discreteVelocity")
+    {
+        scalarList velocityCompt;
+        objFuncDict_.readEntry<scalarList>("velocityComponent", velocityCompt);
+        velocityComponent_[0] = velocityCompt[0];
+        velocityComponent_[1] = velocityCompt[1];
+        velocityComponent_[2] = velocityCompt[2];
+    }
     if (stateType_ == "surfacePressure")
     {
         objFuncDict_.readEntry<bool>("nonZeroPRef", nonZeroPRefFlag_);
@@ -409,6 +417,32 @@ void DAObjFuncFieldInversion::calcObjFunc(
             if (stateRef[cellI] < 1e16)
             {
                 objFuncCellValues[idxI] = (sqr(scale_ * state[cellI].x() - stateRef[cellI]));
+                objFuncValue += objFuncCellValues[idxI];
+            }
+        }
+
+        // need to reduce the sum of all objectives across all processors
+        reduce(objFuncValue, sumOp<scalar>());
+
+        if (weightedSum_ == true)
+        {
+            objFuncValue = weight_ * objFuncValue;
+        }
+    }
+    else if (varTypeFieldInversion_ == "discreteVelocity")
+    {
+        // get the velocity field
+        const volVectorField& state = db.lookupObject<volVectorField>(stateName_);
+
+        // only use data for a specific component
+        const volScalarField& stateRef = db.lookupObject<volScalarField>(stateRefName_);
+
+        forAll(objFuncCellSources, idxI)
+        {
+            const label& cellI = objFuncCellSources[idxI];
+            if (stateRef[cellI] < 1e16)
+            {
+                objFuncCellValues[idxI] = (sqr(scale_ * state[cellI] & velocityComponent_ - stateRef[cellI]));
                 objFuncValue += objFuncCellValues[idxI];
             }
         }

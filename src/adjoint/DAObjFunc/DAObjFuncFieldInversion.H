@@ -53,6 +53,9 @@ protected:
     /// vector to decide the component of wallShearStress vector used for calculating surfaceFriction
     vector wssDir_;
 
+    /// vector to decide the component of velocity (RANS) used for field inversion (will assume profileRefFieldInversion is appropriately prepared)
+    vector velocityComponent_;
+
     /// the lift, or drag coefficient from data
     scalar aeroCoeffRef_; 
 
