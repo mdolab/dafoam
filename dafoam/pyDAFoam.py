@@ -313,7 +313,7 @@ class DAOPTION(object):
 
         ## Fluid-structure interatcion (FSI) options. This dictionary takes in the required values for
         ## an FSI case to be used throughout the simulation.
-        self.fsi = {"pRef": 0.0}
+        self.fsi = {"pRef": 0.0, "propMovement": False}
 
         ## Aero-propulsive options
         self.aeroPropulsive = {}
