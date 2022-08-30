@@ -179,7 +179,7 @@ class Top(Multipoint):
         tacs_options = {
             "element_callback": element_callback,
             "problem_setup": problem_setup,
-            "mesh_file": "wingbox.bdf",
+            "mesh_file": "wingboxProp.bdf",
         }
 
         struct_builder = TacsBuilder(tacs_options)
@@ -201,7 +201,7 @@ class Top(Multipoint):
         dvs = self.add_subsystem("dvs", om.IndepVarComp(), promotes=["*"])
 
         # add the geometry component, we dont need a builder because we do it here.
-        self.add_subsystem("geometry", OM_DVGEOCOMP(ffd_file="./FFD/parentFFD.xyz", child_ffd_file="./FFD/wingFFD.xyz"))
+        self.add_subsystem("geometry", OM_DVGEOCOMP(ffd_file="./FFD/parentFFD.xyz"))
 
         # add the coupling solvers
         nonlinear_solver = om.NonlinearBlockGS(maxiter=25, iprint=2, use_aitken=True, rtol=1e-8, atol=1e-8)
@@ -241,6 +241,7 @@ class Top(Multipoint):
         self.geometry.nom_setConstraintSurface(tri_points)
 
         # geometry setup
+        self.geometry.nom_addChild(ffd_file="./FFD/wingFFD.xyz")
         # Create reference axis
         nRefAxPts = self.geometry.nom_addRefAxis(name="wingAxis", xFraction=0.25, alignIndex="k", childIdx=0)
 
@@ -253,7 +254,6 @@ class Top(Multipoint):
         nShapes = self.geometry.nom_addLocalDV(dvName="shape", childIdx=0)
 
         # add pointset
-        self.geometry.nom_add_children()
         self.geometry.nom_add_discipline_coords("aero", points)
         self.geometry.nom_add_discipline_coords("struct")
 
@@ -283,11 +283,8 @@ class Top(Multipoint):
             )
             DASolver.updateDAOption()
 
-        self.cruise.coupling.aero.solver.add_dv_func("aoa", aoa)
-        self.cruise.aero_post.add_dv_func("aoa", aoa)
-
-        self.geometry.nom_addGeoDVGlobal(dvName="twist", value=np.array([0] * (nRefAxPts - 1)), func=twist)
-        nShapes = self.geometry.nom_addGeoDVLocal(dvName="shape")
+        self.cruise.coupling.aero.solver.add_dv_func("actuator_disk1", actuator)
+        self.cruise.aero_post.add_dv_func("actuator_disk1", actuator)
 
         # Set up constraints
         leList = [[0.1, 0, 0.01], [7.5, 0, 13.9]]
