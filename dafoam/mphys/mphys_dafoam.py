@@ -97,12 +97,6 @@ class DAFoamBuilder(Builder):
     def get_post_coupling_subsystem(self, scenario_name=None):
         return DAFoamFunctions(solver=self.DASolver)
 
-    # TODO the get_nnodes is deprecated. will remove
-    def get_nnodes(self, groupName=None):
-        if groupName is None:
-            groupName = self.DASolver.designFamilyGroup
-        return int(self.DASolver.getSurfaceCoordinates(groupName=groupName).size / 3)
-
     def get_number_of_nodes(self, groupName=None):
         # Get number of aerodynamic nodes
         if groupName is None:
@@ -717,7 +711,7 @@ class DAFoamSolver(ImplicitComponent):
                 solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
                 if renamed:
                     # write the deformed FFD for post-processing
-                    DASolver.writeDeformedFFDs(self.solution_counter)
+                    # DASolver.writeDeformedFFDs(self.solution_counter)
                     # print the solution counter
                     if self.comm.rank == 0:
                         print("Driver total derivatives for iteration: %d" % self.solution_counter)
@@ -749,7 +743,7 @@ class DAFoamSolver(ImplicitComponent):
             solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
             if renamed:
                 # write the deformed FFD for post-processing
-                DASolver.writeDeformedFFDs(self.solution_counter)
+                # DASolver.writeDeformedFFDs(self.solution_counter)
                 # print the solution counter
                 if self.comm.rank == 0:
                     print("Driver total derivatives for iteration: %d" % self.solution_counter)
@@ -758,7 +752,9 @@ class DAFoamSolver(ImplicitComponent):
             # solve the adjoint equation using the fixed-point adjoint approach
             fail = DASolver.solverAD.runFPAdj(dFdW, self.psi)
         else:
-            raise RuntimeError("adjEqnSolMethod=%s not valid! Options are: Krylov, fixedPoint, or fixedPointC" % adjEqnSolMethod)
+            raise RuntimeError(
+                "adjEqnSolMethod=%s not valid! Options are: Krylov, fixedPoint, or fixedPointC" % adjEqnSolMethod
+            )
 
         # convert the solution vector to array and assign it to d_residuals
         d_residuals["dafoam_states"] = DASolver.vec2Array(self.psi)
@@ -1174,7 +1170,7 @@ class DAFoamForces(ExplicitComponent):
         self.add_input("dafoam_vol_coords", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input("dafoam_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
-        local_surface_coord_size = self.DASolver.mesh.getSurfaceCoordinates().size
+        local_surface_coord_size = self.DASolver.getSurfaceCoordinates(self.DASolver.designFamilyGroup).size
         self.add_output("f_aero", distributed=True, shape=local_surface_coord_size, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):

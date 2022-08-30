@@ -170,16 +170,16 @@ pts = DVGeo.getLocalIndex(0)
 indexList = pts[1:4, 1, 0].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 # shape
-DVGeo.addGeoDVLocal("shape", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
+DVGeo.addLocalDV("shape", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
 daOptions["designVar"]["shape"] = {"designVarType": "FFD"}
 # pitch
-DVGeo.addGeoDVGlobal("pitch", np.zeros(1), pitch, lower=-10.0, upper=10.0, scale=1.0)
+DVGeo.addGlobalDV("pitch", np.zeros(1), pitch, lower=-10.0, upper=10.0, scale=1.0)
 daOptions["designVar"]["pitch"] = {"designVarType": "FFD"}
 # AOA
-DVGeo.addGeoDVGlobal("alpha", value=[alpha0], func=alpha, lower=0.0, upper=10.0, scale=1.0)
+DVGeo.addGlobalDV("alpha", value=[alpha0], func=alpha, lower=0.0, upper=10.0, scale=1.0)
 daOptions["designVar"]["alpha"] = {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"}
 # Actuator
-DVGeo.addGeoDVGlobal(
+DVGeo.addGlobalDV(
     "actuator",
     value=[-0.5, 0.0, 0.05, 0.01, 0.4, 10.0, 0.8, 1.0, 0.5],
     func=actuator,
@@ -189,10 +189,10 @@ DVGeo.addGeoDVGlobal(
 )
 daOptions["designVar"]["actuator"] = {"actuatorName": "disk1", "designVarType": "ACTD"}
 # U BC
-DVGeo.addGeoDVGlobal("ubc", [U0], ubc, lower=0.0, upper=100.0, scale=1.0)
+DVGeo.addGlobalDV("ubc", [U0], ubc, lower=0.0, upper=100.0, scale=1.0)
 daOptions["designVar"]["ubc"] = {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0}
 # p BC
-DVGeo.addGeoDVGlobal("pbc", [0.0], pbc, lower=-100.0, upper=100.0, scale=1.0)
+DVGeo.addGlobalDV("pbc", [0.0], pbc, lower=-100.0, upper=100.0, scale=1.0)
 daOptions["designVar"]["pbc"] = {"designVarType": "BC", "patches": ["inout"], "variable": "p", "comp": 0}
 
 # DAFoam

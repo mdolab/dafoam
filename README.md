@@ -1,7 +1,7 @@
 DAFoam: Discrete Adjoint with OpenFOAM
 ======================================
 
-[![tests](https://github.com/mdolab/dafoam/actions/workflows/reg_tests.yml/badge.svg)](https://github.com/mdolab/dafoam/actions/workflows/reg_tests.yml) [![codecov](https://codecov.io/gh/mdolab/dafoam/branch/master/graph/badge.svg?token=8F8E7FAFGA)](https://codecov.io/gh/mdolab/dafoam)
+[![tests](https://github.com/mdolab/dafoam/actions/workflows/reg_tests.yml/badge.svg)](https://github.com/mdolab/dafoam/actions/workflows/reg_tests.yml) [![codecov](https://codecov.io/gh/mdolab/dafoam/branch/main/graph/badge.svg?token=8F8E7FAFGA)](https://codecov.io/gh/mdolab/dafoam)
 
 DAFoam develops an efficient discrete adjoint method to perform high-fidelity multidisciplinary design optimization. DAFoam has the following features:
 

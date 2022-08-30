@@ -78,7 +78,7 @@ pts = DVGeo.getLocalIndex(iVol)
 indexList = pts[2, 1, 2].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 # shape
-DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
+DVGeo.addLocalDV("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
 daOptions["designVar"]["shapey"] = {"designVarType": "FFD"}
 
 # DAFoam

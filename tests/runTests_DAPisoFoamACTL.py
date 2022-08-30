@@ -147,9 +147,9 @@ pts = DVGeo.getLocalIndex(iVol)
 indexList = pts[:, 1, 1].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 # shape
-DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
+DVGeo.addLocalDV("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
 # actuator point parameter
-DVGeo.addGeoDVGlobal(
+DVGeo.addGlobalDV(
     "actuator",
     value=[0.5, 0.5, 0.5, 0.05, 0.4, 60.0, 0.5, 50.0, 1.0, 1.0, 0.5],
     func=actuator,

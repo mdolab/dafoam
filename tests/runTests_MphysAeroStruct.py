@@ -283,8 +283,11 @@ class Top(Multipoint):
             )
             DASolver.updateDAOption()
 
-        self.cruise.coupling.aero.solver.add_dv_func("actuator_disk1", actuator)
-        self.cruise.aero_post.add_dv_func("actuator_disk1", actuator)
+        self.cruise.coupling.aero.solver.add_dv_func("aoa", aoa)
+        self.cruise.aero_post.add_dv_func("aoa", aoa)
+
+        self.geometry.nom_addGeoDVGlobal(dvName="twist", value=np.array([0] * (nRefAxPts - 1)), func=twist)
+        nShapes = self.geometry.nom_addGeoDVLocal(dvName="shape")
 
         # Set up constraints
         leList = [[0.1, 0, 0.01], [7.5, 0, 13.9]]

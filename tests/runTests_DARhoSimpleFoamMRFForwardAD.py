@@ -82,7 +82,7 @@ def MRF(val, geo):
     DASolver.setOption("primalBC", {"MRF": float(val[0])})
     DASolver.updateDAOption()
 
-DVGeo.addGeoDVGlobal("MRF", [MRF0], MRF, lower=-1000.0, upper=1000.0, scale=1.0)
+DVGeo.addGlobalDV("MRF", [MRF0], MRF, lower=-1000.0, upper=1000.0, scale=1.0)
 
 # DAFoam
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
