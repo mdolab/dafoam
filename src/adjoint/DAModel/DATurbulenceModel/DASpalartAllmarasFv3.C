@@ -97,9 +97,8 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
       // pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
-      volScalarField pseudoNuTilda_("pseudoNuTilda_", nuTilda_),
-      fvScalarMatrix pseudoNuTildaEqn_(
-          fvm::ddt(nuTilda_)),
+      pseudoNuTilda_("pseudoNuTilda_", nuTilda_),
+      pseudoNuTildaEqn_(fvm::ddt(nuTilda_)),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 
