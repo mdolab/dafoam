@@ -143,8 +143,8 @@ def uin(val, geo):
 pts = DVGeo.getLocalIndex(0)
 indexList = pts[1:3, 1, 1:3].flatten()
 PS = geo_utils.PointSelect("list", indexList)
-DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
-DVGeo.addGeoDVGlobal("uin", [U0], uin, lower=0.0, upper=100.0, scale=1.0)
+DVGeo.addLocalDV("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
+DVGeo.addGlobalDV("uin", [U0], uin, lower=0.0, upper=100.0, scale=1.0)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
