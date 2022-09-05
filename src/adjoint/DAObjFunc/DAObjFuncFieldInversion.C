@@ -58,7 +58,7 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     objFuncDict_.readEntry<word>("type", objFuncType_);
     data_ = objFuncDict_.getWord("data");
     scale_ = objFuncDict_.getScalar("scale");
-
+    objFuncDict_.readEntry<bool>("weightedSum", weightedSum_);
     if (weightedSum_ == true)
     {
         objFuncDict_.readEntry<scalar>("weight", weight_);
@@ -480,8 +480,8 @@ void DAObjFuncFieldInversion::calcObjFunc(
     else
     {
         FatalErrorIn("") << "dataType: " << data_
-                            << " not supported for field inversion!"
-                            << "Available options are: UData, pData, surfacePressureData, surfaceFrictionData, aeroCoeffData, and surfaceFrictionDataPeriodicHill"
+                            << " not supported for field inversion! "
+                            << "Available options are: UData, pData, surfacePressureData, surfaceFrictionData, aeroCoeffData, and surfaceFrictionDataPeriodicHill."
                             << abort(FatalError);
     }
 
