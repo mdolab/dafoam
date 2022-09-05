@@ -46,7 +46,7 @@ protected:
     /// turbulence variable for SA
     volScalarField nuTilda_;
 
-    volScalarField betaFieldInversion_;
+    volScalarField& betaFieldInversion_;
 
     volVectorField UData_;
 

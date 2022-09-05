@@ -58,11 +58,9 @@ SpalartAllmarasFv3FieldInversion<BasicTurbulenceModel>::SpalartAllmarasFv3FieldI
               "betaFieldInversion",
               this->runTime_.timeName(),
               this->mesh_,
-              IOobject::READ_IF_PRESENT,
+              IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
-          this->mesh_,
-          dimensionedScalar("betaFieldInversion", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
-          zeroGradientFvPatchField<scalar>::typeName),
+          this->mesh_),
       UData_(
           IOobject(
               "UData",

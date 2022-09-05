@@ -91,7 +91,7 @@ protected:
     //@}
 
     /// A beta field multiplying to the production term
-    volScalarField betaFieldInversion_; 
+    volScalarField& betaFieldInversion_; 
 
     /// reference velocity field
     volVectorField UData_; 
