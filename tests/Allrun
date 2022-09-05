@@ -118,6 +118,8 @@ case $argm in
       runTests DASimpleFoamAD
       runTests DASimpleFoamField
       runTests DASimpleFoamkOmegaFieldInversionOmega
+      runTests DASimpleFoamkOmegaSSTFieldInversion
+      runTests DASimpleFoamFieldInversionObjectiveFunctions
     fi
     runTests DASimpleFoamMRF
     runTests DASimpleTFoam
