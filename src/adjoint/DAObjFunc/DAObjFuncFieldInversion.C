@@ -117,7 +117,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
     if (data_ == "beta")
     {
         stateName_ = "betaFieldInversion";
-        const volScalarField& betaFieldInversion_ = db.lookupObject<volScalarField>(stateName_);
+        const volScalarField betaFieldInversion_ = db.lookupObject<volScalarField>(stateName_);
         
         forAll(objFuncCellSources, idxI)
         {
