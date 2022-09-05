@@ -100,8 +100,8 @@ DVGeo = DVGeometry(FFDFile)
 pts = DVGeo.getLocalIndex(0)
 indexList = pts[9:12, 0, 1].flatten()
 PS = geo_utils.PointSelect("list", indexList)
-DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
-DVGeo.addGeoDVLocal("shapez", lower=-1.0, upper=1.0, axis="z", scale=1.0, pointSelect=PS)
+DVGeo.addLocalDV("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
+DVGeo.addLocalDV("shapez", lower=-1.0, upper=1.0, axis="z", scale=1.0, pointSelect=PS)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
