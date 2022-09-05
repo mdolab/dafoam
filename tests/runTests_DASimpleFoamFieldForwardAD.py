@@ -22,6 +22,10 @@ replace_text_in_file("constant/turbulenceProperties", "RASModel             Spal
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.incompressible 0")
+    # rename reference U field 
+    os.system("cp 0/varRefFieldInversion 0/UData")
+
+replace_text_in_file("0/varRefFieldInversion", "    object      varRefFieldInversion;", "    object      UData;")
 
 U0 = 10.0
 p0 = 0.0
@@ -71,9 +75,7 @@ aeroOptions = {
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "stateName": "U",
-                "stateRefName": "varRefFieldInversion",
-                "stateType": "vector",
+                "data": "UData",
                 "scale": 1.0,
                 "addToAdjoint": True,
                 "weightedSum": False,
@@ -83,9 +85,7 @@ aeroOptions = {
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "stateName": "betaFieldInversion",
-                "stateRefName": "betaFieldInversionRef",
-                "stateType": "scalar",
+                "data": "beta",
                 "scale": 0.01,
                 "addToAdjoint": True,
                 "weightedSum": False,
