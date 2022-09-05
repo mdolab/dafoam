@@ -71,7 +71,7 @@ pts = DVGeo.getLocalIndex(iVol)
 indexList = pts[3, 0, 0].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 # shape
-# DVGeo.addGeoDVLocal("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
+# DVGeo.addLocalDV("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
 # aeroOptions["designVar"]["shapey"] = {"designVarType": "FFD"}
 
 
@@ -81,7 +81,7 @@ def tin(val, geo):
     DASolver.updateDAOption()
 
 
-DVGeo.addGeoDVGlobal("tbc", [TRef], tin, lower=0.0, upper=100.0, scale=1.0)
+DVGeo.addGlobalDV("tbc", [TRef], tin, lower=0.0, upper=100.0, scale=1.0)
 aeroOptions["designVar"]["tbc"] = {"designVarType": "BC", "patches": ["inlet"], "variable": "T", "comp": 0}
 
 # DAFoam

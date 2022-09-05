@@ -174,7 +174,7 @@ def betaFieldInversion(val, geo):
 # select points
 nCells = 4032
 beta0 = np.ones(nCells, dtype="d")
-DVGeo.addGeoDVGlobal("beta", value=beta0, func=betaFieldInversion, lower=1e-5, upper=10.0, scale=1.0)
+DVGeo.addGlobalDV("beta", value=beta0, func=betaFieldInversion, lower=1e-5, upper=10.0, scale=1.0)
 
 
 # DAFoam
