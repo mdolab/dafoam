@@ -63,6 +63,7 @@ case $argm in
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
       runTests DASimpleFoamField
+      runTests DASimpleFoamFixedPoint
       runTests DASimpleFoamkOmegaFieldInversionOmega
       runTests DASimpleFoamkOmegaSSTFieldInversion
       runTests DASimpleFoamFieldInversionObjectiveFunctions
@@ -117,7 +118,10 @@ case $argm in
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
       runTests DASimpleFoamField
+      runTests DASimpleFoamFixedPoint
       runTests DASimpleFoamkOmegaFieldInversionOmega
+      runTests DASimpleFoamkOmegaSSTFieldInversion
+      runTests DASimpleFoamFieldInversionObjectiveFunctions
     fi
     runTests DASimpleFoamMRF
     runTests DASimpleTFoam

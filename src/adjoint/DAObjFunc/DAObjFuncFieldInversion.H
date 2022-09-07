@@ -30,34 +30,13 @@ class DAObjFuncFieldInversion
 protected:
 
     /// name of the state variable to compute the error norm
+    word data_;
+
     word stateName_;
 
-    /// name of the reference state variable to compute the error norm
-    word stateRefName_;
+    word stateRefName_; 
 
-    /// state variable type: can be either scalar or vector
-    word stateType_;
-
-    /// type of data available for training: can be surface or volume
-    word varTypeFieldInversion_;
-
-    /// scaling factor for the objective function
     scalar scale_; 
-
-    /// list of pactches for computing varaibles such as skin friction if using surface data
-    wordList patchNames_; 
-    
-    /// direction vector if using aerodynamic coefficient data 
-    vector forceDir_;
-
-    /// vector to decide the component of wallShearStress vector used for calculating surfaceFriction
-    vector wssDir_;
-
-    /// the lift, or drag coefficient from data
-    scalar aeroCoeffRef_; 
-
-    /// the reference pressure for Cp calculation
-    scalar pRef_;
 
     /// weighted objective function (especially useful when performing weighted sum multi-objective optimisation)
     bool weightedSum_;  // switch 

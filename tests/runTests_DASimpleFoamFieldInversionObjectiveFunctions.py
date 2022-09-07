@@ -27,18 +27,19 @@ if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.incompressible 0")
     # create dummy reference fields for field inversion
-    os.system("cp 0/p 0/surfacePressure")
-    os.system("cp 0/p 0/surfacePressureRef")
+    os.system("cp 0/varRefFieldInversion 0/UData")
+    os.system("cp 0/p 0/pData")
+    os.system("cp 0/p 0/surfaceFrictionData")
     os.system("cp 0/p 0/surfaceFriction")
-    os.system("cp 0/p 0/surfaceFrictionRef")
-    os.system("cp 0/p 0/profileRefFieldInversion")
+    os.system("cp 0/p 0/USingleComponentData")
 
-    
-replace_text_in_file("0/surfacePressure", "    object      p;", "    object      surfacePressure;")
-replace_text_in_file("0/surfacePressureRef", "    object      p;", "    object      surfacePressureRef;")
+replace_text_in_file("0/varRefFieldInversion", "    object      varRefFieldInversion;", "    object      UData;")
+replace_text_in_file("0/pData", "    object      p;", "    object      pData;")
+replace_text_in_file("0/surfaceFrictionData", "    object      p;", "    object      surfaceFrictionData;")
 replace_text_in_file("0/surfaceFriction", "    object      p;", "    object      surfaceFriction;")
-replace_text_in_file("0/surfaceFrictionRef", "    object      p;", "    object      surfaceFrictionRef;")
-replace_text_in_file("0/profileRefFieldInversion", "    object      p;", "    object      profileRefFieldInversion;")
+replace_text_in_file("0/USingleComponentData", "    object      p;", "    object      USingleComponentData;")
+replace_text_in_file("0/USingleComponentData", "dimensions      [0 2 -2 0 0 0 0];", "dimensions      [0 1 -1 0 0 0 0];")
+
 
 U0 = 10.0
 p0 = 0.0
@@ -64,30 +65,25 @@ aeroOptions = {
     },
     "objFunc": {
         "FI": {
-            "varRefFieldInversion": {
+            "UData": {
                 "type": "fieldInversion",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "varTypeFieldInversion": "volume",
-                "stateName": "U",
-                "stateRefName": "varRefFieldInversion",
-                "stateType": "vector",
+                "data": "UData",
                 "scale": 1.0,
                 "addToAdjoint": True,
                 "weightedSum": True,
                 "weight": 1.0,
             },
-            "profileRefFieldInversion":
+            "Ux":
             {
                 "type": "fieldInversion",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "varTypeFieldInversion": "profile",
-                "stateName": "U",
-                "stateRefName": "profileRefFieldInversion", # dummy 
-                "stateType": "scalar",
+                "data": "USingleComponentData",
+                "velocityComponent": [1.0, 0.0, 0.0],
                 "scale": 1.0,
                 "addToAdjoint": True,
                 "weightedSum": True,
@@ -98,12 +94,9 @@ aeroOptions = {
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "varTypeFieldInversion": "surface",
-                "stateType": "surfacePressure",
-                "stateName": "surfacePressure",
-                "stateRefName": "surfacePressureRef", # dummy
+                "data": "surfacePressureData",
                 "patchNames": ["wing"],
-                "pRef": 0,
+                "nonZeroPRef": False,
                 "scale": 1.0 / (rho0 * U0 * U0),
                 "addToAdjoint": True,
                 "weightedSum": True,
@@ -114,25 +107,7 @@ aeroOptions = {
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "varTypeFieldInversion": "surface",
-                "stateType": "surfaceFriction",
-                "stateName": "surfaceFriction",
-                "stateRefName": "surfaceFrictionRef", # dummy
-                "patchNames": ["wing"],
-                "scale": 1.0 / (rho0 * U0 * U0),
-                "addToAdjoint": True,
-                "weightedSum": True,
-                "weight": 1.0,
-            },
-            "wallShearStress": {
-                "type": "fieldInversion",
-                "source": "boxToCell",
-                "min": [-100.0, -100.0, -100.0],
-                "max": [100.0, 100.0, 100.0],
-                "varTypeFieldInversion": "surface",
-                "stateType": "wallShearStress",
-                "stateName": "surfaceFriction",
-                "stateRefName": "surfaceFrictionRef", # dummy
+                "data": "surfaceFrictionData",
                 "patchNames": ["wing"],
                 "scale": 1.0 / (rho0 * U0 * U0),
                 "wssDir": [-1.0, 0.0, 0.0],
@@ -145,10 +120,7 @@ aeroOptions = {
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "varTypeFieldInversion": "surface",
-                "stateType": "aeroCoeff",
-                "stateName": "aeroCoeff",
-                "stateRefName": "aeroCoeff",
+                "data": "aeroCoeffData",
                 "aeroCoeffRef": 1, # dummy
                 "direction": [1.0, 0.0, 0.0], 
                 "patchNames": ["wing"],
@@ -162,10 +134,7 @@ aeroOptions = {
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
                 "max": [100.0, 100.0, 100.0],
-                "varTypeFieldInversion": "volume",
-                "stateName": "betaFieldInversion",
-                "stateRefName": "betaRefFieldInversion",
-                "stateType": "scalar",
+                "data": "beta",
                 "scale": 0.01,
                 "addToAdjoint": True,
                 "weightedSum": False,

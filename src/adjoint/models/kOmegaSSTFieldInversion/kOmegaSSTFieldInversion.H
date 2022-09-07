@@ -46,22 +46,23 @@ protected:
 
     volScalarField k_;
 
-    /// beta field that will be multiplied to the omega production term
-    volScalarField betaFieldInversion_;
+    /// A beta field multiplying to the production term
+    volScalarField betaFieldInversion_; 
 
-    /// the prior beta field, usually 1
-    volScalarField betaRefFieldInversion_;
-
-    /// the reference velocity field, usually from experiment or higher fidelity sims
-    volVectorField varRefFieldInversion_;
-
+    /// a surface friction 'field' when using skin friction data for field inversion
     volScalarField surfaceFriction_;
 
-    volScalarField surfaceFrictionRef_;
+    /// the reference field for surfaceFriction
+    volScalarField surfaceFrictionData_; 
 
-    volScalarField surfacePressureRef_;
+    /// the reference field for surfacePressure
+    volScalarField pData_; 
+    
+    /// reference field (e.g. velocity for DNS)
+    volVectorField UData_; 
 
-    volScalarField profileRefFieldInversion_;
+    /// the reference pressure field data
+    volScalarField USingleComponentData_;
 
     //- Wall distance
     //  Note: different to wall distance in parent RASModel

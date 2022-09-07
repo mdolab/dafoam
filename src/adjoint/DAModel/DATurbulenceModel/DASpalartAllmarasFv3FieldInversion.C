@@ -106,20 +106,16 @@ DASpalartAllmarasFv3FieldInversion::DASpalartAllmarasFv3FieldInversion(
           nuTildaRes_),
       betaFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("betaFieldInversion"))),
-      betaRefFieldInversion_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("betaRefFieldInversion"))),
-      varRefFieldInversion_(const_cast<volVectorField&>(
-          mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))),
+      UData_(const_cast<volVectorField&>(
+          mesh.thisDb().lookupObject<volVectorField>("UData"))),
       surfaceFriction_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("surfaceFriction"))),
-      surfaceFrictionRef_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("surfaceFrictionRef"))),
-      surfacePressureRef_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("surfacePressureRef"))),
-      profileRefFieldInversion_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("profileRefFieldInversion"))),
-      //TauDNS_(const_cast<volSymmTensorField&>(
-      //   mesh.thisDb().lookupObject<volSymmTensorField>("TauDNS"))),
+      surfaceFrictionData_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("surfaceFrictionData"))),
+      pData_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("pData"))),
+      USingleComponentData_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("USingleComponentData"))),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 
