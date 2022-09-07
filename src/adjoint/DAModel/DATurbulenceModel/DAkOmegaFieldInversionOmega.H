@@ -109,7 +109,7 @@ protected:
     label printInterval_;
         
     /// A beta field multiplying to the production term
-    volScalarField betaFieldInversion_; 
+    volScalarField& betaFieldInversion_; 
 
     /// a surface friction 'field' when using skin friction data for field inversion
     volScalarField surfaceFriction_;
