@@ -397,7 +397,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             objFuncValue = weight_ * objFuncValue;
         }
     }
-    else if (data_ == "surfaceFrictionDataPeriodicHill")
+    else if (data_ == "surfaceFrictionDataModified")
     {
         // The surface friction equation for the periodic hill case is different
         // to the conventional definition, therefore, we have a separate loop.
