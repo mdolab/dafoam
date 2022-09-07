@@ -399,8 +399,12 @@ void DAObjFuncFieldInversion::calcObjFunc(
     }
     else if (data_ == "surfaceFrictionDataModified")
     {
-        // The surface friction equation for the periodic hill case is different
-        // to the conventional definition, therefore, we have a separate loop.
+        /* 
+        In this modified implementation the wallShearStress computation different to the loop starting in line 283.
+        Here the wallShearStress is computed using the equation shown in line 454. 
+        (This modified equation is useful because this how the Cf is defined for the popular periodic hill case in
+        literature.)
+        */
 
         stateName_ = "surfaceFriction_";
         stateRefName_ = data_; 
