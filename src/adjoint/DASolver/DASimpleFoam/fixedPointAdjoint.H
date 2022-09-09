@@ -347,7 +347,7 @@ label DASimpleFoam::runFPAdj(
         // Initialize the duplicated variables for AD
         volScalarField p1("p1", p);
         volScalarField p2("p2", p);
-        mesh.setFluxRequired(p2.name());
+        this->meshPtr_->setFluxRequired(p2.name());
         surfaceScalarField phi1("phi1", phi);
         volVectorField U1("U1", U);
 

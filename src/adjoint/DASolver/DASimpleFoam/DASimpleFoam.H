@@ -101,6 +101,7 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
+#ifdef CODI_AD_REVERSE
     /// tape positions for consistent fixed-point adjoint
     using Position = typename codi::RealReverse::TapeType::Position;
     Position adjResStart_;
@@ -113,6 +114,7 @@ protected:
     Position divPhiEnd_;
     Position fluxUStart_;
     Position fluxUEnd_;
+#endif
 
 public:
     TypeName("DASimpleFoam");

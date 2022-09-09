@@ -85,6 +85,66 @@ kOmegaFieldInversionOmega<BasicTurbulenceModel>::kOmegaFieldInversionOmega(
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
+      tauDNS_(
+          IOobject(
+              "tauDNS",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          this->mesh_,
+          dimensionedSymmTensor("tauDNS", dimensionSet(0, 0, 0, 0, 0, 0, 0), symmTensor(0, 0, 0, 0, 0, 0)),
+          "zeroGradient"),
+      tauRANS_(
+          IOobject(
+              "tauRANS",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          this->mesh_,
+          dimensionedSymmTensor("tauRANS", dimensionSet(0, 0, 0, 0, 0, 0, 0), symmTensor(0, 0, 0, 0, 0, 0)),
+          "zeroGradient"),
+      surfaceFriction_(
+          IOobject(
+              "surfaceFriction",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          this->mesh_,
+          dimensionedScalar("surfaceFriction", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
+      surfaceFrictionRef_(
+          IOobject(
+              "surfaceFrictionRef",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          this->mesh_,
+          dimensionedScalar("surfaceFrictionRef", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
+      surfacePressureRef_(
+          IOobject(
+              "surfacePressureRef",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          this->mesh_,
+          dimensionedScalar("surfacePressureRef", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
+      profileRefFieldInversion_(
+          IOobject(
+              "profileRefFieldInversion",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          this->mesh_,
+          dimensionedScalar("profileRefFieldInversion", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchField<scalar>::typeName),
       y_(wallDist::New(this->mesh_).y())
 
 {

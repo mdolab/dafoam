@@ -32,22 +32,23 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAkOmegaSSTFieldInversion_H
-#define DAkOmegaSSTFieldInversion_H
+#ifndef DAkOmegaSSTFIML_H
+#define DAkOmegaSSTFIML_H
 
 #include "DATurbulenceModel.H"
 #include "addToRunTimeSelectionTable.H"
-
+// Loads in tensorflow functionality
+#include "tf_utils.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class DAkOmegaSSTFieldInversion Declaration
+                       Class DAkOmegaSSTFIML Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAkOmegaSSTFieldInversion
+class DAkOmegaSSTFIML
     : public DATurbulenceModel
 {
 
@@ -74,6 +75,11 @@ protected:
 
     Switch F3_;
     //@}
+
+    // Tensorflow graph operations - protected members of this class - top three not used in constructor definition since they don't have default values
+    TF_Graph* graph_;
+    TF_Output input_ph_;
+    TF_Output output_;
 
     /// \name SST functions
     //@{
@@ -175,27 +181,21 @@ protected:
     volScalarField kRef_;
     //@}
 
-    /// A beta field multiplying to the production term
-    volScalarField& betaFieldInversion_; 
+    // Field inversion and machine learning fields
+    volScalarField betaFieldInversion_;
+    volScalarField betaFieldInversionML_;
+    volScalarField QCriterion_;
+    volScalarField& p_;
+    volScalarField pGradAlongStream_;
+    volScalarField turbulenceIntensity_;
+    IOdictionary transportProperties_;
+    volScalarField ReT_;
+    volScalarField convectionTKE_;
+    volScalarField tauRatio_;
+    volScalarField pressureStress_;
+    volScalarField curvature_;
+    volScalarField UGradMisalignment_;
 
-    /// a reference beta field
-    volScalarField betaRefFieldInversion_; 
-
-    /// reference field for profile data
-    volScalarField profileRefFieldInversion_; 
-
-    /// a surface friction 'field' when using skin friction data for field inversion
-    volScalarField surfaceFriction_;
-
-    /// the reference field for surfaceFriction
-    volScalarField surfaceFrictionRef_; 
-
-    /// the reference field for surfacePressure
-    volScalarField surfacePressureRef_; 
-    
-    /// reference field (e.g. velocity for DNS)
-    volVectorField& varRefFieldInversion_; 
-    
     /// Name of turbulent transport equation to modify: can be k, omega, or all
     /// if k OR omega is selected the field inversion modification is: ProdTerm(k or omega)*betaFieldInversion
     /// if all is selected the modification is: ProdTerm(k)*betaField, ProdTerm(omega)*(1.0/betaField)
@@ -203,7 +203,7 @@ protected:
     //word eqnToModify_;
 
     /// Weight of betaFieldInversion for the turbulent transport equations if both are modified
-    //scalar betaFieldInversionWeight_; 
+    //scalar betaFieldInversionWeight_;
 
     /// 3D wall distance
     const volScalarField& y_;
@@ -221,17 +221,17 @@ protected:
     label printInterval_;
 
 public:
-    TypeName("kOmegaSSTFieldInversion");
+    TypeName("kOmegaSSTFIML");
     // Constructors
 
     //- Construct from components
-    DAkOmegaSSTFieldInversion(
+    DAkOmegaSSTFIML(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption);
 
     //- Destructor
-    virtual ~DAkOmegaSSTFieldInversion()
+    virtual ~DAkOmegaSSTFIML()
     {
     }
 
@@ -261,7 +261,7 @@ public:
     /// solve the residual equations and update the state
     virtual void correct();
 
-    /// save near wall omega values to omegaNearWall_    
+    /// save near wall omega values to omegaNearWall_
     void saveOmegaNearWall();
 
     /// set omegaNearWall_ to near wall omega values

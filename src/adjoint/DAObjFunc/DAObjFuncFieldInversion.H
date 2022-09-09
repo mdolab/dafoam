@@ -50,6 +50,9 @@ protected:
     /// direction vector if using aerodynamic coefficient data 
     vector forceDir_;
 
+    /// vector to decide the component of wallShearStress vector used for calculating surfaceFriction
+    vector wssDir_;
+
     /// the lift, or drag coefficient from data
     scalar aeroCoeffRef_; 
 

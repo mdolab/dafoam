@@ -27,18 +27,28 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAkOmegaSSTFieldInversion.H"
+#include "DAkOmegaSSTFIML.H"
+#include "IFstream.H"
+// not sure if these are necessary..
+#include <vector>
+#include <math.h>
+#include <omp.h>
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
+#include <chrono>
+#include <fstream>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAkOmegaSSTFieldInversion, 0);
-addToRunTimeSelectionTable(DATurbulenceModel, DAkOmegaSSTFieldInversion, dictionary);
+defineTypeNameAndDebug(DAkOmegaSSTFIML, 0);
+addToRunTimeSelectionTable(DATurbulenceModel, DAkOmegaSSTFIML, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
+DAkOmegaSSTFIML::DAkOmegaSSTFIML(
     const word modelType,
     const fvMesh& mesh,
     const DAOption& daOption)
@@ -180,22 +190,127 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           k_),
-   /// field inversion parameters
-      betaFieldInversion_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("betaFieldInversion"))),
-      betaRefFieldInversion_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("betaRefFieldInversion"))),
-      profileRefFieldInversion_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("profileRefFieldInversion"))),
-      surfaceFriction_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("surfaceFriction"))),
-      surfaceFrictionRef_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("surfaceFrictionRef"))),
-      surfacePressureRef_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("surfacePressureRef"))),
-      varRefFieldInversion_(const_cast<volVectorField&>(
-          mesh.thisDb().lookupObject<volVectorField>("varRefFieldInversion"))),
-      y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")) 
+      /// field inversion parameters
+      betaFieldInversion_(
+          IOobject(
+              "betaFieldInversion",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("betaFieldInversion", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          zeroGradientFvPatchScalarField::typeName),
+      betaFieldInversionML_(
+          IOobject(
+              "betaFieldInversionML",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("betaFieldInversionML", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          zeroGradientFvPatchScalarField::typeName),
+      QCriterion_(
+          IOobject(
+              "QCriterion",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("QCriterion", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchScalarField::typeName),
+      p_(const_cast<volScalarField&>(
+          mesh_.thisDb().lookupObject<volScalarField>("p"))),
+      pGradAlongStream_(
+          IOobject(
+              "pGradAlongStream",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("pressureAlongStream", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchScalarField::typeName),
+      turbulenceIntensity_(
+          IOobject(
+              "turbulenceIntensity",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("turbulenceIntensity", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchScalarField::typeName),
+      transportProperties_(
+          IOobject(
+              "transportProperties",
+              mesh.time().constant(),
+              mesh_,
+              IOobject::MUST_READ,
+              IOobject::NO_WRITE)),
+      ReT_(
+          IOobject(
+              "ReT",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("ReT", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchScalarField::typeName),
+      convectionTKE_(
+          IOobject(
+              "convectionTKE",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("convectionTKE", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchScalarField::typeName),
+      tauRatio_(
+          IOobject(
+              "tauRatio",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("tauRatio", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchScalarField::typeName),
+      pressureStress_(
+          IOobject(
+              "pressureStress",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("pressureStress", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchScalarField::typeName),
+      curvature_(
+          IOobject(
+              "curvature",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("curvature", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchScalarField::typeName),
+      UGradMisalignment_(
+          IOobject(
+              "UGradMisalignment",
+              mesh.time().timeName(),
+              mesh_,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh_,
+          dimensionedScalar("UGradMisalignment", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+          zeroGradientFvPatchScalarField::typeName),
+      y_(mesh_.thisDb().lookupObject<volScalarField>("yWall"))
 {
 
     // initialize printInterval_ we need to check whether it is a steady state
@@ -236,12 +351,17 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
 
     // initialize omegaNearWall
     omegaNearWall_.setSize(nWallFaces);
+
+    // read in the tensor flow graph
+    graph_ = tf_utils::LoadGraph("./kOmegaSSTFIML.pb");
+    input_ph_ = {TF_GraphOperationByName(graph_, "input_placeholder"), 0};
+    output_ = {TF_GraphOperationByName(graph_, "output_value/BiasAdd"), 0};
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // SA member functions. these functions are copied from
-tmp<volScalarField> DAkOmegaSSTFieldInversion::F1(
+tmp<volScalarField> DAkOmegaSSTFIML::F1(
     const volScalarField& CDkOmega) const
 {
 
@@ -260,7 +380,7 @@ tmp<volScalarField> DAkOmegaSSTFieldInversion::F1(
     return tanh(pow4(arg1));
 }
 
-tmp<volScalarField> DAkOmegaSSTFieldInversion::F2() const
+tmp<volScalarField> DAkOmegaSSTFIML::F2() const
 {
 
     tmp<volScalarField> arg2 = min(
@@ -272,7 +392,7 @@ tmp<volScalarField> DAkOmegaSSTFieldInversion::F2() const
     return tanh(sqr(arg2));
 }
 
-tmp<volScalarField> DAkOmegaSSTFieldInversion::F3() const
+tmp<volScalarField> DAkOmegaSSTFIML::F3() const
 {
 
     tmp<volScalarField> arg3 = min(
@@ -282,7 +402,7 @@ tmp<volScalarField> DAkOmegaSSTFieldInversion::F3() const
     return 1 - tanh(pow4(arg3));
 }
 
-tmp<volScalarField> DAkOmegaSSTFieldInversion::F23() const
+tmp<volScalarField> DAkOmegaSSTFIML::F23() const
 {
     tmp<volScalarField> f23(F2());
 
@@ -294,7 +414,7 @@ tmp<volScalarField> DAkOmegaSSTFieldInversion::F23() const
     return f23;
 }
 
-tmp<volScalarField::Internal> DAkOmegaSSTFieldInversion::GbyNu(
+tmp<volScalarField::Internal> DAkOmegaSSTFIML::GbyNu(
     const volScalarField::Internal& GbyNu0,
     const volScalarField::Internal& F2,
     const volScalarField::Internal& S2) const
@@ -305,20 +425,20 @@ tmp<volScalarField::Internal> DAkOmegaSSTFieldInversion::GbyNu(
             * max(a1_ * omega_(), b1_ * F2 * sqrt(S2)));
 }
 
-tmp<volScalarField::Internal> DAkOmegaSSTFieldInversion::Pk(
+tmp<volScalarField::Internal> DAkOmegaSSTFIML::Pk(
     const volScalarField::Internal& G) const
 {
     return min(G, (c1_ * betaStar_) * k_() * omega_());
 }
 
-tmp<volScalarField::Internal> DAkOmegaSSTFieldInversion::epsilonByk(
+tmp<volScalarField::Internal> DAkOmegaSSTFIML::epsilonByk(
     const volScalarField& F1,
     const volTensorField& gradU) const
 {
     return betaStar_ * omega_();
 }
 
-tmp<fvScalarMatrix> DAkOmegaSSTFieldInversion::kSource() const
+tmp<fvScalarMatrix> DAkOmegaSSTFIML::kSource() const
 {
     const volScalarField& rho = rho_;
     return tmp<fvScalarMatrix>(
@@ -327,7 +447,7 @@ tmp<fvScalarMatrix> DAkOmegaSSTFieldInversion::kSource() const
             dimVolume * rho.dimensions() * k_.dimensions() / dimTime));
 }
 
-tmp<fvScalarMatrix> DAkOmegaSSTFieldInversion::omegaSource() const
+tmp<fvScalarMatrix> DAkOmegaSSTFIML::omegaSource() const
 {
     const volScalarField& rho = rho_;
     return tmp<fvScalarMatrix>(
@@ -336,7 +456,7 @@ tmp<fvScalarMatrix> DAkOmegaSSTFieldInversion::omegaSource() const
             dimVolume * rho.dimensions() * omega_.dimensions() / dimTime));
 }
 
-tmp<fvScalarMatrix> DAkOmegaSSTFieldInversion::Qsas(
+tmp<fvScalarMatrix> DAkOmegaSSTFIML::Qsas(
     const volScalarField::Internal& S2,
     const volScalarField::Internal& gamma,
     const volScalarField::Internal& beta) const
@@ -349,7 +469,7 @@ tmp<fvScalarMatrix> DAkOmegaSSTFieldInversion::Qsas(
 }
 
 // Augmented functions
-void DAkOmegaSSTFieldInversion::correctModelStates(wordList& modelStates) const
+void DAkOmegaSSTFIML::correctModelStates(wordList& modelStates) const
 {
     /*
     Description:
@@ -385,7 +505,7 @@ void DAkOmegaSSTFieldInversion::correctModelStates(wordList& modelStates) const
     }
 }
 
-void DAkOmegaSSTFieldInversion::correctNut()
+void DAkOmegaSSTFIML::correctNut()
 {
     /*
     Description:
@@ -407,7 +527,7 @@ void DAkOmegaSSTFieldInversion::correctNut()
     return;
 }
 
-void DAkOmegaSSTFieldInversion::correctBoundaryConditions()
+void DAkOmegaSSTFIML::correctBoundaryConditions()
 {
     /*
     Description:
@@ -419,7 +539,7 @@ void DAkOmegaSSTFieldInversion::correctBoundaryConditions()
     k_.correctBoundaryConditions();
 }
 
-void DAkOmegaSSTFieldInversion::correctOmegaBoundaryConditions()
+void DAkOmegaSSTFIML::correctOmegaBoundaryConditions()
 {
     /*
     Description:
@@ -446,7 +566,7 @@ void DAkOmegaSSTFieldInversion::correctOmegaBoundaryConditions()
     this->setOmegaNearWall();
 }
 
-void DAkOmegaSSTFieldInversion::saveOmegaNearWall()
+void DAkOmegaSSTFIML::saveOmegaNearWall()
 {
     /*
     Description:
@@ -470,7 +590,7 @@ void DAkOmegaSSTFieldInversion::saveOmegaNearWall()
     return;
 }
 
-void DAkOmegaSSTFieldInversion::setOmegaNearWall()
+void DAkOmegaSSTFIML::setOmegaNearWall()
 {
     /*
     Description:
@@ -496,7 +616,7 @@ void DAkOmegaSSTFieldInversion::setOmegaNearWall()
     return;
 }
 
-void DAkOmegaSSTFieldInversion::updateIntermediateVariables()
+void DAkOmegaSSTFIML::updateIntermediateVariables()
 {
     /*
     Description:
@@ -507,7 +627,7 @@ void DAkOmegaSSTFieldInversion::updateIntermediateVariables()
     this->correctNut();
 }
 
-void DAkOmegaSSTFieldInversion::correctStateResidualModelCon(List<List<word>>& stateCon) const
+void DAkOmegaSSTFIML::correctStateResidualModelCon(List<List<word>>& stateCon) const
 {
     /*
     Description:
@@ -606,7 +726,7 @@ void DAkOmegaSSTFieldInversion::correctStateResidualModelCon(List<List<word>>& s
     }
 }
 
-void DAkOmegaSSTFieldInversion::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
+void DAkOmegaSSTFIML::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
 {
     /*
     Description:
@@ -698,7 +818,7 @@ void DAkOmegaSSTFieldInversion::addModelResidualCon(HashTable<List<List<word>>>&
 #endif
 }
 
-void DAkOmegaSSTFieldInversion::correct()
+void DAkOmegaSSTFIML::correct()
 {
     /*
     Descroption:
@@ -718,7 +838,7 @@ void DAkOmegaSSTFieldInversion::correct()
     solveTurbState_ = 0;
 }
 
-void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
+void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)
 {
     /*
     Descroption:
@@ -758,6 +878,173 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
         }
     }
 
+    // Read scaling parameters (do we need to scale?)
+    RectangularMatrix<doubleScalar> meanStdVals(IFstream("means")());
+
+    label numInputs = 9;
+    label numOutputs = 1;
+    scalar meanArray[numInputs + numOutputs] = {0};
+    scalar stdArray[numInputs + numOutputs] = {0};
+
+    for (label i = 0; i <= numInputs + numOutputs; i++)
+    {
+        meanArray[i] = meanStdVals(0, i);
+        stdArray[i] = meanStdVals(1, i);
+    }
+
+    // COMPUTE MACHINE LEARNING FEATURES
+    //////////////////////////Q-criterion//////////////////////////////////
+    volTensorField UGrad(fvc::grad(U_));
+    volTensorField Omega("Omega", skew(UGrad));
+    volScalarField magOmegaSqr(magSqr(Omega));
+    volSymmTensorField S("S", symm(UGrad));
+    volScalarField magS(mag(S));
+    volScalarField magSSqr(magSqr(S));
+    QCriterion_ = (magOmegaSqr - magSSqr) / (magOmegaSqr + magSSqr);
+
+    //////////////////////////pGradAlongStream////////////////////////////
+    volVectorField pGrad("gradP", fvc::grad(p_));
+    volScalarField pG_denominator(mag(U_) * mag(pGrad) + mag(U_ & pGrad));
+    pGradAlongStream_ = (U_ & pGrad) / Foam::max(pG_denominator, dimensionedScalar("minpG", dimensionSet(0, 2, -3, 0, 0, 0, 0), SMALL));
+
+    //////////////////////////Turbulence intensity/////////////////////////
+    turbulenceIntensity_ = k_ / (0.5 * (U_ & U_) + k_);
+
+    //////////////////////////ReT/////////////////////////////////////////
+    //dimensionedScalar refViscosity(this->nu());
+    dimensionedScalar maxReT("maxReT", dimless, 2.0);
+    ReT_ = Foam::min((sqrt(k_) * y_) / (scalar(50.0) * this->nu()), maxReT);
+
+    //////////////////////////Convection TKE///////////////////////////////
+    volSymmTensorField tau(2.0 / 3.0 * I * k_ - nut_ * twoSymm(fvc::grad(U_)));
+    volVectorField kGrad("gradK", fvc::grad(k_));
+    convectionTKE_ = (U_ & kGrad) / (mag(tau && S) + mag(U_ & kGrad));
+
+    //////////////////////////tauRatio////////////////////////////////////
+    tauRatio_ = mag(tau) / (k_ + mag(tau));
+
+    //////////////////////////pressure stress/////////////////////////////
+    volVectorField diagUGrad(
+        IOobject("diagUGrad",
+                 mesh_.time().timeName(),
+                 mesh_,
+                 IOobject::NO_READ,
+                 IOobject::NO_WRITE),
+        mesh_,
+        dimensionedVector("diagUGrad", dimensionSet(0, 0, 0, 0, 0, 0, 0), Foam::vector(0, 0, 0)),
+        zeroGradientFvPatchScalarField::typeName);
+
+    forAll(mesh_.C(), cI)
+    {
+        diagUGrad[cI].component(0) = UGrad[cI].xx();
+        diagUGrad[cI].component(1) = UGrad[cI].yy();
+        diagUGrad[cI].component(2) = UGrad[cI].zz();
+        pressureStress_[cI] = mag(pGrad[cI]) / (mag(pGrad[cI]) + mag(3.0 * cmptAv(U_[cI] & diagUGrad[cI])));
+    }
+
+    //////////////////////////Curvature//////////////////////////////////
+    forAll(mesh_.C(), cI)
+    {
+        curvature_[cI] = mag(U_[cI] & UGrad[cI]) / (mag(U_[cI] & U_[cI]) + mag(U_[cI] & UGrad[cI]));
+    }
+
+    //////////////////////////UGradMisalignment//////////////////////////////////
+    forAll(mesh_.C(), cI)
+    {
+        UGradMisalignment_[cI] = mag(U_[cI] & UGrad[cI] & U_[cI])
+            / (mag(U_[cI]) * mag(UGrad[cI] & U_[cI]) + mag(U_[cI] & UGrad[cI] & U_[cI]));
+    }
+
+    // TENSORFLOW
+
+    // Datastructure for output
+    volScalarField betaML_ = betaFieldInversionML_;
+
+    // Structure for tensors in ML
+    label numCells = mesh_.cells().size();
+
+    // Some tensorflow pointer requirements
+    TF_Status* status_ = TF_NewStatus();
+    TF_SessionOptions* options_ = TF_NewSessionOptions();
+    TF_Session* sess_ = TF_NewSession(graph_, options_, status_);
+
+    float inputVals[numCells][numInputs];
+    const std::vector<std::int64_t> inputDims = {numCells, numInputs};
+
+    forAll(mesh_.C(), cI)
+    {
+        scalar i1 = (QCriterion_[cI] - meanArray[0]) / (stdArray[0]);
+        scalar i2 = (UGradMisalignment_[cI] - meanArray[1]) / (stdArray[1]);
+        scalar i3 = (pGradAlongStream_[cI] - meanArray[2]) / (stdArray[2]);
+        scalar i4 = (turbulenceIntensity_[cI] - meanArray[3]) / (stdArray[3]);
+        scalar i5 = (ReT_[cI] - meanArray[4]) / (stdArray[4]);
+        scalar i6 = (convectionTKE_[cI] - meanArray[5]) / (stdArray[5]);
+        scalar i7 = (curvature_[cI] - meanArray[6]) / (stdArray[6]);
+        scalar i8 = (pressureStress_[cI] - meanArray[7]) / (stdArray[7]);
+        scalar i9 = (tauRatio_[cI] - meanArray[8]) / (stdArray[8]);
+
+        assignValueCheckAD(inputVals[cI][0], i1);
+        assignValueCheckAD(inputVals[cI][1], i2);
+        assignValueCheckAD(inputVals[cI][2], i3);
+        assignValueCheckAD(inputVals[cI][3], i4);
+        assignValueCheckAD(inputVals[cI][4], i5);
+        assignValueCheckAD(inputVals[cI][5], i6);
+        assignValueCheckAD(inputVals[cI][6], i7);
+        assignValueCheckAD(inputVals[cI][7], i8);
+        assignValueCheckAD(inputVals[cI][8], i9);
+    }
+
+    // Set up TF C API stuff
+    TF_Tensor* outputTensor_ = nullptr;
+    TF_Tensor* inputTensor_ = tf_utils::CreateTensor(TF_FLOAT,
+                                                     inputDims.data(),
+                                                     inputDims.size(),
+                                                     &inputVals,
+                                                     numCells * numInputs * sizeof(float));
+
+    // Arrays of tensors
+    TF_Tensor* inputTensors_[1] = {inputTensor_};
+    TF_Tensor* outputTensors_[1] = {outputTensor_};
+    // Arrays of operations
+    TF_Output inputs[1] = {input_ph_};
+    TF_Output outputs[1] = {output_};
+
+    TF_SessionRun(
+        sess_,
+        nullptr, // Run options.
+        inputs,
+        inputTensors_,
+        1, // Input tensor ops, input tensor values, number of inputs.
+        outputs,
+        outputTensors_,
+        1, // Output tensor ops, output tensor values, number of outputs.
+        nullptr,
+        0, // Target operations, number of targets.
+        nullptr, // Run metadata.
+        status_ // Output status.
+    );
+
+    const auto data = static_cast<float*>(TF_TensorData(outputTensors_[0]));
+    for (label i = 0; i < numCells; i++)
+    {
+        betaML_[i] = data[numOutputs * i] * stdArray[numInputs] + meanArray[numInputs]; // Funnel changes back into OF - row major order
+    }
+
+    tf_utils::DeleteTensor(inputTensor_);
+    tf_utils::DeleteTensor(outputTensor_);
+    TF_DeleteSessionOptions(options_);
+    TF_DeleteStatus(status_);
+    tf_utils::DeleteSession(sess_);
+
+    //betaML_ = MyFilter_(betaML_);
+
+    forAll(betaFieldInversionML_.internalField(), cI)
+    {
+        betaFieldInversionML_[cI] = betaML_[cI];
+    }
+
+    // *********** TURBULENCE MODEL FUNCTIONS ***********
+
     // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
     // while for the incompresssible "this->phi()" returns phi only
     // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
@@ -766,7 +1053,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField S2(2 * magSqr(symm(tgradU())));
     volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
-    volScalarField::Internal G("kOmegaSSTFieldInversion:G", nut_ * GbyNu0);
+    volScalarField::Internal G("kOmegaSSTFIML:G", nut_ * GbyNu0);
 
     if (solveTurbState_)
     {
@@ -795,8 +1082,8 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
         tmp<fvScalarMatrix> omegaEqn(
             fvm::ddt(phase_, rho_, omega_)
                 + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
-                - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_) 
-            == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFieldInversion_()
+                - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
+            == betaFieldInversionML_() * phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2())
                 - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
                 - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
                 - fvm::SuSp(
@@ -841,7 +1128,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, k_)
             + fvm::div(phaseRhoPhi_, k_, divKScheme)
             - fvm::laplacian(phase_ * rho_ * DkEff(F1), k_)
-        == phase_() * rho_() * Pk(G) 
+        == phase_() * rho_() * Pk(G)
             - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
             - fvm::Sp(phase_() * rho_() * epsilonByk(F1, tgradU()), k_)
             + kSource());
