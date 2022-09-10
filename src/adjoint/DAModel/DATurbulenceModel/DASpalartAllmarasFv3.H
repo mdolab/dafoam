@@ -87,6 +87,10 @@ protected:
     volScalarField nuTildaRes_;
     //@}
 
+    /// pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
+    volScalarField pseudoNuTilda_;
+    fvScalarMatrix pseudoNuTildaEqn_;
+
     /// 3D wall distance
     const volScalarField& y_;
 
@@ -95,6 +99,12 @@ protected:
 
     /// time step interval to print residual
     label printInterval_;
+
+    /// construct pseudoNuTildaEqn_, which is nuTildaEqn with swapped upper and lower arrays
+    void constructPseudoNuTildaEqn();
+
+    /// solve pseudoNuTildaEqn_ with overwritten rhs
+    tmp<volScalarField> rhsSolvePseudoNuTildaEqn(const List<scalar>& nuTildaSource);
 
 public:
     TypeName("SpalartAllmarasFv3");
@@ -144,7 +154,7 @@ public:
     virtual void invTranProdNuTildaEqn(
         const volScalarField& mySource,
         volScalarField& pseudoNuTilda);
-    
+
     /// calculate the turbulence residual using LDU matrix
     virtual void calcLduResidualTurb(volScalarField& nuTildaRes);
 };
