@@ -343,8 +343,8 @@ cdef class pyDASolvers:
     def calcdFvSourcedInputsTPsiAD(self, mode, Vec c, Vec r, Vec f, Vec psi, Vec prod):
         self._thisptr.calcdFvSourcedInputsTPsiAD(mode, c.vec, r.vec, f.vec, psi.vec, prod.vec)
     
-    def calcForceProfile(self, Vec xv, Vec state, Vec forceProfile, Vec radiusProfile):
-        self._thisptr.calcForceProfile(xv.vec, state.vec, forceProfile.vec, radiusProfile.vec)
+    def calcForceProfile(self, Vec center, Vec aForceL, Vec tForceL, Vec rDistL):
+        self._thisptr.calcForceProfile(center.vec, aForceL.vec, tForceL.vec, rDistL.vec)
     
     def calcdForcedStateTPsiAD(self, mode, Vec xv, Vec state, Vec psi, Vec prod):
         self._thisptr.calcdForcedStateTPsiAD(mode, xv.vec, state.vec, psi.vec, prod.vec)

@@ -641,12 +641,12 @@ public:
     }
 
     void calcForceProfile(
-        Vec xvVec,
-        Vec stateVec,
-        Vec fProfileVec,
-        Vec rProfileVec)
+        Vec center,
+        Vec aForceL,
+        Vec tForceL,
+        Vec rDistL)
     {
-        DASolverPtr_->calcForceProfile(xvVec, stateVec, fProfileVec, rProfileVec);
+        DASolverPtr_->calcForceProfile(center, aForceL, tForceL, rDistL);
     }
 
     void calcdForcedStateTPsiAD(

@@ -416,26 +416,25 @@ void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
     const pointMesh& pMesh = pointMesh::New(meshPtr_());
     const pointBoundaryMesh& boundaryMesh = pMesh.boundary();
 
-    // Find wall patches and sort in alphabetical order
-    label nWallPatch = 0;
-    forAll(patches, patchI)
-    {
-        if (patches[patchI].type() == "wall")
-        {
-            nWallPatch += 1;
-        }
-    }
-    patchList.resize(nWallPatch);
+    // we get the forces for the design surfaces
+    wordList designSurfaces;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", designSurfaces);
 
-    label iWallPatch = 0;
+    // Find wall patches and sort in alphabetical order
+    patchList.resize(designSurfaces.size());
+
+    label iDVPatch = 0;
     forAll(patches, patchI)
     {
-        if (patches[patchI].type() == "wall")
+        word patchName = patches[patchI].name();
+        if (designSurfaces.found(patchName))
         {
-            patchList[iWallPatch] = patches[patchI].name();
-            iWallPatch += 1;
+            patchList[iDVPatch] = patchName;
+            iDVPatch += 1;
         }
     }
+    // sort patchList
+    sort(patchList);
 
     // compute size of point and connectivity arrays
     nPoints = 0;
@@ -448,7 +447,12 @@ void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
     return;
 }
 
-void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ, List<label>& pointList, List<word>& patchList)
+void DASolver::getForcesInternal(
+    List<scalar>& fX,
+    List<scalar>& fY,
+    List<scalar>& fZ,
+    List<label>& pointList,
+    List<word>& patchList)
 {
     /*
     Description:
@@ -625,10 +629,10 @@ void DASolver::getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar
 }
 
 void DASolver::calcForceProfile(
-    Vec xvVec,
-    Vec stateVec,
-    Vec fProfileVec,
-    Vec rProfileVec)
+        Vec center,
+        Vec aForceL,
+        Vec tForceL,
+        Vec rDistL)
 {
     /*
     Description:
@@ -641,18 +645,176 @@ void DASolver::calcForceProfile(
     Output:
         xForce, the radial profile of force in the x direction
     */
+
+    // Get Data
+    label nPoints = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
+    fvMesh& mesh = meshPtr_();
+
+    // Allocate Arrays
+    Vector<scalar> centerTemp;
+    Field<scalar> aForceTemp(nPoints);
+    Field<scalar> tForceTemp(nPoints);
+    List<scalar> rDistLTemp(nPoints+2);
+
+    // Get PETSc Arrays
+    PetscScalar* vecArrayCenter;
+    VecGetArray(center, &vecArrayCenter);
+
+    // Set Values
+    centerTemp[0] = vecArrayCenter[0];
+    centerTemp[1] = vecArrayCenter[1];
+    centerTemp[2] = vecArrayCenter[2];
+
+    // Compute force profiles
+    this->calcForceProfileInternal(mesh, centerTemp, aForceTemp, tForceTemp, rDistLTemp);
+
+    VecZeroEntries(aForceL);
+    VecZeroEntries(aForceL);
+    VecZeroEntries(rDistL);
+    PetscScalar* vecArrayAForceL;
+    VecGetArray(aForceL, &vecArrayAForceL);
+    PetscScalar* vecArrayTForceL;
+    VecGetArray(tForceL, &vecArrayTForceL);
+    PetscScalar* vecArrayRDistL;
+    VecGetArray(rDistL, &vecArrayRDistL);
+
+    // Tranfer to PETSc Array for force profiles and radius
+    forAll(aForceTemp, cI)
+    {
+        // Get Values
+        PetscScalar val1, val2;
+        assignValueCheckAD(val1, aForceTemp[cI]);
+        assignValueCheckAD(val2, tForceTemp[cI]);
+
+        // Set Values
+        vecArrayAForceL[cI] = val1;
+        vecArrayTForceL[cI] = val2;
+    }
+    forAll(aForceTemp, cI)
+    {
+        // Get Values
+        PetscScalar val1;
+        assignValueCheckAD(val1, rDistLTemp[cI]);
+
+        // Set Values
+        vecArrayRDistL[cI] = val1;
+    }
+
+    VecRestoreArray(center, &vecArrayCenter);
+    VecRestoreArray(aForceL, &vecArrayAForceL);
+    VecRestoreArray(tForceL, &vecArrayTForceL);
+    VecRestoreArray(rDistL, &vecArrayRDistL);
+
+    return;
+
 }
 
 void DASolver::calcForceProfileInternal(
-    scalarList& xv,
-    scalarList& state,
-    scalarList& fProfile,
-    scalarList& rProfile)
+    fvMesh& mesh,
+    const vector& center,
+    scalarList& aForceL,
+    scalarList& tForceL,
+    scalarList& rDistL)
 {
     /*
     Description:
         Same as calcForceProfile but for internal AD
     */
+
+    // fvMesh& mesh = meshPtr_();
+    scalar sections = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
+    scalarList axisDummy = daOptionPtr_->getSubDictOption<scalarList>("wingProp", "axis");
+    vector axis;
+    axis[0] = axisDummy[0];
+    axis[1] = axisDummy[1];
+    axis[2] = axisDummy[2];
+
+    int quot;
+    vector cellDir, projP, cellCen;
+    scalar length, axialDist;
+
+    // get the pressure in the memory
+    const volScalarField& p = mesh.thisDb().lookupObject<volScalarField>("p");
+
+    // name of the blade
+    word bladePatchName = "propeller";
+
+    // find the patch ID of the blade surface
+    label bladePatchI = mesh.boundaryMesh().findPatchID(bladePatchName);
+
+    // radiiCell initialization, cell radii will be stored in it
+    scalarList radiiCell(p.boundaryField()[bladePatchI].size());
+
+    // meshTanDir initialization, mesh tangential direction will be stored in it
+    vectorField meshTanDir = mesh.Cf().boundaryField()[bladePatchI] * 0;
+
+    // radius limits initialization
+    scalar minRadius = 1000000;
+    scalar minRadiIndx = -1;
+    scalar maxRadius = -1000000;
+    scalar maxRadiIndx = -1;
+
+    forAll(p.boundaryField()[bladePatchI], faceI)
+    {
+        // directional vector from the propeller center to the cell center & dictance between them
+        cellCen = mesh.Cf().boundaryField()[bladePatchI][faceI];
+        cellDir = cellCen - center;
+        length = Foam:: sqrt(sqr(cellDir[0])+sqr(cellDir[1])+sqr(cellDir[2]));
+
+        // unit vector conversion
+        cellDir = cellDir / length;
+
+        // axial distance between the propeller center and the cell center
+        axialDist = (cellDir & axis) * length;
+
+        // projected point of the cell center on the axis
+        projP = {center[0] + axis[0] * axialDist, center[1] + axis[1] * axialDist, center[2] + axis[2] * axialDist};
+
+        // radius of the cell center
+        radiiCell[faceI] = Foam::sqrt(sqr(cellCen[0] - projP[0]) + sqr(cellCen[1] - projP[1]) + sqr(cellCen[2] - projP[2]));
+
+        if(radiiCell[faceI] < minRadius)
+        {
+            minRadius = radiiCell[faceI];
+            minRadiIndx = faceI;
+        }
+        if(radiiCell[faceI] > maxRadius)
+        {
+            maxRadius = radiiCell[faceI];
+            maxRadiIndx = faceI;
+        }
+
+        // storing tangential vector as a unit vector
+        meshTanDir[faceI] = axis ^ cellDir;
+        length = Foam:: sqrt(sqr(meshTanDir[faceI][0])+sqr(meshTanDir[faceI][1])+sqr(meshTanDir[faceI][2]));
+        meshTanDir[faceI] = meshTanDir[faceI] / length;
+    }
+
+    // generating empty lists
+    scalarList axialForce(sections);
+    forAll(axialForce, Index){axialForce[Index] = 0;}
+    scalarList tangtForce = axialForce;
+    scalarList radialDist(sections + 2);
+
+    // sectional radius computation
+    scalar sectRad = (maxRadius - minRadius) / sections;
+    radialDist[0] = minRadius;
+    radialDist[sections + 1] = maxRadius;
+    for(int Index = 1; Index < sections + 1; Index++){radialDist[Index] = minRadius + sectRad * (Index - 0.5);}
+    scalarList counter = axialForce;
+
+    // computation of forces
+    forAll(p.boundaryField()[bladePatchI], faceI)
+    {
+        // finding the section of the cell
+        quot = (radiiCell[faceI] - minRadius) / sectRad;
+        if(quot == sections){quot = quot - 1;}
+
+        // pressure direction is opposite of the surface normal
+        axialForce[quot] = axialForce[quot] - (mesh.Sf().boundaryField()[bladePatchI][faceI] & axis) * p.boundaryField()[bladePatchI][faceI] / sectRad;
+        tangtForce[quot] = tangtForce[quot] - (mesh.Sf().boundaryField()[bladePatchI][faceI] & meshTanDir[faceI]) * p.boundaryField()[bladePatchI][faceI] / sectRad;
+        counter[quot] = counter[quot] + 1;
+    }
 }
 
 void DASolver::calcdForcedStateTPsiAD(
@@ -676,23 +838,23 @@ void DASolver::calcFvSourceInternal(
     Description:
         Smoothing the force distribution on propeller blade on the entire mesh to ensure that it will not diverge during optimization.
         Forces are smoothed using polynomial distribution for inner radius, normal distribution for outer radius, and Gaussiam distribution for axial direction.
-
     Inputs:
         aForceL: Axis force didtribution on propeller blade
-
         tForceL: Tangential force distribution on propeller blade
-
         rDist: Force distribution locations and radii of propeller (first element is inner radius, last element is outer radius)
-
     Output:
         fvSource: Smoothed forces in each mesh cell
     */
 
+    vector axis;
     scalar actEps = daOptionPtr_->getSubDictOption<scalar>("wingProp", "actEps");
     word rotDir = daOptionPtr_->getSubDictOption<word>("wingProp", "rotDir");
-    vector axis = daOptionPtr_->getSubDictOption<vector>("wingProp", "axis");
+    scalarList axisDummy = daOptionPtr_->getSubDictOption<scalarList>("wingProp", "axis");
+    axis[0] = axisDummy[0];
+    axis[1] = axisDummy[1];
+    axis[2] = axisDummy[2];
 
-    scalar rotDirCon;
+    scalar rotDirCon = 0.0;
     if (rotDir == "right")
     {
         rotDirCon = -1.0;
@@ -715,7 +877,7 @@ void DASolver::calcFvSourceInternal(
     volVectorField meshTanDir = meshC * 0;
 
     // Extraction of inner and outer radii, and resizing of the blade radius distribution.
-    scalar rInner = rDistExt[0];
+    // scalar rInner = rDistExt[0];
     scalar rOuter = rDistExt[rDistExt.size()-1];
     scalarField rDist = aForce * 0.0;         // real blade radius distribution
     scalarField rNorm = rDist;                // normalized blade radius distribution
@@ -783,8 +945,8 @@ void DASolver::calcFvSourceInternal(
     scalar coefBAxialIn = (f3 - coefAAxialIn * r3 * r3) / r3;
 
     // Tangential Inner
-    scalar coefATangentialIn = (f3 * r4 - f4 * r3) / (r3 * r4 * (r3 - r4));
-    scalar coefBTangentialIn = (f3 - coefATangentialIn * r3 * r3) / r3;
+    scalar coefATangentialIn = (g3 * r4 - g4 * r3) / (r3 * r4 * (r3 - r4));
+    scalar coefBTangentialIn = (g3 - coefATangentialIn * r3 * r3) / r3;
 
     // Cell 3D force computation loop
     forAll(meshC, cellI)
@@ -870,7 +1032,7 @@ void DASolver::calcFvSource(
 
     // Get Data
     label nPoints = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
-    label meshSize = meshPtr_->nCells();
+    // label meshSize = meshPtr_->nCells();
 
     // Allocate Arrays
     Field<scalar> aForceTemp(nPoints);

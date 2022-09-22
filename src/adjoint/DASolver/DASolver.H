@@ -37,7 +37,6 @@
 #include "IOMRFZoneListDF.H"
 #include "interpolateSplineXY.H"
 
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -668,16 +667,17 @@ public:
 
     /// calculate the radial profile of the force on the propeller surface
     void calcForceProfile(
-        Vec xvVec,
-        Vec stateVec,
-        Vec fProfileVec,
-        Vec rProfileVec);
+        Vec center,
+        Vec aForceL,
+        Vec tForceL,
+        Vec rDistL);
 
     void calcForceProfileInternal(
-        scalarList& xv,
-        scalarList& state,
-        scalarList& fProfile,
-        scalarList& rProfile);
+        fvMesh& mesh,
+        const vector& center,
+        scalarList& aForceL,
+        scalarList& tForceL,
+        scalarList& rDistL);
 
     void calcdForcedStateTPsiAD(
         const word mode,
@@ -688,12 +688,12 @@ public:
 
     /// calculate the fvSource based on the radial force profile
     void calcFvSourceInternal(
-    const scalarField& aForce,
-    const scalarField& tForce,
-    const scalarList& rDistExt,
-    const scalarList& targetForce,
-    const vector& center,
-    volVectorField& fvSource);
+        const scalarField& aForce,
+        const scalarField& tForce,
+        const scalarList& rDistExt,
+        const scalarList& targetForce,
+        const vector& center,
+        volVectorField& fvSource);
 
     void calcFvSource(
         Vec aForce,
