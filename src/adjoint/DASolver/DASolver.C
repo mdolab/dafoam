@@ -669,7 +669,7 @@ void DASolver::calcForceProfile(
     this->calcForceProfileInternal(mesh, centerTemp, aForceTemp, tForceTemp, rDistLTemp);
 
     VecZeroEntries(aForceL);
-    VecZeroEntries(aForceL);
+    VecZeroEntries(tForceL);
     VecZeroEntries(rDistL);
     PetscScalar* vecArrayAForceL;
     VecGetArray(aForceL, &vecArrayAForceL);
