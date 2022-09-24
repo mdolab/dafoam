@@ -252,7 +252,7 @@ class Top(Multipoint):
         self.add_design_var("twist", lower=-10.0, upper=10.0, scaler=1.0)
         self.add_design_var("shape", lower=-1.0, upper=1.0, scaler=1.0)
         self.add_design_var("uin", lower=9.0, upper=11.0, scaler=1.0)
-        self.add_design_var("actuator", lower=-10, upper=10.0, scaler=1.0)
+        self.add_design_var("actuator", lower=-1000.0, upper=1000.0, scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
