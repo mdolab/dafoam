@@ -196,6 +196,7 @@ class Top(Multipoint):
             actPOD = float(val[6])
             actExpM = float(val[7])
             actExpN = float(val[8])
+            T = float(val[9])
             DASolver.setOption(
                 "fvSource",
                 {
@@ -207,6 +208,7 @@ class Top(Multipoint):
                         "POD": actPOD,
                         "expM": actExpM,
                         "expN": actExpN,
+                        "targetThrust": T
                     },
                 },
             )
@@ -240,7 +242,7 @@ class Top(Multipoint):
         self.dvs.add_output("twist", val=np.array([pitch0] * nRefAxPts))
         self.dvs.add_output("shape", val=np.array([0] * nShapes))
         self.dvs.add_output("uin", val=np.array([U0]))
-        self.dvs.add_output("actuator", val=np.array([-1, 0.0, 5, 0.5, 5.0, 1.0, 1.0, 1.0, 0.5]))
+        self.dvs.add_output("actuator", val=np.array([-1, 0.0, 5, 0.5, 5.0, 1.0, 1.0, 1.0, 0.5, 100.0]))
         self.connect("twist", "geometry.twist")
         self.connect("shape", "geometry.shape")
         self.connect("uin", "cruise.uin")

@@ -129,6 +129,7 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
     scalar scale = diskModelSubDict.getScalar("scale");
     scalar expM = diskModelSubDict.getScalar("expM");
     scalar expN = diskModelSubDict.getScalar("expN");
+    scalar targetThrust = diskModelSubDict.getScalar("targetThrust");
 
     DAFvSource& fvSource = const_cast<DAFvSource&>(
         mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource"));
@@ -190,6 +191,11 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
             // perturb expN
             expN += delta;
             diskModelSubDict.set("expN", expN);
+        }
+        else if (i == 9)
+        {
+            targetThrust += delta;
+            diskModelSubDict.set("targetThrust", targetThrust);
         }
 
         // we need to synchronize the DAOption to actuatorDVs
@@ -254,6 +260,11 @@ void DAPartDerivdRdACTD::calcPartDerivMat(
             // reset expN
             expN -= delta;
             diskModelSubDict.set("expN", expN);
+        }
+        else if (i == 9)
+        {
+            targetThrust -= delta;
+            diskModelSubDict.set("targetThrust", targetThrust);
         }
 
         // we need to synchronize the DAOption to actuatorDVs

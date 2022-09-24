@@ -21,6 +21,7 @@ Dictionary Key: actuator
 @value -1.695564171391372e-07 1e-05 1e-07
 @value 4.190497485815989e-06 1e-05 1e-07
 @value -4.922256653062444e-06 1e-05 1e-07
+@value -9.082319178614431e-05 1e-05 1e-07
 Dictionary Key: shapey
 @value   0.2194803507326319 1e-05 1e-07
 @value   0.1826828029262775 1e-05 1e-07
@@ -39,6 +40,7 @@ Dictionary Key: actuator
 @value 9.731120139085711e-07 1e-05 1e-07
 @value -3.705061997421734e-06 1e-05 1e-07
 @value 9.202962132436457e-06 1e-05 1e-07
+@value 1.406548220183445e-05 1e-05 1e-07
 Dictionary Key: shapey
 @value   0.4992035315714743 1e-05 1e-07
 @value   0.4177391730605061 1e-05 1e-07
@@ -57,6 +59,7 @@ Dictionary Key: actuator
 @value -3.133882821287667e-07 1e-05 1e-07
 @value 1.588080243603287e-05 1e-05 1e-07
 @value -2.105509108918939e-05 1e-05 1e-07
+@value -4.435651614790631e-05 1e-05 1e-07
 Dictionary Key: shapey
 @value   0.2707074131342622 1e-05 1e-07
 @value   0.2272780993015666 1e-05 1e-07
@@ -75,6 +78,7 @@ Dictionary Key: actuator
 @value -0.0005564461849572897 1e-05 1e-07
 @value   0.0177991109242951 1e-05 1e-07
 @value -0.01942037846527767 1e-05 1e-07
+@value  -0.5357944438342209 1e-05 1e-07
 Dictionary Key: shapey
 @value   -8495.352314468179 1e-05 1e-07
 @value   -7100.785231151553 1e-05 1e-07
@@ -93,6 +97,7 @@ Dictionary Key: actuator
 @value                    0 1e-05 1e-07
 @value 2.02851108035083e-16 1e-05 1e-07
 @value 6.85058490472514e-17 1e-05 1e-07
+@value                    1 1e-05 1e-07
 Dictionary Key: shapey
 @value  -0.1998373534061134 1e-05 1e-07
 @value  -0.1689067104724625 1e-05 1e-07
