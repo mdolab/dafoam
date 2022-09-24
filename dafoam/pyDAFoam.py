@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "3.0.1"
+__version__ = "3.0.2"
 
 import subprocess
 import os
@@ -2253,7 +2253,7 @@ class PYDAFOAM(object):
             elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
                 if self.getOption("useAD")["mode"] == "fd":
                     designVarType = designVarDict[designVarName]["designVarType"]
-                    nDVTable = {"ACTP": 9, "ACTD": 9, "ACTL": 11}
+                    nDVTable = {"ACTP": 9, "ACTD": 10, "ACTL": 11}
                     nDVs = nDVTable[designVarType]
                     # calculate dRdACT
                     dRdACT = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -2293,7 +2293,7 @@ class PYDAFOAM(object):
                     dRdACT.destroy()
                 elif self.getOption("useAD")["mode"] == "reverse":
                     designVarType = designVarDict[designVarName]["designVarType"]
-                    nDVTable = {"ACTP": 9, "ACTD": 9, "ACTL": 11}
+                    nDVTable = {"ACTP": 9, "ACTD": 10, "ACTL": 11}
                     nDVs = nDVTable[designVarType]
                     # loop over all objectives
                     for objFuncName in objFuncDict:
