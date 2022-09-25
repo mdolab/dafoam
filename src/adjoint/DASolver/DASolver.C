@@ -4044,6 +4044,9 @@ void DASolver::calcdRdWTPsiAD(
         dRdWTPsi: the matrix-vector products dRdW^T * Psi
     */
 
+    // this function is not used and commented out for now
+
+    /*
     Info << "Calculating [dRdW]^T * Psi using reverse-mode AD" << endl;
 
     VecZeroEntries(dRdWTPsi);
@@ -4080,6 +4083,7 @@ void DASolver::calcdRdWTPsiAD(
     VecAssemblyEnd(dRdWTPsi);
 
     this->globalADTape_.clearAdjoints();
+    */
 
 #endif
 }

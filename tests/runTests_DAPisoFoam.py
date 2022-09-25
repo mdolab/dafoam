@@ -29,7 +29,7 @@ if gcomm.rank == 0:
     os.system("cp -r system/controlDict.unsteady system/controlDict")
     os.system("cp -r system/fvSchemes.unsteady system/fvSchemes")
     os.system("cp -r system/fvSolution.unsteady system/fvSolution")
-    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.kw constant/turbulenceProperties")
 
 # test incompressible solvers
 daOptions = {
