@@ -189,11 +189,11 @@ public:
 
     //- Make the given absolute boundary flux relative
     //  within the MRF region
-    void makeRelative(FieldField<fvsPatchField, scalar>& phi) const;
+    //void makeRelative(FieldField<fvsPatchField, scalar>& phi) const;
 
     //- Make the given absolute patch flux relative
     //  within the MRF region
-    void makeRelative(Field<scalar>& phi, const label patchi) const;
+    //void makeRelative(Field<scalar>& phi, const label patchi) const;
 
     //- Make the given absolute mass-flux relative within the MRF region
     void makeRelative(
@@ -204,16 +204,15 @@ public:
     void correctBoundaryVelocity(volVectorField& U) const;
 
     //- Update MRFZoneDF faces if the mesh topology changes
-    void update();
+    //void update();
 
     // I-O
 
     //- Write
-    void writeData(Ostream& os) const;
+    //void writeData(Ostream& os) const;
 
     //- Read MRF dictionary
-    bool read(const dictionary& dict);
-
+    //bool read(const dictionary& dict);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
