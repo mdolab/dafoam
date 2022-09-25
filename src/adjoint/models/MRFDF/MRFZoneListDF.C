@@ -161,7 +161,6 @@ void Foam::MRFZoneListDF::makeRelative(surfaceScalarField& phi) const
     }
 }
 
-/*
 Foam::tmp<Foam::surfaceScalarField> Foam::MRFZoneListDF::relative(
     const tmp<surfaceScalarField>& tphi) const
 {
@@ -194,7 +193,6 @@ Foam::MRFZoneListDF::relative(
         << exit(FatalError);
     return tmp<Field<scalar>>(tphi, true);
 }
-*/
 
 void Foam::MRFZoneListDF::makeRelative(
     const surfaceScalarField& rho,

@@ -108,13 +108,14 @@ void Foam::MRFZoneDF::makeRelativeRhoFlux(
         }
     }
 }
-/*
+
 template<class RhoFieldType>
 void Foam::MRFZoneDF::makeRelativeRhoFlux(
     const RhoFieldType& rho,
     Field<scalar>& phi,
     const label patchi) const
 {
+    /*
     if (!active_)
     {
         return;
@@ -143,6 +144,7 @@ void Foam::MRFZoneDF::makeRelativeRhoFlux(
                 * (Omega ^ (Cf.boundaryField()[patchi][patchFacei] - origin_))
             & Sf.boundaryField()[patchi][patchFacei];
     }
+    */
 }
-*/
+
 // ************************************************************************* //
