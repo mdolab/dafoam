@@ -5146,6 +5146,45 @@ void DASolver::writeAssociatedFields()
     }
 }
 
+void DASolver::setFieldValue4LocalCellI(
+    const word fieldName,
+    const scalar val,
+    const label localCellI,
+    const label compI)
+{
+    /*
+    Description:
+        Set the field value based on the local cellI. 
+    
+    Input:
+        fieldName: the name of the field to set
+
+        val: the value to set
+
+        localCellI: the local cell index
+
+        compI: which component to set (only for vectors such as U)
+    */
+
+    if (meshPtr_->thisDb().foundObject<volVectorField>(fieldName))
+    {
+        volVectorField& field =
+            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(fieldName));
+        field[localCellI][compI] = val;
+    }
+    else if (meshPtr_->thisDb().foundObject<volScalarField>(fieldName))
+    {
+        volScalarField& field =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
+        field[localCellI] = val;
+    }
+    else
+    {
+        FatalErrorIn("") << fieldName << " not found in volScalar and volVector Fields "
+                         << abort(FatalError);
+    }
+}
+
 void DASolver::setFieldValue4GlobalCellI(
     const word fieldName,
     const scalar val,

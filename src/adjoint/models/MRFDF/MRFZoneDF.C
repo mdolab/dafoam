@@ -335,7 +335,7 @@ void Foam::MRFZoneDF::makeRelative(surfaceScalarField& phi) const
 {
     makeRelativeRhoFlux(geometricOneField(), phi);
 }
-
+/*
 void Foam::MRFZoneDF::makeRelative(FieldField<fvsPatchField, scalar>& phi) const
 {
     makeRelativeRhoFlux(oneFieldField(), phi);
@@ -345,7 +345,7 @@ void Foam::MRFZoneDF::makeRelative(Field<scalar>& phi, const label patchi) const
 {
     makeRelativeRhoFlux(oneField(), phi, patchi);
 }
-
+*/
 void Foam::MRFZoneDF::makeRelative(
     const surfaceScalarField& rho,
     surfaceScalarField& phi) const
@@ -381,7 +381,7 @@ void Foam::MRFZoneDF::correctBoundaryVelocity(volVectorField& U) const
         Ubf[patchi] == pfld;
     }
 }
-
+/*
 void Foam::MRFZoneDF::writeData(Ostream& os) const
 {
     // do nothing
@@ -400,5 +400,5 @@ void Foam::MRFZoneDF::update()
         setMRFFaces();
     }
 }
-
+*/
 // ************************************************************************* //

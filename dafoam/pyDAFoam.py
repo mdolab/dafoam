@@ -3527,6 +3527,25 @@ class PYDAFOAM(object):
         """
 
         self.solver.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
+    
+    def setFieldValue4LocalCellI(self, fieldName, val, localCellI, compI=0):
+        """
+        Set the field value based on the local cellI.
+
+        Parameters
+        ----------
+        fieldName : str
+           Name of the flow field to set, e.g., U, p, nuTilda
+        val : float
+           The value to set
+        localCellI : int
+           The global cell index to set the value
+        compI : int
+           The component index to set the value (for vectorField only)
+
+        """
+
+        self.solver.setFieldValue4LocalCellI(fieldName, val, localCellI, compI)
 
     def updateBoundaryConditions(self, fieldName, fieldType):
         """

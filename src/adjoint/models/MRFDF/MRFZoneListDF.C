@@ -102,6 +102,7 @@ void Foam::MRFZoneListDF::reset(const dictionary& dict)
     }
 }
 
+/*
 bool Foam::MRFZoneListDF::read(const dictionary& dict)
 {
     // do nothing
@@ -114,6 +115,7 @@ bool Foam::MRFZoneListDF::writeData(Ostream& os) const
 
     return true;
 }
+*/
 
 Foam::tmp<Foam::volVectorField> Foam::MRFZoneListDF::DDt(
     const volVectorField& U) const
@@ -159,6 +161,7 @@ void Foam::MRFZoneListDF::makeRelative(surfaceScalarField& phi) const
     }
 }
 
+/*
 Foam::tmp<Foam::surfaceScalarField> Foam::MRFZoneListDF::relative(
     const tmp<surfaceScalarField>& tphi) const
 {
@@ -191,6 +194,7 @@ Foam::MRFZoneListDF::relative(
         << exit(FatalError);
     return tmp<Field<scalar>>(tphi, true);
 }
+*/
 
 void Foam::MRFZoneListDF::makeRelative(
     const surfaceScalarField& rho,
@@ -228,6 +232,7 @@ const Foam::scalar& Foam::MRFZoneListDF::getOmegaRef() const
     return operator[](0).getOmegaRef();
 }
 
+/*
 void Foam::MRFZoneListDF::update()
 {
     if (mesh_.topoChanging())
@@ -238,6 +243,7 @@ void Foam::MRFZoneListDF::update()
         }
     }
 }
+*/
 
 // * * * * * * * * * * * * * * * IOstream Operators  * * * * * * * * * * * * //
 
