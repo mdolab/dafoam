@@ -101,9 +101,9 @@ public:
     // Constructors
 
     //- Construct from patch and internal field
-    //multiFreqVectorFvPatchField(
-    //    const fvPatch&,
-    //    const DimensionedField<vector, volMesh>&);
+    multiFreqVectorFvPatchField(
+        const fvPatch&,
+        const DimensionedField<vector, volMesh>&);
 
     //- Construct from patch, internal field and dictionary
     multiFreqVectorFvPatchField(
@@ -113,15 +113,15 @@ public:
 
     //- Construct by mapping given multiFreqVectorFvPatchField onto
     //  a new patch
-    //multiFreqVectorFvPatchField(
-    //    const multiFreqVectorFvPatchField&,
-    //    const fvPatch&,
-    //    const DimensionedField<vector, volMesh>&,
-    //    const fvPatchFieldMapper&);
+    multiFreqVectorFvPatchField(
+        const multiFreqVectorFvPatchField&,
+        const fvPatch&,
+        const DimensionedField<vector, volMesh>&,
+        const fvPatchFieldMapper&);
 
     //- Construct as copy
-    //multiFreqVectorFvPatchField(
-    //    const multiFreqVectorFvPatchField&);
+    multiFreqVectorFvPatchField(
+        const multiFreqVectorFvPatchField&);
 
     //- Construct and return a clone
     virtual tmp<fvPatchVectorField> clone() const

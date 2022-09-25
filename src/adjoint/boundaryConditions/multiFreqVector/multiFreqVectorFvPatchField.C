@@ -32,7 +32,7 @@
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-/*
+
 Foam::multiFreqVectorFvPatchField::multiFreqVectorFvPatchField(
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF)
@@ -45,7 +45,7 @@ Foam::multiFreqVectorFvPatchField::multiFreqVectorFvPatchField(
       endTime_(1.0e8)
 {
 }
-*/
+
 Foam::multiFreqVectorFvPatchField::multiFreqVectorFvPatchField(
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF,
@@ -68,7 +68,7 @@ Foam::multiFreqVectorFvPatchField::multiFreqVectorFvPatchField(
         this->evaluate();
     }
 }
-/*
+
 Foam::multiFreqVectorFvPatchField::multiFreqVectorFvPatchField(
     const multiFreqVectorFvPatchField& ptf,
     const fvPatch& p,
@@ -97,7 +97,7 @@ Foam::multiFreqVectorFvPatchField::multiFreqVectorFvPatchField(
 {
     this->evaluate();
 }
-*/
+
 Foam::multiFreqVectorFvPatchField::multiFreqVectorFvPatchField(
     const multiFreqVectorFvPatchField& wbppsf,
     const DimensionedField<vector, volMesh>& iF)
