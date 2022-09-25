@@ -171,7 +171,7 @@ void Foam::nutUSpaldingWallFunctionFvPatchScalarFieldDF::writeLocalEntries(
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
+/*
 nutUSpaldingWallFunctionFvPatchScalarFieldDF::
     nutUSpaldingWallFunctionFvPatchScalarFieldDF(
         const fvPatch& p,
@@ -193,7 +193,7 @@ nutUSpaldingWallFunctionFvPatchScalarFieldDF::
       tolerance_(ptf.tolerance_)
 {
 }
-
+*/
 nutUSpaldingWallFunctionFvPatchScalarFieldDF::
     nutUSpaldingWallFunctionFvPatchScalarFieldDF(
         const fvPatch& p,
@@ -204,7 +204,7 @@ nutUSpaldingWallFunctionFvPatchScalarFieldDF::
       tolerance_(dict.lookupOrDefault<scalar>("tolerance", 1.e-14))
 {
 }
-
+/*
 nutUSpaldingWallFunctionFvPatchScalarFieldDF::
     nutUSpaldingWallFunctionFvPatchScalarFieldDF(
         const nutUSpaldingWallFunctionFvPatchScalarFieldDF& wfpsf)
@@ -223,7 +223,7 @@ nutUSpaldingWallFunctionFvPatchScalarFieldDF::
       tolerance_(wfpsf.tolerance_)
 {
 }
-
+*/
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 tmp<scalarField> nutUSpaldingWallFunctionFvPatchScalarFieldDF::yPlus() const

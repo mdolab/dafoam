@@ -38,7 +38,7 @@ namespace Foam
 {
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-
+/*
 tractionDisplacementFvPatchVectorField::
     tractionDisplacementFvPatchVectorField(
         const fvPatch& p,
@@ -62,6 +62,7 @@ tractionDisplacementFvPatchVectorField::
       pressure_(tdpvf.pressure_, mapper)
 {
 }
+*/
 
 tractionDisplacementFvPatchVectorField::
     tractionDisplacementFvPatchVectorField(
@@ -75,7 +76,7 @@ tractionDisplacementFvPatchVectorField::
     fvPatchVectorField::operator=(patchInternalField());
     gradient() = Zero;
 }
-
+/*
 tractionDisplacementFvPatchVectorField::
     tractionDisplacementFvPatchVectorField(
         const tractionDisplacementFvPatchVectorField& tdpvf)
@@ -94,21 +95,24 @@ tractionDisplacementFvPatchVectorField::
       pressure_(tdpvf.pressure_)
 {
 }
-
+*/
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 void tractionDisplacementFvPatchVectorField::autoMap(
     const fvPatchFieldMapper& m)
 {
+    /*
     fixedGradientFvPatchVectorField::autoMap(m);
     traction_.autoMap(m);
     pressure_.autoMap(m);
+    */
 }
 
 void tractionDisplacementFvPatchVectorField::rmap(
     const fvPatchVectorField& ptf,
     const labelList& addr)
 {
+    /*
     fixedGradientFvPatchVectorField::rmap(ptf, addr);
 
     const tractionDisplacementFvPatchVectorField& dmptf =
@@ -116,6 +120,7 @@ void tractionDisplacementFvPatchVectorField::rmap(
 
     traction_.rmap(dmptf.traction_, addr);
     pressure_.rmap(dmptf.pressure_, addr);
+    */
 }
 
 void tractionDisplacementFvPatchVectorField::updateCoeffs()

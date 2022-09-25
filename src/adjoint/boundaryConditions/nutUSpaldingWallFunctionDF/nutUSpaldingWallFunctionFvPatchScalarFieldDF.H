@@ -145,9 +145,9 @@ public:
     // Constructors
 
     //- Construct from patch and internal field
-    nutUSpaldingWallFunctionFvPatchScalarFieldDF(
-        const fvPatch&,
-        const DimensionedField<scalar, volMesh>&);
+    //nutUSpaldingWallFunctionFvPatchScalarFieldDF(
+    //    const fvPatch&,
+    //    const DimensionedField<scalar, volMesh>&);
 
     //- Construct from patch, internal field and dictionary
     nutUSpaldingWallFunctionFvPatchScalarFieldDF(
@@ -158,15 +158,15 @@ public:
     //- Construct by mapping given
     //  nutUSpaldingWallFunctionFvPatchScalarFieldDF
     //  onto a new patch
-    nutUSpaldingWallFunctionFvPatchScalarFieldDF(
-        const nutUSpaldingWallFunctionFvPatchScalarFieldDF&,
-        const fvPatch&,
-        const DimensionedField<scalar, volMesh>&,
-        const fvPatchFieldMapper&);
+    //nutUSpaldingWallFunctionFvPatchScalarFieldDF(
+    //    const nutUSpaldingWallFunctionFvPatchScalarFieldDF&,
+    //    const fvPatch&,
+    //    const DimensionedField<scalar, volMesh>&,
+    //    const fvPatchFieldMapper&);
 
     //- Construct as copy
-    nutUSpaldingWallFunctionFvPatchScalarFieldDF(
-        const nutUSpaldingWallFunctionFvPatchScalarFieldDF&);
+    //nutUSpaldingWallFunctionFvPatchScalarFieldDF(
+    //    const nutUSpaldingWallFunctionFvPatchScalarFieldDF&);
 
     //- Construct and return a clone
     virtual tmp<fvPatchScalarField> clone() const
@@ -176,9 +176,9 @@ public:
     }
 
     //- Construct as copy setting internal field reference
-    nutUSpaldingWallFunctionFvPatchScalarFieldDF(
-        const nutUSpaldingWallFunctionFvPatchScalarFieldDF&,
-        const DimensionedField<scalar, volMesh>&);
+    //nutUSpaldingWallFunctionFvPatchScalarFieldDF(
+    //    const nutUSpaldingWallFunctionFvPatchScalarFieldDF&,
+    //    const DimensionedField<scalar, volMesh>&);
 
     //- Construct and return a clone setting internal field reference
     virtual tmp<fvPatchScalarField> clone(

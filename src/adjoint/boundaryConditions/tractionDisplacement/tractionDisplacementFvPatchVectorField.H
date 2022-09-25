@@ -63,9 +63,9 @@ public:
     // Constructors
 
     //- Construct from patch and internal field
-    tractionDisplacementFvPatchVectorField(
-        const fvPatch&,
-        const DimensionedField<vector, volMesh>&);
+    //tractionDisplacementFvPatchVectorField(
+    //    const fvPatch&,
+    //    const DimensionedField<vector, volMesh>&);
 
     //- Construct from patch, internal field and dictionary
     tractionDisplacementFvPatchVectorField(
@@ -75,15 +75,15 @@ public:
 
     //- Construct by mapping given
     //  tractionDisplacementFvPatchVectorField onto a new patch
-    tractionDisplacementFvPatchVectorField(
-        const tractionDisplacementFvPatchVectorField&,
-        const fvPatch&,
-        const DimensionedField<vector, volMesh>&,
-        const fvPatchFieldMapper&);
+    //tractionDisplacementFvPatchVectorField(
+    //    const tractionDisplacementFvPatchVectorField&,
+    //    const fvPatch&,
+    //    const DimensionedField<vector, volMesh>&,
+    //    const fvPatchFieldMapper&);
 
     //- Construct as copy
-    tractionDisplacementFvPatchVectorField(
-        const tractionDisplacementFvPatchVectorField&);
+    //tractionDisplacementFvPatchVectorField(
+    //    const tractionDisplacementFvPatchVectorField&);
 
     //- Construct and return a clone
     virtual tmp<fvPatchVectorField> clone() const
@@ -93,9 +93,9 @@ public:
     }
 
     //- Construct as copy setting internal field reference
-    tractionDisplacementFvPatchVectorField(
-        const tractionDisplacementFvPatchVectorField&,
-        const DimensionedField<vector, volMesh>&);
+    //tractionDisplacementFvPatchVectorField(
+    //    const tractionDisplacementFvPatchVectorField&,
+    //    const DimensionedField<vector, volMesh>&);
 
     //- Construct and return a clone setting internal field reference
     virtual tmp<fvPatchVectorField> clone(
