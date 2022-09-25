@@ -251,7 +251,7 @@ Foam::Ostream& Foam::operator<<(
     Ostream& os,
     const MRFZoneListDF& models)
 {
-    models.writeData(os);
+    //models.writeData(os);
     return os;
 }
 
