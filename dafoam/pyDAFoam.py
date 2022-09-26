@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "3.0.1"
+__version__ = "3.0.2"
 
 import subprocess
 import os
@@ -448,7 +448,7 @@ class DAOPTION(object):
         ## This obviously increses the speed because the dRdWTPC computation takes about 30% of
         ## the adjoint total runtime. However, setting a too large lag value will decreases the speed
         ## of solving the adjoint equations. One needs to balance these factors
-        self.adjPCLag = 10
+        self.adjPCLag = 10000
 
         ## Whether to use AD: Mode options: forward, reverse, or fd. If forward mode AD is used
         ## the seedIndex will be set to compute derivative by running the whole primal solver.
@@ -2253,7 +2253,7 @@ class PYDAFOAM(object):
             elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
                 if self.getOption("useAD")["mode"] == "fd":
                     designVarType = designVarDict[designVarName]["designVarType"]
-                    nDVTable = {"ACTP": 9, "ACTD": 9, "ACTL": 11}
+                    nDVTable = {"ACTP": 9, "ACTD": 10, "ACTL": 11}
                     nDVs = nDVTable[designVarType]
                     # calculate dRdACT
                     dRdACT = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -2293,7 +2293,7 @@ class PYDAFOAM(object):
                     dRdACT.destroy()
                 elif self.getOption("useAD")["mode"] == "reverse":
                     designVarType = designVarDict[designVarName]["designVarType"]
-                    nDVTable = {"ACTP": 9, "ACTD": 9, "ACTL": 11}
+                    nDVTable = {"ACTP": 9, "ACTD": 10, "ACTL": 11}
                     nDVs = nDVTable[designVarType]
                     # loop over all objectives
                     for objFuncName in objFuncDict:
@@ -3527,6 +3527,25 @@ class PYDAFOAM(object):
         """
 
         self.solver.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
+    
+    def setFieldValue4LocalCellI(self, fieldName, val, localCellI, compI=0):
+        """
+        Set the field value based on the local cellI.
+
+        Parameters
+        ----------
+        fieldName : str
+           Name of the flow field to set, e.g., U, p, nuTilda
+        val : float
+           The value to set
+        localCellI : int
+           The global cell index to set the value
+        compI : int
+           The component index to set the value (for vectorField only)
+
+        """
+
+        self.solver.setFieldValue4LocalCellI(fieldName, val, localCellI, compI)
 
     def updateBoundaryConditions(self, fieldName, fieldType):
         """

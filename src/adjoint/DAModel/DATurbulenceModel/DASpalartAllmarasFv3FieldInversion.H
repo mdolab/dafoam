@@ -93,26 +93,20 @@ protected:
     /// A beta field multiplying to the production term
     volScalarField& betaFieldInversion_; 
 
-    /// a reference beta field
-    volScalarField betaRefFieldInversion_; 
-
-    /// reference field (e.g. velocity for DNS)
-    volVectorField& varRefFieldInversion_; 
-
-    /// reference Reynolds stress field
-    //volSymmTensorField TauDNS_;
+    /// reference velocity field
+    volVectorField UData_; 
 
     /// a surface friction 'field' when using skin friction data for field inversion
     volScalarField surfaceFriction_;
 
     /// the reference field for surfaceFriction
-    volScalarField surfaceFrictionRef_; 
+    volScalarField surfaceFrictionData_; 
 
-    /// the reference field for surfacePressure
-    volScalarField surfacePressureRef_; 
+    /// the reference field for pressure
+    volScalarField pData_; 
 
     /// reference field for profile data
-    volScalarField profileRefFieldInversion_; 
+    volScalarField USingleComponentData_; 
 
     /// 3D wall distance
     const volScalarField& y_;

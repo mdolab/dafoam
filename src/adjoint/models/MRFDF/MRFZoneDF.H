@@ -204,16 +204,15 @@ public:
     void correctBoundaryVelocity(volVectorField& U) const;
 
     //- Update MRFZoneDF faces if the mesh topology changes
-    void update();
+    //void update();
 
     // I-O
 
     //- Write
-    void writeData(Ostream& os) const;
+    //void writeData(Ostream& os) const;
 
     //- Read MRF dictionary
-    bool read(const dictionary& dict);
-
+    //bool read(const dictionary& dict);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

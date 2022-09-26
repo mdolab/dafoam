@@ -207,6 +207,7 @@ def actuator(val, geo):
     actPOD = float(val[6])
     actExpM = float(val[7])
     actExpN = float(val[8])
+    T = float(val[9])
     DASolver.setOption(
         "fvSource",
         {
@@ -224,7 +225,7 @@ def actuator(val, geo):
                 "expM": actExpM,
                 "expN": actExpN,
                 "adjustThrust": 1,
-                "targetThrust": 1.2,
+                "targetThrust": T,
             },
         },
     )
@@ -240,7 +241,7 @@ DVGeo.addGlobalDV("uin", [U0], uin, lower=0.0, upper=100.0, scale=1.0)
 # actuator
 DVGeo.addGlobalDV(
     "actuator",
-    value=[0.5, 0.5, 0.5, 0.05, 0.6, 10.0, 0.7, 1.0, 0.5],
+    value=[0.5, 0.5, 0.5, 0.05, 0.6, 10.0, 0.7, 1.0, 0.5, 1.2],
     func=actuator,
     lower=-100.0,
     upper=100.0,

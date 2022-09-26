@@ -123,7 +123,7 @@ public:
     void correctBoundaryVelocity(volVectorField& U) const;
 
     //- Update MRFZone faces if the mesh topology changes
-    void update();
+    //void update();
 
     //- Get the reference of the rotation speed omega from MRFZone
     const scalar& getOmegaRef() const;
@@ -131,10 +131,10 @@ public:
     // I-O
 
     //- Read dictionary
-    bool read(const dictionary& dict);
+    //bool read(const dictionary& dict);
 
     //- Write data to Ostream
-    bool writeData(Ostream& os) const;
+    //bool writeData(Ostream& os) const;
 
     //- Ostream operator
     friend Ostream& operator<<(

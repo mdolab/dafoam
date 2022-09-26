@@ -3728,8 +3728,8 @@ void DASolver::calcdFdACTAD(
                     objFuncSubDictPart));
 
                 // get the design variable vals
-                scalarList actDVList(9);
-                for (label i = 0; i < 9; i++)
+                scalarList actDVList(10);
+                for (label i = 0; i < 10; i++)
                 {
                     actDVList[i] = fvSource.getActuatorDVs(diskName, i);
                 }
@@ -3739,12 +3739,12 @@ void DASolver::calcdFdACTAD(
                 // activate tape, start recording
                 this->globalADTape_.setActive();
                 // register  the input
-                for (label i = 0; i < 9; i++)
+                for (label i = 0; i < 10; i++)
                 {
                     this->globalADTape_.registerInput(actDVList[i]);
                 }
                 // set dv values to fvSource obj for all procs
-                for (label i = 0; i < 9; i++)
+                for (label i = 0; i < 10; i++)
                 {
                     fvSource.setActuatorDVs(diskName, i, actDVList[i]);
                 }
@@ -3780,7 +3780,7 @@ void DASolver::calcdFdACTAD(
                 VecDuplicate(dFdACT, &dFdACTPart);
                 VecZeroEntries(dFdACTPart);
 
-                for (label i = 0; i < 9; i++)
+                for (label i = 0; i < 10; i++)
                 {
                     PetscScalar valIn = actDVList[i].getGradient();
                     // we need to do ADD_VALUES to get contribution from all procs
@@ -3878,8 +3878,8 @@ void DASolver::calcdRdActTPsiAD(
             this->updateOFField(wVec);
             this->updateOFMesh(xvVec);
 
-            scalarList actDVList(9);
-            for (label i = 0; i < 9; i++)
+            scalarList actDVList(10);
+            for (label i = 0; i < 10; i++)
             {
                 actDVList[i] = fvSource.getActuatorDVs(diskName, i);
             }
@@ -3887,13 +3887,13 @@ void DASolver::calcdRdActTPsiAD(
             this->globalADTape_.reset();
             this->globalADTape_.setActive();
 
-            for (label i = 0; i < 9; i++)
+            for (label i = 0; i < 10; i++)
             {
                 this->globalADTape_.registerInput(actDVList[i]);
             }
 
             // set dv values to fvSource obj for all procs
-            for (label i = 0; i < 9; i++)
+            for (label i = 0; i < 10; i++)
             {
                 fvSource.setActuatorDVs(diskName, i, actDVList[i]);
             }
@@ -3915,7 +3915,7 @@ void DASolver::calcdRdActTPsiAD(
             this->assignVec2ResidualGradient(psi);
             this->globalADTape_.evaluate();
 
-            for (label i = 0; i < 9; i++)
+            for (label i = 0; i < 10; i++)
             {
                 PetscScalar valIn = actDVList[i].getGradient();
                 // we need to do ADD_VALUES to get contribution from all procs
@@ -4044,6 +4044,9 @@ void DASolver::calcdRdWTPsiAD(
         dRdWTPsi: the matrix-vector products dRdW^T * Psi
     */
 
+    // this function is not used and commented out for now
+
+    /*
     Info << "Calculating [dRdW]^T * Psi using reverse-mode AD" << endl;
 
     VecZeroEntries(dRdWTPsi);
@@ -4080,6 +4083,7 @@ void DASolver::calcdRdWTPsiAD(
     VecAssemblyEnd(dRdWTPsi);
 
     this->globalADTape_.clearAdjoints();
+    */
 
 #endif
 }
@@ -5139,6 +5143,45 @@ void DASolver::writeAssociatedFields()
             MRF.makeRelative(URel);
             URel.write();
         }
+    }
+}
+
+void DASolver::setFieldValue4LocalCellI(
+    const word fieldName,
+    const scalar val,
+    const label localCellI,
+    const label compI)
+{
+    /*
+    Description:
+        Set the field value based on the local cellI. 
+    
+    Input:
+        fieldName: the name of the field to set
+
+        val: the value to set
+
+        localCellI: the local cell index
+
+        compI: which component to set (only for vectors such as U)
+    */
+
+    if (meshPtr_->thisDb().foundObject<volVectorField>(fieldName))
+    {
+        volVectorField& field =
+            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(fieldName));
+        field[localCellI][compI] = val;
+    }
+    else if (meshPtr_->thisDb().foundObject<volScalarField>(fieldName))
+    {
+        volScalarField& field =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
+        field[localCellI] = val;
+    }
+    else
+    {
+        FatalErrorIn("") << fieldName << " not found in volScalar and volVector Fields "
+                         << abort(FatalError);
     }
 }
 

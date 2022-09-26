@@ -46,22 +46,17 @@ protected:
     /// turbulence variable for SA
     volScalarField nuTilda_;
 
-    /// betaFieldInversion field that will be multiplied to the SA production term
     volScalarField betaFieldInversion_;
 
-    /// the reference betaFieldInversion, usually be 1
-    volScalarField betaRefFieldInversion_;
-
-    /// the reference field (e.g. velocity field from DNS)
-    volVectorField varRefFieldInversion_;
+    volVectorField UData_;
 
     volScalarField surfaceFriction_;
 
-    volScalarField surfaceFrictionRef_; 
+    volScalarField surfaceFrictionData_; 
 
-    volScalarField surfacePressureRef_; 
+    volScalarField pData_; 
 
-    volScalarField profileRefFieldInversion_; 
+    volScalarField USingleComponentData_; 
 
     //- Wall distance
     //  Note: different to wall distance in parent RASModel

@@ -144,7 +144,7 @@ void DAFvSource::syncDAOptionToActuatorDVs()
                 diskSubDict.readEntry<scalarList>("center", centerList);
 
                 // we have 9 design variables for each disk
-                scalarList dvList(9);
+                scalarList dvList(10);
                 dvList[0] = centerList[0];
                 dvList[1] = centerList[1];
                 dvList[2] = centerList[2];
@@ -154,6 +154,7 @@ void DAFvSource::syncDAOptionToActuatorDVs()
                 dvList[6] = diskSubDict.getScalar("POD");
                 dvList[7] = diskSubDict.getScalar("expM");
                 dvList[8] = diskSubDict.getScalar("expN");
+                dvList[9] = diskSubDict.getScalar("targetThrust");
 
                 // set actuatorDiskDVs_
                 actuatorDiskDVs_.set(diskName, dvList);

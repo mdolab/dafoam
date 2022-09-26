@@ -30,7 +30,7 @@ class DAPartDerivdRdACTD
 protected:
 
     /// number of design variables for actuator disk
-    label nActDVs_ = 9;
+    label nActDVs_ = 10;
 
 public:
     TypeName("dRdACTD");
