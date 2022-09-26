@@ -254,95 +254,43 @@ label DASimpleFoam::runFPAdj(
         // better do it another way!
         volScalarField nuEff = daTurbulenceModelPtr_->nuEff();
 
+        // Initialize field cmpts for dFdW as all-zero
         volVectorField dFdU("dFdU", 0.0 * U);
         volScalarField dFdP("dFdP", 0.0 * p);
         surfaceScalarField dFdPhi("dFdPhi", 0.0 * phi);
         volScalarField dFdNuTilda("dFdNuTilda", 0.0 * nuTilda);
 
+        // Initialize primal residuals as all-zero
         volVectorField URes("URes", 0.0 * U);
         volScalarField pRes("pRes", 0.0 * p);
         surfaceScalarField phiRes("phiRes", 0.0 * phi);
         volScalarField nuTildaRes("nuTildaRes", 0.0 * nuTilda);
 
+        // Pass the values in dFdW to its field cmpts
         this->vec2Fields("vec2Field", dFdW, dFdU, dFdP, dFdPhi, dFdNuTilda);
 
+        // Initialize all-zero cmpts for the adjoint vector
         volVectorField UPsi("UPsi", 0.0 * U);
         volScalarField pPsi("pPsi", 0.0 * p);
         surfaceScalarField phiPsi("phiPsi", 0.0 * phi);
         volScalarField nuTildaPsi("nuTildaPsi", 0.0 * nuTilda);
 
-        // Duplicate U, p, nuTilda to get pseudo variables
-        volVectorField pseudoU("pseudoU", U);
-        volScalarField pseudoP("pseudoP", p);
-        volScalarField pseudoNuTilda("pseudoNuTilda", nuTilda);
-
-        // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-        // Get the pseudoUEqn,
-        // temporarily in main code, pack into a class variable later
-        fvVectorMatrix pseudoUEqn(
-            fvm::div(phi, pseudoU)
-            - fvm::laplacian(nuEff, pseudoU));
-        pseudoUEqn.relax();
-
-        // Swap upper() and lower()
-        swap(pseudoUEqn.upper(), pseudoUEqn.lower());
-        // Get UDiag as D
-        List<scalar> UDiag = pseudoUEqn.D();
-        // Get rAU
-        volScalarField rAU(1.0 / pseudoUEqn.A());
-
-        // *********************************** //
-        // Get the pseudoPEqn,
-        // temporarily in main code, pack into a class variable later
-        fvScalarMatrix pseudoPEqn(
-            fvm::laplacian(rAU, pseudoP));
-        // Swap upper() and lower()
-        swap(pseudoPEqn.upper(), pseudoPEqn.lower());
-
-        // *********************************** //
-        // Get the pseudoNuTildaEqn,
-        // Add to DASpalartAllmarasFv3.C and .H
-        /*
-        const volScalarField chi(daTurbulenceModelPtr_->chi());
-        const volScalarField fv1(daTurbulenceModelPtr_->fv1(chi));
-
-        // Get myStilda
-        // ??? How to access kappa and y?
-        const volScalarField Stilda(
-        daTurbulenceModelPtr_->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U)))
-        + daTurbulenceModelPtr_->fv2(chi, fv1) * nuTilda / sqr(kappa_ * y_));
-
-        // Get the pseudoNuTildaEqn,
-        fvScalarMatrix pseudoNuTildaEqn(
-            fvm::ddt(pseudoNuTilda)
-                + fvm::div(phi, pseudoNuTilda)
-                - fvm::laplacian(DnuTildaEff(pseudoNuTilda, nu, sigmaNut), pseudoNuTilda)
-            == -fvm::Sp(Cw1 * fw(myStilda, pseudoNuTilda, y, kappa, Cw2, Cw3) * pseudoNuTilda / sqr(y), pseudoNuTilda));
-        pseudoNuTildaEqn.relax();
-
-        // Swap upper() and lower()
-        swap(pseudoNuTildaEqn.upper(), pseudoNuTildaEqn.lower());
-        */
-        // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
+        // Initialize all-zero cmpts for the adjoint residual
         volVectorField adjURes("adjURes", 0.0 * U);
         volScalarField adjPRes("adjPRes", 0.0 * p);
         surfaceScalarField adjPhiRes("adjPhiRes", 0.0 * phi);
         volScalarField adjNuTildaRes("adjNuTildaRes", 0.0 * nuTilda);
 
-        // Initiate the initial L2norm for adjURes, adjPRes, adjPhiRes, adjNuTildaRes
+        // Initialize the initial L2norm for adjURes, adjPRes, adjPhiRes, adjNuTildaRes as all-zero
         vector initNormAdjURes = vector::zero;
         scalar initNormAdjPRes = 0.0;
         scalar initNormAdjPhiRes = 0.0;
         scalar initNormAdjNuTildaRes = 0.0;
 
-        this->calcLduResiduals(URes, pRes, phiRes);
-        daTurbulenceModelPtr_->calcLduResidualTurb(nuTildaRes);
-        Info << "Residual for simpleFOAM after convergence: " << endl;
-        Info << "L2 norm of URes: " << L2norm(URes) << endl;
-        Info << "L2 norm of pRes: " << L2norm(pRes) << endl;
-        Info << "L2 norm of phiRes: " << L2norm(phiRes) << endl;
-        Info << "L2 norm of nuTildaRes: " << L2norm(nuTildaRes) << endl;
+// Construct the pseudoEqns using pseudoEqns.H
+// Better to make pseudoUEqn, pseudoPEqn, pseudoNuTildaEqn class variables
+// Also need to move pseudoNuTildaEqn to DASpalartAllmarasFv3 under DATurbulenceModel
+#include "pseudoEqns.H"
 
         // Initialize the duplicated variables for AD
         volScalarField p1("p1", p);
@@ -357,56 +305,29 @@ label DASimpleFoam::runFPAdj(
         volScalarField divPhi("divPhi", fvc::div(phi));
         surfaceScalarField fluxU("fluxU", 0.0 * phi);
 
+        // Print primal residuals before starting the adjoint iterations
+        this->calcLduResiduals(URes, pRes, phiRes);
+        daTurbulenceModelPtr_->calcLduResidualTurb(nuTildaRes);
+        Info << "Residual for simpleFOAM after convergence: " << endl;
+        Info << "L2 norm of URes: " << L2norm(URes) << endl;
+        Info << "L2 norm of pRes: " << L2norm(pRes) << endl;
+        Info << "L2 norm of phiRes: " << L2norm(phiRes) << endl;
+        Info << "L2 norm of nuTildaRes: " << L2norm(nuTildaRes) << endl;
+
         label cnt = 0;
         while (cnt < fpMaxIters)
         {
             Info << "Step = " << cnt << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
 
-            // Placeholders
-            /*
-            // ------ U -----
-            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
-            invTranProdUEqn(adjURes, pseudoU);
-            forAll(pseudoU, cellI)
-            {
-                // the definition of adjURes has opposite sign than the formulation on Overleaf, so we do -= here
-                UPsi[cellI] -= relaxU * pseudoU[cellI];
-            }
+            // ************************************************************************* //
+            // Step-1: Get D^(-T).adjURes, adjPRes, adjPhiRes, adjNuTildaRes, and update phiPsi
+            // ************************************************************************* //
+            // Step-1.1: Calculate adjURes, adjPRes, adjPhiRes, adjNuTildaRes, and update phiPsi
 
-            //  ------- p ----
-            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
-            invTranProdPEqn(adjPRes, pseudoP);
-            forAll(pseudoP, cellI)
-            {
-                pPsi[cellI] -= relaxP * pseudoP[cellI];
-            }
-
-            // -------- phi  --------
+            // At beginning of iteration, call calcAdjointResidual once to get the adjoint residual
             this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
 
-            forAll(adjPhiRes, faceI)
-            {
-                phiPsi[faceI] += relaxPhi * adjPhiRes[faceI];
-            }
-            forAll(adjPhiRes.boundaryField(), patchI)
-            {
-                forAll(adjPhiRes.boundaryField()[patchI], faceI)
-                {
-                    phiPsi.boundaryFieldRef()[patchI][faceI] += relaxPhi * adjPhiRes.boundaryField()[patchI][faceI];
-                }
-            }
-
-            // -------- nuTilda  --------
-            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
-            // Solve, using the inverse transpose product function
-            daTurbulenceModelPtr_->invTranProdNuTildaEqn(adjNuTildaRes, pseudoNuTilda);
-
-            forAll(pseudoNuTilda, cellI)
-            {
-                nuTildaPsi[cellI] -= relaxNuTilda * pseudoNuTilda[cellI];
-            }
-            */
-
+            // Calculate L2 norm for all components of adjoint residual, then check if fpRelTol is met
             if (cnt >= 1)
             {
                 vector normAdjURes = L2norm(adjURes);
@@ -441,6 +362,389 @@ label DASimpleFoam::runFPAdj(
                     Info << "Residual drop of " << fpRelTol << " has been achieved!" << endl;
                     break;
                 }
+            }
+
+            // Update phiPsi
+            phiPsi += relaxPhi * adjPhiRes;
+
+            // ************************************************************************* //
+            // Step-1.2: Get D^(-T) adjURes, overwrite adjURes
+
+            forAll(adjURes, cellI)
+            {
+                adjURes[cellI] /= UDiag[cellI];
+            }
+
+            // ************************************************************************* //
+            // Step-2: Get alphaP.(F_p^grad)^T.(D^(-T).adjURes) - alphaP.adjPRes + (F_p^flux.F_p^aug)^T.adjPhiRes
+            // ************************************************************************* //
+            // Step-2.1: Start with (F_p^grad)^T.(D^(-T).adjURes) - adjPRes
+
+            // Initialize with -adjPRes
+            volScalarField step_2("step_2", -adjPRes);
+
+            // Do (F_p^grad)^T.(D^(-T).adjURes) with ADR
+            // Here, F_p^grad is the operator of fvc::grad(p) * mesh().V() on p
+
+            // get the reverse-mode AD tape
+            codi::RealReverse::TapeType& tape = codi::RealReverse::getGlobalTape();
+
+            if (cnt == 0)
+            {
+                tape.setActive();
+
+                // Now register p1 as input:
+                forAll(p1, cellI)
+                {
+                    tape.registerInput(p1[cellI]);
+                }
+
+                // Get tape position before calling function(s)
+                gradPStart_ = tape.getPosition();
+
+                // Correct boundaries to link the intermediate results
+                p1.correctBoundaryConditions();
+                U.correctBoundaryConditions();
+
+                // Calculate fvc::grad(p) * mesh().V()
+                gradP = fvc::grad(p1);
+                forAll(gradP, cellI)
+                {
+                    gradP.primitiveFieldRef()[cellI] *= U.mesh().V()[cellI];
+                }
+
+                // Get tape position before calling function(s)
+                gradPEnd_ = tape.getPosition();
+
+                // stop recording
+                tape.setPassive();
+            }
+
+            // set the AD seed to the output var
+            // Seed with (D^(-T).adjURes), which is the overwritten adjURes.
+            forAll(gradP, cellI)
+            {
+                gradP[cellI][0].setGradient(adjURes[cellI][0].getValue());
+                gradP[cellI][1].setGradient(adjURes[cellI][1].getValue());
+                gradP[cellI][2].setGradient(adjURes[cellI][2].getValue());
+            }
+
+            // evaluate the tape to compute the derivative of the seeded output wrt all the input
+            tape.evaluate(gradPEnd_, gradPStart_);
+            forAll(p1, cellI)
+            {
+                step_2[cellI] += p1[cellI].getGradient();
+            }
+
+            // Clear adjoints for future Jacobian calculations
+            tape.clearAdjoints();
+
+            // ************************************************************************* //
+            // Step-2.2: Get alphaP*step_2.1 =  alphaP.((F_p^grad)^T.(D^(-T).adjURes) - adjPRes)
+            scalar alphaP = p.mesh().fieldRelaxationFactor(p.name());
+            step_2 *= alphaP;
+
+            //Info<<"Show step_2 after *alphaP: "<< step_2 << endl;
+
+            // ************************************************************************* //
+            // Step-2.3: Get step_2.2 + (F_p^flux.F_p^aug)^T.adjPhiRes  =  alphaP.((F_p^grad)^T.(D(-T).adjURes) - adjPRes) + (F_p^flux.F_p^aug)^T.adjPhiRes
+            // Here, (F_p^flux.F_p^aug) is the operator pEqn.flux() on p, (F_p^flux.F_p^aug)^T.adjPhiRes is calculated with ADR
+
+            if (cnt == 0)
+            {
+                // First, get pEqn1, note that we only need the l.h.s. of pEqn1
+                fvScalarMatrix pEqn1(
+                    fvm::laplacian(rAU, p2));
+                //Info<<"Show pEqn1.flux(): "<< pEqn1.flux() << endl;
+
+                // Re-active the tape, no need to initiate it again
+                tape.setActive();
+
+                // Now register p2 as input:
+                forAll(p2, cellI)
+                {
+                    tape.registerInput(p2[cellI]);
+                }
+
+                // Get tape position before calling function(s)
+                pEqnFluxStart_ = tape.getPosition();
+
+                // Correct boundaries to link the intermediate results
+                p2.correctBoundaryConditions();
+                U.correctBoundaryConditions();
+
+                // Calculate pEqn1.flux():
+                pEqnFlux = pEqn1.flux();
+
+                // Get tape position after calling function(s)
+                pEqnFluxEnd_ = tape.getPosition();
+
+                // stop recording
+                tape.setPassive();
+            }
+
+            // set the AD seed to the output var pEqnFlux
+            // Seed with adjPhiRes
+            // Seed internal of pEqnFlux:
+            forAll(pEqnFlux.primitiveFieldRef(), faceI)
+            {
+                pEqnFlux.primitiveFieldRef()[faceI].setGradient(adjPhiRes.primitiveFieldRef()[faceI].getValue());
+            }
+            // Seed boundary of pEqnFlux:
+            forAll(pEqnFlux.boundaryFieldRef(), patchI)
+            {
+                forAll(pEqnFlux.boundaryFieldRef()[patchI], faceI)
+                {
+                    pEqnFlux.boundaryFieldRef()[patchI][faceI].setGradient(adjPhiRes.boundaryFieldRef()[patchI][faceI].getValue());
+                }
+            }
+
+            // evaluate the tape to compute the derivative of the seeded output wrt all the input
+            tape.evaluate(pEqnFluxEnd_, pEqnFluxStart_);
+            forAll(p2, cellI)
+            {
+                step_2[cellI] += p2[cellI].getGradient();
+            }
+
+            // Clear adjoints for future Jacobian calculations
+            tape.clearAdjoints();
+            // reset the tape for future recording
+            //tape.reset();
+
+            //Info<<"Show final form of step_2: "<< step_2 << endl;
+
+            // ************************************************************************* //
+            // Step-3: Solve and get step_3 = A_p^(-T).step_2,
+            // which is A_p^(-T).(alphaP.((F_p^grad)^T.(D(-T).adjURes) - adjPRes) + (F_p^flux.F_p^aug)^T.adjPhiRes)
+            // then update pPsi += step_3
+
+            // Solve, using the inverse transpose product function
+            //invTranProd_pEqn(rAU, p, step_2, pseudoP);
+            //Info<<"Show pseudoP: "<< pseudoP << endl;
+
+            // *********************************** //
+            // Below is equivalent to: invTranProd_pEqn(rAU, p, step_2, pseudoP);
+            // Here, pSource is a redundant alias, which is an "input argument" that takes the value of step_2 into solvePseudopEqn.H
+            volScalarField& pSource = step_2;
+#include "solvePseudoPEqn.H"
+            // *********************************** //
+
+            // Get step_3 as the alias of pseudoP
+            volScalarField& step_3 = pseudoP;
+            //Info<<"Show step_3: "<< step_3 << endl;
+
+            // Update pPsi
+            pPsi += relaxP * step_3;
+            //Info<<"Show pPsi: "<< pPsi << endl;
+
+            // ************************************************************************* //
+            // Step-4: Get to the point before solve with A_U^(-T)
+            // which is Q^T.{D^(-T).adjURes - D^(-T)[E^T.F^T.M_p^(-T).alphaP.B^T.D^(-T).adjURes - E^T.F^T.M_p^(-T).alphaP.adjPRes + (E^T.F^T.M_p^(-T).G^T - E^T).adjPhiRes]}
+            // ************************************************************************* //
+            // Step-4.1: Get (F_phi^div)^T.step_3 - adjPhiRes = (F_phi^div)^T.(A_p^(-T).(alphaP.((F_p^grad)^T.(D(-T).adjURes) - adjPRes) + (F_p^flux.F_p^aug)^T.adjPhiRes)) - adjPhiRes
+            // (F_phi^div)^T.step_3 is calculated with ADR
+            // Here, (F_phi^div) is the operator fvc::div(phiHbyA) on phiHbyA
+            // We don't want to calculate phiHbyA, so let's use phi instead
+            // So, (F_phi^div) is the operator fvc::div(phi) on phi
+
+            // Initiate a phi-like temp variable as - adjPhiRes
+            surfaceScalarField phiTemp = -adjPhiRes;
+
+            if (cnt == 0)
+            {
+                // Re-active the tape, no need to initiate it again
+                tape.setActive();
+
+                // Register phi1 as input
+                // Note that both the internal field of phi1 and the boundary fields need to be registered
+                // Register internal of phi1:
+                forAll(phi1.primitiveFieldRef(), faceI)
+                {
+                    tape.registerInput(phi1.primitiveFieldRef()[faceI]);
+                }
+                // Register boundary of phi:
+                forAll(phi1.boundaryFieldRef(), patchI)
+                {
+                    forAll(phi1.boundaryFieldRef()[patchI], faceI)
+                    {
+                        tape.registerInput(phi1.boundaryFieldRef()[patchI][faceI]);
+                    }
+                }
+
+                // Get tape position before calling function(s)
+                divPhiStart_ = tape.getPosition();
+
+                // This is not needed, but whatever... XD
+                // Correct boundaries to link the intermediate results
+                //U.correctBoundaryConditions();
+                //p.correctBoundaryConditions();
+
+                // Calculate fvc::div(phi), then scale with cell volumes mesh().V()
+                divPhi = fvc::div(phi1);
+                forAll(divPhi, cellI)
+                {
+                    divPhi.primitiveFieldRef()[cellI] *= p.mesh().V()[cellI];
+                }
+
+                // Get tape position after calling function(s)
+                divPhiEnd_ = tape.getPosition();
+
+                // stop recording
+                tape.setPassive();
+            }
+
+            // set the AD seed to the output var divPhi
+            // Seed with step_3
+            forAll(divPhi, cellI)
+            {
+                divPhi[cellI].setGradient(step_3[cellI].getValue());
+            }
+
+            // evaluate the tape to compute the derivative of the seeded output wrt all the input
+            tape.evaluate(divPhiEnd_, divPhiStart_);
+            forAll(phi1.primitiveFieldRef(), faceI)
+            {
+                phiTemp.primitiveFieldRef()[faceI] += phi1.primitiveFieldRef()[faceI].getGradient();
+            }
+            forAll(phi1.boundaryFieldRef(), patchI)
+            {
+                forAll(phi1.boundaryFieldRef()[patchI], faceI)
+                {
+                    phiTemp.boundaryFieldRef()[patchI][faceI] += phi1.boundaryFieldRef()[patchI][faceI].getGradient();
+                }
+            }
+
+            // Clear adjoints for future Jacobian calculations
+            tape.clearAdjoints();
+            // reset the tape for future recording
+            //tape.reset();
+
+            //Info<<"Show step-4.1: "<< phiTemp << endl;
+
+            // ************************************************************************* //
+            // Step-4.2: Get (D^(-T).adjURes) - D^(-T).(F_U^flux.F_U^aug)^T.phiTemp
+            // Here, (F_U^flux.F_U^aug) is the operator fvc::flux(HbyA) on HbyA
+            // We don't want to calculate HbyA, so we use U instead
+            // HbyA and U have the same boundary settings, so the operator as a function stays the same
+            // So, (F_U^flux.F_U^aug) is the operator fvc::flux(U) on U
+
+            // Initiate a U-like temporary variable step_4 as D^(-T).adjURes, which is the overwritten adjURes
+            volVectorField step_4("step_4", adjURes);
+
+            if (cnt == 0)
+            {
+                // Re-active the tape, no need to initiate it again
+                tape.setActive();
+
+                // Register U1 as input, note that U1 has 3 components
+                forAll(U1, cellI)
+                {
+                    tape.registerInput(U1[cellI][0]);
+                    tape.registerInput(U1[cellI][1]);
+                    tape.registerInput(U1[cellI][2]);
+                }
+
+                // Get tape position before calling function(s)
+                fluxUStart_ = tape.getPosition();
+
+                // Correct boundaries to link the intermediate results
+                U1.correctBoundaryConditions();
+                p.correctBoundaryConditions();
+
+                // Calculate fvc::flux(U)
+                fluxU = fvc::flux(U1);
+
+                // Get tape position after calling function(s)
+                fluxUEnd_ = tape.getPosition();
+
+                // stop recording
+                tape.setPassive();
+            }
+
+            // set the AD seed to the output var fluxU
+            // Seed with phiTemp
+            // Seed internal of fluxU:
+            forAll(fluxU.primitiveFieldRef(), faceI)
+            {
+                fluxU.primitiveFieldRef()[faceI].setGradient(phiTemp.primitiveFieldRef()[faceI].getValue());
+            }
+            // Seed boundary of fluxU:
+            forAll(fluxU.boundaryFieldRef(), patchI)
+            {
+                forAll(fluxU.boundaryFieldRef()[patchI], faceI)
+                {
+                    fluxU.boundaryFieldRef()[patchI][faceI].setGradient(phiTemp.boundaryFieldRef()[patchI][faceI].getValue());
+                }
+            }
+
+            // evaluate the tape to compute the derivative of the seeded output wrt all the input
+            tape.evaluate(fluxUEnd_, fluxUStart_);
+            forAll(U1, cellI)
+            {
+                for (label cmpt = 0; cmpt < 3; cmpt++)
+                {
+                    step_4[cellI][cmpt] -= U1[cellI][cmpt].getGradient() / UDiag[cellI];
+                }
+            }
+
+            // Clear adjoints for future Jacobian calculations
+            tape.clearAdjoints();
+            // reset the tape for future recording
+            //tape.reset();
+
+            //Info<<"Show step_4: "<< step_4 << endl;
+
+            // ************************************************************************* //
+            // Step-4.3: Get Q^T.step_4, this is the last sub-step of step-4
+            // We use pseudoUEqn, whose upper and lower are already swapped
+            step_4.primitiveFieldRef() = -pseudoUEqn.lduMatrix::H(step_4);
+            //Info<<"Show step_4: "<< step_4 << endl;
+
+            // ************************************************************************* //
+            // Step-5: Solve and get step_5 = A_U^(-T).step_4
+            // Then update UPsi += (step_5 - D^(-T).adjURes)
+
+            // Solve, using the inverse transpose product function
+            //invTranProd_UEqn(U, phi, nuEff, p, step_4, pseudoU);
+            //Info<<"Show pseudoU: "<< pseudoU << endl;
+
+            // *********************************** //
+            // Below is equivalent to: invTranProd_UEqn(U, phi, nuEff, p, step_4, pseudoU);
+            // Here, USource is a redundant alias, which is an "input argument" that takes the value of step_4 into solvePseudoUEqn.H
+            volVectorField& USource = step_4;
+#include "solvePseudoUEqn.H"
+            // *********************************** //
+
+            // Get step_5 as the alias of pseudoU
+            volVectorField& step_5 = pseudoU;
+            //Info<<"Show step_5: "<< step_5 << endl;
+
+            // Update UPsi
+            forAll(UPsi, cellI)
+            {
+                UPsi[cellI] += relaxU * step_5[cellI];
+                UPsi[cellI] -= relaxU * adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
+            }
+            //Info<<"Show UPsi: "<< UPsi << endl;
+
+            // ************************************************************************* //
+            // Step-6: (SA turbulence) Solve and get pseudoNuTilda = A_nuTilda^(-T).adjNuTildaRes
+            // Then update nuTildaPsi -= pseudoNuTilda
+
+            // Solve, using the inverse transpose product function
+            //invTranProd_nuTildaEqn(U, phi, nuTilda, y, nu, sigmaNut, kappa, Cb1, Cb2, Cw1, Cw2, Cw3, Cv1, Cv2, adjNuTildaRes, pseudoNuTilda);
+
+            // *********************************** //
+            // Below is equivalent to: invTranProd_nuTildaEqn(U, phi, nuTilda, y, nu, sigmaNut, kappa, Cb1, Cb2, Cw1, Cw2, Cw3, Cv1, Cv2, adjNuTildaRes, pseudoNuTilda);
+            // Here, nuTildaSource is a redundant alias, which is an "input argument" that takes the value of adjNuTildaRes into solvePseudoUEqn.H
+            volScalarField& nuTildaSource = adjNuTildaRes;
+#include "solvePseudonuTildaEqn.H"
+            // *********************************** //
+
+            // Update nuTildaPsi
+            forAll(nuTildaPsi, cellI)
+            {
+                nuTildaPsi[cellI] -= relaxNuTilda * pseudoNuTilda[cellI];
             }
 
             cnt++;
@@ -856,6 +1160,9 @@ void DASimpleFoam::calcAdjointResidual(
             tape.registerInput(nuTilda[cellI]);
         }
 
+        // Get tape position before calling function(s)
+        adjResStart_ = tape.getPosition();
+
         // Correct boundaries to link the intermediate results
         U.correctBoundaryConditions();
         p.correctBoundaryConditions();
@@ -868,6 +1175,8 @@ void DASimpleFoam::calcAdjointResidual(
         this->calcLduResiduals(URes, pRes, phiRes);
         daTurbulenceModelPtr_->calcLduResidualTurb(nuTildaRes);
 
+        // No registerOutput needed in positional tapes
+        /*
         // register output
         forAll(URes, cellI)
         {
@@ -895,6 +1204,10 @@ void DASimpleFoam::calcAdjointResidual(
         {
             tape.registerOutput(nuTildaRes[cellI]);
         }
+        */
+
+        // Get tape position after calling function(s)
+        adjResEnd_ = tape.getPosition();
 
         // stop recording
         tape.setPassive();
@@ -934,7 +1247,7 @@ void DASimpleFoam::calcAdjointResidual(
     }
 
     // evaluate the tape to compute the derivative of the seeded output wrt all the input
-    tape.evaluate();
+    tape.evaluate(adjResEnd_, adjResStart_);
     forAll(U, cellI)
     {
         adjURes[cellI][0] += U[cellI][0].getGradient();
