@@ -91,6 +91,8 @@ protected:
     volScalarField pseudoNuTilda_;
     fvScalarMatrix pseudoNuTildaEqn_;
 
+    label pseudoNuTildaEqnInitialized_ = 0;
+
     /// 3D wall distance
     const volScalarField& y_;
 

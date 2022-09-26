@@ -24,9 +24,12 @@ fvScalarMatrix pseudoPEqn(
 // Swap upper() and lower()
 swap(pseudoPEqn.upper(), pseudoPEqn.lower());
 
+
 // *********************************** //
 // Duplicate pseudoNuTilda as nuTilda
 volScalarField pseudoNuTilda("pseudoNuTilda", nuTilda);
+
+/*
 // Get myChi and myFv1
 volScalarField myChi("myChi", chi(pseudoNuTilda, nu));
 volScalarField myFv1("myFv1", fv1(myChi, Cv1));
@@ -56,3 +59,4 @@ pseudoNuTildaEqn.relax();
 
 // Swap upper() and lower()
 swap(pseudoNuTildaEqn.upper(), pseudoNuTildaEqn.lower());
+*/

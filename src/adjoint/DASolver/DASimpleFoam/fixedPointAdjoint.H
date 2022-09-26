@@ -45,9 +45,9 @@ scalar DASimpleFoam::L2norm(const surfaceScalarField& Phi)
 {
     scalar L2normPhi = 0.0;
 
-    forAll(Phi.primitiveField(), cellI)
+    forAll(Phi.primitiveField(), faceI)
     {
-        L2normPhi += sqr(Phi.primitiveField()[cellI]);
+        L2normPhi += sqr(Phi.primitiveField()[faceI]);
     }
     forAll(Phi.boundaryField(), patchI)
     {
@@ -247,10 +247,10 @@ label DASimpleFoam::runFPAdj(
         scalar fpRelTol = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "fpRelTol");
 
         const objectRegistry& db = meshPtr_->thisDb();
-        const volVectorField& U = db.lookupObject<volVectorField>("U");
-        const volScalarField& p = db.lookupObject<volScalarField>("p");
-        const surfaceScalarField& phi = db.lookupObject<surfaceScalarField>("phi");
-        const volScalarField& nuTilda = db.lookupObject<volScalarField>("nuTilda");
+        volVectorField& U = const_cast<volVectorField&>(db.lookupObject<volVectorField>("U"));
+        volScalarField& p = const_cast<volScalarField&>(db.lookupObject<volScalarField>("p"));
+        surfaceScalarField& phi = const_cast<surfaceScalarField&>(db.lookupObject<surfaceScalarField>("phi"));
+        volScalarField& nuTilda = const_cast<volScalarField&>(db.lookupObject<volScalarField>("nuTilda"));
         // better do it another way!
         volScalarField nuEff = daTurbulenceModelPtr_->nuEff();
 
@@ -737,8 +737,11 @@ label DASimpleFoam::runFPAdj(
             // *********************************** //
             // Below is equivalent to: invTranProd_nuTildaEqn(U, phi, nuTilda, y, nu, sigmaNut, kappa, Cb1, Cb2, Cw1, Cw2, Cw3, Cv1, Cv2, adjNuTildaRes, pseudoNuTilda);
             // Here, nuTildaSource is a redundant alias, which is an "input argument" that takes the value of adjNuTildaRes into solvePseudoUEqn.H
+
             volScalarField& nuTildaSource = adjNuTildaRes;
-#include "solvePseudonuTildaEqn.H"
+
+            daTurbulenceModelPtr_->invTranProdNuTildaEqn(nuTildaSource, pseudoNuTilda);
+            //#include "solvePseudonuTildaEqn.H"
             // *********************************** //
 
             // Update nuTildaPsi
