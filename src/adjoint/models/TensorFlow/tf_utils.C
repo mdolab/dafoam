@@ -36,6 +36,7 @@ https://github.com/argonne-lcf/TensorFlowFoam
 namespace tf_utils
 {
 
+/*
 // Tensorflow requirements
 const char* TFDataTypeToString(TF_DataType data_type)
 {
@@ -91,6 +92,7 @@ const char* TFDataTypeToString(TF_DataType data_type)
         return "Unknown";
     }
 }
+*/
 
 static void DeallocateBuffer(void* data, size_t)
 {
@@ -159,10 +161,12 @@ TF_Graph* LoadGraph(const char* graphPath)
     return graph;
 }
 
+/*
 void DeleteGraph(TF_Graph* graph)
 {
     TF_DeleteGraph(graph);
 }
+*/
 
 void DeleteSession(TF_Session* session)
 {
@@ -180,6 +184,7 @@ void DeleteSession(TF_Session* session)
     TF_DeleteStatus(status);
 }
 
+/*
 TF_Session* CreateSession(TF_Graph* graph)
 {
     TF_Status* status = TF_NewStatus();
@@ -245,6 +250,7 @@ TF_Code RunSession(TF_Session* session,
                       output_tensors.data(),
                       output_tensors.size());
 }
+*/
 
 TF_Tensor* CreateTensor(TF_DataType data_type,
                         const std::int64_t* dims,
@@ -278,6 +284,7 @@ TF_Tensor* CreateTensor(TF_DataType data_type,
     return tensor;
 }
 
+/*
 TF_Tensor* CreateEmptyTensor(TF_DataType data_type, const std::int64_t* dims, std::size_t num_dims)
 {
     return CreateTensor(data_type, dims, num_dims, nullptr, 0);
@@ -287,6 +294,7 @@ TF_Tensor* CreateEmptyTensor(TF_DataType data_type, const std::vector<std::int64
 {
     return CreateEmptyTensor(data_type, dims.data(), dims.size());
 }
+*/
 
 void DeleteTensor(TF_Tensor* tensor)
 {
@@ -296,6 +304,7 @@ void DeleteTensor(TF_Tensor* tensor)
     }
 }
 
+/*
 void DeleteTensors(const std::vector<TF_Tensor*>& tensors)
 {
     for (auto t : tensors)
@@ -419,6 +428,7 @@ void PrintOp(TF_Graph* graph)
         std::cout << std::endl;
     }
 }
+*/
 
 } // namespace tf_utils
 

@@ -64,4 +64,4 @@ jobs:
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && coverage combine && coverage xml && echo dafoamuser | sudo -S cp -r coverage.xml ${{env.DOCKER_MOUNT_DIR}}/"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjoint && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && echo dafoamuser | sudo -S cp -r ../adjoint ${{env.DOCKER_MOUNT_DIR}}/"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && echo dafoamuser | sudo -S cp -r ../adjointAD ${{env.DOCKER_MOUNT_DIR}}/"
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl https://codecov.io/bash)

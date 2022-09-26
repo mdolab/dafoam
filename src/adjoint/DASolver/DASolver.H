@@ -742,6 +742,12 @@ public:
         const label globalCellI,
         const label compI = 0);
 
+    void setFieldValue4LocalCellI(
+        const word fieldName,
+        const scalar val,
+        const label localCellI,
+        const label compI = 0);
+
     /// update the boundary condition for a field
     void updateBoundaryConditions(
         const word fieldName,

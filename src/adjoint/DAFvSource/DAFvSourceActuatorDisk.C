@@ -310,7 +310,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                     tmpThrustSumAll += fAxial * mesh_.V()[cellI];
                 }
                 reduce(tmpThrustSumAll, sumOp<scalar>());
-                scalar targetThrust = diskSubDict.getScalar("targetThrust");
+                scalar targetThrust = actuatorDiskDVs_[diskName][9];
                 scale = targetThrust / tmpThrustSumAll;
             }
             else

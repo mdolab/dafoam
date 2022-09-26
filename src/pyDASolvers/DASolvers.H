@@ -586,6 +586,16 @@ public:
         DASolverPtr_->setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI);
     }
 
+    /// set the field value
+    void setFieldValue4LocalCellI(
+        const word fieldName,
+        const scalar val,
+        const label localCellI,
+        const label compI = 0)
+    {
+        DASolverPtr_->setFieldValue4LocalCellI(fieldName, val, localCellI, compI);
+    }
+
     /// update the boundary condition for a field
     void updateBoundaryConditions(
         const word fieldName,

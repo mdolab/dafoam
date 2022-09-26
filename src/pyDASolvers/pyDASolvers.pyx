@@ -83,6 +83,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void setTimeInstanceVar(char *, PetscMat, PetscMat, PetscVec, PetscVec)
         double getTimeInstanceObjFunc(int, char *)
         void setFieldValue4GlobalCellI(char *, double, int, int)
+        void setFieldValue4LocalCellI(char *, double, int, int)
         void updateBoundaryConditions(char *, char *)
         void calcPrimalResidualStatistics(char *)
         double getForwardADDerivVal(char *)
@@ -321,6 +322,9 @@ cdef class pyDASolvers:
 
     def setFieldValue4GlobalCellI(self, fieldName, val, globalCellI, compI = 0):
         self._thisptr.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
+    
+    def setFieldValue4LocalCellI(self, fieldName, val, localCellI, compI = 0):
+        self._thisptr.setFieldValue4LocalCellI(fieldName, val, localCellI, compI)
     
     def updateBoundaryConditions(self, fieldName, fieldType):
         self._thisptr.updateBoundaryConditions(fieldName, fieldType)
