@@ -15,8 +15,6 @@ Dictionary Key: shapez
 @value -0.001806512283893614 1e-04 1e-06
 @value -0.001508362837997657 1e-04 1e-06
 @value -0.002958130988623487 1e-04 1e-06
-Dictionary Key: fail
-@value                    0 1e-04 1e-06
 Dictionary Key: PWR
 Dictionary Key: shapey
 @value   0.1985582048730921 0.0001 1e-06
