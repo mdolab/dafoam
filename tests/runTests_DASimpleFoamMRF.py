@@ -49,6 +49,17 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+        "PWR": {
+            "part1": {
+                "type": "power",
+                "source": "patchToFace",
+                "patches": ["blade"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.0, 0.0, 0.0],
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
     },
     "normalizeStates": {"U": 10, "p": 50.0, "nuTilda": 1e-3, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
