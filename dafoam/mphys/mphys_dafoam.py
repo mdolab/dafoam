@@ -1054,6 +1054,9 @@ class DAFoamFunctions(ExplicitComponent):
 
         # get the name of the functions we need to compute partials for
         objFuncName = list(funcsBar.keys())[0]
+        
+        if self.comm.rank == 0:
+            print("Computing partials for ", objFuncName)
 
         # loop over all d_inputs keys and compute the partials accordingly
         for inputName in list(d_inputs.keys()):
