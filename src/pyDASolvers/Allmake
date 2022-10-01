@@ -8,14 +8,23 @@ fi
 case $1 in
   "opt")
     cp setup_Incompressible.py setup.py
+    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
+      sed -i 's/"-std=c++11",/"-std=c++11","-w",/g' setup.py
+    fi
     python setup.py build_ext --inplace || exit 1
     mv *.so ../../dafoam
     ./Allclean
     cp setup_Compressible.py setup.py
+    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
+      sed -i 's/"-std=c++11",/"-std=c++11","-w",/g' setup.py
+    fi
     python setup.py build_ext --inplace || exit 1
     mv *.so ../../dafoam
     ./Allclean
     cp setup_Solid.py setup.py
+    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
+      sed -i 's/"-std=c++11",/"-std=c++11","-w",/g' setup.py
+    fi
     python setup.py build_ext --inplace || exit 1
     mv *.so ../../dafoam
     ;;
@@ -37,16 +46,25 @@ case $1 in
     ;;
   "incompressible")
     cp setup_Incompressible.py setup.py
+    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
+      sed -i 's/"-std=c++11",/"-std=c++11","-w",/g' setup.py
+    fi
     python setup.py build_ext --inplace || exit 1
     mv *.so ../../dafoam
     ;;
   "compressible")
     cp setup_Compressible.py setup.py
+    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
+      sed -i 's/"-std=c++11",/"-std=c++11","-w",/g' setup.py
+    fi
     python setup.py build_ext --inplace || exit 1
     mv *.so ../../dafoam
     ;;
   "solid")
     cp setup_Solid.py setup.py
+    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
+      sed -i 's/"-std=c++11",/"-std=c++11","-w",/g' setup.py
+    fi
     python setup.py build_ext --inplace || exit 1
     mv *.so ../../dafoam
     ;;
