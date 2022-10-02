@@ -732,7 +732,7 @@ class DAFoamSolver(ImplicitComponent):
         # run coloring
         if self.DASolver.getOption("adjUseColoring") and self.runColoring:
             self.DASolver.runColoring()
-            self.runCOloring = False
+            self.runColoring = False
 
         if adjEqnSolMethod == "Krylov":
             # solve the adjoint equation using the Krylov method
