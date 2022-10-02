@@ -484,9 +484,8 @@ class DAFoamSolver(ImplicitComponent):
         self.psi = self.DASolver.wVec.duplicate()
         self.psi.zeroEntries()
 
-        # run coloring
-        if self.DASolver.getOption("adjUseColoring"):
-            self.DASolver.runColoring()
+        # if true, we need to compute the coloring
+        self.runColoring = True
 
         # determine which function to compute the adjoint
         self.evalFuncs = []
@@ -729,6 +728,11 @@ class DAFoamSolver(ImplicitComponent):
         dFdWArray = d_outputs["dafoam_states"]
         # convert the array to vector
         dFdW = DASolver.array2Vec(dFdWArray)
+
+        # run coloring
+        if self.DASolver.getOption("adjUseColoring") and self.runColoring:
+            self.DASolver.runColoring()
+            self.runCOloring = False
 
         if adjEqnSolMethod == "Krylov":
             # solve the adjoint equation using the Krylov method
