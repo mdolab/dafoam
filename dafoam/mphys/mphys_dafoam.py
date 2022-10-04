@@ -1607,6 +1607,14 @@ class OptFuncs(object):
     """
 
     def __init__(self, daOptions, om_prob):
+        """
+        daOptions: dict or list
+            The daOptions dict from runScript.py. Support more than two dicts
+        
+        om_prob:
+            The om.Problem() object
+        """
+
         self.daOptions = daOptions
         self.om_prob = om_prob
         self.comm = MPI.COMM_WORLD
@@ -1617,7 +1625,14 @@ class OptFuncs(object):
 
         modelDesignVars = self.om_prob.model.get_design_vars()
 
-        DADesignVars = self.daOptions["designVar"]
+        isList = isinstance(self.daOptions, list)
+        if isList:
+            DADesignVars = []
+            for subDict in self.daOptions:
+                for key in list(subDict["designVar"].keys()):
+                    DADesignVars.append(key)
+        else:
+            DADesignVars = list(self.daOptions["designVar"].keys())
         for modelDV in modelDesignVars:
             dvFound = False
             for dv in DADesignVars:
