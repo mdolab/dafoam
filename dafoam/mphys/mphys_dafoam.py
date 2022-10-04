@@ -519,7 +519,10 @@ class DAFoamSolver(ImplicitComponent):
             elif dvType == "BC":  # add boundary conditions
                 self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "ACTD":  # add actuator parameter variables
-                self.add_input(dvName, distributed=False, shape=10, tags=["mphys_coupling"])
+                nACTDVars = 10
+                if "comps" in list(designVariables[dvName].keys()):
+                    nACTDVars = len(designVariables[dvName]["comps"])
+                self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
                 self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
             else:
@@ -617,6 +620,8 @@ class DAFoamSolver(ImplicitComponent):
         # assign the states in outputs to the OpenFOAM flow fields
         DASolver.setStates(outputs["dafoam_states"])
 
+        designVariables = DASolver.getOption("designVar")
+
         if "dafoam_states" in d_residuals:
 
             # get the reverse mode AD seed from d_residuals
@@ -687,7 +692,15 @@ class DAFoamSolver(ImplicitComponent):
                         )
                         # we will convert the MPI prodVec to seq array for all procs
                         ACTDBar = DASolver.convertMPIVec2SeqArray(prodVec)
-                        d_inputs[inputName] += ACTDBar
+                        if "comps" in list(designVariables[inputName].keys()):
+                            nACTDVars = len(designVariables[inputName]["comps"])
+                            ACTDBarSub = np.zeros(nACTDVars, "d")
+                            for i in range(nACTDVars):
+                                comp = designVariables[inputName]["comps"][i]
+                                ACTDBarSub[i] = ACTDBar[comp]
+                            d_inputs[inputName] += ACTDBarSub
+                        else:
+                            d_inputs[inputName] += ACTDBar
 
                     # compute dRdFieldT*Psi using reverse mode AD
                     elif self.dvType[inputName] == "Field":
@@ -960,7 +973,10 @@ class DAFoamFunctions(ExplicitComponent):
             elif dvType == "BC":  # add boundary conditions
                 self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "ACTD":  # add actuator parameter variables
-                self.add_input(dvName, distributed=False, shape=10, tags=["mphys_coupling"])
+                nACTDVars = 10
+                if "comps" in list(designVariables[dvName].keys()):
+                    nACTDVars = len(designVariables[dvName]["comps"])
+                self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
                 self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
             else:
@@ -1028,6 +1044,8 @@ class DAFoamFunctions(ExplicitComponent):
         DASolver.setOption("runStatus", "solveAdjoint")
         DASolver.updateDAOption()
 
+        designVariables = DASolver.getOption("designVar")
+
         # assign the optionDict to the solver
         self.apply_options(self.optionDict)
         # now call the dv_funcs to update the design variables
@@ -1058,7 +1076,7 @@ class DAFoamFunctions(ExplicitComponent):
 
         # get the name of the functions we need to compute partials for
         objFuncName = list(funcsBar.keys())[0]
-        
+
         if self.comm.rank == 0:
             print("Computing partials for ", objFuncName)
 
@@ -1127,7 +1145,15 @@ class DAFoamFunctions(ExplicitComponent):
                     )
                     # we will convert the MPI dFdACTD to seq array for all procs
                     ACTDBar = DASolver.convertMPIVec2SeqArray(dFdACTD)
-                    d_inputs[inputName] += ACTDBar
+                    if "comps" in list(designVariables[inputName].keys()):
+                        nACTDVars = len(designVariables[inputName]["comps"])
+                        ACTDBarSub = np.zeros(nACTDVars, "d")
+                        for i in range(nACTDVars):
+                            comp = designVariables[inputName]["comps"][i]
+                            ACTDBarSub[i] = ACTDBar[comp]
+                        d_inputs[inputName] += ACTDBarSub
+                    else:
+                        d_inputs[inputName] += ACTDBar
 
                 # compute dFdField
                 elif self.dvType[inputName] == "Field":
