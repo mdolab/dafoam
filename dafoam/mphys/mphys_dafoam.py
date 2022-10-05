@@ -791,8 +791,12 @@ class DAFoamSolver(ImplicitComponent):
                         DASolver.ksp = PETSc.KSP().create(self.comm)
                         DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
 
-            # update the KSP tolerances the coupled adjoint before solving
-            self._updateKSPTolerances(self.psi, dFdW, DASolver.ksp)
+            if self.DASolver.getOption("adjEqnOption")["dynAdjustTol"]:
+                # if we want to dynamically adjust the tolerance, call this function. This is mostly used
+                # in the block Gauss-Seidel method in two discipline coupling
+                # update the KSP tolerances the coupled adjoint before solving
+                self._updateKSPTolerances(self.psi, dFdW, DASolver.ksp)
+
             # actually solving the adjoint linear equation using Petsc
             fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
         elif adjEqnSolMethod in ["fixedPoint", "fixedPointC"]:

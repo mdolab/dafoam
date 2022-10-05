@@ -63,7 +63,7 @@ aeroOptions = {
     },
     "normalizeStates": {"U": 10, "p": 50.0, "nuTilda": 1e-3, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
-    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
+    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm", "dynAdjustTol": False},
     # Design variable setup
     "designVar": {
         "shapey": {"designVarType": "FFD"},
