@@ -25,5 +25,7 @@ SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
 this->primalResidualControl<vector>(solverU, printToScreen, printInterval, "U");
 
+fvOptions.correct(U);
+
 // bound U
 DAUtility::boundVar(allOptions, U, printToScreen);

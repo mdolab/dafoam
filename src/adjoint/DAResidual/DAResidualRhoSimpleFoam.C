@@ -283,6 +283,7 @@ void DAResidualRhoSimpleFoam::updateIntermediateVariables()
     // NOTE: alphat is updated in the correctNut function in DATurbulenceModel child classes
 
     MRF_.correctBoundaryVelocity(U_);
+    fvOptions_.correct(U_);
 }
 
 void DAResidualRhoSimpleFoam::correctBoundaryConditions()

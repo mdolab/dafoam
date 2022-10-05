@@ -25,4 +25,6 @@ if (simple.momentumPredictor())
     SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
     this->primalResidualControl<vector>(solverU, printToScreen, printInterval, "U");
+
+    fvOptions.correct(U);
 }

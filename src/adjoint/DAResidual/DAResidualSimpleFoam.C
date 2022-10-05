@@ -171,6 +171,7 @@ void DAResidualSimpleFoam::updateIntermediateVariables()
     */
 
     MRF_.correctBoundaryVelocity(U_);
+    fvOptions_.correct(U_);
 }
 
 void DAResidualSimpleFoam::correctBoundaryConditions()
