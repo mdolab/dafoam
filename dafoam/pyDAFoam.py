@@ -524,6 +524,7 @@ class DAOPTION(object):
             "useMGSO": False,
             "printInfo": 1,
             "fpMaxIters": 1000,
+            "dynAdjustTol": True,
         }
 
         ## Normalization for residuals. We should normalize all residuals!
