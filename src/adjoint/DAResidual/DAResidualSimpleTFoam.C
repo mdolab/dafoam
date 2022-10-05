@@ -205,6 +205,8 @@ void DAResidualSimpleTFoam::updateIntermediateVariables()
     alphat_.correctBoundaryConditions();
 
     MRF_.correctBoundaryVelocity(U_);
+
+    fvOptions_.correct(U_);
 }
 
 void DAResidualSimpleTFoam::correctBoundaryConditions()

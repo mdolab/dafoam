@@ -61,6 +61,7 @@ U = HbyA - rAU * fvc::grad(p);
 // bound U
 DAUtility::boundVar(allOptions, U, printToScreen);
 U.correctBoundaryConditions();
+fvOptions.correct(U);
 
 bool pLimited = pressureControl.limit(p);
 
