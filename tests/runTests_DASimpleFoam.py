@@ -51,7 +51,7 @@ aeroOptions = {
         "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
         "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},
         "useWallFunction": False,
-        "transport:nu": 1.5e-5
+        "transport:nu": 1.5e-5,
     },
     "fvSource": {
         "disk1": {
@@ -141,7 +141,7 @@ aeroOptions = {
     "designVar": {
         "shapey": {"designVarType": "FFD"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
-        "actuator": {"actuatorName": "disk1", "designVarType": "ACTD"},
+        "actuator": {"actuatorName": "disk1", "designVarType": "ACTD", "comps": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]},
     },
 }
 
@@ -196,7 +196,7 @@ def actuator(val, geo):
                 "expM": actExpM,
                 "expN": actExpN,
                 "adjustThrust": 0,
-                "targetThrust": T
+                "targetThrust": T,
             },
         },
     )
