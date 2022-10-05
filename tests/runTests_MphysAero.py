@@ -286,7 +286,7 @@ prob.recording_options["record_constraints"] = True
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aerostruct.html")
 
-optFuncs = OptFuncs(daOptions, prob)
+optFuncs = OptFuncs([daOptions], prob)
 
 prob.run_driver()
 
