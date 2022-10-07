@@ -268,12 +268,46 @@ label DASimpleFoam::runFPAdj(
 
         // Pass the values in dFdW to its field cmpts
         this->vec2Fields("vec2Field", dFdW, dFdU, dFdP, dFdPhi, dFdNuTilda);
+        // Flip the sign for now to avoid the strange issue
+        dFdU = -dFdU;
+        dFdP = -dFdP;
+        dFdPhi = -dFdPhi;
+        dFdNuTilda = -dFdNuTilda;
 
         // Initialize all-zero cmpts for the adjoint vector
         volVectorField UPsi("UPsi", 0.0 * U);
         volScalarField pPsi("pPsi", 0.0 * p);
         surfaceScalarField phiPsi("phiPsi", 0.0 * phi);
         volScalarField nuTildaPsi("nuTildaPsi", 0.0 * nuTilda);
+
+        /*
+        // Change every element in the adjoint vector to one
+        forAll(UPsi, cellI)
+        {
+            UPsi[cellI][0] = 1.0;
+            UPsi[cellI][1] = 1.0;
+            UPsi[cellI][2] = 1.0;
+        }
+        forAll(pPsi, cellI)
+        {
+            pPsi[cellI] = 1.0;
+        }
+        forAll(phiPsi.primitiveFieldRef(), faceI)
+        {
+            phiPsi.primitiveFieldRef()[faceI] = 1.0;
+        }
+        forAll(phiPsi.boundaryFieldRef(), patchI)
+        {
+            forAll(phiPsi.boundaryFieldRef()[patchI], faceI)
+            {
+                phiPsi.boundaryFieldRef()[patchI][faceI] = 1.0;
+            }
+        }
+        forAll(nuTildaPsi, cellI)
+        {
+            nuTildaPsi[cellI] = 1.0;
+        }
+        */
 
         // Initialize all-zero cmpts for the adjoint residual
         volVectorField adjURes("adjURes", 0.0 * U);
@@ -386,21 +420,18 @@ label DASimpleFoam::runFPAdj(
             // Do (F_p^grad)^T.(D^(-T).adjURes) with ADR
             // Here, F_p^grad is the operator of fvc::grad(p) * mesh().V() on p
 
-            // get the reverse-mode AD tape
-            codi::RealReverse::TapeType& tape = codi::RealReverse::getGlobalTape();
-
             if (cnt == 0)
             {
-                tape.setActive();
+                this->globalADTape_.setActive();
 
                 // Now register p1 as input:
                 forAll(p1, cellI)
                 {
-                    tape.registerInput(p1[cellI]);
+                    this->globalADTape_.registerInput(p1[cellI]);
                 }
 
                 // Get tape position before calling function(s)
-                gradPStart_ = tape.getPosition();
+                gradPStart_ = this->globalADTape_.getPosition();
 
                 // Correct boundaries to link the intermediate results
                 p1.correctBoundaryConditions();
@@ -414,10 +445,10 @@ label DASimpleFoam::runFPAdj(
                 }
 
                 // Get tape position before calling function(s)
-                gradPEnd_ = tape.getPosition();
+                gradPEnd_ = this->globalADTape_.getPosition();
 
                 // stop recording
-                tape.setPassive();
+                this->globalADTape_.setPassive();
             }
 
             // set the AD seed to the output var
@@ -430,14 +461,14 @@ label DASimpleFoam::runFPAdj(
             }
 
             // evaluate the tape to compute the derivative of the seeded output wrt all the input
-            tape.evaluate(gradPEnd_, gradPStart_);
+            this->globalADTape_.evaluate(gradPEnd_, gradPStart_);
             forAll(p1, cellI)
             {
                 step_2[cellI] += p1[cellI].getGradient();
             }
 
             // Clear adjoints for future Jacobian calculations
-            tape.clearAdjoints();
+            this->globalADTape_.clearAdjoints();
 
             // ************************************************************************* //
             // Step-2.2: Get alphaP*step_2.1 =  alphaP.((F_p^grad)^T.(D^(-T).adjURes) - adjPRes)
@@ -458,16 +489,16 @@ label DASimpleFoam::runFPAdj(
                 //Info<<"Show pEqn1.flux(): "<< pEqn1.flux() << endl;
 
                 // Re-active the tape, no need to initiate it again
-                tape.setActive();
+                this->globalADTape_.setActive();
 
                 // Now register p2 as input:
                 forAll(p2, cellI)
                 {
-                    tape.registerInput(p2[cellI]);
+                    this->globalADTape_.registerInput(p2[cellI]);
                 }
 
                 // Get tape position before calling function(s)
-                pEqnFluxStart_ = tape.getPosition();
+                pEqnFluxStart_ = this->globalADTape_.getPosition();
 
                 // Correct boundaries to link the intermediate results
                 p2.correctBoundaryConditions();
@@ -477,10 +508,10 @@ label DASimpleFoam::runFPAdj(
                 pEqnFlux = pEqn1.flux();
 
                 // Get tape position after calling function(s)
-                pEqnFluxEnd_ = tape.getPosition();
+                pEqnFluxEnd_ = this->globalADTape_.getPosition();
 
                 // stop recording
-                tape.setPassive();
+                this->globalADTape_.setPassive();
             }
 
             // set the AD seed to the output var pEqnFlux
@@ -500,14 +531,14 @@ label DASimpleFoam::runFPAdj(
             }
 
             // evaluate the tape to compute the derivative of the seeded output wrt all the input
-            tape.evaluate(pEqnFluxEnd_, pEqnFluxStart_);
+            this->globalADTape_.evaluate(pEqnFluxEnd_, pEqnFluxStart_);
             forAll(p2, cellI)
             {
                 step_2[cellI] += p2[cellI].getGradient();
             }
 
             // Clear adjoints for future Jacobian calculations
-            tape.clearAdjoints();
+            this->globalADTape_.clearAdjoints();
             // reset the tape for future recording
             //tape.reset();
 
@@ -553,26 +584,26 @@ label DASimpleFoam::runFPAdj(
             if (cnt == 0)
             {
                 // Re-active the tape, no need to initiate it again
-                tape.setActive();
+                this->globalADTape_.setActive();
 
                 // Register phi1 as input
                 // Note that both the internal field of phi1 and the boundary fields need to be registered
                 // Register internal of phi1:
                 forAll(phi1.primitiveFieldRef(), faceI)
                 {
-                    tape.registerInput(phi1.primitiveFieldRef()[faceI]);
+                    this->globalADTape_.registerInput(phi1.primitiveFieldRef()[faceI]);
                 }
                 // Register boundary of phi:
                 forAll(phi1.boundaryFieldRef(), patchI)
                 {
                     forAll(phi1.boundaryFieldRef()[patchI], faceI)
                     {
-                        tape.registerInput(phi1.boundaryFieldRef()[patchI][faceI]);
+                        this->globalADTape_.registerInput(phi1.boundaryFieldRef()[patchI][faceI]);
                     }
                 }
 
                 // Get tape position before calling function(s)
-                divPhiStart_ = tape.getPosition();
+                divPhiStart_ = this->globalADTape_.getPosition();
 
                 // This is not needed, but whatever... XD
                 // Correct boundaries to link the intermediate results
@@ -587,10 +618,10 @@ label DASimpleFoam::runFPAdj(
                 }
 
                 // Get tape position after calling function(s)
-                divPhiEnd_ = tape.getPosition();
+                divPhiEnd_ = this->globalADTape_.getPosition();
 
                 // stop recording
-                tape.setPassive();
+                this->globalADTape_.setPassive();
             }
 
             // set the AD seed to the output var divPhi
@@ -601,7 +632,7 @@ label DASimpleFoam::runFPAdj(
             }
 
             // evaluate the tape to compute the derivative of the seeded output wrt all the input
-            tape.evaluate(divPhiEnd_, divPhiStart_);
+            this->globalADTape_.evaluate(divPhiEnd_, divPhiStart_);
             forAll(phi1.primitiveFieldRef(), faceI)
             {
                 phiTemp.primitiveFieldRef()[faceI] += phi1.primitiveFieldRef()[faceI].getGradient();
@@ -615,7 +646,7 @@ label DASimpleFoam::runFPAdj(
             }
 
             // Clear adjoints for future Jacobian calculations
-            tape.clearAdjoints();
+            this->globalADTape_.clearAdjoints();
             // reset the tape for future recording
             //tape.reset();
 
@@ -634,18 +665,18 @@ label DASimpleFoam::runFPAdj(
             if (cnt == 0)
             {
                 // Re-active the tape, no need to initiate it again
-                tape.setActive();
+                this->globalADTape_.setActive();
 
                 // Register U1 as input, note that U1 has 3 components
                 forAll(U1, cellI)
                 {
-                    tape.registerInput(U1[cellI][0]);
-                    tape.registerInput(U1[cellI][1]);
-                    tape.registerInput(U1[cellI][2]);
+                    this->globalADTape_.registerInput(U1[cellI][0]);
+                    this->globalADTape_.registerInput(U1[cellI][1]);
+                    this->globalADTape_.registerInput(U1[cellI][2]);
                 }
 
                 // Get tape position before calling function(s)
-                fluxUStart_ = tape.getPosition();
+                fluxUStart_ = this->globalADTape_.getPosition();
 
                 // Correct boundaries to link the intermediate results
                 U1.correctBoundaryConditions();
@@ -655,10 +686,10 @@ label DASimpleFoam::runFPAdj(
                 fluxU = fvc::flux(U1);
 
                 // Get tape position after calling function(s)
-                fluxUEnd_ = tape.getPosition();
+                fluxUEnd_ = this->globalADTape_.getPosition();
 
                 // stop recording
-                tape.setPassive();
+                this->globalADTape_.setPassive();
             }
 
             // set the AD seed to the output var fluxU
@@ -678,7 +709,7 @@ label DASimpleFoam::runFPAdj(
             }
 
             // evaluate the tape to compute the derivative of the seeded output wrt all the input
-            tape.evaluate(fluxUEnd_, fluxUStart_);
+            this->globalADTape_.evaluate(fluxUEnd_, fluxUStart_);
             forAll(U1, cellI)
             {
                 for (label cmpt = 0; cmpt < 3; cmpt++)
@@ -688,7 +719,7 @@ label DASimpleFoam::runFPAdj(
             }
 
             // Clear adjoints for future Jacobian calculations
-            tape.clearAdjoints();
+            this->globalADTape_.clearAdjoints();
             // reset the tape for future recording
             //tape.reset();
 
@@ -1121,50 +1152,56 @@ void DASimpleFoam::calcAdjointResidual(
     adjPhiRes = -dFdPhi;
     adjNuTildaRes = -dFdNuTilda;
 
-    // get the reverse-mode AD tape
-    codi::RealReverse::TapeType& tape = codi::RealReverse::getGlobalTape();
+    // Create a sacrificial scalar variable as the 1st input
+    // CoDiPack will screw it up, but spare the others..
+    scalar sacriInput = 0.0;
 
     if (cnt == 0)
     {
-        tape.reset();
-        tape.setActive();
+        this->globalADTape_.reset();
+        this->globalADTape_.setActive();
+
+        // Praise thee, mighty CoDiPack!
+        // Gorge upon the flesh of this meaty juicy sacrificial variable,
+        // Then spare the true state variables: U, p, phi, nuTilda!
+        this->globalADTape_.registerInput(sacriInput);
 
         // register all (3+1) state variables as input
         // Start with U, note that U has 3 components
         forAll(U, cellI)
         {
-            tape.registerInput(U[cellI][0]);
-            tape.registerInput(U[cellI][1]);
-            tape.registerInput(U[cellI][2]);
+            this->globalADTape_.registerInput(U[cellI][0]);
+            this->globalADTape_.registerInput(U[cellI][1]);
+            this->globalADTape_.registerInput(U[cellI][2]);
         }
         // Now register p as input:
         forAll(p, cellI)
         {
-            tape.registerInput(p[cellI]);
+            this->globalADTape_.registerInput(p[cellI]);
         }
         // Then, register phi as input
         // Note that both the internal field of phi and the boundary fields need to be registered
         // Register internal of phi:
         forAll(phi.primitiveFieldRef(), faceI)
         {
-            tape.registerInput(phi.primitiveFieldRef()[faceI]);
+            this->globalADTape_.registerInput(phi.primitiveFieldRef()[faceI]);
         }
         // Register boundary of phi:
         forAll(phi.boundaryFieldRef(), patchI)
         {
             forAll(phi.boundaryFieldRef()[patchI], faceI)
             {
-                tape.registerInput(phi.boundaryFieldRef()[patchI][faceI]);
+                this->globalADTape_.registerInput(phi.boundaryFieldRef()[patchI][faceI]);
             }
         }
         // And then, register turbulence variable nuTilda as input:
         forAll(nuTilda, cellI)
         {
-            tape.registerInput(nuTilda[cellI]);
+            this->globalADTape_.registerInput(nuTilda[cellI]);
         }
 
         // Get tape position before calling function(s)
-        adjResStart_ = tape.getPosition();
+        adjResStart_ = this->globalADTape_.getPosition();
 
         // Correct boundaries to link the intermediate results
         U.correctBoundaryConditions();
@@ -1210,10 +1247,10 @@ void DASimpleFoam::calcAdjointResidual(
         */
 
         // Get tape position after calling function(s)
-        adjResEnd_ = tape.getPosition();
+        adjResEnd_ = this->globalADTape_.getPosition();
 
         // stop recording
-        tape.setPassive();
+        this->globalADTape_.setPassive();
     }
 
     // set the AD seed to the output var
@@ -1250,7 +1287,7 @@ void DASimpleFoam::calcAdjointResidual(
     }
 
     // evaluate the tape to compute the derivative of the seeded output wrt all the input
-    tape.evaluate(adjResEnd_, adjResStart_);
+    this->globalADTape_.evaluate(adjResEnd_, adjResStart_);
     forAll(U, cellI)
     {
         adjURes[cellI][0] += U[cellI][0].getGradient();
@@ -1278,6 +1315,6 @@ void DASimpleFoam::calcAdjointResidual(
     }
 
     // Clear adjoints for future Jacobian calculations
-    tape.clearAdjoints();
+    this->globalADTape_.clearAdjoints();
 #endif
 }
