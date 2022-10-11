@@ -44,6 +44,14 @@ DAResidualSimpleFoam::DAResidualSimpleFoam(
     {
         hasFvSource_ = 1;
     }
+
+    // this is just a dummy call because we need to run the constrain once 
+    // to initialize fvOptions, before we can use it. Otherwise, we may get
+    // a seg fault when we call fvOptions_.correct(U_) in updateIntermediateVars
+    fvVectorMatrix UEqn(
+        fvm::div(phi_, U_)
+        - fvOptions_(U_));
+    fvOptions_.constrain(UEqn);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
