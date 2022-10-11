@@ -99,10 +99,11 @@ case $argm in
     runTests DALaplacianFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests MphysAero
+      runTests MphysAeroOpt
       runTests MphysAeroField
     fi
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
-      runTests MphysAeroStruct
+      runTests MphysAeroStructOpt
     fi
     echo " "
     echo "************************************************************"
@@ -191,10 +192,11 @@ case $argm in
     sleep 3
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests MphysAero
+      runTests MphysAeroOpt
       runTests MphysAeroField
     fi
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
-      runTests MphysAeroStruct
+      runTests MphysAeroStructOpt
     fi
     echo " "
     echo "************************************************************"
