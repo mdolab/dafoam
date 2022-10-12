@@ -75,7 +75,7 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
     // a seg fault when we call fvOptions_.correct(U_) in updateIntermediateVars
     fvVectorMatrix UEqn(
         fvm::div(phi_, U_)
-        - fvOptions_(U_));
+        - fvOptions_(rho_, U_));
     fvOptions_.constrain(UEqn);
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
