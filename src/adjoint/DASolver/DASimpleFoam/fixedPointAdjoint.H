@@ -276,11 +276,13 @@ label DASimpleFoam::runFPAdj(
 
         // Pass the values in dFdW to its field cmpts
         this->vec2Fields("vec2Field", dFdW, dFdU, dFdP, dFdPhi, dFdNuTilda);
+        /*
         // Flip the sign for now to avoid the strange issue
         dFdU = -dFdU;
         dFdP = -dFdP;
         dFdPhi = -dFdPhi;
         dFdNuTilda = -dFdNuTilda;
+        */
 
         // Initialize all-zero cmpts for the adjoint vector
         volVectorField UPsi("UPsi", 0.0 * U);
@@ -1162,7 +1164,7 @@ void DASimpleFoam::calcAdjointResidual(
 
     // Create a sacrificial scalar variable as the 1st input
     // CoDiPack will screw it up, but spare the others..
-    scalar sacriInput = 0.0;
+    //scalar sacriInput = 0.0;
 
     if (cnt == 0)
     {
@@ -1172,7 +1174,7 @@ void DASimpleFoam::calcAdjointResidual(
         // Praise thee, mighty CoDiPack!
         // Gorge upon the flesh of this meaty juicy sacrificial variable,
         // Then spare the true state variables: U, p, phi, nuTilda!
-        this->globalADTape_.registerInput(sacriInput);
+        //this->globalADTape_.registerInput(sacriInput);
 
         // register all (3+1) state variables as input
         // Start with U, note that U has 3 components
