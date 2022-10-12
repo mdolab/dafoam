@@ -140,6 +140,8 @@ public:
 
     /// solve the adjoint equation using the fixed-point iteration method
     virtual label runFPAdj(
+        const Vec xvVec,
+        const Vec wVec,
         Vec dFdW,
         Vec psi);
 

@@ -5639,6 +5639,8 @@ void DASolver::setPrimalBoundaryConditions(const label printInfo)
 }
 
 label DASolver::runFPAdj(
+    const Vec xvVec,
+    const Vec wVec,
     Vec dFdW,
     Vec psi)
 {
