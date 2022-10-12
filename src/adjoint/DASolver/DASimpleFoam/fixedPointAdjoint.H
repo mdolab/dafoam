@@ -70,6 +70,8 @@ void DASimpleFoam::swap(List<scalar>& a, List<scalar>& b)
 }
 
 label DASimpleFoam::runFPAdj(
+    const Vec xvVec,
+    const Vec wVec,
     Vec dFdW,
     Vec psi)
 {
@@ -78,14 +80,20 @@ label DASimpleFoam::runFPAdj(
     Description:
         Solve the adjoint using the fixed-point iteration method
     
-    dFdW:
-        The dF/dW vector 
+    xvVec: the volume mesh coordinate vector
 
-    psi:
-        The adjoint solution vector
+    wVec: the state variable vector
+
+    dFdW: The dF/dW vector     
+
+    psi: The adjoint solution vector
     */
 
     VecZeroEntries(psi);
+
+    // update the state and mesh
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
 
     word adjEqnSolMethod = daOptionPtr_->getOption<word>("adjEqnSolMethod");
 

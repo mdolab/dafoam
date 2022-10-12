@@ -789,7 +789,7 @@ class DAFoamSolver(ImplicitComponent):
                     print("---------------------------------------------")
                 self.solution_counter += 1
             # solve the adjoint equation using the fixed-point adjoint approach
-            fail = DASolver.solverAD.runFPAdj(dFdW, self.psi)
+            fail = DASolver.solverAD.runFPAdj(DASolver.xvVec, DASolver.wVec, dFdW, self.psi)
         else:
             raise RuntimeError(
                 "adjEqnSolMethod=%s not valid! Options are: Krylov, fixedPoint, or fixedPointC" % adjEqnSolMethod
