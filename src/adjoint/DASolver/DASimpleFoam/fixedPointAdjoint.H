@@ -261,6 +261,10 @@ label DASimpleFoam::runFPAdj(
                 if (normAdjURes[0] < fpRelTol && normAdjURes[1] < fpRelTol && normAdjURes[2] < fpRelTol && normAdjPRes < fpRelTol && normAdjPhiRes < fpRelTol && normAdjNuTildaRes < fpRelTol)
                 {
                     Info << "Residual drop of " << fpRelTol << " has been achieved!" << endl;
+                    Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
+                    Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
+                    Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
+                    Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
                     break;
                 }
             }
