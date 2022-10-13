@@ -485,7 +485,10 @@ class DAFoamSolver(ImplicitComponent):
         self.psi.zeroEntries()
 
         # if true, we need to compute the coloring
-        self.runColoring = True
+        if DASolver.getOption("adjEqnSolMethod") in ["fixedPoint", "fixedPointC"]:
+            self.runColoring = False
+        else:
+            self.runColoring = True
 
         # determine which function to compute the adjoint
         self.evalFuncs = []
