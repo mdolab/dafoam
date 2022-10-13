@@ -248,10 +248,6 @@ label DASimpleFoam::runFPAdj(
     {
         Info << "Solving the adjoint using consistent fixed-point iteration method..." << endl;
         label fpMaxIters = daOptionPtr_->getSubDictOption<label>("adjEqnOption", "fpMaxIters");
-        scalar relaxU = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxU");
-        scalar relaxP = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxP");
-        scalar relaxPhi = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxPhi");
-        scalar relaxNuTilda = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxNuTilda");
         scalar fpRelTol = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "fpRelTol");
 
         const objectRegistry& db = meshPtr_->thisDb();
@@ -409,7 +405,7 @@ label DASimpleFoam::runFPAdj(
             }
 
             // Update phiPsi
-            phiPsi += relaxPhi * adjPhiRes;
+            phiPsi += adjPhiRes;
 
             // ************************************************************************* //
             // Step-1.2: Get D^(-T) adjURes, overwrite adjURes
@@ -575,7 +571,7 @@ label DASimpleFoam::runFPAdj(
             //Info<<"Show step_3: "<< step_3 << endl;
 
             // Update pPsi
-            pPsi += relaxP * step_3;
+            pPsi += step_3;
             //Info<<"Show pPsi: "<< pPsi << endl;
 
             // ************************************************************************* //
@@ -763,8 +759,8 @@ label DASimpleFoam::runFPAdj(
             // Update UPsi
             forAll(UPsi, cellI)
             {
-                UPsi[cellI] += relaxU * step_5[cellI];
-                UPsi[cellI] -= relaxU * adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
+                UPsi[cellI] += step_5[cellI];
+                UPsi[cellI] -= adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
             }
             //Info<<"Show UPsi: "<< UPsi << endl;
 
@@ -788,7 +784,7 @@ label DASimpleFoam::runFPAdj(
             // Update nuTildaPsi
             forAll(nuTildaPsi, cellI)
             {
-                nuTildaPsi[cellI] -= relaxNuTilda * pseudoNuTilda[cellI];
+                nuTildaPsi[cellI] -= pseudoNuTilda[cellI];
             }
 
             cnt++;
