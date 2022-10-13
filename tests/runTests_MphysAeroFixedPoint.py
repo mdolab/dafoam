@@ -34,13 +34,13 @@ LRef = 1.0
 daOptions = {
     "designSurfaces": ["wing"],
     "solverName": "DASimpleFoam",
+    "adjEqnSolMethod": "fixedPoint",
     "primalMinResTol": 1.0e-10,
     "primalMinResTolDiff": 1e4,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
         "useWallFunction": True,
-        "transport:nu": 1.5e-5,
     },
     "objFunc": {
         "CD": {
@@ -66,37 +66,13 @@ daOptions = {
             }
         },
     },
-    "fvSource": {
-        "disk1": {
-            "type": "actuatorDisk",
-            "source": "cylinderAnnulusSmooth",
-            "center": [-0.55, 0.0, 0.05],
-            "direction": [1.0, 0.0, 0.0],
-            "innerRadius": 0.01,
-            "outerRadius": 0.4,
-            "rotDir": "right",
-            "scale": 100.0,
-            "POD": 0.0,
-            "eps": 0.1,  # eps should be of cell size
-            "expM": 1.0,
-            "expN": 0.5,
-            "adjustThrust": 0,
-            "targetThrust": 1.0,
-        },
-    },
     "adjEqnOption": {
-        "gmresRelTol": 1.0e-8,
-        "pcFillLevel": 1,
-        "jacMatReOrdering": "rcm",
+        "fpMaxIters": 1000,
+        "fpRelTol": 1e-6,
     },
-    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
-    "adjPartDerivFDStep": {"State": 1e-6},
     "designVar": {
         "shape": {"designVarType": "FFD"},
         "aoa": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
-        "actuator_radius": {"designVarType": "ACTD", "actuatorName": "disk1", "comps": [4]},
-        "actuator_center": {"designVarType": "ACTD", "actuatorName": "disk1", "comps": [0, 1, 2]},
-        "uin": {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0},
     },
 }
 
@@ -131,8 +107,6 @@ class Top(Multipoint):
         self.connect("mesh.x_aero0", "geometry.x_aero_in")
         self.connect("geometry.x_aero0", "cruise.x_aero")
 
-        self.add_subsystem("LoD", om.ExecComp("val=CL/CD"))
-
     def configure(self):
 
         self.cruise.aero_post.mphys_add_funcs()
@@ -157,34 +131,6 @@ class Top(Multipoint):
         self.cruise.coupling.solver.add_dv_func("aoa", aoa)
         self.cruise.aero_post.add_dv_func("aoa", aoa)
 
-        def actuator_radius(val, DASolver):
-            actR2 = float(val[0])
-            # only change design variables
-            DASolver.setOption("fvSource", {"disk1": {"outerRadius": actR2}})
-            DASolver.updateDAOption()
-
-        self.cruise.coupling.solver.add_dv_func("actuator_radius", actuator_radius)
-        self.cruise.aero_post.add_dv_func("actuator_radius", actuator_radius)
-
-        def actuator_center(val, DASolver):
-            actX = float(val[0])
-            actY = float(val[1])
-            actZ = float(val[2])
-            # only change design variables
-            DASolver.setOption("fvSource", {"disk1": {"center": [actX, actY, actZ]}})
-            DASolver.updateDAOption()
-
-        self.cruise.coupling.solver.add_dv_func("actuator_center", actuator_center)
-        self.cruise.aero_post.add_dv_func("actuator_center", actuator_center)
-
-        def uin(val, DASolver):
-            U = [float(val[0]), 0.0, 0.0]
-            DASolver.setOption("primalBC", {"U0": {"value": U}})
-            DASolver.updateDAOption()
-        
-        self.cruise.coupling.solver.add_dv_func("uin", uin)
-        self.cruise.aero_post.add_dv_func("uin", uin)
-
         # Select all points
         pts = self.geometry.DVGeo.getLocalIndex(0)
         indexList = pts[:, :, :].flatten()
@@ -194,27 +140,17 @@ class Top(Multipoint):
         # add dvs to ivc and connect
         self.dvs.add_output("shape", val=np.array([0] * nShapes))
         self.dvs.add_output("aoa", val=np.array([aoa0]))
-        self.dvs.add_output("uin", val=np.array([U0]))
-        self.dvs.add_output("actuator_radius", val=np.array([0.4]))
-        self.dvs.add_output("actuator_center", val=np.array([-0.55, 0, 0.05]))
 
         self.connect("shape", "geometry.shape")
         self.connect("aoa", "cruise.aoa")
-        self.connect("uin", "cruise.uin")
-        self.connect("actuator_radius", "cruise.actuator_radius")
-        self.connect("actuator_center", "cruise.actuator_center")
 
         # define the design variables
         self.add_design_var("shape", lower=-1.0, upper=1.0, scaler=1.0)
         self.add_design_var("aoa", lower=-10.0, upper=10.0, scaler=1.0)
-        self.add_design_var("uin", lower=9.0, upper=11.0, scaler=1.0)
-        self.add_design_var("actuator_radius", lower=-1000.0, upper=1000.0, scaler=1.0)
-        self.add_design_var("actuator_center", lower=-1000.0, upper=1000.0, scaler=1.0)
 
         # add constraints and the objective
-        self.connect("cruise.aero_post.CD", "LoD.CD")
-        self.connect("cruise.aero_post.CL", "LoD.CL")
-        self.add_objective("LoD.val", scaler=1.0)
+        self.add_objective("cruise.aero_post.CD", scaler=1.0)
+        self.add_constraint("cruise.aero_post.CL", equals=0.5, scaler=1.0)
 
 
 prob = om.Problem()
@@ -253,10 +189,10 @@ totals = prob.compute_totals()
 
 if gcomm.rank == 0:
     derivDict = {}
-    derivDict["LoD.val"] = {}
-    derivDict["LoD.val"]["shape"] = totals[("LoD.val", "dvs.shape")][0]
-    derivDict["LoD.val"]["aoa"] = totals[("LoD.val", "dvs.aoa")][0]
-    derivDict["LoD.val"]["uin"] = totals[("LoD.val", "dvs.uin")][0]
-    derivDict["LoD.val"]["actuator_radius"] = totals[("LoD.val", "dvs.actuator_radius")][0]
-    derivDict["LoD.val"]["actuator_center"] = totals[("LoD.val", "dvs.actuator_center")][0]
+    derivDict["cruise.aero_post.CD"] = {}
+    derivDict["cruise.aero_post.CD"]["shape"] = totals[("cruise.aero_post.CD", "dvs.shape")][0]
+    derivDict["cruise.aero_post.CD"]["aoa"] = totals[("cruise.aero_post.CD", "dvs.aoa")][0]
+    derivDict["cruise.aero_post.CL"] = {}
+    derivDict["cruise.aero_post.CL"]["shape"] = totals[("cruise.aero_post.CL", "dvs.shape")][0]
+    derivDict["cruise.aero_post.CL"]["aoa"] = totals[("cruise.aero_post.CL", "dvs.aoa")][0]
     reg_write_dict(derivDict, 1e-4, 1e-6)

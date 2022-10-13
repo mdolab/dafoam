@@ -3,9 +3,9 @@ volVectorField pseudoU("pseudoU", U);
 // Get the pseudoUEqn,
 // the most important thing here is to make sure the l.h.s. matches that of UEqn.
 fvVectorMatrix pseudoUEqn(
-    fvm::div(phi, pseudoU)
+    fvm::div(phi, pseudoU, "div(phi,U)")
     - fvm::laplacian(nuEff, pseudoU));
-pseudoUEqn.relax();
+pseudoUEqn.relax(relaxUEqn_);
 
 // Swap upper() and lower()
 swap(pseudoUEqn.upper(), pseudoUEqn.lower());

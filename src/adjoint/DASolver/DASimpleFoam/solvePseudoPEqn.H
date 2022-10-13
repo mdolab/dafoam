@@ -24,4 +24,4 @@ forAll(pseudoP.primitiveFieldRef(), cellI)
     pseudoP.primitiveFieldRef()[cellI] = 0;
 }
 
-pseudoPEqn.solve();
+pseudoPEqn.solve(solverDictP_);

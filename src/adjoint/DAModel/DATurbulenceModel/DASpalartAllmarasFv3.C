@@ -98,7 +98,7 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
           zeroGradientFvPatchField<scalar>::typeName),
       // pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
       pseudoNuTilda_("pseudoNuTilda", nuTilda_),
-      pseudoNuTildaEqn_(fvm::div(phi_, pseudoNuTilda_)),
+      pseudoNuTildaEqn_(fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 
@@ -123,6 +123,11 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
         printInterval_ =
             daOption.getAllOptions().lookupOrDefault<label>("printIntervalUnsteady", 500);
     }
+
+    // get fvSolution and fvSchemes info for fixed-point adjoint
+    const fvSolution& myFvSolution = mesh.thisDb().lookupObject<fvSolution>("fvSolution");
+    relaxNuTildaEqn_ = myFvSolution.subDict("relaxationFactors").subDict("equations").getScalar("nuTilda");
+    solverDictNuTilda_ = myFvSolution.subDict("solvers").subDict("nuTilda");
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -511,32 +516,32 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
     //if (pseudoNuTildaEqnInitialized_ == 0)
     //{
 
-        pseudoNuTilda_ = nuTilda_;
+    pseudoNuTilda_ = nuTilda_;
 
-        const volScalarField chi(this->chi());
-        const volScalarField fv1(this->fv1(chi));
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
 
-        // Get myStilda
-        const volScalarField Stilda(
-            this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
-            + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
+    // Get myStilda
+    const volScalarField Stilda(
+        this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
+        + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
 
-        // Get the pseudoNuTildaEqn,
-        // the most important thing here is to make sure the l.h.s. mathces that of nuTildaEqn.
-        // Some explicit terms that only contributes to the r.h.s. are diabled
-        pseudoNuTildaEqn_ =
-            //fvm::ddt(pseudoNuTilda_)
-            fvm::div(phi_, pseudoNuTilda_)
-            - fvm::laplacian(DnuTildaEff(), pseudoNuTilda_)
-            + fvm::Sp(Cw1_ * fw(Stilda) * pseudoNuTilda_ / sqr(y_), pseudoNuTilda_);
-        pseudoNuTildaEqn_.relax();
+    // Get the pseudoNuTildaEqn,
+    // the most important thing here is to make sure the l.h.s. mathces that of nuTildaEqn.
+    // Some explicit terms that only contributes to the r.h.s. are diabled
+    pseudoNuTildaEqn_ =
+        //fvm::ddt(pseudoNuTilda_)
+        fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")
+        - fvm::laplacian(DnuTildaEff(), pseudoNuTilda_)
+        + fvm::Sp(Cw1_ * fw(Stilda) * pseudoNuTilda_ / sqr(y_), pseudoNuTilda_);
+    pseudoNuTildaEqn_.relax(relaxNuTildaEqn_);
 
-        // Swap upper() and lower()
-        List<scalar> temp = pseudoNuTildaEqn_.upper();
-        pseudoNuTildaEqn_.upper() = pseudoNuTildaEqn_.lower();
-        pseudoNuTildaEqn_.lower() = temp;
+    // Swap upper() and lower()
+    List<scalar> temp = pseudoNuTildaEqn_.upper();
+    pseudoNuTildaEqn_.upper() = pseudoNuTildaEqn_.lower();
+    pseudoNuTildaEqn_.lower() = temp;
 
-        // mark it as initialized
+    // mark it as initialized
     //    pseudoNuTildaEqnInitialized_ = 1;
     //}
 
@@ -562,7 +567,7 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
         pseudoNuTilda_.primitiveFieldRef()[cellI] = 0;
     }
     // Solve using the zero (internal) initial guess
-    pseudoNuTildaEqn_.solve();
+    pseudoNuTildaEqn_.solve(solverDictNuTilda_);
 
     forAll(pseudoNuTilda, cellI)
     {
@@ -587,8 +592,7 @@ void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)
 
     // Construct nuTildaEqn using our own SA implementation
     fvScalarMatrix nuTildaEqn(
-        fvm::ddt(nuTilda_)
-            + fvm::div(phi_, nuTilda_)
+        fvm::div(phi_, nuTilda_, "div(phi,nuTilda)")
             - fvm::laplacian(DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * magSqr(fvc::grad(nuTilda_))
         == Cb1_ * Stilda * nuTilda_

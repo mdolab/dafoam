@@ -116,6 +116,12 @@ protected:
     Position fluxUEnd_;
 #endif
 
+    /// fvSolution parameters for fixed-point adjoint
+    scalar relaxUEqn_;
+    dictionary solverDictU_;
+    dictionary solverDictP_;
+
+
 public:
     TypeName("DASimpleFoam");
     // Constructors

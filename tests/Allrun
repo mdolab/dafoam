@@ -53,6 +53,39 @@ function runTests()
   fi
 }
 
+function runTestsSerial() 
+{
+  rm -rf input DAFoam_Test_${1}.txt
+  tar -zxf input.tar.gz
+  if [ -z "$DF_CHECK_COVERAGE" ]; then
+    python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+      echo "${1}: Failed!"
+      exit 1
+    fi
+    # need to replace the "[0m" for mphys tests 
+    sed -i 's/\[0m//g' DAFoam_Test_${1}.txt
+    sed -i 's/[^[:print:]\t]//g' DAFoam_Test_${1}.txt
+    python testFuncs.py refs/DAFoam_Test_${1}Ref.txt DAFoam_Test_${1}.txt
+    if [ "$?" -ne "0" ]; then 
+      echo "${1}: Failed!"
+      exit 1
+    else
+      echo "${1}: Success!"
+    fi
+  elif [ "$DF_CHECK_COVERAGE" = "1" ]; then
+    coverage run runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+      echo "${1}: Failed!"
+      exit 1
+    fi
+    echo "DF_CHECK_COVERAGE key found! Do NOT check the regression test values!"
+  else
+    echo "DF_CHECK_COVERAGE key not valid! Set it to 1!"
+    exit 1
+  fi
+}
+
 case $argm in
   "all")
     echo "Running all tests...."
@@ -63,7 +96,6 @@ case $argm in
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
       runTests DASimpleFoamField
-      runTests DASimpleFoamFixedPoint
       runTests DASimpleFoamkOmegaFieldInversionOmega
       runTests DASimpleFoamkOmegaSSTFieldInversion
       runTests DASimpleFoamFieldInversionObjectiveFunctions
@@ -99,10 +131,12 @@ case $argm in
     runTests DALaplacianFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests MphysAero
+      runTestsSerial MphysAeroFixedPoint
+      runTests MphysAeroOpt
       runTests MphysAeroField
     fi
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
-      runTests MphysAeroStruct
+      runTests MphysAeroStructOpt
     fi
     echo " "
     echo "************************************************************"
@@ -119,7 +153,6 @@ case $argm in
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests DASimpleFoamAD
       runTests DASimpleFoamField
-      runTests DASimpleFoamFixedPoint
       runTests DASimpleFoamkOmegaFieldInversionOmega
       runTests DASimpleFoamkOmegaSSTFieldInversion
       runTests DASimpleFoamFieldInversionObjectiveFunctions
@@ -191,10 +224,12 @@ case $argm in
     sleep 3
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
       runTests MphysAero
+      runTestsSerial MphysAeroFixedPoint
+      runTests MphysAeroOpt
       runTests MphysAeroField
     fi
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
-      runTests MphysAeroStruct
+      runTests MphysAeroStructOpt
     fi
     echo " "
     echo "************************************************************"

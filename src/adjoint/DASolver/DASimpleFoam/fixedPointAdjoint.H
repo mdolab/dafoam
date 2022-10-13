@@ -95,163 +95,14 @@ label DASimpleFoam::runFPAdj(
     this->updateOFField(wVec);
     this->updateOFMesh(xvVec);
 
+    label printInterval = daOptionPtr_->getOption<label>("printInterval");
+
     word adjEqnSolMethod = daOptionPtr_->getOption<word>("adjEqnSolMethod");
 
     if (adjEqnSolMethod == "fixedPoint")
     {
-        Info << "Solving the adjoint using fixed-point iteration method..." << endl;
-        label fpMaxIters = daOptionPtr_->getSubDictOption<label>("adjEqnOption", "fpMaxIters");
-        scalar relaxU = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxU");
-        scalar relaxP = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxP");
-        scalar relaxPhi = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxPhi");
-        scalar relaxNuTilda = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxNuTilda");
-        scalar fpRelTol = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "fpRelTol");
-
-        const objectRegistry& db = meshPtr_->thisDb();
-        const volVectorField& U = db.lookupObject<volVectorField>("U");
-        const volScalarField& p = db.lookupObject<volScalarField>("p");
-        const surfaceScalarField& phi = db.lookupObject<surfaceScalarField>("phi");
-        const volScalarField& nuTilda = db.lookupObject<volScalarField>("nuTilda");
-
-        volVectorField dFdU("dFdU", 0.0 * U);
-        volScalarField dFdP("dFdP", 0.0 * p);
-        surfaceScalarField dFdPhi("dFdPhi", 0.0 * phi);
-        volScalarField dFdNuTilda("dFdNuTilda", 0.0 * nuTilda);
-
-        volVectorField URes("URes", 0.0 * U);
-        volScalarField pRes("pRes", 0.0 * p);
-        surfaceScalarField phiRes("phiRes", 0.0 * phi);
-        volScalarField nuTildaRes("nuTildaRes", 0.0 * nuTilda);
-
-        this->vec2Fields("vec2Field", dFdW, dFdU, dFdP, dFdPhi, dFdNuTilda);
-
-        volVectorField UPsi("UPsi", 0.0 * U);
-        volScalarField pPsi("pPsi", 0.0 * p);
-        surfaceScalarField phiPsi("phiPsi", 0.0 * phi);
-        volScalarField nuTildaPsi("nuTildaPsi", 0.0 * nuTilda);
-
-        volVectorField pseudoU("pseudoU", U);
-        volScalarField pseudoP("pseudoP", p);
-        volScalarField pseudoNuTilda("pseudoNuTilda", nuTilda);
-
-        volVectorField adjURes("adjURes", 0.0 * U);
-        volScalarField adjPRes("adjPRes", 0.0 * p);
-        surfaceScalarField adjPhiRes("adjPhiRes", 0.0 * phi);
-        volScalarField adjNuTildaRes("adjNuTildaRes", 0.0 * nuTilda);
-
-        // Initiate the initial L2norm for adjURes, adjPRes, adjPhiRes, adjNuTildaRes
-        vector initNormAdjURes = vector::zero;
-        scalar initNormAdjPRes = 0.0;
-        scalar initNormAdjPhiRes = 0.0;
-        scalar initNormAdjNuTildaRes = 0.0;
-
-        this->calcLduResiduals(URes, pRes, phiRes);
-        daTurbulenceModelPtr_->calcLduResidualTurb(nuTildaRes);
-        Info << "Residual for simpleFOAM after convergence: " << endl;
-        Info << "L2 norm of URes: " << L2norm(URes) << endl;
-        Info << "L2 norm of pRes: " << L2norm(pRes) << endl;
-        Info << "L2 norm of phiRes: " << L2norm(phiRes) << endl;
-        Info << "L2 norm of nuTildaRes: " << L2norm(nuTildaRes) << endl;
-
-        label cnt = 0;
-        while (cnt < fpMaxIters)
-        {
-            Info << "Step = " << cnt << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
-
-            // ------ U -----
-            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
-            invTranProdUEqn(adjURes, pseudoU);
-            forAll(pseudoU, cellI)
-            {
-                // the definition of adjURes has opposite sign than the formulation on Overleaf, so we do -= here
-                UPsi[cellI] -= relaxU * pseudoU[cellI];
-            }
-
-            //  ------- p ----
-            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
-            invTranProdPEqn(adjPRes, pseudoP);
-            forAll(pseudoP, cellI)
-            {
-                pPsi[cellI] -= relaxP * pseudoP[cellI];
-            }
-
-            // -------- phi  --------
-            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
-
-            forAll(adjPhiRes, faceI)
-            {
-                phiPsi[faceI] += relaxPhi * adjPhiRes[faceI];
-            }
-            forAll(adjPhiRes.boundaryField(), patchI)
-            {
-                forAll(adjPhiRes.boundaryField()[patchI], faceI)
-                {
-                    phiPsi.boundaryFieldRef()[patchI][faceI] += relaxPhi * adjPhiRes.boundaryField()[patchI][faceI];
-                }
-            }
-
-            // -------- nuTilda  --------
-            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
-            // Solve, using the inverse transpose product function
-            daTurbulenceModelPtr_->invTranProdNuTildaEqn(adjNuTildaRes, pseudoNuTilda);
-
-            forAll(pseudoNuTilda, cellI)
-            {
-                nuTildaPsi[cellI] -= relaxNuTilda * pseudoNuTilda[cellI];
-            }
-
-            if (cnt >= 1)
-            {
-                vector normAdjURes = L2norm(adjURes);
-                scalar normAdjPRes = L2norm(adjPRes);
-                scalar normAdjPhiRes = L2norm(adjPhiRes);
-                scalar normAdjNuTildaRes = L2norm(adjNuTildaRes);
-
-                if (cnt == 1)
-                {
-                    initNormAdjURes = normAdjURes;
-                    initNormAdjPRes = normAdjPRes;
-                    initNormAdjPhiRes = normAdjPhiRes;
-                    initNormAdjNuTildaRes = normAdjNuTildaRes;
-                }
-
-                // Normalize residual norms:
-                normAdjURes[0] /= initNormAdjURes[0];
-                normAdjURes[1] /= initNormAdjURes[1];
-                normAdjURes[2] /= initNormAdjURes[2];
-                normAdjPRes /= initNormAdjPRes;
-                normAdjPhiRes /= initNormAdjPhiRes;
-                normAdjNuTildaRes /= initNormAdjNuTildaRes;
-
-                Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
-                Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
-                Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
-                Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
-
-                // Check if fpRelTol is met:
-                if (normAdjURes[0] < fpRelTol && normAdjURes[1] < fpRelTol && normAdjURes[2] < fpRelTol && normAdjPRes < fpRelTol && normAdjPhiRes < fpRelTol && normAdjNuTildaRes < fpRelTol)
-                {
-                    Info << "Residual drop of " << fpRelTol << " has been achieved!" << endl;
-                    break;
-                }
-            }
-
-            cnt++;
-        }
-
-        // converged, assign the field Psi to psiVec
-        this->vec2Fields("field2Vec", psi, UPsi, pPsi, phiPsi, nuTildaPsi);
-    }
-
-    // Consistent fixed-point adjoint
-    else if (adjEqnSolMethod == "fixedPointC")
-    {
         Info << "Solving the adjoint using consistent fixed-point iteration method..." << endl;
         label fpMaxIters = daOptionPtr_->getSubDictOption<label>("adjEqnOption", "fpMaxIters");
-        scalar relaxU = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxU");
-        scalar relaxP = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxP");
-        scalar relaxPhi = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxPhi");
-        scalar relaxNuTilda = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "relaxNuTilda");
         scalar fpRelTol = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "fpRelTol");
 
         const objectRegistry& db = meshPtr_->thisDb();
@@ -361,7 +212,10 @@ label DASimpleFoam::runFPAdj(
         label cnt = 0;
         while (cnt < fpMaxIters)
         {
-            Info << "Step = " << cnt << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+            if (cnt % printInterval == 0)
+            {
+                Info << "Step = " << cnt << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+            }
 
             // ************************************************************************* //
             // Step-1: Get D^(-T).adjURes, adjPRes, adjPhiRes, adjNuTildaRes, and update phiPsi
@@ -395,21 +249,28 @@ label DASimpleFoam::runFPAdj(
                 normAdjPhiRes /= initNormAdjPhiRes;
                 normAdjNuTildaRes /= initNormAdjNuTildaRes;
 
-                Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
-                Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
-                Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
-                Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
+                if (cnt % printInterval == 0)
+                {
+                    Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
+                    Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
+                    Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
+                    Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
+                }
 
                 // Check if fpRelTol is met:
                 if (normAdjURes[0] < fpRelTol && normAdjURes[1] < fpRelTol && normAdjURes[2] < fpRelTol && normAdjPRes < fpRelTol && normAdjPhiRes < fpRelTol && normAdjNuTildaRes < fpRelTol)
                 {
                     Info << "Residual drop of " << fpRelTol << " has been achieved!" << endl;
+                    Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
+                    Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
+                    Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
+                    Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
                     break;
                 }
             }
 
             // Update phiPsi
-            phiPsi += relaxPhi * adjPhiRes;
+            phiPsi += adjPhiRes;
 
             // ************************************************************************* //
             // Step-1.2: Get D^(-T) adjURes, overwrite adjURes
@@ -575,7 +436,7 @@ label DASimpleFoam::runFPAdj(
             //Info<<"Show step_3: "<< step_3 << endl;
 
             // Update pPsi
-            pPsi += relaxP * step_3;
+            pPsi += step_3;
             //Info<<"Show pPsi: "<< pPsi << endl;
 
             // ************************************************************************* //
@@ -763,8 +624,8 @@ label DASimpleFoam::runFPAdj(
             // Update UPsi
             forAll(UPsi, cellI)
             {
-                UPsi[cellI] += relaxU * step_5[cellI];
-                UPsi[cellI] -= relaxU * adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
+                UPsi[cellI] += step_5[cellI];
+                UPsi[cellI] -= adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
             }
             //Info<<"Show UPsi: "<< UPsi << endl;
 
@@ -788,7 +649,7 @@ label DASimpleFoam::runFPAdj(
             // Update nuTildaPsi
             forAll(nuTildaPsi, cellI)
             {
-                nuTildaPsi[cellI] -= relaxNuTilda * pseudoNuTilda[cellI];
+                nuTildaPsi[cellI] -= pseudoNuTilda[cellI];
             }
 
             cnt++;
@@ -931,10 +792,10 @@ void DASimpleFoam::invTranProdUEqn(
     // Get the pseudoUEqn,
     // the most important thing here is to make sure the l.h.s. matches that of UEqn.
     fvVectorMatrix pseudoUEqn(
-        fvm::div(phi, pseudoU)
+        fvm::div(phi, pseudoU, "div(phi,U)")
         - fvm::laplacian(nuEff, pseudoU)
-        - fvc::div(nuEff * dev2(T(fvc::grad(pseudoU)))));
-    pseudoUEqn.relax();
+        - fvc::div(nuEff * dev2(T(fvc::grad(pseudoU))), "div((nuEff*dev2(T(grad(U)))))"));
+    pseudoUEqn.relax(relaxUEqn_);
 
     // Swap upper() and lower()
     List<scalar> temp = pseudoUEqn.upper();
@@ -964,7 +825,7 @@ void DASimpleFoam::invTranProdUEqn(
         pseudoU.primitiveFieldRef()[cellI][2] = 0;
     }
 
-    pseudoUEqn.solve();
+    pseudoUEqn.solve(solverDictU_);
 }
 
 void DASimpleFoam::invTranProdPEqn(
@@ -1029,7 +890,7 @@ void DASimpleFoam::invTranProdPEqn(
         pseudoP.primitiveFieldRef()[cellI] = 0;
     }
 
-    pseudoPEqn.solve();
+    pseudoPEqn.solve(solverDictP_);
 }
 
 void DASimpleFoam::calcLduResiduals(
