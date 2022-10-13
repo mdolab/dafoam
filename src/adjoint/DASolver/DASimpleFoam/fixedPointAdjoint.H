@@ -95,6 +95,8 @@ label DASimpleFoam::runFPAdj(
     this->updateOFField(wVec);
     this->updateOFMesh(xvVec);
 
+    label printInterval = daOptionPtr_->getOption<label>("printInterval");
+
     word adjEqnSolMethod = daOptionPtr_->getOption<word>("adjEqnSolMethod");
 
     if (adjEqnSolMethod == "fixedPoint")
@@ -156,7 +158,11 @@ label DASimpleFoam::runFPAdj(
         label cnt = 0;
         while (cnt < fpMaxIters)
         {
-            Info << "Step = " << cnt << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+
+            if (cnt % printInterval == 0)
+            {
+                Info << "Step = " << cnt << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+            }
 
             // ------ U -----
             this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
@@ -223,10 +229,13 @@ label DASimpleFoam::runFPAdj(
                 normAdjPhiRes /= initNormAdjPhiRes;
                 normAdjNuTildaRes /= initNormAdjNuTildaRes;
 
-                Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
-                Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
-                Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
-                Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
+                if (cnt % printInterval == 0)
+                {
+                    Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
+                    Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
+                    Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
+                    Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
+                }
 
                 // Check if fpRelTol is met:
                 if (normAdjURes[0] < fpRelTol && normAdjURes[1] < fpRelTol && normAdjURes[2] < fpRelTol && normAdjPRes < fpRelTol && normAdjPhiRes < fpRelTol && normAdjNuTildaRes < fpRelTol)
@@ -357,7 +366,10 @@ label DASimpleFoam::runFPAdj(
         label cnt = 0;
         while (cnt < fpMaxIters)
         {
-            Info << "Step = " << cnt << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+            if (cnt % printInterval == 0)
+            {
+                Info << "Step = " << cnt << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+            }
 
             // ************************************************************************* //
             // Step-1: Get D^(-T).adjURes, adjPRes, adjPhiRes, adjNuTildaRes, and update phiPsi
@@ -391,10 +403,13 @@ label DASimpleFoam::runFPAdj(
                 normAdjPhiRes /= initNormAdjPhiRes;
                 normAdjNuTildaRes /= initNormAdjNuTildaRes;
 
-                Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
-                Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
-                Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
-                Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
+                if (cnt % printInterval == 0)
+                {
+                    Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
+                    Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
+                    Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
+                    Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
+                }
 
                 // Check if fpRelTol is met:
                 if (normAdjURes[0] < fpRelTol && normAdjURes[1] < fpRelTol && normAdjURes[2] < fpRelTol && normAdjPRes < fpRelTol && normAdjPhiRes < fpRelTol && normAdjNuTildaRes < fpRelTol)
