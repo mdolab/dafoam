@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "3.0.2"
+__version__ = "3.0.3"
 
 import subprocess
 import os
@@ -524,6 +524,7 @@ class DAOPTION(object):
             "useMGSO": False,
             "printInfo": 1,
             "fpMaxIters": 1000,
+            "dynAdjustTol": True,
         }
 
         ## Normalization for residuals. We should normalize all residuals!

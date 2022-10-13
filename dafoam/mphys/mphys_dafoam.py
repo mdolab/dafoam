@@ -484,9 +484,8 @@ class DAFoamSolver(ImplicitComponent):
         self.psi = self.DASolver.wVec.duplicate()
         self.psi.zeroEntries()
 
-        # run coloring
-        if self.DASolver.getOption("adjUseColoring"):
-            self.DASolver.runColoring()
+        # if true, we need to compute the coloring
+        self.runColoring = True
 
         # determine which function to compute the adjoint
         self.evalFuncs = []
@@ -520,7 +519,10 @@ class DAFoamSolver(ImplicitComponent):
             elif dvType == "BC":  # add boundary conditions
                 self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "ACTD":  # add actuator parameter variables
-                self.add_input(dvName, distributed=False, shape=10, tags=["mphys_coupling"])
+                nACTDVars = 10
+                if "comps" in list(designVariables[dvName].keys()):
+                    nACTDVars = len(designVariables[dvName]["comps"])
+                self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
                 self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
             else:
@@ -618,6 +620,8 @@ class DAFoamSolver(ImplicitComponent):
         # assign the states in outputs to the OpenFOAM flow fields
         DASolver.setStates(outputs["dafoam_states"])
 
+        designVariables = DASolver.getOption("designVar")
+
         if "dafoam_states" in d_residuals:
 
             # get the reverse mode AD seed from d_residuals
@@ -688,7 +692,15 @@ class DAFoamSolver(ImplicitComponent):
                         )
                         # we will convert the MPI prodVec to seq array for all procs
                         ACTDBar = DASolver.convertMPIVec2SeqArray(prodVec)
-                        d_inputs[inputName] += ACTDBar
+                        if "comps" in list(designVariables[inputName].keys()):
+                            nACTDVars = len(designVariables[inputName]["comps"])
+                            ACTDBarSub = np.zeros(nACTDVars, "d")
+                            for i in range(nACTDVars):
+                                comp = designVariables[inputName]["comps"][i]
+                                ACTDBarSub[i] = ACTDBar[comp]
+                            d_inputs[inputName] += ACTDBarSub
+                        else:
+                            d_inputs[inputName] += ACTDBar
 
                     # compute dRdFieldT*Psi using reverse mode AD
                     elif self.dvType[inputName] == "Field":
@@ -729,6 +741,11 @@ class DAFoamSolver(ImplicitComponent):
         dFdWArray = d_outputs["dafoam_states"]
         # convert the array to vector
         dFdW = DASolver.array2Vec(dFdWArray)
+
+        # run coloring
+        if self.DASolver.getOption("adjUseColoring") and self.runColoring:
+            self.DASolver.runColoring()
+            self.runColoring = False
 
         if adjEqnSolMethod == "Krylov":
             # solve the adjoint equation using the Krylov method
@@ -774,8 +791,12 @@ class DAFoamSolver(ImplicitComponent):
                         DASolver.ksp = PETSc.KSP().create(self.comm)
                         DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
 
-            # update the KSP tolerances the coupled adjoint before solving
-            self._updateKSPTolerances(self.psi, dFdW, DASolver.ksp)
+            if self.DASolver.getOption("adjEqnOption")["dynAdjustTol"]:
+                # if we want to dynamically adjust the tolerance, call this function. This is mostly used
+                # in the block Gauss-Seidel method in two discipline coupling
+                # update the KSP tolerances the coupled adjoint before solving
+                self._updateKSPTolerances(self.psi, dFdW, DASolver.ksp)
+
             # actually solving the adjoint linear equation using Petsc
             fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
         elif adjEqnSolMethod in ["fixedPoint", "fixedPointC"]:
@@ -956,7 +977,10 @@ class DAFoamFunctions(ExplicitComponent):
             elif dvType == "BC":  # add boundary conditions
                 self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "ACTD":  # add actuator parameter variables
-                self.add_input(dvName, distributed=False, shape=10, tags=["mphys_coupling"])
+                nACTDVars = 10
+                if "comps" in list(designVariables[dvName].keys()):
+                    nACTDVars = len(designVariables[dvName]["comps"])
+                self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
                 self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
             else:
@@ -1024,6 +1048,8 @@ class DAFoamFunctions(ExplicitComponent):
         DASolver.setOption("runStatus", "solveAdjoint")
         DASolver.updateDAOption()
 
+        designVariables = DASolver.getOption("designVar")
+
         # assign the optionDict to the solver
         self.apply_options(self.optionDict)
         # now call the dv_funcs to update the design variables
@@ -1048,99 +1074,111 @@ class DAFoamFunctions(ExplicitComponent):
                 if func_name in d_outputs and d_outputs[func_name] != 0.0:
                     funcsBar[func_name] = d_outputs[func_name][0]
 
-        # funcsBar should have only one seed for which we need to compute partials
         # if self.comm.rank == 0:
         #     print(funcsBar)
 
-        # get the name of the functions we need to compute partials for
-        objFuncName = list(funcsBar.keys())[0]
+        if self.comm.rank == 0:
+            print("Computing partials for ", list(funcsBar.keys()))
 
         # loop over all d_inputs keys and compute the partials accordingly
-        for inputName in list(d_inputs.keys()):
+        for objFuncName in list(funcsBar.keys()):
 
-            # compute dFdW
-            if inputName == "dafoam_states":
-                dFdW = DASolver.wVec.duplicate()
-                dFdW.zeroEntries()
-                DASolver.solverAD.calcdFdWAD(DASolver.xvVec, DASolver.wVec, objFuncName.encode(), dFdW)
-                wBar = DASolver.vec2Array(dFdW)
-                d_inputs["dafoam_states"] += wBar
+            fBar = funcsBar[objFuncName]
 
-            # compute dFdXv
-            elif inputName == "dafoam_vol_coords":
-                dFdXv = DASolver.xvVec.duplicate()
-                dFdXv.zeroEntries()
-                DASolver.solverAD.calcdFdXvAD(
-                    DASolver.xvVec, DASolver.wVec, objFuncName.encode(), "dummy".encode(), dFdXv
-                )
-                xVBar = DASolver.vec2Array(dFdXv)
-                d_inputs["dafoam_vol_coords"] += xVBar
+            for inputName in list(d_inputs.keys()):
 
-            else:  # now we deal with general input input names
+                # compute dFdW * fBar
+                if inputName == "dafoam_states":
+                    dFdW = DASolver.wVec.duplicate()
+                    dFdW.zeroEntries()
+                    DASolver.solverAD.calcdFdWAD(DASolver.xvVec, DASolver.wVec, objFuncName.encode(), dFdW)
+                    wBar = DASolver.vec2Array(dFdW)
+                    d_inputs["dafoam_states"] += wBar * fBar
 
-                # compute dFdAOA
-                if self.dvType[inputName] == "AOA":
-                    dFdAOA = PETSc.Vec().create(self.comm)
-                    dFdAOA.setSizes((PETSc.DECIDE, 1), bsize=1)
-                    dFdAOA.setFromOptions()
-                    DASolver.calcdFdAOAAnalytical(objFuncName, dFdAOA)
-                    # The aoaBar variable will be length 1 on the root proc, but length 0 an all slave procs.
-                    # The value on the root proc must be broadcast across all procs.
-                    if self.comm.rank == 0:
-                        aoaBar = DASolver.vec2Array(dFdAOA)[0]
-                    else:
-                        aoaBar = 0.0
-
-                    d_inputs[inputName] += self.comm.bcast(aoaBar, root=0)
-
-                # compute dFdBC
-                elif self.dvType[inputName] == "BC":
-                    dFdBC = PETSc.Vec().create(self.comm)
-                    dFdBC.setSizes((PETSc.DECIDE, 1), bsize=1)
-                    dFdBC.setFromOptions()
-                    DASolver.solverAD.calcdFdBCAD(
-                        DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdBC
+                # compute dFdW * fBar
+                elif inputName == "dafoam_vol_coords":
+                    dFdXv = DASolver.xvVec.duplicate()
+                    dFdXv.zeroEntries()
+                    DASolver.solverAD.calcdFdXvAD(
+                        DASolver.xvVec, DASolver.wVec, objFuncName.encode(), "dummy".encode(), dFdXv
                     )
-                    # The BCBar variable will be length 1 on the root proc, but length 0 an all slave procs.
-                    # The value on the root proc must be broadcast across all procs.
-                    if self.comm.rank == 0:
-                        BCBar = DASolver.vec2Array(dFdBC)[0]
-                    else:
-                        BCBar = 0.0
+                    xVBar = DASolver.vec2Array(dFdXv)
+                    d_inputs["dafoam_vol_coords"] += xVBar * fBar
 
-                    d_inputs[inputName] += self.comm.bcast(BCBar, root=0)
-
-                # compute dFdActD
-                elif self.dvType[inputName] == "ACTD":
-                    dFdACTD = PETSc.Vec().create(self.comm)
-                    dFdACTD.setSizes((PETSc.DECIDE, 10), bsize=1)
-                    dFdACTD.setFromOptions()
-                    DASolver.solverAD.calcdFdACTAD(
-                        DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdACTD
-                    )
-                    # we will convert the MPI dFdACTD to seq array for all procs
-                    ACTDBar = DASolver.convertMPIVec2SeqArray(dFdACTD)
-                    d_inputs[inputName] += ACTDBar
-
-                # compute dFdField
-                elif self.dvType[inputName] == "Field":
-                    nLocalCells = self.DASolver.solver.getNLocalCells()
-                    fieldType = DASolver.getOption("designVar")[inputName]["fieldType"]
-                    fieldComp = 1
-                    if fieldType == "vector":
-                        fieldComp = 3
-                    nLocalSize = nLocalCells * fieldComp
-                    dFdField = PETSc.Vec().create(self.comm)
-                    dFdField.setSizes((nLocalSize, PETSc.DECIDE), bsize=1)
-                    dFdField.setFromOptions()
-                    DASolver.solverAD.calcdFdFieldAD(
-                        DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdField
-                    )
-                    fieldBar = DASolver.vec2Array(dFdField)
-                    d_inputs[inputName] += fieldBar
-
+                # now we deal with general input input names
                 else:
-                    raise AnalysisError("designVarType %s not supported! " % self.dvType[inputName])
+                    # compute dFdAOA
+                    if self.dvType[inputName] == "AOA":
+                        dFdAOA = PETSc.Vec().create(self.comm)
+                        dFdAOA.setSizes((PETSc.DECIDE, 1), bsize=1)
+                        dFdAOA.setFromOptions()
+                        DASolver.calcdFdAOAAnalytical(objFuncName, dFdAOA)
+                        
+                        # The aoaBar variable will be length 1 on the root proc, but length 0 an all slave procs.
+                        # The value on the root proc must be broadcast across all procs.
+                        if self.comm.rank == 0:
+                            aoaBar = DASolver.vec2Array(dFdAOA)[0] * fBar
+                        else:
+                            aoaBar = 0.0
+
+                        d_inputs[inputName] += self.comm.bcast(aoaBar, root=0)
+
+                    # compute dFdBC
+                    elif self.dvType[inputName] == "BC":
+                        dFdBC = PETSc.Vec().create(self.comm)
+                        dFdBC.setSizes((PETSc.DECIDE, 1), bsize=1)
+                        dFdBC.setFromOptions()
+                        DASolver.solverAD.calcdFdBCAD(
+                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdBC
+                        )
+                        # The BCBar variable will be length 1 on the root proc, but length 0 an all slave procs.
+                        # The value on the root proc must be broadcast across all procs.
+                        if self.comm.rank == 0:
+                            BCBar = DASolver.vec2Array(dFdBC)[0] * fBar
+                        else:
+                            BCBar = 0.0
+
+                        d_inputs[inputName] += self.comm.bcast(BCBar, root=0)
+
+                    # compute dFdActD
+                    elif self.dvType[inputName] == "ACTD":
+                        dFdACTD = PETSc.Vec().create(self.comm)
+                        dFdACTD.setSizes((PETSc.DECIDE, 10), bsize=1)
+                        dFdACTD.setFromOptions()
+                        DASolver.solverAD.calcdFdACTAD(
+                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdACTD
+                        )
+                        # we will convert the MPI dFdACTD to seq array for all procs
+                        ACTDBar = DASolver.convertMPIVec2SeqArray(dFdACTD)
+                        if "comps" in list(designVariables[inputName].keys()):
+                            nACTDVars = len(designVariables[inputName]["comps"])
+                            ACTDBarSub = np.zeros(nACTDVars, "d")
+                            for i in range(nACTDVars):
+                                comp = designVariables[inputName]["comps"][i]
+                                ACTDBarSub[i] = ACTDBar[comp]
+                            d_inputs[inputName] += ACTDBarSub * fBar
+                        else:
+                            d_inputs[inputName] += ACTDBar * fBar
+
+                    # compute dFdField
+                    elif self.dvType[inputName] == "Field":
+                        nLocalCells = self.DASolver.solver.getNLocalCells()
+                        fieldType = DASolver.getOption("designVar")[inputName]["fieldType"]
+                        fieldComp = 1
+                        if fieldType == "vector":
+                            fieldComp = 3
+                        nLocalSize = nLocalCells * fieldComp
+                        dFdField = PETSc.Vec().create(self.comm)
+                        dFdField.setSizes((nLocalSize, PETSc.DECIDE), bsize=1)
+                        dFdField.setFromOptions()
+                        DASolver.solverAD.calcdFdFieldAD(
+                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdField
+                        )
+                        fieldBar = DASolver.vec2Array(dFdField)
+                        d_inputs[inputName] += fieldBar * fBar
+
+                    else:
+                        raise AnalysisError("designVarType %s not supported! " % self.dvType[inputName])
 
 
 class DAFoamWarper(ExplicitComponent):
@@ -1574,6 +1612,14 @@ class OptFuncs(object):
     """
 
     def __init__(self, daOptions, om_prob):
+        """
+        daOptions: dict or list
+            The daOptions dict from runScript.py. Support more than two dicts
+
+        om_prob:
+            The om.Problem() object
+        """
+
         self.daOptions = daOptions
         self.om_prob = om_prob
         self.comm = MPI.COMM_WORLD
@@ -1584,7 +1630,14 @@ class OptFuncs(object):
 
         modelDesignVars = self.om_prob.model.get_design_vars()
 
-        DADesignVars = self.daOptions["designVar"]
+        isList = isinstance(self.daOptions, list)
+        if isList:
+            DADesignVars = []
+            for subDict in self.daOptions:
+                for key in list(subDict["designVar"].keys()):
+                    DADesignVars.append(key)
+        else:
+            DADesignVars = list(self.daOptions["designVar"].keys())
         for modelDV in modelDesignVars:
             dvFound = False
             for dv in DADesignVars:
