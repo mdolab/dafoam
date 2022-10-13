@@ -511,7 +511,7 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
     //if (pseudoNuTildaEqnInitialized_ == 0)
     //{
 
-        //pseudoNuTilda_ = nuTilda_;
+        pseudoNuTilda_ = nuTilda_;
 
         const volScalarField chi(this->chi());
         const volScalarField fv1(this->fv1(chi));
@@ -525,7 +525,7 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
         // the most important thing here is to make sure the l.h.s. mathces that of nuTildaEqn.
         // Some explicit terms that only contributes to the r.h.s. are diabled
         pseudoNuTildaEqn_ =
-            //fvm::ddt(pseudoNuTilda)
+            //fvm::ddt(pseudoNuTilda_)
             fvm::div(phi_, pseudoNuTilda_)
             - fvm::laplacian(DnuTildaEff(), pseudoNuTilda_)
             + fvm::Sp(Cw1_ * fw(Stilda) * pseudoNuTilda_ / sqr(y_), pseudoNuTilda_);
