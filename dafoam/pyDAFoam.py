@@ -1036,7 +1036,7 @@ class PYDAFOAM(object):
                 print("Fixed-point adjoint mode detected. Unset normalizeStates and normalizeResiduals...")
 
             # force the normalize states to be an empty dict
-            if len(self.setOption("normalizeStates")) > 0:
+            if len(self.getOption("normalizeStates")) > 0:
                 raise Error("Please do not set any normalizeStates for the fixed-point adjoint!")
             # force the normalize residuals to be None; don't normalize any residuals
             self.setOption("normalizeResiduals", ["None"])

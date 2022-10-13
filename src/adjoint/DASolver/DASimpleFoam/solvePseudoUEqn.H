@@ -25,4 +25,4 @@ forAll(pseudoU.primitiveFieldRef(), cellI)
     pseudoU.primitiveFieldRef()[cellI][2] = 0;
 }
 
-pseudoUEqn.solve();
+pseudoUEqn.solve(solverDictU_);

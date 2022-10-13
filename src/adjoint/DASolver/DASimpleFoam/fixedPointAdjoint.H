@@ -927,10 +927,10 @@ void DASimpleFoam::invTranProdUEqn(
     // Get the pseudoUEqn,
     // the most important thing here is to make sure the l.h.s. matches that of UEqn.
     fvVectorMatrix pseudoUEqn(
-        fvm::div(phi, pseudoU)
+        fvm::div(phi, pseudoU, "div(phi,U)")
         - fvm::laplacian(nuEff, pseudoU)
-        - fvc::div(nuEff * dev2(T(fvc::grad(pseudoU)))));
-    pseudoUEqn.relax();
+        - fvc::div(nuEff * dev2(T(fvc::grad(pseudoU))), "div((nuEff*dev2(T(grad(U)))))"));
+    pseudoUEqn.relax(relaxUEqn_);
 
     // Swap upper() and lower()
     List<scalar> temp = pseudoUEqn.upper();
@@ -960,7 +960,7 @@ void DASimpleFoam::invTranProdUEqn(
         pseudoU.primitiveFieldRef()[cellI][2] = 0;
     }
 
-    pseudoUEqn.solve();
+    pseudoUEqn.solve(solverDictU_);
 }
 
 void DASimpleFoam::invTranProdPEqn(
@@ -1025,7 +1025,7 @@ void DASimpleFoam::invTranProdPEqn(
         pseudoP.primitiveFieldRef()[cellI] = 0;
     }
 
-    pseudoPEqn.solve();
+    pseudoPEqn.solve(solverDictP_);
 }
 
 void DASimpleFoam::calcLduResiduals(

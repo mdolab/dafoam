@@ -54,6 +54,11 @@ DASimpleFoam::DASimpleFoam(
       fvSourcePtr_(nullptr),
       MRFPtr_(nullptr)
 {
+    // get fvSolution and fvSchemes info for fixed-point adjoint
+    const fvSolution& myFvSolution = meshPtr_->thisDb().lookupObject<fvSolution>("fvSolution");
+    relaxUEqn_ = myFvSolution.subDict("relaxationFactors").subDict("equations").getScalar("U");
+    solverDictU_ = myFvSolution.subDict("solvers").subDict("U");
+    solverDictP_ = myFvSolution.subDict("solvers").subDict("p");
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

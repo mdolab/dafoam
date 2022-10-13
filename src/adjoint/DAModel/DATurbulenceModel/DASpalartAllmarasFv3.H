@@ -108,6 +108,10 @@ protected:
     /// solve pseudoNuTildaEqn_ with overwritten rhs
     tmp<volScalarField> rhsSolvePseudoNuTildaEqn(const List<scalar>& nuTildaSource);
 
+    // fvSolutions parameters
+    scalar relaxNuTildaEqn_;
+    dictionary solverDictNuTilda_;
+
 public:
     TypeName("SpalartAllmarasFv3");
     // Constructors
