@@ -34,7 +34,7 @@ LRef = 1.0
 daOptions = {
     "designSurfaces": ["wing"],
     "solverName": "DASimpleFoam",
-    "adjEqnSolMethod": "fixedPointC",
+    "adjEqnSolMethod": "fixedPoint",
     "primalMinResTol": 1.0e-10,
     "primalMinResTolDiff": 1e4,
     "primalBC": {

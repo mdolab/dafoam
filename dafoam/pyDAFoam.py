@@ -361,7 +361,7 @@ class DAOPTION(object):
         ## },
         self.fvSource = {}
 
-        ## The adjoint equation solution method. Options are: Krylov, fixedPoint, or fixedPointC
+        ## The adjoint equation solution method. Options are: Krylov or fixedPoint
         self.adjEqnSolMethod = "Krylov"
 
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
@@ -1030,7 +1030,7 @@ class PYDAFOAM(object):
         if self.getOption("runLowOrderPrimal4PC")["active"]:
             self.setOption("runLowOrderPrimal4PC", {"active": True, "isPC": False})
 
-        if self.getOption("adjEqnSolMethod") in ["fixedPoint", "fixedPointC"]:
+        if self.getOption("adjEqnSolMethod") == "fixedPoint":
             # for the fixed-point adjoint, we should not normalize the states and residuals
             if self.comm.rank == 0:
                 print("Fixed-point adjoint mode detected. Unset normalizeStates and normalizeResiduals...")
