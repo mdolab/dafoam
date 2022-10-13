@@ -126,8 +126,18 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
 
     // get fvSolution and fvSchemes info for fixed-point adjoint
     const fvSolution& myFvSolution = mesh.thisDb().lookupObject<fvSolution>("fvSolution");
-    relaxNuTildaEqn_ = myFvSolution.subDict("relaxationFactors").subDict("equations").getScalar("nuTilda");
     solverDictNuTilda_ = myFvSolution.subDict("solvers").subDict("nuTilda");
+    if (myFvSolution.found("relaxationFactors"))
+    {
+        if (myFvSolution.subDict("relaxationFactors").found("equations"))
+        {
+            if (myFvSolution.subDict("relaxationFactors").subDict("equations").found("nuTilda"))
+            {
+                relaxNuTildaEqn_ = myFvSolution.subDict("relaxationFactors").subDict("equations").getScalar("nuTilda");
+            }
+        }
+    }
+
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

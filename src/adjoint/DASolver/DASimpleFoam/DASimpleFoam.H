@@ -117,7 +117,7 @@ protected:
 #endif
 
     /// fvSolution parameters for fixed-point adjoint
-    scalar relaxUEqn_;
+    scalar relaxUEqn_ = 1.0;
     dictionary solverDictU_;
     dictionary solverDictP_;
 

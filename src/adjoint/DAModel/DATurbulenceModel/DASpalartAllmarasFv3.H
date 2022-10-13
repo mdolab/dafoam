@@ -109,7 +109,7 @@ protected:
     tmp<volScalarField> rhsSolvePseudoNuTildaEqn(const List<scalar>& nuTildaSource);
 
     // fvSolutions parameters
-    scalar relaxNuTildaEqn_;
+    scalar relaxNuTildaEqn_ = 1.0;
     dictionary solverDictNuTilda_;
 
 public:
