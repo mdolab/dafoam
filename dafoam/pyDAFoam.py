@@ -3772,7 +3772,6 @@ class PYDAFOAM(object):
         Go to the case root dir, as set in self.rootDir
         """
         os.chdir(self.rootDir)
-        self.comm.Barrier()
 
     def _printCurrentOptions(self):
         """
