@@ -121,7 +121,6 @@ protected:
     dictionary solverDictU_;
     dictionary solverDictP_;
 
-
 public:
     TypeName("DASimpleFoam");
     // Constructors
@@ -181,10 +180,7 @@ public:
         volScalarField& pRes,
         surfaceScalarField& phiRes,
         volScalarField& nuTildaRes,
-        volVectorField& dFdU,
-        volScalarField& dFdP,
-        surfaceScalarField& dFdPhi,
-        volScalarField& dFdNuTilda,
+        Vec dFdW,
         volVectorField& UPsi,
         volScalarField& pPsi,
         surfaceScalarField& phiPsi,
