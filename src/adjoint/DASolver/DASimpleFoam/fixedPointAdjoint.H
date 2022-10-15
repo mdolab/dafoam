@@ -113,11 +113,14 @@ label DASimpleFoam::runFPAdj(
         // better do it another way!
         volScalarField nuEff = daTurbulenceModelPtr_->nuEff();
 
+        // We now pass dFdW directly into adjRes components at the beginning of adjoint residual calculation
+        /*
         // Initialize field cmpts for dFdW as all-zero
         volVectorField dFdU("dFdU", 0.0 * U);
         volScalarField dFdP("dFdP", 0.0 * p);
         surfaceScalarField dFdPhi("dFdPhi", 0.0 * phi);
         volScalarField dFdNuTilda("dFdNuTilda", 0.0 * nuTilda);
+        */
 
         // Initialize primal residuals as all-zero
         volVectorField URes("URes", 0.0 * U);
@@ -125,8 +128,11 @@ label DASimpleFoam::runFPAdj(
         surfaceScalarField phiRes("phiRes", 0.0 * phi);
         volScalarField nuTildaRes("nuTildaRes", 0.0 * nuTilda);
 
+        // We now pass dFdW directly into adjRes components at the beginning of adjoint residual calculation
+        /*
         // Pass the values in dFdW to its field cmpts
         this->vec2Fields("vec2Field", dFdW, dFdU, dFdP, dFdPhi, dFdNuTilda);
+        */
         /*
         // Flip the sign for now to avoid the strange issue
         dFdU = -dFdU;
@@ -223,7 +229,7 @@ label DASimpleFoam::runFPAdj(
             // Step-1.1: Calculate adjURes, adjPRes, adjPhiRes, adjNuTildaRes, and update phiPsi
 
             // At beginning of iteration, call calcAdjointResidual once to get the adjoint residual
-            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdU, dFdP, dFdPhi, dFdNuTilda, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
+            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdW, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
 
             // Calculate L2 norm for all components of adjoint residual, then check if fpRelTol is met
             if (cnt >= 1)
@@ -285,8 +291,11 @@ label DASimpleFoam::runFPAdj(
             // ************************************************************************* //
             // Step-2.1: Start with (F_p^grad)^T.(D^(-T).adjURes) - adjPRes
 
-            // Initialize with -adjPRes
-            volScalarField step_2("step_2", -adjPRes);
+            // Initialize step_2 as -adjPRes
+            //volScalarField step_2("step_2", -adjPRes);
+            // Use alias to save some mem usage
+            volScalarField& step_2 = adjPRes;
+            step_2 = -step_2;
 
             // Do (F_p^grad)^T.(D^(-T).adjURes) with ADR
             // Here, F_p^grad is the operator of fvc::grad(p) * mesh().V() on p
@@ -450,7 +459,10 @@ label DASimpleFoam::runFPAdj(
             // So, (F_phi^div) is the operator fvc::div(phi) on phi
 
             // Initiate a phi-like temp variable as - adjPhiRes
-            surfaceScalarField phiTemp = -adjPhiRes;
+            //surfaceScalarField phiTemp = -adjPhiRes;
+            // Use alia to same some mem usage
+            surfaceScalarField& phiTemp = adjPhiRes;
+            phiTemp = -phiTemp;
 
             if (cnt == 0)
             {
@@ -530,8 +542,17 @@ label DASimpleFoam::runFPAdj(
             // HbyA and U have the same boundary settings, so the operator as a function stays the same
             // So, (F_U^flux.F_U^aug) is the operator fvc::flux(U) on U
 
+            // Update UPsi, for the 1st time
+            // We have to do this before creating step_4 as the alias of adjURes
+            forAll(UPsi, cellI)
+            {
+                UPsi[cellI] -= adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
+            }
+            
             // Initiate a U-like temporary variable step_4 as D^(-T).adjURes, which is the overwritten adjURes
-            volVectorField step_4("step_4", adjURes);
+            //volVectorField step_4("step_4", adjURes);
+            // Use alias to save some mem usage
+            volVectorField& step_4 = adjURes;
 
             if (cnt == 0)
             {
@@ -621,11 +642,10 @@ label DASimpleFoam::runFPAdj(
             volVectorField& step_5 = pseudoU;
             //Info<<"Show step_5: "<< step_5 << endl;
 
-            // Update UPsi
+            // Update UPsi, for the 2nd time
             forAll(UPsi, cellI)
             {
                 UPsi[cellI] += step_5[cellI];
-                UPsi[cellI] -= adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
             }
             //Info<<"Show UPsi: "<< UPsi << endl;
 
@@ -997,10 +1017,7 @@ void DASimpleFoam::calcAdjointResidual(
     volScalarField& pRes,
     surfaceScalarField& phiRes,
     volScalarField& nuTildaRes,
-    volVectorField& dFdU,
-    volScalarField& dFdP,
-    surfaceScalarField& dFdPhi,
-    volScalarField& dFdNuTilda,
+    Vec dFdW,
     volVectorField& UPsi,
     volScalarField& pPsi,
     surfaceScalarField& phiPsi,
@@ -1018,24 +1035,16 @@ void DASimpleFoam::calcAdjointResidual(
     surfaceScalarField& phi = const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>("phi"));
 
     // Pass -dfdw to adjRes:
-    adjURes = -dFdU;
-    adjPRes = -dFdP;
-    adjPhiRes = -dFdPhi;
-    adjNuTildaRes = -dFdNuTilda;
-
-    // Create a sacrificial scalar variable as the 1st input
-    // CoDiPack will screw it up, but spare the others..
-    //scalar sacriInput = 0.0;
+    this->vec2Fields("vec2Field", dFdW, adjURes, adjPRes, adjPhiRes, adjNuTildaRes);
+    adjURes = -adjURes;
+    adjPRes = -adjPRes;
+    adjPhiRes = -adjPhiRes;
+    adjNuTildaRes = -adjNuTildaRes;
 
     if (cnt == 0)
     {
         this->globalADTape_.reset();
         this->globalADTape_.setActive();
-
-        // Praise thee, mighty CoDiPack!
-        // Gorge upon the flesh of this meaty juicy sacrificial variable,
-        // Then spare the true state variables: U, p, phi, nuTilda!
-        //this->globalADTape_.registerInput(sacriInput);
 
         // register all (3+1) state variables as input
         // Start with U, note that U has 3 components
