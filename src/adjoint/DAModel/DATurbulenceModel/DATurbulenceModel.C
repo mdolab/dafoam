@@ -518,6 +518,18 @@ void DATurbulenceModel::calcLduResidualTurb(volScalarField& nuTildaRes)
         << abort(FatalError);
 }
 
+void DATurbulenceModel::constructPseudoNuTildaEqn()
+{
+    /*
+    Description:
+        construct the nuTildaEqn
+    */
+
+    FatalErrorIn("DATurbulenceModel::constructPseudoNuTildaEqn")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
