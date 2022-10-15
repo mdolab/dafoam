@@ -291,8 +291,11 @@ label DASimpleFoam::runFPAdj(
             // ************************************************************************* //
             // Step-2.1: Start with (F_p^grad)^T.(D^(-T).adjURes) - adjPRes
 
-            // Initialize with -adjPRes
-            volScalarField step_2("step_2", -adjPRes);
+            // Initialize step_2 as -adjPRes
+            //volScalarField step_2("step_2", -adjPRes);
+            // Use alias to save some mem usage
+            volScalarField& step_2 = adjPRes;
+            step_2 = -step_2;
 
             // Do (F_p^grad)^T.(D^(-T).adjURes) with ADR
             // Here, F_p^grad is the operator of fvc::grad(p) * mesh().V() on p
@@ -456,7 +459,10 @@ label DASimpleFoam::runFPAdj(
             // So, (F_phi^div) is the operator fvc::div(phi) on phi
 
             // Initiate a phi-like temp variable as - adjPhiRes
-            surfaceScalarField phiTemp = -adjPhiRes;
+            //surfaceScalarField phiTemp = -adjPhiRes;
+            // Use alia to same some mem usage
+            surfaceScalarField& phiTemp = adjPhiRes;
+            phiTemp = -phiTemp;
 
             if (cnt == 0)
             {
@@ -536,8 +542,17 @@ label DASimpleFoam::runFPAdj(
             // HbyA and U have the same boundary settings, so the operator as a function stays the same
             // So, (F_U^flux.F_U^aug) is the operator fvc::flux(U) on U
 
+            // Update UPsi, for the 1st time
+            // We have to do this before creating step_4 as the alias of adjURes
+            forAll(UPsi, cellI)
+            {
+                UPsi[cellI] -= adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
+            }
+            
             // Initiate a U-like temporary variable step_4 as D^(-T).adjURes, which is the overwritten adjURes
-            volVectorField step_4("step_4", adjURes);
+            //volVectorField step_4("step_4", adjURes);
+            // Use alias to save some mem usage
+            volVectorField& step_4 = adjURes;
 
             if (cnt == 0)
             {
@@ -627,11 +642,10 @@ label DASimpleFoam::runFPAdj(
             volVectorField& step_5 = pseudoU;
             //Info<<"Show step_5: "<< step_5 << endl;
 
-            // Update UPsi
+            // Update UPsi, for the 2nd time
             forAll(UPsi, cellI)
             {
                 UPsi[cellI] += step_5[cellI];
-                UPsi[cellI] -= adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
             }
             //Info<<"Show UPsi: "<< UPsi << endl;
 
