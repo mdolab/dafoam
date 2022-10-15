@@ -103,7 +103,7 @@ protected:
     label printInterval_;
 
     /// construct pseudoNuTildaEqn_, which is nuTildaEqn with swapped upper and lower arrays
-    void constructPseudoNuTildaEqn();
+    virtual void constructPseudoNuTildaEqn();
 
     /// solve pseudoNuTildaEqn_ with overwritten rhs
     tmp<volScalarField> rhsSolvePseudoNuTildaEqn(const List<scalar>& nuTildaSource);

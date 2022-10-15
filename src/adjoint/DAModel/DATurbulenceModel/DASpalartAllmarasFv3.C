@@ -585,6 +585,11 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
     }
 }
 
+void DASpalartAllmarasFv3::constructPseudoNuTildaEqn()
+{
+    // we need to construct nuTildaEqn_ here
+}
+
 void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)
 {
     /*

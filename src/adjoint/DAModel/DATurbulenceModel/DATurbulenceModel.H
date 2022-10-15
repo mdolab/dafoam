@@ -290,6 +290,8 @@ public:
         const volScalarField& mySource,
         volScalarField& pseudoNuTilda);
     
+    virtual void constructPseudoNuTildaEqn();
+    
     /// calculate the turbulence residual using LDU matrix
     virtual void calcLduResidualTurb(volScalarField& nuTildaRes);
 };
