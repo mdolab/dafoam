@@ -24,10 +24,11 @@ fvScalarMatrix pseudoPEqn(
 // Swap upper() and lower()
 swap(pseudoPEqn.upper(), pseudoPEqn.lower());
 
-
 // *********************************** //
-// Duplicate pseudoNuTilda as nuTilda
-volScalarField pseudoNuTilda("pseudoNuTilda", nuTilda);
+// Use lookupObject to access pseudoNuTilda
+volScalarField& pseudoNuTilda = const_cast<volScalarField&>(db.lookupObject<volScalarField>("pseudoNuTilda"));
+// Construct pseudoNuTildaEqn
+daTurbulenceModelPtr_->constructPseudoNuTildaEqn();
 
 /*
 // Get myChi and myFv1

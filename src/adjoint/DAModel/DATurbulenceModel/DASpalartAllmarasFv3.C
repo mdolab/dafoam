@@ -97,7 +97,14 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
       // pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
-      pseudoNuTilda_("pseudoNuTilda", nuTilda_),
+      pseudoNuTilda_(
+          IOobject(
+              "pseudoNuTilda",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::NO_READ,
+              IOobject::NO_WRITE),
+          nuTilda_),
       pseudoNuTildaEqn_(fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
@@ -137,7 +144,6 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
             }
         }
     }
-
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -587,7 +593,72 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
 
 void DASpalartAllmarasFv3::constructPseudoNuTildaEqn()
 {
-    // we need to construct nuTildaEqn_ here
+    /*
+    Description:
+        construct the pseudo nuTildaEqn, 
+        which is nuTildaEqn with the lhs upper and lower arrays swapped,
+        we also don't care about the rhs of pseudo nuTildaEqn.
+    */
+    
+    // Make sure pseudoNuTilda is indeed identical to nuTilda
+    pseudoNuTilda_ = nuTilda_;
+    pseudoNuTilda_.correctBoundaryConditions();
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    // Get myStilda
+    const volScalarField Stilda(
+        this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
+        + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
+
+    // Get the pseudoNuTildaEqn,
+    // the most important thing here is to make sure the l.h.s. mathces that of nuTildaEqn.
+    // Some explicit terms that only contributes to the r.h.s. are diabled
+    pseudoNuTildaEqn_ =
+        //fvm::ddt(pseudoNuTilda_)
+        fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")
+        - fvm::laplacian(DnuTildaEff(), pseudoNuTilda_)
+        + fvm::Sp(Cw1_ * fw(Stilda) * pseudoNuTilda_ / sqr(y_), pseudoNuTilda_);
+    pseudoNuTildaEqn_.relax(relaxNuTildaEqn_);
+
+    // Swap upper() and lower()
+    // We will use the swap function once it's being moved to the DAUtility
+    List<scalar> temp = pseudoNuTildaEqn_.upper();
+    pseudoNuTildaEqn_.upper() = pseudoNuTildaEqn_.lower();
+    pseudoNuTildaEqn_.lower() = temp;
+}
+
+void DASpalartAllmarasFv3::rhsSolvePseudoNuTildaEqn(const volScalarField& nuTildaSource)
+{
+    /*
+    Description:
+        solve the pseudo nuTildaEqn with a overwritten rhs
+    */
+    
+    // Overwrite the r.h.s.
+    pseudoNuTildaEqn_.source() = nuTildaSource.primitiveField();
+
+    // Make sure that boundary contribution to source is zero,
+    // Alternatively, we can deduct source by boundary contribution, so that it would cancel out during solve.
+    forAll(pseudoNuTilda_.boundaryField(), patchI)
+    {
+        const fvPatch& pp = pseudoNuTilda_.boundaryField()[patchI].patch();
+        forAll(pp, faceI)
+        {
+            label cellI = pp.faceCells()[faceI];
+            pseudoNuTildaEqn_.source()[cellI] -= pseudoNuTildaEqn_.boundaryCoeffs()[patchI][faceI];
+        }
+    }
+
+    // Before solve, force xxEqn.psi to be solved into all zero
+    // This ensures the zero (internal) initial guess
+    forAll(pseudoNuTilda_.primitiveFieldRef(), cellI)
+    {
+        pseudoNuTilda_.primitiveFieldRef()[cellI] = 0;
+    }
+    // Solve using the zero (internal) initial guess
+    pseudoNuTildaEqn_.solve(solverDictNuTilda_);
 }
 
 void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)

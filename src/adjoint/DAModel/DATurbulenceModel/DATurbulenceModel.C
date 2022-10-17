@@ -522,10 +522,22 @@ void DATurbulenceModel::constructPseudoNuTildaEqn()
 {
     /*
     Description:
-        construct the nuTildaEqn
+        construct the pseudo nuTildaEqn
     */
 
     FatalErrorIn("DATurbulenceModel::constructPseudoNuTildaEqn")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
+void DATurbulenceModel::rhsSolvePseudoNuTildaEqn(const volScalarField& nuTildaSource)
+{
+    /*
+    Description:
+        solve the pseudo nuTildaEqn with overwritten rhs
+    */
+
+    FatalErrorIn("DATurbulenceModel::rhsSolvePseudoNuTildaEqn")
         << "Child class not implemented!"
         << abort(FatalError);
 }

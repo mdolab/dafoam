@@ -91,8 +91,6 @@ protected:
     volScalarField pseudoNuTilda_;
     fvScalarMatrix pseudoNuTildaEqn_;
 
-    label pseudoNuTildaEqnInitialized_ = 0;
-
     /// 3D wall distance
     const volScalarField& y_;
 
@@ -101,12 +99,6 @@ protected:
 
     /// time step interval to print residual
     label printInterval_;
-
-    /// construct pseudoNuTildaEqn_, which is nuTildaEqn with swapped upper and lower arrays
-    virtual void constructPseudoNuTildaEqn();
-
-    /// solve pseudoNuTildaEqn_ with overwritten rhs
-    tmp<volScalarField> rhsSolvePseudoNuTildaEqn(const List<scalar>& nuTildaSource);
 
     // fvSolutions parameters
     scalar relaxNuTildaEqn_ = 1.0;
@@ -156,10 +148,16 @@ public:
     /// solve the residual equations and update the state
     virtual void correct();
 
-    /// Inverse transpose product, M_nuTilda^(-T)
+    /// Inverse transpose product, A_nuTilda^(-T)
     virtual void invTranProdNuTildaEqn(
         const volScalarField& mySource,
         volScalarField& pseudoNuTilda);
+
+    /// construct pseudoNuTildaEqn_, which is nuTildaEqn with swapped upper and lower arrays
+    virtual void constructPseudoNuTildaEqn();
+
+    /// solve pseudoNuTildaEqn_ with overwritten rhs
+    virtual void rhsSolvePseudoNuTildaEqn(const volScalarField& nuTildaSource);
 
     /// calculate the turbulence residual using LDU matrix
     virtual void calcLduResidualTurb(volScalarField& nuTildaRes);

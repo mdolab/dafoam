@@ -101,7 +101,7 @@ label DASimpleFoam::runFPAdj(
 
     if (adjEqnSolMethod == "fixedPoint")
     {
-        Info << "Solving the adjoint using consistent fixed-point iteration method..." << endl;
+        Info << "Solving the adjoint using consistent fixed-point iteration method..." << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;;
         label fpMaxIters = daOptionPtr_->getSubDictOption<label>("adjEqnOption", "fpMaxIters");
         scalar fpRelTol = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "fpRelTol");
 
@@ -110,7 +110,7 @@ label DASimpleFoam::runFPAdj(
         volScalarField& p = const_cast<volScalarField&>(db.lookupObject<volScalarField>("p"));
         surfaceScalarField& phi = const_cast<surfaceScalarField&>(db.lookupObject<surfaceScalarField>("phi"));
         volScalarField& nuTilda = const_cast<volScalarField&>(db.lookupObject<volScalarField>("nuTilda"));
-        // better do it another way!
+        // nuEff is only used to construct pseudoUEqn
         volScalarField nuEff = daTurbulenceModelPtr_->nuEff();
 
         // We now pass dFdW directly into adjRes components at the beginning of adjoint residual calculation
@@ -207,6 +207,8 @@ label DASimpleFoam::runFPAdj(
         volScalarField divPhi("divPhi", fvc::div(phi));
         surfaceScalarField fluxU("fluxU", 0.0 * phi);
 
+        // No need to print the un-normalized primal residuals 
+        /*
         // Print primal residuals before starting the adjoint iterations
         this->calcLduResiduals(URes, pRes, phiRes);
         daTurbulenceModelPtr_->calcLduResidualTurb(nuTildaRes);
@@ -215,6 +217,7 @@ label DASimpleFoam::runFPAdj(
         Info << "L2 norm of pRes: " << L2norm(pRes) << endl;
         Info << "L2 norm of phiRes: " << L2norm(phiRes) << endl;
         Info << "L2 norm of nuTildaRes: " << L2norm(nuTildaRes) << endl;
+        */
 
         label cnt = 0;
         while (cnt < fpMaxIters)
@@ -267,7 +270,7 @@ label DASimpleFoam::runFPAdj(
                 // Check if fpRelTol is met:
                 if (normAdjURes[0] < fpRelTol && normAdjURes[1] < fpRelTol && normAdjURes[2] < fpRelTol && normAdjPRes < fpRelTol && normAdjPhiRes < fpRelTol && normAdjNuTildaRes < fpRelTol)
                 {
-                    Info << "Residual drop of " << fpRelTol << " has been achieved!" << endl;
+                    Info << "Residual drop of " << fpRelTol << " has been achieved after " << cnt << " steps!  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;;
                     Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
                     Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
                     Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
@@ -663,7 +666,7 @@ label DASimpleFoam::runFPAdj(
 
             volScalarField& nuTildaSource = adjNuTildaRes;
 
-            daTurbulenceModelPtr_->invTranProdNuTildaEqn(nuTildaSource, pseudoNuTilda);
+            daTurbulenceModelPtr_->rhsSolvePseudoNuTildaEqn(nuTildaSource);
             //#include "solvePseudonuTildaEqn.H"
             // *********************************** //
 
