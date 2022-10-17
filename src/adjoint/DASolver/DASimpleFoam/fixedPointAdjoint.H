@@ -177,6 +177,7 @@ label DASimpleFoam::runFPAdj(
         */
 
         // Initialize all-zero cmpts for the adjoint residual
+        // Note: we tried defining below as alias of pseudo variables, it works but it actually increases mem usage..
         volVectorField adjURes("adjURes", 0.0 * U);
         volScalarField adjPRes("adjPRes", 0.0 * p);
         surfaceScalarField adjPhiRes("adjPhiRes", 0.0 * phi);
@@ -548,7 +549,7 @@ label DASimpleFoam::runFPAdj(
             {
                 UPsi[cellI] -= adjURes[cellI]; // Note that the overwritten adjURes is actually D^(-T).adjURes
             }
-            
+
             // Initiate a U-like temporary variable step_4 as D^(-T).adjURes, which is the overwritten adjURes
             //volVectorField step_4("step_4", adjURes);
             // Use alias to save some mem usage
