@@ -8,6 +8,7 @@ from petsc4py import PETSc
 import numpy as np
 from mpi4py import MPI
 from mphys import MaskedConverter, UnmaskedConverter, MaskedVariableDescription
+from mphys.utils.directory_utils import cd
 
 petsc4py.init(sys.argv)
 
@@ -23,6 +24,7 @@ class DAFoamBuilder(Builder):
         mesh_options=None,  # IDWarp options
         scenario="aerodynamic",  # scenario type to configure the groups
         prop_coupling=None,
+        run_directory="",  # the directory to run this case in, default is the current directory
     ):
 
         # options dictionary for DAFoam
@@ -44,6 +46,9 @@ class DAFoamBuilder(Builder):
         # flag for aerostructural coupling variables
         self.struct_coupling = False
 
+        # the directory to run this case in, default is the current directory
+        self.run_directory = run_directory
+
         # flag for aero-propulsive coupling variables
         self.prop_coupling = prop_coupling
 
@@ -60,17 +65,20 @@ class DAFoamBuilder(Builder):
 
     # api level method for all builders
     def initialize(self, comm):
+
         self.comm = comm
-        # initialize the PYDAFOAM class, defined in pyDAFoam.py
-        self.DASolver = PYDAFOAM(options=self.options, comm=comm)
-        # always set the mesh
-        mesh = USMesh(options=self.mesh_options, comm=comm)
-        self.DASolver.setMesh(mesh)
-        # add the design surface family group
-        self.DASolver.addFamilyGroup(
-            self.DASolver.getOption("designSurfaceFamily"), self.DASolver.getOption("designSurfaces")
-        )
-        self.DASolver.printFamilyList()
+
+        with cd(self.run_directory):
+            # initialize the PYDAFOAM class, defined in pyDAFoam.py
+            self.DASolver = PYDAFOAM(options=self.options, comm=comm)
+            # always set the mesh
+            mesh = USMesh(options=self.mesh_options, comm=comm)
+            self.DASolver.setMesh(mesh)
+            # add the design surface family group
+            self.DASolver.addFamilyGroup(
+                self.DASolver.getOption("designSurfaceFamily"), self.DASolver.getOption("designSurfaces")
+            )
+            self.DASolver.printFamilyList()
 
     def get_solver(self):
         # this method is only used by the RLT transfer scheme
@@ -753,7 +761,6 @@ class DAFoamSolver(ImplicitComponent):
             # if writeMinorIterations=True, we rename the solution in pyDAFoam.py. So we don't recompute the PC
             if DASolver.getOption("writeMinorIterations"):
                 if DASolver.dRdWTPC is None or DASolver.ksp is None:
-                    DASolver.cdRoot()
                     DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
                     DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
                     DASolver.ksp = PETSc.KSP().create(self.comm)
@@ -779,7 +786,6 @@ class DAFoamSolver(ImplicitComponent):
                 adjPCLag = DASolver.getOption("adjPCLag")
                 if DASolver.dRdWTPC is None or DASolver.ksp is None or (self.solution_counter - 1) % adjPCLag == 0:
                     if renamed:
-                        DASolver.cdRoot()
                         # calculate the PC mat
                         if DASolver.dRdWTPC is not None:
                             DASolver.dRdWTPC.destroy()
@@ -1113,7 +1119,7 @@ class DAFoamFunctions(ExplicitComponent):
                         dFdAOA.setSizes((PETSc.DECIDE, 1), bsize=1)
                         dFdAOA.setFromOptions()
                         DASolver.calcdFdAOAAnalytical(objFuncName, dFdAOA)
-                        
+
                         # The aoaBar variable will be length 1 on the root proc, but length 0 an all slave procs.
                         # The value on the root proc must be broadcast across all procs.
                         if self.comm.rank == 0:
