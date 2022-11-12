@@ -149,7 +149,7 @@ label DASimpleFoam::runFPAdj(
         volScalarField nuTildaPsi("nuTildaPsi", 0.0 * nuTilda);
 
         // Pass psiVec to cmpts of the adjoint vector:
-        this->vec2Fields("vec2Field", psi, UPsi, pPsi, phiPsi, nuTildaPsi);
+        //this->vec2Fields("vec2Field", psi, UPsi, pPsi, phiPsi, nuTildaPsi);
 
         /*
         // Change every element in the adjoint vector to one
@@ -187,6 +187,14 @@ label DASimpleFoam::runFPAdj(
         surfaceScalarField adjPhiRes("adjPhiRes", 0.0 * phi);
         volScalarField adjNuTildaRes("adjNuTildaRes", 0.0 * nuTilda);
 
+        // Initialize the initial L2norm for adjURes, adjPRes, adjPhiRes, adjNuTildaRes as all-zero
+        vector initNormAdjURes = vector::zero;
+        scalar initNormAdjPRes = 0.0;
+        scalar initNormAdjPhiRes = 0.0;
+        scalar initNormAdjNuTildaRes = 0.0;
+        
+        // Below use the norm of dFdW as the initial residual norm
+        /*
         // Pass -dfdw to adjRes:
         this->vec2Fields("vec2Field", dFdW, adjURes, adjPRes, adjPhiRes, adjNuTildaRes);
         adjURes = -adjURes;
@@ -203,6 +211,7 @@ label DASimpleFoam::runFPAdj(
         // Get the norm of the total adjoint residual
         scalar initNormTotAdjRes = sqr(initNormAdjURes[0]) +  sqr(initNormAdjURes[1]) + sqr(initNormAdjURes[2]) + sqr(L2norm(adjPRes)) + sqr(L2norm(adjPhiRes)) + sqr(L2norm(adjNuTildaRes));
         initNormTotAdjRes = sqrt(initNormTotAdjRes);
+        */
 
 // Construct the pseudoEqns using pseudoEqns.H
 // Better to make pseudoUEqn, pseudoPEqn, pseudoNuTildaEqn class variables
@@ -250,6 +259,8 @@ label DASimpleFoam::runFPAdj(
             // At beginning of iteration, call calcAdjointResidual once to get the adjoint residual
             this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdW, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
 
+            // Below uses the norm of total adjoint residual to check convergence
+            /*
             // Calculate L2 norm for all components of adjoint residual, then check if fpRelTol is met
             vector normAdjURes = L2norm(adjURes);
             scalar normAdjPRes = L2norm(adjPRes);
@@ -280,9 +291,8 @@ label DASimpleFoam::runFPAdj(
                 Info << "Final L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
                 break;
             }
+            */
 
-            // Previous way of checking if fpRelTol is met
-            /*
             // Calculate L2 norm for all components of adjoint residual, then check if fpRelTol is met
             if (cnt >= 1)
             {
@@ -326,7 +336,6 @@ label DASimpleFoam::runFPAdj(
                     break;
                 }
             }
-            */
 
             // Update phiPsi
             phiPsi += adjPhiRes;
