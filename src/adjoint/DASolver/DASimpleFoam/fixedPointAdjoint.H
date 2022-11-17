@@ -75,6 +75,10 @@ label DASimpleFoam::runFPAdj(
     Vec dFdW,
     Vec psi)
 {
+    // If adjoint converged, then adjConv = 0
+    // Otherwise, adjConv = 1
+    label adjConv = 1;
+
 #ifdef CODI_AD_REVERSE
     /*
     Description:
@@ -105,6 +109,7 @@ label DASimpleFoam::runFPAdj(
         Info << "Solving the adjoint using consistent fixed-point iteration method..." << "  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;;
         label fpMaxIters = daOptionPtr_->getSubDictOption<label>("adjEqnOption", "fpMaxIters");
         scalar fpRelTol = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "fpRelTol");
+        scalar fpMinResTolDiff = daOptionPtr_->getSubDictOption<scalar>("adjEqnOption", "fpMinResTolDiff");
 
         const objectRegistry& db = meshPtr_->thisDb();
         volVectorField& U = const_cast<volVectorField&>(db.lookupObject<volVectorField>("U"));
@@ -328,11 +333,13 @@ label DASimpleFoam::runFPAdj(
                 // Check if fpRelTol is met:
                 if (normAdjURes[0] < fpRelTol && normAdjURes[1] < fpRelTol && normAdjURes[2] < fpRelTol && normAdjPRes < fpRelTol && normAdjPhiRes < fpRelTol && normAdjNuTildaRes < fpRelTol)
                 {
-                    Info << "Residual drop of " << fpRelTol << " has been achieved after " << cnt << " steps!  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;;
+                    Info << "Residual drop of " << fpRelTol << " has been achieved after " << cnt << " steps!  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+                    Info << "Adjoint is converged and succussful.." << endl;
                     Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
                     Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
                     Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
                     Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
+                    adjConv = 0;
                     break;
                 }
             }
@@ -737,6 +744,44 @@ label DASimpleFoam::runFPAdj(
             cnt++;
         }
 
+        // If fpRelTol not met, check if the relaxed adjoint relTol is met
+        if (adjConv == 1)
+        {
+            Info << "Prescribed adjoint convergence of " << fpRelTol << " has not been met after " << cnt << " steps!  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+            Info << "Now checking if the relaxed convergence is met..." << endl;
+            this->calcAdjointResidual(URes, pRes, phiRes, nuTildaRes, dFdW, UPsi, pPsi, phiPsi, nuTildaPsi, adjURes, adjPRes, adjPhiRes, adjNuTildaRes, cnt);
+
+            vector normAdjURes = L2norm(adjURes);
+            scalar normAdjPRes = L2norm(adjPRes);
+            scalar normAdjPhiRes = L2norm(adjPhiRes);
+            scalar normAdjNuTildaRes = L2norm(adjNuTildaRes);
+
+            // Normalize residual norms:
+            normAdjURes[0] /= initNormAdjURes[0];
+            normAdjURes[1] /= initNormAdjURes[1];
+            normAdjURes[2] /= initNormAdjURes[2];
+            normAdjPRes /= initNormAdjPRes;
+            normAdjPhiRes /= initNormAdjPhiRes;
+            normAdjNuTildaRes /= initNormAdjNuTildaRes;
+            
+            scalar relaxedFpRelTol = fpRelTol * fpMinResTolDiff;
+            if (normAdjURes[0] < relaxedFpRelTol && normAdjURes[1] < relaxedFpRelTol && normAdjURes[2] < relaxedFpRelTol && normAdjPRes < relaxedFpRelTol && normAdjPhiRes < relaxedFpRelTol && normAdjNuTildaRes < relaxedFpRelTol)
+                {
+                    Info << "Relaxed residual drop of " << relaxedFpRelTol << " has been achieved!  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+                    Info << "Adjoint is still considered succussful.." << endl;
+                    adjConv = 0;
+                }
+            else
+            {
+                    Info << "Relaxed residual drop of " << relaxedFpRelTol << " has not been met!  Execution Time: " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
+                    Info << "Adjoint has failed to converge.." << endl;
+            }
+            Info << "Normalized L2 norm of adjURes: " << normAdjURes[0] << " " << normAdjURes[1] << " " << normAdjURes[2] << endl;
+            Info << "Normalized L2 norm of adjPRes: " << normAdjPRes << endl;
+            Info << "Normalized L2 norm of adjPhiRes: " << normAdjPhiRes << endl;
+            Info << "Normalized L2 norm of adjNuTildaRes: " << normAdjNuTildaRes << endl;
+        }
+            
         // converged, assign the field Psi to psiVec
         this->vec2Fields("field2Vec", psi, UPsi, pPsi, phiPsi, nuTildaPsi);
     }
@@ -746,7 +791,7 @@ label DASimpleFoam::runFPAdj(
     }
 
 #endif
-    return 0;
+    return adjConv;
 }
 
 void DASimpleFoam::vec2Fields(
