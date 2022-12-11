@@ -479,11 +479,6 @@ void DASolver::getForcesInternal(
 
     SortableList<word> patchListSort(patchList);
 
-    List<scalar> fXTemp = fX.clone();
-    List<scalar> fYTemp = fY.clone();
-    List<scalar> fZTemp = fZ.clone();
-    List<label> pointListTemp = pointList.clone();
-
     // Initialize surface field for face-centered forces
     volVectorField volumeForceField(
         IOobject(
@@ -510,6 +505,9 @@ void DASolver::getForcesInternal(
     tmp<volSymmTensorField> tdevRhoReff = daTurb.devRhoReff();
     const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
 
+    const pointMesh& pMesh = pointMesh::New(meshPtr_());
+    const pointBoundaryMesh& boundaryMesh = pMesh.boundary();
+
     // iterate over patches and extract boundary surface forces
     forAll(patchListSort, cI)
     {
@@ -533,19 +531,25 @@ void DASolver::getForcesInternal(
     volumeForceField.write();
 
     // The above volumeForceField is face-centered, we need to interpolate it to point-centered
-    label pointCounter = 0;
-    List<label> globalIndex = pointList.clone();
-    globalIndex = -1;
-
     pointField meshPoints = meshPtr_->points();
 
     vector nodeForce(vector::zero);
 
+    label patchStart = 0;
     forAll(patchListSort, cI)
     {
         // get the patch id label
         label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
+        label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
 
+        label nPointsPatch = boundaryMesh[patchIPoints].size();
+        List<scalar> fXTemp(nPointsPatch);
+        List<scalar> fYTemp(nPointsPatch);
+        List<scalar> fZTemp(nPointsPatch);
+        List<label> pointListTemp(nPointsPatch);
+        pointListTemp = -1;
+
+        label pointCounter = 0;
         // Loop over Faces
         forAll(meshPtr_->boundaryMesh()[patchI], faceI)
         {
@@ -561,12 +565,12 @@ void DASolver::getForcesInternal(
                 // so we can't directly reuse this index because we want to have only surface points
                 label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
 
-                // Loop over globalMapping array to check if this node is already included
+                // Loop over pointListTemp array to check if this node is already included in this patch
                 bool found = false;
                 label iPoint = -1;
                 for (label i = 0; i < pointCounter; i++)
                 {
-                    if (faceIPointIndexI == globalIndex[i])
+                    if (faceIPointIndexI == pointListTemp[i])
                     {
                         found = true;
                         iPoint = i;
@@ -589,40 +593,28 @@ void DASolver::getForcesInternal(
                     fXTemp[pointCounter] = nodeForce[0];
                     fYTemp[pointCounter] = nodeForce[1];
                     fZTemp[pointCounter] = nodeForce[2];
+
                     // Add to Node Order Array
                     pointListTemp[pointCounter] = faceIPointIndexI;
-                    // Add to Global - Local Mapping
-                    globalIndex[pointCounter] = faceIPointIndexI;
 
                     // Increment counter
                     pointCounter += 1;
                 }
             }
         }
-    }
 
-    // Sort nodes in increasing order based on pointList
-    SortableList<label> pointListSort(pointListTemp);
-
-    // Iterate through pointList and sort the temp force arrays
-    forAll(pointListSort, i)
-    {
-        // Search for corresponding entry in unsorted array
-        label iPoint = -1;
-        forAll(pointListTemp, j)
+        // Sort Patch Indices and Insert into Global Arrays
+        SortableList<label> pointListSort(pointListTemp);
+        forAll(pointListSort.indices(), indexI)
         {
-            if (pointListSort[i] == pointListTemp[j])
-            {
-                iPoint = j;
-                break;
-            }
+            fX[patchStart + indexI] = fXTemp[pointListSort.indices()[indexI]];
+            fY[patchStart + indexI] = fYTemp[pointListSort.indices()[indexI]];
+            fZ[patchStart + indexI] = fZTemp[pointListSort.indices()[indexI]];
+            pointList[patchStart + indexI] = pointListTemp[pointListSort.indices()[indexI]];
         }
 
-        // Enter point in sorted arrays
-        fX[i] = fXTemp[iPoint];
-        fY[i] = fYTemp[iPoint];
-        fZ[i] = fZTemp[iPoint];
-        pointList[i] = pointListTemp[iPoint];
+        // Increment Patch Start Index
+        patchStart += nPointsPatch;
     }
 #endif
     return;
