@@ -541,8 +541,6 @@ void DASolver::getForcesInternal(
         // get the patch id label
         label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
         label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
-        std::cout << patchI << std::endl;
-        std::cout << patchIPoints << std::endl;
 
         label nPointsPatch = boundaryMesh[patchIPoints].size();
         List<scalar> fXTemp(nPointsPatch);
