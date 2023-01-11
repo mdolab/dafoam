@@ -88,18 +88,7 @@ class DAOPTION(object):
         ## may not converge or it may be inaccurate! For "phi", use 1.0 to normalization
         ## Example
         ##     normalizeStates = {"U": 10.0, "p": 101325.0, "phi": 1.0, "nuTilda": 1.e-4}
-        self.normalizeStates = {
-            "p": 1.0,
-            "phi": 1.0,
-            "U": 1.0,
-            "T": 1.0,
-            "nuTilda": 1.0,
-            "k": 1.0,
-            "epsilon": 1.0,
-            "omega": 1.0,
-            "p_rgh": 1.0,
-            "D": 1.0,
-        }
+        self.normalizeStates = {}
 
         ## Information on objective function. Each objective function requires a different input forma
         ## But for all objectives, we need to give a name to the objective function, e.g., CD or any
@@ -372,7 +361,7 @@ class DAOPTION(object):
         ## },
         self.fvSource = {}
 
-        ## The adjoint equation solution method. Options are: Krylov, fixedPoint, or fixedPointC
+        ## The adjoint equation solution method. Options are: Krylov or fixedPoint
         self.adjEqnSolMethod = "Krylov"
 
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
@@ -524,6 +513,8 @@ class DAOPTION(object):
             "useMGSO": False,
             "printInfo": 1,
             "fpMaxIters": 1000,
+            "fpRelTol": 1e-6,
+            "fpMinResTolDiff": 1.0e2,
             "dynAdjustTol": True,
         }
 
@@ -667,11 +658,11 @@ class PYDAFOAM(object):
         # initialize options for adjoints
         self._initializeOptions(options)
 
-        # check if the combination of options is valid.
-        self._checkOptions()
-
         # initialize comm for parallel communication
         self._initializeComm(comm)
+
+        # check if the combination of options is valid.
+        self._checkOptions()
 
         # the absolute path where the run script is located at
         if self.getOption("rootDir") == "None":
@@ -1040,6 +1031,17 @@ class PYDAFOAM(object):
 
         if self.getOption("runLowOrderPrimal4PC")["active"]:
             self.setOption("runLowOrderPrimal4PC", {"active": True, "isPC": False})
+
+        if self.getOption("adjEqnSolMethod") == "fixedPoint":
+            # for the fixed-point adjoint, we should not normalize the states and residuals
+            if self.comm.rank == 0:
+                print("Fixed-point adjoint mode detected. Unset normalizeStates and normalizeResiduals...")
+
+            # force the normalize states to be an empty dict
+            if len(self.getOption("normalizeStates")) > 0:
+                raise Error("Please do not set any normalizeStates for the fixed-point adjoint!")
+            # force the normalize residuals to be None; don't normalize any residuals
+            self.setOption("normalizeResiduals", ["None"])
 
         # check other combinations...
 
@@ -3528,7 +3530,7 @@ class PYDAFOAM(object):
         """
 
         self.solver.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
-    
+
     def setFieldValue4LocalCellI(self, fieldName, val, localCellI, compI=0):
         """
         Set the field value based on the local cellI.

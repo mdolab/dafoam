@@ -668,10 +668,12 @@ public:
     }
 
     label runFPAdj(
+        const Vec xvVec,
+        const Vec wVec,
         Vec dFdW,
         Vec psi)
     {
-        return DASolverPtr_->runFPAdj(dFdW, psi);
+        return DASolverPtr_->runFPAdj(xvVec, wVec, dFdW, psi);
     }
 };
 

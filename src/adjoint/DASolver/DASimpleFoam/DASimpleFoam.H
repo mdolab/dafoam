@@ -101,6 +101,26 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
+#ifdef CODI_AD_REVERSE
+    /// tape positions for consistent fixed-point adjoint
+    using Position = typename codi::RealReverse::TapeType::Position;
+    Position adjResStart_;
+    Position adjResEnd_;
+    Position gradPStart_;
+    Position gradPEnd_;
+    Position pEqnFluxStart_;
+    Position pEqnFluxEnd_;
+    Position divPhiStart_;
+    Position divPhiEnd_;
+    Position fluxUStart_;
+    Position fluxUEnd_;
+#endif
+
+    /// fvSolution parameters for fixed-point adjoint
+    scalar relaxUEqn_ = 1.0;
+    dictionary solverDictU_;
+    dictionary solverDictP_;
+
 public:
     TypeName("DASimpleFoam");
     // Constructors
@@ -125,18 +145,20 @@ public:
 
     /// solve the adjoint equation using the fixed-point iteration method
     virtual label runFPAdj(
+        const Vec xvVec,
+        const Vec wVec,
         Vec dFdW,
         Vec psi);
 
     /// Inverse transpose product, MU^(-T)
     void invTranProdUEqn(
         const volVectorField& mySource,
-        volVectorField& pseudo_U);
+        volVectorField& pseudoU);
 
     /// Inverse transpose product, Mp^(-T)
     void invTranProdPEqn(
         const volScalarField& mySource,
-        volScalarField& pseudo_p);
+        volScalarField& pseudoP);
 
     /// calculate all the flow residuals except for the turbulence one
     void calcLduResiduals(
@@ -158,18 +180,15 @@ public:
         volScalarField& pRes,
         surfaceScalarField& phiRes,
         volScalarField& nuTildaRes,
-        volVectorField& dfdU,
-        volScalarField& dfdp,
-        surfaceScalarField& dfdphi,
-        volScalarField& dfdnuTilda,
+        Vec dFdW,
         volVectorField& UPsi,
         volScalarField& pPsi,
         surfaceScalarField& phiPsi,
         volScalarField& nuTildaPsi,
         volVectorField& adjURes,
-        volScalarField& adjpRes,
-        surfaceScalarField& adjphiRes,
-        volScalarField& adjnuTildaRes,
+        volScalarField& adjPRes,
+        surfaceScalarField& adjPhiRes,
+        volScalarField& adjNuTildaRes,
         label& cnt);
 
     scalar L2norm(const volScalarField& v);
@@ -177,6 +196,8 @@ public:
     vector L2norm(const volVectorField& U);
 
     scalar L2norm(const surfaceScalarField& Phi);
+
+    void swap(List<scalar>& a, List<scalar>& b);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

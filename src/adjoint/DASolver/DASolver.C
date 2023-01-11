@@ -4557,14 +4557,19 @@ void DASolver::normalizeGradientVec(Vec vecY)
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         const word stateName = stateInfo_["volVectorStates"][idxI];
-        scalar scalingFactor = normStateDict.getScalar(stateName);
-
-        forAll(meshPtr_->cells(), cellI)
+        // if normalized state not defined, skip
+        if (normStateDict.found(stateName))
         {
-            for (label i = 0; i < 3; i++)
+
+            scalar scalingFactor = normStateDict.getScalar(stateName);
+
+            forAll(meshPtr_->cells(), cellI)
             {
-                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
-                vecArray[localIdx] *= scalingFactor.getValue();
+                for (label i = 0; i < 3; i++)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                    vecArray[localIdx] *= scalingFactor.getValue();
+                }
             }
         }
     }
@@ -4572,48 +4577,61 @@ void DASolver::normalizeGradientVec(Vec vecY)
     forAll(stateInfo_["volScalarStates"], idxI)
     {
         const word stateName = stateInfo_["volScalarStates"][idxI];
-        scalar scalingFactor = normStateDict.getScalar(stateName);
-
-        forAll(meshPtr_->cells(), cellI)
+        // if normalized state not defined, skip
+        if (normStateDict.found(stateName))
         {
-            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
-            vecArray[localIdx] *= scalingFactor.getValue();
+            scalar scalingFactor = normStateDict.getScalar(stateName);
+
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                vecArray[localIdx] *= scalingFactor.getValue();
+            }
         }
     }
 
     forAll(stateInfo_["modelStates"], idxI)
     {
         const word stateName = stateInfo_["modelStates"][idxI];
-        scalar scalingFactor = normStateDict.getScalar(stateName);
-
-        forAll(meshPtr_->cells(), cellI)
+        // if normalized state not defined, skip
+        if (normStateDict.found(stateName))
         {
-            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
-            vecArray[localIdx] *= scalingFactor.getValue();
+
+            scalar scalingFactor = normStateDict.getScalar(stateName);
+
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                vecArray[localIdx] *= scalingFactor.getValue();
+            }
         }
     }
 
     forAll(stateInfo_["surfaceScalarStates"], idxI)
     {
         const word stateName = stateInfo_["surfaceScalarStates"][idxI];
-        scalar scalingFactor = normStateDict.getScalar(stateName);
-
-        forAll(meshPtr_->faces(), faceI)
+        // if normalized state not defined, skip
+        if (normStateDict.found(stateName))
         {
-            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+            scalar scalingFactor = normStateDict.getScalar(stateName);
 
-            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            forAll(meshPtr_->faces(), faceI)
             {
-                scalar meshSf = meshPtr_->magSf()[faceI];
-                vecArray[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
-            }
-            else
-            {
-                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
-                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
-                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
-                scalar meshSf = meshPtr_->magSf().boundaryField()[patchIdx][faceIdx];
-                vecArray[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+                if (faceI < daIndexPtr_->nLocalInternalFaces)
+                {
+                    scalar meshSf = meshPtr_->magSf()[faceI];
+                    vecArray[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+                }
+                else
+                {
+                    label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                    label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                    label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                    scalar meshSf = meshPtr_->magSf().boundaryField()[patchIdx][faceIdx];
+                    vecArray[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+                }
             }
         }
     }
@@ -5631,6 +5649,8 @@ void DASolver::setPrimalBoundaryConditions(const label printInfo)
 }
 
 label DASolver::runFPAdj(
+    const Vec xvVec,
+    const Vec wVec,
     Vec dFdW,
     Vec psi)
 {

@@ -96,6 +96,16 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
           dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
+      // pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
+      pseudoNuTilda_(
+          IOobject(
+              "pseudoNuTilda",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::NO_READ,
+              IOobject::NO_WRITE),
+          nuTilda_),
+      pseudoNuTildaEqn_(fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
 
@@ -119,6 +129,20 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
     {
         printInterval_ =
             daOption.getAllOptions().lookupOrDefault<label>("printIntervalUnsteady", 500);
+    }
+
+    // get fvSolution and fvSchemes info for fixed-point adjoint
+    const fvSolution& myFvSolution = mesh.thisDb().lookupObject<fvSolution>("fvSolution");
+    solverDictNuTilda_ = myFvSolution.subDict("solvers").subDict("nuTilda");
+    if (myFvSolution.found("relaxationFactors"))
+    {
+        if (myFvSolution.subDict("relaxationFactors").found("equations"))
+        {
+            if (myFvSolution.subDict("relaxationFactors").subDict("equations").found("nuTilda"))
+            {
+                relaxNuTildaEqn_ = myFvSolution.subDict("relaxationFactors").subDict("equations").getScalar("nuTilda");
+            }
+        }
     }
 }
 
@@ -505,7 +529,10 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
     */
 
     // Make sure pseudoNuTilda = nuTilda;
-    pseudoNuTilda = nuTilda_;
+    //if (pseudoNuTildaEqnInitialized_ == 0)
+    //{
+
+    pseudoNuTilda_ = nuTilda_;
 
     const volScalarField chi(this->chi());
     const volScalarField fv1(this->fv1(chi));
@@ -518,41 +545,120 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
     // Get the pseudoNuTildaEqn,
     // the most important thing here is to make sure the l.h.s. mathces that of nuTildaEqn.
     // Some explicit terms that only contributes to the r.h.s. are diabled
-    fvScalarMatrix pseudoNuTildaEqn(
-        fvm::ddt(pseudoNuTilda)
-            + fvm::div(phi_, pseudoNuTilda)
-            - fvm::laplacian(DnuTildaEff(), pseudoNuTilda)
-        == -fvm::Sp(Cw1_ * fw(Stilda) * pseudoNuTilda / sqr(y_), pseudoNuTilda));
-    pseudoNuTildaEqn.relax();
+    pseudoNuTildaEqn_ =
+        //fvm::ddt(pseudoNuTilda_)
+        fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")
+        - fvm::laplacian(DnuTildaEff(), pseudoNuTilda_)
+        + fvm::Sp(Cw1_ * fw(Stilda) * pseudoNuTilda_ / sqr(y_), pseudoNuTilda_);
+    pseudoNuTildaEqn_.relax(relaxNuTildaEqn_);
 
     // Swap upper() and lower()
-    List<scalar> temp = pseudoNuTildaEqn.upper();
-    pseudoNuTildaEqn.upper() = pseudoNuTildaEqn.lower();
-    pseudoNuTildaEqn.lower() = temp;
+    List<scalar> temp = pseudoNuTildaEqn_.upper();
+    pseudoNuTildaEqn_.upper() = pseudoNuTildaEqn_.lower();
+    pseudoNuTildaEqn_.lower() = temp;
+
+    // mark it as initialized
+    //    pseudoNuTildaEqnInitialized_ = 1;
+    //}
 
     // Overwrite the r.h.s.
-    pseudoNuTildaEqn.source() = mySource;
+    pseudoNuTildaEqn_.source() = mySource.primitiveField();
 
     // Make sure that boundary contribution to source is zero,
     // Alternatively, we can deduct source by boundary contribution, so that it would cancel out during solve.
-    forAll(pseudoNuTilda.boundaryField(), patchI)
+    forAll(pseudoNuTilda_.boundaryField(), patchI)
     {
-        const fvPatch& pp = pseudoNuTilda.boundaryField()[patchI].patch();
+        const fvPatch& pp = pseudoNuTilda_.boundaryField()[patchI].patch();
         forAll(pp, faceI)
         {
             label cellI = pp.faceCells()[faceI];
-            pseudoNuTildaEqn.source()[cellI] -= pseudoNuTildaEqn.boundaryCoeffs()[patchI][faceI];
+            pseudoNuTildaEqn_.source()[cellI] -= pseudoNuTildaEqn_.boundaryCoeffs()[patchI][faceI];
         }
     }
 
     // Before solve, force xxEqn.psi to be solved into all zero
     // This ensures the zero (internal) initial guess
-    forAll(pseudoNuTilda.primitiveFieldRef(), cellI)
+    forAll(pseudoNuTilda_.primitiveFieldRef(), cellI)
     {
-        pseudoNuTilda.primitiveFieldRef()[cellI] = 0;
+        pseudoNuTilda_.primitiveFieldRef()[cellI] = 0;
     }
     // Solve using the zero (internal) initial guess
-    pseudoNuTildaEqn.solve();
+    pseudoNuTildaEqn_.solve(solverDictNuTilda_);
+
+    forAll(pseudoNuTilda, cellI)
+    {
+        pseudoNuTilda[cellI] = pseudoNuTilda_[cellI];
+    }
+}
+
+void DASpalartAllmarasFv3::constructPseudoNuTildaEqn()
+{
+    /*
+    Description:
+        construct the pseudo nuTildaEqn, 
+        which is nuTildaEqn with the lhs upper and lower arrays swapped,
+        we also don't care about the rhs of pseudo nuTildaEqn.
+    */
+    
+    // Make sure pseudoNuTilda is indeed identical to nuTilda
+    pseudoNuTilda_ = nuTilda_;
+    pseudoNuTilda_.correctBoundaryConditions();
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    // Get myStilda
+    const volScalarField Stilda(
+        this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
+        + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
+
+    // Get the pseudoNuTildaEqn,
+    // the most important thing here is to make sure the l.h.s. mathces that of nuTildaEqn.
+    // Some explicit terms that only contributes to the r.h.s. are diabled
+    pseudoNuTildaEqn_ =
+        //fvm::ddt(pseudoNuTilda_)
+        fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")
+        - fvm::laplacian(DnuTildaEff(), pseudoNuTilda_)
+        + fvm::Sp(Cw1_ * fw(Stilda) * pseudoNuTilda_ / sqr(y_), pseudoNuTilda_);
+    pseudoNuTildaEqn_.relax(relaxNuTildaEqn_);
+
+    // Swap upper() and lower()
+    // We will use the swap function once it's being moved to the DAUtility
+    List<scalar> temp = pseudoNuTildaEqn_.upper();
+    pseudoNuTildaEqn_.upper() = pseudoNuTildaEqn_.lower();
+    pseudoNuTildaEqn_.lower() = temp;
+}
+
+void DASpalartAllmarasFv3::rhsSolvePseudoNuTildaEqn(const volScalarField& nuTildaSource)
+{
+    /*
+    Description:
+        solve the pseudo nuTildaEqn with a overwritten rhs
+    */
+    
+    // Overwrite the r.h.s.
+    pseudoNuTildaEqn_.source() = nuTildaSource.primitiveField();
+
+    // Make sure that boundary contribution to source is zero,
+    // Alternatively, we can deduct source by boundary contribution, so that it would cancel out during solve.
+    forAll(pseudoNuTilda_.boundaryField(), patchI)
+    {
+        const fvPatch& pp = pseudoNuTilda_.boundaryField()[patchI].patch();
+        forAll(pp, faceI)
+        {
+            label cellI = pp.faceCells()[faceI];
+            pseudoNuTildaEqn_.source()[cellI] -= pseudoNuTildaEqn_.boundaryCoeffs()[patchI][faceI];
+        }
+    }
+
+    // Before solve, force xxEqn.psi to be solved into all zero
+    // This ensures the zero (internal) initial guess
+    forAll(pseudoNuTilda_.primitiveFieldRef(), cellI)
+    {
+        pseudoNuTilda_.primitiveFieldRef()[cellI] = 0;
+    }
+    // Solve using the zero (internal) initial guess
+    pseudoNuTildaEqn_.solve(solverDictNuTilda_);
 }
 
 void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)
@@ -572,8 +678,7 @@ void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)
 
     // Construct nuTildaEqn using our own SA implementation
     fvScalarMatrix nuTildaEqn(
-        fvm::ddt(nuTilda_)
-            + fvm::div(phi_, nuTilda_)
+        fvm::div(phi_, nuTilda_, "div(phi,nuTilda)")
             - fvm::laplacian(DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * magSqr(fvc::grad(nuTilda_))
         == Cb1_ * Stilda * nuTilda_

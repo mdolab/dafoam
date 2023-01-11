@@ -93,7 +93,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdFvSourcedInputsTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcForceProfile(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
-        int runFPAdj(PetscVec, PetscVec)
+        int runFPAdj(PetscVec, PetscVec, PetscVec, PetscVec)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -353,5 +353,5 @@ cdef class pyDASolvers:
     def calcdForcedStateTPsiAD(self, mode, Vec xv, Vec state, Vec psi, Vec prod):
         self._thisptr.calcdForcedStateTPsiAD(mode, xv.vec, state.vec, psi.vec, prod.vec)
     
-    def runFPAdj(self, Vec dFdW, Vec psi):
-        return self._thisptr.runFPAdj(dFdW.vec, psi.vec)
+    def runFPAdj(self, Vec xvVec, Vec wVec, Vec dFdW, Vec psi):
+        return self._thisptr.runFPAdj(xvVec.vec, wVec.vec, dFdW.vec, psi.vec)
