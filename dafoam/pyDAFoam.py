@@ -513,6 +513,8 @@ class DAOPTION(object):
             "useMGSO": False,
             "printInfo": 1,
             "fpMaxIters": 1000,
+            "fpRelTol": 1e-6,
+            "fpMinResTolDiff": 1.0e2,
             "dynAdjustTol": True,
         }
 
