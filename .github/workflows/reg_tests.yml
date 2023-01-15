@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        testConfig: [incompressible, compressible, solid, forward, mphys]
+        testConfig: [incompressible, compressible, solid, forward, mphys_incomp, mphys_comp]
         include:
           - testConfig: incompressible
             args: 'incompressible'
@@ -29,8 +29,10 @@ jobs:
             args: 'solid'
           - testConfig: forward
             args: 'forward'
-          - testConfig: mphys
-            args: 'mphys'
+          - testConfig: mphys_incomp
+            args: 'mphys_incomp'
+          - testConfig: mphys_comp
+            args: 'mphys_comp'
     steps:
     - uses: actions/checkout@v2
     - name: Create the docker container and run the tests
@@ -39,9 +41,11 @@ jobs:
         docker run -i -d -u dafoamuser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
         docker exec -i regtest /bin/bash -c "rm -rf ${{env.DOCKER_WORKING_DIR}} && cp -r ${{env.DOCKER_MOUNT_DIR}} ${{env.DOCKER_WORKING_DIR}}"
         if [ "${{matrix.args}}" = "forward" ]; then
-           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake && . ${{env.DOCKER_OF_ADF_BASHRC}} && ./Allclean && ./Allmake 2> errorLog.txt"
-        elif [ "${{matrix.args}}" = "mphys" ]; then
-           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake 2> errorLog.txt"
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake incompressible && . ${{env.DOCKER_OF_ADF_BASHRC}} && ./Allclean && ./Allmake incompressible 2> errorLog.txt"
+        elif [ "${{matrix.args}}" = "mphys_incomp" ]; then
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake incompressible && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake incompressible 2> errorLog.txt"
+        elif [ "${{matrix.args}}" = "mphys_comp" ]; then
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake compressible && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake compressible 2> errorLog.txt"
         else
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake ${{matrix.args}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake ${{matrix.args}} 2> errorLog.txt"
         fi

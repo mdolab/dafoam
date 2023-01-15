@@ -19,35 +19,22 @@ os.chdir("./input/CompressorFluid")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
-    os.system("cp -r 0.compressible 0")
-    os.system("cp -r 0/U.subsonic 0/U")
-    os.system("cp -r 0/p.subsonic 0/p")
-    os.system("cp -r constant/thermophysicalProperties.e constant/thermophysicalProperties")
-    os.system("cp -r constant/MRFProperties.subsonic constant/MRFProperties")
-    os.system("cp -r system/fvSolution.subsonic system/fvSolution")
-    os.system("cp -r system/fvSchemes.subsonic system/fvSchemes")
+    os.system("cp -r 0.incompressible 0")
+    os.system("cp -r constant/MRFProperties.incompressible constant/MRFProperties")
+    os.system("cp -r system/fvSolution.incompressible system/fvSolution")
+    os.system("cp -r system/fvSchemes.incompressible system/fvSchemes")
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
 
-MRF0 = -500.0
+MRF0 = -100.0
 
 # test incompressible solvers
 daOptions = {
-    "solverName": "DARhoSimpleFoam",
+    "solverName": "DASimpleFoam",
     "designSurfaces": ["blade"],
     "primalMinResTol": 1e-12,
     "useAD": {"mode": "forward", "dvName": "MRF", "seedIndex": 0},
     "primalBC": {
         "MRF": MRF0,
-    },
-    "primalVarBounds": {
-        "UMax": 1000.0,
-        "UMin": -1000.0,
-        "pMax": 500000.0,
-        "pMin": 20000.0,
-        "eMax": 500000.0,
-        "eMin": 100000.0,
-        "rhoMax": 5.0,
-        "rhoMin": 0.2,
     },
     "objFunc": {
         "CMZ": {
