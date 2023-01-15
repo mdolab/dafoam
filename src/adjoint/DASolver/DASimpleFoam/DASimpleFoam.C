@@ -1057,6 +1057,7 @@ void DASimpleFoam::invTranProdUEqn(
         We won't ADR this function, so we can treat most of the arguments as const
     */
 
+/*
     const objectRegistry& db = meshPtr_->thisDb();
     const surfaceScalarField& phi = db.lookupObject<surfaceScalarField>("phi");
     volScalarField nuEff = daTurbulenceModelPtr_->nuEff();
@@ -1098,6 +1099,7 @@ void DASimpleFoam::invTranProdUEqn(
     }
 
     pseudoUEqn.solve(solverDictU_);
+*/
 }
 
 void DASimpleFoam::invTranProdPEqn(
@@ -1111,6 +1113,7 @@ void DASimpleFoam::invTranProdPEqn(
         We won't ADR this function, so we can treat most of the arguments as const
     */
 
+/*
     const objectRegistry& db = meshPtr_->thisDb();
     const volVectorField& U = db.lookupObject<volVectorField>("U");
     const surfaceScalarField& phi = db.lookupObject<surfaceScalarField>("phi");
@@ -1163,6 +1166,7 @@ void DASimpleFoam::invTranProdPEqn(
     }
 
     pseudoPEqn.solve(solverDictP_);
+*/
 }
 
 void DASimpleFoam::calcLduResiduals(
