@@ -531,7 +531,7 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
     // Make sure pseudoNuTilda = nuTilda;
     //if (pseudoNuTildaEqnInitialized_ == 0)
     //{
-
+    /*
     pseudoNuTilda_ = nuTilda_;
 
     const volScalarField chi(this->chi());
@@ -589,6 +589,7 @@ void DASpalartAllmarasFv3::invTranProdNuTildaEqn(
     {
         pseudoNuTilda[cellI] = pseudoNuTilda_[cellI];
     }
+*/
 }
 
 void DASpalartAllmarasFv3::constructPseudoNuTildaEqn()
@@ -599,7 +600,7 @@ void DASpalartAllmarasFv3::constructPseudoNuTildaEqn()
         which is nuTildaEqn with the lhs upper and lower arrays swapped,
         we also don't care about the rhs of pseudo nuTildaEqn.
     */
-    
+
     // Make sure pseudoNuTilda is indeed identical to nuTilda
     pseudoNuTilda_ = nuTilda_;
     pseudoNuTilda_.correctBoundaryConditions();
@@ -635,7 +636,7 @@ void DASpalartAllmarasFv3::rhsSolvePseudoNuTildaEqn(const volScalarField& nuTild
     Description:
         solve the pseudo nuTildaEqn with a overwritten rhs
     */
-    
+
     // Overwrite the r.h.s.
     pseudoNuTildaEqn_.source() = nuTildaSource.primitiveField();
 

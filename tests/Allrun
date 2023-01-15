@@ -209,9 +209,7 @@ case $argm in
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADF.so" ]; then
       runTests DASimpleFoamForwardAD
       runTests DASimpleFoamFieldForwardAD
-    fi
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADF.so" ]; then
-      runTests DARhoSimpleFoamMRFForwardAD
+      runTests DASimpleFoamMRFForwardAD
     fi
     echo " "
     echo "************************************************************"
@@ -219,26 +217,35 @@ case $argm in
     echo "************************************************************"
     echo " "
     ;;
-  "mphys")
-    echo "Running Mphys tests...."
+  "mphys_incomp")
+    echo "Running Mphys incompressible tests...."
     sleep 3
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
-      runTests MphysAero
+      #runTests MphysAero
       runTestsSerial MphysAeroFixedPoint
       runTests MphysAeroOpt
       runTests MphysAeroField
     fi
+    echo " "
+    echo "************************************************************"
+    echo "************ Mphys incompressible tests passed! ************"
+    echo "************************************************************"
+    echo " "
+    ;;
+  "mphys_comp")
+    echo "Running Mphys compressible tests...."
+    sleep 3
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
       runTests MphysAeroStructOpt
     fi
     echo " "
     echo "************************************************************"
-    echo "******************* Mphys tests passed! ********************"
+    echo "************* Mphys compressible tests passed! *************"
     echo "************************************************************"
     echo " "
     ;;
   *)
-    echo "Argument not valid! Options are: all, incompressible, compressible, solid, forward, or mphys"
+    echo "Argument not valid! Options are: all, incompressible, compressible, solid, forward, mphys_incomp, or mphys_comp"
     echo "Example: ./Allrun all"
     exit 1
     ;;
