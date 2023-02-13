@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        testConfig: [incompressible, compressible, solid, forward, mphys]
+        testConfig: [incompressible, compressible, solid, forward, mphys_incomp, mphys_comp]
         include:
           - testConfig: incompressible
             args: 'incompressible'
@@ -28,8 +28,10 @@ jobs:
             args: 'solid'
           - testConfig: forward
             args: 'forward'
-          - testConfig: mphys
-            args: 'mphys'
+          - testConfig: mphys_incomp
+            args: 'mphys_incomp'
+          - testConfig: mphys_comp
+            args: 'mphys_comp'
 
     steps:
     - uses: actions/checkout@v2
@@ -50,12 +52,15 @@ jobs:
         docker exec regtest sed -i 's/-lfiniteVolume$(DF_LIB_SUFFIX)/-lfiniteVolume$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/Make/options_Solid
         docker exec -i regtest /bin/bash -c "cd ${{env.DOCKER_WORKING_DIR}}/src && cp -r adjoint adjointAD && cp -r pyDASolvers pyDASolversAD"
         if [ "${{matrix.args}}" = "forward" ]; then
-           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
-           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADF_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && ./Allmake opt 2> errorLog.txt && cd ../pyDASolversAD && ./Allmake opt 2> errorLog.txt"
-        elif [ "${{matrix.args}}" = "mphys" ]; then
-           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
-           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && ./Allmake opt 2> errorLog.txt && cd ../pyDASolversAD && ./Allmake opt 2> errorLog.txt"
-        else
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake incompressible"
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADF_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && ./Allmake incompressible 2> errorLog.txt && cd ../pyDASolversAD && ./Allmake incompressible 2> errorLog.txt"
+        elif [ "${{matrix.args}}" = "mphys_incomp" ]; then
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake incompressible"
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && ./Allmake incompressible 2> errorLog.txt && cd ../pyDASolversAD && ./Allmake incompressible 2> errorLog.txt"
+        elif [ "${{matrix.args}}" = "mphys_comp" ]; then
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake compressible"
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && ./Allmake compressible 2> errorLog.txt && cd ../pyDASolversAD && ./Allmake compressible 2> errorLog.txt"
+           else
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake ${{matrix.args}}"
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && ./Allmake ${{matrix.args}} 2> errorLog.txt && cd ../pyDASolversAD && ./Allmake ${{matrix.args}} 2> errorLog.txt"
         fi

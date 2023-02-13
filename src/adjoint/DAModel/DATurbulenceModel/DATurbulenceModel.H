@@ -211,7 +211,7 @@ public:
     /// solve the residual equations and update the state
     virtual void correct() = 0;
 
-    /// return the value of the production term from the Spalart Allmaras model 
+    /// return the value of the production term from the Spalart Allmaras model
     virtual void getTurbProdTerm(scalarList& prodTerm) const;
 
     /// dev terms
@@ -284,12 +284,16 @@ public:
     label isPrintTime(
         const Time& runTime,
         const label printInterval) const;
-    
+
     /// Inverse transpose product, M_nuTilda^(-T)
     virtual void invTranProdNuTildaEqn(
         const volScalarField& mySource,
         volScalarField& pseudoNuTilda);
-    
+
+    virtual void constructPseudoNuTildaEqn();
+
+    virtual void rhsSolvePseudoNuTildaEqn(const volScalarField& nuTildaSource);
+
     /// calculate the turbulence residual using LDU matrix
     virtual void calcLduResidualTurb(volScalarField& nuTildaRes);
 };

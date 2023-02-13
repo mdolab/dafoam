@@ -493,7 +493,10 @@ class DAFoamSolver(ImplicitComponent):
         self.psi.zeroEntries()
 
         # if true, we need to compute the coloring
-        self.runColoring = True
+        if DASolver.getOption("adjEqnSolMethod") == "fixedPoint":
+            self.runColoring = False
+        else:
+            self.runColoring = True
 
         # determine which function to compute the adjoint
         self.evalFuncs = []
@@ -805,7 +808,7 @@ class DAFoamSolver(ImplicitComponent):
 
             # actually solving the adjoint linear equation using Petsc
             fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
-        elif adjEqnSolMethod in ["fixedPoint", "fixedPointC"]:
+        elif adjEqnSolMethod == "fixedPoint":
             solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
             if renamed:
                 # write the deformed FFD for post-processing
@@ -816,10 +819,10 @@ class DAFoamSolver(ImplicitComponent):
                     print("---------------------------------------------")
                 self.solution_counter += 1
             # solve the adjoint equation using the fixed-point adjoint approach
-            fail = DASolver.solverAD.runFPAdj(dFdW, self.psi)
+            fail = DASolver.solverAD.runFPAdj(DASolver.xvVec, DASolver.wVec, dFdW, self.psi)
         else:
             raise RuntimeError(
-                "adjEqnSolMethod=%s not valid! Options are: Krylov, fixedPoint, or fixedPointC" % adjEqnSolMethod
+                "adjEqnSolMethod=%s not valid! Options are: Krylov or fixedPoint" % adjEqnSolMethod
             )
 
         # convert the solution vector to array and assign it to d_residuals
