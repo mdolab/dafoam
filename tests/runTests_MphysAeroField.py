@@ -157,7 +157,7 @@ class Top(Multipoint):
         self.add_constraint("cruise.aero_post.CL", equals=0.3, scaler=1.0)
 
 
-prob = om.Problem()
+prob = om.Problem(reports=None)
 prob.model = Top()
 
 prob.driver = om.pyOptSparseDriver()
