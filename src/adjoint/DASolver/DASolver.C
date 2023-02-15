@@ -442,7 +442,8 @@ void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
 void DASolver::getForcesInternal(
     List<scalar>& fX,
     List<scalar>& fY,
-    List<scalar>& fZ)
+    List<scalar>& fZ,
+    List<word>& patchList)
 {
     /*
     Description:
@@ -456,7 +457,7 @@ void DASolver::getForcesInternal(
         fZ: Vector of Z-component of forces
 
     Output:
-        fX, fY, fZ are modified / set in place.
+        fX, fY, fZ, and patchList are modified / set in place.
     */
 #ifndef SolidDASolver
     // Get reference pressure
