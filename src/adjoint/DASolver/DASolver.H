@@ -666,6 +666,12 @@ public:
     /// compute the forces of the desired fluid-structure-interation patches
     void getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ, List<word>& patchList);
 
+    /// return the temperature or heat flux of the desired conjugate heat transfer patch(es)
+    void getThermal(word varName, Vec thermalVec);
+
+    /// same as getThermal except that it is called for AD
+    void getThermalInternal(word varName, scalarList& thermalList);
+
     /// calculate the radial profile of the force on the propeller surface
     void calcForceProfile(
         Vec xvVec,

@@ -316,6 +316,74 @@ void DASolver::setDAObjFuncList()
     }
 }
 
+void DASolver::getThermal(word varName, Vec thermalVec)
+{
+    /*
+    Description:
+        Compute the temperature or heat flux for all of the faces on the conjugate heat 
+        transfer patches. This routine is a wrapper that exposes the actual computation
+        routine to the Python layer using PETSc vectors. For the actual computation
+        routine view the getThermalInternal() function.
+        NOTE: this function can be called by either fluid or solid domain!
+
+    Inputs:
+        varName: either temperature or heatFlux
+
+    Output:
+        thermalVec: the temperature or heatFlux vector on the conjugate heat transfer patch
+    */
+
+    List<scalar> thermalList;
+
+    this->getThermalInternal(varName, thermalList);
+
+    // Zero PETSc Arrays
+    VecZeroEntries(thermalVec);
+
+    // Get PETSc arrays
+    PetscScalar* vecArray;
+    VecGetArray(thermalVec, &vecArray);
+
+    // Transfer to PETSc Array
+    PetscScalar val;
+    forAll(thermalList, cI)
+    {
+        // Get Values
+        assignValueCheckAD(val, thermalList[cI]);
+        // Set Values
+        vecArray[cI] = val;
+    }
+    VecRestoreArray(thermalVec, &vecArray);
+}
+
+void DASolver::getThermalInternal(word varName, scalarList& thermalList)
+{
+    /*
+    Description:
+        Same as getThermal, except that this function can be used in AD
+
+    Inputs:
+        varName: either temperature or heatFlux
+
+    Output:
+        thermalList: the temperature or heatFlux list on the conjugate heat transfer patch
+    */
+
+    if (varName == "temperature")
+    {
+    }
+    else if (varName == "heatFlux")
+    {
+    }
+    else
+    {
+        FatalErrorIn("getPatchVarInternal") << " varName not valid. "
+                                            << abort(FatalError);
+    }
+
+    
+}
+
 void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
 {
     /*
