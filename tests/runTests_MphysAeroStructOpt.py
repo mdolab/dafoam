@@ -45,7 +45,7 @@ tMin = 0.002
 tMax = 0.05
 
 daOptions = {
-    "designSurfaces": ["wing"],
+    "designSurfaces": ["wing", "wing_te"],
     "solverName": "DARhoSimpleFoam",
     "fsi": {
         "pRef": p0,
@@ -99,7 +99,7 @@ daOptions = {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wing"],
+                "patches": ["wing", "wing_te"],
                 "directionMode": "fixedDirection",
                 "direction": [1.0, 0.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
@@ -110,7 +110,7 @@ daOptions = {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wing"],
+                "patches": ["wing", "wing_te"],
                 "directionMode": "fixedDirection",
                 "direction": [0.0, 1.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
