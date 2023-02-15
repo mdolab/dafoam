@@ -32,7 +32,7 @@ rho0 = 1.0
 A0 = 45.5
 
 daOptions = {
-    "designSurfaces": ["wing"],
+    "designSurfaces": ["wing", "wing_te"],
     "solverName": "DASimpleFoam",
     "primalMinResTol": 1.0e-10,
     "primalBC": {
@@ -64,7 +64,7 @@ daOptions = {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wing"],
+                "patches": ["wing", "wing_te"],
                 "directionMode": "fixedDirection",
                 "direction": [1.0, 0.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
@@ -75,7 +75,7 @@ daOptions = {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wing"],
+                "patches": ["wing", "wing_te"],
                 "directionMode": "fixedDirection",
                 "direction": [0.0, 1.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
@@ -86,7 +86,7 @@ daOptions = {
             "part1": {
                 "type": "moment",
                 "source": "patchToFace",
-                "patches": ["wing"],
+                "patches": ["wing", "wing_te"],
                 "axis": [0.0, 0.0, 1.0],
                 "center": [0.0, 0.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),

@@ -45,7 +45,7 @@ tMin = 0.002
 tMax = 0.05
 
 daOptions = {
-    "designSurfaces": ["wing"],
+    "designSurfaces": ["wing", "wing_te"],
     "solverName": "DARhoSimpleFoam",
     "fsi": {
         "pRef": p0,
@@ -99,7 +99,7 @@ daOptions = {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wing"],
+                "patches": ["wing", "wing_te"],
                 "directionMode": "fixedDirection",
                 "direction": [1.0, 0.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
@@ -110,7 +110,7 @@ daOptions = {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wing"],
+                "patches": ["wing", "wing_te"],
                 "directionMode": "fixedDirection",
                 "direction": [0.0, 1.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
@@ -143,7 +143,7 @@ daOptions = {
         "shape": {"designVarType": "FFD"},
         "actuator_disk1": {"designVarType": "ACTD", "actuatorName": "disk1"},
     },
-    "adjPCLag": 1,
+    #"adjPCLag": 1,
 }
 
 meshOptions = {
@@ -316,6 +316,8 @@ class Top(Multipoint):
         self.add_constraint("geometry.volcon", lower=1.0, scaler=1.0)
         self.add_constraint("geometry.tecon", equals=0.0, scaler=1.0, linear=True)
         self.add_constraint("geometry.lecon", equals=0.0, scaler=1.0, linear=True)
+        # stress constraint
+        self.add_constraint("cruise.ks_vmfailure", lower=0.0, upper=0.41, scaler=1.0)
 
 
 prob = om.Problem()
@@ -357,10 +359,14 @@ finalObj = case.get_objectives()
 finalCon = case.get_constraints()
 
 finalCL = {}
+finalVM = {}
 for key in finalCon.keys():
     if "CL" in key:
         finalCL[key] = finalCon[key]
+    if "ks_vmfailure" in key:
+        finalVM[key] = finalCon[key]
 
 if gcomm.rank == 0:
     reg_write_dict(finalObj, 1e-6, 1e-8)
     reg_write_dict(finalCL, 1e-6, 1e-8)
+    reg_write_dict(finalVM, 1e-6, 1e-8)
