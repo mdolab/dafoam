@@ -442,8 +442,7 @@ void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
 void DASolver::getForcesInternal(
     List<scalar>& fX,
     List<scalar>& fY,
-    List<scalar>& fZ,
-    List<word>& patchList)
+    List<scalar>& fZ)
 {
     /*
     Description:
@@ -456,10 +455,8 @@ void DASolver::getForcesInternal(
 
         fZ: Vector of Z-component of forces
 
-        patchList: Patches on which nodal forces are computed
-
     Output:
-        fX, fY, fZ, and pointList are modified / set in place.
+        fX, fY, fZ are modified / set in place.
     */
 #ifndef SolidDASolver
     // Get reference pressure
@@ -3534,9 +3531,8 @@ void DASolver::calcdForcedXvAD(
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
     List<scalar> fZ(nPoints);
-    List<label> pointList(nPoints);
 
-    this->getForcesInternal(fX, fY, fZ, pointList, patchList);
+    this->getForcesInternal(fX, fY, fZ, patchList);
     this->registerForceOutput4AD(fX, fY, fZ);
     this->globalADTape_.setPassive();
 
@@ -3980,9 +3976,8 @@ void DASolver::calcdForcedWAD(
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
     List<scalar> fZ(nPoints);
-    List<label> pointList(nPoints);
 
-    this->getForcesInternal(fX, fY, fZ, pointList, patchList);
+    this->getForcesInternal(fX, fY, fZ, patchList);
     this->registerForceOutput4AD(fX, fY, fZ);
     this->globalADTape_.setPassive();
 
