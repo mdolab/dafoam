@@ -316,7 +316,7 @@ void DASolver::setDAObjFuncList()
     }
 }
 
-void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
+void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
 {
     /*
     Description:
@@ -332,8 +332,6 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
 
         fZ: Vector of Z-component of forces
 
-        pointList: Global indices of nodes used in force computation
-
     Output:
         fX, fY, fZ, and pointList are modified / set in place.
     */
@@ -347,16 +345,14 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
     List<scalar> fXTemp(nPoints);
     List<scalar> fYTemp(nPoints);
     List<scalar> fZTemp(nPoints);
-    List<label> pointListTemp(nPoints);
 
     // Compute forces
-    this->getForcesInternal(fXTemp, fYTemp, fZTemp, pointListTemp, patchList);
+    this->getForcesInternal(fXTemp, fYTemp, fZTemp, patchList);
 
     // Zero PETSc Arrays
     VecZeroEntries(fX);
     VecZeroEntries(fY);
     VecZeroEntries(fZ);
-    VecZeroEntries(pointList);
 
     // Get PETSc arrays
     PetscScalar* vecArrayFX;
@@ -365,12 +361,10 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
     VecGetArray(fY, &vecArrayFY);
     PetscScalar* vecArrayFZ;
     VecGetArray(fZ, &vecArrayFZ);
-    PetscScalar* vecArrayPointList;
-    VecGetArray(pointList, &vecArrayPointList);
 
     // Transfer to PETSc Array
     label pointCounter = 0;
-    forAll(pointListTemp, cI)
+    forAll(fXTemp, cI)
     {
         // Get Values
         PetscScalar val1, val2, val3;
@@ -382,7 +376,6 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
         vecArrayFX[pointCounter] = val1;
         vecArrayFY[pointCounter] = val2;
         vecArrayFZ[pointCounter] = val3;
-        vecArrayPointList[pointCounter] = pointListTemp[pointCounter];
 
         // Increment counter
         pointCounter += 1;
@@ -390,7 +383,6 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ, Vec pointList)
     VecRestoreArray(fX, &vecArrayFX);
     VecRestoreArray(fY, &vecArrayFY);
     VecRestoreArray(fZ, &vecArrayFZ);
-    VecRestoreArray(pointList, &vecArrayPointList);
 #endif
     return;
 }
@@ -451,7 +443,6 @@ void DASolver::getForcesInternal(
     List<scalar>& fX,
     List<scalar>& fY,
     List<scalar>& fZ,
-    List<label>& pointList,
     List<word>& patchList)
 {
     /*
@@ -464,8 +455,6 @@ void DASolver::getForcesInternal(
         fY: Vector of Y-component of forces
 
         fZ: Vector of Z-component of forces
-
-        pointList: Global indices of nodes used in force computation
 
         patchList: Patches on which nodal forces are computed
 
@@ -610,7 +599,6 @@ void DASolver::getForcesInternal(
             fX[patchStart + indexI] = fXTemp[pointListSort.indices()[indexI]];
             fY[patchStart + indexI] = fYTemp[pointListSort.indices()[indexI]];
             fZ[patchStart + indexI] = fZTemp[pointListSort.indices()[indexI]];
-            pointList[patchStart + indexI] = pointListTemp[pointListSort.indices()[indexI]];
         }
 
         // Increment Patch Start Index
