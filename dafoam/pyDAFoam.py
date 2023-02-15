@@ -2441,11 +2441,6 @@ class PYDAFOAM(object):
             groupName = self.designFamilyGroup
         nPts, _ = self._getSurfaceSize(groupName)
 
-        # Initialize PETSc vectors
-        pointListTemp = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        pointListTemp.setSizes((nPts, PETSc.DECIDE), bsize=1)
-        pointListTemp.setFromOptions()
-
         fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         fX.setSizes((nPts, PETSc.DECIDE), bsize=1)
         fX.setFromOptions()
@@ -2459,7 +2454,7 @@ class PYDAFOAM(object):
         fZ.setFromOptions()
 
         # Compute forces
-        self.solver.getForces(fX, fY, fZ, pointListTemp)
+        self.solver.getForces(fX, fY, fZ)
 
         # Copy data from PETSc vectors
         forces = np.zeros((nPts, 3))
@@ -2467,14 +2462,10 @@ class PYDAFOAM(object):
         forces[:, 1] = np.copy(fY.getArray())
         forces[:, 2] = np.copy(fZ.getArray())
 
-        # comment out this var since it is not used.
-        # pointList = np.copy(pointListTemp.getArray())
-
         # Cleanup PETSc vectors
         fX.destroy()
         fY.destroy()
         fZ.destroy()
-        pointListTemp.destroy()
 
         # Print total force
         fXSum = np.sum(forces[:, 0])
