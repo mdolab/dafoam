@@ -316,7 +316,9 @@ void DASolver::setDAObjFuncList()
     }
 }
 
-void DASolver::getThermal(word varName, Vec thermalVec)
+void DASolver::getThermal(
+    word varName,
+    Vec thermalVec)
 {
     /*
     Description:
@@ -356,7 +358,9 @@ void DASolver::getThermal(word varName, Vec thermalVec)
     VecRestoreArray(thermalVec, &vecArray);
 }
 
-void DASolver::getThermalInternal(word varName, scalarList& thermalList)
+void DASolver::getThermalInternal(
+    word varName,
+    scalarList& thermalList)
 {
     /*
     Description:
@@ -371,7 +375,7 @@ void DASolver::getThermalInternal(word varName, scalarList& thermalList)
 
     label nPoints, nFaces;
     List<word> patchList;
-    //this->getPatchInfo(nPoints, nFaces, patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
 
     if (varName == "temperature")
     {
