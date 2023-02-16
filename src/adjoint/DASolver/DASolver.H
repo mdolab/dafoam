@@ -658,13 +658,23 @@ public:
     scalar getObjFuncValue(const word objFuncName);
 
     /// return the forces of the desired fluid-structure-interaction patches
-    void getForces(Vec fX, Vec fY, Vec fZ);
+    void getForces(
+        Vec fX,
+        Vec fY,
+        Vec fZ);
 
-    /// return the number of points used for force calculation
-    void getForcesInfo(label& nPoints, List<word>& patchList);
+    /// return the number of points and faces for MDO patches
+    void getPatchInfo(
+        label& nPoints,
+        label& nFaces,
+        List<word>& patchList);
 
     /// compute the forces of the desired fluid-structure-interation patches
-    void getForcesInternal(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ, List<word>& patchList);
+    void getForcesInternal(
+        List<scalar>& fX,
+        List<scalar>& fY,
+        List<scalar>& fZ,
+        List<word>& patchList);
 
     /// calculate the radial profile of the force on the propeller surface
     void calcForceProfile(
