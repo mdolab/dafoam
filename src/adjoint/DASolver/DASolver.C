@@ -519,9 +519,9 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
     */
 #ifndef SolidDASolver
     // Get Data
-    label nPoints;
+    label nPoints, nFaces;
     List<word> patchList;
-    this->getForcesInfo(nPoints, patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
 
     // Allocate arrays
     List<scalar> fXTemp(nPoints);
@@ -569,16 +569,21 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
     return;
 }
 
-void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
+void DASolver::getPatchInfo(
+    label& nPoints,
+    label& nFaces,
+    List<word>& patchList)
 {
     /*
     Description:
-        Compute information needed to compute surface forces on walls.
-        This includes total number of nodes and a list of patches to
+        Compute information needed to compute surface forces and other vars on walls.
+        This includes total number of nodes and faces and a list of patches to
         include in the computation.
 
     Inputs:
         nPoints: Number of nodes included in the force computation
+
+        nFaces: number of faces
 
         patchList: Patches included in the force computation
 
@@ -612,11 +617,16 @@ void DASolver::getForcesInfo(label& nPoints, List<word>& patchList)
 
     // compute size of point and connectivity arrays
     nPoints = 0;
+    nFaces = 0;
     forAll(patchList, cI)
     {
         // Get number of points in patch
         label patchIPoints = boundaryMesh.findPatchID(patchList[cI]);
         nPoints += boundaryMesh[patchIPoints].size();
+
+        // get number of faces in patch
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        nFaces += meshPtr_->boundaryMesh()[patchI].size();
     }
     return;
 }
@@ -3708,9 +3718,9 @@ void DASolver::calcdForcedXvAD(
     daModelPtr_->updateIntermediateVariables();
 
     // Allocate arrays
-    label nPoints;
+    label nPoints, nFaces;
     List<word> patchList;
-    this->getForcesInfo(nPoints, patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
     List<scalar> fZ(nPoints);
@@ -4153,9 +4163,9 @@ void DASolver::calcdForcedWAD(
     daModelPtr_->updateIntermediateVariables();
 
     // Allocate arrays
-    label nPoints;
+    label nPoints, nFaces;
     List<word> patchList;
-    this->getForcesInfo(nPoints, patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
     List<scalar> fZ(nPoints);
