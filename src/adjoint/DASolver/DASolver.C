@@ -369,19 +369,133 @@ void DASolver::getThermalInternal(word varName, scalarList& thermalList)
         thermalList: the temperature or heatFlux list on the conjugate heat transfer patch
     */
 
+    label nPoints, nFaces;
+    List<word> patchList;
+    //this->getPatchInfo(nPoints, nFaces, patchList);
+
     if (varName == "temperature")
     {
+        volScalarField temperatureField(
+            IOobject(
+                "temperatureField",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("temperatureField", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            fixedValueFvPatchScalarField::typeName);
+
+        thermalList.setSize(nFaces);
+
+        const objectRegistry& db = meshPtr_->thisDb();
+        const volScalarField& T = db.lookupObject<volScalarField>("T");
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            const fvPatch& patch = meshPtr_->boundary()[patchI];
+            forAll(patch, faceI)
+            {
+                temperatureField.boundaryFieldRef()[patchI][faceI] = T.boundaryField()[patchI][faceI];
+                thermalList[localFaceI] = T.boundaryField()[patchI][faceI];
+                localFaceI++;
+            }
+        }
+
+        // this is for debugging
+        temperatureField.write();
     }
     else if (varName == "heatFlux")
     {
+        volScalarField heatFluxField(
+            IOobject(
+                "heatFluxField",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("heatFluxField", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            fixedValueFvPatchScalarField::typeName);
+
+#ifdef IncompressibleFlow
+        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+        volScalarField alphaEff = daTurb.alphaEff();
+        // incompressible flow does not have he, so we do H = Cp * alphaEff * dT/dz
+        // initialize the Prandtl number from transportProperties
+
+        IOdictionary transportProperties(
+            IOobject(
+                "transportProperties",
+                meshPtr_->time().constant(),
+                meshPtr_(),
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false));
+        // for incompressible flow, we need to read Cp from transportProperties
+        scalar Cp = readScalar(transportProperties.lookup("Cp"));
+
+        const objectRegistry& db = meshPtr_->thisDb();
+        const volScalarField& T = db.lookupObject<volScalarField>("T");
+
+        const volScalarField::Boundary& TBf = T.boundaryField();
+        const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            if (!heatFluxField.boundaryFieldRef()[patchI].coupled())
+            {
+                heatFluxField.boundaryFieldRef()[patchI] = Cp * alphaEffBf[patchI] * TBf[patchI].snGrad();
+            }
+            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+            {
+                thermalList[localFaceI] = heatFluxField.boundaryField()[patchI][faceI];
+                localFaceI++;
+            }
+        }
+
+#endif
+
+#ifdef CompressibleFlow
+        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+        volScalarField alphaEff = daTurb.alphaEff();
+        // compressible flow, H = alphaEff * dHE/dz
+        fluidThermo& thermo = const_cast<fluidThermo&>(daModelPtr_->getThermo());
+        volScalarField& he = thermo.he();
+        const volScalarField::Boundary& heBf = he.boundaryField();
+        const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            if (!heatFluxField.boundaryFieldRef()[patchI].coupled())
+            {
+                heatFluxField.boundaryFieldRef()[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
+            }
+            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+            {
+                thermalList[localFaceI] = heatFluxField.boundaryField()[patchI][faceI];
+                localFaceI++;
+            }
+        }
+#endif
+
+        // for debugging
+        heatFluxField.write();
     }
     else
     {
         FatalErrorIn("getPatchVarInternal") << " varName not valid. "
                                             << abort(FatalError);
     }
-
-    
 }
 
 void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
