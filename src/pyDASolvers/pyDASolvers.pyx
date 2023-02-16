@@ -65,6 +65,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int checkMesh()
         double getObjFuncValue(char *)
         void getForces(PetscVec, PetscVec, PetscVec)
+        void getThermal(char *, PetscVec)
+        void setThermal(char *, PetscVec)
         void printAllOptions()
         void updateDAOption(object)
         double getPrevPrimalSolTime()
@@ -283,6 +285,12 @@ cdef class pyDASolvers:
 
     def getForces(self, Vec fX, Vec fY, Vec fZ):
         self._thisptr.getForces(fX.vec, fY.vec, fZ.vec)
+    
+    def getThermal(self, varName, Vec thermalVec):
+        self._thisptr.getThermal(varName, thermalVec.vec)
+    
+    def setThermal(self, varName, Vec thermalVec):
+        self._thisptr.setThermal(varName, thermalVec.vec)
 
     def printAllOptions(self):
         self._thisptr.printAllOptions()

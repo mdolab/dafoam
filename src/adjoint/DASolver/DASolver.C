@@ -316,6 +316,99 @@ void DASolver::setDAObjFuncList()
     }
 }
 
+void DASolver::setThermal(
+    word varName,
+    Vec thermalVec)
+{
+    /*
+    Description:
+        Assign the temperature or heat flux BC to all of the faces on the conjugate heat 
+        transfer patches. 
+        NOTE: this function can be called by either fluid or solid domain!
+
+    Inputs:
+        varName: either temperature or heatFlux
+        thermalVec: the temperature or heatFlux vector on the conjugate heat transfer patch
+    
+    Outputs:
+        The T field in OpenFOAM
+    */
+
+    label nPoints, nFaces;
+    List<word> patchList;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    PetscScalar* vecArray;
+    VecGetArray(thermalVec, &vecArray);
+
+    if (varName == "temperature")
+    {
+        // here we receive set the temperature from the solid domain (varVec) and will assign fixedValue
+        // BC to the fluid domain
+
+        volScalarField& T =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("T"));
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            const fvPatch& patch = meshPtr_->boundary()[patchI];
+            forAll(patch, faceI)
+            {
+                T.boundaryFieldRef()[patchI][faceI] = vecArray[localFaceI];
+                localFaceI++;
+            }
+        }
+    }
+    else if (varName == "heatFlux")
+    {
+        // here we receive heatFlux from the fluid domain (varVec) and will assign the fixedGradient
+        // boundary condition to the solid domain
+
+        IOdictionary transportProperties(
+            IOobject(
+                "transportProperties",
+                meshPtr_->time().constant(),
+                meshPtr_(),
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false));
+        // for incompressible flow, we need to read Cp and rho from transportProperties
+        scalar Cp = readScalar(transportProperties.lookup("Cp"));
+        scalar rho = readScalar(transportProperties.lookup("rho"));
+        scalar DT = readScalar(transportProperties.lookup("DT"));
+        scalar coeff = DT * Cp * rho;
+
+        volScalarField& T =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("T"));
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            fixedGradientFvPatchField<scalar>& patchBC =
+                refCast<fixedGradientFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
+
+            scalarField& grad = const_cast<scalarField&>(patchBC.gradient());
+            forAll(grad, faceI)
+            {
+                grad[faceI] = vecArray[localFaceI] / coeff;
+                localFaceI++;
+            }
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << varName << " not valid! "
+                         << abort(FatalError);
+    }
+
+    VecRestoreArray(thermalVec, &vecArray);
+}
+
 void DASolver::getThermal(
     word varName,
     Vec thermalVec)

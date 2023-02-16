@@ -439,10 +439,22 @@ public:
         return returnVal;
     }
 
-    /// return the value of objective
+    /// return the force on the FSI patches
     void getForces(Vec fX, Vec fY, Vec fZ)
     {
         DASolverPtr_->getForces(fX, fY, fZ);
+    }
+
+    /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
+    void getThermal(word varName, Vec thermalVec)
+    {
+        DASolverPtr_->getThermal(varName, thermalVec);
+    }
+
+    /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches
+    void setThermal(word varName, Vec thermalVec)
+    {
+        DASolverPtr_->setThermal(varName, thermalVec);
     }
 
     /// call DASolver::printAllOptions

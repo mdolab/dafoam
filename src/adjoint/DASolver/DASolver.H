@@ -682,6 +682,9 @@ public:
     /// compute the temperature on the conjugate heat transfer patches: AD compatible
     void getThermalInternal(word varName, scalarList& thermalList);
 
+    /// assign temperature values to the conjugate heat transfer patches
+    void setThermal(word varName, Vec thermalVec);
+
     /// calculate the radial profile of the force on the propeller surface
     void calcForceProfile(
         Vec xvVec,
