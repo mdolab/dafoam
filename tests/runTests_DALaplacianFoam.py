@@ -40,6 +40,15 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+        "HF": {
+            "part1": {
+                "type": "wallHeatFlux",
+                "source": "patchToFace",
+                "patches": ["patch4"],
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
     },
     "debug": False,
     "primalMinResTol": 1e-16,
@@ -47,7 +56,7 @@ aeroOptions = {
 DASolver = PYDAFOAM(options=aeroOptions, comm=MPI.COMM_WORLD)
 DASolver()
 funcs = {}
-evalFuncs = ["TVOL"]
+evalFuncs = ["TVOL", "HF"]
 DASolver.evalFunctions(funcs, evalFuncs)
 
 if gcomm.rank == 0:
