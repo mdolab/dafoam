@@ -1,3 +1,5 @@
+Dictionary Key: HF
+@value    16672391.25773725 1e-08 1e-10
 Dictionary Key: TVOL
 @value 0.004838821371051152 1e-08 1e-10
 Dictionary Key: fail

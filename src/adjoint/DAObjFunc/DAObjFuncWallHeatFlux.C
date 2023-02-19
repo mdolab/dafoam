@@ -36,7 +36,6 @@ DAObjFuncWallHeatFlux::DAObjFuncWallHeatFlux(
         objFuncDict),
 #ifdef CompressibleFlow
       thermo_(const_cast<fluidThermo&>(daModel.getThermo())),
-#endif
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
       wallHeatFlux_(
           IOobject(
@@ -46,28 +45,62 @@ DAObjFuncWallHeatFlux::DAObjFuncWallHeatFlux(
               IOobject::NO_READ,
               IOobject::AUTO_WRITE),
           mesh,
-#ifdef IncompressibleFlow
-          dimensionedScalar("wallHeatFlux", dimensionSet(1, -2, 1, 1, 0, 0, 0), 0.0),
-#endif
-#ifdef CompressibleFlow
           dimensionedScalar("wallHeatFlux", dimensionSet(1, 0, -3, 0, 0, 0, 0), 0.0),
-#endif
           "calculated")
+#endif
+#ifdef IncompressibleFlow
+      daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
+      wallHeatFlux_(
+          IOobject(
+              "wallHeatFlux",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::NO_READ,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("wallHeatFlux", dimensionSet(1, -2, 1, 1, 0, 0, 0), 0.0),
+          "calculated")
+#endif
+#ifdef SolidDASolver
+       wallHeatFlux_(
+           IOobject(
+               "wallHeatFlux",
+               mesh.time().timeName(),
+               mesh,
+               IOobject::NO_READ,
+               IOobject::AUTO_WRITE),
+           mesh,
+           dimensionedScalar("wallHeatFlux", dimensionSet(1, -2, 1, 1, 0, 0, 0), 0.0),
+           "calculated")
+#endif
 {
     // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
+
+    objFuncDict_.readEntry<scalar>("scale", scale_);
+
+#ifdef CompressibleFlow
 
     // setup the connectivity for heat flux, this is needed in Foam::DAJacCondFdW
     objFuncConInfo_ = {
         {"nut", "T"}, // level 0
         {"T"}}; // level 1
 
-    objFuncDict_.readEntry<scalar>("scale", scale_);
+    // now replace nut with the corrected name for the selected turbulence model
+    daModel.correctModelStates(objFuncConInfo_[0]);
+
+#endif
+
+#ifdef IncompressibleFlow
+
+    // setup the connectivity for heat flux, this is needed in Foam::DAJacCondFdW
+    objFuncConInfo_ = {
+        {"nut", "T"}, // level 0
+        {"T"}}; // level 1
 
     // now replace nut with the corrected name for the selected turbulence model
     daModel.correctModelStates(objFuncConInfo_[0]);
 
-#ifdef IncompressibleFlow
     // initialize the Prandtl number from transportProperties
     IOdictionary transportProperties(
         IOobject(
@@ -78,7 +111,35 @@ DAObjFuncWallHeatFlux::DAObjFuncWallHeatFlux(
             IOobject::NO_WRITE,
             false));
     // for incompressible flow, we need to read Cp from transportProperties
-    Cp_ = readScalar(transportProperties.lookup("Cp"));
+    if (Cp_ < 0)
+    {
+        Cp_ = readScalar(transportProperties.lookup("Cp"));
+    }
+    rho_ = 1.0;
+#endif
+
+#ifdef SolidDASolver
+    IOdictionary transportProperties(
+        IOobject(
+            "transportProperties",
+            mesh.time().constant(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false));
+    // for incompressible flow, we need to read Cp from transportProperties
+    if (Cp_ < 0)
+    {
+        Cp_ = readScalar(transportProperties.lookup("Cp"));
+    }
+    if (rho_ < 0)
+    {
+        rho_ = readScalar(transportProperties.lookup("rho"));
+    }
+    if (DT_ < 0)
+    {
+        DT_ = readScalar(transportProperties.lookup("DT"));
+    }
 #endif
 }
 
@@ -146,7 +207,7 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
     {
         if (!wallHeatFluxBf[patchI].coupled())
         {
-            wallHeatFluxBf[patchI] = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
+            wallHeatFluxBf[patchI] = rho_ * Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
         }
     }
 #endif
@@ -162,6 +223,20 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
         if (!wallHeatFluxBf[patchI].coupled())
         {
             wallHeatFluxBf[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
+        }
+    }
+#endif
+
+#ifdef SolidDASolver
+    // solid. H = rho * Cp * DT * dT/dz
+    const objectRegistry& db = mesh_.thisDb();
+    const volScalarField& T = db.lookupObject<volScalarField>("T");
+    const volScalarField::Boundary& TBf = T.boundaryField();
+    forAll(wallHeatFluxBf, patchI)
+    {
+        if (!wallHeatFluxBf[patchI].coupled())
+        {
+            wallHeatFluxBf[patchI] = rho_ * Cp_ * DT_ * TBf[patchI].snGrad();
         }
     }
 #endif

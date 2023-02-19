@@ -33,12 +33,19 @@ protected:
     fluidThermo& thermo_;
 #endif
 
-#ifdef IncompressibleFlow
+    /// Cp used in solid and incompressible heatFlux calculation
     scalar Cp_ = -9999.0;
-#endif
 
+    /// density used in solid and incompressible heatFlux calculation
+    scalar rho_ = -9999.0;
+
+    /// solid thermal diffusivity
+    scalar DT_ = -9999.0;
+
+#ifndef SolidDASolver
     /// DATurbulenceModel object
     DATurbulenceModel& daTurb_;
+#endif
 
     /// wall heat flux field
     volScalarField wallHeatFlux_;
