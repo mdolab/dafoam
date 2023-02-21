@@ -45,6 +45,8 @@ class DAFoamBuilder(Builder):
         self.warp_in_solver = False
         # flag for aerostructural coupling variables
         self.struct_coupling = False
+        # thermal coupling defaults to false
+        self.thermal_coupling = False
 
         # the directory to run this case in, default is the current directory
         self.run_directory = run_directory
@@ -60,8 +62,13 @@ class DAFoamBuilder(Builder):
             # volume mesh warping needs to be inside the coupling loop for aerostructural
             self.warp_in_solver = True
             self.struct_coupling = True
+        elif scenario.lower() == "aerothermal":
+            # volume mesh warping needs to be inside the coupling loop for aerothermal
+            self.thermal_coupling = True
         else:
-            raise AnalysisError("scenario %s not valid! Options: aerodynamic, aerostructural" % scenario)
+            raise AnalysisError(
+                "scenario %s not valid! Options: aerodynamic, aerostructural, and aerothermal" % scenario
+            )
 
     # api level method for all builders
     def initialize(self, comm):
@@ -91,6 +98,7 @@ class DAFoamBuilder(Builder):
             use_warper=self.warp_in_solver,
             struct_coupling=self.struct_coupling,
             prop_coupling=self.prop_coupling,
+            thermal_coupling=self.thermal_coupling,
         )
         return dafoam_group
 
@@ -138,6 +146,7 @@ class DAFoamGroup(Group):
         self.options.declare("struct_coupling", default=False)
         self.options.declare("use_warper", default=True)
         self.options.declare("prop_coupling", default=None)
+        self.options.declare("thermal_coupling", default=False)
 
     def setup(self):
 
@@ -145,6 +154,7 @@ class DAFoamGroup(Group):
         self.struct_coupling = self.options["struct_coupling"]
         self.use_warper = self.options["use_warper"]
         self.prop_coupling = self.options["prop_coupling"]
+        self.thermal_coupling = self.options["thermal_coupling"]
 
         if self.prop_coupling is not None:
             if self.prop_coupling not in ["Prop", "Wing"]:
@@ -206,6 +216,21 @@ class DAFoamGroup(Group):
                 DAFoamForces(solver=self.DASolver),
                 promotes_inputs=["dafoam_vol_coords", "dafoam_states"],
                 promotes_outputs=[("f_aero", "f_aero_masked")],
+            )
+
+        if self.thermal_coupling:
+            self.add_subsystem(
+                "thermal_solid",
+                DAFoamThermal(solver=self.DASolver, var_name="temperature"),
+                promotes_inputs=["dafoam_states"],
+                promotes_outputs=["temperature_solid"],
+            )
+
+            self.add_subsystem(
+                "thermal_fluid",
+                DAFoamThermal(solver=self.DASolver, var_name="heatFlux"),
+                promotes_inputs=["dafoam_vol_coords", "dafoam_states"],
+                promotes_outputs=["heat_flux_fluid"],
             )
 
         # Setup unmasking
@@ -821,9 +846,7 @@ class DAFoamSolver(ImplicitComponent):
             # solve the adjoint equation using the fixed-point adjoint approach
             fail = DASolver.solverAD.runFPAdj(DASolver.xvVec, DASolver.wVec, dFdW, self.psi)
         else:
-            raise RuntimeError(
-                "adjEqnSolMethod=%s not valid! Options are: Krylov or fixedPoint" % adjEqnSolMethod
-            )
+            raise RuntimeError("adjEqnSolMethod=%s not valid! Options are: Krylov or fixedPoint" % adjEqnSolMethod)
 
         # convert the solution vector to array and assign it to d_residuals
         d_residuals["dafoam_states"] = DASolver.vec2Array(self.psi)
@@ -1238,6 +1261,64 @@ class DAFoamWarper(ExplicitComponent):
                 dxS = self.DASolver.mesh.getdXs()
                 dxS = self.DASolver.mapVector(dxS, self.DASolver.meshFamilyGroup, self.DASolver.designFamilyGroup)
                 d_inputs["x_aero"] += dxS.flatten()
+
+
+class DAFoamThermal(ExplicitComponent):
+    """
+    OpenMDAO component that wraps conjugate heat transfer integration
+
+    """
+
+    def initialize(self):
+        self.options.declare("solver", recordable=False)
+        self.options.declare("var_name", recordable=False)
+
+    def setup(self):
+
+        self.DASolver = self.options["solver"]
+
+        self.var_name = self.options["var_name"]
+
+        nPts, nFaces = self.DASolver._getSurfaceSize(self.DASolver.designFamilyGroup)
+
+        if self.var_name == "temperature":
+
+            self.add_input("dafoam_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+            self.add_output("T_conduct", distributed=True, shape=nFaces, tags=["mphys_coupling"])
+
+        elif self.var_name == "heatFlux":
+
+            self.add_input("dafoam_vol_coords", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+            self.add_input("dafoam_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+            self.add_output("q_convect", distributed=True, shape=nFaces, tags=["mphys_coupling"])
+
+        else:
+            raise AnalysisError("% not supported! Options are: temperature or heatFlux" % self.var_name)
+
+    def compute(self, inputs, outputs):
+
+        self.DASolver.setStates(inputs["dafoam_states"])
+
+        if self.var_name == "temperature":
+
+            outputs["T_conduct"] = self.DASolver.getThermal(var_name="temperature")
+
+        elif self.var_name == "heatFlux":
+
+            outputs["q_convect"] = self.DASolver.getThermal(var_name="heatFlux")
+
+        else:
+            raise AnalysisError("% not supported! Options are: temperature or heatFlux" % self.var_name)
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+
+        DASolver = self.DASolver
+
+        if mode == "fwd":
+            raise AnalysisError("fwd not implemented!")
+
+        if "temperature_solid" in d_outputs:
+            raise AnalysisError("rev not implemented!")
 
 
 class DAFoamForces(ExplicitComponent):
