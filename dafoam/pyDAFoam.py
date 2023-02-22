@@ -303,6 +303,36 @@ class DAOPTION(object):
         ## Fluid-structure interatcion (FSI) options. This dictionary takes in the required values for
         ## an FSI case to be used throughout the simulation.
         self.fsi = {"pRef": 0.0, "propMovement": False}
+        
+        ## MDO coupling information for aerostructural, aerothermal, or aeroacoustic optimization.
+        ## We can have ONLY one subdict, e.g., aerostructural in couplingInfo (although multiple are shown below)
+        ## Each subdict can have multiple MDO coupling surfaces, such as wingSurface and tailSurface for the
+        ## aerostructural optimization. In each surface, we can define case specific info such as patchNames and pRef
+        ## Example
+        ## "couplingInfo": {
+        ##     "aerostructural": {
+        ##         "wingSurface": {
+        ##             "patchNames": ["wing", "wing_te"],
+        ##             "pRef": 100000,
+        ##         },
+        ##         "tailSurface": {
+        ##             "patchNames": ["tail"],
+        ##             "pRef": 100000,
+        ##         },
+        ##     },
+        ##     "aerothermal": {
+        ##         "wallSurface": {
+        ##             "patchNames": ["wall"],
+        ##             "domain": "fluid"
+        ##         },
+        ##     }
+        ##     "aeroacoustic": {
+        ##         "bladeSurface": {
+        ##             "patchNames": ["blade"],
+        ##         },
+        ##     }
+        ## }
+        self.couplingInfo = {}
 
         ## Aero-propulsive options
         self.aeroPropulsive = {}
