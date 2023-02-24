@@ -959,6 +959,9 @@ class DAFoamMesh(ExplicitComponent):
 
         return self.DASolver.getTriangulatedMeshSurface()
 
+    def mphys_get_surface_size(self, groupName):
+        return self.DASolver._getSurfaceSize(groupName)
+
     def compute(self, inputs, outputs):
         # just assign the surface mesh coordinates
         if "x_aero0_points" in inputs:
