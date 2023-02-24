@@ -443,6 +443,14 @@ public:
         const Vec fBarVec,
         Vec dForcedXv);
 
+    /// compute dAcoudXv
+    void calcdAcousticsdXvAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dForcedXv,
+        word varName);
+
     /// compute dFdXv AD
     void calcdFdXvAD(
         const Vec xvVec,
@@ -463,6 +471,13 @@ public:
         const Vec wVec,
         const Vec fBarVec,
         Vec dForcedW);
+
+    void calcdAcousticsdWAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dForcedW,
+        word varName);
 
     /// compute dFdACT AD
     void calcdFdACTAD(
@@ -506,11 +521,17 @@ public:
     /// register all force as the ouptut for referse-mod AD
     void registerForceOutput4AD(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ);
 
+    /// register acoustic as the ouptut for referse-mod AD
+    void registerAcousticOutput4AD(List<scalar>& a);
+
     /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
     void assignVec2ResidualGradient(Vec vecX);
 
     /// assign the reverse-mode AD input seeds from fBarVec to the force vectors in OpenFOAM
     void assignVec2ForceGradient(Vec fBarVec, List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ);
+
+    /// assign the reverse-mode AD input seeds from fBarVec to the acoustic vectors in OpenFOAM
+    void assignVec2AcousticGradient(Vec fBarVec, List<scalar>& a, label offset, label step);
 
     /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
     void assignStateGradient2Vec(
@@ -663,6 +684,19 @@ public:
         Vec fY,
         Vec fZ);
 
+    /// return the positions, normals, areas, and forces of the desired acoustic patches
+    void getAcousticData(
+        Vec x,
+        Vec y,
+        Vec z,
+        Vec nX,
+        Vec nY,
+        Vec nZ,
+        Vec a,
+        Vec fX,
+        Vec fY,
+        Vec fZ);
+
     /// return the number of points and faces for MDO patches
     void getPatchInfo(
         label& nPoints,
@@ -671,6 +705,20 @@ public:
 
     /// compute the forces of the desired fluid-structure-interation patches
     void getForcesInternal(
+        List<scalar>& fX,
+        List<scalar>& fY,
+        List<scalar>& fZ,
+        List<word>& patchList);
+
+    /// compute the positions, normals, areas, and forces of the desired acoustic patches
+    void getAcousticDataInternal(
+        List<scalar>& x,
+        List<scalar>& y,
+        List<scalar>& z,
+        List<scalar>& nX,
+        List<scalar>& nY,
+        List<scalar>& nZ,
+        List<scalar>& a,
         List<scalar>& fX,
         List<scalar>& fY,
         List<scalar>& fZ,
