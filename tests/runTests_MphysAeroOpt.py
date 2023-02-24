@@ -41,20 +41,8 @@ daOptions = {
         "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
         "useWallFunction": True,
     },
-    "couplingInfo":
-    {
-    "aerostructure"
-    "aerothermal"
-    "aeroacoustics":
-        "wing": {
-    
-        }
-    "aerothermostruct"
-    }
     "fvSource": {
-        "pRef" = 101325,
-        "wing": {
-            "surfaces" = "TE" "LE" "TOP" "BOT"
+        "disk1": {
             "type": "actuatorDisk",
             "source": "cylinderAnnulusSmooth",
             "center": [-1.0, 0.0, 5.0],
@@ -70,8 +58,6 @@ daOptions = {
             "adjustThrust": 1,
             "targetThrust": 100.0,
         },
-        "tail":
-
     },
     "objFunc": {
         "CD": {
