@@ -190,9 +190,9 @@ totals = prob.compute_totals()
 if gcomm.rank == 0:
     derivDict = {}
     derivDict["cruise.aero_post.CD"] = {}
-    derivDict["cruise.aero_post.CD"]["shape"] = totals[("cruise.aero_post.CD", "dvs.shape")][0]
-    derivDict["cruise.aero_post.CD"]["aoa"] = totals[("cruise.aero_post.CD", "dvs.aoa")][0]
+    derivDict["cruise.aero_post.CD"]["shape"] = totals[("cruise.aero_post.functionals.CD", "dvs.shape")][0]
+    derivDict["cruise.aero_post.CD"]["aoa"] = totals[("cruise.aero_post.functionals.CD", "dvs.aoa")][0]
     derivDict["cruise.aero_post.CL"] = {}
-    derivDict["cruise.aero_post.CL"]["shape"] = totals[("cruise.aero_post.CL", "dvs.shape")][0]
-    derivDict["cruise.aero_post.CL"]["aoa"] = totals[("cruise.aero_post.CL", "dvs.aoa")][0]
+    derivDict["cruise.aero_post.CL"]["shape"] = totals[("cruise.aero_post.functionals.CL", "dvs.shape")][0]
+    derivDict["cruise.aero_post.CL"]["aoa"] = totals[("cruise.aero_post.functionals.CL", "dvs.aoa")][0]
     reg_write_dict(derivDict, 1e-4, 1e-6)
