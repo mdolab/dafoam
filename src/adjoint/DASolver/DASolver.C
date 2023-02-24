@@ -4451,22 +4451,22 @@ void DASolver::calcdAcousticsdWAD(
     this->globalADTape_.setPassive();
 
     if (varName == "xAcou"){
-        this->assignVec2AcousticGradient(fBarVec, x, 3, 0);
-        this->assignVec2AcousticGradient(fBarVec, y, 3, 1);
-        this->assignVec2AcousticGradient(fBarVec, z, 3, 2);
+        this->assignVec2AcousticGradient(fBarVec, x, 0, 3);
+        this->assignVec2AcousticGradient(fBarVec, y, 1, 3);
+        this->assignVec2AcousticGradient(fBarVec, z, 2, 3);
     }
     else if (varName == "nAcou") {
-        this->assignVec2AcousticGradient(fBarVec, nX, 3, 0);
-        this->assignVec2AcousticGradient(fBarVec, nY, 3, 1);
-        this->assignVec2AcousticGradient(fBarVec, nZ, 3, 2);
+        this->assignVec2AcousticGradient(fBarVec, nX, 0, 3);
+        this->assignVec2AcousticGradient(fBarVec, nY, 1, 3);
+        this->assignVec2AcousticGradient(fBarVec, nZ, 2, 3);
     }
     else if (varName == "aAcou") {
-        this->assignVec2AcousticGradient(fBarVec, a, 1, 0);
+        this->assignVec2AcousticGradient(fBarVec, a, 0, 1);
     }
     else if (varName == "fAcou") {
-        this->assignVec2AcousticGradient(fBarVec, fX, 3, 0);
-        this->assignVec2AcousticGradient(fBarVec, fY, 3, 1);
-        this->assignVec2AcousticGradient(fBarVec, fZ, 3, 2);
+        this->assignVec2AcousticGradient(fBarVec, fX, 0, 3);
+        this->assignVec2AcousticGradient(fBarVec, fY, 1, 3);
+        this->assignVec2AcousticGradient(fBarVec, fZ, 2, 3);
     }
     this->globalADTape_.evaluate();
 
