@@ -467,8 +467,6 @@ class DAFoamPostcouplingGroup(Group):
     def setup(self):
         self.DASolver = self.options["solver"]
 
-        acousticsDict = self.DASolver.getOption("acoustics")
-
         # Add Functionals
         self.add_subsystem(
             "functionals",
@@ -476,13 +474,16 @@ class DAFoamPostcouplingGroup(Group):
             promotes=["*"]
         )
 
-        Add Acoustics Data
-        if acousticsDict["active"]:
-            self.add_subsystem(
-                "acoustics",
-                DAFoamAcoustics(solver=self.DASolver),
-                promotes=["*"]
-            )
+        # Add Acoustics Data
+        couplingInfo = self.DASolver.getOption("couplingInfo")
+        if "aeroacoustic" in couplingInfo:
+            for groupName in couplingInfo["aeroacoustic"]:
+                if groupName != "pRef":
+                    self.add_subsystem(
+                        "acoustics",
+                        DAFoamAcoustics(solver=self.DASolver, groupName=groupName),
+                        promotes=["*"]
+                    )
 
     def mphys_add_funcs(self):
         self.functionals.mphys_add_funcs()
@@ -1332,16 +1333,17 @@ class DAFoamAcoustics(ExplicitComponent):
 
     def initialize(self):
         self.options.declare("solver", recordable=False)
+        self.options.declare("groupName", recordable=False)
 
     def setup(self):
 
         self.DASolver = self.options["solver"]
+        self.groupName = self.options["groupName"]
 
         self.add_input("dafoam_vol_coords", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input("dafoam_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
-        groupName = self.DASolver.designFamilyGroup
-        _, nCls = self.DASolver._getSurfaceSize(groupName)
+        _, nCls = self.DASolver._getSurfaceSize(self.groupName)
         self.add_output("xAcou", distributed=True, shape=nCls*3)
         self.add_output("nAcou", distributed=True, shape=nCls*3)
         self.add_output("aAcou", distributed=True, shape=nCls)
@@ -1351,7 +1353,7 @@ class DAFoamAcoustics(ExplicitComponent):
 
         self.DASolver.setStates(inputs["dafoam_states"])
 
-        positions, normals, areas, forces = self.DASolver.getAcousticData()
+        positions, normals, areas, forces = self.DASolver.getAcousticData(self.groupName)
 
         outputs["xAcou"] = positions.flatten(order="C")
         outputs["nAcou"] = normals.flatten(order="C")
@@ -1372,13 +1374,13 @@ class DAFoamAcoustics(ExplicitComponent):
                 if "dafoam_vol_coords" in d_inputs:
                     dAcoudXv = DASolver.xvVec.duplicate()
                     dAcoudXv.zeroEntries()
-                    DASolver.solverAD.calcdAcousticsdXvAD(DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudXv, varName.encode())
+                    DASolver.solverAD.calcdAcousticsdXvAD(DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudXv, varName.encode(), self.groupName.encode())
                     xVBar = DASolver.vec2Array(dAcoudXv)
                     d_inputs["dafoam_vol_coords"] += xVBar
                 if "dafoam_states" in d_inputs:
                     dAcoudW = DASolver.wVec.duplicate()
                     dAcoudW.zeroEntries()
-                    DASolver.solverAD.calcdAcousticsdWAD(DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudW, varName.encode())
+                    DASolver.solverAD.calcdAcousticsdWAD(DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudW, varName.encode(), self.groupName.encode())
                     wBar = DASolver.vec2Array(dAcoudW)
                     d_inputs["dafoam_states"] += wBar
 

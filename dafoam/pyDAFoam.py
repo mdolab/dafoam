@@ -763,6 +763,13 @@ class PYDAFOAM(object):
         if self.meshFamilyGroup == "None":
             self.meshFamilyGroup = self.allWallsGroup
 
+        # Set the aeroacoustic families if given
+        couplingInfo = self.getOption("couplingInfo")
+        if "aeroacoustic" in couplingInfo:
+            for groupName in couplingInfo["aeroacoustic"]:
+                if groupName != "pRef":
+                    self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"][groupName]["patchNames"])
+
         # get the surface coordinate of allFamilies
         self.xs0 = self.getSurfaceCoordinates(self.allFamilies)
 
@@ -2543,7 +2550,7 @@ class PYDAFOAM(object):
         Info("Computing surface acoustic data")
         # Calculate number of surface cells
         if groupName is None:
-            groupName = self.designFamilyGroup
+            raise ValueError("Aeroacoustic grouName not set!")
         _, nCls = self._getSurfaceSize(groupName)
 
         x = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
@@ -2587,7 +2594,7 @@ class PYDAFOAM(object):
         fZ.setFromOptions()
 
         # Compute forces
-        self.solver.getAcousticData(x, y, z, nX, nY, nZ, a, fX, fY, fZ)
+        self.solver.getAcousticData(x, y, z, nX, nY, nZ, a, fX, fY, fZ, groupName.encode())
 
         # Copy data from PETSc vectors
         positions = np.zeros((nCls, 3))

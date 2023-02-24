@@ -449,7 +449,8 @@ public:
         const Vec wVec,
         const Vec fBarVec,
         Vec dForcedXv,
-        word varName);
+        word varName,
+        word groupName);
 
     /// compute dFdXv AD
     void calcdFdXvAD(
@@ -477,7 +478,8 @@ public:
         const Vec wVec,
         const Vec fBarVec,
         Vec dForcedW,
-        word varName);
+        word varName,
+        word groupName);
 
     /// compute dFdACT AD
     void calcdFdACTAD(
@@ -695,7 +697,8 @@ public:
         Vec a,
         Vec fX,
         Vec fY,
-        Vec fZ);
+        Vec fZ,
+        word groupName);
 
     /// return the number of points and faces for MDO patches
     void getPatchInfo(

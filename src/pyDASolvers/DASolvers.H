@@ -135,9 +135,10 @@ public:
         const Vec wVec,
         const Vec fBarVec,
         Vec dAcoudW,
-        word varName)
+        word varName,
+        word groupName)
     {
-        DASolverPtr_->calcdAcousticsdXvAD(xvVec, wVec, fBarVec, dAcoudW, varName);
+        DASolverPtr_->calcdAcousticsdXvAD(xvVec, wVec, fBarVec, dAcoudW, varName, groupName);
     }
 
     /// compute dRdAct^T*Psi
@@ -167,9 +168,10 @@ public:
         const Vec wVec,
         const Vec fBarVec,
         Vec dAcoudW,
-        word varName)
+        word varName,
+        word groupName)
     {
-        DASolverPtr_->calcdAcousticsdWAD(xvVec, wVec, fBarVec, dAcoudW, varName);
+        DASolverPtr_->calcdAcousticsdWAD(xvVec, wVec, fBarVec, dAcoudW, varName, groupName);
     }
 
     /// compute dRdAOA^T*Psi
@@ -468,9 +470,9 @@ public:
     }
 
     /// return the acoustic data values
-    void getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ)
+    void getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, word groupName)
     {
-        DASolverPtr_->getAcousticData(x, y, z, nX, nY, nZ, a, fX, fY, fZ);
+        DASolverPtr_->getAcousticData(x, y, z, nX, nY, nZ, a, fX, fY, fZ, groupName);
     }
 
     /// call DASolver::printAllOptions

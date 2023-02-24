@@ -339,6 +339,8 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
     // Get Data
     label nPoints, nFaces;
     List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     // Allocate arrays
@@ -387,7 +389,7 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
     return;
 }
 
-void DASolver::getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ)
+void DASolver::getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, word groupName)
 {
     /*
     Description:
@@ -417,6 +419,8 @@ void DASolver::getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec 
 
         fZ: Vector of Z-component of forces
 
+        groupName: Name of acoustic group
+
     Output:
         x, y, z, nX, nY, nZ, a, fX, fY, fZ, and patchList are modified / set in place.
     */
@@ -424,7 +428,8 @@ void DASolver::getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec 
     // Get Data
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().subDict("acoustics").readEntry<wordList>("surfaces", patchList);
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict(groupName).readEntry<wordList>("patchNames", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     // Allocate arrays
@@ -544,29 +549,8 @@ void DASolver::getPatchInfo(
         nPoints and patchList are modified / set in-place
     */
     // Generate patches, point mesh, and point boundary mesh
-    const polyBoundaryMesh& patches = meshPtr_->boundaryMesh();
     const pointMesh& pMesh = pointMesh::New(meshPtr_());
     const pointBoundaryMesh& boundaryMesh = pMesh.boundary();
-
-    // we get the forces for the design surfaces
-    wordList designSurfaces;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", designSurfaces);
-
-    // Find wall patches and sort in alphabetical order
-    patchList.resize(designSurfaces.size());
-
-    label iDVPatch = 0;
-    forAll(patches, patchI)
-    {
-        word patchName = patches[patchI].name();
-        if (designSurfaces.found(patchName))
-        {
-            patchList[iDVPatch] = patchName;
-            iDVPatch += 1;
-        }
-    }
-    // sort patchList
-    sort(patchList);
 
     // compute size of point and connectivity arrays
     nPoints = 0;
@@ -789,13 +773,15 @@ void DASolver::getAcousticDataInternal(
 
         fZ: Vector of Z-component of forces
 
+        patchList: Lift of patches to use for computation
+
     Output:
         x, y, z, nX, nY, nZ, a, fX, fY, fZ, and patchList are modified / set in place.
     */
 #ifndef SolidDASolver
     // Get reference pressure
     scalar pRef;
-    daOptionPtr_->getAllOptions().subDict("acoustics").readEntry<scalar>("pRef", pRef);
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").readEntry<scalar>("pRef", pRef);
 
     SortableList<word> patchListSort(patchList);
 
@@ -3778,6 +3764,8 @@ void DASolver::calcdForcedXvAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
@@ -3813,7 +3801,8 @@ void DASolver::calcdAcousticsdXvAD(
     const Vec wVec,
     const Vec fBarVec,
     Vec dAcoudXv,
-    const word varName)
+    const word varName,
+    const word groupName)
 {
 #ifdef CODI_AD_REVERSE
     /*
@@ -3860,7 +3849,8 @@ void DASolver::calcdAcousticsdXvAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().subDict("acoustics").readEntry<wordList>("surfaces", patchList);
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict(groupName).readEntry<wordList>("patchNames", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> x(nFaces);
     List<scalar> y(nFaces);
@@ -4348,6 +4338,8 @@ void DASolver::calcdForcedWAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
@@ -4379,7 +4371,8 @@ void DASolver::calcdAcousticsdWAD(
     const Vec wVec,
     const Vec fBarVec,
     Vec dAcoudW,
-    word varName)
+    word varName,
+    word groupName)
 {
 #ifdef CODI_AD_REVERSE
     /*
@@ -4421,7 +4414,8 @@ void DASolver::calcdAcousticsdWAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().subDict("acoustics").readEntry<wordList>("surfaces", patchList);
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict(groupName).readEntry<wordList>("patchNames", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> x(nFaces);
     List<scalar> y(nFaces);

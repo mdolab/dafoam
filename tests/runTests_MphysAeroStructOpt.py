@@ -307,7 +307,7 @@ class Top(Multipoint):
 
         # define the design variables
         self.add_design_var("twist", lower=-10.0, upper=10.0, scaler=1.0)
-        # self.add_design_var("shape", lower=-1.0, upper=1.0, scaler=1.0)
+        self.add_design_var("shape", lower=-1.0, upper=1.0, scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
@@ -342,8 +342,7 @@ prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aerostruct.html")
 
 optFuncs = OptFuncs(daOptions, prob)
-prob.run_model()
-# prob.check_totals()
+
 prob.run_driver()
 
 prob.record("final")
