@@ -480,9 +480,9 @@ class DAFoamPostcouplingGroup(Group):
             for groupName in couplingInfo["aeroacoustic"]:
                 if groupName != "pRef":
                     self.add_subsystem(
-                        "acoustics",
+                        groupName,
                         DAFoamAcoustics(solver=self.DASolver, groupName=groupName),
-                        promotes=["*"]
+                        promotes_inputs=["*"]
                     )
 
     def mphys_add_funcs(self):
