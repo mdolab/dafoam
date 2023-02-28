@@ -734,6 +734,8 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
     // Get Data
     label nPoints, nFaces;
     List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     // Allocate arrays
@@ -782,6 +784,144 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
     return;
 }
 
+void DASolver::getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, word groupName)
+{
+    /*
+    Description:
+        Compute the nodal forces for all of the nodes on the fluid-structure-interaction
+        patches. This routine is a wrapper that exposes the actual force computation
+        routine to the Python layer using PETSc vectors. For the actual force computation
+        routine view the getForcesInternal() function.
+
+    Inputs:
+        x: Vector of X-component coordinates
+
+        y: Vector of Y-component coordinates
+
+        z: Vector of Z-component coordinates
+
+        nX: Vector of X-component of normal vectors
+
+        nY: Vector of Y-component of normal vectors
+
+        nZ: Vector of Z-component of normal vectors
+
+        a: Vector of areas
+
+        fX: Vector of X-component of forces
+
+        fY: Vector of Y-component of forces
+
+        fZ: Vector of Z-component of forces
+
+        groupName: Name of acoustic group
+
+    Output:
+        x, y, z, nX, nY, nZ, a, fX, fY, fZ, and patchList are modified / set in place.
+    */
+#ifndef SolidDASolver
+    // Get Data
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict(groupName).readEntry<wordList>("patchNames", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    // Allocate arrays
+    List<scalar> xTemp(nFaces);
+    List<scalar> yTemp(nFaces);
+    List<scalar> zTemp(nFaces);
+    List<scalar> nXTemp(nFaces);
+    List<scalar> nYTemp(nFaces);
+    List<scalar> nZTemp(nFaces);
+    List<scalar> aTemp(nFaces);
+    List<scalar> fXTemp(nFaces);
+    List<scalar> fYTemp(nFaces);
+    List<scalar> fZTemp(nFaces);
+
+    // Compute forces
+    this->getAcousticDataInternal(xTemp, yTemp, zTemp, nXTemp, nYTemp, nZTemp, aTemp, fXTemp, fYTemp, fZTemp, patchList);
+
+    // Zero PETSc Arrays
+    VecZeroEntries(x);
+    VecZeroEntries(y);
+    VecZeroEntries(z);
+    VecZeroEntries(nX);
+    VecZeroEntries(nY);
+    VecZeroEntries(nZ);
+    VecZeroEntries(a);
+    VecZeroEntries(fX);
+    VecZeroEntries(fY);
+    VecZeroEntries(fZ);
+
+    // Get PETSc arrays
+    PetscScalar* vecArrayX;
+    VecGetArray(x, &vecArrayX);
+    PetscScalar* vecArrayY;
+    VecGetArray(y, &vecArrayY);
+    PetscScalar* vecArrayZ;
+    VecGetArray(z, &vecArrayZ);
+    PetscScalar* vecArrayNX;
+    VecGetArray(nX, &vecArrayNX);
+    PetscScalar* vecArrayNY;
+    VecGetArray(nY, &vecArrayNY);
+    PetscScalar* vecArrayNZ;
+    VecGetArray(nZ, &vecArrayNZ);
+    PetscScalar* vecArrayA;
+    VecGetArray(a, &vecArrayA);
+    PetscScalar* vecArrayFX;
+    VecGetArray(fX, &vecArrayFX);
+    PetscScalar* vecArrayFY;
+    VecGetArray(fY, &vecArrayFY);
+    PetscScalar* vecArrayFZ;
+    VecGetArray(fZ, &vecArrayFZ);
+
+    // Transfer to PETSc Array
+    label pointCounter = 0;
+    forAll(xTemp, cI)
+    {
+        // Get Values
+        PetscScalar val1, val2, val3, val4, val5, val6, val7, val8, val9, val10;
+        assignValueCheckAD(val1, xTemp[pointCounter]);
+        assignValueCheckAD(val2, yTemp[pointCounter]);
+        assignValueCheckAD(val3, zTemp[pointCounter]);
+        assignValueCheckAD(val4, nXTemp[pointCounter]);
+        assignValueCheckAD(val5, nYTemp[pointCounter]);
+        assignValueCheckAD(val6, nZTemp[pointCounter]);
+        assignValueCheckAD(val7, aTemp[pointCounter]);
+        assignValueCheckAD(val8, fXTemp[pointCounter]);
+        assignValueCheckAD(val9, fYTemp[pointCounter]);
+        assignValueCheckAD(val10, fZTemp[pointCounter]);
+
+        // Set Values
+        vecArrayX[pointCounter] = val1;
+        vecArrayY[pointCounter] = val2;
+        vecArrayZ[pointCounter] = val3;
+        vecArrayNX[pointCounter] = val4;
+        vecArrayNY[pointCounter] = val5;
+        vecArrayNZ[pointCounter] = val6;
+        vecArrayA[pointCounter] = val7;
+        vecArrayFX[pointCounter] = val8;
+        vecArrayFY[pointCounter] = val9;
+        vecArrayFZ[pointCounter] = val10;
+
+        // Increment counter
+        pointCounter += 1;
+    }
+    VecRestoreArray(x, &vecArrayX);
+    VecRestoreArray(y, &vecArrayY);
+    VecRestoreArray(z, &vecArrayZ);
+    VecRestoreArray(nX, &vecArrayNX);
+    VecRestoreArray(nY, &vecArrayNY);
+    VecRestoreArray(nZ, &vecArrayNZ);
+    VecRestoreArray(a, &vecArrayA);
+    VecRestoreArray(fX, &vecArrayFX);
+    VecRestoreArray(fY, &vecArrayFY);
+    VecRestoreArray(fZ, &vecArrayFZ);
+#endif
+    return;
+}
+
 void DASolver::getPatchInfo(
     label& nPoints,
     label& nFaces,
@@ -804,29 +944,8 @@ void DASolver::getPatchInfo(
         nPoints and patchList are modified / set in-place
     */
     // Generate patches, point mesh, and point boundary mesh
-    const polyBoundaryMesh& patches = meshPtr_->boundaryMesh();
     const pointMesh& pMesh = pointMesh::New(meshPtr_());
     const pointBoundaryMesh& boundaryMesh = pMesh.boundary();
-
-    // we get the forces for the design surfaces
-    wordList designSurfaces;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", designSurfaces);
-
-    // Find wall patches and sort in alphabetical order
-    patchList.resize(designSurfaces.size());
-
-    label iDVPatch = 0;
-    forAll(patches, patchI)
-    {
-        word patchName = patches[patchI].name();
-        if (designSurfaces.found(patchName))
-        {
-            patchList[iDVPatch] = patchName;
-            iDVPatch += 1;
-        }
-    }
-    // sort patchList
-    sort(patchList);
 
     // compute size of point and connectivity arrays
     nPoints = 0;
@@ -1006,6 +1125,113 @@ void DASolver::getForcesInternal(
 
         // Increment Patch Start Index
         patchStart += nPointsPatch;
+    }
+#endif
+    return;
+}
+
+void DASolver::getAcousticDataInternal(
+    List<scalar>& x,
+    List<scalar>& y,
+    List<scalar>& z,
+    List<scalar>& nX,
+    List<scalar>& nY,
+    List<scalar>& nZ,
+    List<scalar>& a,
+    List<scalar>& fX,
+    List<scalar>& fY,
+    List<scalar>& fZ,
+    List<word>& patchList)
+{
+    /*
+    Description:
+        Wrapped version force computation routine to perform match to compute forces specified patches.
+
+    Inputs:
+        x: Vector of X-component coordinates
+
+        y: Vector of Y-component coordinates
+
+        z: Vector of Z-component coordinates
+
+        nX: Vector of X-component of normal vectors
+
+        nY: Vector of Y-component of normal vectors
+
+        nZ: Vector of Z-component of normal vectors
+
+        a: Vector of areas
+
+        fX: Vector of X-component of forces
+
+        fY: Vector of Y-component of forces
+
+        fZ: Vector of Z-component of forces
+
+        patchList: Lift of patches to use for computation
+
+    Output:
+        x, y, z, nX, nY, nZ, a, fX, fY, fZ, and patchList are modified / set in place.
+    */
+#ifndef SolidDASolver
+    // Get reference pressure
+    scalar pRef;
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").readEntry<scalar>("pRef", pRef);
+
+    SortableList<word> patchListSort(patchList);
+
+    // ========================================================================
+    // Compute Values
+    // ========================================================================
+    // this code is pulled from:
+    // src/functionObjects/forcces/forces.C
+    // modified slightly
+    const objectRegistry& db = meshPtr_->thisDb();
+    const volScalarField& p = db.lookupObject<volScalarField>("p");
+
+    const surfaceVectorField::Boundary& Sfb = meshPtr_->Sf().boundaryField();
+
+    const DATurbulenceModel& daTurb = daModelPtr_->getDATurbulenceModel();
+    tmp<volSymmTensorField> tdevRhoReff = daTurb.devRhoReff();
+    const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
+
+    // iterate over patches and extract boundary surface forces
+    label iFace = 0;
+    forAll(patchListSort, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
+        // create a shorter handle for the boundary patch
+        const fvPatch& patch = meshPtr_->boundary()[patchI];
+
+        // normal force
+        vectorField fN(Sfb[patchI] * (p.boundaryField()[patchI] - pRef));
+        // tangential force
+        vectorField fT(Sfb[patchI] & devRhoReffb[patchI]);
+
+        // Store Values of Faces
+        forAll(patch, faceI)
+        {
+            // Position
+            x[iFace] = patch.Cf()[faceI].x();
+            y[iFace] = patch.Cf()[faceI].y();
+            z[iFace] = patch.Cf()[faceI].z();
+
+            // Normal
+            nX[iFace] = -patch.Sf()[faceI].x() / patch.magSf()[faceI];
+            nY[iFace] = -patch.Sf()[faceI].y() / patch.magSf()[faceI];
+            nZ[iFace] = -patch.Sf()[faceI].z() / patch.magSf()[faceI];
+
+            // Area
+            a[iFace] = patch.magSf()[faceI];
+
+            // Force
+            fX[iFace] = -(fN[faceI].x() + fT[faceI].x());
+            fY[iFace] = -(fN[faceI].y() + fT[faceI].y());
+            fZ[iFace] = -(fN[faceI].z() + fT[faceI].z());
+
+            iFace++;
+        }
     }
 #endif
     return;
@@ -3933,6 +4159,8 @@ void DASolver::calcdForcedXvAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
@@ -3957,6 +4185,133 @@ void DASolver::calcdForcedXvAD(
 
     VecAssemblyBegin(dForcedXv);
     VecAssemblyEnd(dForcedXv);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
+void DASolver::calcdAcousticsdXvAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec fBarVec,
+    Vec dAcoudXv,
+    const word varName,
+    const word groupName)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate dAcoudXv using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        fBarVec: the derivative seed vector
+    
+    Output:
+        dAcouXv: dAcou/dXv
+    */
+
+    Info << "Calculating dAcoudXvAD using reverse-mode AD" << endl;
+
+    VecZeroEntries(dAcoudXv);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    pointField meshPoints = meshPtr_->points();
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.registerInput(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+
+    // Allocate arrays
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict(groupName).readEntry<wordList>("patchNames", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+    List<scalar> x(nFaces);
+    List<scalar> y(nFaces);
+    List<scalar> z(nFaces);
+    List<scalar> nX(nFaces);
+    List<scalar> nY(nFaces);
+    List<scalar> nZ(nFaces);
+    List<scalar> a(nFaces);
+    List<scalar> fX(nFaces);
+    List<scalar> fY(nFaces);
+    List<scalar> fZ(nFaces);
+
+    this->getAcousticDataInternal(x, y, z, nX, nY, nZ, a, fX, fY, fZ, patchList);
+
+    if (varName == "xAcou"){
+        this->registerAcousticOutput4AD(x);
+        this->registerAcousticOutput4AD(y);
+        this->registerAcousticOutput4AD(z);
+    }
+    else if (varName == "nAcou") {
+        this->registerAcousticOutput4AD(nX);
+        this->registerAcousticOutput4AD(nY);
+        this->registerAcousticOutput4AD(nZ);
+    }
+    else if (varName == "aAcou") {
+        this->registerAcousticOutput4AD(a);
+    }
+    else if (varName == "fAcou") {
+        this->registerAcousticOutput4AD(fX);
+        this->registerAcousticOutput4AD(fY);
+        this->registerAcousticOutput4AD(fZ);
+    }
+    this->globalADTape_.setPassive();
+
+    if (varName == "xAcou"){
+        this->assignVec2AcousticGradient(fBarVec, x, 0, 3);
+        this->assignVec2AcousticGradient(fBarVec, y, 1, 3);
+        this->assignVec2AcousticGradient(fBarVec, z, 2, 3);
+    }
+    else if (varName == "nAcou") {
+        this->assignVec2AcousticGradient(fBarVec, nX, 0, 3);
+        this->assignVec2AcousticGradient(fBarVec, nY, 1, 3);
+        this->assignVec2AcousticGradient(fBarVec, nZ, 2, 3);
+    }
+    else if (varName == "aAcou") {
+        this->assignVec2AcousticGradient(fBarVec, a, 0, 1);
+    }
+    else if (varName == "fAcou") {
+        this->assignVec2AcousticGradient(fBarVec, fX, 0, 3);
+        this->assignVec2AcousticGradient(fBarVec, fY, 1, 3);
+        this->assignVec2AcousticGradient(fBarVec, fZ, 2, 3);
+    }
+    this->globalADTape_.evaluate();
+
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
+            PetscScalar val = meshPoints[i][j].getGradient();
+            VecSetValue(dAcoudXv, rowI, val, INSERT_VALUES);
+        }
+    }
+
+    VecAssemblyBegin(dAcoudXv);
+    VecAssemblyEnd(dAcoudXv);
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
@@ -4378,6 +4733,8 @@ void DASolver::calcdForcedWAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
@@ -4398,6 +4755,124 @@ void DASolver::calcdForcedWAD(
 
     VecAssemblyBegin(dForcedW);
     VecAssemblyEnd(dForcedW);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
+void DASolver::calcdAcousticsdWAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec fBarVec,
+    Vec dAcoudW,
+    word varName,
+    word groupName)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate dForcedW using reverse-mode AD
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        fBarVec: the derivative seed vector
+    
+    Output:
+        dAcoudW: dAcou/dW
+    */
+
+    Info << "Calculating dAcoudW using reverse-mode AD" << endl;
+
+    VecZeroEntries(dAcoudW);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD();
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+
+    // Allocate arrays
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict(groupName).readEntry<wordList>("patchNames", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+    List<scalar> x(nFaces);
+    List<scalar> y(nFaces);
+    List<scalar> z(nFaces);
+    List<scalar> nX(nFaces);
+    List<scalar> nY(nFaces);
+    List<scalar> nZ(nFaces);
+    List<scalar> a(nFaces);
+    List<scalar> fX(nFaces);
+    List<scalar> fY(nFaces);
+    List<scalar> fZ(nFaces);
+
+    this->getAcousticDataInternal(x, y, z, nX, nY, nZ, a, fX, fY, fZ, patchList);
+
+    if (varName == "xAcou"){
+        this->registerAcousticOutput4AD(x);
+        this->registerAcousticOutput4AD(y);
+        this->registerAcousticOutput4AD(z);
+    }
+    else if (varName == "nAcou") {
+        this->registerAcousticOutput4AD(nX);
+        this->registerAcousticOutput4AD(nY);
+        this->registerAcousticOutput4AD(nZ);
+    }
+    else if (varName == "aAcou") {
+        this->registerAcousticOutput4AD(a);
+    }
+    else if (varName == "fAcou") {
+        this->registerAcousticOutput4AD(fX);
+        this->registerAcousticOutput4AD(fY);
+        this->registerAcousticOutput4AD(fZ);
+    }
+    this->globalADTape_.setPassive();
+
+    if (varName == "xAcou"){
+        this->assignVec2AcousticGradient(fBarVec, x, 0, 3);
+        this->assignVec2AcousticGradient(fBarVec, y, 1, 3);
+        this->assignVec2AcousticGradient(fBarVec, z, 2, 3);
+    }
+    else if (varName == "nAcou") {
+        this->assignVec2AcousticGradient(fBarVec, nX, 0, 3);
+        this->assignVec2AcousticGradient(fBarVec, nY, 1, 3);
+        this->assignVec2AcousticGradient(fBarVec, nZ, 2, 3);
+    }
+    else if (varName == "aAcou") {
+        this->assignVec2AcousticGradient(fBarVec, a, 0, 1);
+    }
+    else if (varName == "fAcou") {
+        this->assignVec2AcousticGradient(fBarVec, fX, 0, 3);
+        this->assignVec2AcousticGradient(fBarVec, fY, 1, 3);
+        this->assignVec2AcousticGradient(fBarVec, fZ, 2, 3);
+    }
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(dAcoudW);
+
+    // NOTE: we need to normalize dAcoudW!
+    this->normalizeGradientVec(dAcoudW);
+
+    VecAssemblyBegin(dAcoudW);
+    VecAssemblyEnd(dAcoudW);
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
@@ -4924,6 +5399,26 @@ void DASolver::registerForceOutput4AD(
 #endif
 }
 
+void DASolver::registerAcousticOutput4AD(
+    List<scalar>& a)
+{
+#if defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Register all acoustic components as the output for reverse-mode AD
+
+    Inputs:
+        a: Vector of scalar entries
+    */
+    forAll(a, cI)
+    {
+        // Set seeds
+        this->globalADTape_.registerOutput(a[cI]);
+    }
+#endif
+}
+
+
 void DASolver::normalizeGradientVec(Vec vecY)
 {
 #if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
@@ -5157,6 +5652,42 @@ void DASolver::assignVec2ForceGradient(
 
         // Increment counter
         i += 3;
+    }
+
+    VecRestoreArray(fBarVec, &vecArrayFBarVec);
+#endif
+}
+
+void DASolver::assignVec2AcousticGradient(
+    Vec fBarVec,
+    List<scalar>& a,
+    label offset,
+    label step)
+{
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Assign the reverse-mode AD input seeds from fBarVec to the force vectors
+    
+    Inputs:
+        fBarVec: vector storing the input seeds
+
+        a: Vector of entries 1
+    
+    Outputs:
+        All acoustic variables will be set
+    */
+    PetscScalar* vecArrayFBarVec;
+    VecGetArray(fBarVec, &vecArrayFBarVec);
+
+    label i = 0;
+    forAll(a, cI)
+    {
+        // Set seeds
+        a[cI].setGradient(vecArrayFBarVec[i + offset]);
+
+        // Increment counter
+        i += step;
     }
 
     VecRestoreArray(fBarVec, &vecArrayFBarVec);

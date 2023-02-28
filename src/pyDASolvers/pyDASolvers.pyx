@@ -38,8 +38,10 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdFFD(PetscVec, PetscVec, char *, PetscMat)
         void calcdRdXvTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedXvAD(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdAcousticsdXvAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdRdActTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdForcedWAD(PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdAcousticsdWAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdFdACT(PetscVec, PetscVec, char *, char*, char*, PetscVec)
         void calcdFdACTAD(PetscVec, PetscVec, char *, char*, PetscVec)
         void calcdRdAOATPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
@@ -67,6 +69,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void getForces(PetscVec, PetscVec, PetscVec)
         void getThermal(char *, PetscVec)
         void setThermal(char *, PetscVec)
+        void getAcousticData(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, char*)
         void printAllOptions()
         void updateDAOption(object)
         double getPrevPrimalSolTime()
@@ -192,13 +195,19 @@ cdef class pyDASolvers:
 
     def calcdForcedXvAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedXv):
         self._thisptr.calcdForcedXvAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedXv.vec)
-    
+
+    def calcdAcousticsdXvAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dAcoudXv, varName, groupName):
+        self._thisptr.calcdAcousticsdXvAD(xvVec.vec, wVec.vec, fBarVec.vec, dAcoudXv.vec, varName, groupName)
+
     def calcdRdActTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdActTPsi):
         self._thisptr.calcdRdActTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdActTPsi.vec)
 
     def calcdForcedWAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedW):
         self._thisptr.calcdForcedWAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedW.vec)
-    
+
+    def calcdAcousticsdWAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dAcoudW, varName, groupName):
+        self._thisptr.calcdAcousticsdWAD(xvVec.vec, wVec.vec, fBarVec.vec, dAcoudW.vec, varName, groupName) 
+
     def calcdFdACTAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdACT):
         self._thisptr.calcdFdACTAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdACT.vec)
     
@@ -291,6 +300,9 @@ cdef class pyDASolvers:
     
     def setThermal(self, varName, Vec thermalVec):
         self._thisptr.setThermal(varName, thermalVec.vec)
+
+    def getAcousticData(self, Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, groupName):
+        self._thisptr.getAcousticData(x.vec, y.vec, z.vec, nX.vec, nY.vec, nZ.vec, a.vec, fX.vec, fY.vec, fZ.vec, groupName)
 
     def printAllOptions(self):
         self._thisptr.printAllOptions()

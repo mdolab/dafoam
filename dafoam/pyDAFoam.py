@@ -768,6 +768,13 @@ class PYDAFOAM(object):
         if self.meshFamilyGroup == "None":
             self.meshFamilyGroup = self.allWallsGroup
 
+        # Set the aeroacoustic families if given
+        couplingInfo = self.getOption("couplingInfo")
+        if "aeroacoustic" in couplingInfo:
+            for groupName in couplingInfo["aeroacoustic"]:
+                if groupName != "pRef":
+                    self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"][groupName]["patchNames"])
+
         # get the surface coordinate of allFamilies
         self.xs0 = self.getSurfaceCoordinates(self.allFamilies)
 
@@ -2517,7 +2524,7 @@ class PYDAFOAM(object):
             Group identifier to get only forces cooresponding to the
             desired group. The group must be a family or a user-supplied
             group of families. The default is None which corresponds to
-            all wall-type surfaces.
+            design surfaces.
 
         Returns
         -------
@@ -2573,6 +2580,112 @@ class PYDAFOAM(object):
 
         # Finally map the vector as required.
         return forces
+
+    def getAcousticData(self, groupName=None):
+        """
+        Return the acoustic data on this processor.
+        Parameters
+        ----------
+        groupName : str
+            Group identifier to get only data cooresponding to the
+            desired group. The group must be a family or a user-supplied
+            group of families. The default is None which corresponds to
+            design surfaces.
+
+        Returns
+        -------
+        position : array (N,3)
+            Face positions on this processor. Note that N may be 0, and an
+            empty array of shape (0, 3) can be returned.
+        normal : array (N,3)
+            Face normals on this processor. Note that N may be 0, and an
+            empty array of shape (0, 3) can be returned.
+        area : array (N)
+            Face areas on this processor. Note that N may be 0, and an
+            empty array of shape (0) can be returned.
+        forces : array (N,3)
+            Face forces on this processor. Note that N may be 0, and an
+            empty array of shape (0, 3) can be returned.
+        """
+        Info("Computing surface acoustic data")
+        # Calculate number of surface cells
+        if groupName is None:
+            raise ValueError("Aeroacoustic grouName not set!")
+        _, nCls = self._getSurfaceSize(groupName)
+
+        x = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        x.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        x.setFromOptions()
+
+        y = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        y.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        y.setFromOptions()
+
+        z = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        z.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        z.setFromOptions()
+
+        nX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        nX.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        nX.setFromOptions()
+
+        nY = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        nY.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        nY.setFromOptions()
+
+        nZ = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        nZ.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        nZ.setFromOptions()
+
+        a = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        a.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        a.setFromOptions()
+
+        fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fX.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        fX.setFromOptions()
+
+        fY = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fY.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        fY.setFromOptions()
+
+        fZ = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fZ.setSizes((nCls, PETSc.DECIDE), bsize=1)
+        fZ.setFromOptions()
+
+        # Compute forces
+        self.solver.getAcousticData(x, y, z, nX, nY, nZ, a, fX, fY, fZ, groupName.encode())
+
+        # Copy data from PETSc vectors
+        positions = np.zeros((nCls, 3))
+        positions[:, 0] = np.copy(x.getArray())
+        positions[:, 1] = np.copy(y.getArray())
+        positions[:, 2] = np.copy(z.getArray())
+        normals = np.zeros((nCls, 3))
+        normals[:, 0] = np.copy(nX.getArray())
+        normals[:, 1] = np.copy(nY.getArray())
+        normals[:, 2] = np.copy(nZ.getArray())
+        areas = np.zeros(nCls)
+        areas[:] = np.copy(a.getArray())
+        forces = np.zeros((nCls, 3))
+        forces[:, 0] = np.copy(fX.getArray())
+        forces[:, 1] = np.copy(fY.getArray())
+        forces[:, 2] = np.copy(fZ.getArray())
+
+        # Cleanup PETSc vectors
+        x.destroy()
+        y.destroy()
+        z.destroy()
+        nX.destroy()
+        nY.destroy()
+        nZ.destroy()
+        a.destroy()
+        fX.destroy()
+        fY.destroy()
+        fZ.destroy()
+
+        # Finally map the vector as required.
+        return positions, normals, areas, forces
 
     def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
