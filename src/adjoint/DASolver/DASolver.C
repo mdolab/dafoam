@@ -316,6 +316,122 @@ void DASolver::setDAObjFuncList()
     }
 }
 
+void DASolver::interpolateFaceNodeVals(
+    word mode,
+    Vec faceVec,
+    Vec nodeVec)
+{
+    /*
+    Description:
+        Interpolate between face values and node values on patches. If mode == faceToNode, we interpolate
+        faceVec to nodeVec. If mode == nodeToFace, we interpolate nodeVec to faceVec.
+        This function is just a wrapper, and the actual computation is in interpolateFaceNodeValsInternal()
+
+    Inputs/Outputs:
+
+        mode: either faceToNode or nodeToFace
+
+        faceVec: the face value vector
+
+        nodeVec: the node value vector
+    */
+
+    PetscScalar* vecArray;
+    PetscScalar val;
+    label localSize;
+
+    // Zero PETSc Arrays
+    VecZeroEntries(faceVec);
+    VecZeroEntries(nodeVec);
+
+    List<scalar> faceList;
+    List<scalar> nodeList;
+
+    VecGetLocalSize(faceVec, &localSize);
+    faceList.setSize(localSize);
+
+    VecGetLocalSize(nodeVec, &localSize);
+    nodeList.setSize(localSize);
+
+    // Get PETSc arrays
+    if (mode == "faceToNode")
+    {
+        // assign faceVec to faceList
+        VecGetArray(faceVec, &vecArray);
+        forAll(faceList, cI)
+        {
+            faceList[cI] = vecArray[cI];
+        }
+        VecRestoreArray(faceVec, &vecArray);
+
+        this->interpolateFaceNodeValsInternal(mode, faceList, nodeList);
+
+        // assign nodeList to nodeVec
+        VecGetArray(nodeVec, &vecArray);
+        forAll(nodeList, cI)
+        {
+            // Get Values
+            assignValueCheckAD(val, nodeList[cI]);
+            // Set Values
+            vecArray[cI] = val;
+        }
+        VecRestoreArray(nodeVec, &vecArray);
+    }
+    else if (mode == "nodeToFace")
+    {
+        // assign nodeVec to nodeList
+        VecGetArray(nodeVec, &vecArray);
+        forAll(nodeList, cI)
+        {
+            nodeList[cI] = vecArray[cI];
+        }
+        VecRestoreArray(nodeVec, &vecArray);
+
+        this->interpolateFaceNodeValsInternal(mode, faceList, nodeList);
+
+        // assign faceList to faceVec
+        VecGetArray(faceVec, &vecArray);
+        forAll(faceList, cI)
+        {
+            // Get Values
+            assignValueCheckAD(val, faceList[cI]);
+            // Set Values
+            vecArray[cI] = val;
+        }
+        VecRestoreArray(faceVec, &vecArray);
+    }
+    else
+    {
+        FatalErrorIn("interpolateFaceNodeVals") << mode
+                                                << " not valid! options: faceToNode or nodeToFace"
+                                                << abort(FatalError);
+    }
+}
+
+void DASolver::interpolateFaceNodeValsInternal(
+    word mode,
+    List<scalar>& faceList,
+    List<scalar>& nodeList)
+{
+    /*
+    Description:
+        This function is the same as interpolateFaceNodeVals except that it does the actual computation
+        and can be differentiated.
+
+        The ordering of faceList is: 
+        for patchI in patchListSorted
+            for faceI in patchListSorted[patchI]
+                faceI ++
+        
+
+        The ordering of faceList is: 
+        for patchI in patchListSorted
+            for pointI in patchListSorted[patchI]
+                pointI ++
+    */
+
+}
+
 void DASolver::setThermal(
     word varName,
     Vec thermalVec)

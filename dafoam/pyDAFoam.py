@@ -430,6 +430,10 @@ class DAOPTION(object):
             "gammaIntMin": 1e-16,
         }
 
+        ## The discipline name. The default is "aero". If we need to couple two solvers using
+        ## DAFoam, e.g., aero+thermal, we need to set it to something like "thermal"
+        self.discipline = "aero"
+
         ## Whether to perform multipoint optimization.
         self.multiPoint = False
 
