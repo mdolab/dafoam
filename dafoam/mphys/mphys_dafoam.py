@@ -179,8 +179,8 @@ class DAFoamGroup(Group):
                 self.add_subsystem(
                     "source",
                     DAFoamFvSource(solver=self.DASolver),
-                    promotes_inputs=["prop_center", "radius_profile", "force_profile"],
-                    promotes_outputs=["fv_source"],
+                    promotes_inputs=["*"],
+                    promotes_outputs=["*"],
                 )
 
         # add the solver implicit component

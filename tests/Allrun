@@ -137,6 +137,7 @@ case $argm in
     fi
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
       runTests MphysAeroStructOpt
+      runTestsSerial MphysAeroProp
     fi
     echo " "
     echo "************************************************************"
@@ -237,6 +238,7 @@ case $argm in
     sleep 3
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
       runTests MphysAeroStructOpt
+      runTestsSerial MphysAeroProp
     fi
     echo " "
     echo "************************************************************"
