@@ -430,6 +430,164 @@ void DASolver::interpolateFaceNodeValsInternal(
                 pointI ++
     */
 
+    // first, we read the patchList from couplingInfo
+    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
+
+    wordList patchList;
+
+    forAll(couplingInfo.toc(), idxI)
+    {
+        word scenario = couplingInfo.toc()[idxI];
+        label active = couplingInfo.subDict(scenario).getLabel("active");
+        if (active)
+        {
+            dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
+            label nGroups = couplingGroups.size();
+            if (nGroups != 1)
+            {
+                FatalErrorIn("interpolateFaceNodeValsInternal")
+                    << "we support only one couplingSurfaceGroups"
+                    << abort(FatalError);
+            }
+
+            word groupName = couplingGroups.toc()[0];
+            couplingGroups.readEntry<wordList>(groupName, patchList);
+            break;
+        }
+    }
+    // it is important to sort the patchList and make it unique.
+    sort(patchList);
+
+    // get the total number of points and faces for the patchList
+    label nPoints, nFaces;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    // now, we can calculate a point list that save the global point index for all the points
+    // on the selected patchList
+    const pointMesh& pMesh = pointMesh::New(meshPtr_());
+    const pointBoundaryMesh& boundaryPointMesh = pMesh.boundary();
+
+    label counterI = 0;
+    List<label> pointListIndex(nPoints);
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
+            {
+                label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
+                pointListIndex[counterI] = faceIPointIndexI;
+                counterI++;
+            }
+        }
+    }
+
+    if (mode == "faceToNode")
+    {
+        // interpolate faceList to nodeList
+        forAll(nodeList, idxI)
+        {
+            nodeList[idxI] = 0.0;
+        }
+    }
+    else if (mode == "nodeToFace")
+    {
+        // interpolate nodeList to faceList
+    }
+    else
+    {
+        FatalErrorIn("interpolateFaceNodeVals") << mode
+                                                << " not valid! options: faceToNode or nodeToFace"
+                                                << abort(FatalError);
+    }
+
+    // The above volumeForceField is face-centered, we need to interpolate it to point-centered
+    pointField meshPoints = meshPtr_->points();
+
+    vector nodeForce(vector::zero);
+
+    label patchStart = 0;
+    forAll(patchListSort, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
+        label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
+
+        label nPointsPatch = boundaryMesh[patchIPoints].size();
+        List<scalar> fXTemp(nPointsPatch);
+        List<scalar> fYTemp(nPointsPatch);
+        List<scalar> fZTemp(nPointsPatch);
+        List<label> pointListTemp(nPointsPatch);
+        pointListTemp = -1;
+
+        label pointCounter = 0;
+        // Loop over Faces
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // Get number of points
+            const label nPoints = meshPtr_->boundaryMesh()[patchI][faceI].size();
+
+            // Divide force to nodes
+            nodeForce = volumeForceField.boundaryFieldRef()[patchI][faceI] / double(nPoints);
+
+            forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
+            {
+                // this is the index that corresponds to meshPoints, which contains both volume and surface points
+                // so we can't directly reuse this index because we want to have only surface points
+                label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
+
+                // Loop over pointListTemp array to check if this node is already included in this patch
+                bool found = false;
+                label iPoint = -1;
+                for (label i = 0; i < pointCounter; i++)
+                {
+                    if (faceIPointIndexI == pointListTemp[i])
+                    {
+                        found = true;
+                        iPoint = i;
+                        break;
+                    }
+                }
+
+                // If node is already included, add value to its entry
+                if (found)
+                {
+                    // Add Force
+                    fXTemp[iPoint] += nodeForce[0];
+                    fYTemp[iPoint] += nodeForce[1];
+                    fZTemp[iPoint] += nodeForce[2];
+                }
+                // If node is not already included, add it as the newest point and add global index mapping
+                else
+                {
+                    // Add Force
+                    fXTemp[pointCounter] = nodeForce[0];
+                    fYTemp[pointCounter] = nodeForce[1];
+                    fZTemp[pointCounter] = nodeForce[2];
+
+                    // Add to Node Order Array
+                    pointListTemp[pointCounter] = faceIPointIndexI;
+
+                    // Increment counter
+                    pointCounter += 1;
+                }
+            }
+        }
+
+        // Sort Patch Indices and Insert into Global Arrays
+        SortableList<label> pointListSort(pointListTemp);
+        forAll(pointListSort.indices(), indexI)
+        {
+            fX[patchStart + indexI] = fXTemp[pointListSort.indices()[indexI]];
+            fY[patchStart + indexI] = fYTemp[pointListSort.indices()[indexI]];
+            fZ[patchStart + indexI] = fZTemp[pointListSort.indices()[indexI]];
+        }
+
+        // Increment Patch Start Index
+        patchStart += nPointsPatch;
+    }
 }
 
 void DASolver::setThermal(
@@ -4260,40 +4418,48 @@ void DASolver::calcdAcousticsdXvAD(
 
     this->getAcousticDataInternal(x, y, z, nX, nY, nZ, a, fX, fY, fZ, patchList);
 
-    if (varName == "xAcou"){
+    if (varName == "xAcou")
+    {
         this->registerAcousticOutput4AD(x);
         this->registerAcousticOutput4AD(y);
         this->registerAcousticOutput4AD(z);
     }
-    else if (varName == "nAcou") {
+    else if (varName == "nAcou")
+    {
         this->registerAcousticOutput4AD(nX);
         this->registerAcousticOutput4AD(nY);
         this->registerAcousticOutput4AD(nZ);
     }
-    else if (varName == "aAcou") {
+    else if (varName == "aAcou")
+    {
         this->registerAcousticOutput4AD(a);
     }
-    else if (varName == "fAcou") {
+    else if (varName == "fAcou")
+    {
         this->registerAcousticOutput4AD(fX);
         this->registerAcousticOutput4AD(fY);
         this->registerAcousticOutput4AD(fZ);
     }
     this->globalADTape_.setPassive();
 
-    if (varName == "xAcou"){
+    if (varName == "xAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, x, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, y, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, z, 2, 3);
     }
-    else if (varName == "nAcou") {
+    else if (varName == "nAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, nX, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, nY, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, nZ, 2, 3);
     }
-    else if (varName == "aAcou") {
+    else if (varName == "aAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, a, 0, 1);
     }
-    else if (varName == "fAcou") {
+    else if (varName == "fAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, fX, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, fY, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, fZ, 2, 3);
@@ -4825,40 +4991,48 @@ void DASolver::calcdAcousticsdWAD(
 
     this->getAcousticDataInternal(x, y, z, nX, nY, nZ, a, fX, fY, fZ, patchList);
 
-    if (varName == "xAcou"){
+    if (varName == "xAcou")
+    {
         this->registerAcousticOutput4AD(x);
         this->registerAcousticOutput4AD(y);
         this->registerAcousticOutput4AD(z);
     }
-    else if (varName == "nAcou") {
+    else if (varName == "nAcou")
+    {
         this->registerAcousticOutput4AD(nX);
         this->registerAcousticOutput4AD(nY);
         this->registerAcousticOutput4AD(nZ);
     }
-    else if (varName == "aAcou") {
+    else if (varName == "aAcou")
+    {
         this->registerAcousticOutput4AD(a);
     }
-    else if (varName == "fAcou") {
+    else if (varName == "fAcou")
+    {
         this->registerAcousticOutput4AD(fX);
         this->registerAcousticOutput4AD(fY);
         this->registerAcousticOutput4AD(fZ);
     }
     this->globalADTape_.setPassive();
 
-    if (varName == "xAcou"){
+    if (varName == "xAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, x, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, y, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, z, 2, 3);
     }
-    else if (varName == "nAcou") {
+    else if (varName == "nAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, nX, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, nY, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, nZ, 2, 3);
     }
-    else if (varName == "aAcou") {
+    else if (varName == "aAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, a, 0, 1);
     }
-    else if (varName == "fAcou") {
+    else if (varName == "fAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, fX, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, fY, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, fZ, 2, 3);
@@ -5417,7 +5591,6 @@ void DASolver::registerAcousticOutput4AD(
     }
 #endif
 }
-
 
 void DASolver::normalizeGradientVec(Vec vecY)
 {
