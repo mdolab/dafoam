@@ -453,10 +453,6 @@ void DASolver::getForcesInternal(
     List<scalar>& fX,
     List<scalar>& fY,
     List<scalar>& fZ,
-<<<<<<< HEAD
-=======
-    List<label>& pointList,
->>>>>>> d348c1363afcab8dc7e8310d14cb54c3bb5937ab
     List<word>& patchList)
 {
     /*
