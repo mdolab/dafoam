@@ -41,9 +41,10 @@ daOptions = {
     },
     "couplingInfo": {
         "aeroacoustic": {
-            "pRef": 0.0,
-            "bladeSurface": {
-                "patchNames": ["blade"]
+            "active": True,
+            "pRef": 101000.0,
+            "couplingSurfaceGroups": {
+                "bladeSurface": ["blade"],
             },
         },
     },

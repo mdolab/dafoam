@@ -305,34 +305,35 @@ class DAOPTION(object):
         self.fsi = {"pRef": 0.0, "propMovement": False}
         
         ## MDO coupling information for aerostructural, aerothermal, or aeroacoustic optimization.
-        ## We can have ONLY one subdict, e.g., aerostructural in couplingInfo (although multiple are shown below)
-        ## Each subdict can have multiple MDO coupling surfaces, such as wingSurface and tailSurface for the
-        ## aerostructural optimization. In each surface, we can define case specific info such as patchNames and pRef
-        ## Example
-        ## "couplingInfo": {
-        ##     "aerostructural": {
-        ##         "wingSurface": {
-        ##             "patchNames": ["wing", "wing_te"],
-        ##             "pRef": 100000,
-        ##         },
-        ##         "tailSurface": {
-        ##             "patchNames": ["tail"],
-        ##             "pRef": 100000,
-        ##         },
-        ##     },
-        ##     "aerothermal": {
-        ##         "wallSurface": {
-        ##             "patchNames": ["wall"],
-        ##             "domain": "fluid"
-        ##         },
-        ##     }
-        ##     "aeroacoustic": {
-        ##         "bladeSurface": {
-        ##             "patchNames": ["blade"],
-        ##         },
-        ##     }
-        ## }
-        self.couplingInfo = {}
+        ## We can have ONLY one coupling scenario active, e.g., aerostructural and aerothermal can't be
+        ## both active. We can have more than one couplingSurfaceGroups, e.g., wingGroup and tailGroup
+        ## or blade1Group, blade2Group, and blade3Group. Each group subdict can have multiple patches.
+        ## These patches should be consistent with the patch names defined in constant/polyMesh/boundary
+        self.couplingInfo = {
+            "aerostructural": {
+                "active": False,
+                "pRef": 100000,
+                "propMovement": False,
+                "couplingSurfaceGroups": {
+                    "wingGroup": ["wing", "wing_te"],
+                    "tailGroup": ["tail"],
+                },
+            },
+            "aerothermal": {
+                "active": False,
+                "couplingSurfaceGroups": {
+                    "wallGroup": ["fin_wall"],
+                },
+            },
+            "aeroacoustic": {
+                "active": False,
+                "pRef": 100000,
+                "couplingSurfaceGroups": {
+                    "blade1Group": ["blade1_ps", "blade1_ss"],
+                    "blade2Group": ["blade2"],
+                },
+            },
+        }
 
         ## Aero-propulsive options
         self.aeroPropulsive = {}
@@ -765,10 +766,9 @@ class PYDAFOAM(object):
 
         # Set the aeroacoustic families if given
         couplingInfo = self.getOption("couplingInfo")
-        if "aeroacoustic" in couplingInfo:
-            for groupName in couplingInfo["aeroacoustic"]:
-                if groupName != "pRef":
-                    self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"][groupName]["patchNames"])
+        if couplingInfo["aeroacoustic"]["active"]:
+            for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
+                self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
 
         # get the surface coordinate of allFamilies
         self.xs0 = self.getSurfaceCoordinates(self.allFamilies)

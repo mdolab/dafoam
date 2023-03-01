@@ -428,7 +428,7 @@ void DASolver::getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec 
     // Get Data
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict(groupName).readEntry<wordList>("patchNames", patchList);
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
@@ -3849,7 +3849,7 @@ void DASolver::calcdAcousticsdXvAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict(groupName).readEntry<wordList>("patchNames", patchList);
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> x(nFaces);
@@ -4414,7 +4414,7 @@ void DASolver::calcdAcousticsdWAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict(groupName).readEntry<wordList>("patchNames", patchList);
+    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> x(nFaces);
