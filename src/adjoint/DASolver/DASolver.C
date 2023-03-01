@@ -634,6 +634,8 @@ void DASolver::calcForceProfile(
         xForce, the radial profile of force in the x direction
     */
 
+    /*
+
     // Get Data
     label nPoints = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
     fvMesh& mesh = meshPtr_();
@@ -694,6 +696,7 @@ void DASolver::calcForceProfile(
     VecRestoreArray(rDistL, &vecArrayRDistL);
 
     return;
+    */
 
 }
 
@@ -708,6 +711,8 @@ void DASolver::calcForceProfileInternal(
     Description:
         Same as calcForceProfile but for internal AD
     */
+
+    /*
 
     // fvMesh& mesh = meshPtr_();
     scalar sections = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
@@ -803,6 +808,7 @@ void DASolver::calcForceProfileInternal(
         tangtForce[quot] = tangtForce[quot] - (mesh.Sf().boundaryField()[bladePatchI][faceI] & meshTanDir[faceI]) * p.boundaryField()[bladePatchI][faceI] / sectRad;
         counter[quot] = counter[quot] + 1;
     }
+    */
 }
 
 void DASolver::calcdForcedStateTPsiAD(
@@ -904,28 +910,28 @@ void DASolver::calcFvSourceInternal(
     scalar i = 0;
     for(i = 0; i < maxI; i++)
     {
-        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * Foam::log(f1 / f2));
-        mu = r1 - Foam::sqrt(-2 * sigmaS * Foam::log(f1 * Foam::sqrt(2 * degToRad(180) * sigmaS)));
+        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * log(f1 / f2));
+        mu = r1 - sqrt(-2 * sigmaS * log(f1 * sqrt(2 * degToRad(180) * sigmaS)));
         if (mu > r1)
         {
             mu = 2 * r1 - mu;
         }
     }
-    scalar sigmaAxialOut = Foam:: sqrt(sigmaS);
+    scalar sigmaAxialOut = sqrt(sigmaS);
     scalar muAxialOut = mu;
 
     // Tangential Outer
     mu = 2 * r1 - r2;
     for(i = 0; i < maxI; i++)
     {
-        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * Foam::log(g1 / g2));
-        mu = r1 - Foam::sqrt(-2 * sigmaS * Foam::log(g1 * Foam::sqrt(2 * degToRad(180) * sigmaS)));
+        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * log(g1 / g2));
+        mu = r1 - sqrt(-2 * sigmaS * log(g1 * sqrt(2 * degToRad(180) * sigmaS)));
         if (mu > r1)
         {
             mu = 2 * r1 - mu;
         }
     }
-    scalar sigmaTangentialOut = Foam::sqrt(sigmaS);
+    scalar sigmaTangentialOut = sqrt(sigmaS);
     scalar muTangentialOut = mu;
 
     // Axial Inner
@@ -941,7 +947,7 @@ void DASolver::calcFvSourceInternal(
     {
         // Finding directional vector from mesh cell to the actuator center
         vector cellDir = meshC[cellI] - center;
-        scalar length = Foam:: sqrt(sqr(cellDir[0])+sqr(cellDir[1])+sqr(cellDir[2]));
+        scalar length = sqrt(sqr(cellDir[0])+sqr(cellDir[1])+sqr(cellDir[2]));
         cellDir = cellDir / length;
 
         // Finding axial distance from mesh cell to the actuator center & projected point of mesh cell on the axis
@@ -950,7 +956,7 @@ void DASolver::calcFvSourceInternal(
         meshDist = mag(meshDist); 
 
         // Finding the radius of the point
-        scalar meshR = Foam::sqrt(sqr(meshC[cellI][0] - projP[0]) + sqr(meshC[cellI][1] - projP[1]) + sqr(meshC[cellI][2] - projP[2]));
+        scalar meshR = sqrt(sqr(meshC[cellI][0] - projP[0]) + sqr(meshC[cellI][1] - projP[1]) + sqr(meshC[cellI][2] - projP[2]));
 
         // Tangential component of the radius vector of the cell center
         vector cellAxDir = cellDir ^ axis;
@@ -962,17 +968,17 @@ void DASolver::calcFvSourceInternal(
 
         if (rStar < rStarMin)
         {
-            fvSource[cellI] = ((coefAAxialIn * rStar * rStar + coefBAxialIn * rStar) * axis + (coefATangentialIn * rStar * rStar + coefBTangentialIn * rStar) * cellAxDir * rotDirCon) * Foam::exp(-sqr(meshDist/actEps));
+            fvSource[cellI] = ((coefAAxialIn * rStar * rStar + coefBAxialIn * rStar) * axis + (coefATangentialIn * rStar * rStar + coefBTangentialIn * rStar) * cellAxDir * rotDirCon) * exp(-sqr(meshDist/actEps));
         }
         else if (rStar > rStarMax)
         {
-            fvSource[cellI] = (1 / (sigmaAxialOut * Foam::sqrt(2 * degToRad(180)))) * Foam::exp(-0.5 * sqr((rStar - muAxialOut) / sigmaAxialOut)) * axis;
-            fvSource[cellI] = fvSource[cellI] + (1 / (sigmaTangentialOut * Foam::sqrt(2 * degToRad(180)))) * Foam::exp(-0.5 * sqr((rStar - muTangentialOut) / sigmaTangentialOut)) * cellAxDir * rotDirCon;
-            fvSource[cellI] = fvSource[cellI] * Foam::exp(-sqr(meshDist/actEps));
+            fvSource[cellI] = (1 / (sigmaAxialOut * sqrt(2 * degToRad(180)))) * exp(-0.5 * sqr((rStar - muAxialOut) / sigmaAxialOut)) * axis;
+            fvSource[cellI] = fvSource[cellI] + (1 / (sigmaTangentialOut * sqrt(2 * degToRad(180)))) * exp(-0.5 * sqr((rStar - muTangentialOut) / sigmaTangentialOut)) * cellAxDir * rotDirCon;
+            fvSource[cellI] = fvSource[cellI] * exp(-sqr(meshDist/actEps));
         }
         else
         {
-            fvSource[cellI] = (interpolateSplineXY(rStar, rNorm, aForce) * axis + interpolateSplineXY(rStar, rNorm, tForce) * cellAxDir * rotDirCon) * Foam::exp(-sqr(meshDist/actEps));
+            fvSource[cellI] = (interpolateSplineXY(rStar, rNorm, aForce) * axis + interpolateSplineXY(rStar, rNorm, tForce) * cellAxDir * rotDirCon) * exp(-sqr(meshDist/actEps));
         }
     }
 
@@ -1019,7 +1025,7 @@ void DASolver::calcFvSource(
     */
 
     // Get Data
-    label nPoints = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
+    label nPoints = daOptionPtr_->getSubDictOption<label>("wingProp", "nForceSections");
     // label meshSize = meshPtr_->nCells();
 
     // Allocate Arrays

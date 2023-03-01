@@ -1293,6 +1293,7 @@ class DAFoamPropForce(ExplicitComponent):
     DAFoam component that computes the propeller force and radius profile based on the CFD surface states
     """
 
+    """
     def initialize(self):
         self.options.declare("solver", recordable=False)
 
@@ -1375,6 +1376,7 @@ class DAFoamPropForce(ExplicitComponent):
                 prodVec.zeroEntries()
                 pBar = DASolver.vec2Array(prodVec)
                 d_inputs["dafoam_vol_coords"] += pBar
+    """
 
 
 class DAFoamFvSource(ExplicitComponent):
