@@ -194,4 +194,4 @@ if gcomm.rank == 0:
     derivDict["aAcou"]["twist"] = totals[("cruise.aero_post.bladeSurface.aAcou", "dvs.twist")]
     derivDict["fAcou"] = {}
     derivDict["fAcou"]["twist"] = totals[("cruise.aero_post.bladeSurface.fAcou", "dvs.twist")]
-    # reg_write_dict(derivDict, 1e-4, 1e-6)
+    reg_write_dict(derivDict, 1e-4, 1e-6)
