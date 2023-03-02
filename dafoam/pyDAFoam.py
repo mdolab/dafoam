@@ -770,10 +770,9 @@ class PYDAFOAM(object):
 
         # Set the aeroacoustic families if given
         couplingInfo = self.getOption("couplingInfo")
-        if "aeroacoustic" in couplingInfo:
-            for groupName in couplingInfo["aeroacoustic"]:
-                if groupName != "pRef":
-                    self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"][groupName]["patchNames"])
+        if couplingInfo["aeroacoustic"]["active"]:
+            for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
+                self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
 
         # get the surface coordinate of allFamilies
         self.xs0 = self.getSurfaceCoordinates(self.allFamilies)

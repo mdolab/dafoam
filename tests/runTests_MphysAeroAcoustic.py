@@ -17,81 +17,75 @@ from pygeo import geo_utils
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/Wing")
+os.chdir("./input/CompressorFluid")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
-    os.system("cp -r 0.incompressible 0")
+    os.system("cp -r 0.compressible 0")
+    os.system("cp -r 0/U.subsonic 0/U")
+    os.system("cp -r 0/p.subsonic 0/p")
+    os.system("cp -r constant/thermophysicalProperties.e constant/thermophysicalProperties")
+    os.system("cp -r constant/MRFProperties.subsonic constant/MRFProperties")
+    os.system("cp -r system/fvSolution.subsonic system/fvSolution")
+    os.system("cp -r system/fvSchemes.subsonic system/fvSchemes")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
 
-# aero setup
-U0 = 10.0
-p0 = 0.0
-nuTilda0 = 4.5e-5
-CL_target = 0.2
-pitch0 = 2.0
-rho0 = 1.0
-A0 = 45.5
+MRF0 = -500.0
 
+# test incompressible solvers
 daOptions = {
-    "designSurfaces": ["wing", "wing_te"],
-    "solverName": "DASimpleFoam",
-    "primalMinResTol": 1.0e-10,
+    "solverName": "DARhoSimpleFoam",
+    "designSurfaces": ["blade"],
+    "primalMinResTol": 1e-12,
     "primalBC": {
-        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
-        "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
-        "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
-        "useWallFunction": True,
+        "MRF": MRF0,
     },
     "couplingInfo": {
         "aeroacoustic": {
-            "pRef": 0.0,
-            "bladeSurface": {
-                "patchNames": ["wing"]
+            "active": True,
+            "pRef": 101000.0,
+            "couplingSurfaceGroups": {
+                "bladeSurface": ["blade"],
             },
         },
     },
+    "primalVarBounds": {
+        "UMax": 1000.0,
+        "UMin": -1000.0,
+        "pMax": 500000.0,
+        "pMin": 20000.0,
+        "eMax": 500000.0,
+        "eMin": 100000.0,
+        "rhoMax": 5.0,
+        "rhoMin": 0.2,
+    },
     "objFunc": {
-        "Lift": {
+        "Thrust": {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wing", "wing_te"],
+                "patches": ["blade"],
                 "directionMode": "fixedDirection",
-                "direction": [0.0, 1.0, 0.0],
+                "direction": [0.0, 0.0, 1.0],
                 "scale": 1.0,
                 "addToAdjoint": True,
             }
         },
     },
-    "adjEqnOption": {
-        "gmresRelTol": 1.0e-8,
-        "pcFillLevel": 1,
-        "jacMatReOrdering": "rcm",
-    },
-    "normalizeStates": {
-        "U": U0,
-        "p": U0 * U0 / 2.0,
-        "nuTilda": 1e-3,
-        "phi": 1.0,
-    },
-    "adjPartDerivFDStep": {"State": 1e-6},
-    "checkMeshThreshold": {
-        "maxAspectRatio": 5000.0,
-        "maxNonOrth": 70.0,
-        "maxSkewness": 8.0,
-        "maxIncorrectlyOrientedFaces": 0,
-    },
+    "normalizeStates": {"U": 10, "p": 50.0, "nuTilda": 1e-3, "phi": 1.0},
+    "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
+    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
+    # Design variable setup
     "designVar": {
         "twist": {"designVarType": "FFD"},
     },
-    "adjPCLag": 1,
+    "decomposeParDict": {"preservePatches": ["per1", "per2"]}
 }
 
 meshOptions = {
     "gridFile": os.getcwd(),
     "fileType": "OpenFOAM",
-    "useRotations": False,
     # point and normal for the symmetry plane
-    "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]],
+    "symmetryPlanes": [],
 }
 
 
@@ -111,7 +105,7 @@ class Top(Multipoint):
         self.add_subsystem("mesh", dafoam_builder.get_mesh_coordinate_subsystem())
 
         # add the geometry component, we dont need a builder because we do it here.
-        self.add_subsystem("geometry", OM_DVGEOCOMP(file="FFD/wingFFD.xyz", type="ffd"))
+        self.add_subsystem("geometry", OM_DVGEOCOMP(file="FFD/localFFD.xyz", type="ffd"))
 
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
@@ -143,10 +137,10 @@ class Top(Multipoint):
             for i in range(nRefAxPts):
                 geo.rot_z["wingAxis"].coef[i] = -val[i]
 
-        self.geometry.nom_addGlobalDV(dvName="twist", value=np.array([pitch0] * nRefAxPts), func=twist)
+        self.geometry.nom_addGlobalDV(dvName="twist", value=np.array([0] * nRefAxPts), func=twist)
 
         # add dvs to ivc and connect
-        self.dvs.add_output("twist", val=np.array([pitch0] * nRefAxPts))
+        self.dvs.add_output("twist", val=np.array([0] * nRefAxPts))
         self.connect("twist", "geometry.twist")
 
         # define the design variables
@@ -157,7 +151,7 @@ class Top(Multipoint):
         self.add_constraint("cruise.aero_post.bladeSurface.xAcou", equals=1.0, scaler=1.0, indices=[0])
         self.add_constraint("cruise.aero_post.bladeSurface.nAcou", equals=1.0, scaler=1.0, indices=[0])
         self.add_constraint("cruise.aero_post.bladeSurface.aAcou", equals=1.0, scaler=1.0, indices=[0])
-        self.add_constraint("cruise.aero_post.Lift", equals=1.0, scaler=1.0)
+        self.add_constraint("cruise.aero_post.Thrust", equals=1.0, scaler=1.0)
 
 prob = om.Problem()
 prob.model = Top()
@@ -184,8 +178,8 @@ totals = prob.compute_totals()
 
 if gcomm.rank == 0:
     derivDict = {}
-    derivDict["Lift"] = {}
-    derivDict["Lift"]["twist"] = totals[("cruise.aero_post.functionals.Lift", "dvs.twist")]
+    derivDict["Thrust"] = {}
+    derivDict["Thrust"]["twist"] = totals[("cruise.aero_post.functionals.Thrust", "dvs.twist")]
     derivDict["xAcou"] = {}
     derivDict["xAcou"]["twist"] = totals[("cruise.aero_post.bladeSurface.xAcou", "dvs.twist")]
     derivDict["nAcou"] = {}
@@ -194,4 +188,4 @@ if gcomm.rank == 0:
     derivDict["aAcou"]["twist"] = totals[("cruise.aero_post.bladeSurface.aAcou", "dvs.twist")]
     derivDict["fAcou"] = {}
     derivDict["fAcou"]["twist"] = totals[("cruise.aero_post.bladeSurface.fAcou", "dvs.twist")]
-    # reg_write_dict(derivDict, 1e-4, 1e-6)
+    reg_write_dict(derivDict, 1e-4, 1e-6)
