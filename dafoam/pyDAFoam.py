@@ -303,7 +303,7 @@ class DAOPTION(object):
         ## Fluid-structure interatcion (FSI) options. This dictionary takes in the required values for
         ## an FSI case to be used throughout the simulation.
         self.fsi = {"pRef": 0.0, "propMovement": False}
-        
+
         ## MDO coupling information for aerostructural, aerothermal, or aeroacoustic optimization.
         ## We can have ONLY one coupling scenario active, e.g., aerostructural and aerothermal can't be
         ## both active. We can have more than one couplingSurfaceGroups, e.g., wingGroup and tailGroup
@@ -1069,6 +1069,16 @@ class PYDAFOAM(object):
                 raise Error("Please do not set any normalizeStates for the fixed-point adjoint!")
             # force the normalize residuals to be None; don't normalize any residuals
             self.setOption("normalizeResiduals", ["None"])
+
+        if self.getOption("discipline") not in ["aero", "thermal"]:
+            raise Error("discipline: %s not supported. Options are: aero or thermal" % self.getOption("discipline"))
+
+        nActivated = 0
+        for coupling in self.getOption("couplingInfo"):
+            if self.getOption("couplingInfo")[coupling]["active"]:
+                nActivated += 1
+        if nActivated > 1:
+            raise Error("Only one coupling scenario can be active, while %i found" % nActivated)
 
         # check other combinations...
 

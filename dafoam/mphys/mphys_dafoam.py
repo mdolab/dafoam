@@ -587,15 +587,11 @@ class DAFoamSolver(ImplicitComponent):
         )
 
         couplingInfo = DASolver.getOption("couplingInfo")
-        if "aerothermal" in list(couplingInfo.keys()):
-            for couplingSurface in list(couplingInfo["aerothermal"].keys()):
-                domain = couplingInfo["aerothermal"][couplingSurface]["domain"]
-                if domain == "fluid":
-                    self.add_input("T_convect", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-                elif domain == "solid":
-                    self.add_input("q_conduct", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-                else:
-                    raise AnalysisError("%s is not a valid domain name! Options: fluid or solid " % domain)
+        if couplingInfo["aerothermal"]["active"]:
+            if self.discipline == "aero":
+                self.add_input("T_convect", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+            if self.discipline == "thermal":
+                self.add_input("q_conduct", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
         # now loop over the design variable keys to determine which other variables we need to add
         shapeVarAdded = False
@@ -674,21 +670,17 @@ class DAFoamSolver(ImplicitComponent):
         DASolver.updateDAOption()
 
         couplingInfo = DASolver.getOption("couplingInfo")
-        if "aerothermal" in list(couplingInfo.keys()):
-            for couplingSurface in list(couplingInfo["aerothermal"].keys()):
-                domain = couplingInfo["aerothermal"][couplingSurface]["domain"]
-                if domain == "fluid":
-                    T_convect = inputs["T_convect"]
-                    T_convect_vec = DASolver.array2Vec(T_convect)
-                    # need to convert this to Petsc
-                    DASolver.solver.setThermal("temperature".encode(), T_convect_vec)
-                elif domain == "solid":
-                    q_conduct = inputs["q_conduct"]
-                    q_conduct_vec = DASolver.array2Vec(q_conduct)
-                    # need to convert this to Petsc
-                    DASolver.solver.setThermal("heatFlux".encode(), q_conduct_vec)
-                else:
-                    raise AnalysisError("%s is not a valid domain name! Options: fluid or solid " % domain)
+        if couplingInfo["aerothermal"]["active"]:
+            if self.discipline == "aero":
+                T_convect = inputs["T_convect"]
+                T_convect_vec = DASolver.array2Vec(T_convect)
+                # need to convert this to Petsc
+                DASolver.solver.setThermal("temperature".encode(), T_convect_vec)
+            if self.discipline == "thermal":
+                q_conduct = inputs["q_conduct"]
+                q_conduct_vec = DASolver.array2Vec(q_conduct)
+                # need to convert this to Petsc
+                DASolver.solver.setThermal("heatFlux".encode(), q_conduct_vec)
 
         # solve the flow with the current design variable
         DASolver()
