@@ -320,6 +320,17 @@ void DASolver::getFaceCoords(
     Vec xvVec,
     Vec xsVec)
 {
+    /*
+    Description:
+        Calculate a list of face center coordinates (xsVec) for the MDO coupling patches, given 
+        the volume mesh point coordinates xvVec
+
+    Input:
+        xvVec: volume mesh point coordinates
+    
+    Output:
+        xsVec: face center coordinates for coupling patches
+    */
     this->updateOFMesh(xvVec);
 
     // first, we read the patchList from couplingInfo
@@ -362,6 +373,7 @@ void DASolver::getFaceCoords(
     VecGetArray(xsVec, &vecArray);
 
     label counterFaceI = 0;
+    PetscScalar val;
     forAll(patchList, cI)
     {
         // get the patch id label
@@ -371,7 +383,8 @@ void DASolver::getFaceCoords(
             // Divide force to nodes
             for (label i = 0; i < 3; i++)
             {
-                vecArray[counterFaceI] = meshPtr_->boundary()[patchI].Cf()[faceI][i];
+                assignValueCheckAD(val, meshPtr_->boundary()[patchI].Cf()[faceI][i]);
+                vecArray[counterFaceI] = val;
                 counterFaceI++;
             }
         }
