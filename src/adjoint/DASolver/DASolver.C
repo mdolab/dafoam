@@ -462,39 +462,77 @@ void DASolver::interpolateFaceNodeValsInternal(
     label nPoints, nFaces;
     this->getPatchInfo(nPoints, nFaces, patchList);
 
-    // now, we can calculate a point list that save the global point index for all the points
-    // on the selected patchList
-    const pointMesh& pMesh = pointMesh::New(meshPtr_());
-    const pointBoundaryMesh& boundaryPointMesh = pMesh.boundary();
-
-    label counterI = 0;
-    List<label> pointListIndex(nPoints);
-    forAll(patchList, cI)
-    {
-        // get the patch id label
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
-        {
-            forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
-            {
-                label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
-                pointListIndex[counterI] = faceIPointIndexI;
-                counterI++;
-            }
-        }
-    }
-
     if (mode == "faceToNode")
     {
         // interpolate faceList to nodeList
+
+        // assign zeros to nodeList
         forAll(nodeList, idxI)
         {
             nodeList[idxI] = 0.0;
+        }
+
+        // now, we can calculate a HashTable that save the local point index for a given global point index
+        // on the selected patchList
+        HashTable<label> pointIdxGlobal2Local;
+
+        const pointMesh& pMesh = pointMesh::New(meshPtr_());
+        const pointBoundaryMesh& boundaryPointMesh = pMesh.boundary();
+
+        label counterPointI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+            {
+                forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
+                {
+                    label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
+                    word glbPointIndexKey = Foam::name(faceIPointIndexI);
+                    pointIdxGlobal2Local.set(glbPointIndexKey, counterPointI);
+                    counterPointI++;
+                }
+            }
+        }
+
+        // we do the sweep again. We can divide the face values into node values and them find out the
+        // local point index using pointIdxGlobal2Local for each node on this face.
+        // We then add the values to nodeList based on the local point index
+        label counterFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+            {
+                // Get number of points
+                const label nPoints = meshPtr_->boundaryMesh()[patchI][faceI].size();
+
+                // Divide force to nodes
+                scalar nodeValDiv = faceList[counterFaceI] / nPoints;
+                counterFaceI++;
+
+                forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
+                {
+                    label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
+                    word glbPointIndexKey = Foam::name(faceIPointIndexI);
+                    // local point index obtained from pointIdxGlobal2Local
+                    label localPointIdx = pointIdxGlobal2Local[glbPointIndexKey];
+                    nodeList[localPointIdx] += nodeValDiv;
+                }
+            }
         }
     }
     else if (mode == "nodeToFace")
     {
         // interpolate nodeList to faceList
+
+        // assign zeros to faceList
+        forAll(faceList, idxI)
+        {
+            faceList[idxI] = 0.0;
+        }
     }
     else
     {
