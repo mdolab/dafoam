@@ -724,6 +724,10 @@ public:
         List<scalar>& faceList,
         List<scalar>& nodeList);
 
+    void getFaceCoords(
+        Vec xvVec,
+        Vec xsVec);
+
     /// compute the temperature on the conjugate heat transfer patches
     void getThermal(word varName, Vec thermalVec);
 

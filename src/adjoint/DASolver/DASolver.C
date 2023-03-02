@@ -316,6 +316,70 @@ void DASolver::setDAObjFuncList()
     }
 }
 
+void DASolver::getFaceCoords(
+    Vec xvVec,
+    Vec xsVec)
+{
+    this->updateOFMesh(xvVec);
+
+    // first, we read the patchList from couplingInfo
+    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
+
+    wordList patchList;
+
+    forAll(couplingInfo.toc(), idxI)
+    {
+        word scenario = couplingInfo.toc()[idxI];
+        label active = couplingInfo.subDict(scenario).getLabel("active");
+        if (active)
+        {
+            dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
+            label nGroups = couplingGroups.size();
+            if (nGroups != 1)
+            {
+                FatalErrorIn("interpolateFaceNodeValsInternal")
+                    << "we support only one couplingSurfaceGroups"
+                    << abort(FatalError);
+            }
+
+            word groupName = couplingGroups.toc()[0];
+            couplingGroups.readEntry<wordList>(groupName, patchList);
+            break;
+        }
+    }
+    // it is important to sort the patchList and make it unique.
+    sort(patchList);
+
+    // get the total number of points and faces for the patchList
+    label nPoints, nFaces;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    VecCreate(PETSC_COMM_WORLD, &xsVec);
+    VecSetSizes(xsVec, nFaces, PETSC_DETERMINE);
+    VecSetFromOptions(xsVec);
+
+    PetscScalar* vecArray;
+    VecGetArray(xsVec, &vecArray);
+
+    label counterFaceI = 0;
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // Divide force to nodes
+            for (label i = 0; i < 3; i++)
+            {
+                vecArray[counterFaceI] = meshPtr_->boundary()[patchI].Cf()[faceI][i];
+                counterFaceI++;
+            }
+        }
+    }
+
+    VecRestoreArray(xsVec, &vecArray);
+}
+
 void DASolver::interpolateFaceNodeVals(
     word mode,
     Vec faceVec,
@@ -539,92 +603,6 @@ void DASolver::interpolateFaceNodeValsInternal(
         FatalErrorIn("interpolateFaceNodeVals") << mode
                                                 << " not valid! options: faceToNode or nodeToFace"
                                                 << abort(FatalError);
-    }
-
-    // The above volumeForceField is face-centered, we need to interpolate it to point-centered
-    pointField meshPoints = meshPtr_->points();
-
-    vector nodeForce(vector::zero);
-
-    label patchStart = 0;
-    forAll(patchListSort, cI)
-    {
-        // get the patch id label
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchListSort[cI]);
-        label patchIPoints = boundaryMesh.findPatchID(patchListSort[cI]);
-
-        label nPointsPatch = boundaryMesh[patchIPoints].size();
-        List<scalar> fXTemp(nPointsPatch);
-        List<scalar> fYTemp(nPointsPatch);
-        List<scalar> fZTemp(nPointsPatch);
-        List<label> pointListTemp(nPointsPatch);
-        pointListTemp = -1;
-
-        label pointCounter = 0;
-        // Loop over Faces
-        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
-        {
-            // Get number of points
-            const label nPoints = meshPtr_->boundaryMesh()[patchI][faceI].size();
-
-            // Divide force to nodes
-            nodeForce = volumeForceField.boundaryFieldRef()[patchI][faceI] / double(nPoints);
-
-            forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
-            {
-                // this is the index that corresponds to meshPoints, which contains both volume and surface points
-                // so we can't directly reuse this index because we want to have only surface points
-                label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
-
-                // Loop over pointListTemp array to check if this node is already included in this patch
-                bool found = false;
-                label iPoint = -1;
-                for (label i = 0; i < pointCounter; i++)
-                {
-                    if (faceIPointIndexI == pointListTemp[i])
-                    {
-                        found = true;
-                        iPoint = i;
-                        break;
-                    }
-                }
-
-                // If node is already included, add value to its entry
-                if (found)
-                {
-                    // Add Force
-                    fXTemp[iPoint] += nodeForce[0];
-                    fYTemp[iPoint] += nodeForce[1];
-                    fZTemp[iPoint] += nodeForce[2];
-                }
-                // If node is not already included, add it as the newest point and add global index mapping
-                else
-                {
-                    // Add Force
-                    fXTemp[pointCounter] = nodeForce[0];
-                    fYTemp[pointCounter] = nodeForce[1];
-                    fZTemp[pointCounter] = nodeForce[2];
-
-                    // Add to Node Order Array
-                    pointListTemp[pointCounter] = faceIPointIndexI;
-
-                    // Increment counter
-                    pointCounter += 1;
-                }
-            }
-        }
-
-        // Sort Patch Indices and Insert into Global Arrays
-        SortableList<label> pointListSort(pointListTemp);
-        forAll(pointListSort.indices(), indexI)
-        {
-            fX[patchStart + indexI] = fXTemp[pointListSort.indices()[indexI]];
-            fY[patchStart + indexI] = fYTemp[pointListSort.indices()[indexI]];
-            fZ[patchStart + indexI] = fZTemp[pointListSort.indices()[indexI]];
-        }
-
-        // Increment Patch Start Index
-        patchStart += nPointsPatch;
     }
 }
 

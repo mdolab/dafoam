@@ -66,6 +66,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getNLocalCells()
         int checkMesh()
         double getObjFuncValue(char *)
+        void getFaceCoords(PetscVec, PetscVec)
         void getForces(PetscVec, PetscVec, PetscVec)
         void getThermal(char *, PetscVec)
         void setThermal(char *, PetscVec)
@@ -291,6 +292,9 @@ cdef class pyDASolvers:
     
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
+
+    def getFaceCoords(self, Vec xvVec, Vec xsVec):
+        self._thisptr.getFaceCoords(xvVec.vec, xsVec.vec)
 
     def getForces(self, Vec fX, Vec fY, Vec fZ):
         self._thisptr.getForces(fX.vec, fY.vec, fZ.vec)

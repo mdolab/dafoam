@@ -463,6 +463,13 @@ public:
         return returnVal;
     }
 
+    void getFaceCoords(
+        Vec xvVec,
+        Vec xsVec)
+    {
+        DASolverPtr_->getFaceCoords(xvVec, xsVec);
+    }
+
     /// return the force on the FSI patches
     void getForces(Vec fX, Vec fY, Vec fZ)
     {
