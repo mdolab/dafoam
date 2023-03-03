@@ -111,7 +111,7 @@ class DAFoamBuilder(Builder):
         return DAFoamPrecouplingGroup(solver=self.DASolver, warp_in_solver=self.warp_in_solver)
 
     def get_post_coupling_subsystem(self, scenario_name=None):
-        return DAFoamPostcouplingGroup(solver=self.DASolver)
+        return DAFoamFunctions(solver=self.DASolver)
 
     def get_number_of_nodes(self, groupName=None):
         # Get number of aerodynamic nodes
@@ -220,18 +220,28 @@ class DAFoamGroup(Group):
             )
 
         if self.thermal_coupling:
-            self.add_subsystem(
-                "thermal_solid",
-                DAFoamThermal(solver=self.DASolver, var_name="temperature"),
-                promotes_inputs=["%s_states" % self.discipline],
-                promotes_outputs=["T_conduct"],
-            )
+
+            if self.discipline == "aero":
+                self.add_subsystem(
+                    "get_heat",
+                    DAFoamThermal(solver=self.DASolver, var_name="heatFlux"),
+                    promotes_inputs=["%s_vol_coords" % self.discipline, "%s_states" % self.discipline],
+                    promotes_outputs=["q_convect"],
+                )
+            
+            if self.discipline == "thermal":
+                self.add_subsystem(
+                    "get_temp",
+                    DAFoamThermal(solver=self.DASolver, var_name="temperature"),
+                    promotes_inputs=["%s_states" % self.discipline],
+                    promotes_outputs=["T_conduct"],
+                )
 
             self.add_subsystem(
-                "thermal_fluid",
-                DAFoamThermal(solver=self.DASolver, var_name="heatFlux"),
-                promotes_inputs=["%s_vol_coords" % self.discipline, "%s_states" % self.discipline],
-                promotes_outputs=["q_convect"],
+                "%s_xs" % self.discipline,
+                DAFoamFaceCoords(solver=self.DASolver),
+                promotes_inputs=["*"],
+                promotes_outputs=["*"],
             )
 
         # Setup unmasking
@@ -588,10 +598,11 @@ class DAFoamSolver(ImplicitComponent):
 
         couplingInfo = DASolver.getOption("couplingInfo")
         if couplingInfo["aerothermal"]["active"]:
+            nCells, nFaces = self.DASolver._getSurfaceSize(self.DASolver.designFamilyGroup)
             if self.discipline == "aero":
-                self.add_input("T_convect", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+                self.add_input("T_convect", distributed=True, shape=nFaces, tags=["mphys_coupling"])
             if self.discipline == "thermal":
-                self.add_input("q_conduct", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+                self.add_input("q_conduct", distributed=True, shape=nFaces, tags=["mphys_coupling"])
 
         # now loop over the design variable keys to determine which other variables we need to add
         shapeVarAdded = False
@@ -1391,11 +1402,11 @@ class DAFoamThermal(ExplicitComponent):
 
         if self.var_name == "temperature":
 
-            outputs["T_conduct"] = self.DASolver.getThermal(var_name="temperature")
+            outputs["T_conduct"] = self.DASolver.getThermal(varName="temperature")
 
         elif self.var_name == "heatFlux":
 
-            outputs["q_convect"] = self.DASolver.getThermal(var_name="heatFlux")
+            outputs["q_convect"] = self.DASolver.getThermal(varName="heatFlux")
 
         else:
             raise AnalysisError("%s not supported! Options are: temperature or heatFlux" % self.var_name)
@@ -1426,7 +1437,7 @@ class DAFoamFaceCoords(ExplicitComponent):
         self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
         nPts, self.nFaces = self.DASolver._getSurfaceSize(self.DASolver.designFamilyGroup)
-        self.add_output("x_%s_face" % self.discipline, distributed=True, shape=self.nFaces, tags=["mphys_coupling"])
+        self.add_output("x_%s_surface0" % self.discipline, distributed=True, shape=self.nFaces * 3, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):
 
@@ -1434,11 +1445,11 @@ class DAFoamFaceCoords(ExplicitComponent):
         xvVec = self.DASolver.array2Vec(xv)
 
         xsVec = PETSc.Vec().create(self.comm)
-        self.DASolver.getFaceCoords(xvVec, xsVec)
+        self.DASolver.solver.getFaceCoords(xvVec, xsVec)
 
         xs = self.DASolver.vec2Array(xsVec)
 
-        outputs["x_%s_face" % self.discipline] = xs
+        outputs["x_%s_surface0" % self.discipline] = xs
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 

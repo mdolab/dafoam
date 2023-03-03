@@ -348,7 +348,7 @@ void DASolver::getFaceCoords(
             label nGroups = couplingGroups.size();
             if (nGroups != 1)
             {
-                FatalErrorIn("interpolateFaceNodeValsInternal")
+                FatalErrorIn("getFaceCoords")
                     << "we support only one couplingSurfaceGroups"
                     << abort(FatalError);
             }
@@ -365,9 +365,9 @@ void DASolver::getFaceCoords(
     label nPoints, nFaces;
     this->getPatchInfo(nPoints, nFaces, patchList);
 
-    VecCreate(PETSC_COMM_WORLD, &xsVec);
-    VecSetSizes(xsVec, nFaces, PETSC_DETERMINE);
+    VecSetSizes(xsVec, nFaces * 3, PETSC_DETERMINE);
     VecSetFromOptions(xsVec);
+    VecZeroEntries(xsVec);
 
     PetscScalar* vecArray;
     VecGetArray(xsVec, &vecArray);
@@ -393,232 +393,6 @@ void DASolver::getFaceCoords(
     VecRestoreArray(xsVec, &vecArray);
 }
 
-void DASolver::interpolateFaceNodeVals(
-    word mode,
-    Vec faceVec,
-    Vec nodeVec)
-{
-    /*
-    Description:
-        Interpolate between face values and node values on patches. If mode == faceToNode, we interpolate
-        faceVec to nodeVec. If mode == nodeToFace, we interpolate nodeVec to faceVec.
-        This function is just a wrapper, and the actual computation is in interpolateFaceNodeValsInternal()
-
-    Inputs/Outputs:
-
-        mode: either faceToNode or nodeToFace
-
-        faceVec: the face value vector
-
-        nodeVec: the node value vector
-    */
-
-    PetscScalar* vecArray;
-    PetscScalar val;
-    label localSize;
-
-    // Zero PETSc Arrays
-    VecZeroEntries(faceVec);
-    VecZeroEntries(nodeVec);
-
-    List<scalar> faceList;
-    List<scalar> nodeList;
-
-    VecGetLocalSize(faceVec, &localSize);
-    faceList.setSize(localSize);
-
-    VecGetLocalSize(nodeVec, &localSize);
-    nodeList.setSize(localSize);
-
-    // Get PETSc arrays
-    if (mode == "faceToNode")
-    {
-        // assign faceVec to faceList
-        VecGetArray(faceVec, &vecArray);
-        forAll(faceList, cI)
-        {
-            faceList[cI] = vecArray[cI];
-        }
-        VecRestoreArray(faceVec, &vecArray);
-
-        this->interpolateFaceNodeValsInternal(mode, faceList, nodeList);
-
-        // assign nodeList to nodeVec
-        VecGetArray(nodeVec, &vecArray);
-        forAll(nodeList, cI)
-        {
-            // Get Values
-            assignValueCheckAD(val, nodeList[cI]);
-            // Set Values
-            vecArray[cI] = val;
-        }
-        VecRestoreArray(nodeVec, &vecArray);
-    }
-    else if (mode == "nodeToFace")
-    {
-        // assign nodeVec to nodeList
-        VecGetArray(nodeVec, &vecArray);
-        forAll(nodeList, cI)
-        {
-            nodeList[cI] = vecArray[cI];
-        }
-        VecRestoreArray(nodeVec, &vecArray);
-
-        this->interpolateFaceNodeValsInternal(mode, faceList, nodeList);
-
-        // assign faceList to faceVec
-        VecGetArray(faceVec, &vecArray);
-        forAll(faceList, cI)
-        {
-            // Get Values
-            assignValueCheckAD(val, faceList[cI]);
-            // Set Values
-            vecArray[cI] = val;
-        }
-        VecRestoreArray(faceVec, &vecArray);
-    }
-    else
-    {
-        FatalErrorIn("interpolateFaceNodeVals") << mode
-                                                << " not valid! options: faceToNode or nodeToFace"
-                                                << abort(FatalError);
-    }
-}
-
-void DASolver::interpolateFaceNodeValsInternal(
-    word mode,
-    List<scalar>& faceList,
-    List<scalar>& nodeList)
-{
-    /*
-    Description:
-        This function is the same as interpolateFaceNodeVals except that it does the actual computation
-        and can be differentiated.
-
-        The ordering of faceList is: 
-        for patchI in patchListSorted
-            for faceI in patchListSorted[patchI]
-                faceI ++
-        
-
-        The ordering of faceList is: 
-        for patchI in patchListSorted
-            for pointI in patchListSorted[patchI]
-                pointI ++
-    */
-
-    // first, we read the patchList from couplingInfo
-    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
-
-    wordList patchList;
-
-    forAll(couplingInfo.toc(), idxI)
-    {
-        word scenario = couplingInfo.toc()[idxI];
-        label active = couplingInfo.subDict(scenario).getLabel("active");
-        if (active)
-        {
-            dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
-            label nGroups = couplingGroups.size();
-            if (nGroups != 1)
-            {
-                FatalErrorIn("interpolateFaceNodeValsInternal")
-                    << "we support only one couplingSurfaceGroups"
-                    << abort(FatalError);
-            }
-
-            word groupName = couplingGroups.toc()[0];
-            couplingGroups.readEntry<wordList>(groupName, patchList);
-            break;
-        }
-    }
-    // it is important to sort the patchList and make it unique.
-    sort(patchList);
-
-    // get the total number of points and faces for the patchList
-    label nPoints, nFaces;
-    this->getPatchInfo(nPoints, nFaces, patchList);
-
-    if (mode == "faceToNode")
-    {
-        // interpolate faceList to nodeList
-
-        // assign zeros to nodeList
-        forAll(nodeList, idxI)
-        {
-            nodeList[idxI] = 0.0;
-        }
-
-        // now, we can calculate a HashTable that save the local point index for a given global point index
-        // on the selected patchList
-        HashTable<label> pointIdxGlobal2Local;
-
-        const pointMesh& pMesh = pointMesh::New(meshPtr_());
-        const pointBoundaryMesh& boundaryPointMesh = pMesh.boundary();
-
-        label counterPointI = 0;
-        forAll(patchList, cI)
-        {
-            // get the patch id label
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
-            {
-                forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
-                {
-                    label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
-                    word glbPointIndexKey = Foam::name(faceIPointIndexI);
-                    pointIdxGlobal2Local.set(glbPointIndexKey, counterPointI);
-                    counterPointI++;
-                }
-            }
-        }
-
-        // we do the sweep again. We can divide the face values into node values and them find out the
-        // local point index using pointIdxGlobal2Local for each node on this face.
-        // We then add the values to nodeList based on the local point index
-        label counterFaceI = 0;
-        forAll(patchList, cI)
-        {
-            // get the patch id label
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
-            {
-                // Get number of points
-                const label nPoints = meshPtr_->boundaryMesh()[patchI][faceI].size();
-
-                // Divide force to nodes
-                scalar nodeValDiv = faceList[counterFaceI] / nPoints;
-                counterFaceI++;
-
-                forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
-                {
-                    label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
-                    word glbPointIndexKey = Foam::name(faceIPointIndexI);
-                    // local point index obtained from pointIdxGlobal2Local
-                    label localPointIdx = pointIdxGlobal2Local[glbPointIndexKey];
-                    nodeList[localPointIdx] += nodeValDiv;
-                }
-            }
-        }
-    }
-    else if (mode == "nodeToFace")
-    {
-        // interpolate nodeList to faceList
-
-        // assign zeros to faceList
-        forAll(faceList, idxI)
-        {
-            faceList[idxI] = 0.0;
-        }
-    }
-    else
-    {
-        FatalErrorIn("interpolateFaceNodeVals") << mode
-                                                << " not valid! options: faceToNode or nodeToFace"
-                                                << abort(FatalError);
-    }
-}
-
 void DASolver::setThermal(
     word varName,
     Vec thermalVec)
@@ -639,6 +413,8 @@ void DASolver::setThermal(
 
     label nPoints, nFaces;
     List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     PetscScalar* vecArray;
@@ -771,7 +547,11 @@ void DASolver::getThermalInternal(
 
     label nPoints, nFaces;
     List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
+
+    thermalList.setSize(nFaces);
 
     if (varName == "temperature")
     {
@@ -785,8 +565,6 @@ void DASolver::getThermalInternal(
             meshPtr_(),
             dimensionedScalar("temperatureField", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
             fixedValueFvPatchScalarField::typeName);
-
-        thermalList.setSize(nFaces);
 
         const objectRegistry& db = meshPtr_->thisDb();
         const volScalarField& T = db.lookupObject<volScalarField>("T");
@@ -810,6 +588,9 @@ void DASolver::getThermalInternal(
     }
     else if (varName == "heatFlux")
     {
+
+#ifdef IncompressibleFlow
+
         volScalarField heatFluxField(
             IOobject(
                 "heatFluxField",
@@ -818,10 +599,9 @@ void DASolver::getThermalInternal(
                 IOobject::NO_READ,
                 IOobject::NO_WRITE),
             meshPtr_(),
-            dimensionedScalar("heatFluxField", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
-            fixedValueFvPatchScalarField::typeName);
+            dimensionedScalar("heatFluxField", dimensionSet(1, -2, 1, 1, 0, 0, 0), 0.0),
+            "calculated");
 
-#ifdef IncompressibleFlow
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
         volScalarField alphaEff = daTurb.alphaEff();
         // incompressible flow does not have he, so we do H = Cp * alphaEff * dT/dz
@@ -849,10 +629,8 @@ void DASolver::getThermalInternal(
         {
             // get the patch id label
             label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            if (!heatFluxField.boundaryFieldRef()[patchI].coupled())
-            {
-                heatFluxField.boundaryFieldRef()[patchI] = Cp * alphaEffBf[patchI] * TBf[patchI].snGrad();
-            }
+            heatFluxField.boundaryFieldRef()[patchI] = Cp * alphaEffBf[patchI] * TBf[patchI].snGrad();
+
             forAll(meshPtr_->boundaryMesh()[patchI], faceI)
             {
                 thermalList[localFaceI] = heatFluxField.boundaryField()[patchI][faceI];
@@ -860,9 +638,24 @@ void DASolver::getThermalInternal(
             }
         }
 
+        // for debugging
+        heatFluxField.write();
+
 #endif
 
 #ifdef CompressibleFlow
+
+        volScalarField heatFluxField(
+            IOobject(
+                "heatFluxField",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("heatFluxField", dimensionSet(1, 0, -3, 0, 0, 0, 0), 0.0),
+            "calculated");
+
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
         volScalarField alphaEff = daTurb.alphaEff();
         // compressible flow, H = alphaEff * dHE/dz
@@ -876,20 +669,18 @@ void DASolver::getThermalInternal(
         {
             // get the patch id label
             label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            if (!heatFluxField.boundaryFieldRef()[patchI].coupled())
-            {
-                heatFluxField.boundaryFieldRef()[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
-            }
+            heatFluxField.boundaryFieldRef()[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
+
             forAll(meshPtr_->boundaryMesh()[patchI], faceI)
             {
                 thermalList[localFaceI] = heatFluxField.boundaryField()[patchI][faceI];
                 localFaceI++;
             }
         }
-#endif
 
         // for debugging
         heatFluxField.write();
+#endif
     }
     else
     {

@@ -713,17 +713,6 @@ public:
         List<scalar>& fZ,
         List<word>& patchList);
 
-    // interpolate values between face values and node values
-    void interpolateFaceNodeVals(
-        word mode,
-        Vec faceVec,
-        Vec nodeVec);
-
-    void interpolateFaceNodeValsInternal(
-        word mode,
-        List<scalar>& faceList,
-        List<scalar>& nodeList);
-
     void getFaceCoords(
         Vec xvVec,
         Vec xsVec);

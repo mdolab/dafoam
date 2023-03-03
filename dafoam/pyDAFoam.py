@@ -2505,7 +2505,7 @@ class PYDAFOAM(object):
         thermalVec.setFromOptions()
 
         # Compute forces
-        self.solver.getThermal(varName, thermalVec)
+        self.solver.getThermal(varName.encode(), thermalVec)
 
         # Copy data from PETSc vectors
         thermal = np.zeros(nFaces)
