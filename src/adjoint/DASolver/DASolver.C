@@ -316,6 +316,110 @@ void DASolver::setDAObjFuncList()
     }
 }
 
+void DASolver::calcdXvdXsTPsiAD(
+    Vec xvVec,
+    Vec psi,
+    Vec prod)
+{
+#ifdef CODI_AD_REVERSE
+    this->updateOFMesh(xvVec);
+
+    // first, we read the patchList from couplingInfo
+    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
+
+    wordList patchList;
+
+    forAll(couplingInfo.toc(), idxI)
+    {
+        word scenario = couplingInfo.toc()[idxI];
+        label active = couplingInfo.subDict(scenario).getLabel("active");
+        if (active)
+        {
+            dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
+            label nGroups = couplingGroups.size();
+            if (nGroups != 1)
+            {
+                FatalErrorIn("getFaceCoords")
+                    << "we support only one couplingSurfaceGroups"
+                    << abort(FatalError);
+            }
+
+            word groupName = couplingGroups.toc()[0];
+            couplingGroups.readEntry<wordList>(groupName, patchList);
+            break;
+        }
+    }
+    // it is important to sort the patchList and make it unique.
+    sort(patchList);
+
+    pointField meshPoints = meshPtr_->points();
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.registerInput(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+
+    // get the total number of points and faces for the patchList
+    label nPoints, nFaces;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    scalarList xsList(nFaces * 3);
+
+    label counterFaceI = 0;
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // Divide force to nodes
+            for (label i = 0; i < 3; i++)
+            {
+                xsList[counterFaceI] = meshPtr_->boundary()[patchI].Cf()[faceI][i];
+                counterFaceI++;
+            }
+        }
+    }
+    forAll(xsList, idxI)
+    {
+        this->globalADTape_.registerOutput(xsList[idxI]);
+    }
+
+    this->globalADTape_.setPassive();
+
+    PetscScalar* vecArray;
+    VecGetArray(psi, &vecArray);
+    forAll(xsList, idxI)
+    {
+        xsList.setGradient(psi[idxI]);
+    }
+    VecRestoreArray(psi, &vecArray);
+
+    this->globalADTape_.evaluate();
+
+    VecGetArray(prod, &vecArray);
+    label counterI = 0;
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            vecArray[counterI] = meshPoints[i][j].getGradient();
+            counterI++;
+        }
+    }
+    VecRestoreArray(prod, &vecArray);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
 void DASolver::getFaceCoords(
     Vec xvVec,
     Vec xsVec)

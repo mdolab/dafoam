@@ -717,6 +717,11 @@ public:
         Vec xvVec,
         Vec xsVec);
 
+    void calcdXvdXsTPsiAD(
+        Vec xvVec,
+        Vec psi,
+        Vec prod);
+
     /// compute the temperature on the conjugate heat transfer patches
     void getThermal(word varName, Vec thermalVec);
 
