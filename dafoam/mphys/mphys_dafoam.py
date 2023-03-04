@@ -99,6 +99,7 @@ class DAFoamBuilder(Builder):
             struct_coupling=self.struct_coupling,
             prop_coupling=self.prop_coupling,
             thermal_coupling=self.thermal_coupling,
+            run_directory=self.run_directory,
         )
         return dafoam_group
 
@@ -147,6 +148,7 @@ class DAFoamGroup(Group):
         self.options.declare("use_warper", default=True)
         self.options.declare("prop_coupling", default=None)
         self.options.declare("thermal_coupling", default=False)
+        self.options.declare("run_directory", default="")
 
     def setup(self):
 
@@ -155,6 +157,7 @@ class DAFoamGroup(Group):
         self.use_warper = self.options["use_warper"]
         self.prop_coupling = self.options["prop_coupling"]
         self.thermal_coupling = self.options["thermal_coupling"]
+        self.run_directory = self.options["run_directory"]
         self.discipline = self.DASolver.getOption("discipline")
 
         if self.prop_coupling is not None:
@@ -197,7 +200,7 @@ class DAFoamGroup(Group):
         # add the solver implicit component
         self.add_subsystem(
             "solver",
-            DAFoamSolver(solver=self.DASolver, prop_coupling=self.prop_coupling),
+            DAFoamSolver(solver=self.DASolver, prop_coupling=self.prop_coupling, run_directory=self.run_directory),
             promotes_inputs=["*"],
             promotes_outputs=["%s_states" % self.discipline],
         )
@@ -228,7 +231,7 @@ class DAFoamGroup(Group):
                     promotes_inputs=["%s_vol_coords" % self.discipline, "%s_states" % self.discipline],
                     promotes_outputs=["q_convect"],
                 )
-            
+
             if self.discipline == "thermal":
                 self.add_subsystem(
                     "get_temp",
@@ -542,6 +545,7 @@ class DAFoamSolver(ImplicitComponent):
     def initialize(self):
         self.options.declare("solver", recordable=False)
         self.options.declare("prop_coupling", recordable=False)
+        self.options.declare("run_directory", default="")
 
     def setup(self):
         # NOTE: the setup function will be called everytime a new scenario is created.
@@ -550,6 +554,8 @@ class DAFoamSolver(ImplicitComponent):
 
         self.DASolver = self.options["solver"]
         DASolver = self.DASolver
+
+        self.run_directory = self.options["run_directory"]
 
         self.discipline = self.DASolver.getOption("discipline")
 
@@ -664,49 +670,51 @@ class DAFoamSolver(ImplicitComponent):
     # solve the flow
     def solve_nonlinear(self, inputs, outputs):
 
-        DASolver = self.DASolver
+        with cd(self.run_directory):
 
-        # set the runStatus, this is useful when the actuator term is activated
-        DASolver.setOption("runStatus", "solvePrimal")
+            DASolver = self.DASolver
 
-        # assign the optionDict to the solver
-        self.apply_options(self.optionDict)
+            # set the runStatus, this is useful when the actuator term is activated
+            DASolver.setOption("runStatus", "solvePrimal")
 
-        # now call the dv_funcs to update the design variables
-        for dvName in self.dv_funcs:
-            func = self.dv_funcs[dvName]
-            dvVal = inputs[dvName]
-            func(dvVal, DASolver)
+            # assign the optionDict to the solver
+            self.apply_options(self.optionDict)
 
-        DASolver.updateDAOption()
+            # now call the dv_funcs to update the design variables
+            for dvName in self.dv_funcs:
+                func = self.dv_funcs[dvName]
+                dvVal = inputs[dvName]
+                func(dvVal, DASolver)
 
-        couplingInfo = DASolver.getOption("couplingInfo")
-        if couplingInfo["aerothermal"]["active"]:
-            if self.discipline == "aero":
-                T_convect = inputs["T_convect"]
-                T_convect_vec = DASolver.array2Vec(T_convect)
-                # need to convert this to Petsc
-                DASolver.solver.setThermal("temperature".encode(), T_convect_vec)
-            if self.discipline == "thermal":
-                q_conduct = inputs["q_conduct"]
-                q_conduct_vec = DASolver.array2Vec(q_conduct)
-                # need to convert this to Petsc
-                DASolver.solver.setThermal("heatFlux".encode(), q_conduct_vec)
+            DASolver.updateDAOption()
 
-        # solve the flow with the current design variable
-        DASolver()
+            couplingInfo = DASolver.getOption("couplingInfo")
+            if couplingInfo["aerothermal"]["active"]:
+                if self.discipline == "aero":
+                    T_convect = inputs["T_convect"]
+                    T_convect_vec = DASolver.array2Vec(T_convect)
+                    # need to convert this to Petsc
+                    DASolver.solver.setThermal("temperature".encode(), T_convect_vec)
+                if self.discipline == "thermal":
+                    q_conduct = inputs["q_conduct"]
+                    q_conduct_vec = DASolver.array2Vec(q_conduct)
+                    # need to convert this to Petsc
+                    DASolver.solver.setThermal("heatFlux".encode(), q_conduct_vec)
 
-        # get the objective functions
-        funcs = {}
-        DASolver.evalFunctions(funcs, evalFuncs=self.evalFuncs)
+            # solve the flow with the current design variable
+            DASolver()
 
-        # assign the computed flow states to outputs
-        outputs["%s_states" % self.discipline] = DASolver.getStates()
+            # get the objective functions
+            funcs = {}
+            DASolver.evalFunctions(funcs, evalFuncs=self.evalFuncs)
 
-        # if the primal solution fail, we return analysisError and let the optimizer handle it
-        fail = funcs["fail"]
-        if fail:
-            raise AnalysisError("Primal solution failed!")
+            # assign the computed flow states to outputs
+            outputs["%s_states" % self.discipline] = DASolver.getStates()
+
+            # if the primal solution fail, we return analysisError and let the optimizer handle it
+            fail = funcs["fail"]
+            if fail:
+                raise AnalysisError("Primal solution failed!")
 
     def linearize(self, inputs, outputs, residuals):
         # NOTE: we do not do any computation in this function, just print some information
@@ -761,7 +769,14 @@ class DAFoamSolver(ImplicitComponent):
                     DASolver.solverAD.calcdRdXvTPsiAD(DASolver.xvVec, DASolver.wVec, resBarVec, prodVec)
                     xVBar = DASolver.vec2Array(prodVec)
                     d_inputs["%s_vol_coords" % self.discipline] += xVBar
-
+                elif inputName == "q_conduct":
+                    # calculate [dRdQ]^T*Psi for thermal
+                    # TODO: not implemented yet
+                    pass
+                elif inputName == "T_convect":
+                    # calculate [dRdT]^T*Psi for aero
+                    # TODO: not implemented yet
+                    pass
                 else:  # now we deal with general input output names
                     # compute [dRdAOA]^T*Psi using reverse mode AD
                     if self.dvType[inputName] == "AOA":
@@ -844,40 +859,77 @@ class DAFoamSolver(ImplicitComponent):
         if mode == "fwd":
             raise AnalysisError("fwd mode not implemented!")
 
-        DASolver = self.DASolver
+        with cd(self.run_directory):
 
-        # set the runStatus, this is useful when the actuator term is activated
-        DASolver.setOption("runStatus", "solveAdjoint")
-        DASolver.updateDAOption()
+            DASolver = self.DASolver
 
-        adjEqnSolMethod = DASolver.getOption("adjEqnSolMethod")
+            # set the runStatus, this is useful when the actuator term is activated
+            DASolver.setOption("runStatus", "solveAdjoint")
+            DASolver.updateDAOption()
 
-        # right hand side array from d_outputs
-        dFdWArray = d_outputs["%s_states" % self.discipline]
-        # convert the array to vector
-        dFdW = DASolver.array2Vec(dFdWArray)
+            adjEqnSolMethod = DASolver.getOption("adjEqnSolMethod")
 
-        # run coloring
-        if self.DASolver.getOption("adjUseColoring") and self.runColoring:
-            self.DASolver.runColoring()
-            self.runColoring = False
+            # right hand side array from d_outputs
+            dFdWArray = d_outputs["%s_states" % self.discipline]
+            # convert the array to vector
+            dFdW = DASolver.array2Vec(dFdWArray)
 
-        if adjEqnSolMethod == "Krylov":
-            # solve the adjoint equation using the Krylov method
+            # run coloring
+            if self.DASolver.getOption("adjUseColoring") and self.runColoring:
+                self.DASolver.runColoring()
+                self.runColoring = False
 
-            # if writeMinorIterations=True, we rename the solution in pyDAFoam.py. So we don't recompute the PC
-            if DASolver.getOption("writeMinorIterations"):
-                if DASolver.dRdWTPC is None or DASolver.ksp is None:
-                    DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
-                    DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
-                    DASolver.ksp = PETSc.KSP().create(self.comm)
-                    DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
-            # otherwise, we need to recompute the PC mat based on adjPCLag
-            else:
-                # NOTE: this function will be called multiple times (one time for one obj func) in each opt iteration
-                # so we don't want to print the total info and recompute PC for each obj, we need to use renamed
-                # to check if a recompute is needed. In other words, we only recompute the PC for the first obj func
-                # adjoint solution
+            if adjEqnSolMethod == "Krylov":
+                # solve the adjoint equation using the Krylov method
+
+                # if writeMinorIterations=True, we rename the solution in pyDAFoam.py. So we don't recompute the PC
+                if DASolver.getOption("writeMinorIterations"):
+                    if DASolver.dRdWTPC is None or DASolver.ksp is None:
+                        DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
+                        DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
+                        DASolver.ksp = PETSc.KSP().create(self.comm)
+                        DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
+                # otherwise, we need to recompute the PC mat based on adjPCLag
+                else:
+                    # NOTE: this function will be called multiple times (one time for one obj func) in each opt iteration
+                    # so we don't want to print the total info and recompute PC for each obj, we need to use renamed
+                    # to check if a recompute is needed. In other words, we only recompute the PC for the first obj func
+                    # adjoint solution
+                    solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
+                    if renamed:
+                        # write the deformed FFD for post-processing
+                        # DASolver.writeDeformedFFDs(self.solution_counter)
+                        # print the solution counter
+                        if self.comm.rank == 0:
+                            print("Driver total derivatives for iteration: %d" % self.solution_counter)
+                            print("---------------------------------------------")
+                        self.solution_counter += 1
+
+                    # compute the preconditioner matrix for the adjoint linear equation solution
+                    # and initialize the ksp object. We reinitialize them every adjPCLag
+                    adjPCLag = DASolver.getOption("adjPCLag")
+                    if DASolver.dRdWTPC is None or DASolver.ksp is None or (self.solution_counter - 1) % adjPCLag == 0:
+                        if renamed:
+                            # calculate the PC mat
+                            if DASolver.dRdWTPC is not None:
+                                DASolver.dRdWTPC.destroy()
+                            DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
+                            DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
+                            # reset the KSP
+                            if DASolver.ksp is not None:
+                                DASolver.ksp.destroy()
+                            DASolver.ksp = PETSc.KSP().create(self.comm)
+                            DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
+
+                if self.DASolver.getOption("adjEqnOption")["dynAdjustTol"]:
+                    # if we want to dynamically adjust the tolerance, call this function. This is mostly used
+                    # in the block Gauss-Seidel method in two discipline coupling
+                    # update the KSP tolerances the coupled adjoint before solving
+                    self._updateKSPTolerances(self.psi, dFdW, DASolver.ksp)
+
+                # actually solving the adjoint linear equation using Petsc
+                fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
+            elif adjEqnSolMethod == "fixedPoint":
                 solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
                 if renamed:
                     # write the deformed FFD for post-processing
@@ -887,52 +939,17 @@ class DAFoamSolver(ImplicitComponent):
                         print("Driver total derivatives for iteration: %d" % self.solution_counter)
                         print("---------------------------------------------")
                     self.solution_counter += 1
+                # solve the adjoint equation using the fixed-point adjoint approach
+                fail = DASolver.solverAD.runFPAdj(DASolver.xvVec, DASolver.wVec, dFdW, self.psi)
+            else:
+                raise RuntimeError("adjEqnSolMethod=%s not valid! Options are: Krylov or fixedPoint" % adjEqnSolMethod)
 
-                # compute the preconditioner matrix for the adjoint linear equation solution
-                # and initialize the ksp object. We reinitialize them every adjPCLag
-                adjPCLag = DASolver.getOption("adjPCLag")
-                if DASolver.dRdWTPC is None or DASolver.ksp is None or (self.solution_counter - 1) % adjPCLag == 0:
-                    if renamed:
-                        # calculate the PC mat
-                        if DASolver.dRdWTPC is not None:
-                            DASolver.dRdWTPC.destroy()
-                        DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
-                        DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
-                        # reset the KSP
-                        if DASolver.ksp is not None:
-                            DASolver.ksp.destroy()
-                        DASolver.ksp = PETSc.KSP().create(self.comm)
-                        DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
+            # convert the solution vector to array and assign it to d_residuals
+            d_residuals["%s_states" % self.discipline] = DASolver.vec2Array(self.psi)
 
-            if self.DASolver.getOption("adjEqnOption")["dynAdjustTol"]:
-                # if we want to dynamically adjust the tolerance, call this function. This is mostly used
-                # in the block Gauss-Seidel method in two discipline coupling
-                # update the KSP tolerances the coupled adjoint before solving
-                self._updateKSPTolerances(self.psi, dFdW, DASolver.ksp)
-
-            # actually solving the adjoint linear equation using Petsc
-            fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
-        elif adjEqnSolMethod == "fixedPoint":
-            solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
-            if renamed:
-                # write the deformed FFD for post-processing
-                # DASolver.writeDeformedFFDs(self.solution_counter)
-                # print the solution counter
-                if self.comm.rank == 0:
-                    print("Driver total derivatives for iteration: %d" % self.solution_counter)
-                    print("---------------------------------------------")
-                self.solution_counter += 1
-            # solve the adjoint equation using the fixed-point adjoint approach
-            fail = DASolver.solverAD.runFPAdj(DASolver.xvVec, DASolver.wVec, dFdW, self.psi)
-        else:
-            raise RuntimeError("adjEqnSolMethod=%s not valid! Options are: Krylov or fixedPoint" % adjEqnSolMethod)
-
-        # convert the solution vector to array and assign it to d_residuals
-        d_residuals["%s_states" % self.discipline] = DASolver.vec2Array(self.psi)
-
-        # if the adjoint solution fail, we return analysisError and let the optimizer handle it
-        if fail:
-            raise AnalysisError("Adjoint solution failed!")
+            # if the adjoint solution fail, we return analysisError and let the optimizer handle it
+            if fail:
+                raise AnalysisError("Adjoint solution failed!")
 
     def _updateKSPTolerances(self, psi, dFdW, ksp):
         # Here we need to manually update the KSP tolerances because the default
@@ -1437,7 +1454,9 @@ class DAFoamFaceCoords(ExplicitComponent):
         self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
         nPts, self.nFaces = self.DASolver._getSurfaceSize(self.DASolver.designFamilyGroup)
-        self.add_output("x_%s_surface0" % self.discipline, distributed=True, shape=self.nFaces * 3, tags=["mphys_coupling"])
+        self.add_output(
+            "x_%s_surface0" % self.discipline, distributed=True, shape=self.nFaces * 3, tags=["mphys_coupling"]
+        )
 
     def compute(self, inputs, outputs):
 
@@ -1452,7 +1471,6 @@ class DAFoamFaceCoords(ExplicitComponent):
         outputs["x_%s_surface0" % self.discipline] = xs
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-
         raise AnalysisError("not implemented!")
 
 
