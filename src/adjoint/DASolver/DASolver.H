@@ -429,6 +429,15 @@ public:
         const word objFuncName,
         Vec dFdW);
 
+    
+    void calcdRdThermalTPsiAD(
+        const word varName,
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        scalar* thermal,
+        Vec prodVec);
+
     /// compute dRdXv^T*Psi
     void calcdRdXvTPsiAD(
         const Vec xvVec,
@@ -743,7 +752,7 @@ public:
         Vec prodVec);
 
     /// assign temperature values to the conjugate heat transfer patches
-    void setThermal(word varName, Vec thermalVec);
+    void setThermal(word varName, scalar* thermal);
 
     /// compute the positions, normals, areas, and forces of the desired acoustic patches
     void getAcousticDataInternal(

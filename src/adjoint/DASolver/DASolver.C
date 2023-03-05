@@ -499,7 +499,7 @@ void DASolver::getFaceCoords(
 
 void DASolver::setThermal(
     word varName,
-    Vec thermalVec)
+    scalar* thermal)
 {
     /*
     Description:
@@ -509,7 +509,7 @@ void DASolver::setThermal(
 
     Inputs:
         varName: either temperature or heatFlux
-        thermalVec: the temperature or heatFlux vector on the conjugate heat transfer patch
+        thermal: the temperature or heatFlux var on the conjugate heat transfer patch
     
     Outputs:
         The T field in OpenFOAM
@@ -520,9 +520,6 @@ void DASolver::setThermal(
     daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
-
-    PetscScalar* vecArray;
-    VecGetArray(thermalVec, &vecArray);
 
     if (varName == "temperature")
     {
@@ -540,7 +537,7 @@ void DASolver::setThermal(
             const fvPatch& patch = meshPtr_->boundary()[patchI];
             forAll(patch, faceI)
             {
-                T.boundaryFieldRef()[patchI][faceI] = vecArray[localFaceI];
+                T.boundaryFieldRef()[patchI][faceI] = thermal[localFaceI];
                 localFaceI++;
             }
         }
@@ -578,7 +575,7 @@ void DASolver::setThermal(
             scalarField& grad = const_cast<scalarField&>(patchBC.gradient());
             forAll(grad, faceI)
             {
-                grad[faceI] = vecArray[localFaceI] / coeff;
+                grad[faceI] = thermal[localFaceI] / coeff;
                 localFaceI++;
             }
         }
@@ -588,8 +585,6 @@ void DASolver::setThermal(
         FatalErrorIn("") << varName << " not valid! "
                          << abort(FatalError);
     }
-
-    VecRestoreArray(thermalVec, &vecArray);
 }
 
 void DASolver::getThermal(
@@ -4113,6 +4108,85 @@ void DASolver::calcdFdXvAD(
 #endif
 }
 
+void DASolver::calcdRdThermalTPsiAD(
+    const word varName,
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    scalar* thermal,
+    Vec prodVec)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute the matrix-vector products dRdThermal^T*Psi using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdXv
+    
+    Output:
+        prodVec: the matrix-vector products dRdThermal^T * Psi
+    */
+
+    Info << "Calculating [dRdThermal]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(prodVec);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    for (label i = 0; i < nFaces; i++)
+    {
+        this->globalADTape_.registerInput(thermal[i]);
+    }
+
+    this->setThermal(varName, thermal);
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    PetscScalar* vecArray;
+    VecGetArray(prodVec, &vecArray);
+    for (label i = 0; i < nFaces; i++)
+    {
+        vecArray[i] = thermal[i].getGradient();
+    }
+
+    VecRestoreArray(prodVec, &vecArray);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
 void DASolver::calcdRdXvTPsiAD(
     const Vec xvVec,
     const Vec wVec,
@@ -4777,7 +4851,6 @@ void DASolver::calcdRdActTPsiAD(
 #endif
 }
 
-
 void DASolver::calcdThermaldWTPsiAD(
     const word mode,
     const Vec xvVec,
@@ -4861,7 +4934,6 @@ void DASolver::calcdThermaldWTPsiAD(
     this->globalADTape_.reset();
 #endif
 }
-
 
 void DASolver::calcdThermaldXvTPsiAD(
     const word mode,
@@ -4955,7 +5027,6 @@ void DASolver::calcdThermaldXvTPsiAD(
     this->globalADTape_.reset();
 #endif
 }
-
 
 void DASolver::calcdForcedWAD(
     const Vec xvVec,

@@ -11,12 +11,6 @@ DARegDb/DARegDbTurbulenceModelCompressible.C
 
 DAModel/DATurbulenceModel/DATurbulenceModel.C
 DAModel/DATurbulenceModel/DASpalartAllmaras.C
-DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
-DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
-DAModel/DATurbulenceModel/DAkOmegaFieldInversionOmega.C
-DAModel/DATurbulenceModel/DAkOmegaSST.C
-DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
-DAModel/DATurbulenceModel/DAkEpsilon.C
 
 DAModel/DATurbulenceModel/DADummyTurbulenceModel.C
 
@@ -27,8 +21,7 @@ DAModel/DAModel.C
 
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoRhoSimpleFoam.C
-DAStateInfo/DAStateInfoRhoSimpleCFoam.C
-DAStateInfo/DAStateInfoTurboFoam.C
+
 
 DAIndex/DAIndex.C
 
@@ -36,17 +29,8 @@ DAField/DAField.C
 
 DAObjFunc/DAObjFunc.C
 DAObjFunc/DAObjFuncForce.C
-DAObjFunc/DAObjFuncMoment.C
-DAObjFunc/DAObjFuncPower.C
 DAObjFunc/DAObjFuncWallHeatFlux.C
-DAObjFunc/DAObjFuncCenterOfPressure.C
 DAObjFunc/DAObjFuncTotalPressure.C
-DAObjFunc/DAObjFuncTotalPressureRatio.C
-DAObjFunc/DAObjFuncTotalTemperatureRatio.C
-DAObjFunc/DAObjFuncMassFlowRate.C
-DAObjFunc/DAObjFuncVariableVolSum.C
-DAObjFunc/DAObjFuncMeshQualityKS.C
-DAObjFunc/DAObjFuncFieldInversion.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
@@ -54,8 +38,6 @@ DAFvSource/DAFvSourceActuatorDisk.C
 DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C
 DAResidual/DAResidualRhoSimpleFoam.C
-DAResidual/DAResidualRhoSimpleCFoam.C
-DAResidual/DAResidualTurboFoam.C
 
 DAColoring/DAColoring.C
 
@@ -67,31 +49,11 @@ DAJacCon/DAJacConDummy.C
 DAPartDeriv/DAPartDeriv.C
 DAPartDeriv/DAPartDerivdRdW.C
 DAPartDeriv/DAPartDerivdFdW.C
-DAPartDeriv/DAPartDerivdFdBC.C
-DAPartDeriv/DAPartDerivdRdBC.C
-DAPartDeriv/DAPartDerivdRdFFD.C
-DAPartDeriv/DAPartDerivdFdFFD.C
-DAPartDeriv/DAPartDerivdFdAOA.C
-DAPartDeriv/DAPartDerivdRdAOA.C
-DAPartDeriv/DAPartDerivdRdACTP.C
-DAPartDeriv/DAPartDerivdRdACTD.C
-DAPartDeriv/DAPartDerivdRdACTL.C
-DAPartDeriv/DAPartDerivdFdACTD.C
 
 DALinearEqn/DALinearEqn.C
 
 DASolver/DASolver.C
 DASolver/DARhoSimpleFoam/DARhoSimpleFoam.C
-DASolver/DARhoSimpleCFoam/DARhoSimpleCFoam.C
-DASolver/DATurboFoam/DATurboFoam.C
-
-boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
-boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
-models/dummyTurbulenceModel/makeDummyTurbulenceModelCompressible.C
-models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Compressible.C
-models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionCompressible.C
-models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionCompressible.C
-models/kOmegaFieldInversionOmega/makekOmegaFieldInversionOmegaCompressible.C
 
 
 models/MRFDF/MRFZoneDF.C

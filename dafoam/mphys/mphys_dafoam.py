@@ -692,14 +692,12 @@ class DAFoamSolver(ImplicitComponent):
             if couplingInfo["aerothermal"]["active"]:
                 if self.discipline == "aero":
                     T_convect = inputs["T_convect"]
-                    T_convect_vec = DASolver.array2Vec(T_convect)
                     # need to convert this to Petsc
-                    DASolver.solver.setThermal("temperature".encode(), T_convect_vec)
+                    DASolver.solver.setThermal("temperature".encode(), T_convect)
                 if self.discipline == "thermal":
                     q_conduct = inputs["q_conduct"]
-                    q_conduct_vec = DASolver.array2Vec(q_conduct)
                     # need to convert this to Petsc
-                    DASolver.solver.setThermal("heatFlux".encode(), q_conduct_vec)
+                    DASolver.solver.setThermal("heatFlux".encode(), q_conduct)
 
             # solve the flow with the current design variable
             DASolver()
@@ -771,12 +769,16 @@ class DAFoamSolver(ImplicitComponent):
                     d_inputs["%s_vol_coords" % self.discipline] += xVBar
                 elif inputName == "q_conduct":
                     # calculate [dRdQ]^T*Psi for thermal
-                    # TODO: not implemented yet
-                    pass
+                    thermal = inputs["q_conduct"]
+                    DASolver.solverAD.calcdRdThermalTPsiAD(
+                        "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, resBarVec, thermal, prodVec
+                    )
                 elif inputName == "T_convect":
                     # calculate [dRdT]^T*Psi for aero
-                    # TODO: not implemented yet
-                    pass
+                    thermal = inputs["T_convect"]
+                    DASolver.solverAD.calcdRdThermalTPsiAD(
+                        "temperature".encode(), DASolver.xvVec, DASolver.wVec, resBarVec, thermal, prodVec
+                    )
                 else:  # now we deal with general input output names
                     # compute [dRdAOA]^T*Psi using reverse mode AD
                     if self.dvType[inputName] == "AOA":
@@ -1433,8 +1435,42 @@ class DAFoamThermal(ExplicitComponent):
         if mode == "fwd":
             raise AnalysisError("fwd not implemented!")
 
-        if "temperature_solid" in d_outputs:
-            raise AnalysisError("rev not implemented!")
+        DASolver = self.DASolver
+
+        if "T_conduct" in d_outputs:
+            fBar = d_outputs["T_conduct"]
+            fBarVec = DASolver.array2Vec(fBar)
+
+            if "%s_states" % self.discipline in d_inputs:
+                prodVec = DASolver.wVec.duplicate()
+                prodVec.zeroEntries()
+                DASolver.solverAD.calcdThermaldWTPsiAD(
+                    "temperature".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
+                )
+                wBar = DASolver.vec2Array(prodVec)
+                d_inputs["%s_states" % self.discipline] += wBar
+
+        if "q_convect" in d_outputs:
+            fBar = d_outputs["q_convect"]
+            fBarVec = DASolver.array2Vec(fBar)
+
+            if "%s_states" % self.discipline in d_inputs:
+                prodVec = DASolver.wVec.duplicate()
+                prodVec.zeroEntries()
+                DASolver.solverAD.calcdThermaldWTPsiAD(
+                    "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
+                )
+                wBar = DASolver.vec2Array(prodVec)
+                d_inputs["%s_states" % self.discipline] += wBar
+
+            if "%s_vol_coords" % self.discipline in d_inputs:
+                prodVec = DASolver.xvVec.duplicate()
+                prodVec.zeroEntries()
+                DASolver.solverAD.calcdThermaldWTPsiAD(
+                    "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
+                )
+                xVBar = DASolver.vec2Array(prodVec)
+                d_inputs["%s_vol_coords" % self.discipline] += xVBar
 
 
 class DAFoamFaceCoords(ExplicitComponent):
@@ -1471,7 +1507,22 @@ class DAFoamFaceCoords(ExplicitComponent):
         outputs["x_%s_surface0" % self.discipline] = xs
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-        raise AnalysisError("not implemented!")
+
+        if mode == "fwd":
+            raise AnalysisError("fwd not implemented!")
+
+        DASolver = self.DASolver
+
+        if "x_%s_surface0" % self.discipline in d_outputs:
+            fBar = d_outputs["x_%s_surface0" % self.discipline]
+            fBarVec = DASolver.array2Vec(fBar)
+
+            if "%s_vol_coords" % self.discipline in d_inputs:
+                prodVec = DASolver.xvVec.duplicate()
+                prodVec.zeroEntries()
+                DASolver.solverAD.calcdXvdXsTPsiAD(DASolver.xvVec, fBarVec, prodVec)
+                xVBar = DASolver.vec2Array(prodVec)
+                d_inputs["%s_vol_coords" % self.discipline] += xVBar
 
 
 class DAFoamForces(ExplicitComponent):

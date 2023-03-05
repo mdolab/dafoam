@@ -496,6 +496,14 @@ public:
         DASolverPtr_->getForces(fX, fY, fZ);
     }
 
+    void calcdXvdXsTPsiAD(
+        Vec xvVec,
+        Vec psi,
+        Vec prod)
+    {
+        DASolverPtr_->calcdXvdXsTPsiAD(xvVec, psi, prod);
+    }
+
     /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
     void getThermal(word varName, Vec thermalVec)
     {
@@ -503,9 +511,20 @@ public:
     }
 
     /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches
-    void setThermal(word varName, Vec thermalVec)
+    void setThermal(word varName, double* thermal)
     {
-        DASolverPtr_->setThermal(varName, thermalVec);
+        DASolverPtr_->setThermal(varName, thermal);
+    }
+
+    void calcdRdThermalTPsiAD(
+        const word varName,
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        double* thermal,
+        Vec prodVec)
+    {
+        DASolverPtr_->calcdRdThermalTPsiAD(varName, xvVec, wVec, psi, thermal, prodVec);
     }
 
     /// return the acoustic data values

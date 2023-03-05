@@ -15,6 +15,7 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 import os
 import petsc4py
+import numpy
 
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpicxx"
@@ -61,6 +62,7 @@ ext = [
             # DAFoam include
             os.getenv("PETSC_DIR") + "/include",
             petsc4py.get_include(),
+            numpy.get_include(),
             os.getenv("PETSC_DIR") + "/" + os.getenv("PETSC_ARCH") + "/include",
             "../adjoint/lnInclude",
             "../include",
