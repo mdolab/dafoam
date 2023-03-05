@@ -397,7 +397,7 @@ void DASolver::calcdXvdXsTPsiAD(
     VecGetArray(psi, &vecArray);
     forAll(xsList, idxI)
     {
-        xsList.setGradient(psi[idxI]);
+        xsList[idxI].setGradient(vecArray[idxI]);
     }
     VecRestoreArray(psi, &vecArray);
 
@@ -4776,6 +4776,186 @@ void DASolver::calcdRdActTPsiAD(
     }
 #endif
 }
+
+
+void DASolver::calcdThermaldWTPsiAD(
+    const word mode,
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psiVec,
+    Vec prodVec)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate dThermaldW using reverse-mode AD. Mode can be either temperature or heatFlux
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psiVec: the derivative seed vector
+    
+    Output:
+        prodVec: Either dTemperature/dW or dHeatFlux/dW
+    */
+
+    Info << "Calculating dThermaldW using reverse-mode AD" << endl;
+
+    VecZeroEntries(prodVec);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD();
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+
+    // Allocate arrays
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    scalarList thermalList(nFaces);
+
+    this->getThermalInternal(mode, thermalList);
+    forAll(thermalList, idxI)
+    {
+        this->globalADTape_.registerOutput(thermalList[idxI]);
+    }
+    this->globalADTape_.setPassive();
+
+    PetscScalar* vecArray;
+    VecGetArray(psiVec, &vecArray);
+
+    forAll(thermalList, idxI)
+    {
+        thermalList[idxI].setGradient(vecArray[idxI]);
+    }
+    VecRestoreArray(psiVec, &vecArray);
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(prodVec);
+
+    // NOTE: we need to normalize dForcedW!
+    this->normalizeGradientVec(prodVec);
+
+    VecAssemblyBegin(prodVec);
+    VecAssemblyEnd(prodVec);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
+
+void DASolver::calcdThermaldXvTPsiAD(
+    const word mode,
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psiVec,
+    Vec prodVec)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate [dThermal/dXv]^T * Psi using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psiVec: the derivative seed vector
+    
+    Output:
+        prodVec: [dThermal/dXv]^T * Psi
+    */
+
+    Info << "Calculating dThermaldXvAD using reverse-mode AD" << endl;
+
+    VecZeroEntries(prodVec);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    pointField meshPoints = meshPtr_->points();
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.registerInput(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+
+    // Allocate arrays
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    scalarList thermalList(nFaces);
+
+    this->getThermalInternal(mode, thermalList);
+    forAll(thermalList, idxI)
+    {
+        this->globalADTape_.registerOutput(thermalList[idxI]);
+    }
+    this->globalADTape_.setPassive();
+
+    PetscScalar* vecArray;
+    VecGetArray(psiVec, &vecArray);
+
+    forAll(thermalList, idxI)
+    {
+        thermalList[idxI].setGradient(vecArray[idxI]);
+    }
+    VecRestoreArray(psiVec, &vecArray);
+    this->globalADTape_.evaluate();
+
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
+            PetscScalar val = meshPoints[i][j].getGradient();
+            VecSetValue(prodVec, rowI, val, INSERT_VALUES);
+        }
+    }
+
+    VecAssemblyBegin(prodVec);
+    VecAssemblyEnd(prodVec);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
 
 void DASolver::calcdForcedWAD(
     const Vec xvVec,

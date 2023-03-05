@@ -728,6 +728,20 @@ public:
     /// compute the temperature on the conjugate heat transfer patches: AD compatible
     void getThermalInternal(word varName, scalarList& thermalList);
 
+    void calcdThermaldWTPsiAD(
+        const word mode,
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psiVec,
+        Vec prodVec);
+    
+    void calcdThermaldXvTPsiAD(
+        const word mode,
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psiVec,
+        Vec prodVec);
+
     /// assign temperature values to the conjugate heat transfer patches
     void setThermal(word varName, Vec thermalVec);
 

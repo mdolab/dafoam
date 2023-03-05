@@ -152,6 +152,26 @@ public:
         DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
     }
 
+    void calcdThermaldWTPsiAD(
+        const word mode,
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psiVec,
+        Vec prodVec)
+    {
+        DASolverPtr_->calcdThermaldWTPsiAD(mode, xvVec, wVec, psiVec, prodVec);
+    }
+
+    void calcdThermaldXvTPsiAD(
+        const word mode,
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psiVec,
+        Vec prodVec)
+    {
+        DASolverPtr_->calcdThermaldXvTPsiAD(mode, xvVec, wVec, psiVec, prodVec);
+    }
+
     /// compute dForcedW
     void calcdForcedWAD(
         const Vec xvVec,
