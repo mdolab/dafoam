@@ -129,6 +129,18 @@ public:
         DASolverPtr_->calcdForcedXvAD(xvVec, wVec, fBarVec, dForcedW);
     }
 
+    /// compute dAcoudXv
+    void calcdAcousticsdXvAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dAcoudW,
+        word varName,
+        word groupName)
+    {
+        DASolverPtr_->calcdAcousticsdXvAD(xvVec, wVec, fBarVec, dAcoudW, varName, groupName);
+    }
+
     /// compute dRdAct^T*Psi
     void calcdRdActTPsiAD(
         const Vec xvVec,
@@ -148,6 +160,18 @@ public:
         Vec dForcedW)
     {
         DASolverPtr_->calcdForcedWAD(xvVec, wVec, fBarVec, dForcedW);
+    }
+
+    /// compute dAcoudW
+    void calcdAcousticsdWAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec fBarVec,
+        Vec dAcoudW,
+        word varName,
+        word groupName)
+    {
+        DASolverPtr_->calcdAcousticsdWAD(xvVec, wVec, fBarVec, dAcoudW, varName, groupName);
     }
 
     /// compute dRdAOA^T*Psi
@@ -439,10 +463,16 @@ public:
         return returnVal;
     }
 
-    /// return the value of objective
+    /// return the force values
     void getForces(Vec fX, Vec fY, Vec fZ)
     {
         DASolverPtr_->getForces(fX, fY, fZ);
+    }
+
+    /// return the acoustic data values
+    void getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, word groupName)
+    {
+        DASolverPtr_->getAcousticData(x, y, z, nX, nY, nZ, a, fX, fY, fZ, groupName);
     }
 
     /// call DASolver::printAllOptions

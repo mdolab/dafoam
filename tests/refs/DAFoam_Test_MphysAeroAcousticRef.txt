@@ -1,0 +1,25 @@
+Dictionary Key: Thrust
+Dictionary Key: twist
+@value   0.6191340190662591 0.0001 1e-06
+@value  -0.0231446854445318 0.0001 1e-06
+@value  -0.5042413354864903 0.0001 1e-06
+Dictionary Key: aAcou
+Dictionary Key: twist
+@value -5.706590640363471e-07 0.0001 1e-06
+@value -1.311561685511195e-06 0.0001 1e-06
+@value 1.312642289329605e-06 0.0001 1e-06
+Dictionary Key: fAcou
+Dictionary Key: twist
+@value 0.001780985862321361 0.0001 1e-06
+@value  -0.0166726665920309 0.0001 1e-06
+@value  -0.0542333833919619 0.0001 1e-06
+Dictionary Key: nAcou
+Dictionary Key: twist
+@value -0.005227117435742278 0.0001 1e-06
+@value -0.02079256913251107 0.0001 1e-06
+@value -0.03812553778120673 0.0001 1e-06
+Dictionary Key: xAcou
+Dictionary Key: twist
+@value -1.351171181045582e-05 0.0001 1e-06
+@value -5.708615824806241e-05 0.0001 1e-06
+@value -0.0004600895820412999 0.0001 1e-06
