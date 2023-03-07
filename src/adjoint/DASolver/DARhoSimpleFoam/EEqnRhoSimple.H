@@ -1,8 +1,6 @@
 {
-    if (hasFvSource_)
-    {
-        fvSourceEnergy = fvSource & U;
-    }
+
+    fvSourceEnergy = fvSource & U;
 
     volScalarField& he = thermo.he();
 

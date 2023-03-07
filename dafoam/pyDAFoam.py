@@ -644,7 +644,8 @@ class DAOPTION(object):
         self.runLowOrderPrimal4PC = {"active": False}
 
         ## Parameters for wing-propeller coupling optimizations
-        self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0]}
+        self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.02, "rotDir": "right"}
+
 
 
 class PYDAFOAM(object):
