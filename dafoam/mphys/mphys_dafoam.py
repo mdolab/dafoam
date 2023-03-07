@@ -112,7 +112,7 @@ class DAFoamBuilder(Builder):
         return DAFoamPrecouplingGroup(solver=self.DASolver, warp_in_solver=self.warp_in_solver)
 
     def get_post_coupling_subsystem(self, scenario_name=None):
-        return DAFoamFunctions(solver=self.DASolver)
+        return DAFoamPostcouplingGroup(solver=self.DASolver)
 
     def get_number_of_nodes(self, groupName=None):
         # Get number of aerodynamic nodes
@@ -193,8 +193,8 @@ class DAFoamGroup(Group):
                 self.add_subsystem(
                     "source",
                     DAFoamFvSource(solver=self.DASolver),
-                    promotes_inputs=["prop_center", "radius_profile", "force_profile"],
-                    promotes_outputs=["fv_source"],
+                    promotes_inputs=["*"],
+                    promotes_outputs=["*"],
                 )
 
         # add the solver implicit component
@@ -528,6 +528,40 @@ class DAFoamPostcouplingGroup(Group):
             for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
                 self.add_subsystem(
                     groupName, DAFoamAcoustics(solver=self.DASolver, groupName=groupName), promotes_inputs=["*"]
+                )
+
+    def mphys_add_funcs(self):
+        self.functionals.mphys_add_funcs()
+
+    def add_dv_func(self, dvName, dv_func):
+        self.functionals.add_dv_func(dvName, dv_func)
+
+class DAFoamPostcouplingGroup(Group):
+    """
+    Post-coupling group that configures any components that happen in the post-processor.
+    """
+
+    def initialize(self):
+        self.options.declare("solver", default=None, recordable=False)
+
+    def setup(self):
+        self.DASolver = self.options["solver"]
+
+        # Add Functionals
+        self.add_subsystem(
+            "functionals",
+            DAFoamFunctions(solver=self.DASolver),
+            promotes=["*"]
+        )
+
+        # Add Acoustics Data
+        couplingInfo = self.DASolver.getOption("couplingInfo")
+        if couplingInfo["aeroacoustic"]["active"]:
+            for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
+                self.add_subsystem(
+                    groupName,
+                    DAFoamAcoustics(solver=self.DASolver, groupName=groupName),
+                    promotes_inputs=["*"]
                 )
 
     def mphys_add_funcs(self):
@@ -1649,11 +1683,72 @@ class DAFoamAcoustics(ExplicitComponent):
                     d_inputs["%s_states" % self.discipline] += wBar
 
 
+class DAFoamAcoustics(ExplicitComponent):
+    """
+    OpenMDAO component that wraps acoustic coupling
+
+    """
+
+    def initialize(self):
+        self.options.declare("solver", recordable=False)
+        self.options.declare("groupName", recordable=False)
+
+    def setup(self):
+
+        self.DASolver = self.options["solver"]
+        self.groupName = self.options["groupName"]
+
+        self.add_input("dafoam_vol_coords", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input("dafoam_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+
+        _, nCls = self.DASolver._getSurfaceSize(self.groupName)
+        self.add_output("xAcou", distributed=True, shape=nCls*3)
+        self.add_output("nAcou", distributed=True, shape=nCls*3)
+        self.add_output("aAcou", distributed=True, shape=nCls)
+        self.add_output("fAcou", distributed=True, shape=nCls*3)
+
+    def compute(self, inputs, outputs):
+
+        self.DASolver.setStates(inputs["dafoam_states"])
+
+        positions, normals, areas, forces = self.DASolver.getAcousticData(self.groupName)
+
+        outputs["xAcou"] = positions.flatten(order="C")
+        outputs["nAcou"] = normals.flatten(order="C")
+        outputs["aAcou"] = areas.flatten(order="C")
+        outputs["fAcou"] = forces.flatten(order="C")
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+
+        DASolver = self.DASolver
+
+        if mode == "fwd":
+            raise AnalysisError("fwd not implemented!")
+
+        for varName in ["xAcou", "nAcou", "aAcou", "fAcou"]:
+            if varName in d_outputs:
+                fBar = d_outputs[varName]
+                fBarVec = DASolver.array2Vec(fBar)
+                if "dafoam_vol_coords" in d_inputs:
+                    dAcoudXv = DASolver.xvVec.duplicate()
+                    dAcoudXv.zeroEntries()
+                    DASolver.solverAD.calcdAcousticsdXvAD(DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudXv, varName.encode(), self.groupName.encode())
+                    xVBar = DASolver.vec2Array(dAcoudXv)
+                    d_inputs["dafoam_vol_coords"] += xVBar
+                if "dafoam_states" in d_inputs:
+                    dAcoudW = DASolver.wVec.duplicate()
+                    dAcoudW.zeroEntries()
+                    DASolver.solverAD.calcdAcousticsdWAD(DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudW, varName.encode(), self.groupName.encode())
+                    wBar = DASolver.vec2Array(dAcoudW)
+                    d_inputs["dafoam_states"] += wBar
+
+
 class DAFoamPropForce(ExplicitComponent):
     """
     DAFoam component that computes the propeller force and radius profile based on the CFD surface states
     """
 
+    """
     def initialize(self):
         self.options.declare("solver", recordable=False)
 
@@ -1738,6 +1833,7 @@ class DAFoamPropForce(ExplicitComponent):
                 prodVec.zeroEntries()
                 pBar = DASolver.vec2Array(prodVec)
                 d_inputs["%s_vol_coords" % self.discipline] += pBar
+    """
 
 
 class DAFoamFvSource(ExplicitComponent):
@@ -1752,37 +1848,48 @@ class DAFoamFvSource(ExplicitComponent):
 
         self.DASolver = self.options["solver"]
 
-        self.nForceSections = self.DASolver.getOption("wingProp")["nForceSections"]
-
-        self.add_input("prop_center", distributed=False, shape=3, tags=["mphys_coupling"])
-        self.add_input("radius_profile", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
-        self.add_input("force_profile", distributed=False, shape=3 * self.nForceSections, tags=["mphys_coupling"])
+        self.add_input("axial_force", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input("tangential_force", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input("radial_distance", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input("integral_force", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input("prop_center", distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
 
         self.nLocalCells = self.DASolver.solver.getNLocalCells()
-        self.add_output("fv_source", distributed=True, shape=self.nLocalCells * 3, tags=["mphys_coupling"])
+
+        self.add_output("fvSource", distributed=True, shape=self.nLocalCells * 3, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):
 
         DASolver = self.DASolver
 
-        c = inputs["prop_center"]
-        r = inputs["radius_profile"]
-        f = inputs["force_profile"]
+        axial_force = inputs["axial_force"]
+        tangential_force = inputs["tangential_force"]
+        radial_distance = inputs["radial_distance"]
+        integral_force = inputs["integral_force"]
+        prop_center = inputs["prop_center"]
 
-        fVec = DASolver.array2VecSeq(f)
-        cVec = DASolver.array2VecSeq(c)
-        rVec = DASolver.array2VecSeq(r)
+        axial_force_vec = DASolver.array2VecSeq(axial_force)
+        tangential_force_vec = DASolver.array2VecSeq(tangential_force)
+        radial_distance_vec = DASolver.array2VecSeq(radial_distance)
+        integral_force_vec = DASolver.array2VecSeq(integral_force)
+        prop_center_vec = DASolver.array2VecSeq(prop_center)
 
         fvSourceVec = PETSc.Vec().create(self.comm)
         fvSourceVec.setSizes((self.nLocalCells * 3, PETSc.DECIDE), bsize=1)
         fvSourceVec.setFromOptions()
         fvSourceVec.zeroEntries()
 
-        DASolver.solver.calcFvSource(cVec, rVec, fVec, fvSourceVec)
+        DASolver.solver.calcFvSource(
+            axial_force_vec, tangential_force_vec, radial_distance_vec, integral_force_vec, prop_center_vec, fvSourceVec
+        )
 
-        outputs["fv_source"] = DASolver.vec2Array(fvSourceVec)
+        outputs["fvSource"] = DASolver.vec2Array(fvSourceVec)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+
+        raise AnalysisError("AD not implemented!")
+
+        """
 
         DASolver = self.DASolver
 
@@ -1825,6 +1932,7 @@ class DAFoamFvSource(ExplicitComponent):
                 )
                 fBar = DASolver.vec2ArraySeq(prodVec)
                 d_inputs["force_profile"] += fBar
+        """
 
 
 class DAFoamPropNodes(ExplicitComponent):
@@ -2011,6 +2119,7 @@ class OptFuncs(object):
         for modelDV in modelDesignVars:
             dvFound = False
             for dv in DADesignVars:
+                # NOTE. modelDV has format like dvs.shape, so we have to use "in" to check
                 if dv in modelDV:
                     dvFound = True
             if dvFound is not True:

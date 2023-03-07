@@ -17,39 +17,39 @@ from pygeo import geo_utils
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/NACA0012")
+os.chdir("./input/CurvedCubeSnappyHexMesh")
+
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
-    os.system("cp -r 0.incompressible 0")
-    os.system("cp -r system.incompressible system")
-    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
+    os.system("cp -r 0.compressible 0")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
 
 # aero setup
-U0 = 10.0
-p0 = 0.0
-A0 = 0.1
-aoa0 = 3.0
-LRef = 1.0
+U0 = 50.0
+p0 = 101325.0
+nuTilda0 = 4.5e-5
+T0 = 300.0
+rho0 = p0 / T0 / 287.0
+A0 = 1.0
 
 daOptions = {
-    "designSurfaces": ["wing"],
-    "solverName": "DASimpleFoam",
-    "adjEqnSolMethod": "fixedPoint",
+    "designSurfaces": ["wallsbump"],
+    "solverName": "DARhoSimpleFoam",
     "primalMinResTol": 1.0e-10,
-    "primalMinResTolDiff": 1e4,
     "primalBC": {
-        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
-        "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
-        "useWallFunction": True,
+        "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
+        "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
+        "T0": {"variable": "T", "patches": ["inlet"], "value": [T0]},
+        "useWallFunction": False,
     },
     "objFunc": {
         "CD": {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wing"],
-                "directionMode": "parallelToFlow",
-                "alphaName": "aoa",
+                "patches": ["wallsbump"],
+                "directionMode": "fixedDirection",
+                "direction": [1.0, 0.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
@@ -58,35 +58,45 @@ daOptions = {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wing"],
-                "directionMode": "normalToFlow",
-                "alphaName": "aoa",
+                "patches": ["wallsbump"],
+                "directionMode": "fixedDirection",
+                "direction": [0.0, 1.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
         },
     },
     "adjEqnOption": {
-        "fpMaxIters": 1000,
-        "fpRelTol": 1e-6,
+        "gmresRelTol": 1.0e-8,
+        "pcFillLevel": 1,
+        "jacMatReOrdering": "rcm",
     },
+    "normalizeStates": {
+        "U": U0,
+        "p": p0,
+        "T": T0,
+        "nuTilda": 1e-3,
+        "phi": 1.0,
+    },
+    "adjPartDerivFDStep": {"State": 1e-6},
     "designVar": {
         "shape": {"designVarType": "FFD"},
-        "aoa": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+        "fvSource": {"designVarType": "Field", "fieldName": "fvSource", "fieldType": "vector"},
     },
+    "wingProp": {"nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.2, "rotDir": "right"},
 }
 
 meshOptions = {
     "gridFile": os.getcwd(),
     "fileType": "OpenFOAM",
     # point and normal for the symmetry plane
-    "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], [[0.0, 0.0, 0.1], [0.0, 0.0, 1.0]]],
+    "symmetryPlanes": [],
 }
 
 
 class Top(Multipoint):
     def setup(self):
-        dafoam_builder = DAFoamBuilder(daOptions, meshOptions, scenario="aerodynamic")
+        dafoam_builder = DAFoamBuilder(daOptions, meshOptions, scenario="aerodynamic", prop_coupling="Wing")
         dafoam_builder.initialize(self.comm)
 
         ################################################################################
@@ -100,7 +110,7 @@ class Top(Multipoint):
         self.add_subsystem("mesh", dafoam_builder.get_mesh_coordinate_subsystem())
 
         # add the geometry component, we dont need a builder because we do it here.
-        self.add_subsystem("geometry", OM_DVGEOCOMP(file="FFD/wingFFD.xyz", type="ffd"))
+        self.add_subsystem("geometry", OM_DVGEOCOMP(file="FFD/bumpFFD.xyz", type="ffd"))
 
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
@@ -119,17 +129,15 @@ class Top(Multipoint):
 
         # geometry setup
 
-        # Create reference axis
-        def aoa(val, DASolver):
-            aoa = val[0] * np.pi / 180.0
-            U = [float(U0 * np.cos(aoa)), float(U0 * np.sin(aoa)), 0]
-            # we need to update the U value only
-            DASolver.setOption("primalBC", {"U0": {"value": U}})
-            DASolver.updateDAOption()
+        def fvSource(val, DASolver):
+            for idxI, v in enumerate(val):
+                cellI = idxI // 3
+                compI = idxI % 3
+                DASolver.setFieldValue4LocalCellI(b"fvSource", v, cellI, compI)
 
-        # pass this aoa function to the cruise group
-        self.cruise.coupling.solver.add_dv_func("aoa", aoa)
-        self.cruise.aero_post.add_dv_func("aoa", aoa)
+        self.cruise.coupling.solver.add_dv_func("fvSource", fvSource)
+        # no need to give fvSource to aero_post because we don't need its derivs
+        # self.cruise.aero_post.add_dv_func("fvSource", fvSource)
 
         # Select all points
         pts = self.geometry.DVGeo.getLocalIndex(0)
@@ -139,21 +147,36 @@ class Top(Multipoint):
 
         # add dvs to ivc and connect
         self.dvs.add_output("shape", val=np.array([0] * nShapes))
-        self.dvs.add_output("aoa", val=np.array([aoa0]))
+
+        axial_force = np.array([0.1, 0.2, 0.3, 0.4, 0.48, 0.54, 0.60, 0.62, 0.63, 0.4])
+        tangential_force = np.array([0.1, 0.2, 0.3, 0.4, 0.48, 0.54, 0.60, 0.62, 0.63, 0.4])
+        radial_distance = np.array([0.1, 0.135, 0.205, 0.275, 0.345, 0.415, 0.485, 0.555, 0.625, 0.695, 0.765, 0.8])
+        prop_center = np.array([0.075, 0.025, 0.025])
+        integral_force = np.array([2, 1])
+
+        self.dvs.add_output("axial_force", val=axial_force)
+        self.dvs.add_output("tangential_force", val=tangential_force)
+        self.dvs.add_output("radial_distance", val=radial_distance)
+        self.dvs.add_output("prop_center", val=prop_center)
+        self.dvs.add_output("integral_force", val=integral_force)
 
         self.connect("shape", "geometry.shape")
-        self.connect("aoa", "cruise.aoa")
+        self.connect("axial_force", "cruise.axial_force")
+        self.connect("tangential_force", "cruise.tangential_force")
+        self.connect("radial_distance", "cruise.radial_distance")
+        self.connect("prop_center", "cruise.prop_center")
+        self.connect("integral_force", "cruise.integral_force")
 
         # define the design variables
         self.add_design_var("shape", lower=-1.0, upper=1.0, scaler=1.0)
-        self.add_design_var("aoa", lower=-10.0, upper=10.0, scaler=1.0)
+        # self.add_design_var("prop_center", lower=-10.0, upper=10.0, scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
-        self.add_constraint("cruise.aero_post.CL", equals=0.5, scaler=1.0)
+        self.add_constraint("cruise.aero_post.CL", equals=0.3, scaler=1.0)
 
 
-prob = om.Problem()
+prob = om.Problem(reports=None)
 prob.model = Top()
 
 prob.driver = om.pyOptSparseDriver()
@@ -185,14 +208,11 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 optFuncs = OptFuncs(daOptions, prob)
 
 prob.run_model()
-totals = prob.compute_totals()
 
 if gcomm.rank == 0:
     derivDict = {}
-    derivDict["cruise.aero_post.CD"] = {}
-    derivDict["cruise.aero_post.CD"]["shape"] = totals[("cruise.aero_post.functionals.CD", "dvs.shape")][0]
-    derivDict["cruise.aero_post.CD"]["aoa"] = totals[("cruise.aero_post.functionals.CD", "dvs.aoa")][0]
-    derivDict["cruise.aero_post.CL"] = {}
-    derivDict["cruise.aero_post.CL"]["shape"] = totals[("cruise.aero_post.functionals.CL", "dvs.shape")][0]
-    derivDict["cruise.aero_post.CL"]["aoa"] = totals[("cruise.aero_post.functionals.CL", "dvs.aoa")][0]
+    CD = prob.get_val("cruise.aero_post.CD")[0]
+    CL = prob.get_val("cruise.aero_post.CL")[0]
+    derivDict["CD"] = CD
+    derivDict["CL"] = CL
     reg_write_dict(derivDict, 1e-4, 1e-6)

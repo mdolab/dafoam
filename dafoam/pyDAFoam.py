@@ -648,7 +648,8 @@ class DAOPTION(object):
         self.runLowOrderPrimal4PC = {"active": False}
 
         ## Parameters for wing-propeller coupling optimizations
-        self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0]}
+        self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.02, "rotDir": "right"}
+
 
 
 class PYDAFOAM(object):
@@ -2482,7 +2483,7 @@ class PYDAFOAM(object):
             Group identifier to get only forces cooresponding to the
             desired group. The group must be a family or a user-supplied
             group of families. The default is None which corresponds to
-            all wall-type surfaces.
+            design surfaces.
 
         Returns
         -------

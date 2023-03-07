@@ -1,0 +1,4 @@
+Dictionary Key: CD
+@value    0.090745065500654 0.0001 1e-06
+Dictionary Key: CL
+@value     -80.627583855883 0.0001 1e-06
