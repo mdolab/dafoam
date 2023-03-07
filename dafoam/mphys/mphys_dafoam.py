@@ -1693,8 +1693,10 @@ class DAFoamAcoustics(ExplicitComponent):
         self.DASolver = self.options["solver"]
         self.groupName = self.options["groupName"]
 
-        self.add_input("dafoam_vol_coords", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-        self.add_input("dafoam_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.discipline = self.DASolver.getOption("discipline")
+
+        self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
         _, nCls = self.DASolver._getSurfaceSize(self.groupName)
         self.add_output("xAcou", distributed=True, shape=nCls * 3)
@@ -1704,7 +1706,7 @@ class DAFoamAcoustics(ExplicitComponent):
 
     def compute(self, inputs, outputs):
 
-        self.DASolver.setStates(inputs["dafoam_states"])
+        self.DASolver.setStates(inputs["%s_states" % self.discipline])
 
         positions, normals, areas, forces = self.DASolver.getAcousticData(self.groupName)
 
@@ -1724,22 +1726,22 @@ class DAFoamAcoustics(ExplicitComponent):
             if varName in d_outputs:
                 fBar = d_outputs[varName]
                 fBarVec = DASolver.array2Vec(fBar)
-                if "dafoam_vol_coords" in d_inputs:
+                if "%s_vol_coords" % self.discipline in d_inputs:
                     dAcoudXv = DASolver.xvVec.duplicate()
                     dAcoudXv.zeroEntries()
                     DASolver.solverAD.calcdAcousticsdXvAD(
                         DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudXv, varName.encode(), self.groupName.encode()
                     )
                     xVBar = DASolver.vec2Array(dAcoudXv)
-                    d_inputs["dafoam_vol_coords"] += xVBar
-                if "dafoam_states" in d_inputs:
+                    d_inputs["%s_vol_coords" % self.discipline] += xVBar
+                if "%s_states" % self.discipline in d_inputs:
                     dAcoudW = DASolver.wVec.duplicate()
                     dAcoudW.zeroEntries()
                     DASolver.solverAD.calcdAcousticsdWAD(
                         DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudW, varName.encode(), self.groupName.encode()
                     )
                     wBar = DASolver.vec2Array(dAcoudW)
-                    d_inputs["dafoam_states"] += wBar
+                    d_inputs["%s_states" % self.discipline] += wBar
 
 
 class DAFoamPropForce(ExplicitComponent):
