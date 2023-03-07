@@ -138,6 +138,7 @@ case $argm in
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
       #runTests MphysAeroAcoustic
       runTests MphysAeroStructOpt
+      runTests MphysAeroThermal
     fi
     echo " "
     echo "************************************************************"
@@ -222,7 +223,7 @@ case $argm in
     echo "Running Mphys incompressible tests...."
     sleep 3
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
-      #runTests MphysAero
+      runTests MphysAero
       runTestsSerial MphysAeroFixedPoint
       runTests MphysAeroOpt
       runTests MphysAeroField
@@ -239,6 +240,7 @@ case $argm in
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
       #runTests MphysAeroAcoustic
       runTests MphysAeroStructOpt
+      runTests MphysAeroThermal
     fi
     echo " "
     echo "************************************************************"
