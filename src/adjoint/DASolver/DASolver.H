@@ -430,7 +430,6 @@ public:
         const word objFuncName,
         Vec dFdW);
 
-    
     void calcdRdThermalTPsiAD(
         const word varName,
         const Vec xvVec,
@@ -744,7 +743,7 @@ public:
         const Vec wVec,
         const Vec psiVec,
         Vec prodVec);
-    
+
     void calcdThermaldXvTPsiAD(
         const word mode,
         const Vec xvVec,

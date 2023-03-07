@@ -651,7 +651,6 @@ class DAOPTION(object):
         self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.02, "rotDir": "right"}
 
 
-
 class PYDAFOAM(object):
 
     """
