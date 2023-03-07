@@ -537,35 +537,6 @@ class DAFoamPostcouplingGroup(Group):
         self.functionals.add_dv_func(dvName, dv_func)
 
 
-class DAFoamPostcouplingGroup(Group):
-    """
-    Post-coupling group that configures any components that happen in the post-processor.
-    """
-
-    def initialize(self):
-        self.options.declare("solver", default=None, recordable=False)
-
-    def setup(self):
-        self.DASolver = self.options["solver"]
-
-        # Add Functionals
-        self.add_subsystem("functionals", DAFoamFunctions(solver=self.DASolver), promotes=["*"])
-
-        # Add Acoustics Data
-        couplingInfo = self.DASolver.getOption("couplingInfo")
-        if couplingInfo["aeroacoustic"]["active"]:
-            for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
-                self.add_subsystem(
-                    groupName, DAFoamAcoustics(solver=self.DASolver, groupName=groupName), promotes_inputs=["*"]
-                )
-
-    def mphys_add_funcs(self):
-        self.functionals.mphys_add_funcs()
-
-    def add_dv_func(self, dvName, dv_func):
-        self.functionals.add_dv_func(dvName, dv_func)
-
-
 class DAFoamSolver(ImplicitComponent):
     """
     OpenMDAO component that wraps the DAFoam flow and adjoint solvers
@@ -1610,72 +1581,6 @@ class DAFoamForces(ExplicitComponent):
                 DASolver.solverAD.calcdForcedWAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedW)
                 wBar = DASolver.vec2Array(dForcedW)
                 d_inputs["%s_states" % self.discipline] += wBar
-
-
-class DAFoamAcoustics(ExplicitComponent):
-    """
-    OpenMDAO component that wraps acoustic coupling
-
-    """
-
-    def initialize(self):
-        self.options.declare("solver", recordable=False)
-        self.options.declare("groupName", recordable=False)
-
-    def setup(self):
-
-        self.DASolver = self.options["solver"]
-        self.groupName = self.options["groupName"]
-
-        self.discipline = self.DASolver.getOption("discipline")
-
-        self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-        self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-
-        _, nCls = self.DASolver._getSurfaceSize(self.groupName)
-        self.add_output("xAcou", distributed=True, shape=nCls * 3)
-        self.add_output("nAcou", distributed=True, shape=nCls * 3)
-        self.add_output("aAcou", distributed=True, shape=nCls)
-        self.add_output("fAcou", distributed=True, shape=nCls * 3)
-
-    def compute(self, inputs, outputs):
-
-        self.DASolver.setStates(inputs["%s_states" % self.discipline])
-
-        positions, normals, areas, forces = self.DASolver.getAcousticData(self.groupName)
-
-        outputs["xAcou"] = positions.flatten(order="C")
-        outputs["nAcou"] = normals.flatten(order="C")
-        outputs["aAcou"] = areas.flatten(order="C")
-        outputs["fAcou"] = forces.flatten(order="C")
-
-    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-
-        DASolver = self.DASolver
-
-        if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
-
-        for varName in ["xAcou", "nAcou", "aAcou", "fAcou"]:
-            if varName in d_outputs:
-                fBar = d_outputs[varName]
-                fBarVec = DASolver.array2Vec(fBar)
-                if "%s_vol_coords" % self.discipline in d_inputs:
-                    dAcoudXv = DASolver.xvVec.duplicate()
-                    dAcoudXv.zeroEntries()
-                    DASolver.solverAD.calcdAcousticsdXvAD(
-                        DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudXv, varName.encode(), self.groupName.encode()
-                    )
-                    xVBar = DASolver.vec2Array(dAcoudXv)
-                    d_inputs["%s_vol_coords" % self.discipline] += xVBar
-                if "%s_states" % self.discipline in d_inputs:
-                    dAcoudW = DASolver.wVec.duplicate()
-                    dAcoudW.zeroEntries()
-                    DASolver.solverAD.calcdAcousticsdWAD(
-                        DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudW, varName.encode(), self.groupName.encode()
-                    )
-                    wBar = DASolver.vec2Array(dAcoudW)
-                    d_inputs["%s_states" % self.discipline] += wBar
 
 
 class DAFoamAcoustics(ExplicitComponent):
