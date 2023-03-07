@@ -435,7 +435,7 @@ public:
         const Vec xvVec,
         const Vec wVec,
         const Vec psi,
-        scalar* thermal,
+        const Vec thermalVec,
         Vec prodVec);
 
     /// compute dRdXv^T*Psi

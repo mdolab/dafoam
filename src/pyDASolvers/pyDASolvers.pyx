@@ -54,7 +54,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
-        void calcdRdThermalTPsiAD(char *, PetscVec, PetscVec, PetscVec, double *, PetscVec)
+        void calcdRdThermalTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
@@ -247,15 +247,8 @@ cdef class pyDASolvers:
     def calcdFdFieldAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdField):
         self._thisptr.calcdFdFieldAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdField.vec)
 
-    def calcdRdThermalTPsiAD(self,
-            varName, 
-            Vec xvVec, 
-            Vec wVec, 
-            Vec psiVec, 
-            np.ndarray[double, ndim=1, mode="c"] thermal, 
-            Vec prodVec):
-        cdef double *thermal_data = <double*>thermal.data
-        self._thisptr.calcdRdThermalTPsiAD(varName, xvVec.vec, wVec.vec, psiVec.vec, thermal_data, prodVec.vec)
+    def calcdRdThermalTPsiAD(self, varName, Vec xvVec, Vec wVec, Vec psiVec, Vec thermalVec, Vec prodVec):
+        self._thisptr.calcdRdThermalTPsiAD(varName, xvVec.vec, wVec.vec, psiVec.vec, thermalVec.vec, prodVec.vec)
     
     def calcdXvdXsTPsiAD(self, Vec xvVec, Vec psi, Vec prodVec):
         self._thisptr.calcdXvdXsTPsiAD(xvVec.vec, psi.vec, prodVec.vec)

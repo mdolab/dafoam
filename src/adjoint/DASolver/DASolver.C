@@ -4113,7 +4113,7 @@ void DASolver::calcdRdThermalTPsiAD(
     const Vec xvVec,
     const Vec wVec,
     const Vec psi,
-    scalar* thermal,
+    const Vec thermalVec,
     Vec prodVec)
 {
 #ifdef CODI_AD_REVERSE
@@ -4145,6 +4145,15 @@ void DASolver::calcdRdThermalTPsiAD(
     daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
+
+    const PetscScalar* thermalArray;
+    VecGetArrayRead(thermalVec, &thermalArray);
+    scalar* thermal = new scalar[nFaces];
+    for (label i = 0; i < nFaces; i++)
+    {
+        thermal[i] = thermalArray[i];
+    }
+    VecRestoreArrayRead(thermalVec, &thermalArray);
 
     this->globalADTape_.reset();
     this->globalADTape_.setActive();
@@ -4884,6 +4893,15 @@ void DASolver::calcdThermaldWTPsiAD(
     this->updateOFField(wVec);
     this->updateOFMesh(xvVec);
 
+    // Allocate arrays
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    scalarList thermalList(nFaces);
+
     this->globalADTape_.reset();
     this->globalADTape_.setActive();
 
@@ -4894,15 +4912,6 @@ void DASolver::calcdThermaldWTPsiAD(
     daResidualPtr_->updateIntermediateVariables();
     daModelPtr_->correctBoundaryConditions();
     daModelPtr_->updateIntermediateVariables();
-
-    // Allocate arrays
-    label nPoints, nFaces;
-    List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
-    sort(patchList);
-    this->getPatchInfo(nPoints, nFaces, patchList);
-
-    scalarList thermalList(nFaces);
 
     this->getThermalInternal(mode, thermalList);
     forAll(thermalList, idxI)
@@ -4966,6 +4975,15 @@ void DASolver::calcdThermaldXvTPsiAD(
     this->updateOFField(wVec);
     this->updateOFMesh(xvVec);
 
+    // Allocate arrays
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    scalarList thermalList(nFaces);
+
     pointField meshPoints = meshPtr_->points();
     this->globalADTape_.reset();
     this->globalADTape_.setActive();
@@ -4984,16 +5002,8 @@ void DASolver::calcdThermaldXvTPsiAD(
     daModelPtr_->correctBoundaryConditions();
     daModelPtr_->updateIntermediateVariables();
 
-    // Allocate arrays
-    label nPoints, nFaces;
-    List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
-    sort(patchList);
-    this->getPatchInfo(nPoints, nFaces, patchList);
-
-    scalarList thermalList(nFaces);
-
     this->getThermalInternal(mode, thermalList);
+
     forAll(thermalList, idxI)
     {
         this->globalADTape_.registerOutput(thermalList[idxI]);
