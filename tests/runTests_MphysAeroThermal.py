@@ -234,7 +234,7 @@ totals = prob.compute_totals()
 if gcomm.rank == 0:
     derivDict = {}
     derivDict["PL"] = {}
-    derivDict["PL"]["shape"] = totals[("scenario.aero_post.PL", "dvs.shape")][0]
+    derivDict["PL"]["shape"] = totals[("scenario.aero_post.functionals.PL", "dvs.shape")][0]
     derivDict["HF"] = {}
-    derivDict["HF"]["shape"] = totals[("scenario.thermal_post.HF", "dvs.shape")][0]
+    derivDict["HF"]["shape"] = totals[("scenario.thermal_post.functionals.HF", "dvs.shape")][0]
     reg_write_dict(derivDict, 1e-4, 1e-6)
