@@ -78,7 +78,7 @@ daOptions = {
     "designVar": {
         "twist": {"designVarType": "FFD"},
     },
-    "decomposeParDict": {"preservePatches": ["per1", "per2"]}
+    "decomposeParDict": {"preservePatches": ["per1", "per2"]},
 }
 
 meshOptions = {
@@ -152,6 +152,7 @@ class Top(Multipoint):
         self.add_constraint("cruise.aero_post.bladeSurface.nAcou", equals=1.0, scaler=1.0, indices=[0])
         self.add_constraint("cruise.aero_post.bladeSurface.aAcou", equals=1.0, scaler=1.0, indices=[0])
         self.add_constraint("cruise.aero_post.Thrust", equals=1.0, scaler=1.0)
+
 
 prob = om.Problem()
 prob.model = Top()

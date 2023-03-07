@@ -303,7 +303,7 @@ class DAOPTION(object):
         ## Fluid-structure interatcion (FSI) options. This dictionary takes in the required values for
         ## an FSI case to be used throughout the simulation.
         self.fsi = {"pRef": 0.0, "propMovement": False}
-        
+
         ## MDO coupling information for aerostructural, aerothermal, or aeroacoustic optimization.
         ## We can have ONLY one coupling scenario active, e.g., aerostructural and aerothermal can't be
         ## both active. We can have more than one couplingSurfaceGroups, e.g., wingGroup and tailGroup
@@ -430,6 +430,10 @@ class DAOPTION(object):
             "gammaIntMax": 1e16,
             "gammaIntMin": 1e-16,
         }
+
+        ## The discipline name. The default is "aero". If we need to couple two solvers using
+        ## DAFoam, e.g., aero+thermal, we need to set it to something like "thermal"
+        self.discipline = "aero"
 
         ## Whether to perform multipoint optimization.
         self.multiPoint = False
@@ -645,7 +649,6 @@ class DAOPTION(object):
 
         ## Parameters for wing-propeller coupling optimizations
         self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.02, "rotDir": "right"}
-
 
 
 class PYDAFOAM(object):
@@ -1066,6 +1069,16 @@ class PYDAFOAM(object):
                 raise Error("Please do not set any normalizeStates for the fixed-point adjoint!")
             # force the normalize residuals to be None; don't normalize any residuals
             self.setOption("normalizeResiduals", ["None"])
+
+        if self.getOption("discipline") not in ["aero", "thermal"]:
+            raise Error("discipline: %s not supported. Options are: aero or thermal" % self.getOption("discipline"))
+
+        nActivated = 0
+        for coupling in self.getOption("couplingInfo"):
+            if self.getOption("couplingInfo")[coupling]["active"]:
+                nActivated += 1
+        if nActivated > 1:
+            raise Error("Only one coupling scenario can be active, while %i found" % nActivated)
 
         # check other combinations...
 
@@ -2455,6 +2468,61 @@ class PYDAFOAM(object):
         dFdFFD = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
 
         return dFdFFD
+
+    def getThermal(self, varName, groupName=None):
+        """
+        Return the forces on this processor on the families defined by groupName.
+        Parameters
+        ----------
+
+        varName : str
+            Which variable to get. Can be either temperature or heatFlux
+
+        groupName : str
+            Group identifier to get only forces cooresponding to the
+            desired group. The group must be a family or a user-supplied
+            group of families. The default is None which corresponds to
+            design surfaces.
+
+        Returns
+        -------
+        thermal : array (N)
+            The thermal variables (either temperature or heatFlux) on this processor.
+            N is the number of faces on design surface patches
+            Note that N may be 0, and an empty array of shape (0) can be returned.
+        """
+
+        Info("Computing %s" % varName)
+
+        # Calculate number of surface points
+        if groupName is None:
+            groupName = self.designFamilyGroup
+
+        nPts, nFaces = self._getSurfaceSize(groupName)
+
+        thermalVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        thermalVec.setSizes((nFaces, PETSc.DECIDE), bsize=1)
+        thermalVec.setFromOptions()
+
+        # Compute forces
+        self.solver.getThermal(varName.encode(), thermalVec)
+
+        # Copy data from PETSc vectors
+        thermal = np.zeros(nFaces)
+        thermal[:] = np.copy(thermalVec.getArray())
+
+        # Cleanup PETSc vectors
+        thermalVec.destroy()
+
+        # Print total force
+        thermalSum = np.sum(thermal[:])
+
+        thermalSum = self.comm.allreduce(thermalSum, op=MPI.SUM)
+
+        Info("Total %s: %e" % (varName, thermalSum))
+
+        # Finally map the vector as required.
+        return thermal
 
     def getForces(self, groupName=None):
         """

@@ -152,6 +152,26 @@ public:
         DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
     }
 
+    void calcdThermaldWTPsiAD(
+        const word mode,
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psiVec,
+        Vec prodVec)
+    {
+        DASolverPtr_->calcdThermaldWTPsiAD(mode, xvVec, wVec, psiVec, prodVec);
+    }
+
+    void calcdThermaldXvTPsiAD(
+        const word mode,
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psiVec,
+        Vec prodVec)
+    {
+        DASolverPtr_->calcdThermaldXvTPsiAD(mode, xvVec, wVec, psiVec, prodVec);
+    }
+
     /// compute dForcedW
     void calcdForcedWAD(
         const Vec xvVec,
@@ -463,10 +483,53 @@ public:
         return returnVal;
     }
 
-    /// return the force values
+    void getFaceCoords(
+        Vec xvVec,
+        Vec xsVec)
+    {
+        DASolverPtr_->getFaceCoords(xvVec, xsVec);
+    }
+
+    /// return the force on the FSI patches
     void getForces(Vec fX, Vec fY, Vec fZ)
     {
         DASolverPtr_->getForces(fX, fY, fZ);
+    }
+
+    void calcdXvdXsTPsiAD(
+        Vec xvVec,
+        Vec psi,
+        Vec prod)
+    {
+        DASolverPtr_->calcdXvdXsTPsiAD(xvVec, psi, prod);
+    }
+
+    /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
+    void getThermal(word varName, Vec thermalVec)
+    {
+        DASolverPtr_->getThermal(varName, thermalVec);
+    }
+
+    /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches
+    void setThermal(word varName, double* thermal)
+    {
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        DASolverPtr_->setThermal(varName, thermal);
+        return;
+#endif
+        FatalErrorIn("getForces") << "should not call this func in AD mode!"
+                                  << abort(FatalError);
+    }
+
+    void calcdRdThermalTPsiAD(
+        const word varName,
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psiVec,
+        const Vec thermalVec,
+        Vec prodVec)
+    {
+        DASolverPtr_->calcdRdThermalTPsiAD(varName, xvVec, wVec, psiVec, thermalVec, prodVec);
     }
 
     /// return the acoustic data values

@@ -14,7 +14,7 @@ env:
 jobs:
 
   reg_tests:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     name: Tests
     strategy:
       fail-fast: false
@@ -34,7 +34,7 @@ jobs:
           - testConfig: mphys_comp
             args: 'mphys_comp'
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Create the docker container and run the tests
       run: |
         docker pull dafoam/opt-packages:${{env.DOCKER_TAG}}
@@ -45,7 +45,7 @@ jobs:
         elif [ "${{matrix.args}}" = "mphys_incomp" ]; then
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake incompressible && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake incompressible 2> errorLog.txt"
         elif [ "${{matrix.args}}" = "mphys_comp" ]; then
-           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake compressible && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake compressible 2> errorLog.txt"
+           docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake compressible && ./Allclean && ./Allmake solid && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake compressible 2> errorLog.txt && ./Allclean && ./Allmake solid 2> errorLog.txt"
         else
            docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake ${{matrix.args}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake ${{matrix.args}} 2> errorLog.txt"
         fi

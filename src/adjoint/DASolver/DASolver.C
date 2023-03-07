@@ -316,6 +316,478 @@ void DASolver::setDAObjFuncList()
     }
 }
 
+void DASolver::calcdXvdXsTPsiAD(
+    Vec xvVec,
+    Vec psi,
+    Vec prod)
+{
+#ifdef CODI_AD_REVERSE
+    this->updateOFMesh(xvVec);
+
+    // first, we read the patchList from couplingInfo
+    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
+
+    wordList patchList;
+
+    forAll(couplingInfo.toc(), idxI)
+    {
+        word scenario = couplingInfo.toc()[idxI];
+        label active = couplingInfo.subDict(scenario).getLabel("active");
+        if (active)
+        {
+            dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
+            label nGroups = couplingGroups.size();
+            if (nGroups != 1)
+            {
+                FatalErrorIn("getFaceCoords")
+                    << "we support only one couplingSurfaceGroups"
+                    << abort(FatalError);
+            }
+
+            word groupName = couplingGroups.toc()[0];
+            couplingGroups.readEntry<wordList>(groupName, patchList);
+            break;
+        }
+    }
+    // it is important to sort the patchList and make it unique.
+    sort(patchList);
+
+    pointField meshPoints = meshPtr_->points();
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.registerInput(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+
+    // get the total number of points and faces for the patchList
+    label nPoints, nFaces;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    scalarList xsList(nFaces * 3);
+
+    label counterFaceI = 0;
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // Divide force to nodes
+            for (label i = 0; i < 3; i++)
+            {
+                xsList[counterFaceI] = meshPtr_->boundary()[patchI].Cf()[faceI][i];
+                counterFaceI++;
+            }
+        }
+    }
+    forAll(xsList, idxI)
+    {
+        this->globalADTape_.registerOutput(xsList[idxI]);
+    }
+
+    this->globalADTape_.setPassive();
+
+    PetscScalar* vecArray;
+    VecGetArray(psi, &vecArray);
+    forAll(xsList, idxI)
+    {
+        xsList[idxI].setGradient(vecArray[idxI]);
+    }
+    VecRestoreArray(psi, &vecArray);
+
+    this->globalADTape_.evaluate();
+
+    VecGetArray(prod, &vecArray);
+    label counterI = 0;
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            vecArray[counterI] = meshPoints[i][j].getGradient();
+            counterI++;
+        }
+    }
+    VecRestoreArray(prod, &vecArray);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
+void DASolver::getFaceCoords(
+    Vec xvVec,
+    Vec xsVec)
+{
+    /*
+    Description:
+        Calculate a list of face center coordinates (xsVec) for the MDO coupling patches, given 
+        the volume mesh point coordinates xvVec
+
+    Input:
+        xvVec: volume mesh point coordinates
+    
+    Output:
+        xsVec: face center coordinates for coupling patches
+    */
+    this->updateOFMesh(xvVec);
+
+    // first, we read the patchList from couplingInfo
+    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
+
+    wordList patchList;
+
+    forAll(couplingInfo.toc(), idxI)
+    {
+        word scenario = couplingInfo.toc()[idxI];
+        label active = couplingInfo.subDict(scenario).getLabel("active");
+        if (active)
+        {
+            dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
+            label nGroups = couplingGroups.size();
+            if (nGroups != 1)
+            {
+                FatalErrorIn("getFaceCoords")
+                    << "we support only one couplingSurfaceGroups"
+                    << abort(FatalError);
+            }
+
+            word groupName = couplingGroups.toc()[0];
+            couplingGroups.readEntry<wordList>(groupName, patchList);
+            break;
+        }
+    }
+    // it is important to sort the patchList and make it unique.
+    sort(patchList);
+
+    // get the total number of points and faces for the patchList
+    label nPoints, nFaces;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    VecSetSizes(xsVec, nFaces * 3, PETSC_DETERMINE);
+    VecSetFromOptions(xsVec);
+    VecZeroEntries(xsVec);
+
+    PetscScalar* vecArray;
+    VecGetArray(xsVec, &vecArray);
+
+    label counterFaceI = 0;
+    PetscScalar val;
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // Divide force to nodes
+            for (label i = 0; i < 3; i++)
+            {
+                assignValueCheckAD(val, meshPtr_->boundary()[patchI].Cf()[faceI][i]);
+                vecArray[counterFaceI] = val;
+                counterFaceI++;
+            }
+        }
+    }
+
+    VecRestoreArray(xsVec, &vecArray);
+}
+
+void DASolver::setThermal(
+    word varName,
+    scalar* thermal)
+{
+    /*
+    Description:
+        Assign the temperature or heat flux BC to all of the faces on the conjugate heat 
+        transfer patches. 
+        NOTE: this function can be called by either fluid or solid domain!
+
+    Inputs:
+        varName: either temperature or heatFlux
+        thermal: the temperature or heatFlux var on the conjugate heat transfer patch
+    
+    Outputs:
+        The T field in OpenFOAM
+    */
+
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    if (varName == "temperature")
+    {
+        // here we receive set the temperature from the solid domain (varVec) and will assign fixedValue
+        // BC to the fluid domain
+
+        volScalarField& T =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("T"));
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            const fvPatch& patch = meshPtr_->boundary()[patchI];
+            forAll(patch, faceI)
+            {
+                T.boundaryFieldRef()[patchI][faceI] = thermal[localFaceI];
+                localFaceI++;
+            }
+        }
+    }
+    else if (varName == "heatFlux")
+    {
+        // here we receive heatFlux from the fluid domain (varVec) and will assign the fixedGradient
+        // boundary condition to the solid domain
+
+        IOdictionary transportProperties(
+            IOobject(
+                "transportProperties",
+                meshPtr_->time().constant(),
+                meshPtr_(),
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false));
+        // for incompressible flow, we need to read Cp and rho from transportProperties
+        scalar Cp = readScalar(transportProperties.lookup("Cp"));
+        scalar rho = readScalar(transportProperties.lookup("rho"));
+        scalar DT = readScalar(transportProperties.lookup("DT"));
+        scalar coeff = DT * Cp * rho;
+
+        volScalarField& T =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("T"));
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            fixedGradientFvPatchField<scalar>& patchBC =
+                refCast<fixedGradientFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
+
+            scalarField& grad = const_cast<scalarField&>(patchBC.gradient());
+            forAll(grad, faceI)
+            {
+                grad[faceI] = thermal[localFaceI] / coeff;
+                localFaceI++;
+            }
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << varName << " not valid! "
+                         << abort(FatalError);
+    }
+}
+
+void DASolver::getThermal(
+    word varName,
+    Vec thermalVec)
+{
+    /*
+    Description:
+        Compute the temperature or heat flux for all of the faces on the conjugate heat 
+        transfer patches. This routine is a wrapper that exposes the actual computation
+        routine to the Python layer using PETSc vectors. For the actual computation
+        routine view the getThermalInternal() function.
+        NOTE: this function can be called by either fluid or solid domain!
+
+    Inputs:
+        varName: either temperature or heatFlux
+
+    Output:
+        thermalVec: the temperature or heatFlux vector on the conjugate heat transfer patch
+    */
+
+    List<scalar> thermalList;
+
+    this->getThermalInternal(varName, thermalList);
+
+    // Zero PETSc Arrays
+    VecZeroEntries(thermalVec);
+
+    // Get PETSc arrays
+    PetscScalar* vecArray;
+    VecGetArray(thermalVec, &vecArray);
+
+    // Transfer to PETSc Array
+    PetscScalar val;
+    forAll(thermalList, cI)
+    {
+        // Get Values
+        assignValueCheckAD(val, thermalList[cI]);
+        // Set Values
+        vecArray[cI] = val;
+    }
+    VecRestoreArray(thermalVec, &vecArray);
+}
+
+void DASolver::getThermalInternal(
+    word varName,
+    scalarList& thermalList)
+{
+    /*
+    Description:
+        Same as getThermal, except that this function can be used in AD
+
+    Inputs:
+        varName: either temperature or heatFlux
+
+    Output:
+        thermalList: the temperature or heatFlux list on the conjugate heat transfer patch
+    */
+
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    thermalList.setSize(nFaces);
+
+    if (varName == "temperature")
+    {
+        volScalarField temperatureField(
+            IOobject(
+                "temperatureField",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("temperatureField", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            fixedValueFvPatchScalarField::typeName);
+
+        const objectRegistry& db = meshPtr_->thisDb();
+        const volScalarField& T = db.lookupObject<volScalarField>("T");
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            const fvPatch& patch = meshPtr_->boundary()[patchI];
+            forAll(patch, faceI)
+            {
+                temperatureField.boundaryFieldRef()[patchI][faceI] = T.boundaryField()[patchI][faceI];
+                thermalList[localFaceI] = T.boundaryField()[patchI][faceI];
+                localFaceI++;
+            }
+        }
+
+        // this is for debugging
+        temperatureField.write();
+    }
+    else if (varName == "heatFlux")
+    {
+
+#ifdef IncompressibleFlow
+
+        volScalarField heatFluxField(
+            IOobject(
+                "heatFluxField",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("heatFluxField", dimensionSet(1, -2, 1, 1, 0, 0, 0), 0.0),
+            "calculated");
+
+        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+        volScalarField alphaEff = daTurb.alphaEff();
+        // incompressible flow does not have he, so we do H = Cp * alphaEff * dT/dz
+        // initialize the Prandtl number from transportProperties
+
+        IOdictionary transportProperties(
+            IOobject(
+                "transportProperties",
+                meshPtr_->time().constant(),
+                meshPtr_(),
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false));
+        // for incompressible flow, we need to read Cp from transportProperties
+        scalar Cp = readScalar(transportProperties.lookup("Cp"));
+
+        const objectRegistry& db = meshPtr_->thisDb();
+        const volScalarField& T = db.lookupObject<volScalarField>("T");
+
+        const volScalarField::Boundary& TBf = T.boundaryField();
+        const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            heatFluxField.boundaryFieldRef()[patchI] = Cp * alphaEffBf[patchI] * TBf[patchI].snGrad();
+
+            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+            {
+                thermalList[localFaceI] = heatFluxField.boundaryField()[patchI][faceI];
+                localFaceI++;
+            }
+        }
+
+        // for debugging
+        heatFluxField.write();
+
+#endif
+
+#ifdef CompressibleFlow
+
+        volScalarField heatFluxField(
+            IOobject(
+                "heatFluxField",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("heatFluxField", dimensionSet(1, 0, -3, 0, 0, 0, 0), 0.0),
+            "calculated");
+
+        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+        volScalarField alphaEff = daTurb.alphaEff();
+        // compressible flow, H = alphaEff * dHE/dz
+        fluidThermo& thermo = const_cast<fluidThermo&>(daModelPtr_->getThermo());
+        volScalarField& he = thermo.he();
+        const volScalarField::Boundary& heBf = he.boundaryField();
+        const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+
+        label localFaceI = 0;
+        forAll(patchList, cI)
+        {
+            // get the patch id label
+            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+            heatFluxField.boundaryFieldRef()[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
+
+            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+            {
+                thermalList[localFaceI] = heatFluxField.boundaryField()[patchI][faceI];
+                localFaceI++;
+            }
+        }
+
+        // for debugging
+        heatFluxField.write();
+#endif
+    }
+    else
+    {
+        FatalErrorIn("getPatchVarInternal") << " varName not valid. "
+                                            << abort(FatalError);
+    }
+}
+
 void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
 {
     /*
@@ -843,10 +1315,10 @@ void DASolver::getAcousticDataInternal(
 }
 
 void DASolver::calcForceProfile(
-        Vec center,
-        Vec aForceL,
-        Vec tForceL,
-        Vec rDistL)
+    Vec center,
+    Vec aForceL,
+    Vec tForceL,
+    Vec rDistL)
 {
     /*
     Description:
@@ -923,7 +1395,6 @@ void DASolver::calcForceProfile(
 
     return;
     */
-
 }
 
 void DASolver::calcForceProfileInternal(
@@ -1098,33 +1569,33 @@ void DASolver::calcFvSourceInternal(
 
     // Extraction of inner and outer radii, and resizing of the blade radius distribution.
     // scalar rInner = rDistExt[0];
-    scalar rOuter = rDistExt[rDistExt.size()-1];
-    scalarField rDist = aForce * 0.0;         // real blade radius distribution
-    scalarField rNorm = rDist;                // normalized blade radius distribution
+    scalar rOuter = rDistExt[rDistExt.size() - 1];
+    scalarField rDist = aForce * 0.0; // real blade radius distribution
+    scalarField rNorm = rDist; // normalized blade radius distribution
     forAll(aForce, index)
     {
-        rDist[index] = rDistExt [index+1];
+        rDist[index] = rDistExt[index + 1];
     }
     forAll(rDist, index)
     {
-        rNorm[index] = rDist[index]/rOuter;
+        rNorm[index] = rDist[index] / rOuter;
     }
 
     // Inner and outer radius distribution limits
     scalar rStarMin = rNorm[0];
-    scalar rStarMax = rNorm[rNorm.size()-1];
+    scalar rStarMax = rNorm[rNorm.size() - 1];
 
     // Polynomial (inner) and Normal (outer) distribution  parameters' initialization
-    scalar f1 = aForce[aForce.size()-2];
-    scalar f2 = aForce[aForce.size()-1];
+    scalar f1 = aForce[aForce.size() - 2];
+    scalar f2 = aForce[aForce.size() - 1];
     scalar f3 = aForce[0];
     scalar f4 = aForce[1];
-    scalar g1 = tForce[tForce.size()-2];
-    scalar g2 = tForce[tForce.size()-1];
+    scalar g1 = tForce[tForce.size() - 2];
+    scalar g2 = tForce[tForce.size() - 1];
     scalar g3 = tForce[0];
     scalar g4 = tForce[1];
-    scalar r1 = rNorm[rNorm.size()-2];
-    scalar r2 = rNorm[rNorm.size()-1];
+    scalar r1 = rNorm[rNorm.size() - 2];
+    scalar r2 = rNorm[rNorm.size() - 1];
     scalar r3 = rNorm[0];
     scalar r4 = rNorm[1];
 
@@ -1134,7 +1605,7 @@ void DASolver::calcFvSourceInternal(
     scalar maxI = 100;
     scalar sigmaS = 0;
     scalar i = 0;
-    for(i = 0; i < maxI; i++)
+    for (i = 0; i < maxI; i++)
     {
         sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * log(f1 / f2));
         mu = r1 - sqrt(-2 * sigmaS * log(f1 * sqrt(2 * degToRad(180) * sigmaS)));
@@ -1148,7 +1619,7 @@ void DASolver::calcFvSourceInternal(
 
     // Tangential Outer
     mu = 2 * r1 - r2;
-    for(i = 0; i < maxI; i++)
+    for (i = 0; i < maxI; i++)
     {
         sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * log(g1 / g2));
         mu = r1 - sqrt(-2 * sigmaS * log(g1 * sqrt(2 * degToRad(180) * sigmaS)));
@@ -1173,13 +1644,13 @@ void DASolver::calcFvSourceInternal(
     {
         // Finding directional vector from mesh cell to the actuator center
         vector cellDir = meshC[cellI] - center;
-        scalar length = sqrt(sqr(cellDir[0])+sqr(cellDir[1])+sqr(cellDir[2]));
+        scalar length = sqrt(sqr(cellDir[0]) + sqr(cellDir[1]) + sqr(cellDir[2]));
         cellDir = cellDir / length;
 
         // Finding axial distance from mesh cell to the actuator center & projected point of mesh cell on the axis
         scalar meshDist = (axis & cellDir) * length;
         vector projP = {center[0] - axis[0] * meshDist, center[1] - axis[1] * meshDist, center[2] - axis[2] * meshDist};
-        meshDist = mag(meshDist); 
+        meshDist = mag(meshDist);
 
         // Finding the radius of the point
         scalar meshR = sqrt(sqr(meshC[cellI][0] - projP[0]) + sqr(meshC[cellI][1] - projP[1]) + sqr(meshC[cellI][2] - projP[2]));
@@ -1194,17 +1665,17 @@ void DASolver::calcFvSourceInternal(
 
         if (rStar < rStarMin)
         {
-            fvSource[cellI] = ((coefAAxialIn * rStar * rStar + coefBAxialIn * rStar) * axis + (coefATangentialIn * rStar * rStar + coefBTangentialIn * rStar) * cellAxDir * rotDirCon) * exp(-sqr(meshDist/actEps));
+            fvSource[cellI] = ((coefAAxialIn * rStar * rStar + coefBAxialIn * rStar) * axis + (coefATangentialIn * rStar * rStar + coefBTangentialIn * rStar) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
         }
         else if (rStar > rStarMax)
         {
             fvSource[cellI] = (1 / (sigmaAxialOut * sqrt(2 * degToRad(180)))) * exp(-0.5 * sqr((rStar - muAxialOut) / sigmaAxialOut)) * axis;
             fvSource[cellI] = fvSource[cellI] + (1 / (sigmaTangentialOut * sqrt(2 * degToRad(180)))) * exp(-0.5 * sqr((rStar - muTangentialOut) / sigmaTangentialOut)) * cellAxDir * rotDirCon;
-            fvSource[cellI] = fvSource[cellI] * exp(-sqr(meshDist/actEps));
+            fvSource[cellI] = fvSource[cellI] * exp(-sqr(meshDist / actEps));
         }
         else
         {
-            fvSource[cellI] = (interpolateSplineXY(rStar, rNorm, aForce) * axis + interpolateSplineXY(rStar, rNorm, tForce) * cellAxDir * rotDirCon) * exp(-sqr(meshDist/actEps));
+            fvSource[cellI] = (interpolateSplineXY(rStar, rNorm, aForce) * axis + interpolateSplineXY(rStar, rNorm, tForce) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
         }
     }
 
@@ -1257,7 +1728,7 @@ void DASolver::calcFvSource(
     // Allocate Arrays
     Field<scalar> aForceTemp(nPoints);
     Field<scalar> tForceTemp(nPoints);
-    List<scalar> rDistExtTemp(nPoints+2);
+    List<scalar> rDistExtTemp(nPoints + 2);
     List<scalar> targetForceTemp(2);
     Vector<scalar> centerTemp;
     volVectorField fvSourceTemp(
@@ -1317,9 +1788,9 @@ void DASolver::calcFvSource(
         assignValueCheckAD(val3, fvSourceTemp[cI][2]);
 
         // Set Values
-        vecArrayFvSource[3*cI] = val1;
-        vecArrayFvSource[3*cI+1] = val2;
-        vecArrayFvSource[3*cI+2] = val3;
+        vecArrayFvSource[3 * cI] = val1;
+        vecArrayFvSource[3 * cI + 1] = val2;
+        vecArrayFvSource[3 * cI + 2] = val3;
     }
 
     VecRestoreArray(aForce, &vecArrayAForce);
@@ -4053,6 +4524,94 @@ void DASolver::calcdFdXvAD(
 #endif
 }
 
+void DASolver::calcdRdThermalTPsiAD(
+    const word varName,
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    const Vec thermalVec,
+    Vec prodVec)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute the matrix-vector products dRdThermal^T*Psi using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdXv
+    
+    Output:
+        prodVec: the matrix-vector products dRdThermal^T * Psi
+    */
+
+    Info << "Calculating [dRdThermal]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(prodVec);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    const PetscScalar* thermalArray;
+    VecGetArrayRead(thermalVec, &thermalArray);
+    scalar* thermal = new scalar[nFaces];
+    for (label i = 0; i < nFaces; i++)
+    {
+        thermal[i] = thermalArray[i];
+    }
+    VecRestoreArrayRead(thermalVec, &thermalArray);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    for (label i = 0; i < nFaces; i++)
+    {
+        this->globalADTape_.registerInput(thermal[i]);
+    }
+
+    this->setThermal(varName, thermal);
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+    label isPC = 0;
+    dictionary options;
+    options.set("isPC", isPC);
+    daResidualPtr_->calcResiduals(options);
+    daModelPtr_->calcResiduals(options);
+
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+
+    PetscScalar* vecArray;
+    VecGetArray(prodVec, &vecArray);
+    for (label i = 0; i < nFaces; i++)
+    {
+        vecArray[i] = thermal[i].getGradient();
+    }
+
+    VecRestoreArray(prodVec, &vecArray);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
 void DASolver::calcdRdXvTPsiAD(
     const Vec xvVec,
     const Vec wVec,
@@ -4282,40 +4841,48 @@ void DASolver::calcdAcousticsdXvAD(
 
     this->getAcousticDataInternal(x, y, z, nX, nY, nZ, a, fX, fY, fZ, patchList);
 
-    if (varName == "xAcou"){
+    if (varName == "xAcou")
+    {
         this->registerAcousticOutput4AD(x);
         this->registerAcousticOutput4AD(y);
         this->registerAcousticOutput4AD(z);
     }
-    else if (varName == "nAcou") {
+    else if (varName == "nAcou")
+    {
         this->registerAcousticOutput4AD(nX);
         this->registerAcousticOutput4AD(nY);
         this->registerAcousticOutput4AD(nZ);
     }
-    else if (varName == "aAcou") {
+    else if (varName == "aAcou")
+    {
         this->registerAcousticOutput4AD(a);
     }
-    else if (varName == "fAcou") {
+    else if (varName == "fAcou")
+    {
         this->registerAcousticOutput4AD(fX);
         this->registerAcousticOutput4AD(fY);
         this->registerAcousticOutput4AD(fZ);
     }
     this->globalADTape_.setPassive();
 
-    if (varName == "xAcou"){
+    if (varName == "xAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, x, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, y, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, z, 2, 3);
     }
-    else if (varName == "nAcou") {
+    else if (varName == "nAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, nX, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, nY, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, nZ, 2, 3);
     }
-    else if (varName == "aAcou") {
+    else if (varName == "aAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, a, 0, 1);
     }
-    else if (varName == "fAcou") {
+    else if (varName == "fAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, fX, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, fY, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, fZ, 2, 3);
@@ -4709,6 +5276,184 @@ void DASolver::calcdRdActTPsiAD(
 #endif
 }
 
+void DASolver::calcdThermaldWTPsiAD(
+    const word mode,
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psiVec,
+    Vec prodVec)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate dThermaldW using reverse-mode AD. Mode can be either temperature or heatFlux
+    
+    Input:
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psiVec: the derivative seed vector
+    
+    Output:
+        prodVec: Either dTemperature/dW or dHeatFlux/dW
+    */
+
+    Info << "Calculating dThermaldW using reverse-mode AD" << endl;
+
+    VecZeroEntries(prodVec);
+
+    // this is needed because the self.solverAD object in the Python layer
+    // never run the primal solution, so the wVec and xvVec is not always
+    // update to date
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    // Allocate arrays
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    scalarList thermalList(nFaces);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD();
+
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+
+    this->getThermalInternal(mode, thermalList);
+    forAll(thermalList, idxI)
+    {
+        this->globalADTape_.registerOutput(thermalList[idxI]);
+    }
+    this->globalADTape_.setPassive();
+
+    PetscScalar* vecArray;
+    VecGetArray(psiVec, &vecArray);
+
+    forAll(thermalList, idxI)
+    {
+        thermalList[idxI].setGradient(vecArray[idxI]);
+    }
+    VecRestoreArray(psiVec, &vecArray);
+    this->globalADTape_.evaluate();
+
+    // get the deriv values
+    this->assignStateGradient2Vec(prodVec);
+
+    // NOTE: we need to normalize dForcedW!
+    this->normalizeGradientVec(prodVec);
+
+    VecAssemblyBegin(prodVec);
+    VecAssemblyEnd(prodVec);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
+void DASolver::calcdThermaldXvTPsiAD(
+    const word mode,
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psiVec,
+    Vec prodVec)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate [dThermal/dXv]^T * Psi using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psiVec: the derivative seed vector
+    
+    Output:
+        prodVec: [dThermal/dXv]^T * Psi
+    */
+
+    Info << "Calculating dThermaldXvAD using reverse-mode AD" << endl;
+
+    VecZeroEntries(prodVec);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    // Allocate arrays
+    label nPoints, nFaces;
+    List<word> patchList;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    scalarList thermalList(nFaces);
+
+    pointField meshPoints = meshPtr_->points();
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.registerInput(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+    // compute residuals
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+
+    this->getThermalInternal(mode, thermalList);
+
+    forAll(thermalList, idxI)
+    {
+        this->globalADTape_.registerOutput(thermalList[idxI]);
+    }
+    this->globalADTape_.setPassive();
+
+    PetscScalar* vecArray;
+    VecGetArray(psiVec, &vecArray);
+
+    forAll(thermalList, idxI)
+    {
+        thermalList[idxI].setGradient(vecArray[idxI]);
+    }
+    VecRestoreArray(psiVec, &vecArray);
+    this->globalADTape_.evaluate();
+
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
+            PetscScalar val = meshPoints[i][j].getGradient();
+            VecSetValue(prodVec, rowI, val, INSERT_VALUES);
+        }
+    }
+
+    VecAssemblyBegin(prodVec);
+    VecAssemblyEnd(prodVec);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
 void DASolver::calcdForcedWAD(
     const Vec xvVec,
     const Vec wVec,
@@ -4847,40 +5592,48 @@ void DASolver::calcdAcousticsdWAD(
 
     this->getAcousticDataInternal(x, y, z, nX, nY, nZ, a, fX, fY, fZ, patchList);
 
-    if (varName == "xAcou"){
+    if (varName == "xAcou")
+    {
         this->registerAcousticOutput4AD(x);
         this->registerAcousticOutput4AD(y);
         this->registerAcousticOutput4AD(z);
     }
-    else if (varName == "nAcou") {
+    else if (varName == "nAcou")
+    {
         this->registerAcousticOutput4AD(nX);
         this->registerAcousticOutput4AD(nY);
         this->registerAcousticOutput4AD(nZ);
     }
-    else if (varName == "aAcou") {
+    else if (varName == "aAcou")
+    {
         this->registerAcousticOutput4AD(a);
     }
-    else if (varName == "fAcou") {
+    else if (varName == "fAcou")
+    {
         this->registerAcousticOutput4AD(fX);
         this->registerAcousticOutput4AD(fY);
         this->registerAcousticOutput4AD(fZ);
     }
     this->globalADTape_.setPassive();
 
-    if (varName == "xAcou"){
+    if (varName == "xAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, x, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, y, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, z, 2, 3);
     }
-    else if (varName == "nAcou") {
+    else if (varName == "nAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, nX, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, nY, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, nZ, 2, 3);
     }
-    else if (varName == "aAcou") {
+    else if (varName == "aAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, a, 0, 1);
     }
-    else if (varName == "fAcou") {
+    else if (varName == "fAcou")
+    {
         this->assignVec2AcousticGradient(fBarVec, fX, 0, 3);
         this->assignVec2AcousticGradient(fBarVec, fY, 1, 3);
         this->assignVec2AcousticGradient(fBarVec, fZ, 2, 3);
@@ -5439,7 +6192,6 @@ void DASolver::registerAcousticOutput4AD(
     }
 #endif
 }
-
 
 void DASolver::normalizeGradientVec(Vec vecY)
 {

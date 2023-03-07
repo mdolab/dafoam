@@ -14,6 +14,7 @@
 
 # for using Petsc
 from petsc4py.PETSc cimport Vec, PetscVec, Mat, PetscMat, KSP, PetscKSP
+cimport numpy as np
 
 # declare cpp functions
 cdef extern from "DASolvers.H" namespace "Foam":
@@ -40,6 +41,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdForcedXvAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdAcousticsdXvAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdRdActTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
+        void calcdThermaldWTPsiAD(char * , PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdThermaldXvTPsiAD(char * , PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedWAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdAcousticsdWAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdFdACT(PetscVec, PetscVec, char *, char*, char*, PetscVec)
@@ -51,6 +54,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
+        void calcdRdThermalTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
@@ -66,7 +70,11 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getNLocalCells()
         int checkMesh()
         double getObjFuncValue(char *)
+        void getFaceCoords(PetscVec, PetscVec)
         void getForces(PetscVec, PetscVec, PetscVec)
+        void getThermal(char *, PetscVec)
+        void setThermal(char *, double *)
+        void calcdXvdXsTPsiAD(PetscVec, PetscVec, PetscVec)
         void getAcousticData(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, char*)
         void printAllOptions()
         void updateDAOption(object)
@@ -199,6 +207,12 @@ cdef class pyDASolvers:
 
     def calcdRdActTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdActTPsi):
         self._thisptr.calcdRdActTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdActTPsi.vec)
+    
+    def calcdThermaldWTPsiAD(self, mode, Vec xvVec, Vec wVec, Vec psiVec, Vec prodVec):
+        self._thisptr.calcdThermaldWTPsiAD(mode, xvVec.vec, wVec.vec, psiVec.vec, prodVec.vec)
+    
+    def calcdThermaldXvTPsiAD(self, mode, Vec xvVec, Vec wVec, Vec psiVec, Vec prodVec):
+        self._thisptr.calcdThermaldXvTPsiAD(mode, xvVec.vec, wVec.vec, psiVec.vec, prodVec.vec)
 
     def calcdForcedWAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedW):
         self._thisptr.calcdForcedWAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedW.vec)
@@ -232,6 +246,12 @@ cdef class pyDASolvers:
 
     def calcdFdFieldAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdField):
         self._thisptr.calcdFdFieldAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdField.vec)
+
+    def calcdRdThermalTPsiAD(self, varName, Vec xvVec, Vec wVec, Vec psiVec, Vec thermalVec, Vec prodVec):
+        self._thisptr.calcdRdThermalTPsiAD(varName, xvVec.vec, wVec.vec, psiVec.vec, thermalVec.vec, prodVec.vec)
+    
+    def calcdXvdXsTPsiAD(self, Vec xvVec, Vec psi, Vec prodVec):
+        self._thisptr.calcdXvdXsTPsiAD(xvVec.vec, psi.vec, prodVec.vec)
     
     def calcdRdWOldTPsiAD(self, oldTimeLevel, Vec psi, Vec dRdWOldTPsi):
         self._thisptr.calcdRdWOldTPsiAD(oldTimeLevel, psi.vec, dRdWOldTPsi.vec)
@@ -290,8 +310,21 @@ cdef class pyDASolvers:
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
 
+    def getFaceCoords(self, Vec xvVec, Vec xsVec):
+        self._thisptr.getFaceCoords(xvVec.vec, xsVec.vec)
+
     def getForces(self, Vec fX, Vec fY, Vec fZ):
         self._thisptr.getForces(fX.vec, fY.vec, fZ.vec)
+    
+    def getThermal(self, varName, Vec thermalVec):
+        self._thisptr.getThermal(varName, thermalVec.vec)
+    
+    def setThermal(self, varName, np.ndarray[double, ndim=1, mode="c"] thermal):
+        cdef double *thermal_data = <double*>thermal.data
+        self._thisptr.setThermal(varName, thermal_data)
+
+    def getAcousticData(self, Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, groupName):
+        self._thisptr.getAcousticData(x.vec, y.vec, z.vec, nX.vec, nY.vec, nZ.vec, a.vec, fX.vec, fY.vec, fZ.vec, groupName)
 
     def getAcousticData(self, Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, groupName):
         self._thisptr.getAcousticData(x.vec, y.vec, z.vec, nX.vec, nY.vec, nZ.vec, a.vec, fX.vec, fY.vec, fZ.vec, groupName)
