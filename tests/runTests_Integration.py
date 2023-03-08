@@ -144,7 +144,7 @@ DASolver.setEvalFuncs(evalFuncs)
 # DVCon
 DVCon = DVConstraints()
 DVCon.setDVGeo(DVGeo)
-[p0, v1, v2] = DASolver.getTriangulatedMeshSurface(groupName=DASolver.getOption("designSurfacesGroup"))
+[p0, v1, v2] = DASolver.getTriangulatedMeshSurface(groupName=DASolver.designSurfacesGroup)
 surf = [p0, v1, v2]
 DVCon.setSurface(surf)
 
