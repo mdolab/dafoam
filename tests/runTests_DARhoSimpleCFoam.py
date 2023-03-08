@@ -41,7 +41,6 @@ rho0 = 1.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DARhoSimpleCFoam",
-    "designSurfaceFamily": "designSurface",
     "useAD": {"mode": "fd"},
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,

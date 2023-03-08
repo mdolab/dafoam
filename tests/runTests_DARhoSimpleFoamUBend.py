@@ -35,7 +35,6 @@ p0 = 101325.0
 aeroOptions = {
     "solverName": "DARhoSimpleFoam",
     "useAD": {"mode": "fd"},
-    "designSurfaceFamily": "designSurface",
     "designSurfaces": ["ubend"],
     "primalMinResTol": 1e-5,
     "primalBC": {

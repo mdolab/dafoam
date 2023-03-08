@@ -37,7 +37,6 @@ if gcomm.rank == 0:
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DATurboFoam",
-    "designSurfaceFamily": "designSurface",
     "useAD": {"mode": "fd"},
     "designSurfaces": ["blade"],
     "primalMinResTol": 1e-12,

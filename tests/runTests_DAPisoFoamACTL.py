@@ -34,7 +34,6 @@ if gcomm.rank == 0:
 # test incompressible solvers
 daOptions = {
     "solverName": "DAPisoFoam",
-    "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wallsbump"],
     "writeJacobians": ["all"],
     "useAD": {"mode": "fd"},

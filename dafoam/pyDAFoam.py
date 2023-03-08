@@ -3966,7 +3966,6 @@ class PYDAFOAM(object):
         change these. The strings for these options are placed in a set
         """
 
-        # return ("meshSurfaceFamily", "designSurfaceFamily")
         return ()
 
     def _writeDecomposeParDict(self):

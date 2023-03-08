@@ -40,7 +40,6 @@ LRef = 1.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleFoam",
-    "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "useAD": {"mode": "reverse"},
     "writeJacobians": ["all"],

@@ -36,7 +36,6 @@ epsilon0 = 42.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleTFoam",
-    "designSurfaceFamily": "designSurface",
     "useAD": {"mode": "fd"},
     "designSurfaces": ["ubend"],
     "primalMinResTol": 1e-12,
