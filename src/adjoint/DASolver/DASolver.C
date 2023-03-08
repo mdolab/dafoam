@@ -328,7 +328,6 @@ void DASolver::calcdXvdXsTPsiAD(
     dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
 
     wordList patchList;
-
     forAll(couplingInfo.toc(), idxI)
     {
         word scenario = couplingInfo.toc()[idxI];
@@ -336,14 +335,7 @@ void DASolver::calcdXvdXsTPsiAD(
         if (active)
         {
             dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
-            label nGroups = couplingGroups.size();
-            if (nGroups != 1)
-            {
-                FatalErrorIn("getFaceCoords")
-                    << "we support only one couplingSurfaceGroups"
-                    << abort(FatalError);
-            }
-
+            // we support only one couplingSurfaceGroups
             word groupName = couplingGroups.toc()[0];
             couplingGroups.readEntry<wordList>(groupName, patchList);
             break;
@@ -1062,8 +1054,8 @@ void DASolver::getForcesInternal(
     */
 #ifndef SolidDASolver
     // Get reference pressure
-    scalar pRef;
-    daOptionPtr_->getAllOptions().subDict("fsi").readEntry<scalar>("pRef", pRef);
+    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
+    scalar pRef = couplingInfo.subDict("aerostructural").getScalar("pRef");
 
     SortableList<word> patchListSort(patchList);
 

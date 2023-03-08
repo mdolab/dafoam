@@ -47,13 +47,21 @@ tMax = 0.05
 daOptions = {
     "designSurfaces": ["wing", "wing_te"],
     "solverName": "DARhoSimpleFoam",
-    "fsi": {
-        "pRef": p0,
-        "propMovement": True,
-        "fvSource": {
-            "disk1": {
-                "nNodes": 4,
-                "radialLoc": 0.1,
+    "couplingInfo": {
+        "aerostructural": {
+            "active": True,
+            "pRef": p0,
+            "propMovement": True,
+            "fvSource": {
+                "disk1": {
+                    "nNodes": 4,
+                    "radialLoc": 0.1,
+                },
+            },
+            # the groupling surface group can be different 
+            # from the design surfaces
+            "couplingSurfaceGroups": {
+                "wingGroup": ["wing", "wing_te"],
             },
         },
     },

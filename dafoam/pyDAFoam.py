@@ -300,10 +300,6 @@ class DAOPTION(object):
         ## and shows up in the constant/polyMesh/boundary file
         self.designSurfaces = ["None"]
 
-        ## Fluid-structure interatcion (FSI) options. This dictionary takes in the required values for
-        ## an FSI case to be used throughout the simulation.
-        self.fsi = {"pRef": 0.0, "propMovement": False}
-
         ## MDO coupling information for aerostructural, aerothermal, or aeroacoustic optimization.
         ## We can have ONLY one coupling scenario active, e.g., aerostructural and aerothermal can't be
         ## both active. We can have more than one couplingSurfaceGroups, e.g., wingGroup and tailGroup
@@ -1068,6 +1064,18 @@ class PYDAFOAM(object):
                 nActivated += 1
         if nActivated > 1:
             raise Error("Only one coupling scenario can be active, while %i found" % nActivated)
+
+        nAerothermalSurfaces = len(self.getOption("couplingInfo")["aerothermal"]["couplingSurfaceGroups"].keys())
+        if nAerothermalSurfaces > 1:
+            raise Error(
+                "Only one couplingSurfaceGroups is supported for aerothermal, while %i found" % nAerothermalSurfaces
+            )
+
+        nAeroStructSurfaces = len(self.getOption("couplingInfo")["aerostrucutral"]["couplingSurfaceGroups"].keys())
+        if nAerothermalSurfaces > 1:
+            raise Error(
+                "Only one couplingSurfaceGroups is supported for aerostrucutral, while %i found" % nAeroStructSurfaces
+            )
 
         # check other combinations...
 
