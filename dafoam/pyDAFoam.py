@@ -308,7 +308,7 @@ class DAOPTION(object):
         self.couplingInfo = {
             "aerostructural": {
                 "active": False,
-                "pRef": 100000,
+                "pRef": 0,
                 "propMovement": False,
                 "couplingSurfaceGroups": {
                     "wingGroup": ["wing", "wing_te"],
@@ -323,7 +323,7 @@ class DAOPTION(object):
             },
             "aeroacoustic": {
                 "active": False,
-                "pRef": 100000,
+                "pRef": 0,
                 "couplingSurfaceGroups": {
                     "blade1Group": ["blade1_ps", "blade1_ss"],
                     "blade2Group": ["blade2"],
