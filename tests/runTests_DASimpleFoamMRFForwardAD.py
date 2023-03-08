@@ -75,7 +75,6 @@ DVGeo.addGlobalDV("MRF", [MRF0], MRF, lower=-1000.0, upper=1000.0, scale=1.0)
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
 DASolver.setDVGeo(DVGeo)
 mesh = USMesh(options=meshOptions, comm=gcomm)
-DASolver.addFamilyGroup(DASolver.getOption("designSurfaceFamily"), DASolver.getOption("designSurfaces"))
 DASolver.printFamilyList()
 DASolver.setMesh(mesh)
 # set evalFuncs
@@ -85,7 +84,7 @@ DASolver.setEvalFuncs(evalFuncs)
 # DVCon
 DVCon = DVConstraints()
 DVCon.setDVGeo(DVGeo)
-[p0, v1, v2] = DASolver.getTriangulatedMeshSurface(groupName=DASolver.getOption("designSurfaceFamily"))
+[p0, v1, v2] = DASolver.getTriangulatedMeshSurface(groupName=DASolver.getOption("designSurfacesGroup"))
 surf = [p0, v1, v2]
 DVCon.setSurface(surf)
 
