@@ -1071,10 +1071,10 @@ class PYDAFOAM(object):
                 "Only one couplingSurfaceGroups is supported for aerothermal, while %i found" % nAerothermalSurfaces
             )
 
-        nAeroStructSurfaces = len(self.getOption("couplingInfo")["aerostrucutral"]["couplingSurfaceGroups"].keys())
+        nAeroStructSurfaces = len(self.getOption("couplingInfo")["aerostructural"]["couplingSurfaceGroups"].keys())
         if nAerothermalSurfaces > 1:
             raise Error(
-                "Only one couplingSurfaceGroups is supported for aerostrucutral, while %i found" % nAeroStructSurfaces
+                "Only one couplingSurfaceGroups is supported for aerostructural, while %i found" % nAeroStructSurfaces
             )
 
         # check other combinations...
