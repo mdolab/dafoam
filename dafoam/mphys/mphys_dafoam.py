@@ -179,7 +179,7 @@ class DAFoamGroup(Group):
                 promotes_inputs=[("x_%s" % self.discipline, "x_%s_masked" % self.discipline)],
                 promotes_outputs=["%s_vol_coords" % self.discipline],
             )
-        else:
+        elif aerostructDict["active"] and aerostructDict["propMovement"]:
             raise RuntimeError(
                 "Propeller movement not possible when the warper is outside of the solver. Check for a valid scenario."
             )

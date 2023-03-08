@@ -298,7 +298,7 @@ class DAOPTION(object):
 
         ## List of patch names for the design surface. These patch names need to be of wall type
         ## and shows up in the constant/polyMesh/boundary file
-        self.designSurfaces = ["None"]
+        self.designSurfaces = ["ALL_OPENFOAM_WALL_PATCHES"]
 
         ## MDO coupling information for aerostructural, aerothermal, or aeroacoustic optimization.
         ## We can have ONLY one coupling scenario active, e.g., aerostructural and aerothermal can't be
@@ -751,7 +751,10 @@ class PYDAFOAM(object):
 
         # Set the design surfaces group
         self.designSurfacesGroup = "designSurfaces"
-        self.addFamilyGroup(self.designSurfacesGroup, self.getOption("designSurfaces"))
+        if "ALL_OPENFOAM_WALL_PATCHES" in self.getOption("designSurfaces"):
+            self.addFamilyGroup(self.designSurfacesGroup, self.wallList)
+        else:
+            self.addFamilyGroup(self.designSurfacesGroup, self.getOption("designSurfaces"))
 
         # Set the aeroacoustic families if given
         couplingInfo = self.getOption("couplingInfo")
