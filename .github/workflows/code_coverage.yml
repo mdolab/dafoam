@@ -13,7 +13,7 @@ env:
 
 jobs:
   code_coverage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-18.04
     name: Codecov
     strategy:
       fail-fast: false
@@ -34,10 +34,10 @@ jobs:
             args: 'mphys_comp'
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v3
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
       with:
-        python-version: 3.8
+        python-version: 3.6
     - name: Create the docker container and run the tests
       run: |
         docker pull dafoam/opt-packages:${{env.DOCKER_TAG}}
