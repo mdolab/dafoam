@@ -298,11 +298,7 @@ class DAOPTION(object):
 
         ## List of patch names for the design surface. These patch names need to be of wall type
         ## and shows up in the constant/polyMesh/boundary file
-        self.designSurfaces = ["None"]
-
-        ## Fluid-structure interatcion (FSI) options. This dictionary takes in the required values for
-        ## an FSI case to be used throughout the simulation.
-        self.fsi = {"pRef": 0.0, "propMovement": False}
+        self.designSurfaces = ["ALL_OPENFOAM_WALL_PATCHES"]
 
         ## MDO coupling information for aerostructural, aerothermal, or aeroacoustic optimization.
         ## We can have ONLY one coupling scenario active, e.g., aerostructural and aerothermal can't be
@@ -312,11 +308,10 @@ class DAOPTION(object):
         self.couplingInfo = {
             "aerostructural": {
                 "active": False,
-                "pRef": 100000,
+                "pRef": 0,
                 "propMovement": False,
                 "couplingSurfaceGroups": {
                     "wingGroup": ["wing", "wing_te"],
-                    "tailGroup": ["tail"],
                 },
             },
             "aerothermal": {
@@ -327,7 +322,7 @@ class DAOPTION(object):
             },
             "aeroacoustic": {
                 "active": False,
-                "pRef": 100000,
+                "pRef": 0,
                 "couplingSurfaceGroups": {
                     "blade1Group": ["blade1_ps", "blade1_ss"],
                     "blade2Group": ["blade2"],
@@ -605,9 +600,6 @@ class DAOPTION(object):
         ## Default name for the mesh surface family. Users typically don't need to change
         self.meshSurfaceFamily = "None"
 
-        ## Default name for the design surface family. Users typically don't need to change
-        self.designSurfaceFamily = "designSurfaces"
-
         ## The threshold for check mesh call
         self.checkMeshThreshold = {
             "maxAspectRatio": 1000.0,
@@ -750,32 +742,42 @@ class PYDAFOAM(object):
         self._computeBasicFamilyInfo()
 
         # Add a couple of special families.
-        self.allFamilies = "allSurfaces"
-        self.addFamilyGroup(self.allFamilies, self.basicFamilies)
+        self.allSurfacesGroup = "allSurfaces"
+        self.addFamilyGroup(self.allSurfacesGroup, self.basicFamilies)
 
         self.allWallsGroup = "allWalls"
         self.addFamilyGroup(self.allWallsGroup, self.wallList)
 
-        # Set the design families if given, otherwise default to all
-        # walls
-        self.designFamilyGroup = self.getOption("designSurfaceFamily")
-        if self.designFamilyGroup == "None":
-            self.designFamilyGroup = self.allWallsGroup
+        # Set the design surfaces group
+        self.designSurfacesGroup = "designSurfaces"
+        if "ALL_OPENFOAM_WALL_PATCHES" in self.getOption("designSurfaces"):
+            self.addFamilyGroup(self.designSurfacesGroup, self.wallList)
+        else:
+            self.addFamilyGroup(self.designSurfacesGroup, self.getOption("designSurfaces"))
 
-        # Set the mesh families if given, otherwise default to all
-        # walls
-        self.meshFamilyGroup = self.getOption("meshSurfaceFamily")
-        if self.meshFamilyGroup == "None":
-            self.meshFamilyGroup = self.allWallsGroup
-
-        # Set the aeroacoustic families if given
+        # Set the couplingSurfacesGroup if any of the MDO scenario is active
+        # otherwise, set the couplingSurfacesGroup to designSurfacesGroup
+        # NOTE: the treatment of aeroacoustic is different because it supports more than
+        # one couplingSurfaceGroups. For other scenarios, only one couplingSurfaceGroup
+        # can be defined. TODO. we need to make them consistent in the future..
         couplingInfo = self.getOption("couplingInfo")
-        if couplingInfo["aeroacoustic"]["active"]:
+        self.couplingSurfacesGroup = self.designSurfacesGroup
+        if couplingInfo["aerostructural"]["active"]:
+            # we support only one aerostructural surfaceGroup for now
+            self.couplingSurfacesGroup = list(couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys())[0]
+            patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
+            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
+        elif couplingInfo["aeroacoustic"]["active"]:
             for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
                 self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
+        elif couplingInfo["aerothermal"]["active"]:
+            # we support only one aerothermal coupling surfaceGroup for now
+            self.couplingSurfacesGroup = list(couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys())[0]
+            patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
+            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
 
-        # get the surface coordinate of allFamilies
-        self.xs0 = self.getSurfaceCoordinates(self.allFamilies)
+        # get the surface coordinate of allSurfacesGroup
+        self.xs0 = self.getSurfaceCoordinates(self.allSurfacesGroup)
 
         # By Default we don't have an external mesh object or a
         # geometric manipulation object
@@ -841,7 +843,7 @@ class PYDAFOAM(object):
             # if the point set is not in DVGeo add it first
             if self.ptSetName not in self.DVGeo.points:
 
-                xs0 = self.mapVector(self.xs0, self.allFamilies, self.designFamilyGroup)
+                xs0 = self.mapVector(self.xs0, self.allSurfacesGroup, self.designSurfacesGroup)
 
                 self.DVGeo.addPointSet(xs0, self.ptSetName)
                 self.pointsSet = True
@@ -857,7 +859,7 @@ class PYDAFOAM(object):
                 if self.surfGeoDisp is not None:
                     xs += self.surfGeoDisp
 
-                self.setSurfaceCoordinates(xs, self.designFamilyGroup)
+                self.setSurfaceCoordinates(xs, self.designSurfacesGroup)
                 Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(self.ptSetName)))
 
                 # warp the mesh to get the new volume coordinates
@@ -1079,6 +1081,18 @@ class PYDAFOAM(object):
                 nActivated += 1
         if nActivated > 1:
             raise Error("Only one coupling scenario can be active, while %i found" % nActivated)
+
+        nAerothermalSurfaces = len(self.getOption("couplingInfo")["aerothermal"]["couplingSurfaceGroups"].keys())
+        if nAerothermalSurfaces > 1:
+            raise Error(
+                "Only one couplingSurfaceGroups is supported for aerothermal, while %i found" % nAerothermalSurfaces
+            )
+
+        nAeroStructSurfaces = len(self.getOption("couplingInfo")["aerostructural"]["couplingSurfaceGroups"].keys())
+        if nAeroStructSurfaces > 1:
+            raise Error(
+                "Only one couplingSurfaceGroups is supported for aerostructural, while %i found" % nAeroStructSurfaces
+            )
 
         # check other combinations...
 
@@ -1464,8 +1478,8 @@ class PYDAFOAM(object):
         self.mesh.setExternalMeshIndices(meshInd)
 
         # Set the surface the user has supplied:
-        conn, faceSizes = self.getSurfaceConnectivity(self.meshFamilyGroup)
-        pts = self.getSurfaceCoordinates(self.meshFamilyGroup)
+        conn, faceSizes = self.getSurfaceConnectivity(self.allWallsGroup)
+        pts = self.getSurfaceCoordinates(self.allWallsGroup)
         self.mesh.setSurfaceDefinition(pts, conn, faceSizes)
 
     def setEvalFuncs(self, evalFuncs):
@@ -1765,7 +1779,7 @@ class PYDAFOAM(object):
         """
 
         dFdXs = self.mesh.getdXs()
-        dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.allWallsGroup)
+        dFdXs = self.mapVector(dFdXs, self.allWallsGroup, self.allWallsGroup)
 
         pts = self.getSurfaceCoordinates(self.allWallsGroup)
         conn, faceSizes = self.getSurfaceConnectivity(self.allWallsGroup)
@@ -2464,7 +2478,7 @@ class PYDAFOAM(object):
 
         self.mesh.warpDeriv(dFdXvTotalArray)
         dFdXs = self.mesh.getdXs()
-        dFdXs = self.mapVector(dFdXs, self.meshFamilyGroup, self.designFamilyGroup)
+        dFdXs = self.mapVector(dFdXs, self.allWallsGroup, self.designSurfacesGroup)
         dFdFFD = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
 
         return dFdFFD
@@ -2496,7 +2510,7 @@ class PYDAFOAM(object):
 
         # Calculate number of surface points
         if groupName is None:
-            groupName = self.designFamilyGroup
+            groupName = self.couplingSurfacesGroup
 
         nPts, nFaces = self._getSurfaceSize(groupName)
 
@@ -2544,7 +2558,7 @@ class PYDAFOAM(object):
         Info("Computing surface forces")
         # Calculate number of surface points
         if groupName is None:
-            groupName = self.designFamilyGroup
+            groupName = self.couplingSurfacesGroup
         nPts, _ = self._getSurfaceSize(groupName)
 
         fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
@@ -3011,7 +3025,7 @@ class PYDAFOAM(object):
 
         # get the original surf coords
         xSDot0 = np.zeros_like(self.xs0, self.dtype)
-        xSDot0 = self.mapVector(xSDot0, self.allFamilies, self.designFamilyGroup)
+        xSDot0 = self.mapVector(xSDot0, self.allSurfacesGroup, self.designSurfacesGroup)
 
         # get xSDot
         xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName=self.ptSetName).reshape(xSDot0.shape)
@@ -3112,14 +3126,14 @@ class PYDAFOAM(object):
         # update the CFD Coordinates
         if self.DVGeo is not None:
             if self.ptSetName not in self.DVGeo.points:
-                xs0 = self.mapVector(self.xs0, self.allFamilies, self.designFamilyGroup)
+                xs0 = self.mapVector(self.xs0, self.allSurfacesGroup, self.designSurfacesGroup)
                 self.DVGeo.addPointSet(xs0, self.ptSetName)
                 self.pointsSet = True
 
             # set the surface coords
             if not self.DVGeo.pointSetUpToDate(self.ptSetName):
                 coords = self.DVGeo.update(self.ptSetName, config=None)
-                self.setSurfaceCoordinates(coords, self.designFamilyGroup)
+                self.setSurfaceCoordinates(coords, self.designSurfacesGroup)
 
             # warp the mesh
             self.mesh.warpMesh()
@@ -3162,8 +3176,8 @@ class PYDAFOAM(object):
         # First get the surface coordinates of the meshFamily in case
         # the groupName is a subset, those values will remain unchanged.
 
-        meshSurfCoords = self.getSurfaceCoordinates(self.meshFamilyGroup)
-        meshSurfCoords = self.mapVector(coordinates, groupName, self.meshFamilyGroup, meshSurfCoords)
+        meshSurfCoords = self.getSurfaceCoordinates(self.allWallsGroup)
+        meshSurfCoords = self.mapVector(coordinates, groupName, self.allWallsGroup, meshSurfCoords)
 
         self.mesh.setSurfaceCoordinates(meshSurfCoords)
 
@@ -3209,7 +3223,7 @@ class PYDAFOAM(object):
         does *NOT* set the actual family group
         """
         if groupName is None:
-            groupName = self.allFamilies
+            groupName = self.allSurfacesGroup
 
         if groupName not in self.families:
             raise Error(
@@ -3414,7 +3428,7 @@ class PYDAFOAM(object):
         vec1counter = 0
         vec2counter = 0
 
-        for ind in self.families[self.allFamilies]:
+        for ind in self.families[self.allSurfacesGroup]:
             npts, ncell = self._getSurfaceSize(self.basicFamilies[ind])
 
             if ind in famList1 and ind in famList2:
@@ -3969,7 +3983,6 @@ class PYDAFOAM(object):
         change these. The strings for these options are placed in a set
         """
 
-        # return ("meshSurfaceFamily", "designSurfaceFamily")
         return ()
 
     def _writeDecomposeParDict(self):

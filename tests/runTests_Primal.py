@@ -22,7 +22,6 @@ replace_text_in_file("system/fvSchemes", "meshWave", "meshWaveFrozen")
 
 aeroOptions = {
     "solverName": "DASimpleFoam",
-    "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-10,
     "primalBC": {

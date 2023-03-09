@@ -40,7 +40,6 @@ LRef = 1.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleFoam",
-    "designSurfaceFamily": "designSurface",
     "designSurfaces": ["wing"],
     "useAD": {"mode": "reverse"},
     "writeJacobians": ["all"],
@@ -133,7 +132,6 @@ DVGeo.addGlobalDV("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
 DASolver.setDVGeo(DVGeo)
 mesh = USMesh(options=meshOptions, comm=gcomm)
-DASolver.addFamilyGroup(DASolver.getOption("designSurfaceFamily"), DASolver.getOption("designSurfaces"))
 DASolver.printFamilyList()
 DASolver.setMesh(mesh)
 # set evalFuncs
@@ -143,7 +141,7 @@ DASolver.setEvalFuncs(evalFuncs)
 # DVCon
 DVCon = DVConstraints()
 DVCon.setDVGeo(DVGeo)
-[p0, v1, v2] = DASolver.getTriangulatedMeshSurface(groupName=DASolver.getOption("designSurfaceFamily"))
+[p0, v1, v2] = DASolver.getTriangulatedMeshSurface(groupName=DASolver.designSurfacesGroup)
 surf = [p0, v1, v2]
 DVCon.setSurface(surf)
 
@@ -171,35 +169,6 @@ else:
     funcsSens = {}
     funcsSens, fail = optFuncs.runAdjoint(fileName="totalSens.txt")
     optFuncs.calcFDSens(fileName="totalSensFD.txt")
-
-    # Force calculation routines
-    # Compute force
-    forces = DASolver.getForces()
-    fNorm = np.linalg.norm(forces.flatten())
-    fNormSum = gcomm.allreduce(fNorm, op=MPI.SUM)
-    funcs["forces"] = fNormSum
-
-    # Compute dForcedxV
-    fBar = np.ones(np.size(forces.flatten()))
-    fBarVec = DASolver.array2Vec(fBar)
-    dForcedXv = DASolver.xvVec.duplicate()
-    dForcedXv.zeroEntries()
-    DASolver.solverAD.calcdForcedXvAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedXv)
-    xVBar = DASolver.vec2Array(dForcedXv)
-    xVBarNorm = np.linalg.norm(xVBar.flatten())
-    xVBarNormSum = gcomm.allreduce(xVBarNorm, op=MPI.SUM)
-    funcsSens["dForcedxV"] = xVBarNormSum
-
-    # Compute dForcedW
-    fBar = np.ones(np.size(forces.flatten()))
-    fBarVec = DASolver.array2Vec(fBar)
-    dForcedW = DASolver.wVec.duplicate()
-    dForcedW.zeroEntries()
-    DASolver.solverAD.calcdForcedWAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedW)
-    wBar = DASolver.vec2Array(dForcedW)
-    wBarNorm = np.linalg.norm(wBar.flatten())
-    wBarNormSum = gcomm.allreduce(wBarNorm, op=MPI.SUM)
-    funcsSens["dForcedW"] = wBarNormSum
 
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
