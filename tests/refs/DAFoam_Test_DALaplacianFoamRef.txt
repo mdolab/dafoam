@@ -1,6 +1,8 @@
 Dictionary Key: HF
-@value    16672391.25773725 1e-08 1e-10
+@value    16671485.38339369 1e-08 1e-10
+Dictionary Key: TFormSum
+@value    30.02575003374421 1e-08 1e-10
 Dictionary Key: TVOL
-@value 0.004838821371051152 1e-08 1e-10
+@value 0.004838918812660341 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10

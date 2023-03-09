@@ -133,6 +133,13 @@ else:
     xDV = DVGeo.getValues()
     funcs = {}
     funcs, fail = optFuncs.calcObjFuncValues(xDV)
+
+    # test getThermal
+    T = DASolver.getThermal(varName="temperature")
+    TNorm = np.linalg.norm(T / 1000)
+    TNormSum = gcomm.allreduce(TNorm, op=MPI.SUM)
+    funcs["TFormSum"] = TNormSum
+
     funcsSens = {}
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
