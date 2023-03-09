@@ -509,7 +509,9 @@ void DASolver::setThermal(
 
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
+    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
+    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
@@ -638,7 +640,9 @@ void DASolver::getThermalInternal(
 
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
+    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
+    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
@@ -803,7 +807,9 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
     // Get Data
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    dictionary aerostructDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerostructural");
+    word groupName = aerostructDict.subDict("couplingSurfaceGroups").toc()[0];
+    aerostructDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
@@ -4550,7 +4556,9 @@ void DASolver::calcdRdThermalTPsiAD(
 
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
+    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
+    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
@@ -4732,7 +4740,9 @@ void DASolver::calcdForcedXvAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    dictionary aerostructDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerostructural");
+    word groupName = aerostructDict.subDict("couplingSurfaceGroups").toc()[0];
+    aerostructDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
@@ -5304,7 +5314,9 @@ void DASolver::calcdThermaldWTPsiAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
+    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
+    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
@@ -5386,7 +5398,9 @@ void DASolver::calcdThermaldXvTPsiAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
+    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
+    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
@@ -5492,7 +5506,9 @@ void DASolver::calcdForcedWAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    dictionary aerostructDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerostructural");
+    word groupName = aerostructDict.subDict("couplingSurfaceGroups").toc()[0];
+    aerostructDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
     sort(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
