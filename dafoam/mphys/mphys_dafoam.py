@@ -113,7 +113,7 @@ class DAFoamBuilder(Builder):
     def get_number_of_nodes(self, groupName=None):
         # Get number of aerodynamic nodes
         if groupName is None:
-            groupName = self.DASolver.aerostructSurfacesGroup
+            groupName = self.DASolver.couplingSurfacesGroup
         nodes = int(self.DASolver.getSurfaceCoordinates(groupName=groupName).size / 3)
 
         # Add fictitious nodes to root proc, if they are used
@@ -238,7 +238,7 @@ class DAFoamGroup(Group):
 
             self.add_subsystem(
                 "%s_xs" % self.discipline,
-                DAFoamFaceCoords(solver=self.DASolver, groupName=self.DASolver.aerothermalSurfacesGroup),
+                DAFoamFaceCoords(solver=self.DASolver, groupName=self.DASolver.couplingSurfacesGroup),
                 promotes_inputs=["*"],
                 promotes_outputs=["*"],
             )
@@ -265,7 +265,7 @@ class DAFoamGroup(Group):
                         nodes_prop += 1 + parameters["nNodes"]
 
         # Compute number of aerodynamic nodes
-        nodes_aero = int(self.DASolver.getSurfaceCoordinates(groupName=self.DASolver.aerostructSurfacesGroup).size / 3)
+        nodes_aero = int(self.DASolver.getSurfaceCoordinates(groupName=self.DASolver.designSurfacesGroup).size / 3)
 
         # Sum nodes and return all values
         nodes_total = nodes_aero + nodes_prop
@@ -444,7 +444,7 @@ class DAFoamPrecouplingGroup(Group):
                             # Count Nodes
                             nodes_prop += 1 + parameters["nNodes"]
 
-            nodes_aero = int(self.DASolver.getSurfaceCoordinates(groupName=self.DASolver.aerostructSurfacesGroup).size / 3)
+            nodes_aero = int(self.DASolver.getSurfaceCoordinates(groupName=self.DASolver.designSurfacesGroup).size / 3)
             nodes_total = nodes_aero + nodes_prop
 
             mask = []
@@ -600,7 +600,7 @@ class DAFoamSolver(ImplicitComponent):
 
         couplingInfo = DASolver.getOption("couplingInfo")
         if couplingInfo["aerothermal"]["active"]:
-            nCells, nFaces = self.DASolver._getSurfaceSize(self.DASolver.aerothermalSurfacesGroup)
+            nCells, nFaces = self.DASolver._getSurfaceSize(self.DASolver.couplingSurfacesGroup)
             if self.discipline == "aero":
                 self.add_input("T_convect", distributed=True, shape=nFaces, tags=["mphys_coupling"])
             if self.discipline == "thermal":
@@ -1399,7 +1399,7 @@ class DAFoamThermal(ExplicitComponent):
 
         self.discipline = self.DASolver.getOption("discipline")
 
-        nPts, nFaces = self.DASolver._getSurfaceSize(self.DASolver.aerothermalSurfacesGroup)
+        nPts, nFaces = self.DASolver._getSurfaceSize(self.DASolver.couplingSurfacesGroup)
 
         if self.var_name == "temperature":
 
@@ -1547,7 +1547,7 @@ class DAFoamForces(ExplicitComponent):
         self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
-        local_surface_coord_size = self.DASolver.getSurfaceCoordinates(self.DASolver.aerostructSurfacesGroup).size
+        local_surface_coord_size = self.DASolver.getSurfaceCoordinates(self.DASolver.couplingSurfacesGroup).size
         self.add_output("f_aero", distributed=True, shape=local_surface_coord_size, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):

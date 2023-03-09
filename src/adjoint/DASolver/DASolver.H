@@ -503,6 +503,9 @@ public:
         const label oldTimeLevel,
         const Vec psi,
         Vec dRdWOldTPsi);
+    
+    /// return the coupling patch list if any scenario is active on couplingInfo dict otherwise return design surface
+    void getCouplingPatchList(wordList& patchList, word groupName = "NONE");
 
     /// matrix free matrix-vector product function to compute vecY=dRdWT*vecX
     static PetscErrorCode dRdWTMatVecMultFunction(

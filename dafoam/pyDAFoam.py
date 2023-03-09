@@ -312,7 +312,6 @@ class DAOPTION(object):
                 "propMovement": False,
                 "couplingSurfaceGroups": {
                     "wingGroup": ["wing", "wing_te"],
-                    "tailGroup": ["tail"],
                 },
             },
             "aerothermal": {
@@ -756,23 +755,26 @@ class PYDAFOAM(object):
         else:
             self.addFamilyGroup(self.designSurfacesGroup, self.getOption("designSurfaces"))
 
-        # Set the aeroacoustic families if given
+        # Set the couplingSurfacesGroup if any of the MDO scenario is active
+        # otherwise, set the couplingSurfacesGroup to designSurfacesGroup
+        # NOTE: the treatment of aeroacoustic is different because it supports more than
+        # one couplingSurfaceGroups. For other scenarios, only one couplingSurfaceGroup
+        # can be defined. TODO. we need to make them consistent in the future..
         couplingInfo = self.getOption("couplingInfo")
+        self.couplingSurfacesGroup = self.designSurfacesGroup
         if couplingInfo["aerostructural"]["active"]:
-            self.aerostructSurfacesGroup = "aerostructSurfacesGroup"
             # we support only one aerostructural surfaceGroup for now
-            surfaceGroupName = couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys()[0]
-            patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][surfaceGroupName]
-            self.addFamilyGroup(self.aerostructSurfacesGroup, patchNames)
+            self.couplingSurfacesGroup = list(couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys())[0]
+            patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
+            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
         elif couplingInfo["aeroacoustic"]["active"]:
             for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
                 self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
         elif couplingInfo["aerothermal"]["active"]:
-            self.aerothermalSurfacesGroup = "aerothermalSurfacesGroup"
             # we support only one aerothermal coupling surfaceGroup for now
-            surfaceGroupName = couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys()[0]
-            patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][surfaceGroupName]
-            self.addFamilyGroup(self.aerothermalSurfacesGroup, patchNames)
+            self.couplingSurfacesGroup = list(couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys())[0]
+            patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
+            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
 
         # get the surface coordinate of allSurfacesGroup
         self.xs0 = self.getSurfaceCoordinates(self.allSurfacesGroup)
@@ -1087,7 +1089,7 @@ class PYDAFOAM(object):
             )
 
         nAeroStructSurfaces = len(self.getOption("couplingInfo")["aerostructural"]["couplingSurfaceGroups"].keys())
-        if nAerothermalSurfaces > 1:
+        if nAeroStructSurfaces > 1:
             raise Error(
                 "Only one couplingSurfaceGroups is supported for aerostructural, while %i found" % nAeroStructSurfaces
             )
@@ -2508,7 +2510,7 @@ class PYDAFOAM(object):
 
         # Calculate number of surface points
         if groupName is None:
-            groupName = self.aerothermalSurfacesGroup
+            groupName = self.couplingSurfacesGroup
 
         nPts, nFaces = self._getSurfaceSize(groupName)
 
@@ -2556,7 +2558,7 @@ class PYDAFOAM(object):
         Info("Computing surface forces")
         # Calculate number of surface points
         if groupName is None:
-            groupName = self.aerostructSurfacesGroup
+            groupName = self.couplingSurfacesGroup
         nPts, _ = self._getSurfaceSize(groupName)
 
         fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)

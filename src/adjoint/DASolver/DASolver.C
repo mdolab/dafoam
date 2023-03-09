@@ -324,25 +324,8 @@ void DASolver::calcdXvdXsTPsiAD(
 #ifdef CODI_AD_REVERSE
     this->updateOFMesh(xvVec);
 
-    // first, we read the patchList from couplingInfo
-    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
-
     wordList patchList;
-    forAll(couplingInfo.toc(), idxI)
-    {
-        word scenario = couplingInfo.toc()[idxI];
-        label active = couplingInfo.subDict(scenario).getLabel("active");
-        if (active)
-        {
-            dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
-            // we support only one couplingSurfaceGroups
-            word groupName = couplingGroups.toc()[0];
-            couplingGroups.readEntry<wordList>(groupName, patchList);
-            break;
-        }
-    }
-    // it is important to sort the patchList and make it unique.
-    sort(patchList);
+    this->getCouplingPatchList(patchList);
 
     pointField meshPoints = meshPtr_->points();
     this->globalADTape_.reset();
@@ -429,34 +412,8 @@ void DASolver::getFaceCoords(
     */
     this->updateOFMesh(xvVec);
 
-    // first, we read the patchList from couplingInfo
-    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
-
     wordList patchList;
-
-    forAll(couplingInfo.toc(), idxI)
-    {
-        word scenario = couplingInfo.toc()[idxI];
-        label active = couplingInfo.subDict(scenario).getLabel("active");
-        if (active)
-        {
-            dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
-            label nGroups = couplingGroups.size();
-            if (nGroups != 1)
-            {
-                FatalErrorIn("getFaceCoords")
-                    << "we support only one couplingSurfaceGroups"
-                    << abort(FatalError);
-            }
-
-            word groupName = couplingGroups.toc()[0];
-            couplingGroups.readEntry<wordList>(groupName, patchList);
-            break;
-        }
-    }
-    // it is important to sort the patchList and make it unique.
-    sort(patchList);
-
+    this->getCouplingPatchList(patchList);
     // get the total number of points and faces for the patchList
     label nPoints, nFaces;
     this->getPatchInfo(nPoints, nFaces, patchList);
@@ -489,6 +446,66 @@ void DASolver::getFaceCoords(
     VecRestoreArray(xsVec, &vecArray);
 }
 
+void DASolver::getCouplingPatchList(
+    wordList& patchList, 
+    word groupName)
+{
+    /*
+    Description:
+        Return the couplingPatchList for MDO
+        We loop over all the scenario in couplingInfo and find which scenario is active.
+        If yes, we return the patchList defined in that scenario.
+        If none of the scenario is active, we return the designSurface as the patchList
+        NOTE: we always sort the returned patchList
+    
+    Input:
+        groupName (optional): a specific group name one wants to extract the patchList from.
+        The default is NONE and we will extract the first group. 
+
+    Output:
+        patchList: a word list of the coupling Patch for MDO or just the design surface patches
+    */
+
+    // first, we read couplingInfo
+    dictionary couplingInfo = daOptionPtr_->getAllOptions().subDict("couplingInfo");
+
+    // loop over all the keys to check active one
+    forAll(couplingInfo.toc(), idxI)
+    {
+        word scenario = couplingInfo.toc()[idxI];
+        label active = couplingInfo.subDict(scenario).getLabel("active");
+        if (active)
+        {
+            dictionary couplingGroups = couplingInfo.subDict(scenario).subDict("couplingSurfaceGroups");
+            // we support only one couplingSurfaceGroups
+            if (groupName == "NONE")
+            {
+                groupName = couplingGroups.toc()[0];
+                couplingGroups.readEntry<wordList>(groupName, patchList);
+                sort(patchList);
+                return;
+            }
+            else
+            {
+                couplingGroups.readEntry<wordList>(groupName, patchList);
+                sort(patchList);
+                return;
+            }
+        }
+    }
+    
+    // if none of the scenarios are active, we return the design surface patches and print a warning
+    Info << "************************  WARNING ************************" << endl;
+    Info << "getCouplingPatchList is called but none of " << endl;
+    Info << "scenario is active in couplingInfo dict! " << endl;
+    Info << "return designSurfaces as patchList.." << endl;
+    Info << "************************  WARNING ************************" << endl;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+    sort(patchList);
+    return;
+
+}
+
 void DASolver::setThermal(
     word varName,
     scalar* thermal)
@@ -509,10 +526,7 @@ void DASolver::setThermal(
 
     label nPoints, nFaces;
     List<word> patchList;
-    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
-    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
-    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     if (varName == "temperature")
@@ -640,10 +654,7 @@ void DASolver::getThermalInternal(
 
     label nPoints, nFaces;
     List<word> patchList;
-    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
-    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
-    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     thermalList.setSize(nFaces);
@@ -807,10 +818,7 @@ void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
     // Get Data
     label nPoints, nFaces;
     List<word> patchList;
-    dictionary aerostructDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerostructural");
-    word groupName = aerostructDict.subDict("couplingSurfaceGroups").toc()[0];
-    aerostructDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     // Allocate arrays
@@ -898,8 +906,7 @@ void DASolver::getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec 
     // Get Data
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList, groupName);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     // Allocate arrays
@@ -4556,10 +4563,7 @@ void DASolver::calcdRdThermalTPsiAD(
 
     label nPoints, nFaces;
     List<word> patchList;
-    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
-    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
-    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     const PetscScalar* thermalArray;
@@ -4740,10 +4744,7 @@ void DASolver::calcdForcedXvAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    dictionary aerostructDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerostructural");
-    word groupName = aerostructDict.subDict("couplingSurfaceGroups").toc()[0];
-    aerostructDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
@@ -4827,8 +4828,7 @@ void DASolver::calcdAcousticsdXvAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList, groupName);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> x(nFaces);
     List<scalar> y(nFaces);
@@ -5314,10 +5314,7 @@ void DASolver::calcdThermaldWTPsiAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
-    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
-    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     scalarList thermalList(nFaces);
@@ -5398,10 +5395,7 @@ void DASolver::calcdThermaldXvTPsiAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    dictionary aerothermalDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerothermal");
-    word groupName = aerothermalDict.subDict("couplingSurfaceGroups").toc()[0];
-    aerothermalDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     scalarList thermalList(nFaces);
@@ -5506,10 +5500,7 @@ void DASolver::calcdForcedWAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    dictionary aerostructDict = daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aerostructural");
-    word groupName = aerostructDict.subDict("couplingSurfaceGroups").toc()[0];
-    aerostructDict.subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+   this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);
@@ -5584,8 +5575,7 @@ void DASolver::calcdAcousticsdWAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-    daOptionPtr_->getAllOptions().subDict("couplingInfo").subDict("aeroacoustic").subDict("couplingSurfaceGroups").readEntry<wordList>(groupName, patchList);
-    sort(patchList);
+    this->getCouplingPatchList(patchList, groupName);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> x(nFaces);
     List<scalar> y(nFaces);
