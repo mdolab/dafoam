@@ -758,9 +758,21 @@ class PYDAFOAM(object):
 
         # Set the aeroacoustic families if given
         couplingInfo = self.getOption("couplingInfo")
-        if couplingInfo["aeroacoustic"]["active"]:
+        if couplingInfo["aerostructural"]["active"]:
+            self.aerostructSurfacesGroup = "aerostructSurfacesGroup"
+            # we support only one aerostructural surfaceGroup for now
+            surfaceGroupName = couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys()[0]
+            patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][surfaceGroupName]
+            self.addFamilyGroup(self.aerostructSurfacesGroup, patchNames)
+        elif couplingInfo["aeroacoustic"]["active"]:
             for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
                 self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
+        elif couplingInfo["aerothermal"]["active"]:
+            self.aerothermalSurfacesGroup = "aerothermalSurfacesGroup"
+            # we support only one aerothermal coupling surfaceGroup for now
+            surfaceGroupName = couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys()[0]
+            patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][surfaceGroupName]
+            self.addFamilyGroup(self.aerothermalSurfacesGroup, patchNames)
 
         # get the surface coordinate of allSurfacesGroup
         self.xs0 = self.getSurfaceCoordinates(self.allSurfacesGroup)
@@ -2496,7 +2508,7 @@ class PYDAFOAM(object):
 
         # Calculate number of surface points
         if groupName is None:
-            groupName = self.designSurfacesGroup
+            groupName = self.aerothermalSurfacesGroup
 
         nPts, nFaces = self._getSurfaceSize(groupName)
 
@@ -2544,7 +2556,7 @@ class PYDAFOAM(object):
         Info("Computing surface forces")
         # Calculate number of surface points
         if groupName is None:
-            groupName = self.designSurfacesGroup
+            groupName = self.aerostructSurfacesGroup
         nPts, _ = self._getSurfaceSize(groupName)
 
         fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
