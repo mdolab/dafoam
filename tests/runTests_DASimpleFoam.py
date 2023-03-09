@@ -250,6 +250,10 @@ else:
     xDV = DVGeo.getValues()
     funcs = {}
     funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    forces = DASolver.getForces()
+    fNorm = np.linalg.norm(forces.flatten())
+    fNormSum = gcomm.allreduce(fNorm, op=MPI.SUM)
+    funcs["forces"] = fNormSum
     funcsSens = {}
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
     if gcomm.rank == 0:
