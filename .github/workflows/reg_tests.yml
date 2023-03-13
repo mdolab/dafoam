@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 env:
   REPO_NAME: 'dafoam'
-  DOCKER_WORKING_DIR: '/home/dafoamuser/dafoam/$REPO_NAME'
+  DOCKER_WORKING_DIR: '/home/dafoamuser/dafoam/repos'
   DOCKER_MOUNT_DIR: '/home/dafoamuser/mount/$REPO_NAME'
   DOCKER_TAG: 'tests'
   DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
@@ -14,7 +14,7 @@ env:
 jobs:
 
   reg_tests:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     name: Tests
     strategy:
       fail-fast: false
@@ -34,7 +34,7 @@ jobs:
           - testConfig: mphys_comp
             args: 'mphys_comp'
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Create the docker container and run the tests
       run: |
         docker pull dafoam/opt-packages:${{env.DOCKER_TAG}}
