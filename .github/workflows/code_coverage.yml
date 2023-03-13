@@ -6,7 +6,7 @@ env:
   REPO_NAME: 'dafoam'
   DOCKER_WORKING_DIR: '/home/dafoamuser/dafoam/$REPO_NAME'
   DOCKER_MOUNT_DIR: '/home/dafoamuser/mount/$REPO_NAME'
-  DOCKER_TAG: 'tests'
+  DOCKER_TAG: 'v3.0.4'
   DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
   DOCKER_OF_ADF_BASHRC: '/home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADF/etc/bashrc'
   DOCKER_OF_ADR_BASHRC: '/home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc'
@@ -35,12 +35,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - uses: codecov/codecov-action@v3
     - uses: actions/setup-python@v2
       with:
         python-version: 3.8
     - name: Create the docker container and run the tests
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: |
         docker pull dafoam/opt-packages:${{env.DOCKER_TAG}}
         docker run -i -d -u dafoamuser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
@@ -71,4 +70,4 @@ jobs:
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && coverage combine && coverage xml && echo dafoamuser | sudo -S cp -r coverage.xml ${{env.DOCKER_MOUNT_DIR}}/"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjoint && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && echo dafoamuser | sudo -S cp -r ../adjoint ${{env.DOCKER_MOUNT_DIR}}/"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/ && echo dafoamuser | sudo -S cp -r ../adjointAD ${{env.DOCKER_MOUNT_DIR}}/"
-        docker exec -e CI=true -e CODECOV_TOKEN=$CODECOV_TOKEN -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_MOUNT_DIR}} && bash <(curl https://codecov.io/bash)"
+        bash <(curl https://codecov.io/bash)
