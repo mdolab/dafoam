@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 env:
   REPO_NAME: 'dafoam'
-  DOCKER_WORKING_DIR: '/home/dafoamuser/dafoam/repos'
+  DOCKER_WORKING_DIR: '/home/dafoamuser/dafoam/$REPO_NAME'
   DOCKER_MOUNT_DIR: '/home/dafoamuser/mount/$REPO_NAME'
   DOCKER_TAG: 'tests'
   DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
