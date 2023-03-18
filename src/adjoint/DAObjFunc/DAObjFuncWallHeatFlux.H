@@ -33,11 +33,11 @@ protected:
     fluidThermo& thermo_;
 #endif
 
-    /// Cp used in solid and incompressible heatFlux calculation
+    /// Cp used in incompressible heatFlux calculation
     scalar Cp_ = -9999.0;
 
-    /// density used in solid and incompressible heatFlux calculation
-    scalar rho_ = -9999.0;
+    /// thermal conductivity for solid heatFlux calculation
+    scalar k_ = -9999.0;
 
     /// solid thermal diffusivity
     scalar DT_ = -9999.0;

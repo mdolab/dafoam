@@ -127,14 +127,10 @@ DAObjFuncWallHeatFlux::DAObjFuncWallHeatFlux(
             IOobject::MUST_READ,
             IOobject::NO_WRITE,
             false));
-    // for incompressible flow, we need to read Cp from transportProperties
-    if (Cp_ < 0)
+    // for solid, we need to read k from transportProperties
+    if (k_ < 0)
     {
-        Cp_ = readScalar(transportProperties.lookup("Cp"));
-    }
-    if (rho_ < 0)
-    {
-        rho_ = readScalar(transportProperties.lookup("rho"));
+        k_ = readScalar(transportProperties.lookup("k"));
     }
     if (DT_ < 0)
     {
@@ -228,7 +224,7 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
 #endif
 
 #ifdef SolidDASolver
-    // solid. H = rho * Cp * DT * dT/dz
+    // solid. H = k * dT/dz, where k = DT / rho / Cp
     const objectRegistry& db = mesh_.thisDb();
     const volScalarField& T = db.lookupObject<volScalarField>("T");
     const volScalarField::Boundary& TBf = T.boundaryField();
@@ -236,7 +232,7 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
     {
         if (!wallHeatFluxBf[patchI].coupled())
         {
-            wallHeatFluxBf[patchI] = rho_ * Cp_ * DT_ * TBf[patchI].snGrad();
+            wallHeatFluxBf[patchI] = k_ * TBf[patchI].snGrad();
         }
     }
 #endif

@@ -128,10 +128,12 @@ class Top(Multipoint):
         dafoam_builder_aero = DAFoamBuilder(daOptionsAero, meshOptions, scenario="aerothermal", run_directory="aero")
         dafoam_builder_aero.initialize(self.comm)
 
-        dafoam_builder_thermal = DAFoamBuilder(daOptionsThermal, meshOptions, scenario="aerothermal", run_directory="thermal")
+        dafoam_builder_thermal = DAFoamBuilder(
+            daOptionsThermal, meshOptions, scenario="aerothermal", run_directory="thermal"
+        )
         dafoam_builder_thermal.initialize(self.comm)
 
-        thermalxfer_builder = MeldThermalBuilder(dafoam_builder_aero, dafoam_builder_thermal)
+        thermalxfer_builder = MeldThermalBuilder(dafoam_builder_aero, dafoam_builder_thermal, n=5, beta=0.5)
         thermalxfer_builder.initialize(self.comm)
 
         # add the design variable component to keep the top level design variables
@@ -181,7 +183,7 @@ class Top(Multipoint):
         self.geometry_aero.nom_add_discipline_coords("aero", points_aero)
         self.geometry_thermal.nom_add_discipline_coords("thermal", points_thermal)
 
-        #self.scenario.coupling._mphys_promote_coupling_variables()
+        # self.scenario.coupling._mphys_promote_coupling_variables()
 
         # select the FFD points to move
         pts = self.geometry_aero.DVGeo.getLocalIndex(0)
