@@ -17,14 +17,11 @@ gcomm = MPI.COMM_WORLD
 
 os.chdir("./input/flange")
 
-TRef = 1.0
-
 # test incompressible solvers
 aeroOptions = {
     "designSurfaces": ["patch1"],
     "solverName": "DALaplacianFoam",
-    "useAD": {"mode": "fd"},
-    "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 0.1},
+    "printIntervalUnsteady": 1,
     "objFunc": {
         "TVOL": {
             "part1": {
@@ -56,7 +53,7 @@ aeroOptions = {
 DASolver = PYDAFOAM(options=aeroOptions, comm=MPI.COMM_WORLD)
 
 nCells, nFaces = DASolver._getSurfaceSize(DASolver.couplingSurfacesGroup)
-TGrad = np.ones(nFaces) * 1000
+TGrad = np.ones(nFaces) * 5
 DASolver.solver.setThermal("heatFlux".encode(), TGrad)
 
 DASolver()
@@ -65,7 +62,7 @@ evalFuncs = ["TVOL", "HF"]
 DASolver.evalFunctions(funcs, evalFuncs)
 
 T = DASolver.getThermal(varName="temperature")
-TNorm = np.linalg.norm(T / 1000)
+TNorm = np.linalg.norm(T / 100)
 TNormSum = gcomm.allreduce(TNorm, op=MPI.SUM)
 funcs["TFormSum"] = TNormSum
 
