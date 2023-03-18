@@ -115,7 +115,6 @@ DAObjFuncWallHeatFlux::DAObjFuncWallHeatFlux(
     {
         Cp_ = readScalar(transportProperties.lookup("Cp"));
     }
-    rho_ = 1.0;
 #endif
 
 #ifdef SolidDASolver
@@ -203,7 +202,7 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
     {
         if (!wallHeatFluxBf[patchI].coupled())
         {
-            wallHeatFluxBf[patchI] = rho_ * Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
+            wallHeatFluxBf[patchI] = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
         }
     }
 #endif
