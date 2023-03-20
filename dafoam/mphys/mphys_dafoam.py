@@ -775,6 +775,8 @@ class DAFoamSolver(ImplicitComponent):
                     DASolver.solverAD.calcdRdThermalTPsiAD(
                         "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, resBarVec, thermalVec, prodVec
                     )
+                    thermalBar = DASolver.vec2Array(prodVec)
+                    d_inputs["q_conduct"] += thermalBar
                 elif inputName == "T_convect":
                     # calculate [dRdT]^T*Psi for aero
                     thermal = inputs["T_convect"]
@@ -784,6 +786,8 @@ class DAFoamSolver(ImplicitComponent):
                     DASolver.solverAD.calcdRdThermalTPsiAD(
                         "temperature".encode(), DASolver.xvVec, DASolver.wVec, resBarVec, thermalVec, prodVec
                     )
+                    thermalBar = DASolver.vec2Array(prodVec)
+                    d_inputs["T_convect"] += thermalBar
                 else:  # now we deal with general input output names
                     # compute [dRdAOA]^T*Psi using reverse mode AD
                     if self.dvType[inputName] == "AOA":

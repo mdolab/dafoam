@@ -570,12 +570,27 @@ void DASolver::setThermal(
 
         meanVar /= sumArea;
         reduce(meanVar, sumOp<scalar>());
-        Info << "setThermal mean temperature " << meanVar << endl;
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "setThermal mean temperature " << meanVar << endl;
+        }
     }
     else if (varName == "heatFlux")
     {
         // here we receive heatFlux from the fluid domain (varVec) and will assign the fixedGradient
         // boundary condition to the solid domain
+
+        volScalarField wallHeatFlux(
+            IOobject(
+                "wallHeatFlux",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("wallHeatFlux", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            "fixedValue");
 
         IOdictionary transportProperties(
             IOobject(
@@ -610,6 +625,7 @@ void DASolver::setThermal(
                 // ************NOTE********
                 grad[faceI] = -thermal[localFaceI] / k;
                 meanVar += -thermal[localFaceI] * meshPtr_->magSf().boundaryField()[patchI][faceI];
+                wallHeatFlux.boundaryFieldRef()[patchI][faceI] = -thermal[localFaceI];
                 localFaceI++;
             }
         }
@@ -617,7 +633,23 @@ void DASolver::setThermal(
 
         meanVar /= sumArea;
         reduce(meanVar, sumOp<scalar>());
-        Info << "setThermal mean heat flux " << meanVar << endl;
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "setThermal mean heat flux " << meanVar << endl;
+        }
+
+        // check if wallHeatFlux exists, if not, write it to the disk. This avoid writing the same file over and over
+        IOobject fileHeader(
+            "wallHeatFlux",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ);
+        if (!fileHeader.typeHeaderOk<volScalarField>())
+        {
+            Info << "Writing wallHeatFlux " << endl;
+            wallHeatFlux.write();
+        }
     }
     else
     {
@@ -711,6 +743,17 @@ void DASolver::getThermalInternal(
         const objectRegistry& db = meshPtr_->thisDb();
         const volScalarField& T = db.lookupObject<volScalarField>("T");
 
+        volScalarField wallTemperature(
+            IOobject(
+                "wallTemperature",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("wallTemperature", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            "fixedValue");
+
         label localFaceI = 0;
         forAll(patchList, cI)
         {
@@ -721,16 +764,43 @@ void DASolver::getThermalInternal(
             {
                 thermalList[localFaceI] = T.boundaryField()[patchI][faceI];
                 meanVar += T.boundaryField()[patchI][faceI] * meshPtr_->magSf().boundaryField()[patchI][faceI];
+                wallTemperature.boundaryFieldRef()[patchI][faceI] = T.boundaryField()[patchI][faceI];
                 localFaceI++;
             }
         }
 
         meanVar /= sumArea;
         reduce(meanVar, sumOp<scalar>());
-        Info << "getThermal mean temperature " << meanVar << endl;
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "getThermal mean temperature " << meanVar << endl;
+        }
+
+        // check if wallHeatFlux exists, if not, write it to the disk. This avoid writing the same file over and over
+        IOobject fileHeader(
+            "wallTemperature",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ);
+        if (!fileHeader.typeHeaderOk<volScalarField>())
+        {
+            Info << "Writing wallTemperature " << endl;
+            wallTemperature.write();
+        }
     }
     else if (varName == "heatFlux")
     {
+        volScalarField wallHeatFlux(
+            IOobject(
+                "wallHeatFlux",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("wallHeatFlux", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            "fixedValue");
 
 #ifdef IncompressibleFlow
 
@@ -768,6 +838,7 @@ void DASolver::getThermalInternal(
                 scalar val = Cp * alphaEffBf[patchI][faceI] * TBfGrad[faceI];
                 thermalList[localFaceI] = val;
                 meanVar += val * meshPtr_->magSf().boundaryField()[patchI][faceI];
+                wallHeatFlux.boundaryFieldRef()[patchI][faceI] = val;
                 localFaceI++;
             }
         }
@@ -796,6 +867,7 @@ void DASolver::getThermalInternal(
                 scalar val = alphaEffBf[patchI][faceI] * heBfGrad[faceI];
                 thermalList[localFaceI] = val;
                 meanVar += val * meshPtr_->magSf().boundaryField()[patchI][faceI];
+                wallHeatFlux.boundaryFieldRef()[patchI][faceI] = val;
                 localFaceI++;
             }
         }
@@ -804,7 +876,22 @@ void DASolver::getThermalInternal(
 
         meanVar /= sumArea;
         reduce(meanVar, sumOp<scalar>());
-        Info << "getThermal mean heat flux " << meanVar << endl;
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "getThermal mean heat flux " << meanVar << endl;
+        }
+        // check if wallHeatFlux exists, if not, write it to the disk. This avoid writing the same file over and over
+        IOobject fileHeader(
+            "wallHeatFlux",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ);
+        if (!fileHeader.typeHeaderOk<volScalarField>())
+        {
+            Info << "Writing wallHeatFlux " << endl;
+            wallHeatFlux.write();
+        }
     }
     else
     {
@@ -4585,8 +4672,8 @@ void DASolver::calcdRdThermalTPsiAD(
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     const PetscScalar* thermalArray;
-    VecGetArrayRead(thermalVec, &thermalArray);
     scalar* thermal = new scalar[nFaces];
+    VecGetArrayRead(thermalVec, &thermalArray);
     for (label i = 0; i < nFaces; i++)
     {
         thermal[i] = thermalArray[i];
@@ -4631,6 +4718,28 @@ void DASolver::calcdRdThermalTPsiAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // ******************************* NOTE! ******************************
+    // This step is tricky. We need to clean up the AD seeds for all variables before the next AD
+    // This is usually done by theses two calls: updateOFField(wVec) and updateOFMesh(xvVec)
+    // The above two calls will assign zeros to the gradient() part of all scalar variables because
+    // the wVec and xvVec's gradient() part is zero (they are double instead of scalar).
+    // HOWEVER, the above two calls will NOT clean the seeds for field variables's boundary values
+    // This will not cause problems for most of the functions because their boundary values always
+    // have zero seeds. However, the setThermal function actually sets non-zeros seeds for boundary
+    // values, so here we need to manually clean up the BC's gradient part. NOT doing this will
+    // mess up the AD computation for the following function.
+    // The way we clean it is that we set a zero-seed thermal var and call setThermal to propagate
+    // the zero seeds to all intermediate vars.
+    // ******************************* NOTE! ******************************
+    VecGetArrayRead(thermalVec, &thermalArray);
+    for (label i = 0; i < nFaces; i++)
+    {
+        thermal[i] = thermalArray[i];
+        thermal[i].setGradient(0.0);
+    }
+    VecRestoreArrayRead(thermalVec, &thermalArray);
+    this->setThermal(varName, thermal);
 
     delete[] thermal;
 #endif
