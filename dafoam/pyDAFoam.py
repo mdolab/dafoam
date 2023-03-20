@@ -2528,13 +2528,6 @@ class PYDAFOAM(object):
         # Cleanup PETSc vectors
         thermalVec.destroy()
 
-        # Print total force
-        thermalSum = np.sum(thermal[:])
-
-        thermalSum = self.comm.allreduce(thermalSum, op=MPI.SUM)
-
-        Info("Total %s: %e" % (varName, thermalSum))
-
         # Finally map the vector as required.
         return thermal
 

@@ -47,6 +47,7 @@ DAObjFunc/DAObjFuncMassFlowRate.C
 DAObjFunc/DAObjFuncVariableVolSum.C
 DAObjFunc/DAObjFuncMeshQualityKS.C
 DAObjFunc/DAObjFuncFieldInversion.C
+DAObjFunc/DAObjFuncPatchMean.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
