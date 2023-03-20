@@ -51,6 +51,7 @@ DAObjFunc/DAObjFuncTotalPressure.C
 DAObjFunc/DAObjFuncFieldInversion.C
 DAObjFunc/DAObjFuncVariableVolSum.C
 DAObjFunc/DAObjFuncMeshQualityKS.C
+DAObjFunc/DAObjFuncPatchMean.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C

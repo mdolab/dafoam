@@ -57,6 +57,18 @@ daOptionsAero = {
                 "addToAdjoint": True,
             },
         },
+        "UMEAN": {
+            "part1": {
+                "type": "patchMean",
+                "source": "patchToFace",
+                "patches": ["outlet"],
+                "varName": "U",
+                "varType": "vector",
+                "component": 0,
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
     },
     "couplingInfo": {
         "aerothermal": {
@@ -205,6 +217,7 @@ class Top(Multipoint):
         # add objective and constraints to the top level
         self.add_objective("scenario.aero_post.PL", scaler=1.0)
         self.add_constraint("scenario.thermal_post.HF", lower=0.1, scaler=1.0)
+        self.add_constraint("scenario.aero_post.UMEAN", lower=0.1, scaler=1.0)
 
 
 prob = om.Problem(reports=None)
@@ -239,4 +252,6 @@ if gcomm.rank == 0:
     derivDict["PL"]["shape"] = totals[("scenario.aero_post.functionals.PL", "dvs.shape")][0]
     derivDict["HF"] = {}
     derivDict["HF"]["shape"] = totals[("scenario.thermal_post.functionals.HF", "dvs.shape")][0]
+    derivDict["UMEAN"] = {}
+    derivDict["UMEAN"]["shape"] = totals[("scenario.aero_post.functionals.UMEAN", "dvs.shape")][0]
     reg_write_dict(derivDict, 1e-4, 1e-6)

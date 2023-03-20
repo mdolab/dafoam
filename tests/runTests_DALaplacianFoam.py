@@ -46,6 +46,18 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+        "TMEAN": {
+            "part1": {
+                "type": "patchMean",
+                "source": "patchToFace",
+                "patches": ["patch1"],
+                "varName": "T",
+                "varType": "scalar",
+                "component": 0,
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
     },
     "debug": False,
     "primalMinResTol": 1e-16,
@@ -58,7 +70,7 @@ DASolver.solver.setThermal("heatFlux".encode(), TGrad)
 
 DASolver()
 funcs = {}
-evalFuncs = ["TVOL", "HF"]
+evalFuncs = ["TVOL", "HF", "TMEAN"]
 DASolver.evalFunctions(funcs, evalFuncs)
 
 T = DASolver.getThermal(varName="temperature")
