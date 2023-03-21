@@ -1638,7 +1638,7 @@ void DASolver::calcFvSourceInternal(
     /*
     Description:
         Smoothing the force distribution on propeller blade on the entire mesh to ensure that it will not diverge during optimization.
-        Forces are smoothed using polynomial distribution for inner radius, normal distribution for outer radius, and Gaussiam distribution for axial direction.
+        Forces are smoothed using 4th degree polynomial distribution for inner radius, normal distribution for outer radius, and Gaussiam distribution for axial direction.
     Inputs:
         aForceL: Axis force didtribution on propeller blade
         tForceL: Tangential force distribution on propeller blade
@@ -1708,6 +1708,8 @@ void DASolver::calcFvSourceInternal(
     scalar r2 = rNorm[rNorm.size() - 1];
     scalar r3 = rNorm[0];
     scalar r4 = rNorm[1];
+    scalar df3 = (f4 - f3) / (r4 - r3);
+    scalar dg3 = (g4 - g3) / (r4 - r3);
 
     // Polynomial (inner) and Normal (outer) distribution  parameters' computation
     // Axial Outer
@@ -1742,12 +1744,12 @@ void DASolver::calcFvSourceInternal(
     scalar muTangentialOut = mu;
 
     // Axial Inner
-    scalar coefAAxialIn = (f3 * r4 - f4 * r3) / (r3 * r4 * (r3 - r4));
-    scalar coefBAxialIn = (f3 - coefAAxialIn * r3 * r3) / r3;
+    scalar coefAAxialIn = (df3 * r3 - 2 * f3) / (2 * pow(r3, 4));
+    scalar coefBAxialIn = (f3 - coefAAxialIn * pow(r3, 4)) / (r3 * r3);
 
     // Tangential Inner
-    scalar coefATangentialIn = (g3 * r4 - g4 * r3) / (r3 * r4 * (r3 - r4));
-    scalar coefBTangentialIn = (g3 - coefATangentialIn * r3 * r3) / r3;
+    scalar coefATangentialIn = (dg3 * r3 - 2 * g3) / (2 * pow(r3, 4));
+    scalar coefBTangentialIn = (g3 - coefATangentialIn * pow(r3, 4)) / (r3 * r3);
 
     // Cell 3D force computation loop
     forAll(meshC, cellI)
@@ -1775,7 +1777,7 @@ void DASolver::calcFvSourceInternal(
 
         if (rStar < rStarMin)
         {
-            fvSource[cellI] = ((coefAAxialIn * rStar * rStar + coefBAxialIn * rStar) * axis + (coefATangentialIn * rStar * rStar + coefBTangentialIn * rStar) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
+            fvSource[cellI] = ((coefAAxialIn * pow(rStar, 4) + coefBAxialIn * pow(rStar, 2)) * axis + (coefATangentialIn * pow(rStar, 4) + coefBTangentialIn * pow(rStar, 2)) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
         }
         else if (rStar > rStarMax)
         {
