@@ -195,7 +195,7 @@ protected:
     scalar primalMinResTol_ = 0.0;
 
     /// primal min number of iterations
-    label primalMinIters = -1;
+    label primalMinIters_ = -1;
 
     /// save primal variable to time instance list for hybrid adjoint (unsteady)
     void saveTimeInstanceFieldHybrid(label& timeInstanceI);
