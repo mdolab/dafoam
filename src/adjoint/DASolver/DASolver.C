@@ -126,7 +126,7 @@ label DASolver::loop(Time& runTime)
     if (primalMinRes_ < primalMinResTol_ && runTime.timeIndex() >  primalMinIters_)
     {
         Info << "Time = " << t << endl;
-        Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << tol << endl
+        Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
         this->printAllObjFuncs();
         runTime.writeNow();
