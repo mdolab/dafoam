@@ -49,12 +49,16 @@ DASolver::DASolver(
 #include "createMeshPython.H"
     Info << "Initializing mesh and runtime for DASolver" << endl;
 
+    daOptionPtr_.reset(new DAOption(meshPtr_(), pyOptions_));
+
     primalMinResTol_ = daOptionPtr_->getOption<scalar>("primalMinResTol");
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
 
+    Info << "DAOpton initialized " << endl;
+
 }
 
-// * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * d* * * * //
 
 autoPtr<DASolver> DASolver::New(
     char* argsAll,
