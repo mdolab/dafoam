@@ -7,8 +7,6 @@
 
 // adjoint
 
-daOptionPtr_.reset(new DAOption(mesh, pyOptions_));
-
 // need to register laminarTransport and turbulence to mesh
 DARegDbSinglePhaseTransportModel regDbTransport(mesh, laminarTransport);
 DARegDbTurbulenceModelIncompressible regDbTurbulence(mesh, turbulencePtr_());

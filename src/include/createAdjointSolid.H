@@ -7,8 +7,6 @@
 
 // adjoint
 
-daOptionPtr_.reset(new DAOption(mesh, pyOptions_));
-
 daModelPtr_.reset(new DAModel(mesh, daOptionPtr_()));
 
 word solverName = daOptionPtr_->getOption<word>("solverName");

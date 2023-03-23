@@ -191,6 +191,12 @@ protected:
     /// periodicity of oscillating flow variables (unsteady)
     scalar periodicity_ = 0.0;
 
+    /// primal residual tolerance 
+    scalar primalMinResTol_ = 0.0;
+
+    /// primal min number of iterations
+    label primalMinIters_ = -1;
+
     /// save primal variable to time instance list for hybrid adjoint (unsteady)
     void saveTimeInstanceFieldHybrid(label& timeInstanceI);
 
