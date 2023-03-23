@@ -642,6 +642,10 @@ class DAOPTION(object):
         ## Parameters for wing-propeller coupling optimizations
         self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.02, "rotDir": "right"}
 
+        ## number of minimal primal iterations. The primal has to run this many iterations, even the primal residual
+        ## has reduced below the tolerance. The default is a negative value (always satisfied).
+        self.primalMinIters = -1
+
 
 class PYDAFOAM(object):
 
