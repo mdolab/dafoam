@@ -48,9 +48,17 @@ DASolver::DASolver(
 #include "createTimePython.H"
 #include "createMeshPython.H"
     Info << "Initializing mesh and runtime for DASolver" << endl;
+
+    daOptionPtr_.reset(new DAOption(meshPtr_(), pyOptions_));
+
+    primalMinResTol_ = daOptionPtr_->getOption<scalar>("primalMinResTol");
+    primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
+
+    Info << "DAOpton initialized " << endl;
+
 }
 
-// * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * d* * * * //
 
 autoPtr<DASolver> DASolver::New(
     char* argsAll,
@@ -106,7 +114,6 @@ label DASolver::loop(Time& runTime)
     scalar endTime = runTime.endTime().value();
     scalar deltaT = runTime.deltaT().value();
     scalar t = runTime.timeOutputValue();
-    scalar tol = daOptionPtr_->getOption<scalar>("primalMinResTol");
 
     // execute functionObjectList, e.g., field averaging, sampling
     functionObjectList& funcObj = const_cast<functionObjectList&>(runTime.functionObjects());
@@ -120,10 +127,10 @@ label DASolver::loop(Time& runTime)
     }
 
     // check exit condition
-    if (primalMinRes_ < tol)
+    if (primalMinRes_ < primalMinResTol_ && runTime.timeIndex() >  primalMinIters_)
     {
         Info << "Time = " << t << endl;
-        Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << tol << endl
+        Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
         this->printAllObjFuncs();
         runTime.writeNow();
@@ -327,6 +334,12 @@ void DASolver::calcdXvdXsTPsiAD(
     wordList patchList;
     this->getCouplingPatchList(patchList);
 
+    // get the total number of points and faces for the patchList
+    label nPoints, nFaces;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    scalarList xsList(nFaces * 3);
+
     pointField meshPoints = meshPtr_->points();
     this->globalADTape_.reset();
     this->globalADTape_.setActive();
@@ -340,12 +353,6 @@ void DASolver::calcdXvdXsTPsiAD(
     meshPtr_->movePoints(meshPoints);
     meshPtr_->moving(false);
 
-    // get the total number of points and faces for the patchList
-    label nPoints, nFaces;
-    this->getPatchInfo(nPoints, nFaces, patchList);
-
-    scalarList xsList(nFaces * 3);
-
     label counterFaceI = 0;
     forAll(patchList, cI)
     {
@@ -356,7 +363,7 @@ void DASolver::calcdXvdXsTPsiAD(
             // Divide force to nodes
             for (label i = 0; i < 3; i++)
             {
-                xsList[counterFaceI] = meshPtr_->boundary()[patchI].Cf()[faceI][i];
+                xsList[counterFaceI] = meshPtr_->Cf().boundaryField()[patchI][faceI][i];
                 counterFaceI++;
             }
         }
@@ -433,10 +440,9 @@ void DASolver::getFaceCoords(
         label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
         forAll(meshPtr_->boundaryMesh()[patchI], faceI)
         {
-            // Divide force to nodes
             for (label i = 0; i < 3; i++)
             {
-                assignValueCheckAD(val, meshPtr_->boundary()[patchI].Cf()[faceI][i]);
+                assignValueCheckAD(val, meshPtr_->Cf().boundaryField()[patchI][faceI][i]);
                 vecArray[counterFaceI] = val;
                 counterFaceI++;
             }
@@ -447,7 +453,7 @@ void DASolver::getFaceCoords(
 }
 
 void DASolver::getCouplingPatchList(
-    wordList& patchList, 
+    wordList& patchList,
     word groupName)
 {
     /*
@@ -493,17 +499,19 @@ void DASolver::getCouplingPatchList(
             }
         }
     }
-    
+
     // if none of the scenarios are active, we return the design surface patches and print a warning
     Info << "************************  WARNING ************************" << endl;
     Info << "getCouplingPatchList is called but none of " << endl;
     Info << "scenario is active in couplingInfo dict! " << endl;
     Info << "return designSurfaces as patchList.." << endl;
     Info << "************************  WARNING ************************" << endl;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
-    sort(patchList);
-    return;
 
+    daOptionPtr_->getAllOptions().readEntry<wordList>("designSurfaces", patchList);
+
+    sort(patchList);
+
+    return;
 }
 
 void DASolver::setThermal(
@@ -529,6 +537,21 @@ void DASolver::setThermal(
     this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
 
+    // calculate the sum of patch area and reduce it across procs
+    scalar meanVar = 0.0;
+    scalar sumArea = 0.0;
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        const fvPatch& patch = meshPtr_->boundary()[patchI];
+        forAll(patch, faceI)
+        {
+            sumArea += meshPtr_->magSf().boundaryField()[patchI][faceI];
+        }
+    }
+    reduce(sumArea, sumOp<scalar>());
+
     if (varName == "temperature")
     {
         // here we receive set the temperature from the solid domain (varVec) and will assign fixedValue
@@ -546,14 +569,35 @@ void DASolver::setThermal(
             forAll(patch, faceI)
             {
                 T.boundaryFieldRef()[patchI][faceI] = thermal[localFaceI];
+                meanVar += thermal[localFaceI] * meshPtr_->magSf().boundaryField()[patchI][faceI];
                 localFaceI++;
             }
+        }
+        T.correctBoundaryConditions();
+
+        meanVar /= sumArea;
+        reduce(meanVar, sumOp<scalar>());
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "setThermal mean temperature " << meanVar << endl;
         }
     }
     else if (varName == "heatFlux")
     {
         // here we receive heatFlux from the fluid domain (varVec) and will assign the fixedGradient
         // boundary condition to the solid domain
+
+        volScalarField wallHeatFlux(
+            IOobject(
+                "wallHeatFlux",
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar("wallHeatFlux", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            "fixedValue");
 
         IOdictionary transportProperties(
             IOobject(
@@ -563,11 +607,9 @@ void DASolver::setThermal(
                 IOobject::MUST_READ,
                 IOobject::NO_WRITE,
                 false));
-        // for incompressible flow, we need to read Cp and rho from transportProperties
-        scalar Cp = readScalar(transportProperties.lookup("Cp"));
-        scalar rho = readScalar(transportProperties.lookup("rho"));
-        scalar DT = readScalar(transportProperties.lookup("DT"));
-        scalar coeff = DT * Cp * rho;
+        // for incompressible flow, we need to read k from transportProperties
+        // thermal conductivity k. thermal diffusivity DT = k / rho / Cp
+        scalar k = readScalar(transportProperties.lookup("k"));
 
         volScalarField& T =
             const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("T"));
@@ -583,9 +625,37 @@ void DASolver::setThermal(
             scalarField& grad = const_cast<scalarField&>(patchBC.gradient());
             forAll(grad, faceI)
             {
-                grad[faceI] = thermal[localFaceI] / coeff;
+                // ************NOTE********
+                // Here we add a minus sign because the heat fluxes between aero and thermal
+                // have opposite signs. That being said, a positive heatFlux in the fluid domain
+                // corresponds to a negative heatFlux in the solid domain.
+                // ************NOTE********
+                grad[faceI] = -thermal[localFaceI] / k;
+                meanVar += -thermal[localFaceI] * meshPtr_->magSf().boundaryField()[patchI][faceI];
+                wallHeatFlux.boundaryFieldRef()[patchI][faceI] = -thermal[localFaceI];
                 localFaceI++;
             }
+        }
+        T.correctBoundaryConditions();
+
+        meanVar /= sumArea;
+        reduce(meanVar, sumOp<scalar>());
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "setThermal mean heat flux " << meanVar << endl;
+        }
+
+        // check if wallHeatFlux exists, if not, write it to the disk. This avoid writing the same file over and over
+        IOobject fileHeader(
+            "wallHeatFlux",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ);
+        if (!fileHeader.typeHeaderOk<volScalarField>())
+        {
+            Info << "Writing wallHeatFlux " << endl;
+            wallHeatFlux.write();
         }
     }
     else
@@ -614,7 +684,12 @@ void DASolver::getThermal(
         thermalVec: the temperature or heatFlux vector on the conjugate heat transfer patch
     */
 
-    List<scalar> thermalList;
+    label nPoints, nFaces;
+    List<word> patchList;
+    this->getCouplingPatchList(patchList);
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    List<scalar> thermalList(nFaces);
 
     this->getThermalInternal(varName, thermalList);
 
@@ -652,28 +727,39 @@ void DASolver::getThermalInternal(
         thermalList: the temperature or heatFlux list on the conjugate heat transfer patch
     */
 
-    label nPoints, nFaces;
     List<word> patchList;
     this->getCouplingPatchList(patchList);
-    this->getPatchInfo(nPoints, nFaces, patchList);
 
-    thermalList.setSize(nFaces);
+    // calculate the sum of patch area and reduce it across procs
+    scalar meanVar = 0.0;
+    scalar sumArea = 0.0;
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        const fvPatch& patch = meshPtr_->boundary()[patchI];
+        forAll(patch, faceI)
+        {
+            sumArea += meshPtr_->magSf().boundaryField()[patchI][faceI];
+        }
+    }
+    reduce(sumArea, sumOp<scalar>());
 
     if (varName == "temperature")
     {
-        volScalarField temperatureField(
+        const objectRegistry& db = meshPtr_->thisDb();
+        const volScalarField& T = db.lookupObject<volScalarField>("T");
+
+        volScalarField wallTemperature(
             IOobject(
-                "temperatureField",
+                "wallTemperature",
                 meshPtr_->time().timeName(),
                 meshPtr_(),
                 IOobject::NO_READ,
                 IOobject::NO_WRITE),
             meshPtr_(),
-            dimensionedScalar("temperatureField", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
-            fixedValueFvPatchScalarField::typeName);
-
-        const objectRegistry& db = meshPtr_->thisDb();
-        const volScalarField& T = db.lookupObject<volScalarField>("T");
+            dimensionedScalar("wallTemperature", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            "fixedValue");
 
         label localFaceI = 0;
         forAll(patchList, cI)
@@ -683,30 +769,47 @@ void DASolver::getThermalInternal(
             const fvPatch& patch = meshPtr_->boundary()[patchI];
             forAll(patch, faceI)
             {
-                temperatureField.boundaryFieldRef()[patchI][faceI] = T.boundaryField()[patchI][faceI];
                 thermalList[localFaceI] = T.boundaryField()[patchI][faceI];
+                meanVar += T.boundaryField()[patchI][faceI] * meshPtr_->magSf().boundaryField()[patchI][faceI];
+                wallTemperature.boundaryFieldRef()[patchI][faceI] = T.boundaryField()[patchI][faceI];
                 localFaceI++;
             }
         }
 
-        // this is for debugging
-        temperatureField.write();
+        meanVar /= sumArea;
+        reduce(meanVar, sumOp<scalar>());
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "getThermal mean temperature " << meanVar << endl;
+        }
+
+        // check if wallHeatFlux exists, if not, write it to the disk. This avoid writing the same file over and over
+        IOobject fileHeader(
+            "wallTemperature",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ);
+        if (!fileHeader.typeHeaderOk<volScalarField>())
+        {
+            Info << "Writing wallTemperature " << endl;
+            wallTemperature.write();
+        }
     }
     else if (varName == "heatFlux")
     {
-
-#ifdef IncompressibleFlow
-
-        volScalarField heatFluxField(
+        volScalarField wallHeatFlux(
             IOobject(
-                "heatFluxField",
+                "wallHeatFlux",
                 meshPtr_->time().timeName(),
                 meshPtr_(),
                 IOobject::NO_READ,
                 IOobject::NO_WRITE),
             meshPtr_(),
-            dimensionedScalar("heatFluxField", dimensionSet(1, -2, 1, 1, 0, 0, 0), 0.0),
-            "calculated");
+            dimensionedScalar("wallHeatFlux", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            "fixedValue");
+
+#ifdef IncompressibleFlow
 
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
         volScalarField alphaEff = daTurb.alphaEff();
@@ -735,32 +838,21 @@ void DASolver::getThermalInternal(
         {
             // get the patch id label
             label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            heatFluxField.boundaryFieldRef()[patchI] = Cp * alphaEffBf[patchI] * TBf[patchI].snGrad();
+            scalarField TBfGrad = TBf[patchI].snGrad();
 
             forAll(meshPtr_->boundaryMesh()[patchI], faceI)
             {
-                thermalList[localFaceI] = heatFluxField.boundaryField()[patchI][faceI];
+                scalar val = Cp * alphaEffBf[patchI][faceI] * TBfGrad[faceI];
+                thermalList[localFaceI] = val;
+                meanVar += val * meshPtr_->magSf().boundaryField()[patchI][faceI];
+                wallHeatFlux.boundaryFieldRef()[patchI][faceI] = val;
                 localFaceI++;
             }
         }
 
-        // for debugging
-        heatFluxField.write();
-
 #endif
 
 #ifdef CompressibleFlow
-
-        volScalarField heatFluxField(
-            IOobject(
-                "heatFluxField",
-                meshPtr_->time().timeName(),
-                meshPtr_(),
-                IOobject::NO_READ,
-                IOobject::NO_WRITE),
-            meshPtr_(),
-            dimensionedScalar("heatFluxField", dimensionSet(1, 0, -3, 0, 0, 0, 0), 0.0),
-            "calculated");
 
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
         volScalarField alphaEff = daTurb.alphaEff();
@@ -775,18 +867,38 @@ void DASolver::getThermalInternal(
         {
             // get the patch id label
             label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            heatFluxField.boundaryFieldRef()[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
+            scalarField heBfGrad = heBf[patchI].snGrad();
 
             forAll(meshPtr_->boundaryMesh()[patchI], faceI)
             {
-                thermalList[localFaceI] = heatFluxField.boundaryField()[patchI][faceI];
+                scalar val = alphaEffBf[patchI][faceI] * heBfGrad[faceI];
+                thermalList[localFaceI] = val;
+                meanVar += val * meshPtr_->magSf().boundaryField()[patchI][faceI];
+                wallHeatFlux.boundaryFieldRef()[patchI][faceI] = val;
                 localFaceI++;
             }
         }
 
-        // for debugging
-        heatFluxField.write();
 #endif
+
+        meanVar /= sumArea;
+        reduce(meanVar, sumOp<scalar>());
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            Info << "getThermal mean heat flux " << meanVar << endl;
+        }
+        // check if wallHeatFlux exists, if not, write it to the disk. This avoid writing the same file over and over
+        IOobject fileHeader(
+            "wallHeatFlux",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ);
+        if (!fileHeader.typeHeaderOk<volScalarField>())
+        {
+            Info << "Writing wallHeatFlux " << endl;
+            wallHeatFlux.write();
+        }
     }
     else
     {
@@ -1533,7 +1645,7 @@ void DASolver::calcFvSourceInternal(
     /*
     Description:
         Smoothing the force distribution on propeller blade on the entire mesh to ensure that it will not diverge during optimization.
-        Forces are smoothed using polynomial distribution for inner radius, normal distribution for outer radius, and Gaussiam distribution for axial direction.
+        Forces are smoothed using 4th degree polynomial distribution for inner radius, normal distribution for outer radius, and Gaussiam distribution for axial direction.
     Inputs:
         aForceL: Axis force didtribution on propeller blade
         tForceL: Tangential force distribution on propeller blade
@@ -1603,6 +1715,8 @@ void DASolver::calcFvSourceInternal(
     scalar r2 = rNorm[rNorm.size() - 1];
     scalar r3 = rNorm[0];
     scalar r4 = rNorm[1];
+    scalar df3 = (f4 - f3) / (r4 - r3);
+    scalar dg3 = (g4 - g3) / (r4 - r3);
 
     // Polynomial (inner) and Normal (outer) distribution  parameters' computation
     // Axial Outer
@@ -1637,12 +1751,12 @@ void DASolver::calcFvSourceInternal(
     scalar muTangentialOut = mu;
 
     // Axial Inner
-    scalar coefAAxialIn = (f3 * r4 - f4 * r3) / (r3 * r4 * (r3 - r4));
-    scalar coefBAxialIn = (f3 - coefAAxialIn * r3 * r3) / r3;
+    scalar coefAAxialIn = (df3 * r3 - 2 * f3) / (2 * pow(r3, 4));
+    scalar coefBAxialIn = (f3 - coefAAxialIn * pow(r3, 4)) / (r3 * r3);
 
     // Tangential Inner
-    scalar coefATangentialIn = (g3 * r4 - g4 * r3) / (r3 * r4 * (r3 - r4));
-    scalar coefBTangentialIn = (g3 - coefATangentialIn * r3 * r3) / r3;
+    scalar coefATangentialIn = (dg3 * r3 - 2 * g3) / (2 * pow(r3, 4));
+    scalar coefBTangentialIn = (g3 - coefATangentialIn * pow(r3, 4)) / (r3 * r3);
 
     // Cell 3D force computation loop
     forAll(meshC, cellI)
@@ -1670,7 +1784,7 @@ void DASolver::calcFvSourceInternal(
 
         if (rStar < rStarMin)
         {
-            fvSource[cellI] = ((coefAAxialIn * rStar * rStar + coefBAxialIn * rStar) * axis + (coefATangentialIn * rStar * rStar + coefBTangentialIn * rStar) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
+            fvSource[cellI] = ((coefAAxialIn * pow(rStar, 4) + coefBAxialIn * pow(rStar, 2)) * axis + (coefATangentialIn * pow(rStar, 4) + coefBTangentialIn * pow(rStar, 2)) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
         }
         else if (rStar > rStarMax)
         {
@@ -4567,8 +4681,8 @@ void DASolver::calcdRdThermalTPsiAD(
     this->getPatchInfo(nPoints, nFaces, patchList);
 
     const PetscScalar* thermalArray;
-    VecGetArrayRead(thermalVec, &thermalArray);
     scalar* thermal = new scalar[nFaces];
+    VecGetArrayRead(thermalVec, &thermalArray);
     for (label i = 0; i < nFaces; i++)
     {
         thermal[i] = thermalArray[i];
@@ -4613,6 +4727,30 @@ void DASolver::calcdRdThermalTPsiAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // ******************************* NOTE! ******************************
+    // This step is tricky. We need to clean up the AD seeds for all variables before the next AD
+    // This is usually done by theses two calls: updateOFField(wVec) and updateOFMesh(xvVec)
+    // The above two calls will assign zeros to the gradient() part of all scalar variables because
+    // the wVec and xvVec's gradient() part is zero (they are double instead of scalar).
+    // HOWEVER, the above two calls will NOT clean the seeds for field variables's boundary values
+    // This will not cause problems for most of the functions because their boundary values always
+    // have zero seeds. However, the setThermal function actually sets non-zeros seeds for boundary
+    // values, so here we need to manually clean up the BC's gradient part. NOT doing this will
+    // mess up the AD computation for the following function.
+    // The way we clean it is that we set a zero-seed thermal var and call setThermal to propagate
+    // the zero seeds to all intermediate vars.
+    // ******************************* NOTE! ******************************
+    VecGetArrayRead(thermalVec, &thermalArray);
+    for (label i = 0; i < nFaces; i++)
+    {
+        thermal[i] = thermalArray[i];
+        thermal[i].setGradient(0.0);
+    }
+    VecRestoreArrayRead(thermalVec, &thermalArray);
+    this->setThermal(varName, thermal);
+
+    delete[] thermal;
 #endif
 }
 
@@ -5500,7 +5638,7 @@ void DASolver::calcdForcedWAD(
     // Allocate arrays
     label nPoints, nFaces;
     List<word> patchList;
-   this->getCouplingPatchList(patchList);
+    this->getCouplingPatchList(patchList);
     this->getPatchInfo(nPoints, nFaces, patchList);
     List<scalar> fX(nPoints);
     List<scalar> fY(nPoints);

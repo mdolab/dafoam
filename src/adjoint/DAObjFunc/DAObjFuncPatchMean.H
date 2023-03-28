@@ -4,12 +4,12 @@
     Version : v3
 
     Description:
-        Child class for heat flux
+        Child class for mean variable on patches
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncWallHeatFlux_H
-#define DAObjFuncWallHeatFlux_H
+#ifndef DAObjFuncPatchMean_H
+#define DAObjFuncPatchMean_H
 
 #include "DAObjFunc.H"
 #include "addToRunTimeSelectionTable.H"
@@ -20,45 +20,33 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncWallHeatFlux Declaration
+      Class DAObjFuncPatchMean Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncWallHeatFlux
+class DAObjFuncPatchMean
     : public DAObjFunc
 {
 
 protected:
-#ifdef CompressibleFlow
-    /// thermophysical property
-    fluidThermo& thermo_;
-#endif
 
-    /// Cp used in incompressible heatFlux calculation
-    scalar Cp_ = -9999.0;
-
-    /// thermal conductivity for solid heatFlux calculation
-    scalar k_ = -9999.0;
-
-    /// solid thermal diffusivity
-    scalar DT_ = -9999.0;
-
-#ifndef SolidDASolver
-    /// DATurbulenceModel object
-    DATurbulenceModel& daTurb_;
-#endif
-
-    /// wall heat flux field
-    volScalarField wallHeatFlux_;
-
-    /// the area of all heat flux patches
+    /// the area of all total pressure patches
     scalar areaSum_ = -9999.0;
 
+    /// name of the variable
+    word varName_;
+
+    /// type of the variable either vector or scalar
+    word varType_;
+
+    /// if vector which element?
+    label component_;
+
 public:
-    TypeName("wallHeatFlux");
+    TypeName("patchMean");
     // Constructors
 
     //- Construct from components
-    DAObjFuncWallHeatFlux(
+    DAObjFuncPatchMean(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
@@ -69,7 +57,7 @@ public:
         const dictionary& objFuncDict);
 
     //- Destructor
-    virtual ~DAObjFuncWallHeatFlux()
+    virtual ~DAObjFuncPatchMean()
     {
     }
 

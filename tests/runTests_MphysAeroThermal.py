@@ -57,6 +57,18 @@ daOptionsAero = {
                 "addToAdjoint": True,
             },
         },
+        "UMEAN": {
+            "part1": {
+                "type": "patchMean",
+                "source": "patchToFace",
+                "patches": ["outlet"],
+                "varName": "U",
+                "varType": "vector",
+                "component": 0,
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
     },
     "couplingInfo": {
         "aerothermal": {
@@ -128,10 +140,12 @@ class Top(Multipoint):
         dafoam_builder_aero = DAFoamBuilder(daOptionsAero, meshOptions, scenario="aerothermal", run_directory="aero")
         dafoam_builder_aero.initialize(self.comm)
 
-        dafoam_builder_thermal = DAFoamBuilder(daOptionsThermal, meshOptions, scenario="aerothermal", run_directory="thermal")
+        dafoam_builder_thermal = DAFoamBuilder(
+            daOptionsThermal, meshOptions, scenario="aerothermal", run_directory="thermal"
+        )
         dafoam_builder_thermal.initialize(self.comm)
 
-        thermalxfer_builder = MeldThermalBuilder(dafoam_builder_aero, dafoam_builder_thermal)
+        thermalxfer_builder = MeldThermalBuilder(dafoam_builder_aero, dafoam_builder_thermal, n=5, beta=0.5)
         thermalxfer_builder.initialize(self.comm)
 
         # add the design variable component to keep the top level design variables
@@ -181,7 +195,7 @@ class Top(Multipoint):
         self.geometry_aero.nom_add_discipline_coords("aero", points_aero)
         self.geometry_thermal.nom_add_discipline_coords("thermal", points_thermal)
 
-        #self.scenario.coupling._mphys_promote_coupling_variables()
+        # self.scenario.coupling._mphys_promote_coupling_variables()
 
         # select the FFD points to move
         pts = self.geometry_aero.DVGeo.getLocalIndex(0)
@@ -203,6 +217,7 @@ class Top(Multipoint):
         # add objective and constraints to the top level
         self.add_objective("scenario.aero_post.PL", scaler=1.0)
         self.add_constraint("scenario.thermal_post.HF", lower=0.1, scaler=1.0)
+        self.add_constraint("scenario.aero_post.UMEAN", lower=0.1, scaler=1.0)
 
 
 prob = om.Problem(reports=None)
@@ -237,4 +252,6 @@ if gcomm.rank == 0:
     derivDict["PL"]["shape"] = totals[("scenario.aero_post.functionals.PL", "dvs.shape")][0]
     derivDict["HF"] = {}
     derivDict["HF"]["shape"] = totals[("scenario.thermal_post.functionals.HF", "dvs.shape")][0]
+    derivDict["UMEAN"] = {}
+    derivDict["UMEAN"]["shape"] = totals[("scenario.aero_post.functionals.UMEAN", "dvs.shape")][0]
     reg_write_dict(derivDict, 1e-4, 1e-6)
