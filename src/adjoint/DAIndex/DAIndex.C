@@ -344,29 +344,43 @@ void DAIndex::calcStateLocalIndexOffset(HashTable<label>& offset)
 
         // We first calculate phiAccumulatedOffset
         phiAccumulatdOffset.setSize(nLocalCells);
-        forAll(phiAccumulatdOffset, idxI) phiAccumulatdOffset[idxI] = -9999999;
         forAll(phiAccumulatdOffset, idxI)
         {
-            if (idxI == 0)
+            phiAccumulatdOffset[idxI] = 0;
+        }
+        // if we have no surfaceScalarStates, phiAccumulatdOffset remains zeros
+        if (stateInfo_["surfaceScalarStates"].size() > 0)
+        {
+            forAll(phiAccumulatdOffset, idxI)
             {
-                phiAccumulatdOffset[idxI] = 0;
-            }
-            else
-            {
-                phiAccumulatdOffset[idxI] = cellOwnedFaces[idxI - 1].size() + phiAccumulatdOffset[idxI - 1];
+                if (idxI == 0)
+                {
+                    phiAccumulatdOffset[idxI] = 0;
+                }
+                else
+                {
+                    phiAccumulatdOffset[idxI] = cellOwnedFaces[idxI - 1].size() + phiAccumulatdOffset[idxI - 1];
+                }
             }
         }
         //Info<<"phiAccumulatdOffset "<<phiAccumulatdOffset<<endl;
 
         // Now calculate the phiLocalOffset
         phiLocalOffset.setSize(nLocalFaces);
-        forAll(phiLocalOffset, idxI) phiLocalOffset[idxI] = -9999999;
-        forAll(cellOwnedFaces, idxI) // idxI is cell Index
+        forAll(phiLocalOffset, idxI)
         {
-            forAll(cellOwnedFaces[idxI], offsetI)
+            phiLocalOffset[idxI] = 0;
+        }
+        // if we have no surfaceScalarStates, phiAccumulatdOffset remains zeros
+        if (stateInfo_["surfaceScalarStates"].size() > 0)
+        {
+            forAll(cellOwnedFaces, idxI) // idxI is cell Index
             {
-                label ownedFace = cellOwnedFaces[idxI][offsetI];
-                phiLocalOffset[ownedFace] = offsetI;
+                forAll(cellOwnedFaces[idxI], offsetI)
+                {
+                    label ownedFace = cellOwnedFaces[idxI][offsetI];
+                    phiLocalOffset[ownedFace] = offsetI;
+                }
             }
         }
         //Info<<"phiLocalOffset "<<phiLocalOffset<<endl;
