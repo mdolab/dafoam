@@ -48,9 +48,17 @@ DASolver::DASolver(
 #include "createTimePython.H"
 #include "createMeshPython.H"
     Info << "Initializing mesh and runtime for DASolver" << endl;
+
+    daOptionPtr_.reset(new DAOption(meshPtr_(), pyOptions_));
+
+    primalMinResTol_ = daOptionPtr_->getOption<scalar>("primalMinResTol");
+    primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
+
+    Info << "DAOpton initialized " << endl;
+
 }
 
-// * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * d* * * * //
 
 autoPtr<DASolver> DASolver::New(
     char* argsAll,
@@ -106,7 +114,6 @@ label DASolver::loop(Time& runTime)
     scalar endTime = runTime.endTime().value();
     scalar deltaT = runTime.deltaT().value();
     scalar t = runTime.timeOutputValue();
-    scalar tol = daOptionPtr_->getOption<scalar>("primalMinResTol");
 
     // execute functionObjectList, e.g., field averaging, sampling
     functionObjectList& funcObj = const_cast<functionObjectList&>(runTime.functionObjects());
@@ -120,10 +127,10 @@ label DASolver::loop(Time& runTime)
     }
 
     // check exit condition
-    if (primalMinRes_ < tol)
+    if (primalMinRes_ < primalMinResTol_ && runTime.timeIndex() >  primalMinIters_)
     {
         Info << "Time = " << t << endl;
-        Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << tol << endl
+        Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
         this->printAllObjFuncs();
         runTime.writeNow();
