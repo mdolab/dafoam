@@ -811,11 +811,14 @@ public:
 
     void calcdFvSourcedInputsTPsiAD(
         const word mode,
-        Vec centerVec,
-        Vec radiusVec,
-        Vec forceVec,
-        Vec psiVec,
-        Vec prodVec);
+        Vec aForce,
+        Vec tForce,
+        Vec rDistExt,
+        Vec targetForce,
+        Vec center,
+        Vec fvSource,
+        Vec psi,
+        Vec dFvSource);
 
     /// print all DAOption
     void printAllOptions()

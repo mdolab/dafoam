@@ -734,13 +734,16 @@ public:
 
     void calcdFvSourcedInputsTPsiAD(
         const word mode,
+        Vec aForce,
+        Vec tForce,
+        Vec rDistExt,
+        Vec targetForce,
         Vec center,
-        Vec radius,
-        Vec force,
+        Vec fvSource,
         Vec psi,
-        Vec prod)
+        Vec dFvSource)
     {
-        DASolverPtr_->calcdFvSourcedInputsTPsiAD(mode, center, radius, force, psi, prod);
+        DASolverPtr_->calcdFvSourcedInputsTPsiAD(mode, aForce, tForce, rDistExt, targetForce, center, fvSource, psi, dFvSource);
     }
 
     void calcForceProfile(
