@@ -1947,8 +1947,9 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     Field<scalar> aForceList(nPoints);
     Field<scalar> tForceList(nPoints);
     List<scalar> rDistExtList(nPoints + 2);
-    List<scalar> targetForceList(nPoints);
-    Vector<scalar> centerList;
+    List<scalar> targetForceList(2);
+    List<scalar> centerList(3);
+
     volVectorField fvSourceList(
         IOobject(
             "fvSourceList",
@@ -1967,29 +1968,33 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     PetscScalar* vecArrayTargetForce;
     PetscScalar* vecArrayCenter;
     const PetscScalar* vecArrayPsi;
-    VecGetArrayRead(psi, &vecArrayPsi);
+
     VecGetArray(aForce, &vecArrayAForce);
     for (label i = 0; i < nPoints; i++)
     {
         aForceList[i] = vecArrayAForce[i];
     }
     VecRestoreArray(aForce, &vecArrayAForce);
+
     VecGetArray(tForce, &vecArrayTForce);
     for (label i = 0; i < nPoints; i++)
     {
         tForceList[i] = vecArrayTForce[i];
     }
     VecRestoreArray(tForce, &vecArrayTForce);
+
     VecGetArray(rDistExt, &vecArrayRDistExt);
     for (label i = 0; i < nPoints + 2; i++)
     {
         rDistExtList[i] = vecArrayRDistExt[i];
     }
     VecRestoreArray(rDistExt, &vecArrayRDistExt);
+
     VecGetArray(targetForce, &vecArrayTargetForce);
     targetForceList[0] = vecArrayTargetForce[0];
     targetForceList[1] = vecArrayTargetForce[1];
     VecRestoreArray(targetForce, &vecArrayTargetForce);
+
     VecGetArray(center, &vecArrayCenter);
     centerList[0] = vecArrayCenter[0];
     centerList[1] = vecArrayCenter[1];
@@ -2016,31 +2021,27 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     }
     else if (mode == "rDistExt")
     {
-        for (label i = 0; i < nPoints; i++)
+        for (label i = 0; i < nPoints + 2; i++)
         {
             this->globalADTape_.registerInput(rDistExtList[i]);
         }
     }
     else if (mode == "targetForce")
     {
-        for (label i = 0; i < nPoints; i++)
+        for (label i = 0; i < 2; i++)
         {
             this->globalADTape_.registerInput(targetForceList[i]);
         }
     }
     else if (mode == "center")
     {
-        for (label i = 0; i < nPoints; i++)
+        for (label i = 0; i < 3; i++)
         {
             this->globalADTape_.registerInput(centerList[i]);
         }
     }
 
     // Step 3
-    daResidualPtr_->correctBoundaryConditions();
-    daResidualPtr_->updateIntermediateVariables();
-    daModelPtr_->correctBoundaryConditions();
-    daModelPtr_->updateIntermediateVariables();
     this->calcFvSourceInternal(aForceList, tForceList, rDistExtList, targetForceList, centerList, fvSourceList);
 
     // Step 4
@@ -2055,6 +2056,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     this->globalADTape_.setPassive();
 
     // Step 6
+    VecGetArrayRead(psi, &vecArrayPsi);
     forAll(fvSourceList, i)
     {
         // Set seeds
@@ -2062,54 +2064,51 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
         fvSourceList[i][1].setGradient(vecArrayPsi[i * 3 + 1]);
         fvSourceList[i][2].setGradient(vecArrayPsi[i * 3 + 2]);
     }
+    VecRestoreArrayRead(psi, &vecArrayPsi);
 
     // Step 7
     this->globalADTape_.evaluate();
 
+    PetscScalar* vecArrayProd;
+    VecGetArray(dFvSource, &vecArrayProd);
     if (mode == "aForce")
     {
         // Step 8
         forAll(aForceList, i)
         {
-            PetscScalar derivValue = aForceList[i].getGradient();
-            VecSetValue(dFvSource, i, derivValue, INSERT_VALUES);
+            vecArrayProd[i] = aForceList[i].getGradient();
         }
     }
     else if (mode == "tForce")
     {
         forAll(tForceList, i)
         {
-            PetscScalar derivValue = tForceList[i].getGradient();
-            VecSetValue(dFvSource, i, derivValue, INSERT_VALUES);
+            vecArrayProd[i] = tForceList[i].getGradient();
         }
     }
     else if (mode == "rDistExt")
     {
         forAll(rDistExtList, i)
         {
-            PetscScalar derivValue = rDistExtList[i].getGradient();
-            VecSetValue(dFvSource, i, derivValue, INSERT_VALUES);
+            vecArrayProd[i] = rDistExtList[i].getGradient();
         }
     }
     else if (mode == "targetForce")
     {
         forAll(targetForceList, i)
         {
-            PetscScalar derivValue = targetForceList[i].getGradient();
-            VecSetValue(dFvSource, i, derivValue, INSERT_VALUES);
+            vecArrayProd[i] = targetForceList[i].getGradient();
         }
     }
     else if (mode == "center")
     {
         forAll(centerList, i)
         {
-            PetscScalar derivValue = centerList[i].getGradient();
-            VecSetValue(dFvSource, i, derivValue, INSERT_VALUES);
+            vecArrayProd[i] = centerList[i].getGradient();
         }
     }
 
-    VecAssemblyBegin(dFvSource);
-    VecAssemblyEnd(dFvSource);
+    VecRestoreArray(dFvSource, &vecArrayProd);
 
     // Step 9
     this->globalADTape_.clearAdjoints();
