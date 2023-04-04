@@ -739,11 +739,10 @@ public:
         Vec rDistExt,
         Vec targetForce,
         Vec center,
-        Vec fvSource,
         Vec psi,
         Vec dFvSource)
     {
-        DASolverPtr_->calcdFvSourcedInputsTPsiAD(mode, aForce, tForce, rDistExt, targetForce, center, fvSource, psi, dFvSource);
+        DASolverPtr_->calcdFvSourcedInputsTPsiAD(mode, aForce, tForce, rDistExt, targetForce, center, psi, dFvSource);
     }
 
     void calcForceProfile(

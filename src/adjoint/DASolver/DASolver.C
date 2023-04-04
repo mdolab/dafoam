@@ -1929,7 +1929,6 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     Vec rDistExt,
     Vec targetForce,
     Vec center,
-    Vec fvSource,
     Vec psi,
     Vec dFvSource)
 {
