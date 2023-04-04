@@ -55,7 +55,6 @@ DASolver::DASolver(
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
 
     Info << "DAOpton initialized " << endl;
-
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * d* * * * //
@@ -127,7 +126,7 @@ label DASolver::loop(Time& runTime)
     }
 
     // check exit condition
-    if (primalMinRes_ < primalMinResTol_ && runTime.timeIndex() >  primalMinIters_)
+    if (primalMinRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_)
     {
         Info << "Time = " << t << endl;
         Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
@@ -1947,7 +1946,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     label nPoints = daOptionPtr_->getSubDictOption<label>("wingProp", "nForceSections");
     Field<scalar> aForceList(nPoints);
     Field<scalar> tForceList(nPoints);
-    List<scalar> rDistExtList(nPoints+2);
+    List<scalar> rDistExtList(nPoints + 2);
     List<scalar> targetForceList(nPoints);
     Vector<scalar> centerList;
     volVectorField fvSourceList(
@@ -1982,7 +1981,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     }
     VecRestoreArray(tForce, &vecArrayTForce);
     VecGetArray(rDistExt, &vecArrayRDistExt);
-    for (label i = 0; i < nPoints+2; i++)
+    for (label i = 0; i < nPoints + 2; i++)
     {
         rDistExtList[i] = vecArrayRDistExt[i];
     }
@@ -2043,7 +2042,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     daModelPtr_->correctBoundaryConditions();
     daModelPtr_->updateIntermediateVariables();
     this->calcFvSourceInternal(aForceList, tForceList, rDistExtList, targetForceList, centerList, fvSourceList);
-    
+
     // Step 4
     forAll(fvSourceList, i)
     {
@@ -2059,9 +2058,9 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     forAll(fvSourceList, i)
     {
         // Set seeds
-        fvSourceList[i][0].setGradient(vecArrayPsi[i*3]);
-        fvSourceList[i][1].setGradient(vecArrayPsi[i*3+1]);
-        fvSourceList[i][2].setGradient(vecArrayPsi[i*3+2]);
+        fvSourceList[i][0].setGradient(vecArrayPsi[i * 3]);
+        fvSourceList[i][1].setGradient(vecArrayPsi[i * 3 + 1]);
+        fvSourceList[i][2].setGradient(vecArrayPsi[i * 3 + 2]);
     }
 
     // Step 7
