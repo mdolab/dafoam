@@ -1765,7 +1765,7 @@ class DAFoamFvSource(ExplicitComponent):
         self.nForceSections = self.DASolver.getOption("wingProp")["nForceSections"]
         self.add_input("axial_force", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
         self.add_input("tangential_force", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
-        self.add_input("radius_profile", distributed=False, shape=self.nForceSections + 2, tags=["mphys_coupling"])
+        self.add_input("radial_distance", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
         self.add_input("integral_force", distributed=False, shape=2, tags=["mphys_coupling"])
         self.add_input("prop_center", distributed=False, shape=3, tags=["mphys_coupling"])
 
@@ -1778,13 +1778,13 @@ class DAFoamFvSource(ExplicitComponent):
 
         axial_force = inputs["axial_force"]
         tangential_force = inputs["tangential_force"]
-        radius_profile = inputs["radius_profile"]
+        radial_distance = inputs["radial_distance"]
         integral_force = inputs["integral_force"]
         prop_center = inputs["prop_center"]
 
         axial_force_vec = DASolver.array2VecSeq(axial_force)
         tangential_force_vec = DASolver.array2VecSeq(tangential_force)
-        radius_profile_vec = DASolver.array2VecSeq(radius_profile)
+        radial_distance_vec = DASolver.array2VecSeq(radial_distance)
         integral_force_vec = DASolver.array2VecSeq(integral_force)
         prop_center_vec = DASolver.array2VecSeq(prop_center)
 
@@ -1793,7 +1793,7 @@ class DAFoamFvSource(ExplicitComponent):
         fvSourceVec.setFromOptions()
         fvSourceVec.zeroEntries()
 
-        DASolver.solver.calcFvSource(axial_force_vec, tangential_force_vec, radius_profile_vec, integral_force_vec, prop_center_vec, fvSourceVec)
+        DASolver.solver.calcFvSource(axial_force_vec, tangential_force_vec, radial_distance_vec, integral_force_vec, prop_center_vec, fvSourceVec)
 
         outputs["fvSource"] = DASolver.vec2Array(fvSourceVec)
 
@@ -1803,7 +1803,7 @@ class DAFoamFvSource(ExplicitComponent):
 
         a = inputs["axial_force"]
         t = inputs["tangential_force"]
-        r = inputs["radius_profile"]
+        r = inputs["radial_distance"]
         f = inputs["integral_force"]
         c = inputs["prop_center"]
 
@@ -1835,12 +1835,12 @@ class DAFoamFvSource(ExplicitComponent):
                 tBar = DASolver.vec2ArraySeq(prodVec)
                 d_inputs["tangential_force"] += tBar
 
-            if "radius_profile" in d_inputs:
+            if "radial_distance" in d_inputs:
                 prodVec = PETSc.Vec().createSeq(self.nForceSections + 2, bsize=1, comm=PETSc.COMM_SELF)
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdFvSourcedInputsTPsiAD("rDistExt".encode(), aVec, tVec, rVec, fVec, cVec, sBarVec, prodVec)
+                DASolver.solverAD.calcdFvSourcedInputsTPsiAD("rDist".encode(), aVec, tVec, rVec, fVec, cVec, sBarVec, prodVec)
                 rBar = DASolver.vec2ArraySeq(prodVec)
-                d_inputs["radius_profile"] += rBar
+                d_inputs["radial_distance"] += rBar
 
             if "integral_force" in d_inputs:
                 prodVec = PETSc.Vec().createSeq(2, bsize=1, comm=PETSc.COMM_SELF)

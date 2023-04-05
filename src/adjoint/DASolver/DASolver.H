@@ -802,7 +802,7 @@ public:
     void calcFvSourceInternal(
         const scalarField& aForce,
         const scalarField& tForce,
-        const scalarList& rDistExt,
+        const scalarList& rDistList,
         const scalarList& targetForce,
         const vector& center,
         volVectorField& fvSource);
@@ -810,7 +810,7 @@ public:
     void calcFvSource(
         Vec aForce,
         Vec tForce,
-        Vec rDistExt,
+        Vec rDist,
         Vec targetForce,
         Vec center,
         Vec fvSource);
@@ -819,7 +819,7 @@ public:
         const word mode,
         Vec aForce,
         Vec tForce,
-        Vec rDistExt,
+        Vec rDist,
         Vec targetForce,
         Vec center,
         Vec psi,
