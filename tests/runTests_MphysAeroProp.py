@@ -150,27 +150,30 @@ class Top(Multipoint):
 
         axial_force = np.array([0.1, 0.2, 0.3, 0.4, 0.48, 0.54, 0.60, 0.62, 0.63, 0.4])
         tangential_force = np.array([0.1, 0.2, 0.3, 0.4, 0.48, 0.54, 0.60, 0.62, 0.63, 0.4])
-        radial_distance = np.array([0.1, 0.135, 0.205, 0.275, 0.345, 0.415, 0.485, 0.555, 0.625, 0.695, 0.765, 0.8])
+        radial_location = np.array([0.1, 0.135, 0.205, 0.275, 0.345, 0.415, 0.485, 0.555, 0.625, 0.695, 0.765, 0.8])
         prop_center = np.array([0.075, 0.025, 0.025])
-        integral_force = np.array([2, 1])
+        integral_force = np.array([20, 10])
 
         self.dvs.add_output("axial_force", val=axial_force)
         self.dvs.add_output("tangential_force", val=tangential_force)
-        self.dvs.add_output("radial_distance", val=radial_distance)
+        self.dvs.add_output("radial_location", val=radial_location)
         self.dvs.add_output("prop_center", val=prop_center)
         self.dvs.add_output("integral_force", val=integral_force)
 
         self.connect("shape", "geometry.shape")
         self.connect("axial_force", "cruise.axial_force")
         self.connect("tangential_force", "cruise.tangential_force")
-        self.connect("radial_distance", "cruise.radial_distance")
+        self.connect("radial_location", "cruise.radial_location")
         self.connect("prop_center", "cruise.prop_center")
         self.connect("integral_force", "cruise.integral_force")
 
         # define the design variables
         self.add_design_var("shape", lower=-1.0, upper=1.0, scaler=1.0)
-        # self.add_design_var("prop_center", lower=-10.0, upper=10.0, scaler=1.0)
-
+        self.add_design_var("axial_force", lower=-10.0, upper=10.0, scaler=1.0)
+        self.add_design_var("tangential_force", lower=-10.0, upper=10.0, scaler=1.0)
+        self.add_design_var("radial_location", lower=-10.0, upper=10.0, scaler=1.0)
+        self.add_design_var("prop_center", lower=-10.0, upper=10.0, scaler=1.0)
+        self.add_design_var("integral_force", lower=-10.0, upper=10.0, scaler=1.0)
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
         self.add_constraint("cruise.aero_post.CL", equals=0.3, scaler=1.0)
@@ -205,14 +208,25 @@ prob.recording_options["record_constraints"] = True
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-optFuncs = OptFuncs(daOptions, prob)
+#optFuncs = OptFuncs(daOptions, prob)
 
 prob.run_model()
 
+totals = prob.compute_totals()
+
 if gcomm.rank == 0:
+    objFuncDict = {}
+    CD = prob.get_val("cruise.aero_post.functionals.CD")[0]
+    CL = prob.get_val("cruise.aero_post.functionals.CL")[0]
+    objFuncDict["CD"] = CD
+    objFuncDict["CL"] = CL
+    reg_write_dict(objFuncDict, 1e-6, 1e-10)
     derivDict = {}
-    CD = prob.get_val("cruise.aero_post.CD")[0]
-    CL = prob.get_val("cruise.aero_post.CL")[0]
-    derivDict["CD"] = CD
-    derivDict["CL"] = CL
+    derivDict["CL"] = {}
+    derivDict["CL"]["shape"] = totals[("cruise.aero_post.functionals.CL", "dvs.shape")][0]
+    derivDict["CL"]["axial_force"] = totals[("cruise.aero_post.functionals.CL", "dvs.axial_force")][0]
+    derivDict["CL"]["tangential_force"] = totals[("cruise.aero_post.functionals.CL", "dvs.tangential_force")][0]
+    derivDict["CL"]["radial_center"] = totals[("cruise.aero_post.functionals.CL", "dvs.radial_location")][0]
+    derivDict["CL"]["prop_center"] = totals[("cruise.aero_post.functionals.CL", "dvs.prop_center")][0]
+    derivDict["CL"]["integral_force"] = totals[("cruise.aero_post.functionals.CL", "dvs.integral_force")][0]
     reg_write_dict(derivDict, 1e-4, 1e-6)

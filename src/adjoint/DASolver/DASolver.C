@@ -1948,7 +1948,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     Field<scalar> tForceList(nPoints);
     List<scalar> rDistExtList(nPoints + 2);
     List<scalar> targetForceList(2);
-    List<scalar> centerList(3);
+    vector centerList = vector::zero;
 
     volVectorField fvSourceList(
         IOobject(
