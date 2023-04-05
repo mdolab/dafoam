@@ -1829,6 +1829,7 @@ class DAFoamFvSource(ExplicitComponent):
                     "aForce".encode(), aVec, tVec, rVec, fVec, cVec, sBarVec, prodVec
                 )
                 aBar = DASolver.vec2ArraySeq(prodVec)
+                aBar = self.comm.allreduce(aBar, op=MPI.SUM)
                 d_inputs["axial_force"] += aBar
 
             if "tangential_force" in d_inputs:
@@ -1838,6 +1839,7 @@ class DAFoamFvSource(ExplicitComponent):
                     "tForce".encode(), aVec, tVec, rVec, fVec, cVec, sBarVec, prodVec
                 )
                 tBar = DASolver.vec2ArraySeq(prodVec)
+                tBar = self.comm.allreduce(tBar, op=MPI.SUM)
                 d_inputs["tangential_force"] += tBar
 
             if "radial_location" in d_inputs:
@@ -1847,6 +1849,7 @@ class DAFoamFvSource(ExplicitComponent):
                     "rDistExt".encode(), aVec, tVec, rVec, fVec, cVec, sBarVec, prodVec
                 )
                 rBar = DASolver.vec2ArraySeq(prodVec)
+                rBar = self.comm.allreduce(rBar, op=MPI.SUM)
                 d_inputs["radial_location"] += rBar
 
             if "integral_force" in d_inputs:
@@ -1856,6 +1859,7 @@ class DAFoamFvSource(ExplicitComponent):
                     "targetForce".encode(), aVec, tVec, rVec, fVec, cVec, sBarVec, prodVec
                 )
                 fBar = DASolver.vec2ArraySeq(prodVec)
+                fBar = self.comm.allreduce(fBar, op=MPI.SUM)
                 d_inputs["integral_force"] += fBar
 
             if "prop_center" in d_inputs:
@@ -1865,6 +1869,7 @@ class DAFoamFvSource(ExplicitComponent):
                     "center".encode(), aVec, tVec, rVec, fVec, cVec, sBarVec, prodVec
                 )
                 cBar = DASolver.vec2ArraySeq(prodVec)
+                cBar = self.comm.allreduce(cBar, op=MPI.SUM)
                 d_inputs["prop_center"] += cBar
 
 
