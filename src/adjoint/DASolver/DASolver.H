@@ -800,6 +800,7 @@ public:
 
     /// calculate the fvSource based on the radial force profile
     void calcFvSourceInternal(
+        const word propName,
         const scalarField& aForce,
         const scalarField& tForce,
         const scalarList& rDistExt,
@@ -808,6 +809,7 @@ public:
         volVectorField& fvSource);
 
     void calcFvSource(
+        const word propName,
         Vec aForce,
         Vec tForce,
         Vec rDistExt,
@@ -816,6 +818,7 @@ public:
         Vec fvSource);
 
     void calcdFvSourcedInputsTPsiAD(
+        const word propName,
         const word mode,
         Vec aForce,
         Vec tForce,

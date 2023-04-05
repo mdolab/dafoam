@@ -1634,6 +1634,7 @@ void DASolver::calcdForcedStateTPsiAD(
 }
 
 void DASolver::calcFvSourceInternal(
+    const word propName,
     const scalarField& aForce,
     const scalarField& tForce,
     const scalarList& rDistExt,
@@ -1654,9 +1655,11 @@ void DASolver::calcFvSourceInternal(
     */
 
     vector axis;
-    scalar actEps = daOptionPtr_->getSubDictOption<scalar>("wingProp", "actEps");
-    word rotDir = daOptionPtr_->getSubDictOption<word>("wingProp", "rotDir");
-    scalarList axisDummy = daOptionPtr_->getSubDictOption<scalarList>("wingProp", "axis");
+    const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
+    scalar actEps = propSubDict.getScalar("actEps");
+    word rotDir = propSubDict.getWord("rotDir");
+    scalarList axisDummy;
+    propSubDict.readEntry<scalarList>("axis", axisDummy);
     axis[0] = axisDummy[0];
     axis[1] = axisDummy[1];
     axis[2] = axisDummy[2];
@@ -1805,6 +1808,8 @@ void DASolver::calcFvSourceInternal(
         scaleAxial = scaleAxial + (fvSource[cellI] & axis) * meshV[cellI];
         scaleTangential = scaleTangential + (fvSource[cellI] & meshTanDir[cellI]) * meshV[cellI];
     }
+    reduce(scaleAxial, sumOp<scalar>());
+    reduce(scaleTangential, sumOp<scalar>());
     scaleAxial = targetForce[0] / scaleAxial;
     scaleTangential = targetForce[1] / scaleTangential * rotDirCon;
 
@@ -1818,6 +1823,7 @@ void DASolver::calcFvSourceInternal(
 }
 
 void DASolver::calcFvSource(
+    const word propName,
     Vec aForce,
     Vec tForce,
     Vec rDistExt,
@@ -1840,7 +1846,8 @@ void DASolver::calcFvSource(
     */
 
     // Get Data
-    label nPoints = daOptionPtr_->getSubDictOption<label>("wingProp", "nForceSections");
+    const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
+    label nPoints = propSubDict.getLabel("nForceSections");
     // label meshSize = meshPtr_->nCells();
 
     // Allocate Arrays
@@ -1890,7 +1897,7 @@ void DASolver::calcFvSource(
     centerTemp[2] = vecArrayCenter[2];
 
     // Compute fvSource
-    this->calcFvSourceInternal(aForceTemp, tForceTemp, rDistExtTemp, targetForceTemp, centerTemp, fvSourceTemp);
+    this->calcFvSourceInternal(propName, aForceTemp, tForceTemp, rDistExtTemp, targetForceTemp, centerTemp, fvSourceTemp);
 
     VecZeroEntries(fvSource);
     PetscScalar* vecArrayFvSource;
@@ -1922,6 +1929,7 @@ void DASolver::calcFvSource(
 }
 
 void DASolver::calcdFvSourcedInputsTPsiAD(
+    const word propName,
     const word mode,
     Vec aForce,
     Vec tForce,
@@ -1938,12 +1946,15 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
 
 #ifdef CODI_AD_REVERSE
 
-    Info << "Calculating derivatives of FvSource using reverse-mode AD" << endl;
+    Info << "Calculating [dFvSource/dInputs]^T*Psi using reverse-mode AD. PropName: "
+         << propName << " mode: " << mode << endl;
 
     VecZeroEntries(dFvSource);
     //VecZeroEntries(fvSource);
 
-    label nPoints = daOptionPtr_->getSubDictOption<label>("wingProp", "nForceSections");
+    const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
+    label nPoints = propSubDict.getLabel("nForceSections");
+
     Field<scalar> aForceList(nPoints);
     Field<scalar> tForceList(nPoints);
     List<scalar> rDistExtList(nPoints + 2);
@@ -2042,7 +2053,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     }
 
     // Step 3
-    this->calcFvSourceInternal(aForceList, tForceList, rDistExtList, targetForceList, centerList, fvSourceList);
+    this->calcFvSourceInternal(propName, aForceList, tForceList, rDistExtList, targetForceList, centerList, fvSourceList);
 
     // Step 4
     forAll(fvSourceList, i)
