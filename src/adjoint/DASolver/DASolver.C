@@ -1685,7 +1685,7 @@ void DASolver::calcFvSourceInternal(
     volVectorField meshTanDir = meshC * 0;
 
     // Normalization of the blade radius distribution.
-    scalar rOuter = (rDistList[rDistList.size() - 1] + rDistList[rDistList.size() - 2]) / 2;
+    scalar rOuter = (3 * rDistList[rDistList.size() - 1] - rDistList[rDistList.size() - 2]) / 2;
     scalarField rDist = rDistList * 0.0; // real blade radius distribution
     scalarField rNorm = rDist;           // normalized blade radius distribution
     forAll(rDistList, index)
