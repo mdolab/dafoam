@@ -191,7 +191,7 @@ protected:
     /// periodicity of oscillating flow variables (unsteady)
     scalar periodicity_ = 0.0;
 
-    /// primal residual tolerance 
+    /// primal residual tolerance
     scalar primalMinResTol_ = 0.0;
 
     /// primal min number of iterations
@@ -509,7 +509,7 @@ public:
         const label oldTimeLevel,
         const Vec psi,
         Vec dRdWOldTPsi);
-    
+
     /// return the coupling patch list if any scenario is active on couplingInfo dict otherwise return design surface
     void getCouplingPatchList(wordList& patchList, word groupName = "NONE");
 
@@ -803,7 +803,7 @@ public:
         const word propName,
         const scalarField& aForce,
         const scalarField& tForce,
-        const scalarList& rDistExt,
+        const scalarList& rDistList,
         const scalarList& targetForce,
         const vector& center,
         volVectorField& fvSource);
@@ -812,7 +812,7 @@ public:
         const word propName,
         Vec aForce,
         Vec tForce,
-        Vec rDistExt,
+        Vec rDist,
         Vec targetForce,
         Vec center,
         Vec fvSource);
@@ -822,7 +822,7 @@ public:
         const word mode,
         Vec aForce,
         Vec tForce,
-        Vec rDistExt,
+        Vec rDist,
         Vec targetForce,
         Vec center,
         Vec psi,

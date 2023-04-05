@@ -725,12 +725,12 @@ public:
         const word propName,
         Vec aForce,
         Vec tForce,
-        Vec rDistExt,
+        Vec rDist,
         Vec targetForce,
         Vec center,
         Vec fvSource)
     {
-        DASolverPtr_->calcFvSource(propName, aForce, tForce, rDistExt, targetForce, center, fvSource);
+        DASolverPtr_->calcFvSource(propName, aForce, tForce, rDist, targetForce, center, fvSource);
     }
 
     void calcdFvSourcedInputsTPsiAD(
@@ -738,13 +738,13 @@ public:
         const word mode,
         Vec aForce,
         Vec tForce,
-        Vec rDistExt,
+        Vec rDist,
         Vec targetForce,
         Vec center,
         Vec psi,
         Vec dFvSource)
     {
-        DASolverPtr_->calcdFvSourcedInputsTPsiAD(propName ,mode, aForce, tForce, rDistExt, targetForce, center, psi, dFvSource);
+        DASolverPtr_->calcdFvSourcedInputsTPsiAD(propName ,mode, aForce, tForce, rDist, targetForce, center, psi, dFvSource);
     }
 
     void calcForceProfile(

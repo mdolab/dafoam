@@ -154,7 +154,7 @@ class Top(Multipoint):
 
         axial_force = np.array([0.1, 0.2, 0.3, 0.4, 0.48, 0.54, 0.60, 0.62, 0.63, 0.4])
         tangential_force = np.array([0.1, 0.2, 0.3, 0.4, 0.48, 0.54, 0.60, 0.62, 0.63, 0.4])
-        radial_location = np.array([0.1, 0.135, 0.205, 0.275, 0.345, 0.415, 0.485, 0.555, 0.625, 0.695, 0.765, 0.8])
+        radial_location = np.array([0.135, 0.205, 0.275, 0.345, 0.415, 0.485, 0.555, 0.625, 0.695, 0.765])
         prop_center1 = np.array([0.075, 0.025, 0.025])
         prop_center2 = np.array([0.6, 0.025, 0.5])
         integral_force1 = np.array([20, 10])

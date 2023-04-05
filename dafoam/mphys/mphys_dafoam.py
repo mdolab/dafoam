@@ -1778,7 +1778,7 @@ class DAFoamFvSource(ExplicitComponent):
                 self.add_input(
                     propName + "_radial_location",
                     distributed=False,
-                    shape=self.nForceSections + 2,
+                    shape=self.nForceSections,
                     tags=["mphys_coupling"],
                 )
                 self.add_input(propName + "_integral_force", distributed=False, shape=2, tags=["mphys_coupling"])
@@ -1877,10 +1877,10 @@ class DAFoamFvSource(ExplicitComponent):
                         d_inputs[propName + "_tangential_force"] += tBar
 
                     if propName + "_radial_location" in d_inputs:
-                        prodVec = PETSc.Vec().createSeq(self.nForceSections + 2, bsize=1, comm=PETSc.COMM_SELF)
+                        prodVec = PETSc.Vec().createSeq(self.nForceSections, bsize=1, comm=PETSc.COMM_SELF)
                         prodVec.zeroEntries()
                         DASolver.solverAD.calcdFvSourcedInputsTPsiAD(
-                            propName.encode(), "rDistExt".encode(), aVec, tVec, rVec, fVec, cVec, sBarVec, prodVec
+                            propName.encode(), "rDist".encode(), aVec, tVec, rVec, fVec, cVec, sBarVec, prodVec
                         )
                         rBar = DASolver.vec2ArraySeq(prodVec)
                         rBar = self.comm.allreduce(rBar, op=MPI.SUM)
