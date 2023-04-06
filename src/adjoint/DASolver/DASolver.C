@@ -55,7 +55,6 @@ DASolver::DASolver(
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
 
     Info << "DAOpton initialized " << endl;
-
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * d* * * * //
@@ -127,7 +126,7 @@ label DASolver::loop(Time& runTime)
     }
 
     // check exit condition
-    if (primalMinRes_ < primalMinResTol_ && runTime.timeIndex() >  primalMinIters_)
+    if (primalMinRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_)
     {
         Info << "Time = " << t << endl;
         Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
@@ -1635,9 +1634,10 @@ void DASolver::calcdForcedStateTPsiAD(
 }
 
 void DASolver::calcFvSourceInternal(
+    const word propName,
     const scalarField& aForce,
     const scalarField& tForce,
-    const scalarList& rDistExt,
+    const scalarList& rDistList,
     const scalarList& targetForce,
     const vector& center,
     volVectorField& fvSource)
@@ -1647,17 +1647,19 @@ void DASolver::calcFvSourceInternal(
         Smoothing the force distribution on propeller blade on the entire mesh to ensure that it will not diverge during optimization.
         Forces are smoothed using 4th degree polynomial distribution for inner radius, normal distribution for outer radius, and Gaussiam distribution for axial direction.
     Inputs:
-        aForceL: Axis force didtribution on propeller blade
-        tForceL: Tangential force distribution on propeller blade
+        aForce: Axis force didtribution on propeller blade
+        tForce: Tangential force distribution on propeller blade
         rDist: Force distribution locations and radii of propeller (first element is inner radius, last element is outer radius)
     Output:
         fvSource: Smoothed forces in each mesh cell
     */
 
     vector axis;
-    scalar actEps = daOptionPtr_->getSubDictOption<scalar>("wingProp", "actEps");
-    word rotDir = daOptionPtr_->getSubDictOption<word>("wingProp", "rotDir");
-    scalarList axisDummy = daOptionPtr_->getSubDictOption<scalarList>("wingProp", "axis");
+    const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
+    scalar actEps = propSubDict.getScalar("actEps");
+    word rotDir = propSubDict.getWord("rotDir");
+    scalarList axisDummy;
+    propSubDict.readEntry<scalarList>("axis", axisDummy);
     axis[0] = axisDummy[0];
     axis[1] = axisDummy[1];
     axis[2] = axisDummy[2];
@@ -1684,14 +1686,13 @@ void DASolver::calcFvSourceInternal(
     // dummy vector field for storing the tangential vector of each cell
     volVectorField meshTanDir = meshC * 0;
 
-    // Extraction of inner and outer radii, and resizing of the blade radius distribution.
-    // scalar rInner = rDistExt[0];
-    scalar rOuter = rDistExt[rDistExt.size() - 1];
-    scalarField rDist = aForce * 0.0; // real blade radius distribution
+    // Normalization of the blade radius distribution.
+    scalar rOuter = (3 * rDistList[rDistList.size() - 1] - rDistList[rDistList.size() - 2]) / 2;
+    scalarField rDist = rDistList * 0.0; // real blade radius distribution
     scalarField rNorm = rDist; // normalized blade radius distribution
-    forAll(aForce, index)
+    forAll(rDistList, index)
     {
-        rDist[index] = rDistExt[index + 1];
+        rDist[index] = rDistList[index];
     }
     forAll(rDist, index)
     {
@@ -1806,6 +1807,8 @@ void DASolver::calcFvSourceInternal(
         scaleAxial = scaleAxial + (fvSource[cellI] & axis) * meshV[cellI];
         scaleTangential = scaleTangential + (fvSource[cellI] & meshTanDir[cellI]) * meshV[cellI];
     }
+    reduce(scaleAxial, sumOp<scalar>());
+    reduce(scaleTangential, sumOp<scalar>());
     scaleAxial = targetForce[0] / scaleAxial;
     scaleTangential = targetForce[1] / scaleTangential * rotDirCon;
 
@@ -1819,9 +1822,10 @@ void DASolver::calcFvSourceInternal(
 }
 
 void DASolver::calcFvSource(
+    const word propName,
     Vec aForce,
     Vec tForce,
-    Vec rDistExt,
+    Vec rDist,
     Vec targetForce,
     Vec center,
     Vec fvSource)
@@ -1833,7 +1837,7 @@ void DASolver::calcFvSource(
 
     Input:
         parameters: propeller parameters, i.e., center_x, center_y, center_z, r_inner, r_outer
-        
+
         force: the radial force profiles (fx1, fy1, fz1, fx2, fy2, fz2, ... )
 
     Output:
@@ -1841,13 +1845,14 @@ void DASolver::calcFvSource(
     */
 
     // Get Data
-    label nPoints = daOptionPtr_->getSubDictOption<label>("wingProp", "nForceSections");
+    const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
+    label nPoints = propSubDict.getLabel("nForceSections");
     // label meshSize = meshPtr_->nCells();
 
     // Allocate Arrays
     Field<scalar> aForceTemp(nPoints);
     Field<scalar> tForceTemp(nPoints);
-    List<scalar> rDistExtTemp(nPoints + 2);
+    List<scalar> rDistTemp(nPoints);
     List<scalar> targetForceTemp(2);
     Vector<scalar> centerTemp;
     volVectorField fvSourceTemp(
@@ -1866,8 +1871,8 @@ void DASolver::calcFvSource(
     VecGetArray(aForce, &vecArrayAForce);
     PetscScalar* vecArrayTForce;
     VecGetArray(tForce, &vecArrayTForce);
-    PetscScalar* vecArrayRDistExt;
-    VecGetArray(rDistExt, &vecArrayRDistExt);
+    PetscScalar* vecArrayRDist;
+    VecGetArray(rDist, &vecArrayRDist);
     PetscScalar* vecArrayTargetForce;
     VecGetArray(targetForce, &vecArrayTargetForce);
     PetscScalar* vecArrayCenter;
@@ -1878,11 +1883,7 @@ void DASolver::calcFvSource(
     {
         aForceTemp[cI] = vecArrayAForce[cI];
         tForceTemp[cI] = vecArrayTForce[cI];
-    }
-
-    forAll(rDistExtTemp, cI)
-    {
-        rDistExtTemp[cI] = vecArrayRDistExt[cI];
+        rDistTemp[cI] = vecArrayRDist[cI];
     }
     targetForceTemp[0] = vecArrayTargetForce[0];
     targetForceTemp[1] = vecArrayTargetForce[1];
@@ -1891,7 +1892,7 @@ void DASolver::calcFvSource(
     centerTemp[2] = vecArrayCenter[2];
 
     // Compute fvSource
-    this->calcFvSourceInternal(aForceTemp, tForceTemp, rDistExtTemp, targetForceTemp, centerTemp, fvSourceTemp);
+    this->calcFvSourceInternal(propName, aForceTemp, tForceTemp, rDistTemp, targetForceTemp, centerTemp, fvSourceTemp);
 
     VecZeroEntries(fvSource);
     PetscScalar* vecArrayFvSource;
@@ -1914,7 +1915,7 @@ void DASolver::calcFvSource(
 
     VecRestoreArray(aForce, &vecArrayAForce);
     VecRestoreArray(tForce, &vecArrayTForce);
-    VecRestoreArray(rDistExt, &vecArrayRDistExt);
+    VecRestoreArray(rDist, &vecArrayRDist);
     VecRestoreArray(targetForce, &vecArrayTargetForce);
     VecRestoreArray(center, &vecArrayCenter);
     VecRestoreArray(fvSource, &vecArrayFvSource);
@@ -1923,17 +1924,200 @@ void DASolver::calcFvSource(
 }
 
 void DASolver::calcdFvSourcedInputsTPsiAD(
+    const word propName,
     const word mode,
-    Vec centerVec,
-    Vec radiusVec,
-    Vec forceVec,
-    Vec psiVec,
-    Vec prodVec)
+    Vec aForce,
+    Vec tForce,
+    Vec rDist,
+    Vec targetForce,
+    Vec center,
+    Vec psi,
+    Vec dFvSource)
 {
     /*
     Description:
         Calculate the matrix-vector product for either [dFvSource/dParameters]^T * psi, or [dFvSource/dForce]^T * psi
     */
+
+#ifdef CODI_AD_REVERSE
+
+    Info << "Calculating [dFvSource/dInputs]^T*Psi using reverse-mode AD. PropName: "
+         << propName << " mode: " << mode << endl;
+
+    VecZeroEntries(dFvSource);
+
+    const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
+    label nPoints = propSubDict.getLabel("nForceSections");
+
+    Field<scalar> aForceField(nPoints);
+    Field<scalar> tForceField(nPoints);
+    List<scalar> rDistList(nPoints);
+    List<scalar> targetForceList(2);
+    vector centerVector = vector::zero;
+
+    volVectorField fvSourceVField(
+        IOobject(
+            "fvSourceVField",
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        meshPtr_(),
+        dimensionedVector("surfaceForce", dimensionSet(0, 0, 0, 0, 0, 0, 0), vector::zero),
+        fixedValueFvPatchScalarField::typeName);
+
+    PetscScalar* vecArrayAForce;
+    PetscScalar* vecArrayTForce;
+    PetscScalar* vecArrayRDist;
+    PetscScalar* vecArrayTargetForce;
+    PetscScalar* vecArrayCenter;
+    const PetscScalar* vecArrayPsi;
+
+    VecGetArray(aForce, &vecArrayAForce);
+    for (label i = 0; i < nPoints; i++)
+    {
+        aForceField[i] = vecArrayAForce[i];
+    }
+    VecRestoreArray(aForce, &vecArrayAForce);
+
+    VecGetArray(tForce, &vecArrayTForce);
+    for (label i = 0; i < nPoints; i++)
+    {
+        tForceField[i] = vecArrayTForce[i];
+    }
+    VecRestoreArray(tForce, &vecArrayTForce);
+
+    VecGetArray(rDist, &vecArrayRDist);
+    for (label i = 0; i < nPoints; i++)
+    {
+        rDistList[i] = vecArrayRDist[i];
+    }
+    VecRestoreArray(rDist, &vecArrayRDist);
+
+    VecGetArray(targetForce, &vecArrayTargetForce);
+    targetForceList[0] = vecArrayTargetForce[0];
+    targetForceList[1] = vecArrayTargetForce[1];
+    VecRestoreArray(targetForce, &vecArrayTargetForce);
+
+    VecGetArray(center, &vecArrayCenter);
+    centerVector[0] = vecArrayCenter[0];
+    centerVector[1] = vecArrayCenter[1];
+    centerVector[2] = vecArrayCenter[2];
+    VecRestoreArray(center, &vecArrayCenter);
+
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    if (mode == "aForce")
+    {
+        for (label i = 0; i < nPoints; i++)
+        {
+            this->globalADTape_.registerInput(aForceField[i]);
+        }
+    }
+    else if (mode == "tForce")
+    {
+        for (label i = 0; i < nPoints; i++)
+        {
+            this->globalADTape_.registerInput(tForceField[i]);
+        }
+    }
+    else if (mode == "rDist")
+    {
+        for (label i = 0; i < nPoints; i++)
+        {
+            this->globalADTape_.registerInput(rDistList[i]);
+        }
+    }
+    else if (mode == "targetForce")
+    {
+        for (label i = 0; i < 2; i++)
+        {
+            this->globalADTape_.registerInput(targetForceList[i]);
+        }
+    }
+    else if (mode == "center")
+    {
+        for (label i = 0; i < 3; i++)
+        {
+            this->globalADTape_.registerInput(centerVector[i]);
+        }
+    }
+    else
+    {
+        FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "mode not valid"
+                                                   << abort(FatalError);
+    }
+
+    // Step 3
+    this->calcFvSourceInternal(propName, aForceField, tForceField, rDistList, targetForceList, centerVector, fvSourceVField);
+
+    // Step 4
+    forAll(fvSourceVField, i)
+    {
+        this->globalADTape_.registerOutput(fvSourceVField[i][0]);
+        this->globalADTape_.registerOutput(fvSourceVField[i][1]);
+        this->globalADTape_.registerOutput(fvSourceVField[i][2]);
+    }
+
+    this->globalADTape_.setPassive();
+
+    // Step 6
+    VecGetArrayRead(psi, &vecArrayPsi);
+    forAll(fvSourceVField, i)
+    {
+        // Set seeds
+        fvSourceVField[i][0].setGradient(vecArrayPsi[i * 3]);
+        fvSourceVField[i][1].setGradient(vecArrayPsi[i * 3 + 1]);
+        fvSourceVField[i][2].setGradient(vecArrayPsi[i * 3 + 2]);
+    }
+    VecRestoreArrayRead(psi, &vecArrayPsi);
+
+    this->globalADTape_.evaluate();
+
+    PetscScalar* vecArrayProd;
+    VecGetArray(dFvSource, &vecArrayProd);
+    if (mode == "aForce")
+    {
+        forAll(aForceField, i)
+        {
+            vecArrayProd[i] = aForceField[i].getGradient();
+        }
+    }
+    else if (mode == "tForce")
+    {
+        forAll(tForceField, i)
+        {
+            vecArrayProd[i] = tForceField[i].getGradient();
+        }
+    }
+    else if (mode == "rDist")
+    {
+        forAll(rDistList, i)
+        {
+            vecArrayProd[i] = rDistList[i].getGradient();
+        }
+    }
+    else if (mode == "targetForce")
+    {
+        forAll(targetForceList, i)
+        {
+            vecArrayProd[i] = targetForceList[i].getGradient();
+        }
+    }
+    else if (mode == "center")
+    {
+        forAll(centerVector, i)
+        {
+            vecArrayProd[i] = centerVector[i].getGradient();
+        }
+    }
+
+    VecRestoreArray(dFvSource, &vecArrayProd);
+
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
 }
 
 void DASolver::reduceStateResConLevel(

@@ -191,7 +191,7 @@ protected:
     /// periodicity of oscillating flow variables (unsteady)
     scalar periodicity_ = 0.0;
 
-    /// primal residual tolerance 
+    /// primal residual tolerance
     scalar primalMinResTol_ = 0.0;
 
     /// primal min number of iterations
@@ -509,7 +509,7 @@ public:
         const label oldTimeLevel,
         const Vec psi,
         Vec dRdWOldTPsi);
-    
+
     /// return the coupling patch list if any scenario is active on couplingInfo dict otherwise return design surface
     void getCouplingPatchList(wordList& patchList, word groupName = "NONE");
 
@@ -800,28 +800,33 @@ public:
 
     /// calculate the fvSource based on the radial force profile
     void calcFvSourceInternal(
+        const word propName,
         const scalarField& aForce,
         const scalarField& tForce,
-        const scalarList& rDistExt,
+        const scalarList& rDistList,
         const scalarList& targetForce,
         const vector& center,
         volVectorField& fvSource);
 
     void calcFvSource(
+        const word propName,
         Vec aForce,
         Vec tForce,
-        Vec rDistExt,
+        Vec rDist,
         Vec targetForce,
         Vec center,
         Vec fvSource);
 
     void calcdFvSourcedInputsTPsiAD(
+        const word propName,
         const word mode,
-        Vec centerVec,
-        Vec radiusVec,
-        Vec forceVec,
-        Vec psiVec,
-        Vec prodVec);
+        Vec aForce,
+        Vec tForce,
+        Vec rDist,
+        Vec targetForce,
+        Vec center,
+        Vec psi,
+        Vec dFvSource);
 
     /// print all DAOption
     void printAllOptions()

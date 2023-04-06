@@ -137,7 +137,7 @@ case $argm in
       runTests MphysAeroStructOpt
       runTests MphysAeroThermal
       runTests MphysAeroAcoustic
-      runTestsSerial MphysAeroProp
+      runTests MphysAeroProp
     fi
     echo " "
     echo "************************************************************"
@@ -240,7 +240,7 @@ case $argm in
       runTests MphysAeroStructOpt
       runTests MphysAeroThermal
       runTests MphysAeroAcoustic
-      runTestsSerial MphysAeroProp
+      runTests MphysAeroProp
     fi
     echo " "
     echo "************************************************************"

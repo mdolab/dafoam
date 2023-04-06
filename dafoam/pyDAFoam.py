@@ -639,8 +639,16 @@ class DAOPTION(object):
         ## or updating the PC mat. To enable this option, set "active" to True.
         self.runLowOrderPrimal4PC = {"active": False}
 
-        ## Parameters for wing-propeller coupling optimizations
-        self.wingProp = {"nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.02, "rotDir": "right"}
+        ## Parameters for wing-propeller coupling optimizations. We can add multiple propellers
+        self.wingProp = {
+            "test_propeller_default": {
+                "active": False,
+                "nForceSections": 10,
+                "axis": [1.0, 0.0, 0.0],
+                "actEps": 0.02,
+                "rotDir": "right",
+            },
+        }
 
         ## number of minimal primal iterations. The primal has to run this many iterations, even the primal residual
         ## has reduced below the tolerance. The default is a negative value (always satisfied).
@@ -3719,6 +3727,8 @@ class PYDAFOAM(object):
         """
 
         self.solver.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
 
     def setFieldValue4LocalCellI(self, fieldName, val, localCellI, compI=0):
         """
@@ -3738,6 +3748,8 @@ class PYDAFOAM(object):
         """
 
         self.solver.setFieldValue4LocalCellI(fieldName, val, localCellI, compI)
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.setFieldValue4LocalCellI(fieldName, val, localCellI, compI)
 
     def updateBoundaryConditions(self, fieldName, fieldType):
         """
@@ -3753,6 +3765,8 @@ class PYDAFOAM(object):
         """
 
         self.solver.updateBoundaryConditions(fieldName, fieldType)
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.updateBoundaryConditions(fieldName, fieldType)
 
     def getOption(self, name):
         """
