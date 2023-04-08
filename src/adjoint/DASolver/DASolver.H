@@ -322,6 +322,12 @@ public:
     /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
     void updateOFMesh(const Vec xvVec);
 
+    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state array
+    void updateOFField(const scalar* volCoords);
+
+    /// Update the OpenFoam mesh point coordinates based on the volume point coords array
+    void updateOFMesh(const scalar* states);
+
     /// compute dRdBC
     void calcdRdBC(
         const Vec xvVec,
@@ -730,10 +736,22 @@ public:
         List<scalar>& fY,
         List<scalar>& fZ,
         List<word>& patchList);
+    
+    /// Get the number of faces for the MDO coupling patches
+    label getNCouplingFaces();
 
+    /// Get the number of points for the MDO coupling patches
+    label getNCouplingPoints();
+
+    /// return the face coordinates based on vol coords
     void getFaceCoords(
         Vec xvVec,
         Vec xsVec);
+    
+    /// return the face coordinates based on vol coords
+    void calcCouplingFaceCoords(
+        const scalar* volCoords,
+        scalar* surfCoords);
 
     void calcdXvdXsTPsiAD(
         Vec xvVec,

@@ -1510,15 +1510,13 @@ class DAFoamFaceCoords(ExplicitComponent):
 
     def compute(self, inputs, outputs):
 
-        xv = inputs["%s_vol_coords" % self.discipline]
-        xvVec = self.DASolver.array2Vec(xv)
+        volCoords = inputs["%s_vol_coords" % self.discipline]
 
-        xsVec = PETSc.Vec().create(self.comm)
-        self.DASolver.solver.getFaceCoords(xvVec, xsVec)
+        nCouplingFaces = self.DASolver.solver.getNCouplingFaces()
+        surfCoords = np.zeros(nCouplingFaces * 3)
+        self.DASolver.solver.calcCouplingFaceCoords(volCoords, surfCoords)
 
-        xs = self.DASolver.vec2Array(xsVec)
-
-        outputs["x_%s_surface0" % self.discipline] = xs
+        outputs["x_%s_surface0" % self.discipline] = surfCoords
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 

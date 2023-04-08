@@ -451,6 +451,75 @@ void DASolver::getFaceCoords(
     VecRestoreArray(xsVec, &vecArray);
 }
 
+label DASolver::getNCouplingFaces()
+{
+    /*
+    Description:
+        Get the number of faces for the MDO coupling patches
+    */
+    wordList patchList;
+    this->getCouplingPatchList(patchList);
+    // get the total number of points and faces for the patchList
+    label nPoints, nFaces;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    return nFaces;
+}
+
+label DASolver::getNCouplingPoints()
+{
+    /*
+    Description:
+        Get the number of points for the MDO coupling patches
+    */
+    wordList patchList;
+    this->getCouplingPatchList(patchList);
+    // get the total number of points and faces for the patchList
+    label nPoints, nFaces;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    return nPoints;
+}
+
+void DASolver::calcCouplingFaceCoords(
+    const scalar* volCoords,
+    scalar* surfCoords)
+{
+    /*
+    Description:
+        Calculate a list of face center coordinates for the MDO coupling patches, given 
+        the volume mesh point coordinates
+
+    Input:
+        volCoords: volume mesh point coordinates
+    
+    Output:
+        surfCoords: face center coordinates for coupling patches
+    */
+    this->updateOFMesh(volCoords);
+
+    wordList patchList;
+    this->getCouplingPatchList(patchList);
+    // get the total number of points and faces for the patchList
+    label nPoints, nFaces;
+    this->getPatchInfo(nPoints, nFaces, patchList);
+
+    label counterFaceI = 0;
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                surfCoords[counterFaceI] = meshPtr_->Cf().boundaryField()[patchI][faceI][i];
+                counterFaceI++;
+            }
+        }
+    }
+}
+
 void DASolver::getCouplingPatchList(
     wordList& patchList,
     word groupName)
@@ -4424,6 +4493,29 @@ void DASolver::updateOFField(const Vec wVec)
     }
 }
 
+void DASolver::updateOFField(const scalar* states)
+{
+    label printInfo = 0;
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        Info << "Updating the OpenFOAM field..." << endl;
+        printInfo = 1;
+    }
+    this->setPrimalBoundaryConditions(printInfo);
+    daFieldPtr_->state2OFField(states);
+    // We need to call correctBC multiple times to reproduce
+    // the exact residual, this is needed for some boundary conditions
+    // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
+    label maxCorrectBCCalls = daOptionPtr_->getOption<label>("maxCorrectBCCalls");
+    for (label i = 0; i < maxCorrectBCCalls; i++)
+    {
+        daResidualPtr_->correctBoundaryConditions();
+        daResidualPtr_->updateIntermediateVariables();
+        daModelPtr_->correctBoundaryConditions();
+        daModelPtr_->updateIntermediateVariables();
+    }
+}
+
 void DASolver::updateOFMesh(const Vec xvVec)
 {
     /*
@@ -4441,6 +4533,25 @@ void DASolver::updateOFMesh(const Vec xvVec)
         Info << "Updating the OpenFOAM mesh..." << endl;
     }
     daFieldPtr_->pointVec2OFMesh(xvVec);
+}
+
+void DASolver::updateOFMesh(const scalar* volCoords)
+{
+    /*
+    Description:
+        Update the OpenFOAM mesh based on the volume coordinates point volCoords
+
+    Input:
+        volCoords: point coordinate array
+
+    Output:
+        OpenFoam flow fields (internal and boundary)
+    */
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        Info << "Updating the OpenFOAM mesh..." << endl;
+    }
+    daFieldPtr_->point2OFMesh(volCoords);
 }
 
 void DASolver::initializedRdWTMatrixFree(

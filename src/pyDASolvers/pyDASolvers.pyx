@@ -68,9 +68,12 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getNLocalAdjointStates()
         int getNLocalAdjointBoundaryStates()
         int getNLocalCells()
+        int getNCouplingFaces()
+        int getNCouplingPoints()
         int checkMesh()
         double getObjFuncValue(char *)
         void getFaceCoords(PetscVec, PetscVec)
+        void calcCouplingFaceCoords(double *, double *)
         void getForces(PetscVec, PetscVec, PetscVec)
         void getThermal(char *, PetscVec)
         void setThermal(char *, double *)
@@ -298,6 +301,12 @@ cdef class pyDASolvers:
     def getNLocalAdjointStates(self):
         return self._thisptr.getNLocalAdjointStates()
     
+    def getNCouplingFaces(self):
+        return self._thisptr.getNCouplingFaces()
+    
+    def getNCouplingPoints(self):
+        return self._thisptr.getNCouplingPoints()
+    
     def getNLocalAdjointBoundaryStates(self):
         return self._thisptr.getNLocalAdjointBoundaryStates()
     
@@ -312,6 +321,13 @@ cdef class pyDASolvers:
 
     def getFaceCoords(self, Vec xvVec, Vec xsVec):
         self._thisptr.getFaceCoords(xvVec.vec, xsVec.vec)
+        
+    def calcCouplingFaceCoords(self, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] surfCoords):
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *surfCoords_data = <double*>surfCoords.data
+        self._thisptr.calcCouplingFaceCoords(volCoords_data, surfCoords_data)
 
     def getForces(self, Vec fX, Vec fY, Vec fZ):
         self._thisptr.getForces(fX.vec, fY.vec, fZ.vec)

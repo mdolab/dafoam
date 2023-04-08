@@ -451,6 +451,18 @@ public:
         return DASolverPtr_->checkMesh();
     }
 
+    /// Get the number of faces for the MDO coupling patches
+    label getNCouplingFaces()
+    {
+        return DASolverPtr_->getNCouplingFaces();
+    }
+
+    /// Get the number of points for the MDO coupling patches
+    label getNCouplingPoints()
+    {
+        return DASolverPtr_->getNCouplingPoints();
+    }
+
     /// return the number of local adjoint states
     label getNLocalAdjointStates() const
     {
@@ -490,6 +502,18 @@ public:
         DASolverPtr_->getFaceCoords(xvVec, xsVec);
     }
 
+    void calcCouplingFaceCoords(
+        const double* volCoords,
+        double* surfCoords)
+    {
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        DASolverPtr_->calcCouplingFaceCoords(volCoords, surfCoords);
+        return;
+#endif
+        FatalErrorIn("calcCouplingFaceCoords") << "should not call this func in AD mode!"
+                                               << abort(FatalError);
+    }
+
     /// return the force on the FSI patches
     void getForces(Vec fX, Vec fY, Vec fZ)
     {
@@ -517,8 +541,8 @@ public:
         DASolverPtr_->setThermal(varName, thermal);
         return;
 #endif
-        FatalErrorIn("getForces") << "should not call this func in AD mode!"
-                                  << abort(FatalError);
+        FatalErrorIn("setThermal") << "should not call this func in AD mode!"
+                                   << abort(FatalError);
     }
 
     void calcdRdThermalTPsiAD(
@@ -744,7 +768,7 @@ public:
         Vec psi,
         Vec dFvSource)
     {
-        DASolverPtr_->calcdFvSourcedInputsTPsiAD(propName ,mode, aForce, tForce, rDist, targetForce, center, psi, dFvSource);
+        DASolverPtr_->calcdFvSourcedInputsTPsiAD(propName, mode, aForce, tForce, rDist, targetForce, center, psi, dFvSource);
     }
 
     void calcForceProfile(
