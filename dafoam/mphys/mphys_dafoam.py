@@ -1,5 +1,6 @@
 import sys
 from openmdao.api import Group, ImplicitComponent, ExplicitComponent, AnalysisError
+import openmdao.api as om
 from dafoam import PYDAFOAM
 from idwarp import USMesh
 from mphys.builder import Builder
@@ -724,7 +725,13 @@ class DAFoamSolver(ImplicitComponent):
 
         # we do not support forward mode
         if mode == "fwd":
-            raise AnalysisError("fwd mode not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         DASolver = self.DASolver
 
@@ -868,7 +875,13 @@ class DAFoamSolver(ImplicitComponent):
 
         # we do not support forward mode
         if mode == "fwd":
-            raise AnalysisError("fwd mode not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         with cd(self.run_directory):
 
@@ -1074,7 +1087,13 @@ class DAFoamMesh(ExplicitComponent):
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # we do not support forward mode AD
         if mode == "fwd":
-            raise AnalysisError("fwd mode not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         # just assign the matrix-vector product
         if "x_%s0_points" % self.discipline in d_inputs:
@@ -1214,7 +1233,13 @@ class DAFoamFunctions(ExplicitComponent):
 
         # we do not support forward mode AD
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         funcsBar = {}
 
@@ -1375,7 +1400,13 @@ class DAFoamWarper(ExplicitComponent):
 
         # we do not support forward mode AD
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         # compute dXv/dXs such that we can propagate the partials (e.g., dF/dXv) to Xs
         # then the partial will be further propagated to XFFD in pyGeo
@@ -1436,7 +1467,13 @@ class DAFoamThermal(ExplicitComponent):
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         DASolver = self.DASolver
 
@@ -1521,7 +1558,13 @@ class DAFoamFaceCoords(ExplicitComponent):
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         DASolver = self.DASolver
 
@@ -1567,7 +1610,13 @@ class DAFoamForces(ExplicitComponent):
         DASolver = self.DASolver
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         if "f_aero" in d_outputs:
             fBar = d_outputs["f_aero"]
@@ -1629,7 +1678,13 @@ class DAFoamAcoustics(ExplicitComponent):
         DASolver = self.DASolver
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         for varName in ["xAcou", "nAcou", "aAcou", "fAcou"]:
             if varName in d_outputs:
@@ -1831,7 +1886,13 @@ class DAFoamFvSource(ExplicitComponent):
         DASolver = self.DASolver
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         if "fvSource" in d_outputs:
             sBar = d_outputs["fvSource"]
@@ -1989,7 +2050,13 @@ class DAFoamPropNodes(ExplicitComponent):
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         for fvSource, parameters in self.aerostructDict["fvSource"].items():
             if "x_prop0_%s" % fvSource in d_inputs:
@@ -2038,7 +2105,13 @@ class DAFoamActuator(ExplicitComponent):
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         # Loop over all actuator disks
         for fvSource, _ in self.aerostructDict["fvSource"].items():
