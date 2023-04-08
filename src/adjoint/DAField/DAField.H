@@ -80,8 +80,17 @@ public:
     /// assign the fields in OpenFOAM based on the state vector
     void stateVec2OFField(const Vec stateVec) const;
 
+    /// assign the fields in OpenFOAM based on the state array
+    void state2OFField(const scalar* states) const;
+
     /// assign the points in fvMesh of OpenFOAM based on the point vector
     void pointVec2OFMesh(const Vec xvVec) const;
+
+    /// assign the points in fvMesh of OpenFOAM based on the point array
+    void point2OFMesh(const scalar* volCoords) const;
+
+    /// reset the seeds for both state and mesh variables in OpenFOAM by setting their gradient() to zeros
+    void zeroOFSeeds();
 
     /// assign the point vector based on the points in fvMesh of OpenFOAM
     void ofMesh2PointVec(Vec xvVec) const;

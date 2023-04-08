@@ -33,6 +33,97 @@ DAField::DAField(
     this->checkSpecialBCs();
 }
 
+void DAField::zeroOFSeeds()
+{
+    /*
+    Description:
+        Reset the seeds for both state and mesh variables in OpenFOAM by setting their gradient() to zeros
+        Then, we will propagate the zero seeds to other variables by calling correctBC or movePoints
+
+    Output:
+        OpenFoam field variables's gradients will be reset to zeros
+    */
+
+#ifdef CODI_AD_REVERSE
+
+    const objectRegistry& db = mesh_.thisDb();
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volVectorStates"][idxI], volVectorField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                state[cellI][comp].setGradient(0.0);
+            }
+        }
+        state.correctBoundaryConditions();
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volScalarStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            state[cellI].setGradient(0.0);
+        }
+        state.correctBoundaryConditions();
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["modelStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            state[cellI].setGradient(0.0);
+        }
+        state.correctBoundaryConditions();
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["surfaceScalarStates"][idxI], surfaceScalarField, db);
+
+        forAll(state, faceI)
+        {
+            state[faceI].setGradient(0.0);
+        }
+
+        forAll(state.boundaryField(), patchI)
+        {
+            forAll(state.boundaryField()[patchI], faceI)
+            {
+                state.boundaryFieldRef()[patchI][faceI].setGradient(0.0);
+            }
+        }
+    }
+
+    pointField meshPoints(mesh_.points());
+
+    forAll(mesh_.points(), pointI)
+    {
+        for (label comp = 0; comp < 3; comp++)
+        {
+            meshPoints[pointI][comp].setGradient(0.0);
+        }
+    }
+
+    // movePoints update the mesh metrics such as volume, surface area and cell centers
+    fvMesh& mesh = const_cast<fvMesh&>(mesh_);
+    mesh.movePoints(meshPoints);
+    mesh.moving(false);
+
+#endif
+}
+
 void DAField::ofField2StateVec(Vec stateVec) const
 {
     /*
@@ -123,6 +214,93 @@ void DAField::ofField2StateVec(Vec stateVec) const
     VecRestoreArray(stateVec, &stateVecArray);
 }
 
+void DAField::state2OFField(const scalar* states) const
+{
+    /*
+    Description:
+        Assign values OpenFOAM field values based on the state variable array
+
+    Input:
+    states: state variable array
+
+    Output:
+    OpenFoam field variables
+
+    Example:
+        Image we have two state variables (p,T) and five cells, running on two CPU
+        processors, the proc0 owns two cells and the proc1 owns three cells,
+        then calling this function will assign the p, and T based on the the state 
+        vector (state-by-state ordering):
+    
+        stateVec = [p0, p1, T0, T1 | p0, p1, p2, T0, T1, T2] <- p0 means p for the 0th cell on local processor
+                     0   1   2   3 |  4   5   6   7   8   9  <- global state vec index
+                   ---- proc0 -----|--------- proc1 ------- 
+    */
+
+    const objectRegistry& db = mesh_.thisDb();
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volVectorStates"][idxI], volVectorField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI, comp);
+                state[cellI][comp] = states[localIdx];
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["volScalarStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            state[cellI] = states[localIdx];
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["modelStates"][idxI], volScalarField, db);
+
+        forAll(mesh_.cells(), cellI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, cellI);
+            state[cellI] = states[localIdx];
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        // lookup state from meshDb
+        makeState(stateInfo_["surfaceScalarStates"][idxI], surfaceScalarField, db);
+
+        forAll(mesh_.faces(), faceI)
+        {
+            label localIdx = daIndex_.getLocalAdjointStateIndex(stateName, faceI);
+            if (faceI < daIndex_.nLocalInternalFaces)
+            {
+                state[faceI] = states[localIdx];
+            }
+            else
+            {
+                label relIdx = faceI - daIndex_.nLocalInternalFaces;
+                const label& patchIdx = daIndex_.bFacePatchI[relIdx];
+                const label& faceIdx = daIndex_.bFaceFaceI[relIdx];
+                state.boundaryFieldRef()[patchIdx][faceIdx] = states[localIdx];
+            }
+        }
+    }
+}
+
 void DAField::stateVec2OFField(const Vec stateVec) const
 {
     /*
@@ -211,6 +389,47 @@ void DAField::stateVec2OFField(const Vec stateVec) const
         }
     }
     VecRestoreArrayRead(stateVec, &stateVecArray);
+}
+
+void DAField::point2OFMesh(const scalar* volCoords) const
+{
+    /*
+    Description:
+        Assign the points in fvMesh of OpenFOAM based on the volCoords array
+
+    Input:
+        volCoords: a vector that stores the x, y, and z coordinates for all
+        points in the fvMesh mesh
+
+    Output:
+        New mesh metrics in fvMesh, effectively by calling mesh.movePoints
+
+    Example:
+        Image we have three points in fvMesh, running on two CPU
+        processors, the proc0 owns one point and the proc1 owns two points,
+        then calling this function will assign xvVec based on the the points
+        coordinates in fvMesh
+    
+        xvVec = [x0, y0, z0 | x0, y0, z0, x1, y1, z1] <- x0 means x coordinate for the 0th point on local processor
+                 0   1   2  |  3   4   5   6   7   8  <- global point vec index
+                --- proc0 --|--------- proc1 ------- 
+    */
+
+    pointField meshPoints(mesh_.points());
+
+    forAll(mesh_.points(), pointI)
+    {
+        for (label comp = 0; comp < 3; comp++)
+        {
+            label localIdx = daIndex_.getLocalXvIndex(pointI, comp);
+            meshPoints[pointI][comp] = volCoords[localIdx];
+        }
+    }
+
+    // movePoints update the mesh metrics such as volume, surface area and cell centers
+    fvMesh& mesh = const_cast<fvMesh&>(mesh_);
+    mesh.movePoints(meshPoints);
+    mesh.moving(false);
 }
 
 void DAField::pointVec2OFMesh(const Vec xvVec) const
@@ -598,7 +817,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
             const IOMRFZoneListDF& MRF = db.lookupObject<IOMRFZoneListDF>("MRFProperties");
             scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
             omega = omegaNew;
-            
+
             if (printInfo)
             {
                 Info << "Setting MRF omega to " << omegaNew << endl;
