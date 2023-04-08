@@ -90,7 +90,7 @@ public:
     void point2OFMesh(const scalar* volCoords) const;
 
     /// reset the seeds for both state and mesh variables in OpenFOAM by setting their gradient() to zeros
-    void zeroOFSeeds();
+    void resetOFSeeds();
 
     /// assign the point vector based on the points in fvMesh of OpenFOAM
     void ofMesh2PointVec(Vec xvVec) const;

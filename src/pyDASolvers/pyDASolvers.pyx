@@ -74,6 +74,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getObjFuncValue(char *)
         void getFaceCoords(PetscVec, PetscVec)
         void calcCouplingFaceCoords(double *, double *)
+        void calcCouplingFaceCoordsAD(double *, double *, double *)
         void getForces(PetscVec, PetscVec, PetscVec)
         void getThermal(char *, PetscVec)
         void setThermal(char *, double *)
@@ -328,6 +329,15 @@ cdef class pyDASolvers:
         cdef double *volCoords_data = <double*>volCoords.data
         cdef double *surfCoords_data = <double*>surfCoords.data
         self._thisptr.calcCouplingFaceCoords(volCoords_data, surfCoords_data)
+    
+    def calcCouplingFaceCoordsAD(self, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] seeds,
+            np.ndarray[double, ndim=1, mode="c"] product):
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *seeds_data = <double*>seeds.data
+        cdef double *product_data = <double*>product.data
+        self._thisptr.calcCouplingFaceCoordsAD(volCoords_data, seeds_data, product_data)
 
     def getForces(self, Vec fX, Vec fY, Vec fZ):
         self._thisptr.getForces(fX.vec, fY.vec, fZ.vec)

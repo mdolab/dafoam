@@ -328,6 +328,9 @@ public:
     /// Update the OpenFoam mesh point coordinates based on the volume point coords array
     void updateOFMesh(const scalar* states);
 
+    /// reset the seeds (gradient to zeros) for all OpenFOAM variables
+    void resetOFSeeds();
+
     /// compute dRdBC
     void calcdRdBC(
         const Vec xvVec,
@@ -752,6 +755,12 @@ public:
     void calcCouplingFaceCoords(
         const scalar* volCoords,
         scalar* surfCoords);
+    
+    /// calc matrix-vector products for calcCouplingFaceCoords
+    void calcCouplingFaceCoordsAD(
+        const double* volCoords,
+        const double* seeds,
+        double* product);
 
     void calcdXvdXsTPsiAD(
         Vec xvVec,

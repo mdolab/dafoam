@@ -33,12 +33,17 @@ DAField::DAField(
     this->checkSpecialBCs();
 }
 
-void DAField::zeroOFSeeds()
+void DAField::resetOFSeeds()
 {
     /*
     Description:
         Reset the seeds for both state and mesh variables in OpenFOAM by setting their gradient() to zeros
         Then, we will propagate the zero seeds to other variables by calling correctBC or movePoints
+        NOTE. we need to zero the seeds for all boundary values as well. For example, in aerothermal coupling
+        we need to set seeds for boundary values and compute the matrix-vector product. We need to reset
+        the seeds for the boundary values after the product is done.
+        TODO. We only reset seeds for boundary types fixedValue and fixedGradient for now. If we need to couple
+        more boundary types in the future, make sure we add codes to reset their seeds here. 
 
     Output:
         OpenFoam field variables's gradients will be reset to zeros
@@ -53,14 +58,40 @@ void DAField::zeroOFSeeds()
         // lookup state from meshDb
         makeState(stateInfo_["volVectorStates"][idxI], volVectorField, db);
 
-        forAll(mesh_.cells(), cellI)
+        forAll(state, cellI)
         {
             for (label comp = 0; comp < 3; comp++)
             {
                 state[cellI][comp].setGradient(0.0);
             }
         }
-        state.correctBoundaryConditions();
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    for (label comp = 0; comp < 3; comp++)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI][comp].setGradient(0.0);
+                    }
+                }
+            }
+            else if (state.boundaryFieldRef()[patchI].type() == "fixedGradient")
+            {
+                fixedGradientFvPatchField<vector>& patchBC =
+                    refCast<fixedGradientFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                vectorField& grad = const_cast<vectorField&>(patchBC.gradient());
+                forAll(grad, idxI)
+                {
+                    for (label comp = 0; comp < 3; comp++)
+                    {
+                        grad[idxI][comp].setGradient(0.0);
+                    }
+                }
+            }
+        }
     }
 
     forAll(stateInfo_["volScalarStates"], idxI)
@@ -68,11 +99,31 @@ void DAField::zeroOFSeeds()
         // lookup state from meshDb
         makeState(stateInfo_["volScalarStates"][idxI], volScalarField, db);
 
-        forAll(mesh_.cells(), cellI)
+        forAll(state, cellI)
         {
             state[cellI].setGradient(0.0);
         }
-        state.correctBoundaryConditions();
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    state.boundaryFieldRef()[patchI][faceI].setGradient(0.0);
+                }
+            }
+            else if (state.boundaryFieldRef()[patchI].type() == "fixedGradient")
+            {
+                fixedGradientFvPatchField<scalar>& patchBC =
+                    refCast<fixedGradientFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                scalarField& grad = const_cast<scalarField&>(patchBC.gradient());
+                forAll(grad, idxI)
+                {
+                    grad[idxI].setGradient(0.0);
+                }
+            }
+        }
     }
 
     forAll(stateInfo_["modelStates"], idxI)
@@ -80,11 +131,31 @@ void DAField::zeroOFSeeds()
         // lookup state from meshDb
         makeState(stateInfo_["modelStates"][idxI], volScalarField, db);
 
-        forAll(mesh_.cells(), cellI)
+        forAll(state, cellI)
         {
             state[cellI].setGradient(0.0);
         }
-        state.correctBoundaryConditions();
+
+        forAll(state.boundaryField(), patchI)
+        {
+            if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    state.boundaryFieldRef()[patchI][faceI].setGradient(0.0);
+                }
+            }
+            else if (state.boundaryFieldRef()[patchI].type() == "fixedGradient")
+            {
+                fixedGradientFvPatchField<scalar>& patchBC =
+                    refCast<fixedGradientFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                scalarField& grad = const_cast<scalarField&>(patchBC.gradient());
+                forAll(grad, idxI)
+                {
+                    grad[idxI].setGradient(0.0);
+                }
+            }
+        }
     }
 
     forAll(stateInfo_["surfaceScalarStates"], idxI)

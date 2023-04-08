@@ -520,6 +520,73 @@ void DASolver::calcCouplingFaceCoords(
     }
 }
 
+void DASolver::calcCouplingFaceCoordsAD(
+    const double* volCoords,
+    const double* seeds,
+    double* product)
+{
+#ifdef CODI_AD_REVERSE
+
+    label nCouplingFaces = this->getNCouplingFaces();
+
+    scalar* volCoordsArray = new scalar[daIndexPtr_->nLocalXv];
+    for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+    {
+        volCoordsArray[i] = volCoords[i];
+    }
+
+    scalar* surfCoordsArray = new scalar[nCouplingFaces * 3];
+
+    // update the OpenFOAM variables and reset their seeds (gradient part) to zeros
+    this->resetOFSeeds();
+    // reset the AD tape
+    this->globalADTape_.reset();
+    // start recording
+    this->globalADTape_.setActive();
+
+    // register inputs
+    for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+    {
+        this->globalADTape_.registerInput(volCoordsArray[i]);
+    }
+
+    // calculate outputs
+    this->calcCouplingFaceCoords(volCoordsArray, surfCoordsArray);
+
+    // register outputs
+    for (label i = 0; i < nCouplingFaces * 3; i++)
+    {
+        this->globalADTape_.registerOutput(surfCoordsArray[i]);
+    }
+
+    // stop recording
+    this->globalADTape_.setPassive();
+
+    // set seeds to the outputs
+    for (label i = 0; i < nCouplingFaces * 3; i++)
+    {
+        surfCoordsArray[i].setGradient(seeds[i]);
+    }
+
+    // now calculate the reverse matrix-vector product
+    this->globalADTape_.evaluate();
+
+    // get the matrix-vector product from the inputs
+    for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+    {
+        product[i] = volCoordsArray[i].getGradient();
+    }
+
+    delete[] volCoordsArray;
+    delete[] surfCoordsArray;
+
+    // clean up AD
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+#endif
+}
+
 void DASolver::getCouplingPatchList(
     wordList& patchList,
     word groupName)
@@ -4456,6 +4523,33 @@ label DASolver::solveLinearEqn(
     globalADTape4dRdWTInitialized = 0;
 
     return error;
+}
+
+void DASolver::resetOFSeeds()
+{
+    /*
+    Description:
+        RESET the seeds to all state variables and vol coordinates to zeros
+        This is done by passing a double array to the OpenFOAM's scalar field
+        and setting all the gradient part to zero.
+        In CODIPack, if we pass a double value to a scalar value, it will assign
+        an zero to the scalar variable's gradient part (seeds).
+        NOTE. this is important because CODIPack's tape.reset does not clean
+        the seeds in the OpenFOAM's variables. So we need to manually reset them
+        Not doing this will cause inaccurate AD values.
+    
+    Outputs:
+        
+        The OpenFOAM variables's seed values
+    */
+
+    this->setPrimalBoundaryConditions(0);
+    daFieldPtr_->resetOFSeeds();
+
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
 }
 
 void DASolver::updateOFField(const Vec wVec)

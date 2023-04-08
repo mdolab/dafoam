@@ -514,6 +514,15 @@ public:
                                                << abort(FatalError);
     }
 
+    /// calc matrix-vector products for calcCouplingFaceCoords
+    void calcCouplingFaceCoordsAD(
+        const double* volCoords,
+        const double* seeds,
+        double* product)
+    {
+        DASolverPtr_->calcCouplingFaceCoordsAD(volCoords, seeds, product);
+    }
+
     /// return the force on the FSI patches
     void getForces(Vec fX, Vec fY, Vec fZ)
     {

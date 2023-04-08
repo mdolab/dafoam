@@ -1526,15 +1526,13 @@ class DAFoamFaceCoords(ExplicitComponent):
         DASolver = self.DASolver
 
         if "x_%s_surface0" % self.discipline in d_outputs:
-            fBar = d_outputs["x_%s_surface0" % self.discipline]
-            fBarVec = DASolver.array2Vec(fBar)
+            seeds = d_outputs["x_%s_surface0" % self.discipline]
 
             if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = DASolver.xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdXvdXsTPsiAD(DASolver.xvVec, fBarVec, prodVec)
-                xVBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_vol_coords" % self.discipline] += xVBar
+                volCoords = inputs["%s_vol_coords" % self.discipline]
+                product = np.zeros_like(volCoords)
+                DASolver.solverAD.calcCouplingFaceCoordsAD(volCoords, seeds, product)
+                d_inputs["%s_vol_coords" % self.discipline] += product
 
 
 class DAFoamForces(ExplicitComponent):
