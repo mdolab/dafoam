@@ -41,8 +41,6 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdForcedXvAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdAcousticsdXvAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdRdActTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
-        void calcdThermaldWTPsiAD(char * , PetscVec, PetscVec, PetscVec, PetscVec)
-        void calcdThermaldXvTPsiAD(char * , PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedWAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdAcousticsdWAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdFdACT(PetscVec, PetscVec, char *, char*, char*, PetscVec)
@@ -211,12 +209,6 @@ cdef class pyDASolvers:
 
     def calcdRdActTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdActTPsi):
         self._thisptr.calcdRdActTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdActTPsi.vec)
-    
-    def calcdThermaldWTPsiAD(self, mode, Vec xvVec, Vec wVec, Vec psiVec, Vec prodVec):
-        self._thisptr.calcdThermaldWTPsiAD(mode, xvVec.vec, wVec.vec, psiVec.vec, prodVec.vec)
-    
-    def calcdThermaldXvTPsiAD(self, mode, Vec xvVec, Vec wVec, Vec psiVec, Vec prodVec):
-        self._thisptr.calcdThermaldXvTPsiAD(mode, xvVec.vec, wVec.vec, psiVec.vec, prodVec.vec)
 
     def calcdForcedWAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedW):
         self._thisptr.calcdForcedWAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedW.vec)
