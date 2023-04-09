@@ -692,6 +692,12 @@ public:
         return meshPtr_->nCells();
     }
 
+    /// return the number of local points
+    label getNLocalPoints() const
+    {
+        return meshPtr_->nPoints();
+    }
+
     /// initialize DASolver::daObjFuncPtrList_ one needs to call this before calling printAllObjFuncs
     void setDAObjFuncList();
 
@@ -739,18 +745,18 @@ public:
         List<scalar>& fY,
         List<scalar>& fZ,
         List<word>& patchList);
-    
+
     /// Get the number of faces for the MDO coupling patches
     label getNCouplingFaces();
 
     /// Get the number of points for the MDO coupling patches
     label getNCouplingPoints();
-    
+
     /// return the face coordinates based on vol coords
     void calcCouplingFaceCoords(
         const scalar* volCoords,
         scalar* surfCoords);
-    
+
     /// calc matrix-vector products for calcCouplingFaceCoords
     void calcCouplingFaceCoordsAD(
         const double* volCoords,
@@ -758,7 +764,11 @@ public:
         double* product);
 
     /// compute the temperature on the conjugate heat transfer patches
-    void getThermal(word varName, Vec thermalVec);
+    void getThermal(
+        word varName,
+        const scalar* volCoords,
+        const scalar* states,
+        scalar* thermal);
 
     /// compute the temperature on the conjugate heat transfer patches: AD compatible
     void getThermalInternal(word varName, scalarList& thermalList);

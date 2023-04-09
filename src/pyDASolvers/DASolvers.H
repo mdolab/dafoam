@@ -463,6 +463,12 @@ public:
         return DASolverPtr_->getNCouplingPoints();
     }
 
+    // return the number of local mesh points
+    label getNLocalPoints() const
+    {
+        return DASolverPtr_->getNLocalPoints();
+    }
+
     /// return the number of local adjoint states
     label getNLocalAdjointStates() const
     {
@@ -523,9 +529,18 @@ public:
     }
 
     /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
-    void getThermal(word varName, Vec thermalVec)
+    void getThermal(
+        word varName,
+        const double* volCoords,
+        const double* states,
+        double* thermal)
     {
-        DASolverPtr_->getThermal(varName, thermalVec);
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        DASolverPtr_->getThermal(varName, volCoords, states, thermal);
+        return;
+#endif
+        FatalErrorIn("getThermal") << "should not call this func in AD mode!"
+                                   << abort(FatalError);
     }
 
     /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches

@@ -1437,15 +1437,15 @@ class DAFoamThermal(ExplicitComponent):
 
         self.discipline = self.DASolver.getOption("discipline")
 
-        nPts, nFaces = self.DASolver._getSurfaceSize(self.DASolver.couplingSurfacesGroup)
+        self.nCouplingFaces = self.DASolver.solver.getNCouplingFaces()
 
         self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
         if self.var_name == "temperature":
-            self.add_output("T_conduct", distributed=True, shape=nFaces, tags=["mphys_coupling"])
+            self.add_output("T_conduct", distributed=True, shape=self.nCouplingFaces, tags=["mphys_coupling"])
         elif self.var_name == "heatFlux":
-            self.add_output("q_convect", distributed=True, shape=nFaces, tags=["mphys_coupling"])
+            self.add_output("q_convect", distributed=True, shape=self.nCouplingFaces, tags=["mphys_coupling"])
         else:
             raise AnalysisError("%s not supported! Options are: temperature or heatFlux" % self.var_name)
 
@@ -1453,13 +1453,22 @@ class DAFoamThermal(ExplicitComponent):
 
         self.DASolver.setStates(inputs["%s_states" % self.discipline])
 
+        vol_coords = inputs["%s_vol_coords" % self.discipline]
+        states = inputs["%s_states" % self.discipline]
+
+        thermal = np.zeros(self.nCouplingFaces)
+
         if self.var_name == "temperature":
 
-            outputs["T_conduct"] = self.DASolver.getThermal(varName="temperature")
+            self.DASolver.getThermal("temperature".encode(), vol_coords, states, thermal)
+
+            outputs["T_conduct"] = thermal
 
         elif self.var_name == "heatFlux":
 
-            outputs["q_convect"] = self.DASolver.getThermal(varName="heatFlux")
+            self.DASolver.getThermal("heatFlux".encode(), vol_coords, states, thermal)
+
+            outputs["q_convect"] = thermal
 
         else:
             raise AnalysisError("%s not supported! Options are: temperature or heatFlux" % self.var_name)
