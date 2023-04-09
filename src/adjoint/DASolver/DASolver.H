@@ -745,11 +745,6 @@ public:
 
     /// Get the number of points for the MDO coupling patches
     label getNCouplingPoints();
-
-    /// return the face coordinates based on vol coords
-    void getFaceCoords(
-        Vec xvVec,
-        Vec xsVec);
     
     /// return the face coordinates based on vol coords
     void calcCouplingFaceCoords(
@@ -761,11 +756,6 @@ public:
         const double* volCoords,
         const double* seeds,
         double* product);
-
-    void calcdXvdXsTPsiAD(
-        Vec xvVec,
-        Vec psi,
-        Vec prod);
 
     /// compute the temperature on the conjugate heat transfer patches
     void getThermal(word varName, Vec thermalVec);

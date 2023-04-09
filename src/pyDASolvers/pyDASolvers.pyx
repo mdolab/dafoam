@@ -72,13 +72,11 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getNCouplingPoints()
         int checkMesh()
         double getObjFuncValue(char *)
-        void getFaceCoords(PetscVec, PetscVec)
         void calcCouplingFaceCoords(double *, double *)
         void calcCouplingFaceCoordsAD(double *, double *, double *)
         void getForces(PetscVec, PetscVec, PetscVec)
         void getThermal(char *, PetscVec)
         void setThermal(char *, double *)
-        void calcdXvdXsTPsiAD(PetscVec, PetscVec, PetscVec)
         void getAcousticData(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, char*)
         void printAllOptions()
         void updateDAOption(object)
@@ -254,9 +252,6 @@ cdef class pyDASolvers:
     def calcdRdThermalTPsiAD(self, varName, Vec xvVec, Vec wVec, Vec psiVec, Vec thermalVec, Vec prodVec):
         self._thisptr.calcdRdThermalTPsiAD(varName, xvVec.vec, wVec.vec, psiVec.vec, thermalVec.vec, prodVec.vec)
     
-    def calcdXvdXsTPsiAD(self, Vec xvVec, Vec psi, Vec prodVec):
-        self._thisptr.calcdXvdXsTPsiAD(xvVec.vec, psi.vec, prodVec.vec)
-    
     def calcdRdWOldTPsiAD(self, oldTimeLevel, Vec psi, Vec dRdWOldTPsi):
         self._thisptr.calcdRdWOldTPsiAD(oldTimeLevel, psi.vec, dRdWOldTPsi.vec)
 
@@ -319,9 +314,6 @@ cdef class pyDASolvers:
     
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
-
-    def getFaceCoords(self, Vec xvVec, Vec xsVec):
-        self._thisptr.getFaceCoords(xvVec.vec, xsVec.vec)
         
     def calcCouplingFaceCoords(self, 
             np.ndarray[double, ndim=1, mode="c"] volCoords,

@@ -495,13 +495,6 @@ public:
         return returnVal;
     }
 
-    void getFaceCoords(
-        Vec xvVec,
-        Vec xsVec)
-    {
-        DASolverPtr_->getFaceCoords(xvVec, xsVec);
-    }
-
     void calcCouplingFaceCoords(
         const double* volCoords,
         double* surfCoords)
@@ -527,14 +520,6 @@ public:
     void getForces(Vec fX, Vec fY, Vec fZ)
     {
         DASolverPtr_->getForces(fX, fY, fZ);
-    }
-
-    void calcdXvdXsTPsiAD(
-        Vec xvVec,
-        Vec psi,
-        Vec prod)
-    {
-        DASolverPtr_->calcdXvdXsTPsiAD(xvVec, psi, prod);
     }
 
     /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
