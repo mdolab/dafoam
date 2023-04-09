@@ -1460,13 +1460,13 @@ class DAFoamThermal(ExplicitComponent):
 
         if self.var_name == "temperature":
 
-            self.DASolver.getThermal("temperature".encode(), vol_coords, states, thermal)
+            self.DASolver.solver.getThermal("temperature", vol_coords, states, thermal)
 
             outputs["T_conduct"] = thermal
 
         elif self.var_name == "heatFlux":
 
-            self.DASolver.getThermal("heatFlux".encode(), vol_coords, states, thermal)
+            self.DASolver.solver.getThermal("heatFlux", vol_coords, states, thermal)
 
             outputs["q_convect"] = thermal
 
@@ -1486,49 +1486,42 @@ class DAFoamThermal(ExplicitComponent):
 
         DASolver = self.DASolver
 
+        vol_coords = inputs["%s_vol_coords" % self.discipline]
+        states = inputs["%s_states" % self.discipline]
+
         if "T_conduct" in d_outputs:
-            fBar = d_outputs["T_conduct"]
-            fBarVec = DASolver.array2Vec(fBar)
+            seeds = d_outputs["T_conduct"]
 
             if "%s_states" % self.discipline in d_inputs:
-                prodVec = DASolver.wVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdThermaldWTPsiAD(
-                    "temperature".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
+                product = np.zeros_like(d_inputs["%s_states" % self.discipline])
+                DASolver.solverAD.getThermalAD(
+                    "states", "temperature", vol_coords, states, seeds, product
                 )
-                wBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_states" % self.discipline] += wBar
+                d_inputs["%s_states" % self.discipline] += product
 
             if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = DASolver.xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdThermaldXvTPsiAD(
-                    "temperature".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
+                product = np.zeros_like(d_inputs["%s_vol_coords" % self.discipline])
+                DASolver.solverAD.getThermalAD(
+                    "volCoords", "temperature", vol_coords, states, seeds, product
                 )
-                xVBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_vol_coords" % self.discipline] += xVBar
+                d_inputs["%s_vol_coords" % self.discipline] += product
 
         if "q_convect" in d_outputs:
-            fBar = d_outputs["q_convect"]
-            fBarVec = DASolver.array2Vec(fBar)
+            seeds = d_outputs["q_convect"]
 
             if "%s_states" % self.discipline in d_inputs:
-                prodVec = DASolver.wVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdThermaldWTPsiAD(
-                    "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
+                product = np.zeros_like(d_inputs["%s_states" % self.discipline])
+                DASolver.solverAD.getThermalAD(
+                    "states", "heatFlux", vol_coords, states, seeds, product
                 )
-                wBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_states" % self.discipline] += wBar
+                d_inputs["%s_states" % self.discipline] += product
 
             if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = DASolver.xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdThermaldXvTPsiAD(
-                    "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
+                product = np.zeros_like(d_inputs["%s_vol_coords" % self.discipline])
+                DASolver.solverAD.getThermalAD(
+                    "volCoords", "heatFlux", vol_coords, states, seeds, product
                 )
-                xVBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_vol_coords" % self.discipline] += xVBar
+                d_inputs["%s_vol_coords" % self.discipline] += product
 
 
 class DAFoamFaceCoords(ExplicitComponent):

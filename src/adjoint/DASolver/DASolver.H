@@ -765,10 +765,19 @@ public:
 
     /// compute the temperature on the conjugate heat transfer patches
     void getThermal(
-        word varName,
+        const word outputName,
         const scalar* volCoords,
         const scalar* states,
         scalar* thermal);
+
+    /// compute the temperature on the conjugate heat transfer patches AD
+    void getThermalAD(
+        const word inputName,
+        const word outputName,
+        const double* volCoords,
+        const double* states,
+        const double* seeds,
+        double* product);
 
     /// compute the temperature on the conjugate heat transfer patches: AD compatible
     void getThermalInternal(word varName, scalarList& thermalList);

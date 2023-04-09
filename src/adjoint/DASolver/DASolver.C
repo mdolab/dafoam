@@ -672,7 +672,7 @@ void DASolver::setThermal(
 }
 
 void DASolver::getThermal(
-    word varName,
+    const word outputName,
     const scalar* volCoords,
     const scalar* states,
     scalar* thermal)
@@ -684,7 +684,7 @@ void DASolver::getThermal(
         NOTE: this function can be called by either fluid or solid domain!
 
     Inputs:
-        varName: Either temperature or heatFlux
+        outputName: Either temperature or heatFlux
 
         volCoords: volume coordinates
 
@@ -715,7 +715,7 @@ void DASolver::getThermal(
     }
     reduce(sumArea, sumOp<scalar>());
 
-    if (varName == "temperature")
+    if (outputName == "temperature")
     {
         const objectRegistry& db = meshPtr_->thisDb();
         const volScalarField& T = db.lookupObject<volScalarField>("T");
@@ -766,7 +766,7 @@ void DASolver::getThermal(
             wallTemperature.write();
         }
     }
-    else if (varName == "heatFlux")
+    else if (outputName == "heatFlux")
     {
         volScalarField wallHeatFlux(
             IOobject(
@@ -872,9 +872,135 @@ void DASolver::getThermal(
     }
     else
     {
-        FatalErrorIn("getPatchVarInternal") << " varName not valid. "
-                                            << abort(FatalError);
+        FatalErrorIn("getThermal") << " outputName not valid. "
+                                   << abort(FatalError);
     }
+}
+
+void DASolver::getThermalAD(
+    const word inputName,
+    const word outputName,
+    const double* volCoords,
+    const double* states,
+    const double* seeds,
+    double* product)
+{
+    /*
+    Description:
+        Calculate dThermaldStates or dThermaldXv using reverse-mode AD. Mode can be either temperature or heatFlux
+    
+    Input:
+        inputName: either volCoords or states
+
+        outputName: either temperature or heatFlux
+
+        volCoords: the volume mesh coordinate 
+
+        states: the state variable 
+
+        seeds: the derivative seed 
+    
+    Output:
+        product: [dTemperature/dW]^T * psi, [dTemperature/dXv]^T * psi, [dHeatFlux/dW]^T * psi, or [dHeatFlux/dXv]^T * psi
+    */
+
+#ifdef CODI_AD_REVERSE
+
+    label nCouplingFaces = this->getNCouplingFaces();
+
+    scalar* volCoordsArray = new scalar[daIndexPtr_->nLocalXv];
+    for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+    {
+        volCoordsArray[i] = volCoords[i];
+    }
+
+    scalar* statesArray = new scalar[daIndexPtr_->nLocalAdjointStates];
+    for (label i = 0; i < daIndexPtr_->nLocalAdjointStates; i++)
+    {
+        statesArray[i] = states[i];
+    }
+
+    scalar* thermalArray = new scalar[nCouplingFaces];
+
+    // update the OpenFOAM variables and reset their seeds (gradient part) to zeros
+    this->resetOFSeeds();
+    // reset the AD tape
+    this->globalADTape_.reset();
+    // start recording
+    this->globalADTape_.setActive();
+
+    // register inputs
+    if (inputName == "volCoords")
+    {
+        for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+        {
+            this->globalADTape_.registerInput(volCoordsArray[i]);
+        }
+    }
+    else if (inputName == "states")
+    {
+        for (label i = 0; i < daIndexPtr_->nLocalAdjointStates; i++)
+        {
+            this->globalADTape_.registerInput(statesArray[i]);
+        }
+    }
+    else
+    {
+        FatalErrorIn("getThermalAD") << " inputName not valid. "
+                                     << abort(FatalError);
+    }
+
+    // calculate outputs
+    this->getThermal(outputName, volCoordsArray, statesArray, thermalArray);
+
+    // register outputs
+    for (label i = 0; i < nCouplingFaces; i++)
+    {
+        this->globalADTape_.registerOutput(thermalArray[i]);
+    }
+
+    // stop recording
+    this->globalADTape_.setPassive();
+
+    // set seeds to the outputs
+    for (label i = 0; i < nCouplingFaces; i++)
+    {
+        thermalArray[i].setGradient(seeds[i]);
+    }
+
+    // now calculate the reverse matrix-vector product
+    this->globalADTape_.evaluate();
+
+    // get the matrix-vector product from the inputs
+    if (inputName == "volCoords")
+    {
+        for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+        {
+            product[i] = volCoordsArray[i].getGradient();
+        }
+    }
+    else if (inputName == "states")
+    {
+        for (label i = 0; i < daIndexPtr_->nLocalAdjointStates; i++)
+        {
+            product[i] = statesArray[i].getGradient();
+        }
+    }
+    else
+    {
+        FatalErrorIn("getThermalAD") << " inputName not valid. "
+                                     << abort(FatalError);
+    }
+
+    delete[] volCoordsArray;
+    delete[] statesArray;
+    delete[] thermalArray;
+
+    // clean up AD
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+#endif
 }
 
 void DASolver::getThermalInternal(

@@ -530,17 +530,29 @@ public:
 
     /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
     void getThermal(
-        word varName,
+        const word outputName,
         const double* volCoords,
         const double* states,
         double* thermal)
     {
 #if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        DASolverPtr_->getThermal(varName, volCoords, states, thermal);
+        DASolverPtr_->getThermal(outputName, volCoords, states, thermal);
         return;
 #endif
         FatalErrorIn("getThermal") << "should not call this func in AD mode!"
                                    << abort(FatalError);
+    }
+
+    /// compute the temperature on the conjugate heat transfer patches AD
+    void getThermalAD(
+        const word inputName,
+        const word outputName,
+        const double* volCoords,
+        const double* states,
+        const double* seeds,
+        double* product)
+    {
+        DASolverPtr_->getThermalAD(inputName, outputName, volCoords, states, seeds, product);
     }
 
     /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches

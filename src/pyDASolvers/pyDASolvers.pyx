@@ -77,6 +77,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcCouplingFaceCoordsAD(double *, double *, double *)
         void getForces(PetscVec, PetscVec, PetscVec)
         void getThermal(char *, double *, double *, double *)
+        void getThermalAD(char *, char *, double *, double *, double *, double *)
         void setThermal(char *, double *)
         void getAcousticData(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, char*)
         void printAllOptions()
@@ -350,7 +351,7 @@ cdef class pyDASolvers:
         self._thisptr.getForces(fX.vec, fY.vec, fZ.vec)
     
     def getThermal(self, 
-            varName, 
+            outputName, 
             np.ndarray[double, ndim=1, mode="c"] volCoords,
             np.ndarray[double, ndim=1, mode="c"] states,
             np.ndarray[double, ndim=1, mode="c"] thermal):
@@ -363,7 +364,39 @@ cdef class pyDASolvers:
         cdef double *states_data = <double*>states.data
         cdef double *thermal_data = <double*>thermal.data
 
-        self._thisptr.getThermal(varName, volCoords_data, states_data, thermal_data)
+        self._thisptr.getThermal(outputName.encode(), volCoords_data, states_data, thermal_data)
+    
+    def getThermalAD(self,
+            inputName,
+            outputName, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] states,
+            np.ndarray[double, ndim=1, mode="c"] seeds,
+            np.ndarray[double, ndim=1, mode="c"] product):
+        
+        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
+        assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
+        assert len(seeds) == self.getNCouplingFaces(), "invalid array size!"
+        if inputName == "volCoords":
+            assert len(product) == self.getNLocalPoints() * 3, "invalid array size!"
+        elif inputName == "states":
+            assert len(product) == self.getNLocalAdjointStates(), "invalid array size!"
+        else:
+            print("invalid inputName!")
+            exit(1)
+
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *states_data = <double*>states.data
+        cdef double *seeds_data = <double*>seeds.data
+        cdef double *product_data = <double*>product.data
+
+        self._thisptr.getThermalAD(
+            inputName.encode(), 
+            outputName.encode(), 
+            volCoords_data, 
+            states_data, 
+            seeds_data, 
+            product_data)
     
     def setThermal(self, varName, np.ndarray[double, ndim=1, mode="c"] thermal):
 
