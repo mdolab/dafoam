@@ -66,7 +66,7 @@ DASolver = PYDAFOAM(options=aeroOptions, comm=MPI.COMM_WORLD)
 
 nCells, nFaces = DASolver._getSurfaceSize(DASolver.couplingSurfacesGroup)
 TGrad = np.ones(nFaces) * 5
-DASolver.solver.setThermal("heatFlux".encode(), TGrad)
+DASolver.solver.setThermal("heatFlux", TGrad)
 
 DASolver()
 funcs = {}
