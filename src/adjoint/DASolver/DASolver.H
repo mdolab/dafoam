@@ -322,6 +322,15 @@ public:
     /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
     void updateOFMesh(const Vec xvVec);
 
+    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state array
+    void updateOFField(const scalar* volCoords);
+
+    /// Update the OpenFoam mesh point coordinates based on the volume point coords array
+    void updateOFMesh(const scalar* states);
+
+    /// reset the seeds (gradient to zeros) for all OpenFOAM variables
+    void resetOFSeeds();
+
     /// compute dRdBC
     void calcdRdBC(
         const Vec xvVec,
@@ -438,11 +447,11 @@ public:
 
     void calcdRdThermalTPsiAD(
         const word varName,
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const Vec thermalVec,
-        Vec prodVec);
+        const double* volCoords,
+        const double* states,
+        const double* thermal,
+        const double* seeds,
+        double* product);
 
     /// compute dRdXv^T*Psi
     void calcdRdXvTPsiAD(
@@ -546,6 +555,9 @@ public:
 
     /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
     void assignVec2ResidualGradient(Vec vecX);
+
+    /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
+    void assignSeeds2ResidualGradient(const double* seeds);
 
     /// assign the reverse-mode AD input seeds from fBarVec to the force vectors in OpenFOAM
     void assignVec2ForceGradient(Vec fBarVec, List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ);
@@ -683,6 +695,12 @@ public:
         return meshPtr_->nCells();
     }
 
+    /// return the number of local points
+    label getNLocalPoints() const
+    {
+        return meshPtr_->nPoints();
+    }
+
     /// initialize DASolver::daObjFuncPtrList_ one needs to call this before calling printAllObjFuncs
     void setDAObjFuncList();
 
@@ -731,37 +749,41 @@ public:
         List<scalar>& fZ,
         List<word>& patchList);
 
-    void getFaceCoords(
-        Vec xvVec,
-        Vec xsVec);
+    /// Get the number of faces for the MDO coupling patches
+    label getNCouplingFaces();
 
-    void calcdXvdXsTPsiAD(
-        Vec xvVec,
-        Vec psi,
-        Vec prod);
+    /// Get the number of points for the MDO coupling patches
+    label getNCouplingPoints();
+
+    /// return the face coordinates based on vol coords
+    void calcCouplingFaceCoords(
+        const scalar* volCoords,
+        scalar* surfCoords);
+
+    /// calc matrix-vector products for calcCouplingFaceCoords
+    void calcCouplingFaceCoordsAD(
+        const double* volCoords,
+        const double* seeds,
+        double* product);
 
     /// compute the temperature on the conjugate heat transfer patches
-    void getThermal(word varName, Vec thermalVec);
+    void getThermal(
+        const word outputName,
+        const scalar* volCoords,
+        const scalar* states,
+        scalar* thermal);
 
-    /// compute the temperature on the conjugate heat transfer patches: AD compatible
-    void getThermalInternal(word varName, scalarList& thermalList);
-
-    void calcdThermaldWTPsiAD(
-        const word mode,
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psiVec,
-        Vec prodVec);
-
-    void calcdThermaldXvTPsiAD(
-        const word mode,
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psiVec,
-        Vec prodVec);
+    /// compute the temperature on the conjugate heat transfer patches AD
+    void getThermalAD(
+        const word inputName,
+        const word outputName,
+        const double* volCoords,
+        const double* states,
+        const double* seeds,
+        double* product);
 
     /// assign temperature values to the conjugate heat transfer patches
-    void setThermal(word varName, scalar* thermal);
+    void setThermal(const word varName, scalar* thermal);
 
     /// compute the positions, normals, areas, and forces of the desired acoustic patches
     void getAcousticDataInternal(

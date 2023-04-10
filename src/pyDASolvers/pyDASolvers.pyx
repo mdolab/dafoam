@@ -41,8 +41,6 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdForcedXvAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdAcousticsdXvAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdRdActTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
-        void calcdThermaldWTPsiAD(char * , PetscVec, PetscVec, PetscVec, PetscVec)
-        void calcdThermaldXvTPsiAD(char * , PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedWAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdAcousticsdWAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdFdACT(PetscVec, PetscVec, char *, char*, char*, PetscVec)
@@ -54,7 +52,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
-        void calcdRdThermalTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdRdThermalTPsiAD(char *, double *, double *, double *, double *, double *)
         void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
@@ -68,13 +66,17 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getNLocalAdjointStates()
         int getNLocalAdjointBoundaryStates()
         int getNLocalCells()
+        int getNLocalPoints()
+        int getNCouplingFaces()
+        int getNCouplingPoints()
         int checkMesh()
         double getObjFuncValue(char *)
-        void getFaceCoords(PetscVec, PetscVec)
+        void calcCouplingFaceCoords(double *, double *)
+        void calcCouplingFaceCoordsAD(double *, double *, double *)
         void getForces(PetscVec, PetscVec, PetscVec)
-        void getThermal(char *, PetscVec)
+        void getThermal(char *, double *, double *, double *)
+        void getThermalAD(char *, char *, double *, double *, double *, double *)
         void setThermal(char *, double *)
-        void calcdXvdXsTPsiAD(PetscVec, PetscVec, PetscVec)
         void getAcousticData(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, char*)
         void printAllOptions()
         void updateDAOption(object)
@@ -207,12 +209,6 @@ cdef class pyDASolvers:
 
     def calcdRdActTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdActTPsi):
         self._thisptr.calcdRdActTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdActTPsi.vec)
-    
-    def calcdThermaldWTPsiAD(self, mode, Vec xvVec, Vec wVec, Vec psiVec, Vec prodVec):
-        self._thisptr.calcdThermaldWTPsiAD(mode, xvVec.vec, wVec.vec, psiVec.vec, prodVec.vec)
-    
-    def calcdThermaldXvTPsiAD(self, mode, Vec xvVec, Vec wVec, Vec psiVec, Vec prodVec):
-        self._thisptr.calcdThermaldXvTPsiAD(mode, xvVec.vec, wVec.vec, psiVec.vec, prodVec.vec)
 
     def calcdForcedWAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedW):
         self._thisptr.calcdForcedWAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedW.vec)
@@ -247,11 +243,33 @@ cdef class pyDASolvers:
     def calcdFdFieldAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdField):
         self._thisptr.calcdFdFieldAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdField.vec)
 
-    def calcdRdThermalTPsiAD(self, varName, Vec xvVec, Vec wVec, Vec psiVec, Vec thermalVec, Vec prodVec):
-        self._thisptr.calcdRdThermalTPsiAD(varName, xvVec.vec, wVec.vec, psiVec.vec, thermalVec.vec, prodVec.vec)
-    
-    def calcdXvdXsTPsiAD(self, Vec xvVec, Vec psi, Vec prodVec):
-        self._thisptr.calcdXvdXsTPsiAD(xvVec.vec, psi.vec, prodVec.vec)
+    def calcdRdThermalTPsiAD(self, 
+            varName, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] states,
+            np.ndarray[double, ndim=1, mode="c"] thermal,
+            np.ndarray[double, ndim=1, mode="c"] seeds,
+            np.ndarray[double, ndim=1, mode="c"] product):
+        
+        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
+        assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
+        assert len(thermal) == self.getNCouplingFaces(), "invalid array size!"
+        assert len(seeds) == self.getNLocalAdjointStates(), "invalid array size!"
+        assert len(product) == self.getNCouplingFaces(), "invalid array size!"
+
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *states_data = <double*>states.data
+        cdef double *thermal_data = <double*>thermal.data
+        cdef double *seeds_data = <double*>seeds.data
+        cdef double *product_data = <double*>product.data
+
+        self._thisptr.calcdRdThermalTPsiAD(
+            varName.encode(), 
+            volCoords_data, 
+            states_data, 
+            thermal_data, 
+            seeds_data, 
+            product_data)
     
     def calcdRdWOldTPsiAD(self, oldTimeLevel, Vec psi, Vec dRdWOldTPsi):
         self._thisptr.calcdRdWOldTPsiAD(oldTimeLevel, psi.vec, dRdWOldTPsi.vec)
@@ -298,30 +316,112 @@ cdef class pyDASolvers:
     def getNLocalAdjointStates(self):
         return self._thisptr.getNLocalAdjointStates()
     
+    def getNCouplingFaces(self):
+        return self._thisptr.getNCouplingFaces()
+    
+    def getNCouplingPoints(self):
+        return self._thisptr.getNCouplingPoints()
+    
     def getNLocalAdjointBoundaryStates(self):
         return self._thisptr.getNLocalAdjointBoundaryStates()
     
     def getNLocalCells(self):
         return self._thisptr.getNLocalCells()
     
+    def getNLocalPoints(self):
+        return self._thisptr.getNLocalPoints()
+    
     def checkMesh(self):
         return self._thisptr.checkMesh()
     
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
+        
+    def calcCouplingFaceCoords(self, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] surfCoords):
 
-    def getFaceCoords(self, Vec xvVec, Vec xsVec):
-        self._thisptr.getFaceCoords(xvVec.vec, xsVec.vec)
+        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
+        assert len(surfCoords) == self.getNCouplingFaces() * 3, "invalid array size!"
+
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *surfCoords_data = <double*>surfCoords.data
+
+        self._thisptr.calcCouplingFaceCoords(volCoords_data, surfCoords_data)
+    
+    def calcCouplingFaceCoordsAD(self, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] seeds,
+            np.ndarray[double, ndim=1, mode="c"] product):
+
+        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
+        assert len(seeds) == self.getNCouplingFaces() * 3, "invalid array size!"
+        assert len(product) == self.getNLocalPoints() * 3, "invalid array size!"
+
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *seeds_data = <double*>seeds.data
+        cdef double *product_data = <double*>product.data
+
+        self._thisptr.calcCouplingFaceCoordsAD(volCoords_data, seeds_data, product_data)
 
     def getForces(self, Vec fX, Vec fY, Vec fZ):
         self._thisptr.getForces(fX.vec, fY.vec, fZ.vec)
     
-    def getThermal(self, varName, Vec thermalVec):
-        self._thisptr.getThermal(varName, thermalVec.vec)
-    
-    def setThermal(self, varName, np.ndarray[double, ndim=1, mode="c"] thermal):
+    def getThermal(self, 
+            outputName, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] states,
+            np.ndarray[double, ndim=1, mode="c"] thermal):
+        
+        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
+        assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
+        assert len(thermal) == self.getNCouplingFaces(), "invalid array size!"
+
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *states_data = <double*>states.data
         cdef double *thermal_data = <double*>thermal.data
-        self._thisptr.setThermal(varName, thermal_data)
+
+        self._thisptr.getThermal(outputName.encode(), volCoords_data, states_data, thermal_data)
+    
+    def getThermalAD(self,
+            inputName,
+            outputName, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] states,
+            np.ndarray[double, ndim=1, mode="c"] seeds,
+            np.ndarray[double, ndim=1, mode="c"] product):
+        
+        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
+        assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
+        assert len(seeds) == self.getNCouplingFaces(), "invalid array size!"
+        if inputName == "volCoords":
+            assert len(product) == self.getNLocalPoints() * 3, "invalid array size!"
+        elif inputName == "states":
+            assert len(product) == self.getNLocalAdjointStates(), "invalid array size!"
+        else:
+            print("invalid inputName!")
+            exit(1)
+
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *states_data = <double*>states.data
+        cdef double *seeds_data = <double*>seeds.data
+        cdef double *product_data = <double*>product.data
+
+        self._thisptr.getThermalAD(
+            inputName.encode(), 
+            outputName.encode(), 
+            volCoords_data, 
+            states_data, 
+            seeds_data, 
+            product_data)
+    
+    def setThermal(self, 
+            varName, 
+            np.ndarray[double, ndim=1, mode="c"] thermal):
+
+        assert len(thermal) == self.getNCouplingFaces(), "invalid array size!"
+        cdef double *thermal_data = <double*>thermal.data
+        self._thisptr.setThermal(varName.encode(), thermal_data)
 
     def getAcousticData(self, Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, groupName):
         self._thisptr.getAcousticData(x.vec, y.vec, z.vec, nX.vec, nY.vec, nZ.vec, a.vec, fX.vec, fY.vec, fZ.vec, groupName)

@@ -2,7 +2,7 @@ Dictionary Key: NU
 @value     513.359933524605 1e-08 1e-10
 Dictionary Key: PL
 @value    2.053403073038666 1e-08 1e-10
-Dictionary Key: TFormSum
+Dictionary Key: TNormSum
 @value    18.78551842244445 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10

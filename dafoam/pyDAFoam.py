@@ -2495,54 +2495,6 @@ class PYDAFOAM(object):
 
         return dFdFFD
 
-    def getThermal(self, varName, groupName=None):
-        """
-        Return the forces on this processor on the families defined by groupName.
-        Parameters
-        ----------
-
-        varName : str
-            Which variable to get. Can be either temperature or heatFlux
-
-        groupName : str
-            Group identifier to get only forces cooresponding to the
-            desired group. The group must be a family or a user-supplied
-            group of families. The default is None which corresponds to
-            design surfaces.
-
-        Returns
-        -------
-        thermal : array (N)
-            The thermal variables (either temperature or heatFlux) on this processor.
-            N is the number of faces on design surface patches
-            Note that N may be 0, and an empty array of shape (0) can be returned.
-        """
-
-        Info("Computing %s" % varName)
-
-        # Calculate number of surface points
-        if groupName is None:
-            groupName = self.couplingSurfacesGroup
-
-        nPts, nFaces = self._getSurfaceSize(groupName)
-
-        thermalVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        thermalVec.setSizes((nFaces, PETSc.DECIDE), bsize=1)
-        thermalVec.setFromOptions()
-
-        # Compute forces
-        self.solver.getThermal(varName.encode(), thermalVec)
-
-        # Copy data from PETSc vectors
-        thermal = np.zeros(nFaces)
-        thermal[:] = np.copy(thermalVec.getArray())
-
-        # Cleanup PETSc vectors
-        thermalVec.destroy()
-
-        # Finally map the vector as required.
-        return thermal
-
     def getForces(self, groupName=None):
         """
         Return the forces on this processor on the families defined by groupName.

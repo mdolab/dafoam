@@ -152,26 +152,6 @@ public:
         DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
     }
 
-    void calcdThermaldWTPsiAD(
-        const word mode,
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psiVec,
-        Vec prodVec)
-    {
-        DASolverPtr_->calcdThermaldWTPsiAD(mode, xvVec, wVec, psiVec, prodVec);
-    }
-
-    void calcdThermaldXvTPsiAD(
-        const word mode,
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psiVec,
-        Vec prodVec)
-    {
-        DASolverPtr_->calcdThermaldXvTPsiAD(mode, xvVec, wVec, psiVec, prodVec);
-    }
-
     /// compute dForcedW
     void calcdForcedWAD(
         const Vec xvVec,
@@ -451,6 +431,24 @@ public:
         return DASolverPtr_->checkMesh();
     }
 
+    /// Get the number of faces for the MDO coupling patches
+    label getNCouplingFaces()
+    {
+        return DASolverPtr_->getNCouplingFaces();
+    }
+
+    /// Get the number of points for the MDO coupling patches
+    label getNCouplingPoints()
+    {
+        return DASolverPtr_->getNCouplingPoints();
+    }
+
+    // return the number of local mesh points
+    label getNLocalPoints() const
+    {
+        return DASolverPtr_->getNLocalPoints();
+    }
+
     /// return the number of local adjoint states
     label getNLocalAdjointStates() const
     {
@@ -483,11 +481,25 @@ public:
         return returnVal;
     }
 
-    void getFaceCoords(
-        Vec xvVec,
-        Vec xsVec)
+    void calcCouplingFaceCoords(
+        const double* volCoords,
+        double* surfCoords)
     {
-        DASolverPtr_->getFaceCoords(xvVec, xsVec);
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        DASolverPtr_->calcCouplingFaceCoords(volCoords, surfCoords);
+        return;
+#endif
+        FatalErrorIn("calcCouplingFaceCoords") << "should not call this func in AD mode!"
+                                               << abort(FatalError);
+    }
+
+    /// calc matrix-vector products for calcCouplingFaceCoords
+    void calcCouplingFaceCoordsAD(
+        const double* volCoords,
+        const double* seeds,
+        double* product)
+    {
+        DASolverPtr_->calcCouplingFaceCoordsAD(volCoords, seeds, product);
     }
 
     /// return the force on the FSI patches
@@ -496,40 +508,53 @@ public:
         DASolverPtr_->getForces(fX, fY, fZ);
     }
 
-    void calcdXvdXsTPsiAD(
-        Vec xvVec,
-        Vec psi,
-        Vec prod)
+    /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
+    void getThermal(
+        const word outputName,
+        const double* volCoords,
+        const double* states,
+        double* thermal)
     {
-        DASolverPtr_->calcdXvdXsTPsiAD(xvVec, psi, prod);
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        DASolverPtr_->getThermal(outputName, volCoords, states, thermal);
+        return;
+#endif
+        FatalErrorIn("getThermal") << "should not call this func in AD mode!"
+                                   << abort(FatalError);
     }
 
-    /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
-    void getThermal(word varName, Vec thermalVec)
+    /// compute the temperature on the conjugate heat transfer patches AD
+    void getThermalAD(
+        const word inputName,
+        const word outputName,
+        const double* volCoords,
+        const double* states,
+        const double* seeds,
+        double* product)
     {
-        DASolverPtr_->getThermal(varName, thermalVec);
+        DASolverPtr_->getThermalAD(inputName, outputName, volCoords, states, seeds, product);
     }
 
     /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches
-    void setThermal(word varName, double* thermal)
+    void setThermal(const word varName, double* thermal)
     {
 #if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
         DASolverPtr_->setThermal(varName, thermal);
         return;
 #endif
-        FatalErrorIn("getForces") << "should not call this func in AD mode!"
-                                  << abort(FatalError);
+        FatalErrorIn("setThermal") << "should not call this func in AD mode!"
+                                   << abort(FatalError);
     }
 
     void calcdRdThermalTPsiAD(
         const word varName,
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psiVec,
-        const Vec thermalVec,
-        Vec prodVec)
+        const double* volCoords,
+        const double* states,
+        const double* thermal,
+        const double* seeds,
+        double* product)
     {
-        DASolverPtr_->calcdRdThermalTPsiAD(varName, xvVec, wVec, psiVec, thermalVec, prodVec);
+        DASolverPtr_->calcdRdThermalTPsiAD(varName, volCoords, states, thermal, seeds, product);
     }
 
     /// return the acoustic data values
@@ -744,7 +769,7 @@ public:
         Vec psi,
         Vec dFvSource)
     {
-        DASolverPtr_->calcdFvSourcedInputsTPsiAD(propName ,mode, aForce, tForce, rDist, targetForce, center, psi, dFvSource);
+        DASolverPtr_->calcdFvSourcedInputsTPsiAD(propName, mode, aForce, tForce, rDist, targetForce, center, psi, dFvSource);
     }
 
     void calcForceProfile(

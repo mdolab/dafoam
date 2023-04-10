@@ -1,5 +1,6 @@
 import sys
 from openmdao.api import Group, ImplicitComponent, ExplicitComponent, AnalysisError
+import openmdao.api as om
 from dafoam import PYDAFOAM
 from idwarp import USMesh
 from mphys.builder import Builder
@@ -693,10 +694,12 @@ class DAFoamSolver(ImplicitComponent):
             if couplingInfo["aerothermal"]["active"]:
                 if self.discipline == "aero":
                     T_convect = inputs["T_convect"]
-                    DASolver.solver.setThermal("temperature".encode(), T_convect)
-                if self.discipline == "thermal":
+                    DASolver.solver.setThermal("temperature", T_convect)
+                elif self.discipline == "thermal":
                     q_conduct = inputs["q_conduct"]
-                    DASolver.solver.setThermal("heatFlux".encode(), q_conduct)
+                    DASolver.solver.setThermal("heatFlux", q_conduct)
+                else:
+                    raise AnalysisError("discipline not valid!")
 
             # solve the flow with the current design variable
             DASolver()
@@ -724,7 +727,13 @@ class DAFoamSolver(ImplicitComponent):
 
         # we do not support forward mode
         if mode == "fwd":
-            raise AnalysisError("fwd mode not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         DASolver = self.DASolver
 
@@ -768,26 +777,20 @@ class DAFoamSolver(ImplicitComponent):
                     d_inputs["%s_vol_coords" % self.discipline] += xVBar
                 elif inputName == "q_conduct":
                     # calculate [dRdQ]^T*Psi for thermal
+                    volCoords = inputs["%s_vol_coords" % self.discipline]
+                    states = outputs["%s_states" % self.discipline]
                     thermal = inputs["q_conduct"]
-                    thermalVec = DASolver.array2Vec(thermal)
-                    prodVec = thermalVec.duplicate()
-                    prodVec.zeroEntries()
-                    DASolver.solverAD.calcdRdThermalTPsiAD(
-                        "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, resBarVec, thermalVec, prodVec
-                    )
-                    thermalBar = DASolver.vec2Array(prodVec)
-                    d_inputs["q_conduct"] += thermalBar
+                    product = np.zeros_like(thermal)
+                    DASolver.solverAD.calcdRdThermalTPsiAD("heatFlux", volCoords, states, thermal, resBar, product)
+                    d_inputs["q_conduct"] += product
                 elif inputName == "T_convect":
                     # calculate [dRdT]^T*Psi for aero
+                    volCoords = inputs["%s_vol_coords" % self.discipline]
+                    states = outputs["%s_states" % self.discipline]
                     thermal = inputs["T_convect"]
-                    thermalVec = DASolver.array2Vec(thermal)
-                    prodVec = thermalVec.duplicate()
-                    prodVec.zeroEntries()
-                    DASolver.solverAD.calcdRdThermalTPsiAD(
-                        "temperature".encode(), DASolver.xvVec, DASolver.wVec, resBarVec, thermalVec, prodVec
-                    )
-                    thermalBar = DASolver.vec2Array(prodVec)
-                    d_inputs["T_convect"] += thermalBar
+                    product = np.zeros_like(thermal)
+                    DASolver.solverAD.calcdRdThermalTPsiAD("temperature", volCoords, states, thermal, resBar, product)
+                    d_inputs["T_convect"] += product
                 else:  # now we deal with general input output names
                     # compute [dRdAOA]^T*Psi using reverse mode AD
                     if self.dvType[inputName] == "AOA":
@@ -868,7 +871,13 @@ class DAFoamSolver(ImplicitComponent):
 
         # we do not support forward mode
         if mode == "fwd":
-            raise AnalysisError("fwd mode not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         with cd(self.run_directory):
 
@@ -1074,7 +1083,13 @@ class DAFoamMesh(ExplicitComponent):
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # we do not support forward mode AD
         if mode == "fwd":
-            raise AnalysisError("fwd mode not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         # just assign the matrix-vector product
         if "x_%s0_points" % self.discipline in d_inputs:
@@ -1214,7 +1229,13 @@ class DAFoamFunctions(ExplicitComponent):
 
         # we do not support forward mode AD
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         funcsBar = {}
 
@@ -1375,7 +1396,13 @@ class DAFoamWarper(ExplicitComponent):
 
         # we do not support forward mode AD
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         # compute dXv/dXs such that we can propagate the partials (e.g., dF/dXv) to Xs
         # then the partial will be further propagated to XFFD in pyGeo
@@ -1406,15 +1433,15 @@ class DAFoamThermal(ExplicitComponent):
 
         self.discipline = self.DASolver.getOption("discipline")
 
-        nPts, nFaces = self.DASolver._getSurfaceSize(self.DASolver.couplingSurfacesGroup)
+        self.nCouplingFaces = self.DASolver.solver.getNCouplingFaces()
 
         self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
         if self.var_name == "temperature":
-            self.add_output("T_conduct", distributed=True, shape=nFaces, tags=["mphys_coupling"])
+            self.add_output("T_conduct", distributed=True, shape=self.nCouplingFaces, tags=["mphys_coupling"])
         elif self.var_name == "heatFlux":
-            self.add_output("q_convect", distributed=True, shape=nFaces, tags=["mphys_coupling"])
+            self.add_output("q_convect", distributed=True, shape=self.nCouplingFaces, tags=["mphys_coupling"])
         else:
             raise AnalysisError("%s not supported! Options are: temperature or heatFlux" % self.var_name)
 
@@ -1422,13 +1449,22 @@ class DAFoamThermal(ExplicitComponent):
 
         self.DASolver.setStates(inputs["%s_states" % self.discipline])
 
+        vol_coords = inputs["%s_vol_coords" % self.discipline]
+        states = inputs["%s_states" % self.discipline]
+
+        thermal = np.zeros(self.nCouplingFaces)
+
         if self.var_name == "temperature":
 
-            outputs["T_conduct"] = self.DASolver.getThermal(varName="temperature")
+            self.DASolver.solver.getThermal("temperature", vol_coords, states, thermal)
+
+            outputs["T_conduct"] = thermal
 
         elif self.var_name == "heatFlux":
 
-            outputs["q_convect"] = self.DASolver.getThermal(varName="heatFlux")
+            self.DASolver.solver.getThermal("heatFlux", vol_coords, states, thermal)
+
+            outputs["q_convect"] = thermal
 
         else:
             raise AnalysisError("%s not supported! Options are: temperature or heatFlux" % self.var_name)
@@ -1436,53 +1472,44 @@ class DAFoamThermal(ExplicitComponent):
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         DASolver = self.DASolver
 
+        vol_coords = inputs["%s_vol_coords" % self.discipline]
+        states = inputs["%s_states" % self.discipline]
+
         if "T_conduct" in d_outputs:
-            fBar = d_outputs["T_conduct"]
-            fBarVec = DASolver.array2Vec(fBar)
+            seeds = d_outputs["T_conduct"]
 
             if "%s_states" % self.discipline in d_inputs:
-                prodVec = DASolver.wVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdThermaldWTPsiAD(
-                    "temperature".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
-                )
-                wBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_states" % self.discipline] += wBar
+                product = np.zeros_like(d_inputs["%s_states" % self.discipline])
+                DASolver.solverAD.getThermalAD("states", "temperature", vol_coords, states, seeds, product)
+                d_inputs["%s_states" % self.discipline] += product
 
             if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = DASolver.xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdThermaldXvTPsiAD(
-                    "temperature".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
-                )
-                xVBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_vol_coords" % self.discipline] += xVBar
+                product = np.zeros_like(d_inputs["%s_vol_coords" % self.discipline])
+                DASolver.solverAD.getThermalAD("volCoords", "temperature", vol_coords, states, seeds, product)
+                d_inputs["%s_vol_coords" % self.discipline] += product
 
         if "q_convect" in d_outputs:
-            fBar = d_outputs["q_convect"]
-            fBarVec = DASolver.array2Vec(fBar)
+            seeds = d_outputs["q_convect"]
 
             if "%s_states" % self.discipline in d_inputs:
-                prodVec = DASolver.wVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdThermaldWTPsiAD(
-                    "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
-                )
-                wBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_states" % self.discipline] += wBar
+                product = np.zeros_like(d_inputs["%s_states" % self.discipline])
+                DASolver.solverAD.getThermalAD("states", "heatFlux", vol_coords, states, seeds, product)
+                d_inputs["%s_states" % self.discipline] += product
 
             if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = DASolver.xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdThermaldXvTPsiAD(
-                    "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, fBarVec, prodVec
-                )
-                xVBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_vol_coords" % self.discipline] += xVBar
+                product = np.zeros_like(d_inputs["%s_vol_coords" % self.discipline])
+                DASolver.solverAD.getThermalAD("volCoords", "heatFlux", vol_coords, states, seeds, product)
+                d_inputs["%s_vol_coords" % self.discipline] += product
 
 
 class DAFoamFaceCoords(ExplicitComponent):
@@ -1510,33 +1537,35 @@ class DAFoamFaceCoords(ExplicitComponent):
 
     def compute(self, inputs, outputs):
 
-        xv = inputs["%s_vol_coords" % self.discipline]
-        xvVec = self.DASolver.array2Vec(xv)
+        volCoords = inputs["%s_vol_coords" % self.discipline]
 
-        xsVec = PETSc.Vec().create(self.comm)
-        self.DASolver.solver.getFaceCoords(xvVec, xsVec)
+        nCouplingFaces = self.DASolver.solver.getNCouplingFaces()
+        surfCoords = np.zeros(nCouplingFaces * 3)
+        self.DASolver.solver.calcCouplingFaceCoords(volCoords, surfCoords)
 
-        xs = self.DASolver.vec2Array(xsVec)
-
-        outputs["x_%s_surface0" % self.discipline] = xs
+        outputs["x_%s_surface0" % self.discipline] = surfCoords
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         DASolver = self.DASolver
 
         if "x_%s_surface0" % self.discipline in d_outputs:
-            fBar = d_outputs["x_%s_surface0" % self.discipline]
-            fBarVec = DASolver.array2Vec(fBar)
+            seeds = d_outputs["x_%s_surface0" % self.discipline]
 
             if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = DASolver.xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdXvdXsTPsiAD(DASolver.xvVec, fBarVec, prodVec)
-                xVBar = DASolver.vec2Array(prodVec)
-                d_inputs["%s_vol_coords" % self.discipline] += xVBar
+                volCoords = inputs["%s_vol_coords" % self.discipline]
+                product = np.zeros_like(volCoords)
+                DASolver.solverAD.calcCouplingFaceCoordsAD(volCoords, seeds, product)
+                d_inputs["%s_vol_coords" % self.discipline] += product
 
 
 class DAFoamForces(ExplicitComponent):
@@ -1571,7 +1600,13 @@ class DAFoamForces(ExplicitComponent):
         DASolver = self.DASolver
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         if "f_aero" in d_outputs:
             fBar = d_outputs["f_aero"]
@@ -1633,7 +1668,13 @@ class DAFoamAcoustics(ExplicitComponent):
         DASolver = self.DASolver
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         for varName in ["xAcou", "nAcou", "aAcou", "fAcou"]:
             if varName in d_outputs:
@@ -1835,7 +1876,13 @@ class DAFoamFvSource(ExplicitComponent):
         DASolver = self.DASolver
 
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         if "fvSource" in d_outputs:
             sBar = d_outputs["fvSource"]
@@ -1993,7 +2040,13 @@ class DAFoamPropNodes(ExplicitComponent):
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         for fvSource, parameters in self.aerostructDict["fvSource"].items():
             if "x_prop0_%s" % fvSource in d_inputs:
@@ -2042,7 +2095,13 @@ class DAFoamActuator(ExplicitComponent):
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         if mode == "fwd":
-            raise AnalysisError("fwd not implemented!")
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
 
         # Loop over all actuator disks
         for fvSource, _ in self.aerostructDict["fvSource"].items():
