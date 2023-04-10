@@ -694,10 +694,12 @@ class DAFoamSolver(ImplicitComponent):
             if couplingInfo["aerothermal"]["active"]:
                 if self.discipline == "aero":
                     T_convect = inputs["T_convect"]
-                    DASolver.solver.setThermal("temperature".encode(), T_convect)
-                if self.discipline == "thermal":
+                    DASolver.solver.setThermal("temperature", T_convect)
+                elif self.discipline == "thermal":
                     q_conduct = inputs["q_conduct"]
-                    DASolver.solver.setThermal("heatFlux".encode(), q_conduct)
+                    DASolver.solver.setThermal("heatFlux", q_conduct)
+                else:
+                    raise AnalysisError("discipline not valid!")
 
             # solve the flow with the current design variable
             DASolver()
@@ -775,26 +777,20 @@ class DAFoamSolver(ImplicitComponent):
                     d_inputs["%s_vol_coords" % self.discipline] += xVBar
                 elif inputName == "q_conduct":
                     # calculate [dRdQ]^T*Psi for thermal
+                    volCoords = inputs["%s_vol_coords" % self.discipline]
+                    states = outputs["%s_states" % self.discipline]
                     thermal = inputs["q_conduct"]
-                    thermalVec = DASolver.array2Vec(thermal)
-                    prodVec = thermalVec.duplicate()
-                    prodVec.zeroEntries()
-                    DASolver.solverAD.calcdRdThermalTPsiAD(
-                        "heatFlux".encode(), DASolver.xvVec, DASolver.wVec, resBarVec, thermalVec, prodVec
-                    )
-                    thermalBar = DASolver.vec2Array(prodVec)
-                    d_inputs["q_conduct"] += thermalBar
+                    product = np.zeros_like(thermal)
+                    DASolver.solverAD.calcdRdThermalTPsiAD("heatFlux", volCoords, states, thermal, resBar, product)
+                    d_inputs["q_conduct"] += product
                 elif inputName == "T_convect":
                     # calculate [dRdT]^T*Psi for aero
+                    volCoords = inputs["%s_vol_coords" % self.discipline]
+                    states = outputs["%s_states" % self.discipline]
                     thermal = inputs["T_convect"]
-                    thermalVec = DASolver.array2Vec(thermal)
-                    prodVec = thermalVec.duplicate()
-                    prodVec.zeroEntries()
-                    DASolver.solverAD.calcdRdThermalTPsiAD(
-                        "temperature".encode(), DASolver.xvVec, DASolver.wVec, resBarVec, thermalVec, prodVec
-                    )
-                    thermalBar = DASolver.vec2Array(prodVec)
-                    d_inputs["T_convect"] += thermalBar
+                    product = np.zeros_like(thermal)
+                    DASolver.solverAD.calcdRdThermalTPsiAD("temperature", volCoords, states, thermal, resBar, product)
+                    d_inputs["T_convect"] += product
                 else:  # now we deal with general input output names
                     # compute [dRdAOA]^T*Psi using reverse mode AD
                     if self.dvType[inputName] == "AOA":
@@ -1494,16 +1490,12 @@ class DAFoamThermal(ExplicitComponent):
 
             if "%s_states" % self.discipline in d_inputs:
                 product = np.zeros_like(d_inputs["%s_states" % self.discipline])
-                DASolver.solverAD.getThermalAD(
-                    "states", "temperature", vol_coords, states, seeds, product
-                )
+                DASolver.solverAD.getThermalAD("states", "temperature", vol_coords, states, seeds, product)
                 d_inputs["%s_states" % self.discipline] += product
 
             if "%s_vol_coords" % self.discipline in d_inputs:
                 product = np.zeros_like(d_inputs["%s_vol_coords" % self.discipline])
-                DASolver.solverAD.getThermalAD(
-                    "volCoords", "temperature", vol_coords, states, seeds, product
-                )
+                DASolver.solverAD.getThermalAD("volCoords", "temperature", vol_coords, states, seeds, product)
                 d_inputs["%s_vol_coords" % self.discipline] += product
 
         if "q_convect" in d_outputs:
@@ -1511,16 +1503,12 @@ class DAFoamThermal(ExplicitComponent):
 
             if "%s_states" % self.discipline in d_inputs:
                 product = np.zeros_like(d_inputs["%s_states" % self.discipline])
-                DASolver.solverAD.getThermalAD(
-                    "states", "heatFlux", vol_coords, states, seeds, product
-                )
+                DASolver.solverAD.getThermalAD("states", "heatFlux", vol_coords, states, seeds, product)
                 d_inputs["%s_states" % self.discipline] += product
 
             if "%s_vol_coords" % self.discipline in d_inputs:
                 product = np.zeros_like(d_inputs["%s_vol_coords" % self.discipline])
-                DASolver.solverAD.getThermalAD(
-                    "volCoords", "heatFlux", vol_coords, states, seeds, product
-                )
+                DASolver.solverAD.getThermalAD("volCoords", "heatFlux", vol_coords, states, seeds, product)
                 d_inputs["%s_vol_coords" % self.discipline] += product
 
 

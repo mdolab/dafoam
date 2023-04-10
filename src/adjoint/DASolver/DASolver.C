@@ -521,7 +521,7 @@ void DASolver::getCouplingPatchList(
 }
 
 void DASolver::setThermal(
-    word varName,
+    const word varName,
     scalar* thermal)
 {
     /*
@@ -538,10 +538,8 @@ void DASolver::setThermal(
         The T field in OpenFOAM
     */
 
-    label nPoints, nFaces;
     List<word> patchList;
     this->getCouplingPatchList(patchList);
-    this->getPatchInfo(nPoints, nFaces, patchList);
 
     // calculate the sum of patch area and reduce it across procs
     scalar meanVar = 0.0;
@@ -4995,11 +4993,11 @@ void DASolver::calcdFdXvAD(
 
 void DASolver::calcdRdThermalTPsiAD(
     const word varName,
-    const Vec xvVec,
-    const Vec wVec,
-    const Vec psi,
-    const Vec thermalVec,
-    Vec prodVec)
+    const double* volCoords,
+    const double* states,
+    const double* thermal,
+    const double* seeds,
+    double* product)
 {
 #ifdef CODI_AD_REVERSE
     /*
@@ -5020,34 +5018,43 @@ void DASolver::calcdRdThermalTPsiAD(
 
     Info << "Calculating [dRdThermal]^T * Psi using reverse-mode AD" << endl;
 
-    VecZeroEntries(prodVec);
-
-    this->updateOFField(wVec);
-    this->updateOFMesh(xvVec);
-
-    label nPoints, nFaces;
-    List<word> patchList;
-    this->getCouplingPatchList(patchList);
-    this->getPatchInfo(nPoints, nFaces, patchList);
-
-    const PetscScalar* thermalArray;
-    scalar* thermal = new scalar[nFaces];
-    VecGetArrayRead(thermalVec, &thermalArray);
-    for (label i = 0; i < nFaces; i++)
+    scalar* volCoordsArray = new scalar[daIndexPtr_->nLocalXv];
+    for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
     {
-        thermal[i] = thermalArray[i];
+        volCoordsArray[i] = volCoords[i];
     }
-    VecRestoreArrayRead(thermalVec, &thermalArray);
 
+    scalar* statesArray = new scalar[daIndexPtr_->nLocalAdjointStates];
+    for (label i = 0; i < daIndexPtr_->nLocalAdjointStates; i++)
+    {
+        statesArray[i] = states[i];
+    }
+
+    label nCouplingFaces = this->getNCouplingFaces();
+    scalar* thermalArray = new scalar[nCouplingFaces];
+    for (label i = 0; i < nCouplingFaces; i++)
+    {
+        thermalArray[i] = thermal[i];
+    }
+
+    this->updateOFMesh(volCoordsArray);
+    this->updateOFField(statesArray);
+
+    // update the OpenFOAM variables and reset their seeds (gradient part) to zeros
+    this->resetOFSeeds();
+    // reset the AD tape
     this->globalADTape_.reset();
+    // start recording
     this->globalADTape_.setActive();
 
-    for (label i = 0; i < nFaces; i++)
+    // register inputs
+    for (label i = 0; i < nCouplingFaces; i++)
     {
-        this->globalADTape_.registerInput(thermal[i]);
+        this->globalADTape_.registerInput(thermalArray[i]);
     }
 
-    this->setThermal(varName, thermal);
+    // calculate outputs
+    this->setThermal(varName, thermalArray);
 
     // compute residuals
     daResidualPtr_->correctBoundaryConditions();
@@ -5060,23 +5067,23 @@ void DASolver::calcdRdThermalTPsiAD(
     daResidualPtr_->calcResiduals(options);
     daModelPtr_->calcResiduals(options);
 
+    // register outputs
     this->registerResidualOutput4AD();
+
+    // stop recording
     this->globalADTape_.setPassive();
 
-    this->assignVec2ResidualGradient(psi);
+    // set seeds to the outputs
+    this->assignSeeds2ResidualGradient(seeds);
+
+    // now calculate the reverse matrix-vector product
     this->globalADTape_.evaluate();
 
-    PetscScalar* vecArray;
-    VecGetArray(prodVec, &vecArray);
-    for (label i = 0; i < nFaces; i++)
+    // get the matrix-vector product from the inputs
+    for (label i = 0; i < nCouplingFaces; i++)
     {
-        vecArray[i] = thermal[i].getGradient();
+        product[i] = thermalArray[i].getGradient();
     }
-
-    VecRestoreArray(prodVec, &vecArray);
-
-    this->globalADTape_.clearAdjoints();
-    this->globalADTape_.reset();
 
     // ******************************* NOTE! ******************************
     // This step is tricky. We need to clean up the AD seeds for all variables before the next AD
@@ -5091,16 +5098,21 @@ void DASolver::calcdRdThermalTPsiAD(
     // The way we clean it is that we set a zero-seed thermal var and call setThermal to propagate
     // the zero seeds to all intermediate vars.
     // ******************************* NOTE! ******************************
-    VecGetArrayRead(thermalVec, &thermalArray);
-    for (label i = 0; i < nFaces; i++)
+    for (label i = 0; i < nCouplingFaces; i++)
     {
-        thermal[i] = thermalArray[i];
-        thermal[i].setGradient(0.0);
+        thermalArray[i].setGradient(0.0);
     }
-    VecRestoreArrayRead(thermalVec, &thermalArray);
-    this->setThermal(varName, thermal);
+    this->setThermal(varName, thermalArray);
 
-    delete[] thermal;
+
+    delete[] thermalArray;
+    delete[] volCoordsArray;
+    delete[] statesArray;
+
+    // clean up AD
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
 #endif
 }
 
@@ -6606,6 +6618,93 @@ void DASolver::normalizeGradientVec(Vec vecY)
 
     VecRestoreArray(vecY, &vecArray);
 
+#endif
+}
+
+void DASolver::assignSeeds2ResidualGradient(const double* seeds)
+{
+
+/*
+    Description:
+        Assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
+    
+    Input:
+        vecX: vector storing the input seeds
+    
+    Output:
+        All residual variables in OpenFOAM will be set: stateRes[cellI].setGradient(vecX[localIdx])
+    */
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const word resName = stateName + "Res";
+        volVectorField& stateRes = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(resName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                stateRes[cellI][i].setGradient(seeds[localIdx]);
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        volScalarField& stateRes = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(resName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            stateRes[cellI].setGradient(seeds[localIdx]);
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const word resName = stateName + "Res";
+        volScalarField& stateRes = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(resName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            stateRes[cellI].setGradient(seeds[localIdx]);
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        surfaceScalarField& stateRes = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(resName));
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                stateRes[faceI].setGradient(seeds[localIdx]);
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                stateRes.boundaryFieldRef()[patchIdx][faceIdx].setGradient(seeds[localIdx]);
+            }
+        }
+    }
 #endif
 }
 

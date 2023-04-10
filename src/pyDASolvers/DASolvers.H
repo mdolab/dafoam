@@ -536,7 +536,7 @@ public:
     }
 
     /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches
-    void setThermal(word varName, double* thermal)
+    void setThermal(const word varName, double* thermal)
     {
 #if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
         DASolverPtr_->setThermal(varName, thermal);
@@ -548,13 +548,13 @@ public:
 
     void calcdRdThermalTPsiAD(
         const word varName,
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psiVec,
-        const Vec thermalVec,
-        Vec prodVec)
+        const double* volCoords,
+        const double* states,
+        const double* thermal,
+        const double* seeds,
+        double* product)
     {
-        DASolverPtr_->calcdRdThermalTPsiAD(varName, xvVec, wVec, psiVec, thermalVec, prodVec);
+        DASolverPtr_->calcdRdThermalTPsiAD(varName, volCoords, states, thermal, seeds, product);
     }
 
     /// return the acoustic data values

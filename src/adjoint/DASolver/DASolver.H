@@ -447,11 +447,11 @@ public:
 
     void calcdRdThermalTPsiAD(
         const word varName,
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const Vec thermalVec,
-        Vec prodVec);
+        const double* volCoords,
+        const double* states,
+        const double* thermal,
+        const double* seeds,
+        double* product);
 
     /// compute dRdXv^T*Psi
     void calcdRdXvTPsiAD(
@@ -555,6 +555,9 @@ public:
 
     /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
     void assignVec2ResidualGradient(Vec vecX);
+
+    /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
+    void assignSeeds2ResidualGradient(const double* seeds);
 
     /// assign the reverse-mode AD input seeds from fBarVec to the force vectors in OpenFOAM
     void assignVec2ForceGradient(Vec fBarVec, List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ);
@@ -780,7 +783,7 @@ public:
         double* product);
 
     /// assign temperature values to the conjugate heat transfer patches
-    void setThermal(word varName, scalar* thermal);
+    void setThermal(const word varName, scalar* thermal);
 
     /// compute the positions, normals, areas, and forces of the desired acoustic patches
     void getAcousticDataInternal(
