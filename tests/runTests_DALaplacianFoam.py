@@ -73,8 +73,11 @@ funcs = {}
 evalFuncs = ["TVOL", "HF", "TMEAN"]
 DASolver.evalFunctions(funcs, evalFuncs)
 
-T = DASolver.solver.getThermal(varName="temperature")
-TNorm = np.linalg.norm(T / 100)
+states = DASolver.vec2Array(DASolver.wVec)
+volCoords = DASolver.vec2Array(DASolver.xvVec)
+thermal = np.zeros(DASolver.solver.getNCouplingFaces())
+DASolver.solver.getThermal("temperature", volCoords, states, thermal)
+TNorm = np.linalg.norm(thermal / 100)
 TNormSum = gcomm.allreduce(TNorm, op=MPI.SUM)
 funcs["TFormSum"] = TNormSum
 
