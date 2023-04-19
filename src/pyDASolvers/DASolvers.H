@@ -773,12 +773,13 @@ public:
     }
 
     void calcForceProfile(
+        const word propName,
         Vec center,
-        Vec aForceL,
-        Vec tForceL,
-        Vec rDistL)
+        Vec aForce,
+        Vec tForce,
+        Vec rDist)
     {
-        DASolverPtr_->calcForceProfile(center, aForceL, tForceL, rDistL);
+        DASolverPtr_->calcForceProfile(propName, center, aForce, tForce, rDist);
     }
 
     void calcdForcedStateTPsiAD(
