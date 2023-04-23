@@ -825,7 +825,7 @@ public:
         const word propName,
         const scalarField& aForce,
         const scalarField& tForce,
-        const scalarList& rDistList,
+        const scalarField& rDistList,
         const scalarList& targetForce,
         const vector& center,
         volVectorField& fvSource);

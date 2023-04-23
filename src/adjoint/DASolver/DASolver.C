@@ -1732,7 +1732,7 @@ void DASolver::calcFvSourceInternal(
     const word propName,
     const scalarField& aForce,
     const scalarField& tForce,
-    const scalarList& rDistList,
+    const scalarField& rDist,
     const scalarList& targetForce,
     const vector& center,
     volVectorField& fvSource)
@@ -1753,166 +1753,338 @@ void DASolver::calcFvSourceInternal(
     const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
     scalar actEps = propSubDict.getScalar("actEps");
     word rotDir = propSubDict.getWord("rotDir");
+    word interpScheme = propSubDict.getWord("interpScheme");
     scalarList axisDummy;
     propSubDict.readEntry<scalarList>("axis", axisDummy);
     axis[0] = axisDummy[0];
     axis[1] = axisDummy[1];
     axis[2] = axisDummy[2];
 
-    scalar rotDirCon = 0.0;
-    if (rotDir == "right")
+    if (interpScheme == "poly4Gauss")
     {
-        rotDirCon = -1.0;
-    }
-    else if (rotDir == "left")
-    {
-        rotDirCon = 1.0;
-    }
-    else
-    {
-        FatalErrorIn("calcFvSourceInternal") << "Rotation direction must be either right of left"
-                                             << abort(FatalError);
-    }
+        // Fit a 4th order polynomial for the inner and Gaussian function for the outer
 
-    // meshC is the cell center coordinates & meshV is the cell volume
-    const volVectorField& meshC = fvSource.mesh().C();
-    const scalarField& meshV = fvSource.mesh().V();
-
-    // dummy vector field for storing the tangential vector of each cell
-    volVectorField meshTanDir = meshC * 0;
-
-    // Normalization of the blade radius distribution.
-    scalar rOuter = (3 * rDistList[rDistList.size() - 1] - rDistList[rDistList.size() - 2]) / 2;
-    scalarField rDist = rDistList * 0.0; // real blade radius distribution
-    scalarField rNorm = rDist; // normalized blade radius distribution
-    forAll(rDistList, index)
-    {
-        rDist[index] = rDistList[index];
-    }
-    forAll(rDist, index)
-    {
-        rNorm[index] = rDist[index] / rOuter;
-    }
-
-    // Inner and outer radius distribution limits
-    scalar rStarMin = rNorm[0];
-    scalar rStarMax = rNorm[rNorm.size() - 1];
-
-    // Polynomial (inner) and Normal (outer) distribution  parameters' initialization
-    scalar f1 = aForce[aForce.size() - 2];
-    scalar f2 = aForce[aForce.size() - 1];
-    scalar f3 = aForce[0];
-    scalar f4 = aForce[1];
-    scalar g1 = tForce[tForce.size() - 2];
-    scalar g2 = tForce[tForce.size() - 1];
-    scalar g3 = tForce[0];
-    scalar g4 = tForce[1];
-    scalar r1 = rNorm[rNorm.size() - 2];
-    scalar r2 = rNorm[rNorm.size() - 1];
-    scalar r3 = rNorm[0];
-    scalar r4 = rNorm[1];
-    scalar df3 = (f4 - f3) / (r4 - r3);
-    scalar dg3 = (g4 - g3) / (r4 - r3);
-
-    // Polynomial (inner) and Normal (outer) distribution  parameters' computation
-    // Axial Outer
-    scalar mu = 2 * r1 - r2;
-    scalar maxI = 100;
-    scalar sigmaS = 0;
-    scalar i = 0;
-    for (i = 0; i < maxI; i++)
-    {
-        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * log(f1 / f2));
-        mu = r1 - sqrt(-2 * sigmaS * log(f1 * sqrt(2 * degToRad(180) * sigmaS)));
-        if (mu > r1)
+        scalar rotDirCon = 0.0;
+        if (rotDir == "right")
         {
-            mu = 2 * r1 - mu;
+            rotDirCon = -1.0;
         }
-    }
-    scalar sigmaAxialOut = sqrt(sigmaS);
-    scalar muAxialOut = mu;
-
-    // Tangential Outer
-    mu = 2 * r1 - r2;
-    for (i = 0; i < maxI; i++)
-    {
-        sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * log(g1 / g2));
-        mu = r1 - sqrt(-2 * sigmaS * log(g1 * sqrt(2 * degToRad(180) * sigmaS)));
-        if (mu > r1)
+        else if (rotDir == "left")
         {
-            mu = 2 * r1 - mu;
-        }
-    }
-    scalar sigmaTangentialOut = sqrt(sigmaS);
-    scalar muTangentialOut = mu;
-
-    // Axial Inner
-    scalar coefAAxialIn = (df3 * r3 - 2 * f3) / (2 * pow(r3, 4));
-    scalar coefBAxialIn = (f3 - coefAAxialIn * pow(r3, 4)) / (r3 * r3);
-
-    // Tangential Inner
-    scalar coefATangentialIn = (dg3 * r3 - 2 * g3) / (2 * pow(r3, 4));
-    scalar coefBTangentialIn = (g3 - coefATangentialIn * pow(r3, 4)) / (r3 * r3);
-
-    // Cell 3D force computation loop
-    forAll(meshC, cellI)
-    {
-        // Finding directional vector from mesh cell to the actuator center
-        vector cellDir = meshC[cellI] - center;
-        scalar length = sqrt(sqr(cellDir[0]) + sqr(cellDir[1]) + sqr(cellDir[2]));
-        cellDir = cellDir / length;
-
-        // Finding axial distance from mesh cell to the actuator center & projected point of mesh cell on the axis
-        scalar meshDist = (axis & cellDir) * length;
-        vector projP = {center[0] - axis[0] * meshDist, center[1] - axis[1] * meshDist, center[2] - axis[2] * meshDist};
-        meshDist = mag(meshDist);
-
-        // Finding the radius of the point
-        scalar meshR = sqrt(sqr(meshC[cellI][0] - projP[0]) + sqr(meshC[cellI][1] - projP[1]) + sqr(meshC[cellI][2] - projP[2]));
-
-        // Tangential component of the radius vector of the cell center
-        vector cellAxDir = cellDir ^ axis;
-
-        // Storing the tangential component
-        meshTanDir[cellI] = cellAxDir;
-
-        scalar rStar = meshR / rOuter;
-
-        if (rStar < rStarMin)
-        {
-            fvSource[cellI] = ((coefAAxialIn * pow(rStar, 4) + coefBAxialIn * pow(rStar, 2)) * axis + (coefATangentialIn * pow(rStar, 4) + coefBTangentialIn * pow(rStar, 2)) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
-        }
-        else if (rStar > rStarMax)
-        {
-            fvSource[cellI] = (1 / (sigmaAxialOut * sqrt(2 * degToRad(180)))) * exp(-0.5 * sqr((rStar - muAxialOut) / sigmaAxialOut)) * axis;
-            fvSource[cellI] = fvSource[cellI] + (1 / (sigmaTangentialOut * sqrt(2 * degToRad(180)))) * exp(-0.5 * sqr((rStar - muTangentialOut) / sigmaTangentialOut)) * cellAxDir * rotDirCon;
-            fvSource[cellI] = fvSource[cellI] * exp(-sqr(meshDist / actEps));
+            rotDirCon = 1.0;
         }
         else
         {
-            fvSource[cellI] = (interpolateSplineXY(rStar, rNorm, aForce) * axis + interpolateSplineXY(rStar, rNorm, tForce) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
+            FatalErrorIn("calcFvSourceInternal") << "Rotation direction must be either right of left"
+                                                 << abort(FatalError);
+        }
+
+        // meshC is the cell center coordinates & meshV is the cell volume
+        const volVectorField& meshC = fvSource.mesh().C();
+        const scalarField& meshV = fvSource.mesh().V();
+
+        // dummy vector field for storing the tangential vector of each cell
+        volVectorField meshTanDir = meshC * 0;
+
+        // Normalization of the blade radius distribution.
+        scalar rOuter = (3 * rDist[rDist.size() - 1] - rDist[rDist.size() - 2]) / 2;
+        scalarField rNorm = rDist; // normalized blade radius distribution
+        forAll(rDist, index)
+        {
+            rNorm[index] = rDist[index] / rOuter;
+        }
+
+        // Inner and outer radius distribution limits
+        scalar rStarMin = rNorm[0];
+        scalar rStarMax = rNorm[rNorm.size() - 1];
+
+        // Polynomial (inner) and Normal (outer) distribution  parameters' initialization
+        scalar f1 = aForce[aForce.size() - 2];
+        scalar f2 = aForce[aForce.size() - 1];
+        scalar f3 = aForce[0];
+        scalar f4 = aForce[1];
+        scalar g1 = tForce[tForce.size() - 2];
+        scalar g2 = tForce[tForce.size() - 1];
+        scalar g3 = tForce[0];
+        scalar g4 = tForce[1];
+        scalar r1 = rNorm[rNorm.size() - 2];
+        scalar r2 = rNorm[rNorm.size() - 1];
+        scalar r3 = rNorm[0];
+        scalar r4 = rNorm[1];
+        scalar df3 = (f4 - f3) / (r4 - r3);
+        scalar dg3 = (g4 - g3) / (r4 - r3);
+
+        // Polynomial (inner) and Normal (outer) distribution  parameters' computation
+        // Axial Outer
+        scalar mu = 2 * r1 - r2;
+        scalar maxI = 100;
+        scalar sigmaS = 0;
+        scalar i = 0;
+        for (i = 0; i < maxI; i++)
+        {
+            sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * log(f1 / f2));
+            mu = r1 - sqrt(-2 * sigmaS * log(f1 * sqrt(2 * degToRad(180) * sigmaS)));
+            if (mu > r1)
+            {
+                mu = 2 * r1 - mu;
+            }
+        }
+        scalar sigmaAxialOut = sqrt(sigmaS);
+        scalar muAxialOut = mu;
+
+        // Tangential Outer
+        mu = 2 * r1 - r2;
+        for (i = 0; i < maxI; i++)
+        {
+            sigmaS = ((r2 - mu) * (r2 - mu) - (r1 - mu) * (r1 - mu)) / (2 * log(g1 / g2));
+            mu = r1 - sqrt(-2 * sigmaS * log(g1 * sqrt(2 * degToRad(180) * sigmaS)));
+            if (mu > r1)
+            {
+                mu = 2 * r1 - mu;
+            }
+        }
+        scalar sigmaTangentialOut = sqrt(sigmaS);
+        scalar muTangentialOut = mu;
+
+        // Axial Inner
+        scalar coefAAxialIn = (df3 * r3 - 2 * f3) / (2 * pow(r3, 4));
+        scalar coefBAxialIn = (f3 - coefAAxialIn * pow(r3, 4)) / (r3 * r3);
+
+        // Tangential Inner
+        scalar coefATangentialIn = (dg3 * r3 - 2 * g3) / (2 * pow(r3, 4));
+        scalar coefBTangentialIn = (g3 - coefATangentialIn * pow(r3, 4)) / (r3 * r3);
+
+        // Cell 3D force computation loop
+        forAll(meshC, cellI)
+        {
+            // Finding directional vector from mesh cell to the actuator center
+            vector cellDir = meshC[cellI] - center;
+            scalar length = sqrt(sqr(cellDir[0]) + sqr(cellDir[1]) + sqr(cellDir[2]));
+            cellDir = cellDir / length;
+
+            // Finding axial distance from mesh cell to the actuator center & projected point of mesh cell on the axis
+            scalar meshDist = (axis & cellDir) * length;
+            vector projP = {center[0] - axis[0] * meshDist, center[1] - axis[1] * meshDist, center[2] - axis[2] * meshDist};
+            meshDist = mag(meshDist);
+
+            // Finding the radius of the point
+            scalar meshR = sqrt(sqr(meshC[cellI][0] - projP[0]) + sqr(meshC[cellI][1] - projP[1]) + sqr(meshC[cellI][2] - projP[2]));
+
+            // Tangential component of the radius vector of the cell center
+            vector cellAxDir = cellDir ^ axis;
+
+            // Storing the tangential component
+            meshTanDir[cellI] = cellAxDir;
+
+            scalar rStar = meshR / rOuter;
+
+            if (rStar < rStarMin)
+            {
+                fvSource[cellI] = ((coefAAxialIn * pow(rStar, 4) + coefBAxialIn * pow(rStar, 2)) * axis + (coefATangentialIn * pow(rStar, 4) + coefBTangentialIn * pow(rStar, 2)) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
+            }
+            else if (rStar > rStarMax)
+            {
+                fvSource[cellI] = (1 / (sigmaAxialOut * sqrt(2 * degToRad(180)))) * exp(-0.5 * sqr((rStar - muAxialOut) / sigmaAxialOut)) * axis;
+                fvSource[cellI] = fvSource[cellI] + (1 / (sigmaTangentialOut * sqrt(2 * degToRad(180)))) * exp(-0.5 * sqr((rStar - muTangentialOut) / sigmaTangentialOut)) * cellAxDir * rotDirCon;
+                fvSource[cellI] = fvSource[cellI] * exp(-sqr(meshDist / actEps));
+            }
+            else
+            {
+                fvSource[cellI] = (interpolateSplineXY(rStar, rNorm, aForce) * axis + interpolateSplineXY(rStar, rNorm, tForce) * cellAxDir * rotDirCon) * exp(-sqr(meshDist / actEps));
+            }
+        }
+
+        // Scale factor computation loop
+        scalar scaleAxial = 0;
+        scalar scaleTangential = 0;
+        forAll(meshV, cellI)
+        {
+            scaleAxial = scaleAxial + (fvSource[cellI] & axis) * meshV[cellI];
+            scaleTangential = scaleTangential + (fvSource[cellI] & meshTanDir[cellI]) * meshV[cellI];
+        }
+        reduce(scaleAxial, sumOp<scalar>());
+        reduce(scaleTangential, sumOp<scalar>());
+        scaleAxial = targetForce[0] / scaleAxial;
+        scaleTangential = targetForce[1] / scaleTangential * rotDirCon;
+
+        // Cell 3D force scaling loop
+        forAll(meshV, cellI)
+        {
+            fvSource[cellI][0] = fvSource[cellI][0] * mag(axis[0]) * scaleAxial + fvSource[cellI][0] * mag(meshTanDir[cellI][0]) * scaleTangential;
+            fvSource[cellI][1] = fvSource[cellI][1] * mag(axis[1]) * scaleAxial + fvSource[cellI][1] * mag(meshTanDir[cellI][1]) * scaleTangential;
+            fvSource[cellI][2] = fvSource[cellI][2] * mag(axis[2]) * scaleAxial + fvSource[cellI][2] * mag(meshTanDir[cellI][2]) * scaleTangential;
         }
     }
-
-    // Scale factor computation loop
-    scalar scaleAxial = 0;
-    scalar scaleTangential = 0;
-    forAll(meshV, cellI)
+    else if (interpScheme == "gauss")
     {
-        scaleAxial = scaleAxial + (fvSource[cellI] & axis) * meshV[cellI];
-        scaleTangential = scaleTangential + (fvSource[cellI] & meshTanDir[cellI]) * meshV[cellI];
+        fvMesh& mesh = meshPtr_();
+
+        scalar rInner = rDist[0];
+        scalar rOuter = rDist[rDist.size() - 1];
+        scalar fAxialInner = aForce[0];
+        scalar fAxialOuter = aForce[aForce.size() - 1];
+        scalar fTanInner = tForce[0];
+        scalar fTanOuter = tForce[tForce.size() - 1];
+
+        vector dirNorm = {axis[0], axis[1], axis[2]};
+        dirNorm /= mag(axis);
+
+        // first loop, we calculate the integral force and then compute the scaling factor
+        scalar axialForceSum = 0.0;
+        scalar tangentialForceSum = 0.0;
+        forAll(mesh.cells(), cellI)
+        {
+            // the cell center coordinates of this cellI
+            vector cellC = mesh.C()[cellI];
+            // cell center to disk center vector
+            vector cellC2AVec = cellC - center;
+            // tmp tensor for calculating the axial/radial components of cellC2AVec
+            tensor cellC2AVecE(tensor::zero);
+            cellC2AVecE.xx() = cellC2AVec.x();
+            cellC2AVecE.yy() = cellC2AVec.y();
+            cellC2AVecE.zz() = cellC2AVec.z();
+
+            // now we need to decompose cellC2AVec into axial and radial components
+            // the axial component of cellC2AVec vector
+            vector cellC2AVecA = cellC2AVecE & dirNorm;
+            // the radial component of cellC2AVec vector
+            vector cellC2AVecR = cellC2AVec - cellC2AVecA;
+
+            // the magnitude of radial component of cellC2AVecR
+            scalar cellC2AVecRLen = mag(cellC2AVecR);
+            // the magnitude of axial component of cellC2AVecR
+            scalar cellC2AVecALen = mag(cellC2AVecA);
+
+            scalar fAxial = 0.0;
+            scalar fTan = 0.0;
+
+            scalar dA2_Eps2 = (cellC2AVecALen * cellC2AVecALen) / actEps / actEps;
+
+            // we need to smooth the force in the radial and axial directions if r is outside of [rInner:rOuter]
+            // if r is inside, we just interpolate the prescribed aForce and tForce and smooth the
+            // force in the axial direction only
+            if (cellC2AVecRLen < rInner)
+            {
+                scalar dR2_Eps2 = (cellC2AVecRLen - rInner) * (cellC2AVecRLen - rInner) / actEps / actEps;
+                fAxial = fAxialInner * exp(-dR2_Eps2) * exp(-dA2_Eps2);
+                fTan = fTanInner * exp(-dR2_Eps2) * exp(-dA2_Eps2);
+            }
+            else if (cellC2AVecRLen >= rInner && cellC2AVecRLen <= rOuter)
+            {
+                fAxial = interpolateSplineXY(cellC2AVecRLen, rDist, aForce) * exp(-dA2_Eps2);
+                fTan = interpolateSplineXY(cellC2AVecRLen, rDist, tForce) * exp(-dA2_Eps2);
+            }
+            else
+            {
+                scalar dR2_Eps2 = (cellC2AVecRLen - rOuter) * (cellC2AVecRLen - rOuter) / actEps / actEps;
+                fAxial = fAxialOuter * exp(-dR2_Eps2) * exp(-dA2_Eps2);
+                fTan = fTanOuter * exp(-dR2_Eps2) * exp(-dA2_Eps2);
+            }
+
+            axialForceSum += fAxial * mesh.V()[cellI];
+            tangentialForceSum += fTan * mesh.V()[cellI];
+        }
+        reduce(axialForceSum, sumOp<scalar>());
+        reduce(tangentialForceSum, sumOp<scalar>());
+
+        scalar aForceScale = targetForce[0] / axialForceSum;
+        scalar tForceScale = targetForce[1] / tangentialForceSum;
+
+        // loop again with the correct scale so that the integral forces matches the prescribed ones
+        axialForceSum = 0;
+        tangentialForceSum = 0;
+        forAll(mesh.cells(), cellI)
+        {
+            // the cell center coordinates of this cellI
+            vector cellC = mesh.C()[cellI];
+            // cell center to disk center vector
+            vector cellC2AVec = cellC - center;
+            // tmp tensor for calculating the axial/radial components of cellC2AVec
+            tensor cellC2AVecE(tensor::zero);
+            cellC2AVecE.xx() = cellC2AVec.x();
+            cellC2AVecE.yy() = cellC2AVec.y();
+            cellC2AVecE.zz() = cellC2AVec.z();
+
+            // now we need to decompose cellC2AVec into axial and radial components
+            // the axial component of cellC2AVec vector
+            vector cellC2AVecA = cellC2AVecE & dirNorm;
+            // the radial component of cellC2AVec vector
+            vector cellC2AVecR = cellC2AVec - cellC2AVecA;
+
+            // now we can use the cross product to compute the tangential
+            // (circ) direction of cellI
+            vector cellC2AVecC(vector::zero);
+            if (rotDir == "left")
+            {
+                // propeller rotates counter-clockwise viewed from the tail of the aircraft looking forward
+                cellC2AVecC = cellC2AVecR ^ dirNorm; // circ
+            }
+            else if (rotDir == "right")
+            {
+                // propeller rotates clockwise viewed from the tail of the aircraft looking forward
+                cellC2AVecC = dirNorm ^ cellC2AVecR; // circ
+            }
+            else
+            {
+                FatalErrorIn(" ") << "rotDir not valid" << abort(FatalError);
+            }
+
+            // the magnitude of radial component of cellC2AVecR
+            scalar cellC2AVecRLen = mag(cellC2AVecR);
+            // the magnitude of tangential component of cellC2AVecR
+            scalar cellC2AVecCLen = mag(cellC2AVecC);
+            // the magnitude of axial component of cellC2AVecR
+            scalar cellC2AVecALen = mag(cellC2AVecA);
+            // the normalized cellC2AVecC (tangential) vector
+            vector cellC2AVecCNorm = cellC2AVecC / cellC2AVecCLen;
+
+            scalar fAxial = 0.0;
+            scalar fTan = 0.0;
+
+            scalar dA2_Eps2 = (cellC2AVecALen * cellC2AVecALen) / actEps / actEps;
+
+            // we need to smooth the force in the radial and axial directions if r is outside of [rInner:rOuter]
+            // if r is inside, we just interpolate the prescribed aForce and tForce and smooth the
+            // force in the axial direction only
+            if (cellC2AVecRLen < rInner)
+            {
+                scalar dR2_Eps2 = (cellC2AVecRLen - rInner) * (cellC2AVecRLen - rInner) / actEps / actEps;
+                fAxial = aForceScale * fAxialInner * exp(-dR2_Eps2) * exp(-dA2_Eps2);
+                fTan = tForceScale * fTanInner * exp(-dR2_Eps2) * exp(-dA2_Eps2);
+            }
+            else if (cellC2AVecRLen >= rInner && cellC2AVecRLen <= rOuter)
+            {
+                fAxial = aForceScale * interpolateSplineXY(cellC2AVecRLen, rDist, aForce) * exp(-dA2_Eps2);
+                fTan = tForceScale * interpolateSplineXY(cellC2AVecRLen, rDist, tForce) * exp(-dA2_Eps2);
+            }
+            else
+            {
+                scalar dR2_Eps2 = (cellC2AVecRLen - rOuter) * (cellC2AVecRLen - rOuter) / actEps / actEps;
+                fAxial = aForceScale * fAxialOuter * exp(-dR2_Eps2) * exp(-dA2_Eps2);
+                fTan = tForceScale * fTanOuter * exp(-dR2_Eps2) * exp(-dA2_Eps2);
+            }
+
+            vector sourceVec = (fAxial * dirNorm + fTan * cellC2AVecCNorm);
+
+            axialForceSum += fAxial * mesh.V()[cellI];
+            tangentialForceSum += fTan * mesh.V()[cellI];
+
+            fvSource[cellI] += sourceVec;
+        }
+
+        reduce(axialForceSum, sumOp<scalar>());
+        reduce(tangentialForceSum, sumOp<scalar>());
+
+        if (daOptionPtr_->getOption<word>("runStatus") == "solvePrimal")
+        {
+            Info << "Integrated Axial Force for " << propName << ": " << axialForceSum << endl;
+            Info << "Integrated Tangential Force for " << propName << ": " << tangentialForceSum << endl;
+        }
     }
-    reduce(scaleAxial, sumOp<scalar>());
-    reduce(scaleTangential, sumOp<scalar>());
-    scaleAxial = targetForce[0] / scaleAxial;
-    scaleTangential = targetForce[1] / scaleTangential * rotDirCon;
-
-    // Cell 3D force scaling loop
-    forAll(meshV, cellI)
+    else
     {
-        fvSource[cellI][0] = fvSource[cellI][0] * mag(axis[0]) * scaleAxial + fvSource[cellI][0] * mag(meshTanDir[cellI][0]) * scaleTangential;
-        fvSource[cellI][1] = fvSource[cellI][1] * mag(axis[1]) * scaleAxial + fvSource[cellI][1] * mag(meshTanDir[cellI][1]) * scaleTangential;
-        fvSource[cellI][2] = fvSource[cellI][2] * mag(axis[2]) * scaleAxial + fvSource[cellI][2] * mag(meshTanDir[cellI][2]) * scaleTangential;
+        FatalErrorIn("") << "interpScheme not valid! Options: poly4Gauss or gauss"
+                         << abort(FatalError);
     }
 }
 
@@ -1947,7 +2119,7 @@ void DASolver::calcFvSource(
     // Allocate Arrays
     Field<scalar> aForceTemp(nPoints);
     Field<scalar> tForceTemp(nPoints);
-    List<scalar> rDistTemp(nPoints);
+    Field<scalar> rDistTemp(nPoints);
     List<scalar> targetForceTemp(2);
     Vector<scalar> centerTemp;
     volVectorField fvSourceTemp(
@@ -2046,7 +2218,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
 
     Field<scalar> aForceField(nPoints);
     Field<scalar> tForceField(nPoints);
-    List<scalar> rDistList(nPoints);
+    Field<scalar> rDistField(nPoints);
     List<scalar> targetForceList(2);
     vector centerVector = vector::zero;
 
@@ -2085,7 +2257,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     VecGetArray(rDist, &vecArrayRDist);
     for (label i = 0; i < nPoints; i++)
     {
-        rDistList[i] = vecArrayRDist[i];
+        rDistField[i] = vecArrayRDist[i];
     }
     VecRestoreArray(rDist, &vecArrayRDist);
 
@@ -2121,7 +2293,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     {
         for (label i = 0; i < nPoints; i++)
         {
-            this->globalADTape_.registerInput(rDistList[i]);
+            this->globalADTape_.registerInput(rDistField[i]);
         }
     }
     else if (mode == "targetForce")
@@ -2145,7 +2317,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     }
 
     // Step 3
-    this->calcFvSourceInternal(propName, aForceField, tForceField, rDistList, targetForceList, centerVector, fvSourceVField);
+    this->calcFvSourceInternal(propName, aForceField, tForceField, rDistField, targetForceList, centerVector, fvSourceVField);
 
     // Step 4
     forAll(fvSourceVField, i)
@@ -2188,9 +2360,9 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     }
     else if (mode == "rDist")
     {
-        forAll(rDistList, i)
+        forAll(rDistField, i)
         {
-            vecArrayProd[i] = rDistList[i].getGradient();
+            vecArrayProd[i] = rDistField[i].getGradient();
         }
     }
     else if (mode == "targetForce")
@@ -5103,7 +5275,6 @@ void DASolver::calcdRdThermalTPsiAD(
         thermalArray[i].setGradient(0.0);
     }
     this->setThermal(varName, thermalArray);
-
 
     delete[] thermalArray;
     delete[] volCoordsArray;

@@ -647,6 +647,7 @@ class DAOPTION(object):
                 "axis": [1.0, 0.0, 0.0],
                 "actEps": 0.02,
                 "rotDir": "right",
+                "interpScheme": "Poly4Gauss",
             },
         }
 
