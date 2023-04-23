@@ -84,8 +84,8 @@ daOptions = {
         "fvSource": {"designVarType": "Field", "fieldName": "fvSource", "fieldType": "vector"},
     },
     "wingProp": {
-        "prop1": {"active": True, "nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.2, "rotDir": "right"},
-        "prop2": {"active": True, "nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.2, "rotDir": "left"},
+        "prop1": {"active": True, "nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.2, "rotDir": "right", "interpScheme": "gauss"},
+        "prop2": {"active": True, "nForceSections": 10, "axis": [1.0, 0.0, 0.0], "actEps": 0.2, "rotDir": "left", "interpScheme": "poly4Gauss"},
     },
 }
 
