@@ -37,8 +37,26 @@ int main(int argc, char* argv[])
         "'(0 0 1)'",
         "Lift direction");
 
+    argList::addOption(
+        "time",
+        "1000",
+        "Tme instance to compute");
+
 #include "setRootCase.H"
 #include "createTime.H"
+
+    scalar time;
+    if (args.optionFound("time"))
+    {
+        time = readScalar(args.optionLookup("time")());
+    }
+    else
+    {
+        Info << "time not set! Exit." << endl;
+        return 1;
+    }
+    runTime.setTime(time, 0);
+
 #include "createMesh.H"
 #include "createFields.H"
 
@@ -50,7 +68,7 @@ int main(int argc, char* argv[])
     else
     {
         Info << "patchNames not set! Exit." << endl;
-        return 0;
+        return 1;
     }
 
     List<scalar> liftDir1;
@@ -61,7 +79,7 @@ int main(int argc, char* argv[])
     else
     {
         Info << "liftDir not set! Exit." << endl;
-        return 0;
+        return 1;
     }
     vector liftDir(vector::zero);
     liftDir.x() = liftDir1[0];
