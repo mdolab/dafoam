@@ -540,6 +540,7 @@ class DAOPTION(object):
             "fpMaxIters": 1000,
             "fpRelTol": 1e-6,
             "fpMinResTolDiff": 1.0e2,
+            "fpPCUpwind": False,
             "dynAdjustTol": True,
         }
 
