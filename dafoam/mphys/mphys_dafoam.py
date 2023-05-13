@@ -537,6 +537,9 @@ class DAFoamPostcouplingGroup(Group):
 
     def add_dv_func(self, dvName, dv_func):
         self.functionals.add_dv_func(dvName, dv_func)
+    
+    def mphys_set_options(self, options):
+        self.functionals.mphys_set_options(options)
 
 
 class DAFoamSolver(ImplicitComponent):
