@@ -74,20 +74,18 @@ void DAObjFuncPatchMean::calcObjFunc(
         objFuncValue: the sum of objective, reduced across all processors and scaled by "scale"
     */
 
-    // calculate the area of all the heat flux patches
-    if (areaSum_ < 0.0)
+    // calculate the area of all the patches. We need to recompute because the surface area 
+    // may change during the optimization
+    areaSum_ = 0.0;
+    forAll(objFuncFaceSources, idxI)
     {
-        areaSum_ = 0.0;
-        forAll(objFuncFaceSources, idxI)
-        {
-            const label& objFuncFaceI = objFuncFaceSources[idxI];
-            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
-            const label patchI = daIndex_.bFacePatchI[bFaceI];
-            const label faceI = daIndex_.bFaceFaceI[bFaceI];
-            areaSum_ += mesh_.magSf().boundaryField()[patchI][faceI];
-        }
-        reduce(areaSum_, sumOp<scalar>());
+        const label& objFuncFaceI = objFuncFaceSources[idxI];
+        label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+        const label patchI = daIndex_.bFacePatchI[bFaceI];
+        const label faceI = daIndex_.bFaceFaceI[bFaceI];
+        areaSum_ += mesh_.magSf().boundaryField()[patchI][faceI];
     }
+    reduce(areaSum_, sumOp<scalar>());
 
     // initialize objFunValue
     objFuncValue = 0.0;
