@@ -40,6 +40,7 @@ DAObjFuncMassFlowRate::DAObjFuncMassFlowRate(
     // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
+#ifdef CompressibleFlow
     // setup the connectivity for total pressure, this is needed in Foam::DAJacCondFdW
     word pName = "p";
     if (mesh_.thisDb().foundObject<volScalarField>("p_rgh"))
@@ -48,6 +49,11 @@ DAObjFuncMassFlowRate::DAObjFuncMassFlowRate(
     }
     // for pressureInlet velocity, U depends on phi
     objFuncConInfo_ = {{"U", "T", pName, "phi"}};
+#endif
+
+#ifdef IncompressibleFlow
+    objFuncConInfo_ = {{"U"}};
+#endif
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
 }

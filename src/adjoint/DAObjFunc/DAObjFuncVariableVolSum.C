@@ -49,6 +49,8 @@ DAObjFuncVariableVolSum::DAObjFuncVariableVolSum(
 
     objFuncDict_.readEntry<label>("isSquare", isSquare_);
 
+    objFuncDict_.readEntry<label>("divByTotalVol", divByTotalVol_);
+
     if (daIndex.adjStateNames.found(varName_))
     {
         objFuncConInfo_ = {{varName_}};
@@ -93,6 +95,17 @@ void DAObjFuncVariableVolSum::calcObjFunc(
     }
 
     const objectRegistry& db = mesh_.thisDb();
+
+    scalar totalVol = 1.0;
+
+    if (divByTotalVol_)
+    {
+        forAll(mesh_.cells(), cellI)
+        {
+            totalVol += mesh_.V()[cellI];
+        }
+        reduce(totalVol, sumOp<scalar>());
+    }
 
     if (varType_ == "scalar")
     {
@@ -141,6 +154,8 @@ void DAObjFuncVariableVolSum::calcObjFunc(
 
     // need to reduce the sum of force across all processors
     reduce(objFuncValue, sumOp<scalar>());
+
+    objFuncValue /= totalVol;
 
     return;
 }

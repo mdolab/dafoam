@@ -40,6 +40,7 @@ nuTilda0 = 4.5e-5
 A0 = 0.1
 alpha0 = 5.139186
 LRef = 1.0
+dp0 = 0
 
 # test incompressible solvers
 aeroOptions = {
@@ -54,6 +55,7 @@ aeroOptions = {
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
         "useWallFunction": True,
+        "fvSource": {"value": dp0, "comp": 0}
     },
     "objFunc": {
         "CD": {
@@ -109,6 +111,7 @@ aeroOptions = {
         "beta": {"designVarType": "Field", "fieldName": "betaFieldInversion", "fieldType": "scalar"},
         "alphaPorosity": {"designVarType": "Field", "fieldName": "alphaPorosity", "fieldType": "scalar"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+        "fvSource": {"designVarType": "BC", "comp": 0}
     },
 }
 
@@ -144,6 +147,11 @@ def alphaPorosity(val, geo):
         DASolver.setFieldValue4GlobalCellI(b"alphaPorosity", v, idxI)
         DASolver.updateBoundaryConditions(b"alphaPorosity", b"scalar")
 
+def fvSource(val, geo):
+    dp = float(val[0])
+    DASolver.setOption("primalBC", {"fvSource": {"value": dp, "comp": 0}})
+    DASolver.updateDAOption()
+
 # select points
 DVGeo.addGlobalDV("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
 nCells = 4032
@@ -152,6 +160,8 @@ DVGeo.addGlobalDV("beta", value=beta0, func=betaFieldInversion, lower=1e-5, uppe
 
 alphaPorosity0 = np.zeros(nCells, dtype="d")
 DVGeo.addGlobalDV("alphaPorosity", value=alphaPorosity0, func=alphaPorosity, lower=0, upper=100.0, scale=1.0)
+
+DVGeo.addGlobalDV("fvSource", value=[dp0], func=fvSource, lower=0.0, upper=10.0, scale=1.0)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
