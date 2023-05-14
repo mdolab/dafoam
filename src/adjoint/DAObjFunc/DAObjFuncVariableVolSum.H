@@ -41,6 +41,9 @@ protected:
     /// whether to take a square of the variable
     label isSquare_;
 
+    /// whether to normalize the volume sum with the total volume
+    label divByTotalVol_;
+
 public:
     TypeName("variableVolSum");
     // Constructors

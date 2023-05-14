@@ -3341,6 +3341,25 @@ void DASolver::calcdRdBCTPsiAD(
         // ******* now set BC ******
         omega = BC;
     }
+    else if (designVarName == "fvSource")
+    {
+        volVectorField& fvSource = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
+
+        label comp = dvSubDict.getLabel("comp");
+
+        BC = fvSource[0][comp];
+
+        this->globalADTape_.reset();
+        this->globalADTape_.setActive();
+        // register BC as the input
+        this->globalADTape_.registerInput(BC);
+        // ******* now set BC ******
+        forAll(fvSource, cellI)
+        {
+            fvSource[cellI][comp] = BC;
+        }
+    }
     else
     {
 
@@ -3551,6 +3570,15 @@ void DASolver::calcdFdBCAD(
         scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
         BC = omega;
     }
+    else if (designVarName == "fvSource")
+    {
+        volVectorField& fvSource = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
+
+        label comp = dvSubDict.getLabel("comp");
+
+        BC = fvSource[0][comp];
+    }
     else
     {
         // get info from dvSubDict. This needs to be defined in the pyDAFoam
@@ -3647,6 +3675,19 @@ void DASolver::calcdFdBCAD(
             // first, we get the current value of omega and assign it to BC
             scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
             omega = BC;
+        }
+        else if (designVarName == "fvSource")
+        {
+            volVectorField& fvSource = const_cast<volVectorField&>(
+                meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
+
+            label comp = dvSubDict.getLabel("comp");
+            
+            // ******* now set BC ******
+            forAll(fvSource, cellI)
+            {
+                fvSource[cellI][comp] = BC;
+            }
         }
         else
         {
