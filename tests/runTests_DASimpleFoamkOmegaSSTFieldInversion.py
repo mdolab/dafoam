@@ -40,7 +40,7 @@ nuTilda0 = 4.5e-5
 A0 = 0.1
 alpha0 = 5.139186
 LRef = 1.0
-dp0 = -1e-4
+dp0 = 0
 
 # test incompressible solvers
 aeroOptions = {
