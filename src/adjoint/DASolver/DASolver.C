@@ -39,7 +39,7 @@ DASolver::DASolver(
       daResidualPtr_(nullptr)
 #ifdef CODI_AD_REVERSE
       ,
-      globalADTape_(codi::RealReverse::getGlobalTape())
+      globalADTape_(codi::RealReverse::getTape())
 #endif
 {
     // initialize fvMesh and Time object pointer

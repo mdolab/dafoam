@@ -103,7 +103,7 @@ protected:
 
 #ifdef CODI_AD_REVERSE
     /// tape positions for consistent fixed-point adjoint
-    using Position = typename codi::RealReverse::TapeType::Position;
+    using Position = typename codi::RealReverse::Tape::Position;
     Position adjResStart_;
     Position adjResEnd_;
     Position gradPStart_;
