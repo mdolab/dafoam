@@ -25,6 +25,7 @@ class DAFoamBuilder(Builder):
         mesh_options=None,  # IDWarp options
         scenario="aerodynamic",  # scenario type to configure the groups
         prop_coupling=None,
+        use_pre_coupling=True,
         run_directory="",  # the directory to run this case in, default is the current directory
     ):
 
@@ -37,6 +38,9 @@ class DAFoamBuilder(Builder):
         else:
             self.mesh_options = mesh_options
 
+        # a flag to use preCoupling for mesh manipulation. If no design variables are mesh related,
+        # e.g., topology optimization, set it to False.
+        self.use_pre_coupling = use_pre_coupling
         # flag to determine if the mesh warping component is added
         # in the nonlinear solver loop (e.g. for aerostructural)
         # or as a preprocessing step like the surface mesh coordinates
@@ -106,9 +110,13 @@ class DAFoamBuilder(Builder):
         return DAFoamMesh(solver=self.DASolver)
 
     def get_pre_coupling_subsystem(self, scenario_name=None):
-        return DAFoamPrecouplingGroup(
-            solver=self.DASolver, warp_in_solver=self.warp_in_solver, thermal_coupling=self.thermal_coupling
-        )
+
+        if self.use_pre_coupling:
+            return DAFoamPrecouplingGroup(
+                solver=self.DASolver, warp_in_solver=self.warp_in_solver, thermal_coupling=self.thermal_coupling
+            )
+        else:
+            return None
 
     def get_post_coupling_subsystem(self, scenario_name=None):
         return DAFoamPostcouplingGroup(solver=self.DASolver)
@@ -537,7 +545,7 @@ class DAFoamPostcouplingGroup(Group):
 
     def add_dv_func(self, dvName, dv_func):
         self.functionals.add_dv_func(dvName, dv_func)
-    
+
     def mphys_set_options(self, options):
         self.functionals.mphys_set_options(options)
 
