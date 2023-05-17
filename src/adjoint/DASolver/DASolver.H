@@ -985,7 +985,7 @@ public:
 #ifdef CODI_AD_REVERSE
 
     /// global tape for reverse-mode AD
-    codi::RealReverse::TapeType& globalADTape_;
+    codi::RealReverse::Tape& globalADTape_;
 
 #endif
 };
