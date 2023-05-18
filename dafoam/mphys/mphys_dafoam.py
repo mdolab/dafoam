@@ -25,22 +25,15 @@ class DAFoamBuilder(Builder):
         mesh_options=None,  # IDWarp options
         scenario="aerodynamic",  # scenario type to configure the groups
         prop_coupling=None,
-        use_pre_coupling=True,
         run_directory="",  # the directory to run this case in, default is the current directory
     ):
 
         # options dictionary for DAFoam
         self.options = options
 
-        # mesh warping option
-        if mesh_options is None:
-            raise AnalysisError("mesh_options not found!")
-        else:
-            self.mesh_options = mesh_options
-
-        # a flag to use preCoupling for mesh manipulation. If no design variables are mesh related,
-        # e.g., topology optimization, set it to False.
-        self.use_pre_coupling = use_pre_coupling
+        # mesh warping option. If no design variables are mesh related,
+        # e.g., topology optimization, set it to None.
+        self.mesh_options = mesh_options
         # flag to determine if the mesh warping component is added
         # in the nonlinear solver loop (e.g. for aerostructural)
         # or as a preprocessing step like the surface mesh coordinates
@@ -83,10 +76,11 @@ class DAFoamBuilder(Builder):
         with cd(self.run_directory):
             # initialize the PYDAFOAM class, defined in pyDAFoam.py
             self.DASolver = PYDAFOAM(options=self.options, comm=comm)
-            # always set the mesh
-            mesh = USMesh(options=self.mesh_options, comm=comm)
-            self.DASolver.setMesh(mesh)  # add the design surface family group
-            self.DASolver.printFamilyList()
+            if self.mesh_options is not None:
+                # always set the mesh
+                mesh = USMesh(options=self.mesh_options, comm=comm)
+                self.DASolver.setMesh(mesh)  # add the design surface family group
+                self.DASolver.printFamilyList()
 
     def get_solver(self):
         # this method is only used by the RLT transfer scheme
@@ -111,12 +105,12 @@ class DAFoamBuilder(Builder):
 
     def get_pre_coupling_subsystem(self, scenario_name=None):
 
-        if self.use_pre_coupling:
+        if self.mesh_options is None:
+            return None
+        else:
             return DAFoamPrecouplingGroup(
                 solver=self.DASolver, warp_in_solver=self.warp_in_solver, thermal_coupling=self.thermal_coupling
             )
-        else:
-            return None
 
     def get_post_coupling_subsystem(self, scenario_name=None):
         return DAFoamPostcouplingGroup(solver=self.DASolver)
