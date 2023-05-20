@@ -838,45 +838,8 @@ void DAkOmegaSSTFIML::correct()
     solveTurbState_ = 0;
 }
 
-void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)
+void DAkOmegaSSTFIML::calcBetaField()
 {
-    /*
-    Descroption:
-        If solveTurbState_ == 1, this function solve and update k and omega, and 
-        is the same as calling turbulence.correct(). If solveTurbState_ == 0,
-        this function compute residuals for turbulence variables, e.g., nuTildaRes_
-
-    Input:
-        options.isPC: 1 means computing residuals for preconditioner matrix.
-        This essentially use the first order scheme for div(phi,nuTilda)
-
-        p_, U_, phi_, etc: State variables in OpenFOAM
-    
-    Output:
-        kRes_/omegaRes_: If solveTurbState_ == 0, update the residual field variable
-
-        k_/omega_: If solveTurbState_ == 1, update them
-    */
-
-    // Copy and modify based on the "correct" function
-
-    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
-
-    word divKScheme = "div(phi,k)";
-    word divOmegaScheme = "div(phi,omega)";
-
-    label isPC = 0;
-
-    if (!solveTurbState_)
-    {
-        isPC = options.getLabel("isPC");
-
-        if (isPC)
-        {
-            divKScheme = "div(pc)";
-            divOmegaScheme = "div(pc)";
-        }
-    }
 
     // Read scaling parameters (do we need to scale?)
     RectangularMatrix<doubleScalar> meanStdVals(IFstream("means")());
@@ -1044,6 +1007,49 @@ void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)
     }
 
     // *********** TURBULENCE MODEL FUNCTIONS ***********
+}
+
+void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)
+{
+    /*
+    Descroption:
+        If solveTurbState_ == 1, this function solve and update k and omega, and 
+        is the same as calling turbulence.correct(). If solveTurbState_ == 0,
+        this function compute residuals for turbulence variables, e.g., nuTildaRes_
+
+    Input:
+        options.isPC: 1 means computing residuals for preconditioner matrix.
+        This essentially use the first order scheme for div(phi,nuTilda)
+
+        p_, U_, phi_, etc: State variables in OpenFOAM
+    
+    Output:
+        kRes_/omegaRes_: If solveTurbState_ == 0, update the residual field variable
+
+        k_/omega_: If solveTurbState_ == 1, update them
+    */
+
+    // Copy and modify based on the "correct" function
+
+    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
+
+    word divKScheme = "div(phi,k)";
+    word divOmegaScheme = "div(phi,omega)";
+
+    label isPC = 0;
+
+    if (!solveTurbState_)
+    {
+        isPC = options.getLabel("isPC");
+
+        if (isPC)
+        {
+            divKScheme = "div(pc)";
+            divOmegaScheme = "div(pc)";
+        }
+    }
+
+    this->calcBetaField();
 
     // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
     // while for the incompresssible "this->phi()" returns phi only

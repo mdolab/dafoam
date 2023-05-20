@@ -81,6 +81,8 @@ protected:
     TF_Output input_ph_;
     TF_Output output_;
 
+    void calcBetaField();
+
     /// \name SST functions
     //@{
     tmp<volScalarField> F1(const volScalarField& CDkOmega) const;
