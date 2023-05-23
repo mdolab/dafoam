@@ -15,17 +15,13 @@ gcomm = MPI.COMM_WORLD
 if gcomm.rank == 0:
     os.system("rm -rf processor*")
 
-dp0 = 6.8685e-06
 
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DASimpleFoam",
     "useAD": {"mode": "reverse"},
-    "printInterval": 10,
+    "printInterval": 100,
     "primalMinResTol": 1e-3,
-    "primalBC": {
-        "fvSource": {"value": dp0, "comp": 0},
-    },
     "tensorflow": {
         "active": True,
         "modelName": "model",
@@ -55,6 +51,13 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+    },
+    "fvSource": {
+        "gradP": {
+            "type": "uniformPressureGradient",
+            "value": 6.8685e-06,
+            "direction": [1.0, 0.0, 0.0],
+        }
     },
 }
 

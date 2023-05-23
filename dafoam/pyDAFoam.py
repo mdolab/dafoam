@@ -666,6 +666,7 @@ class DAOPTION(object):
             "modelName": "model",
             "nInputs": 1,
             "nOutputs": 1,
+            "batchSize": 1000,
         }
 
 
@@ -4095,7 +4096,11 @@ class TensorFlowHelper:
         TensorFlowHelper.modelName = TensorFlowHelper.options["modelName"]
         TensorFlowHelper.nInputs = TensorFlowHelper.options["nInputs"]
         TensorFlowHelper.nOutputs = TensorFlowHelper.options["nOutputs"]
+        TensorFlowHelper.batchSize = TensorFlowHelper.options["batchSize"]
         TensorFlowHelper.model = tf.keras.models.load_model(TensorFlowHelper.modelName)
+
+        if TensorFlowHelper.nOutputs != 1:
+            raise Error("current version supports nOutputs=1 only!")
 
     @staticmethod
     def predict(inputs, n, outputs, m):
@@ -4104,11 +4109,26 @@ class TensorFlowHelper:
         """
 
         inputs_tf = np.reshape(inputs, (-1, TensorFlowHelper.nInputs))
-        outputs_tf = TensorFlowHelper.model.predict(inputs_tf, verbose=False)
+        outputs_tf = TensorFlowHelper.model.predict(inputs_tf, verbose=False, batch_size=TensorFlowHelper.batchSize)
 
-        nSamples = m // TensorFlowHelper.nOutputs
-        counterI = 0
-        for i in range(nSamples):
-            for j in range(TensorFlowHelper.nOutputs):
-                outputs[counterI] = outputs_tf[i, j]
-                counterI += 1
+        for i in range(m):
+            outputs[i] = outputs_tf[i, 0]
+    
+    @staticmethod
+    def gradient(inputs, n, gradients, m):
+        """
+        Calculate the gradients of the outputs wrt the inputs
+        """
+
+        inputs_tf = np.reshape(inputs, (-1, TensorFlowHelper.nInputs))
+        inputs_tf_var = tf.Variable(inputs_tf, dtype=tf.float32)
+
+        with tf.GradientTape() as tape:
+            outputs_tf = TensorFlowHelper.model(inputs_tf_var)
+        
+        gradients_tf = tape.gradient(outputs_tf, inputs_tf_var)
+
+        for i in range(m):
+            gradients[i] = gradients_tf[i, 0]
+
+

@@ -826,8 +826,6 @@ void DAkOmegaSSTFIML::correct()
 
 void DAkOmegaSSTFIML::calcBetaField()
 {
-    label numInputs = 9;
-    label numOutputs = 1;
 
     // COMPUTE MACHINE LEARNING FEATURES
     //////////////////////////Q-criterion//////////////////////////////////
@@ -892,8 +890,8 @@ void DAkOmegaSSTFIML::calcBetaField()
             / (mag(U_[cI]) * mag(UGrad[cI] & U_[cI]) + mag(U_[cI] & UGrad[cI] & U_[cI]));
     }
 
-    label n = numInputs * mesh_.nCells();
-    label m = mesh_.nCells();
+    label n = numInputs_ * mesh_.nCells();
+    label m = numOutputs_ * mesh_.nCells();
 
     forAll(mesh_.cells(), cI)
     {

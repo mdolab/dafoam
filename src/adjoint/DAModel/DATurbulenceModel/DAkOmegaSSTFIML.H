@@ -74,8 +74,11 @@ protected:
     Switch F3_;
     //@}
 
-    double* inputs_ = new double[mesh_.nCells() * 9];
-    double* outputs_ = new double[mesh_.nCells()];
+    label numInputs_ = 9;
+    label numOutputs_ = 1;
+
+    double* inputs_ = new double[mesh_.nCells() * numInputs_];
+    double* outputs_ = new double[mesh_.nCells() * numOutputs_];
 
     void calcBetaField();
 

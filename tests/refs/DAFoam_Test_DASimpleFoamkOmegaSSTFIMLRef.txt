@@ -1,6 +1,6 @@
 Dictionary Key: CD
-@value   0.0138653465262485 1e-06 1e-10
+@value  0.01630446133476088 1e-06 1e-10
 Dictionary Key: CL
-@value -0.01209632666782717 1e-06 1e-10
+@value  0.05822004426191109 1e-06 1e-10
 Dictionary Key: fail
-@value                    0 1e-06 1e-10
+@value                    0 1e-08 1e-10
