@@ -992,10 +992,11 @@ public:
     {
         pyCalcBetaInterface_ = interface;
         pyCalcBeta_ = func;
-
+#ifndef SolidDASolver
         // pass these two pointers to the DATurb class
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
         daTurb.initTensorFlowFuncs(interface, func);
+#endif
     }
 
 #ifdef CODI_AD_REVERSE
