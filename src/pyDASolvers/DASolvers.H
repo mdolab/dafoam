@@ -799,6 +799,20 @@ public:
     {
         return DASolverPtr_->runFPAdj(xvVec, wVec, dFdW, psi);
     }
+
+    /// initialize the call back function pointer
+    void initTensorFlowFuncs(pyCalcBetaInterface interface, void* func)
+    {
+        DASolverPtr_->initTensorFlowFuncs(interface, func);
+    }
+
+    /*
+    void pyCalcBeta()
+    {
+        DASolverPtr_->pyCalcBeta();
+    }
+    */
+
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

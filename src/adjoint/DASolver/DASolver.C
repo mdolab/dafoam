@@ -3682,7 +3682,7 @@ void DASolver::calcdFdBCAD(
                 meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
 
             label comp = dvSubDict.getLabel("comp");
-            
+
             // ******* now set BC ******
             forAll(fvSource, cellI)
             {

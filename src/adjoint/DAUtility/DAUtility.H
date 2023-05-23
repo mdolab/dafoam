@@ -24,6 +24,8 @@
 namespace Foam
 {
 
+typedef void (*pyCalcBetaInterface)(double*, int, double*, int, void* userFunc);
+
 /*---------------------------------------------------------------------------*\
                        Class DAUtility Declaration
 \*---------------------------------------------------------------------------*/

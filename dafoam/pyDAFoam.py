@@ -25,6 +25,10 @@ import petsc4py
 from petsc4py import PETSc
 
 petsc4py.init(sys.argv)
+try:
+    import tensorflow as tf
+except ImportError:
+    pass
 
 
 class DAOPTION(object):
@@ -656,6 +660,14 @@ class DAOPTION(object):
         ## has reduced below the tolerance. The default is a negative value (always satisfied).
         self.primalMinIters = -1
 
+        ## tensorflow related functions
+        self.tensorflow = {
+            "active": False,
+            "modelName": "model",
+            "nInputs": 1,
+            "nOutputs": 1,
+        }
+
 
 class PYDAFOAM(object):
 
@@ -827,6 +839,12 @@ class PYDAFOAM(object):
 
         # initialize the dRdWOldTPsi vectors
         self._initializeTimeAccurateAdjointVectors()
+
+        if self.getOption("tensorflow")["active"]:
+            TensorFlowHelper.options = self.getOption("tensorflow")
+            TensorFlowHelper.initialize()
+            # pass this helper function to the C++ layer
+            self.solver.initTensorFlowFuncs(TensorFlowHelper.predict)
 
         Info("pyDAFoam initialization done!")
 
@@ -4056,3 +4074,41 @@ class Info(object):
         if MPI.COMM_WORLD.rank == 0:
             print(message, flush=True)
         MPI.COMM_WORLD.Barrier()
+
+
+class TensorFlowHelper:
+    """
+    TensorFlow helper class.
+    NOTE: this is a static class
+    """
+
+    options = {}
+
+    model = None
+
+    @staticmethod
+    def initialize():
+        """
+        Initialize parameters and load models
+        """
+        Info("Initializing the TensorFlowHelper")
+        TensorFlowHelper.modelName = TensorFlowHelper.options["modelName"]
+        TensorFlowHelper.nInputs = TensorFlowHelper.options["nInputs"]
+        TensorFlowHelper.nOutputs = TensorFlowHelper.options["nOutputs"]
+        TensorFlowHelper.model = tf.keras.models.load_model(TensorFlowHelper.modelName)
+
+    @staticmethod
+    def predict(inputs, n, outputs, m):
+        """
+        Calculate the outputs based on the inputs using the saved model
+        """
+
+        inputs_tf = np.reshape(inputs, (-1, TensorFlowHelper.nInputs))
+        outputs_tf = TensorFlowHelper.model.predict(inputs_tf, verbose=False)
+
+        nSamples = m // TensorFlowHelper.nOutputs
+        counterI = 0
+        for i in range(nSamples):
+            for j in range(TensorFlowHelper.nOutputs):
+                outputs[counterI] = outputs_tf[i, j]
+                counterI += 1

@@ -37,8 +37,6 @@
 
 #include "DATurbulenceModel.H"
 #include "addToRunTimeSelectionTable.H"
-// Loads in tensorflow functionality
-#include "tf_utils.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -76,10 +74,8 @@ protected:
     Switch F3_;
     //@}
 
-    // Tensorflow graph operations - protected members of this class - top three not used in constructor definition since they don't have default values
-    TF_Graph* graph_;
-    TF_Output input_ph_;
-    TF_Output output_;
+    double* inputs_ = new double[mesh_.nCells() * 9];
+    double* outputs_ = new double[mesh_.nCells()];
 
     void calcBetaField();
 
@@ -235,6 +231,8 @@ public:
     //- Destructor
     virtual ~DAkOmegaSSTFIML()
     {
+        delete[] inputs_;
+        delete[] outputs_;
     }
 
     // Member functions

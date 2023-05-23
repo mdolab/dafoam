@@ -15,6 +15,19 @@
 # for using Petsc
 from petsc4py.PETSc cimport Vec, PetscVec, Mat, PetscMat, KSP, PetscKSP
 cimport numpy as np
+np.import_array() # initialize C API to call PyArray_SimpleNewFromData
+
+cdef public api CPointerToPyArray(double* data, int size) with gil:
+    if not (data and size >= 0): raise ValueError
+    cdef np.npy_intp dims = size
+    return np.PyArray_SimpleNewFromData(1, &dims, np.NPY_DOUBLE, <void*>data)
+
+ctypedef void (*pyCalcBetaInterface)(double *, int, double *, int, void *)
+
+cdef void pyCalcBetaCallBack(double* inputs, int n, double* outputs, int m, void *func):
+    inputs_data = CPointerToPyArray(inputs, n)
+    outputs_data = CPointerToPyArray(outputs, m)
+    (<object>func)(inputs_data, n, outputs_data, m)
 
 # declare cpp functions
 cdef extern from "DASolvers.H" namespace "Foam":
@@ -107,6 +120,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcForceProfile(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
         int runFPAdj(PetscVec, PetscVec, PetscVec, PetscVec)
+        void initTensorFlowFuncs(pyCalcBetaInterface, void *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -500,3 +514,6 @@ cdef class pyDASolvers:
     
     def runFPAdj(self, Vec xvVec, Vec wVec, Vec dFdW, Vec psi):
         return self._thisptr.runFPAdj(xvVec.vec, wVec.vec, dFdW.vec, psi.vec)
+    
+    def initTensorFlowFuncs(self, func):
+        self._thisptr.initTensorFlowFuncs(pyCalcBetaCallBack, <void*>func)
