@@ -809,7 +809,6 @@ public:
 
     void calcForceProfileInternal(
         const word propName,
-        fvMesh& mesh,
         const vector& center,
         scalarList& aForce,
         scalarList& tForce,

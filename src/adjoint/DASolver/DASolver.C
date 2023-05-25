@@ -1548,7 +1548,6 @@ void DASolver::calcForceProfile(
     // label nPoints = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
     const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
     label nPoints = propSubDict.getLabel("nForceSections");
-    fvMesh& mesh = meshPtr_();
 
     // Allocate Arrays
     Vector<scalar> centerTemp;
@@ -1566,7 +1565,7 @@ void DASolver::calcForceProfile(
     centerTemp[2] = vecArrayCenter[2];
 
     // Compute force profiles
-    this->calcForceProfileInternal(propName, mesh, centerTemp, aForceTemp, tForceTemp, rDistTemp);
+    this->calcForceProfileInternal(propName, centerTemp, aForceTemp, tForceTemp, rDistTemp);
 
     VecZeroEntries(aForce);
     PetscScalar* vecArrayAForce;
@@ -1603,7 +1602,6 @@ void DASolver::calcForceProfile(
 
 void DASolver::calcForceProfileInternal(
     const word propName,
-    fvMesh& mesh,
     const vector& center,
     scalarList& aForce,
     scalarList& tForce,
@@ -1616,8 +1614,9 @@ void DASolver::calcForceProfileInternal(
 
     const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
     label sections = propSubDict.getLabel("nForceSections");
-    //scalar sections = daOptionPtr_->getSubDictOption<scalar>("wingProp", "nForceSections");
-    //scalarList axisDummy = daOptionPtr_->getSubDictOption<scalarList>("wingProp", "axis");
+
+    fvMesh& mesh = meshPtr_();
+
     scalarList axisDummy;
     propSubDict.readEntry<scalarList>("axis", axisDummy);
     vector axis;
@@ -1636,7 +1635,7 @@ void DASolver::calcForceProfileInternal(
     const volScalarField &p = mesh.thisDb().lookupObject<volScalarField>("p");
 
     // name of the blade
-    word bladePatchName = "propeller";
+    word bladePatchName = "blade";
 
     // find the patch ID of the blade surface
     label bladePatchI = mesh.boundaryMesh().findPatchID(bladePatchName);
@@ -1696,6 +1695,9 @@ void DASolver::calcForceProfileInternal(
     scalarList tangtForce = axialForce;
     scalarList radialDist = axialForce;
     scalarList counter = axialForce;
+    scalarList areaCounter = axialForce;
+    scalarList axialForce2 = axialForce;
+    scalarList tangtForce2 = axialForce;
 
     // sectional radius computation
     scalar sectRad = (maxRadius - minRadius) / sections;
@@ -1715,10 +1717,44 @@ void DASolver::calcForceProfileInternal(
         }
 
         // pressure direction is opposite of the surface normal
-        axialForce[quot] = axialForce[quot] - (mesh.Sf().boundaryField()[bladePatchI][faceI] & axis) * p.boundaryField()[bladePatchI][faceI] / sectRad;
-        tangtForce[quot] = tangtForce[quot] - (mesh.Sf().boundaryField()[bladePatchI][faceI] & meshTanDir[faceI]) * p.boundaryField()[bladePatchI][faceI] / sectRad;
         counter[quot] = counter[quot] + 1;
+        axialForce[quot] = axialForce[quot] - (mesh.Sf().boundaryField()[bladePatchI][faceI] & axis) * p.boundaryField()[bladePatchI][faceI];
+        tangtForce[quot] = tangtForce[quot] - (mesh.Sf().boundaryField()[bladePatchI][faceI] & meshTanDir[faceI]) * p.boundaryField()[bladePatchI][faceI];
+        areaCounter[quot] = areaCounter[quot] + mesh.magSf().boundaryField()[bladePatchI][faceI];
     }
+
+    forAll(counter, index)
+    {
+        axialForce[index] = axialForce[index] / areaCounter[index];
+        tangtForce[index] = tangtForce[index] / areaCounter[index];
+    }
+
+#ifndef SolidDASolver
+
+    DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+    tmp<volSymmTensorField> tdevRhoReff = daTurb.devRhoReff();
+    const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
+
+    forAll(p.boundaryField()[bladePatchI], faceI)
+    {
+        // finding the section of the cell
+        quot = floor((radiiCell[faceI] - minRadius) / sectRad);
+        if (quot == sections)
+        {
+            quot = quot - 1;
+        }
+        vector fT(mesh.Sf().boundaryField()[bladePatchI][faceI] & devRhoReffb[bladePatchI][faceI]);
+        axialForce2[quot] = axialForce2[quot] + (fT & axis);
+        tangtForce2[quot] = tangtForce2[quot] + (fT & meshTanDir[faceI]);
+    }
+    forAll(counter, index)
+    {
+        axialForce[index] = axialForce[index] + axialForce2[index] / areaCounter[index];
+        tangtForce[index] = tangtForce[index] + tangtForce2[index] / areaCounter[index];
+    }
+
+#endif
+
     aForce = axialForce;
     tForce = tangtForce;
     rDist = radialDist;
