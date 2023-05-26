@@ -111,8 +111,8 @@ case $argm in
     runTests DAPisoFoamACTL
     runTests DAPimpleFoam
     runTests DAPimpleDyMFoam
-    if [ -n "$TENSOR_FLOW_INCLUDE_PATH" ]; then
-      runTests DASimpleFoamkOmegaSSTFIML
+    if python -c "import tensorflow" &> /dev/null; then
+        runTests DASimpleFoamkOmegaSSTFIML
     fi
     runTests DARhoSimpleFoam
     runTests DARhoSimpleFoamUBend
@@ -164,8 +164,8 @@ case $argm in
     runTests DAPisoFoamACTL
     runTests DAPimpleFoam
     runTests DAPimpleDyMFoam
-    if [ -n "$TENSOR_FLOW_INCLUDE_PATH" ]; then
-      runTests DASimpleFoamkOmegaSSTFIML
+    if python -c "import tensorflow" &> /dev/null; then
+        runTests DASimpleFoamkOmegaSSTFIML
     fi
     echo " "
     echo "************************************************************"

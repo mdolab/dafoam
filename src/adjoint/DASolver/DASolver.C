@@ -12,6 +12,13 @@
 // computation for AOA and BC derivatives
 scalar Foam::DAUtility::angleOfAttackRadForwardAD = -9999.0;
 
+// initialize the python call back function static pointers
+void* Foam::DAUtility::pyCalcBeta = NULL;
+pyComputeInterface Foam::DAUtility::pyCalcBetaInterface = NULL;
+
+void* Foam::DAUtility::pyCalcBetaJacVecProd = NULL;
+pyJacVecProdInterface Foam::DAUtility::pyCalcBetaJacVecProdInterface = NULL;
+
 namespace Foam
 {
 
@@ -3682,7 +3689,7 @@ void DASolver::calcdFdBCAD(
                 meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
 
             label comp = dvSubDict.getLabel("comp");
-            
+
             // ******* now set BC ******
             forAll(fvSource, cellI)
             {

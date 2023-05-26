@@ -24,6 +24,9 @@
 namespace Foam
 {
 
+typedef void (*pyComputeInterface)(const double*, int, double*, int, void*);
+typedef void (*pyJacVecProdInterface)(const double*, double*, int, const double*, const double*, int, void*);
+
 /*---------------------------------------------------------------------------*\
                        Class DAUtility Declaration
 \*---------------------------------------------------------------------------*/
@@ -121,6 +124,13 @@ public:
 
     /// angle of attack in radian used in forward mode AD
     static scalar angleOfAttackRadForwardAD;
+
+    /// define a function pointer template for Python call back
+    static void* pyCalcBeta;
+    static pyComputeInterface pyCalcBetaInterface;
+
+    static void* pyCalcBetaJacVecProd;
+    static pyJacVecProdInterface pyCalcBetaJacVecProdInterface;
 };
 
 template<class classType>
