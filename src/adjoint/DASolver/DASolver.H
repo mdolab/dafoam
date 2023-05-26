@@ -982,21 +982,18 @@ public:
     /// write the failed mesh to disk
     void writeFailedMesh();
 
-    /// define a function pointer template for Python call back
-    /// Python call back function for calculating the beta field
-    void* pyCalcBeta_;
-    pyCalcBetaInterface pyCalcBetaInterface_;
-
     /// initialize tensorflow functions and interfaces for callback
-    void initTensorFlowFuncs(pyCalcBetaInterface interface, void* func)
+    void initTensorFlowFuncs(
+        pyComputeInterface computeInterface, 
+        void* compute,
+        pyJacVecProdInterface jacVecProdInterface,
+        void* jacVecProd)
     {
-        pyCalcBetaInterface_ = interface;
-        pyCalcBeta_ = func;
-#ifndef SolidDASolver
-        // pass these two pointers to the DATurb class
-        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
-        daTurb.initTensorFlowFuncs(interface, func);
-#endif
+        DAUtility::pyCalcBetaInterface = computeInterface;
+        DAUtility::pyCalcBeta = compute;
+
+        DAUtility::pyCalcBetaJacVecProdInterface = jacVecProdInterface;
+        DAUtility::pyCalcBetaJacVecProd = jacVecProd;
     }
 
 #ifdef CODI_AD_REVERSE

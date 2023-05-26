@@ -801,18 +801,14 @@ public:
     }
 
     /// initialize the call back function pointer
-    void initTensorFlowFuncs(pyCalcBetaInterface interface, void* func)
+    void initTensorFlowFuncs(
+        pyComputeInterface computeInterface, 
+        void* compute,
+        pyJacVecProdInterface jacVecProdInterface,
+        void* jacVecProd)
     {
-        DASolverPtr_->initTensorFlowFuncs(interface, func);
+        DASolverPtr_->initTensorFlowFuncs(computeInterface, compute, jacVecProdInterface, jacVecProd);
     }
-
-    /*
-    void pyCalcBeta()
-    {
-        DASolverPtr_->pyCalcBeta();
-    }
-    */
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

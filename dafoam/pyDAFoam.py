@@ -845,7 +845,9 @@ class PYDAFOAM(object):
             TensorFlowHelper.options = self.getOption("tensorflow")
             TensorFlowHelper.initialize()
             # pass this helper function to the C++ layer
-            self.solver.initTensorFlowFuncs(TensorFlowHelper.predict)
+            self.solver.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd)
+            if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+                self.solverAD.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd)
 
         Info("pyDAFoam initialization done!")
 
@@ -4080,7 +4082,8 @@ class Info(object):
 class TensorFlowHelper:
     """
     TensorFlow helper class.
-    NOTE: this is a static class
+    NOTE: this is a static class because the callback function
+    does not accept non-static class members (seg fault)
     """
 
     options = {}
@@ -4113,9 +4116,9 @@ class TensorFlowHelper:
 
         for i in range(m):
             outputs[i] = outputs_tf[i, 0]
-    
+
     @staticmethod
-    def gradient(inputs, n, gradients, m):
+    def calcJacVecProd(inputs, inputs_b, n, outputs, outputs_b, m):
         """
         Calculate the gradients of the outputs wrt the inputs
         """
@@ -4125,10 +4128,10 @@ class TensorFlowHelper:
 
         with tf.GradientTape() as tape:
             outputs_tf = TensorFlowHelper.model(inputs_tf_var)
-        
+
         gradients_tf = tape.gradient(outputs_tf, inputs_tf_var)
 
-        for i in range(m):
-            gradients[i] = gradients_tf[i, 0]
-
-
+        for i in range(gradients_tf.shape[0]):
+            for j in range(gradients_tf.shape[1]):
+                idx = i * gradients_tf.shape[1] + j
+                inputs_b[idx] = gradients_tf.numpy()[i, j] * outputs_b[i]

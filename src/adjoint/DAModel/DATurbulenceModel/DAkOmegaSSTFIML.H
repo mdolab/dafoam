@@ -74,12 +74,11 @@ protected:
     Switch F3_;
     //@}
 
-    label numInputs_ = 9;
-    label numOutputs_ = 1;
+    /// inputs and outputs for the beta calculation
+    scalar* inputs_ = new scalar[mesh_.nCells() * 9];
+    scalar* outputs_ = new scalar[mesh_.nCells()];
 
-    double* inputs_ = new double[mesh_.nCells() * numInputs_];
-    double* outputs_ = new double[mesh_.nCells() * numOutputs_];
-
+    /// calculate the beta field using the trained model
     void calcBetaField();
 
     /// \name SST functions
@@ -272,6 +271,32 @@ public:
 
     /// specially treatment to correct epsilon BC
     void correctOmegaBoundaryConditions();
+
+#ifdef CODI_AD_REVERSE
+
+    /// these two functions are for AD external functions
+    static void betaCompute(
+        const double* x,
+        size_t n,
+        double* y,
+        size_t m,
+        codi::ExternalFunctionUserData* d)
+    {
+        DAUtility::pyCalcBetaInterface(x, n, y, m, DAUtility::pyCalcBeta);
+    }
+
+    static void betaJacVecProd(
+        const double* x,
+        double* x_b,
+        size_t n,
+        const double* y,
+        const double* y_b,
+        size_t m,
+        codi::ExternalFunctionUserData* d)
+    {
+        DAUtility::pyCalcBetaJacVecProdInterface(x, x_b, n, y, y_b, m, DAUtility::pyCalcBetaJacVecProd);
+    }
+#endif
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -890,29 +890,64 @@ void DAkOmegaSSTFIML::calcBetaField()
             / (mag(U_[cI]) * mag(UGrad[cI] & U_[cI]) + mag(U_[cI] & UGrad[cI] & U_[cI]));
     }
 
-    label n = numInputs_ * mesh_.nCells();
-    label m = numOutputs_ * mesh_.nCells();
+    label n = 9 * mesh_.nCells();
+    label m = mesh_.nCells();
 
     forAll(mesh_.cells(), cI)
     {
-        assignValueCheckAD(inputs_[cI * 9 + 0], QCriterion_[cI]);
-        assignValueCheckAD(inputs_[cI * 9 + 1], UGradMisalignment_[cI]);
-        assignValueCheckAD(inputs_[cI * 9 + 2], pGradAlongStream_[cI]);
-        assignValueCheckAD(inputs_[cI * 9 + 3], turbulenceIntensity_[cI]);
-        assignValueCheckAD(inputs_[cI * 9 + 4], ReT_[cI]);
-        assignValueCheckAD(inputs_[cI * 9 + 5], convectionTKE_[cI]);
-        assignValueCheckAD(inputs_[cI * 9 + 6], curvature_[cI]);
-        assignValueCheckAD(inputs_[cI * 9 + 7], pressureStress_[cI]);
-        assignValueCheckAD(inputs_[cI * 9 + 8], tauRatio_[cI]);
+        inputs_[cI * 9 + 0] = QCriterion_[cI];
+        inputs_[cI * 9 + 1] = UGradMisalignment_[cI];
+        inputs_[cI * 9 + 2] = pGradAlongStream_[cI];
+        inputs_[cI * 9 + 3] = turbulenceIntensity_[cI];
+        inputs_[cI * 9 + 4] = ReT_[cI];
+        inputs_[cI * 9 + 5] = convectionTKE_[cI];
+        inputs_[cI * 9 + 6] = curvature_[cI];
+        inputs_[cI * 9 + 7] = pressureStress_[cI];
+        inputs_[cI * 9 + 8] = tauRatio_[cI];
     }
 
-    // python callback function
-    this->pyCalcBetaInterface_(inputs_, n, outputs_, m, this->pyCalcBeta_);
+    // NOTE: forward mode not supported..
+#ifdef CODI_AD_REVERSE
+
+    // we need to use the external function helper from CoDiPack to propagate the AD
+
+    codi::ExternalFunctionHelper<codi::RealReverse> externalFunc;
+    for (label i = 0; i < mesh_.nCells() * 9; i++)
+    {
+        externalFunc.addInput(inputs_[i]);
+    }
+
+    for (label i = 0; i < mesh_.nCells(); i++)
+    {
+        externalFunc.addOutput(outputs_[i]);
+    }
+
+    externalFunc.callPrimalFunc(DAkOmegaSSTFIML::betaCompute);
+
+
+    codi::RealReverse::Tape& tape = codi::RealReverse::getTape();
+
+    if (tape.isActive())
+    {
+        externalFunc.addToTape(DAkOmegaSSTFIML::betaJacVecProd);
+    }
 
     forAll(betaFieldInversionML_, cellI)
     {
         betaFieldInversionML_[cellI] = outputs_[cellI];
     }
+
+#else
+
+    // python callback function
+    DAUtility::pyCalcBetaInterface(inputs_, n, outputs_, m, DAUtility::pyCalcBeta);
+
+    forAll(betaFieldInversionML_, cellI)
+    {
+        betaFieldInversionML_[cellI] = outputs_[cellI];
+    }
+
+#endif
 }
 
 void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)

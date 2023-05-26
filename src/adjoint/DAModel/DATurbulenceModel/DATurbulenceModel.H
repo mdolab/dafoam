@@ -144,10 +144,6 @@ protected:
     /// turbulent Prandtl number
     scalar Prt_ = -9999.0;
 
-    /// tensorflow callback function
-    void* pyCalcBeta_;
-    pyCalcBetaInterface pyCalcBetaInterface_;
-
 public:
     //- Runtime type information
     TypeName("DATurbulenceModel");
@@ -300,13 +296,6 @@ public:
 
     /// calculate the turbulence residual using LDU matrix
     virtual void calcLduResidualTurb(volScalarField& nuTildaRes);
-
-    /// initialize tensorflow functions and interfaces for callback
-    void initTensorFlowFuncs(pyCalcBetaInterface interface, void* func)
-    {
-        pyCalcBetaInterface_ = interface;
-        pyCalcBeta_ = func;
-    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
