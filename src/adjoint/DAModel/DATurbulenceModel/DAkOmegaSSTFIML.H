@@ -78,6 +78,11 @@ protected:
     scalar* inputs_ = new scalar[mesh_.nCells() * 9];
     scalar* outputs_ = new scalar[mesh_.nCells()];
 
+#ifdef CODI_AD_FORWARD
+    double* inputsDouble_ = new double[mesh_.nCells() * 9];
+    double* outputsDouble_ = new double[mesh_.nCells()];
+#endif
+
     /// calculate the beta field using the trained model
     void calcBetaField();
 
@@ -235,6 +240,10 @@ public:
     {
         delete[] inputs_;
         delete[] outputs_;
+#ifdef CODI_AD_FORWARD
+        delete[] inputsDouble_;
+        delete[] outputsDouble_;
+#endif
     }
 
     // Member functions

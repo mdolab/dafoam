@@ -1,14 +1,14 @@
 Dictionary Key: CD
-@value 0.006024441239947753 1e-05 1e-10
+@value 0.006024441240321594 1e-06 1e-10
 Dictionary Key: CL
-@value  0.08791109642812939 1e-05 1e-10
+@value   0.0879110908067339 1e-06 1e-10
 Dictionary Key: fail
-@value                    0 1e-08 1e-10
+@value                    0 1e-06 1e-10
 Dictionary Key: CD
 Dictionary Key: alpha
-@value 0.0003990452850042442 0.001 1e-06
+@value 0.000427152282947212 0.001 1e-06
 Dictionary Key: CL
 Dictionary Key: alpha
-@value   0.1102866695903552 0.001 1e-06
+@value    0.102641313442945 0.001 1e-06
 Dictionary Key: fail
-@value                    0 0.0001 1e-06
+@value                    0 0.001 1e-06

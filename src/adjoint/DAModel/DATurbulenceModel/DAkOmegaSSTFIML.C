@@ -907,7 +907,7 @@ void DAkOmegaSSTFIML::calcBetaField()
     }
 
     // NOTE: forward mode not supported..
-#ifdef CODI_AD_REVERSE
+#if defined(CODI_AD_REVERSE)
 
     // we need to use the external function helper from CoDiPack to propagate the AD
 
@@ -924,7 +924,6 @@ void DAkOmegaSSTFIML::calcBetaField()
 
     externalFunc.callPrimalFunc(DAkOmegaSSTFIML::betaCompute);
 
-
     codi::RealReverse::Tape& tape = codi::RealReverse::getTape();
 
     if (tape.isActive())
@@ -935,6 +934,26 @@ void DAkOmegaSSTFIML::calcBetaField()
     forAll(betaFieldInversionML_, cellI)
     {
         betaFieldInversionML_[cellI] = outputs_[cellI];
+    }
+
+#elif defined(CODI_AD_FORWARD)
+
+    for (label i = 0; i < n; i++)
+    {
+        inputsDouble_[i] = inputs_[i].value();
+    }
+
+    for (label i = 0; i < m; i++)
+    {
+        outputsDouble_[i] = outputs_[i].value();
+    }
+
+    // python callback function
+    DAUtility::pyCalcBetaInterface(inputsDouble_, n, outputsDouble_, m, DAUtility::pyCalcBeta);
+
+    forAll(betaFieldInversionML_, cellI)
+    {
+        betaFieldInversionML_[cellI] = outputsDouble_[cellI];
     }
 
 #else

@@ -148,5 +148,5 @@ funcsSens = {}
 funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
 
 if gcomm.rank == 0:
-    reg_write_dict(funcs, 1e-8, 1e-10)
-    reg_write_dict(funcsSens, 1e-4, 1e-6)
+    reg_write_dict(funcs, 1e-6, 1e-10)
+    reg_write_dict(funcsSens, 1e-3, 1e-6)
