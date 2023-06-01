@@ -1760,6 +1760,172 @@ void DASolver::calcForceProfileInternal(
     rDist = radialDist;
 }
 
+void DASolver::calcdForceProfiledXvWAD(
+    const word propName,
+    const word inputMode,
+    const word outputMode,
+    const Vec xvVec,
+    const Vec wVec,
+    Vec center,
+    Vec dForcedXvW)
+{
+    /*
+    Description:
+        Calculate the matrix-vector product for [dForceProfile/dParamteres]^T * psi
+    */
+
+#ifdef CODI_AD_REVERSE
+
+    Info << "Calculating [dForceProfile/dInputs]^T*Psi using reverse-mode AD. PropName: "
+         << propName << endl;
+
+    // Buradan basliyorum
+    VecZeroEntries(dForcedXvW);
+
+    this->updateOFField(wVec);
+    this->updateOFMesh(xvVec);
+
+    const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
+    label nPoints = propSubDict.getLabel("nForceSections");
+
+    List<scalar> aForce(nPoints);
+    List<scalar> tForce(nPoints);
+    List<scalar> rDist(nPoints);
+    vector centerVector = vector::zero;
+    pointField meshPoints = meshPtr_->points();
+
+    PetscScalar* vecArrayCenter;
+    VecGetArray(center, &vecArrayCenter);
+    centerVector[0] = vecArrayCenter[0];
+    centerVector[1] = vecArrayCenter[1];
+    centerVector[2] = vecArrayCenter[2];
+    VecRestoreArray(center, &vecArrayCenter);
+
+    // Step 1
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    // Step 2
+    /*
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.registerInput(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+    */
+    if (outputMode == "mesh")
+    {
+        forAll(meshPoints, i)
+        {
+            for (label j = 0; j < 3; j++)
+            {
+                this->globalADTape_.registerInput(meshPoints[i][j]);
+            }
+        }
+        meshPtr_->movePoints(meshPoints);
+        meshPtr_->moving(false);
+    }
+    else if (outputMode == "state")
+    {
+        this->registerStateVariableInput4AD();
+    }
+    else
+    {
+        FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "outputMode not valid"
+                                                   << abort(FatalError);
+    }
+    daResidualPtr_->correctBoundaryConditions();
+    daResidualPtr_->updateIntermediateVariables();
+    daModelPtr_->correctBoundaryConditions();
+    daModelPtr_->updateIntermediateVariables();
+
+    // Step 3
+    this->calcForceProfileInternal(propName, centerVector, aForce, tForce, rDist);
+
+    // Step 4
+    if (inputMode == "aForce")
+    {
+        for(label i = 0; i<nPoints; i++)
+        {
+            this->globalADTape_.registerOutput(aForce[i]);
+        }
+    }
+    else if (inputMode == "tForce")
+    {
+        for(label i = 0; i<nPoints; i++)
+        {
+            this->globalADTape_.registerOutput(tForce[i]);
+        }
+    }
+    else
+    {
+        FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "inputMode not valid"
+                                                   << abort(FatalError);
+    }
+    
+    // Step 5
+    this->globalADTape_.setPassive();
+
+    // Step 6
+    if (inputMode == "aForce")
+    {
+        forAll(aForce, i)
+        {
+            aForce[i].setGradient(1.0);
+        }
+    }
+    else if (inputMode == "tForce")
+    {
+        forAll(tForce, i)
+        {
+            tForce[i].setGradient(1.0);
+        }
+    }
+
+    // Step 7
+    this->globalADTape_.evaluate();
+
+    // Step 8
+    /*
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
+            PetscScalar val = meshPoints[i][j].getGradient();
+            VecSetValue(dForcedXvW, rowI, val, INSERT_VALUES);
+        }
+    }
+    */
+    if (outputMode == "mesh")
+    {
+        forAll(meshPoints, i)
+        {
+            for (label j = 0; j < 3; j++)
+            {
+                label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
+                PetscScalar val = meshPoints[i][j].getGradient();
+                VecSetValue(dForcedXvW, rowI, val, INSERT_VALUES);
+            }
+        }
+    }
+    else if (outputMode == "state")
+    {
+        this->assignStateGradient2Vec(dForcedXvW);
+    }
+    VecAssemblyBegin(dForcedXvW);
+    VecAssemblyEnd(dForcedXvW);
+
+    // Step 9
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+#endif
+}
+
 void DASolver::calcdForcedStateTPsiAD(
     const word mode,
     Vec xvVec,

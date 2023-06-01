@@ -814,6 +814,15 @@ public:
         scalarList& tForce,
         scalarList& rDist);
 
+    void calcdForceProfiledXvWAD(
+        const word propName,
+        const word inputMode,
+        const word outputMode,
+        const Vec xvVec,
+        const Vec wVec,
+        Vec center,
+        Vec dForcedXvW);
+
     void calcdForcedStateTPsiAD(
         const word mode,
         Vec xvVec,

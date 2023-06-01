@@ -105,6 +105,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcFvSource(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdFvSourcedInputsTPsiAD(char *, char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcForceProfile(char *, PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdForceProfiledXvWAD(char *, char *, char *, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
         int runFPAdj(PetscVec, PetscVec, PetscVec, PetscVec)
     
@@ -494,6 +495,9 @@ cdef class pyDASolvers:
     
     def calcForceProfile(self, propName, Vec center, Vec aForce, Vec tForce, Vec rDist):
         self._thisptr.calcForceProfile(propName, center.vec, aForce.vec, tForce.vec, rDist.vec)
+
+    def calcdForceProfiledXvWAD(self, propName, inputMode, outputMode, Vec xvVec, Vec wVec, Vec center, Vec dForcedXvW):
+        self._thisptr.calcdForceProfiledXvWAD(propName, inputMode, outputMode, xvVec.vec, wVec.vec, center.vec, dForcedXvW.vec)
     
     def calcdForcedStateTPsiAD(self, mode, Vec xv, Vec state, Vec psi, Vec prod):
         self._thisptr.calcdForcedStateTPsiAD(mode, xv.vec, state.vec, psi.vec, prod.vec)
