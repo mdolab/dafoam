@@ -29,15 +29,6 @@
 
 #include "DAkOmegaSSTFIML.H"
 #include "IFstream.H"
-// not sure if these are necessary..
-#include <vector>
-#include <math.h>
-#include <omp.h>
-#include <algorithm>
-#include <cstdlib>
-#include <cstring>
-#include <chrono>
-#include <fstream>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -351,11 +342,6 @@ DAkOmegaSSTFIML::DAkOmegaSSTFIML(
 
     // initialize omegaNearWall
     omegaNearWall_.setSize(nWallFaces);
-
-    // read in the tensor flow graph
-    graph_ = tf_utils::LoadGraph("./kOmegaSSTFIML.pb");
-    input_ph_ = {TF_GraphOperationByName(graph_, "input_placeholder"), 0};
-    output_ = {TF_GraphOperationByName(graph_, "output_value/BiasAdd"), 0};
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -838,59 +824,8 @@ void DAkOmegaSSTFIML::correct()
     solveTurbState_ = 0;
 }
 
-void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)
+void DAkOmegaSSTFIML::calcBetaField()
 {
-    /*
-    Descroption:
-        If solveTurbState_ == 1, this function solve and update k and omega, and 
-        is the same as calling turbulence.correct(). If solveTurbState_ == 0,
-        this function compute residuals for turbulence variables, e.g., nuTildaRes_
-
-    Input:
-        options.isPC: 1 means computing residuals for preconditioner matrix.
-        This essentially use the first order scheme for div(phi,nuTilda)
-
-        p_, U_, phi_, etc: State variables in OpenFOAM
-    
-    Output:
-        kRes_/omegaRes_: If solveTurbState_ == 0, update the residual field variable
-
-        k_/omega_: If solveTurbState_ == 1, update them
-    */
-
-    // Copy and modify based on the "correct" function
-
-    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
-
-    word divKScheme = "div(phi,k)";
-    word divOmegaScheme = "div(phi,omega)";
-
-    label isPC = 0;
-
-    if (!solveTurbState_)
-    {
-        isPC = options.getLabel("isPC");
-
-        if (isPC)
-        {
-            divKScheme = "div(pc)";
-            divOmegaScheme = "div(pc)";
-        }
-    }
-
-    // Read scaling parameters (do we need to scale?)
-    RectangularMatrix<doubleScalar> meanStdVals(IFstream("means")());
-
-    label numInputs = 9;
-    label numOutputs = 1;
-    scalar meanArray[numInputs + numOutputs] = {0};
-    scalar stdArray[numInputs + numOutputs] = {0};
-
-    for (label i = 0; i <= numInputs + numOutputs; i++)
-    {
-        meanArray[i] = meanStdVals(0, i);
-        stdArray[i] = meanStdVals(1, i);
-    }
 
     // COMPUTE MACHINE LEARNING FEATURES
     //////////////////////////Q-criterion//////////////////////////////////
@@ -955,95 +890,126 @@ void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)
             / (mag(U_[cI]) * mag(UGrad[cI] & U_[cI]) + mag(U_[cI] & UGrad[cI] & U_[cI]));
     }
 
-    // TENSORFLOW
+    label n = 9 * mesh_.nCells();
+    label m = mesh_.nCells();
 
-    // Datastructure for output
-    volScalarField betaML_ = betaFieldInversionML_;
-
-    // Structure for tensors in ML
-    label numCells = mesh_.cells().size();
-
-    // Some tensorflow pointer requirements
-    TF_Status* status_ = TF_NewStatus();
-    TF_SessionOptions* options_ = TF_NewSessionOptions();
-    TF_Session* sess_ = TF_NewSession(graph_, options_, status_);
-
-    float inputVals[numCells][numInputs];
-    const std::vector<std::int64_t> inputDims = {numCells, numInputs};
-
-    forAll(mesh_.C(), cI)
+    forAll(mesh_.cells(), cI)
     {
-        scalar i1 = (QCriterion_[cI] - meanArray[0]) / (stdArray[0]);
-        scalar i2 = (UGradMisalignment_[cI] - meanArray[1]) / (stdArray[1]);
-        scalar i3 = (pGradAlongStream_[cI] - meanArray[2]) / (stdArray[2]);
-        scalar i4 = (turbulenceIntensity_[cI] - meanArray[3]) / (stdArray[3]);
-        scalar i5 = (ReT_[cI] - meanArray[4]) / (stdArray[4]);
-        scalar i6 = (convectionTKE_[cI] - meanArray[5]) / (stdArray[5]);
-        scalar i7 = (curvature_[cI] - meanArray[6]) / (stdArray[6]);
-        scalar i8 = (pressureStress_[cI] - meanArray[7]) / (stdArray[7]);
-        scalar i9 = (tauRatio_[cI] - meanArray[8]) / (stdArray[8]);
-
-        assignValueCheckAD(inputVals[cI][0], i1);
-        assignValueCheckAD(inputVals[cI][1], i2);
-        assignValueCheckAD(inputVals[cI][2], i3);
-        assignValueCheckAD(inputVals[cI][3], i4);
-        assignValueCheckAD(inputVals[cI][4], i5);
-        assignValueCheckAD(inputVals[cI][5], i6);
-        assignValueCheckAD(inputVals[cI][6], i7);
-        assignValueCheckAD(inputVals[cI][7], i8);
-        assignValueCheckAD(inputVals[cI][8], i9);
+        inputs_[cI * 9 + 0] = QCriterion_[cI];
+        inputs_[cI * 9 + 1] = UGradMisalignment_[cI];
+        inputs_[cI * 9 + 2] = pGradAlongStream_[cI];
+        inputs_[cI * 9 + 3] = turbulenceIntensity_[cI];
+        inputs_[cI * 9 + 4] = ReT_[cI];
+        inputs_[cI * 9 + 5] = convectionTKE_[cI];
+        inputs_[cI * 9 + 6] = curvature_[cI];
+        inputs_[cI * 9 + 7] = pressureStress_[cI];
+        inputs_[cI * 9 + 8] = tauRatio_[cI];
     }
 
-    // Set up TF C API stuff
-    TF_Tensor* outputTensor_ = nullptr;
-    TF_Tensor* inputTensor_ = tf_utils::CreateTensor(TF_FLOAT,
-                                                     inputDims.data(),
-                                                     inputDims.size(),
-                                                     &inputVals,
-                                                     numCells * numInputs * sizeof(float));
+    // NOTE: forward mode not supported..
+#if defined(CODI_AD_REVERSE)
 
-    // Arrays of tensors
-    TF_Tensor* inputTensors_[1] = {inputTensor_};
-    TF_Tensor* outputTensors_[1] = {outputTensor_};
-    // Arrays of operations
-    TF_Output inputs[1] = {input_ph_};
-    TF_Output outputs[1] = {output_};
+    // we need to use the external function helper from CoDiPack to propagate the AD
 
-    TF_SessionRun(
-        sess_,
-        nullptr, // Run options.
-        inputs,
-        inputTensors_,
-        1, // Input tensor ops, input tensor values, number of inputs.
-        outputs,
-        outputTensors_,
-        1, // Output tensor ops, output tensor values, number of outputs.
-        nullptr,
-        0, // Target operations, number of targets.
-        nullptr, // Run metadata.
-        status_ // Output status.
-    );
-
-    const auto data = static_cast<float*>(TF_TensorData(outputTensors_[0]));
-    for (label i = 0; i < numCells; i++)
+    codi::ExternalFunctionHelper<codi::RealReverse> externalFunc;
+    for (label i = 0; i < mesh_.nCells() * 9; i++)
     {
-        betaML_[i] = data[numOutputs * i] * stdArray[numInputs] + meanArray[numInputs]; // Funnel changes back into OF - row major order
+        externalFunc.addInput(inputs_[i]);
     }
 
-    tf_utils::DeleteTensor(inputTensor_);
-    tf_utils::DeleteTensor(outputTensor_);
-    TF_DeleteSessionOptions(options_);
-    TF_DeleteStatus(status_);
-    tf_utils::DeleteSession(sess_);
-
-    //betaML_ = MyFilter_(betaML_);
-
-    forAll(betaFieldInversionML_.internalField(), cI)
+    for (label i = 0; i < mesh_.nCells(); i++)
     {
-        betaFieldInversionML_[cI] = betaML_[cI];
+        externalFunc.addOutput(outputs_[i]);
     }
 
-    // *********** TURBULENCE MODEL FUNCTIONS ***********
+    externalFunc.callPrimalFunc(DAkOmegaSSTFIML::betaCompute);
+
+    codi::RealReverse::Tape& tape = codi::RealReverse::getTape();
+
+    if (tape.isActive())
+    {
+        externalFunc.addToTape(DAkOmegaSSTFIML::betaJacVecProd);
+    }
+
+    forAll(betaFieldInversionML_, cellI)
+    {
+        betaFieldInversionML_[cellI] = outputs_[cellI];
+    }
+
+#elif defined(CODI_AD_FORWARD)
+
+    for (label i = 0; i < n; i++)
+    {
+        inputsDouble_[i] = inputs_[i].value();
+    }
+
+    for (label i = 0; i < m; i++)
+    {
+        outputsDouble_[i] = outputs_[i].value();
+    }
+
+    // python callback function
+    DAUtility::pyCalcBetaInterface(inputsDouble_, n, outputsDouble_, m, DAUtility::pyCalcBeta);
+
+    forAll(betaFieldInversionML_, cellI)
+    {
+        betaFieldInversionML_[cellI] = outputsDouble_[cellI];
+    }
+
+#else
+
+    // python callback function
+    DAUtility::pyCalcBetaInterface(inputs_, n, outputs_, m, DAUtility::pyCalcBeta);
+
+    forAll(betaFieldInversionML_, cellI)
+    {
+        betaFieldInversionML_[cellI] = outputs_[cellI];
+    }
+
+#endif
+}
+
+void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)
+{
+    /*
+    Descroption:
+        If solveTurbState_ == 1, this function solve and update k and omega, and 
+        is the same as calling turbulence.correct(). If solveTurbState_ == 0,
+        this function compute residuals for turbulence variables, e.g., nuTildaRes_
+
+    Input:
+        options.isPC: 1 means computing residuals for preconditioner matrix.
+        This essentially use the first order scheme for div(phi,nuTilda)
+
+        p_, U_, phi_, etc: State variables in OpenFOAM
+    
+    Output:
+        kRes_/omegaRes_: If solveTurbState_ == 0, update the residual field variable
+
+        k_/omega_: If solveTurbState_ == 1, update them
+    */
+
+    // Copy and modify based on the "correct" function
+
+    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
+
+    word divKScheme = "div(phi,k)";
+    word divOmegaScheme = "div(phi,omega)";
+
+    label isPC = 0;
+
+    if (!solveTurbState_)
+    {
+        isPC = options.getLabel("isPC");
+
+        if (isPC)
+        {
+            divKScheme = "div(pc)";
+            divOmegaScheme = "div(pc)";
+        }
+    }
+
+    this->calcBetaField();
 
     // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
     // while for the incompresssible "this->phi()" returns phi only

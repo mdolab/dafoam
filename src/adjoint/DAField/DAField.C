@@ -859,7 +859,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                 "value": [101325.0],
             },
             "useWallFunction": True,
-            "MRF": 1000.0
+            "MRF": 1000.0,
+            "fvSource": {"value": 0.01, "comp": 0}
         }
     */
 
@@ -892,6 +893,36 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
             if (printInfo)
             {
                 Info << "Setting MRF omega to " << omegaNew << endl;
+            }
+
+            continue;
+        }
+        else if (bcKey == "fvSource")
+        {
+            // assign the fvSource field with an uniform value
+            dictionary subDict = bcDict.subDict("fvSource");
+            scalar fvSourceVal = subDict.getScalar("value");
+            label compI = subDict.getLabel("comp");
+
+            volVectorField& fvSource = const_cast<volVectorField&>(
+                db.lookupObject<volVectorField>("fvSource"));
+            
+            forAll(fvSource, cellI)
+            {
+                fvSource[cellI][compI] = fvSourceVal;
+            }
+            forAll(fvSource.boundaryField(), patchI)
+            {
+                forAll(fvSource.boundaryField()[patchI], faceI)
+                {
+                    fvSource.boundaryFieldRef()[patchI][faceI][compI] = fvSourceVal;
+                }
+            }
+            fvSource.correctBoundaryConditions();
+
+            if (printInfo)
+            {
+                Info << "Setting fvSource to " << fvSourceVal << endl;
             }
 
             continue;

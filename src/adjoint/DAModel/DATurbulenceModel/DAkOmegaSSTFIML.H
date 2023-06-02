@@ -37,8 +37,6 @@
 
 #include "DATurbulenceModel.H"
 #include "addToRunTimeSelectionTable.H"
-// Loads in tensorflow functionality
-#include "tf_utils.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -76,10 +74,17 @@ protected:
     Switch F3_;
     //@}
 
-    // Tensorflow graph operations - protected members of this class - top three not used in constructor definition since they don't have default values
-    TF_Graph* graph_;
-    TF_Output input_ph_;
-    TF_Output output_;
+    /// inputs and outputs for the beta calculation
+    scalar* inputs_ = new scalar[mesh_.nCells() * 9];
+    scalar* outputs_ = new scalar[mesh_.nCells()];
+
+#ifdef CODI_AD_FORWARD
+    double* inputsDouble_ = new double[mesh_.nCells() * 9];
+    double* outputsDouble_ = new double[mesh_.nCells()];
+#endif
+
+    /// calculate the beta field using the trained model
+    void calcBetaField();
 
     /// \name SST functions
     //@{
@@ -233,6 +238,12 @@ public:
     //- Destructor
     virtual ~DAkOmegaSSTFIML()
     {
+        delete[] inputs_;
+        delete[] outputs_;
+#ifdef CODI_AD_FORWARD
+        delete[] inputsDouble_;
+        delete[] outputsDouble_;
+#endif
     }
 
     // Member functions
@@ -269,6 +280,32 @@ public:
 
     /// specially treatment to correct epsilon BC
     void correctOmegaBoundaryConditions();
+
+#ifdef CODI_AD_REVERSE
+
+    /// these two functions are for AD external functions
+    static void betaCompute(
+        const double* x,
+        size_t n,
+        double* y,
+        size_t m,
+        codi::ExternalFunctionUserData* d)
+    {
+        DAUtility::pyCalcBetaInterface(x, n, y, m, DAUtility::pyCalcBeta);
+    }
+
+    static void betaJacVecProd(
+        const double* x,
+        double* x_b,
+        size_t n,
+        const double* y,
+        const double* y_b,
+        size_t m,
+        codi::ExternalFunctionUserData* d)
+    {
+        DAUtility::pyCalcBetaJacVecProdInterface(x, x_b, n, y, y_b, m, DAUtility::pyCalcBetaJacVecProd);
+    }
+#endif
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

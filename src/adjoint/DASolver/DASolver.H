@@ -835,7 +835,7 @@ public:
         const word propName,
         const scalarField& aForce,
         const scalarField& tForce,
-        const scalarList& rDistList,
+        const scalarField& rDistList,
         const scalarList& targetForce,
         const vector& center,
         volVectorField& fvSource);
@@ -992,10 +992,24 @@ public:
     /// write the failed mesh to disk
     void writeFailedMesh();
 
+    /// initialize tensorflow functions and interfaces for callback
+    void initTensorFlowFuncs(
+        pyComputeInterface computeInterface, 
+        void* compute,
+        pyJacVecProdInterface jacVecProdInterface,
+        void* jacVecProd)
+    {
+        DAUtility::pyCalcBetaInterface = computeInterface;
+        DAUtility::pyCalcBeta = compute;
+
+        DAUtility::pyCalcBetaJacVecProdInterface = jacVecProdInterface;
+        DAUtility::pyCalcBetaJacVecProd = jacVecProd;
+    }
+
 #ifdef CODI_AD_REVERSE
 
     /// global tape for reverse-mode AD
-    codi::RealReverse::TapeType& globalADTape_;
+    codi::RealReverse::Tape& globalADTape_;
 
 #endif
 };

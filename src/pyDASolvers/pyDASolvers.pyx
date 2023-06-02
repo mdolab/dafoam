@@ -15,6 +15,27 @@
 # for using Petsc
 from petsc4py.PETSc cimport Vec, PetscVec, Mat, PetscMat, KSP, PetscKSP
 cimport numpy as np
+np.import_array() # initialize C API to call PyArray_SimpleNewFromData
+
+cdef public api CPointerToPyArray(const double* data, int size) with gil:
+    if not (data and size >= 0): raise ValueError
+    cdef np.npy_intp dims = size
+    return np.PyArray_SimpleNewFromData(1, &dims, np.NPY_DOUBLE, <void*>data)
+
+ctypedef void (*pyComputeInterface)(const double *, int, double *, int, void *)
+ctypedef void (*pyJacVecProdInterface)(const double *, double *, int, const double *, const double *, int, void *)
+
+cdef void pyCalcBetaCallBack(const double* inputs, int n, double* outputs, int m, void *func):
+    inputs_data = CPointerToPyArray(inputs, n)
+    outputs_data = CPointerToPyArray(outputs, m)
+    (<object>func)(inputs_data, n, outputs_data, m)
+
+cdef void pyCalcBetaJacVecProdCallBack(const double* inputs, double* inputs_b, int n, const double* outputs, const double* outputs_b, int m, void *func):
+    inputs_data = CPointerToPyArray(inputs, n)
+    inputs_b_data = CPointerToPyArray(inputs_b, n)
+    outputs_data = CPointerToPyArray(outputs, m)
+    outputs_b_data = CPointerToPyArray(outputs_b, m)
+    (<object>func)(inputs_data, inputs_b_data, n, outputs_data, outputs_b_data, m)
 
 # declare cpp functions
 cdef extern from "DASolvers.H" namespace "Foam":
@@ -108,6 +129,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdForceProfiledXvWAD(char *, char *, char *, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
         int runFPAdj(PetscVec, PetscVec, PetscVec, PetscVec)
+        void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -504,3 +526,6 @@ cdef class pyDASolvers:
     
     def runFPAdj(self, Vec xvVec, Vec wVec, Vec dFdW, Vec psi):
         return self._thisptr.runFPAdj(xvVec.vec, wVec.vec, dFdW.vec, psi.vec)
+    
+    def initTensorFlowFuncs(self, compute, jacVecProd):
+        self._thisptr.initTensorFlowFuncs(pyCalcBetaCallBack, <void*>compute, pyCalcBetaJacVecProdCallBack, <void*>jacVecProd)

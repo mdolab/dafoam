@@ -1,9 +1,14 @@
+word divScheme = "div(phi,U)";
+if (daOptionPtr_->getSubDictOption<label>("adjEqnOption", "fpPCUpwind"))
+{
+    divScheme = "div(pc)";
+}
 // Duplicate U as pseudoU
 volVectorField pseudoU("pseudoU", U);
 // Get the pseudoUEqn,
 // the most important thing here is to make sure the l.h.s. matches that of UEqn.
 fvVectorMatrix pseudoUEqn(
-    fvm::div(phi, pseudoU, "div(phi,U)")
+    fvm::div(phi, pseudoU, divScheme)
     - fvm::laplacian(nuEff, pseudoU));
 pseudoUEqn.relax(relaxUEqn_);
 

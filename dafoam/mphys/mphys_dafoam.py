@@ -31,12 +31,9 @@ class DAFoamBuilder(Builder):
         # options dictionary for DAFoam
         self.options = options
 
-        # mesh warping option
-        if mesh_options is None:
-            raise AnalysisError("mesh_options not found!")
-        else:
-            self.mesh_options = mesh_options
-
+        # mesh warping option. If no design variables are mesh related,
+        # e.g., topology optimization, set it to None.
+        self.mesh_options = mesh_options
         # flag to determine if the mesh warping component is added
         # in the nonlinear solver loop (e.g. for aerostructural)
         # or as a preprocessing step like the surface mesh coordinates
@@ -79,10 +76,11 @@ class DAFoamBuilder(Builder):
         with cd(self.run_directory):
             # initialize the PYDAFOAM class, defined in pyDAFoam.py
             self.DASolver = PYDAFOAM(options=self.options, comm=comm)
-            # always set the mesh
-            mesh = USMesh(options=self.mesh_options, comm=comm)
-            self.DASolver.setMesh(mesh)  # add the design surface family group
-            self.DASolver.printFamilyList()
+            if self.mesh_options is not None:
+                # always set the mesh
+                mesh = USMesh(options=self.mesh_options, comm=comm)
+                self.DASolver.setMesh(mesh)  # add the design surface family group
+                self.DASolver.printFamilyList()
 
     def get_solver(self):
         # this method is only used by the RLT transfer scheme
@@ -106,9 +104,13 @@ class DAFoamBuilder(Builder):
         return DAFoamMesh(solver=self.DASolver)
 
     def get_pre_coupling_subsystem(self, scenario_name=None):
-        return DAFoamPrecouplingGroup(
-            solver=self.DASolver, warp_in_solver=self.warp_in_solver, thermal_coupling=self.thermal_coupling
-        )
+
+        if self.mesh_options is None:
+            return None
+        else:
+            return DAFoamPrecouplingGroup(
+                solver=self.DASolver, warp_in_solver=self.warp_in_solver, thermal_coupling=self.thermal_coupling
+            )
 
     def get_post_coupling_subsystem(self, scenario_name=None):
         return DAFoamPostcouplingGroup(solver=self.DASolver)
@@ -537,6 +539,9 @@ class DAFoamPostcouplingGroup(Group):
 
     def add_dv_func(self, dvName, dv_func):
         self.functionals.add_dv_func(dvName, dv_func)
+
+    def mphys_set_options(self, options):
+        self.functionals.mphys_set_options(options)
 
 
 class DAFoamSolver(ImplicitComponent):

@@ -39,6 +39,7 @@ aeroOptions = {
                 "varType": "scalar",
                 "component": 0,
                 "isSquare": 0,
+                "divByTotalVol": 0,
                 "scale": 1.0,
                 "addToAdjoint": True,
             }
