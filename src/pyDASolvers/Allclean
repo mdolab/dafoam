@@ -5,4 +5,4 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-rm -rf build *.so *.cpp setup.py
+rm -rf build *.so *.cpp *.h setup.py
