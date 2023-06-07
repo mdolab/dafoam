@@ -39,9 +39,6 @@ protected:
     /// thermal conductivity for solid heatFlux calculation
     scalar k_ = -9999.0;
 
-    /// solid thermal diffusivity
-    scalar DT_ = -9999.0;
-
 #ifndef SolidDASolver
     /// DATurbulenceModel object
     DATurbulenceModel& daTurb_;
