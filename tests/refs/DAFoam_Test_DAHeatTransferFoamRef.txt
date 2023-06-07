@@ -1,0 +1,6 @@
+Dictionary Key: HF_INNER
+@value    199999.9999999992 1e-08 1e-10
+Dictionary Key: HF_OUTER
+@value   -199999.9999999997 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10
