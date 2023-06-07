@@ -510,13 +510,12 @@ public:
 
     /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
     void getThermal(
-        const word outputName,
         const double* volCoords,
         const double* states,
         double* thermal)
     {
 #if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        DASolverPtr_->getThermal(outputName, volCoords, states, thermal);
+        DASolverPtr_->getThermal(volCoords, states, thermal);
         return;
 #endif
         FatalErrorIn("getThermal") << "should not call this func in AD mode!"
@@ -526,20 +525,19 @@ public:
     /// compute the temperature on the conjugate heat transfer patches AD
     void getThermalAD(
         const word inputName,
-        const word outputName,
         const double* volCoords,
         const double* states,
         const double* seeds,
         double* product)
     {
-        DASolverPtr_->getThermalAD(inputName, outputName, volCoords, states, seeds, product);
+        DASolverPtr_->getThermalAD(inputName, volCoords, states, seeds, product);
     }
 
     /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches
-    void setThermal(const word varName, double* thermal)
+    void setThermal(double* thermal)
     {
 #if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        DASolverPtr_->setThermal(varName, thermal);
+        DASolverPtr_->setThermal(thermal);
         return;
 #endif
         FatalErrorIn("setThermal") << "should not call this func in AD mode!"
@@ -547,14 +545,13 @@ public:
     }
 
     void calcdRdThermalTPsiAD(
-        const word varName,
         const double* volCoords,
         const double* states,
         const double* thermal,
         const double* seeds,
         double* product)
     {
-        DASolverPtr_->calcdRdThermalTPsiAD(varName, volCoords, states, thermal, seeds, product);
+        DASolverPtr_->calcdRdThermalTPsiAD(volCoords, states, thermal, seeds, product);
     }
 
     /// return the acoustic data values

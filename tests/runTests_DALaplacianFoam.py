@@ -65,22 +65,10 @@ aeroOptions = {
 }
 DASolver = PYDAFOAM(options=aeroOptions, comm=MPI.COMM_WORLD)
 
-nCells, nFaces = DASolver._getSurfaceSize(DASolver.couplingSurfacesGroup)
-TGrad = np.ones(nFaces) * 5
-DASolver.solver.setThermal("heatFlux", TGrad)
-
 DASolver()
 funcs = {}
 evalFuncs = ["TVOL", "HF", "TMEAN"]
 DASolver.evalFunctions(funcs, evalFuncs)
-
-states = DASolver.vec2Array(DASolver.wVec)
-volCoords = DASolver.vec2Array(DASolver.xvVec)
-thermal = np.zeros(DASolver.solver.getNCouplingFaces())
-DASolver.solver.getThermal("temperature", volCoords, states, thermal)
-TNorm = np.linalg.norm(thermal / 100)
-TNormSum = gcomm.allreduce(TNorm, op=MPI.SUM)
-funcs["TFormSum"] = TNormSum
 
 if gcomm.rank == 0:
     reg_write_dict(funcs, 1e-8, 1e-10)

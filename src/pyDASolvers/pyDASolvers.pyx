@@ -73,7 +73,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdACT(PetscVec, PetscVec, char *, char *, PetscMat)
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
-        void calcdRdThermalTPsiAD(char *, double *, double *, double *, double *, double *)
+        void calcdRdThermalTPsiAD(double *, double *, double *, double *, double *)
         void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
@@ -95,9 +95,9 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcCouplingFaceCoords(double *, double *)
         void calcCouplingFaceCoordsAD(double *, double *, double *)
         void getForces(PetscVec, PetscVec, PetscVec)
-        void getThermal(char *, double *, double *, double *)
-        void getThermalAD(char *, char *, double *, double *, double *, double *)
-        void setThermal(char *, double *)
+        void getThermal(double *, double *, double *)
+        void getThermalAD(char *, double *, double *, double *, double *)
+        void setThermal(double *)
         void getAcousticData(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, char*)
         void printAllOptions()
         void updateDAOption(object)
@@ -266,7 +266,6 @@ cdef class pyDASolvers:
         self._thisptr.calcdFdFieldAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdField.vec)
 
     def calcdRdThermalTPsiAD(self, 
-            varName, 
             np.ndarray[double, ndim=1, mode="c"] volCoords,
             np.ndarray[double, ndim=1, mode="c"] states,
             np.ndarray[double, ndim=1, mode="c"] thermal,
@@ -275,9 +274,9 @@ cdef class pyDASolvers:
         
         assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(thermal) == self.getNCouplingFaces(), "invalid array size!"
+        assert len(thermal) == self.getNCouplingFaces() * 2, "invalid array size!"
         assert len(seeds) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(product) == self.getNCouplingFaces(), "invalid array size!"
+        assert len(product) == self.getNCouplingFaces() * 2, "invalid array size!"
 
         cdef double *volCoords_data = <double*>volCoords.data
         cdef double *states_data = <double*>states.data
@@ -286,7 +285,6 @@ cdef class pyDASolvers:
         cdef double *product_data = <double*>product.data
 
         self._thisptr.calcdRdThermalTPsiAD(
-            varName.encode(), 
             volCoords_data, 
             states_data, 
             thermal_data, 
@@ -364,7 +362,7 @@ cdef class pyDASolvers:
             np.ndarray[double, ndim=1, mode="c"] surfCoords):
 
         assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
-        assert len(surfCoords) == self.getNCouplingFaces() * 3, "invalid array size!"
+        assert len(surfCoords) == self.getNCouplingFaces() * 6, "invalid array size!"
 
         cdef double *volCoords_data = <double*>volCoords.data
         cdef double *surfCoords_data = <double*>surfCoords.data
@@ -377,7 +375,7 @@ cdef class pyDASolvers:
             np.ndarray[double, ndim=1, mode="c"] product):
 
         assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
-        assert len(seeds) == self.getNCouplingFaces() * 3, "invalid array size!"
+        assert len(seeds) == self.getNCouplingFaces() * 6, "invalid array size!"
         assert len(product) == self.getNLocalPoints() * 3, "invalid array size!"
 
         cdef double *volCoords_data = <double*>volCoords.data
@@ -390,24 +388,22 @@ cdef class pyDASolvers:
         self._thisptr.getForces(fX.vec, fY.vec, fZ.vec)
     
     def getThermal(self, 
-            outputName, 
             np.ndarray[double, ndim=1, mode="c"] volCoords,
             np.ndarray[double, ndim=1, mode="c"] states,
             np.ndarray[double, ndim=1, mode="c"] thermal):
         
         assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(thermal) == self.getNCouplingFaces(), "invalid array size!"
+        assert len(thermal) == self.getNCouplingFaces() * 2, "invalid array size!"
 
         cdef double *volCoords_data = <double*>volCoords.data
         cdef double *states_data = <double*>states.data
         cdef double *thermal_data = <double*>thermal.data
 
-        self._thisptr.getThermal(outputName.encode(), volCoords_data, states_data, thermal_data)
+        self._thisptr.getThermal(volCoords_data, states_data, thermal_data)
     
     def getThermalAD(self,
             inputName,
-            outputName, 
             np.ndarray[double, ndim=1, mode="c"] volCoords,
             np.ndarray[double, ndim=1, mode="c"] states,
             np.ndarray[double, ndim=1, mode="c"] seeds,
@@ -415,7 +411,7 @@ cdef class pyDASolvers:
         
         assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(seeds) == self.getNCouplingFaces(), "invalid array size!"
+        assert len(seeds) == self.getNCouplingFaces() * 2, "invalid array size!"
         if inputName == "volCoords":
             assert len(product) == self.getNLocalPoints() * 3, "invalid array size!"
         elif inputName == "states":
@@ -431,19 +427,17 @@ cdef class pyDASolvers:
 
         self._thisptr.getThermalAD(
             inputName.encode(), 
-            outputName.encode(), 
             volCoords_data, 
             states_data, 
             seeds_data, 
             product_data)
     
     def setThermal(self, 
-            varName, 
             np.ndarray[double, ndim=1, mode="c"] thermal):
 
-        assert len(thermal) == self.getNCouplingFaces(), "invalid array size!"
+        assert len(thermal) == self.getNCouplingFaces() * 2, "invalid array size!"
         cdef double *thermal_data = <double*>thermal.data
-        self._thisptr.setThermal(varName.encode(), thermal_data)
+        self._thisptr.setThermal(thermal_data)
 
     def getAcousticData(self, Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, groupName):
         self._thisptr.getAcousticData(x.vec, y.vec, z.vec, nX.vec, nY.vec, nZ.vec, a.vec, fX.vec, fY.vec, fZ.vec, groupName)

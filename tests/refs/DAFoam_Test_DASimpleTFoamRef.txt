@@ -1,28 +1,28 @@
 Dictionary Key: NU
-@value     513.359933524605 1e-08 1e-10
+@value    513.3599335250423 1e-08 1e-10
 Dictionary Key: PL
-@value    2.053403073038666 1e-08 1e-10
+@value    2.053403073037444 1e-08 1e-10
 Dictionary Key: TNormSum
-@value    18.78551842244445 1e-08 1e-10
+@value    2361.136766932203 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: NU
 Dictionary Key: shapey
-@value   -195.4862610369968 1e-03 1e-05
-@value    67.25621608243864 1e-03 1e-05
-@value   -42.73188419356157 1e-03 1e-05
+@value   -195.0043088707475 0.001 1e-05
+@value    68.38314109369782 0.001 1e-05
+@value   -42.31471619182776 0.001 1e-05
 Dictionary Key: shapez
-@value   -4.219438020966073 1e-03 1e-05
-@value   -1.333434004439317 1e-03 1e-05
-@value     1.94980915347223 1e-03 1e-05
+@value   -4.218667080313828 0.001 1e-05
+@value   -1.333432116601133 0.001 1e-05
+@value    1.950014791513334 0.001 1e-05
 Dictionary Key: PL
 Dictionary Key: shapey
-@value    2.115930871171957 1e-03 1e-05
-@value  -0.7117232563028599 1e-03 1e-05
-@value  -0.3791625234047521 1e-03 1e-05
+@value    2.115930039789867 0.001 1e-05
+@value  -0.7117232451777479 0.001 1e-05
+@value   -0.379162684192302 0.001 1e-05
 Dictionary Key: shapez
-@value -0.02150447850407335 1e-03 1e-05
-@value  0.04788112027532705 1e-03 1e-05
-@value  0.02242263381112408 1e-03 1e-05
+@value -0.02150437692562673 0.001 1e-05
+@value  0.04788101619105432 0.001 1e-05
+@value  0.02242244335160787 0.001 1e-05
 Dictionary Key: fail
-@value                    0 1e-03 1e-05
+@value                    0 0.001 1e-05
