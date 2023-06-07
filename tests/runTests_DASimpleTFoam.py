@@ -73,6 +73,14 @@ aeroOptions = {
             }
         },
     },
+    "couplingInfo": {
+        "aerothermal": {
+            "active": False,
+            "couplingSurfaceGroups": {
+                "wallGroup": ["inlet"],
+            },
+        }
+    },
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "epsilon": epsilon0, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3},
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
@@ -134,12 +142,13 @@ else:
     funcs = {}
     funcs, fail = optFuncs.calcObjFuncValues(xDV)
 
-    # test getThermal
+    # test getThermal and setThermal
     states = DASolver.vec2Array(DASolver.wVec)
     volCoords = DASolver.vec2Array(DASolver.xvVec)
-    thermal = np.zeros(DASolver.solver.getNCouplingFaces())
-    DASolver.solver.getThermal("temperature", volCoords, states, thermal)
-    TNorm = np.linalg.norm(thermal / 1000)
+    thermal = np.ones(DASolver.solver.getNCouplingFaces() * 2)
+    DASolver.solver.setThermal(thermal)
+    DASolver.solver.getThermal(volCoords, states, thermal)
+    TNorm = np.linalg.norm(thermal)
     TNormSum = gcomm.allreduce(TNorm, op=MPI.SUM)
     funcs["TNormSum"] = TNormSum
 
