@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "3.0.6"
+__version__ = "3.0.7"
 
 import subprocess
 import os
