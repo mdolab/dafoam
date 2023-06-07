@@ -1,8 +1,8 @@
 Dictionary Key: HF
-@value    1970175.952015204 1e-08 1e-10
+@value    1969637.115686058 1e-08 1e-10
 Dictionary Key: TMEAN
-@value    393.0312709921005 1e-08 1e-10
+@value    393.0640138852942 1e-08 1e-10
 Dictionary Key: TVOL
-@value 0.001487582292048667 1e-08 1e-10
+@value 0.001487678308852688 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10

@@ -75,7 +75,7 @@ aeroOptions = {
     },
     "couplingInfo": {
         "aerothermal": {
-            "active": False,
+            "active": True,
             "couplingSurfaceGroups": {
                 "wallGroup": ["inlet"],
             },
