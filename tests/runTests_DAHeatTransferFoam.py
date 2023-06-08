@@ -42,6 +42,14 @@ aeroOptions = {
     },
     "debug": False,
     "primalMinResTol": 1e-12,
+    "couplingInfo": {
+        "aerothermal": {
+            "active": True,
+            "couplingSurfaceGroups": {
+                "wallGroup": ["channel_outer"],
+            },
+        }
+    },
 }
 DASolver = PYDAFOAM(options=aeroOptions, comm=MPI.COMM_WORLD)
 
@@ -49,6 +57,16 @@ DASolver()
 funcs = {}
 evalFuncs = ["HF_INNER", "HF_OUTER"]
 DASolver.evalFunctions(funcs, evalFuncs)
+
+# test getThermal and setThermal
+states = DASolver.vec2Array(DASolver.wVec)
+volCoords = DASolver.vec2Array(DASolver.xvVec)
+thermal = np.ones(DASolver.solver.getNCouplingFaces() * 2)
+DASolver.solver.setThermal(thermal)
+DASolver.solver.getThermal(volCoords, states, thermal)
+TNorm = np.linalg.norm(thermal)
+TNormSum = gcomm.allreduce(TNorm, op=MPI.SUM)
+funcs["TNormSum"] = TNormSum
 
 if gcomm.rank == 0:
     reg_write_dict(funcs, 1e-8, 1e-10)
