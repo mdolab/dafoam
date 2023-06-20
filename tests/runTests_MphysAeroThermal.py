@@ -24,20 +24,23 @@ if gcomm.rank == 0:
 
 # aero setup
 U0 = 10.0
-p0 = 101325.0
-nuTilda0 = 1.0e-4
-T0 = 300
 
 daOptionsAero = {
-    "designSurfaces": ["bot"],
+    "designSurfaces": [
+        "hot_air_inner",
+        "hot_air_outer",
+        "hot_air_sides",
+        "cold_air_outer",
+        "cold_air_inner",
+        "cold_air_sides",
+    ],
     "solverName": "DARhoSimpleFoam",
-    "primalMinResTol": 1.0e-7,
+    "primalMinResTol": 1.0e-17,
+    "primalMinResTolDiff": 1.0e17,
     "discipline": "aero",
     "primalBC": {
-        "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
-        "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
-        "T0": {"variable": "T", "patches": ["inlet"], "value": [T0]},
-        "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [nuTilda0]},
+        "UHot": {"variable": "U", "patches": ["hot_air_in"], "value": [U0, 0.0, 0.0]},
+        "UCold": {"variable": "U", "patches": ["cold_air_in"], "value": [-U0, 0.0, 0.0]},
         "useWallFunction": False,
     },
     "objFunc": {
@@ -45,27 +48,59 @@ daOptionsAero = {
             "part1": {
                 "type": "totalPressure",
                 "source": "patchToFace",
-                "patches": ["inlet"],
+                "patches": ["hot_air_in"],
                 "scale": 1.0,
                 "addToAdjoint": True,
             },
             "part2": {
                 "type": "totalPressure",
                 "source": "patchToFace",
-                "patches": ["outlet"],
+                "patches": ["hot_air_out"],
+                "scale": -1.0,
+                "addToAdjoint": True,
+            },
+            "part3": {
+                "type": "totalPressure",
+                "source": "patchToFace",
+                "patches": ["cold_air_in"],
+                "scale": 1.0,
+                "addToAdjoint": True,
+            },
+            "part4": {
+                "type": "totalPressure",
+                "source": "patchToFace",
+                "patches": ["cold_air_out"],
                 "scale": -1.0,
                 "addToAdjoint": True,
             },
         },
-        "UMEAN": {
+        "TOUT": {
             "part1": {
                 "type": "patchMean",
                 "source": "patchToFace",
-                "patches": ["outlet"],
-                "varName": "U",
-                "varType": "vector",
+                "patches": ["hot_air_out"],
+                "varName": "T",
+                "varType": "scalar",
                 "component": 0,
                 "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
+        "HFH": {
+            "part1": {
+                "type": "wallHeatFlux",
+                "source": "patchToFace",
+                "patches": ["hot_air_inner"],
+                "scale": 1,
+                "addToAdjoint": True,
+            }
+        },
+        "HFC": {
+            "part1": {
+                "type": "wallHeatFlux",
+                "source": "patchToFace",
+                "patches": ["cold_air_outer"],
+                "scale": 1,
                 "addToAdjoint": True,
             }
         },
@@ -74,16 +109,22 @@ daOptionsAero = {
         "aerothermal": {
             "active": True,
             "couplingSurfaceGroups": {
-                "wallGroup": ["bot"],
+                "wallGroup": ["hot_air_inner", "cold_air_outer"],
             },
         }
     },
-    "adjEqnOption": {"gmresRelTol": 1.0e-6, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
+    "adjStateOrdering": "cell",
+    "adjEqnOption": {
+        "gmresRelTol": 1.0e-3,
+        "pcFillLevel": 1,
+        "jacMatReOrdering": "natural",
+        "useNonZeroInitGuess": True,
+    },
     "normalizeStates": {
         "U": U0,
-        "p": p0,
-        "nuTilda": nuTilda0 * 10.0,
-        "T": T0,
+        "p": 101325,
+        "nuTilda": 1e-3,
+        "T": 300,
         "phi": 1.0,
     },
     "designVar": {
@@ -92,17 +133,27 @@ daOptionsAero = {
 }
 
 daOptionsThermal = {
-    "designSurfaces": ["top"],
-    "solverName": "DALaplacianFoam",
-    "primalMinResTol": 1.0e-8,
+    "designSurfaces": ["channel_outer", "channel_inner", "channel_sides"],
+    "solverName": "DAHeatTransferFoam",
+    "primalMinResTol": 1.0e-17,
+    "primalMinResTolDiff": 1.0e17,
     "discipline": "thermal",
     "objFunc": {
-        "HF": {
+        "HF_INNER": {
             "part1": {
                 "type": "wallHeatFlux",
                 "source": "patchToFace",
-                "patches": ["bot"],
-                "scale": -0.001,
+                "patches": ["channel_inner"],
+                "scale": 1,
+                "addToAdjoint": True,
+            }
+        },
+        "HF_OUTER": {
+            "part1": {
+                "type": "wallHeatFlux",
+                "source": "patchToFace",
+                "patches": ["channel_outer"],
+                "scale": 1,
                 "addToAdjoint": True,
             }
         },
@@ -111,11 +162,17 @@ daOptionsThermal = {
         "aerothermal": {
             "active": True,
             "couplingSurfaceGroups": {
-                "wallGroup": ["top"],
+                "wallGroup": ["channel_outer", "channel_inner"],
             },
         }
     },
-    "adjEqnOption": {"gmresRelTol": 1.0e-6, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
+    "adjStateOrdering": "cell",
+    "adjEqnOption": {
+        "gmresRelTol": 1.0e-3,
+        "pcFillLevel": 1,
+        "jacMatReOrdering": "natural",
+        "useNonZeroInitGuess": True,
+    },
     "normalizeStates": {
         "T": 300.0,
     },
@@ -145,7 +202,7 @@ class Top(Multipoint):
         )
         dafoam_builder_thermal.initialize(self.comm)
 
-        thermalxfer_builder = MeldThermalBuilder(dafoam_builder_aero, dafoam_builder_thermal, n=5, beta=0.5)
+        thermalxfer_builder = MeldThermalBuilder(dafoam_builder_aero, dafoam_builder_thermal, n=1, beta=0.5)
         thermalxfer_builder.initialize(self.comm)
 
         # add the design variable component to keep the top level design variables
@@ -156,8 +213,8 @@ class Top(Multipoint):
         self.add_subsystem("mesh_thermal", dafoam_builder_thermal.get_mesh_coordinate_subsystem())
 
         # add the geometry component (FFD). Note that the aero and thermal use the exact same FFD file
-        self.add_subsystem("geometry_aero", OM_DVGEOCOMP(file="aero/FFD/bumpFFD.xyz", type="ffd"))
-        self.add_subsystem("geometry_thermal", OM_DVGEOCOMP(file="aero/FFD/bumpFFD.xyz", type="ffd"))
+        self.add_subsystem("geometry_aero", OM_DVGEOCOMP(file="aero/FFD/channelFFD.xyz", type="ffd"))
+        self.add_subsystem("geometry_thermal", OM_DVGEOCOMP(file="aero/FFD/channelFFD.xyz", type="ffd"))
 
         # add a scenario (flow condition) for optimization, we pass the builder
         # to the scenario to actually run the flow and adjoint
@@ -168,8 +225,8 @@ class Top(Multipoint):
                 thermal_builder=dafoam_builder_thermal,
                 thermalxfer_builder=thermalxfer_builder,
             ),
-            om.NonlinearBlockGS(maxiter=10, iprint=2, use_aitken=True, rtol=1e-6, atol=1e-3),
-            om.LinearBlockGS(maxiter=10, iprint=2, use_aitken=True, rtol=1e-6, atol=1e-3),
+            om.NonlinearBlockGS(maxiter=10, iprint=2, use_aitken=True, rtol=1e-10, atol=1e-6),
+            om.LinearBlockGS(maxiter=10, iprint=2, use_aitken=True, rtol=1e-8, atol=1e-4),
         )
 
         # need to manually connect the x_aero0 between the mesh and geometry components
@@ -199,7 +256,7 @@ class Top(Multipoint):
 
         # select the FFD points to move
         pts = self.geometry_aero.DVGeo.getLocalIndex(0)
-        indexList = pts[3:5, :, 1].flatten()
+        indexList = pts[3:6, :, :].flatten()
         PS = geo_utils.PointSelect("list", indexList)
         nShapes = self.geometry_aero.nom_addLocalDV(dvName="shape", axis="y", pointSelect=PS)
         nShapes = self.geometry_thermal.nom_addLocalDV(dvName="shape", axis="y", pointSelect=PS)
@@ -212,34 +269,19 @@ class Top(Multipoint):
         self.connect("shape", "geometry_thermal.shape")
 
         # define the design variables to the top level
-        self.add_design_var("shape", lower=-0.01, upper=0.01, scaler=1.0)
+        self.add_design_var("shape", lower=-1, upper=1, scaler=1.0)
 
         # add objective and constraints to the top level
-        self.add_objective("scenario.aero_post.PL", scaler=1.0)
-        self.add_constraint("scenario.thermal_post.HF", lower=0.1, scaler=1.0)
-        self.add_constraint("scenario.aero_post.UMEAN", lower=0.1, scaler=1.0)
+        self.add_objective("scenario.aero_post.HFH", scaler=1.0)
+        self.add_constraint("scenario.aero_post.PL", upper=1000, scaler=1.0)
+        self.add_constraint("scenario.thermal_post.HF_INNER", upper=1000, scaler=1.0)
 
 
 prob = om.Problem(reports=None)
 prob.model = Top()
 
-prob.driver = om.pyOptSparseDriver()
-prob.driver.options["optimizer"] = "SLSQP"
-prob.driver.opt_settings = {
-    "ACC": 1.0e-5,
-    "MAXIT": 2,
-    "IFILE": "opt_SLSQP.txt",
-}
-prob.driver.options["debug_print"] = ["nl_cons", "objs", "desvars"]
-
-
-prob.add_recorder(om.SqliteRecorder("cases.sql"))
-prob.recording_options["includes"] = []
-prob.recording_options["record_objectives"] = True
-prob.recording_options["record_constraints"] = True
-
 prob.setup(mode="rev")
-om.n2(prob, show_browser=False, outfile="mphys_aerostruct.html")
+om.n2(prob, show_browser=False, outfile="mphys_aerothermal.html")
 
 optFuncs = OptFuncs([daOptionsAero, daOptionsThermal], prob)
 
@@ -250,8 +292,8 @@ if gcomm.rank == 0:
     derivDict = {}
     derivDict["PL"] = {}
     derivDict["PL"]["shape"] = totals[("scenario.aero_post.functionals.PL", "dvs.shape")][0]
-    derivDict["HF"] = {}
-    derivDict["HF"]["shape"] = totals[("scenario.thermal_post.functionals.HF", "dvs.shape")][0]
-    derivDict["UMEAN"] = {}
-    derivDict["UMEAN"]["shape"] = totals[("scenario.aero_post.functionals.UMEAN", "dvs.shape")][0]
+    derivDict["HFH"] = {}
+    derivDict["HFH"]["shape"] = totals[("scenario.aero_post.functionals.HFH", "dvs.shape")][0]
+    derivDict["HF_INNER"] = {}
+    derivDict["HF_INNER"]["shape"] = totals[("scenario.thermal_post.functionals.HF_INNER", "dvs.shape")][0]
     reg_write_dict(derivDict, 1e-4, 1e-6)

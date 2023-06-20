@@ -382,6 +382,7 @@ void DASolver::calcCouplingFaceCoords(
     label nPoints, nFaces;
     this->getPatchInfo(nPoints, nFaces, patchList);
 
+    // ******** first loop
     label counterFaceI = 0;
     forAll(patchList, cI)
     {
@@ -392,6 +393,25 @@ void DASolver::calcCouplingFaceCoords(
             for (label i = 0; i < 3; i++)
             {
                 surfCoords[counterFaceI] = meshPtr_->Cf().boundaryField()[patchI][faceI][i];
+                counterFaceI++;
+            }
+        }
+    }
+
+    // ******** second loop
+    // NOTE. Since we create two duplicated surface point coordinates for transferring two variables
+    // we need to translate the 2nd one by 1000, so the meld component will find the correct
+    // coordinates for interpolation. If these two sets of coords are overlapped, we will have
+    // wrong interpolations from meld.
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                surfCoords[counterFaceI] = meshPtr_->Cf().boundaryField()[patchI][faceI][i] + 1000.0;
                 counterFaceI++;
             }
         }
@@ -413,7 +433,7 @@ void DASolver::calcCouplingFaceCoordsAD(
         volCoordsArray[i] = volCoords[i];
     }
 
-    scalar* surfCoordsArray = new scalar[nCouplingFaces * 3];
+    scalar* surfCoordsArray = new scalar[nCouplingFaces * 6];
 
     // update the OpenFOAM variables and reset their seeds (gradient part) to zeros
     this->resetOFSeeds();
@@ -432,7 +452,7 @@ void DASolver::calcCouplingFaceCoordsAD(
     this->calcCouplingFaceCoords(volCoordsArray, surfCoordsArray);
 
     // register outputs
-    for (label i = 0; i < nCouplingFaces * 3; i++)
+    for (label i = 0; i < nCouplingFaces * 6; i++)
     {
         this->globalADTape_.registerOutput(surfCoordsArray[i]);
     }
@@ -441,7 +461,7 @@ void DASolver::calcCouplingFaceCoordsAD(
     this->globalADTape_.setPassive();
 
     // set seeds to the outputs
-    for (label i = 0; i < nCouplingFaces * 3; i++)
+    for (label i = 0; i < nCouplingFaces * 6; i++)
     {
         surfCoordsArray[i].setGradient(seeds[i]);
     }
@@ -527,19 +547,28 @@ void DASolver::getCouplingPatchList(
     return;
 }
 
-void DASolver::setThermal(
-    const word varName,
-    scalar* thermal)
+void DASolver::setThermal(scalar* thermal)
 {
     /*
     Description:
-        Assign the temperature or heat flux BC to all of the faces on the conjugate heat 
+        Assign the thermal BC values to all of the faces on the conjugate heat 
         transfer patches. 
+
+        We assume the conjugate coupling patches are of mixed type, so we need to assign
+        refValue = neighbour near wall temperature
+        refGrad = 0
+        valueFraction = neighKDeltaCoeffs / ( neighKDeltaCoeffs + myKDeltaCoeffs)
+
+        NOTE: we have two separate variables saved in the thermal array. 
+        One is the neighbour near wall temperature and the other is the neighbour kappa/d. 
+        So the size of thermal array is 2 * nCouplingFaces
         NOTE: this function can be called by either fluid or solid domain!
 
+        This conjugate heat transfer coupling uses the OpenFOAM's implementation in
+        turbulentTemperatureCoupledBaffleMixed.C
+
     Inputs:
-        varName: either temperature or heatFlux
-        thermal: the temperature or heatFlux var on the conjugate heat transfer patch
+        thermal: the thermal BC values on the conjugate heat transfer patch
     
     Outputs:
         The T field in OpenFOAM
@@ -548,155 +577,184 @@ void DASolver::setThermal(
     List<word> patchList;
     this->getCouplingPatchList(patchList);
 
-    // calculate the sum of patch area and reduce it across procs
-    scalar meanVar = 0.0;
-    scalar sumArea = 0.0;
+    volScalarField& T =
+        const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("T"));
+
+    // ********* first loop, set the refValue
+    label localFaceI = 0;
     forAll(patchList, cI)
     {
         // get the patch id label
         label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-        const fvPatch& patch = meshPtr_->boundary()[patchI];
-        forAll(patch, faceI)
+
+        mixedFvPatchField<scalar>& mixedPatch =
+            refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
+
+        forAll(mixedPatch.refValue(), faceI)
         {
-            sumArea += meshPtr_->magSf().boundaryField()[patchI][faceI];
+            mixedPatch.refValue()[faceI] = thermal[localFaceI];
+            mixedPatch.refGrad()[faceI] = 0;
+            localFaceI++;
         }
     }
-    reduce(sumArea, sumOp<scalar>());
 
-    if (varName == "temperature")
-    {
-        // here we receive set the temperature from the solid domain (varVec) and will assign fixedValue
-        // BC to the fluid domain
+    // ********* second loop, set the valueFraction:
+    // neighKDeltaCoeffs / ( neighKDeltaCoeffs + myKDeltaCoeffs)
 
-        volScalarField& T =
-            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("T"));
+#ifdef IncompressibleFlow
+    // for incompressible flow  Q = Cp * alphaEff * dT/dz, so kappa = Cp * alphaEff
+    DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+    volScalarField alphaEff = daTurb.alphaEff();
 
-        label localFaceI = 0;
-        forAll(patchList, cI)
-        {
-            // get the patch id label
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            const fvPatch& patch = meshPtr_->boundary()[patchI];
-            forAll(patch, faceI)
-            {
-                T.boundaryFieldRef()[patchI][faceI] = thermal[localFaceI];
-                meanVar += thermal[localFaceI] * meshPtr_->magSf().boundaryField()[patchI][faceI];
-                localFaceI++;
-            }
-        }
-        T.correctBoundaryConditions();
-
-        meanVar /= sumArea;
-        reduce(meanVar, sumOp<scalar>());
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            Info << "setThermal mean temperature " << meanVar << endl;
-        }
-    }
-    else if (varName == "heatFlux")
-    {
-        // here we receive heatFlux from the fluid domain (varVec) and will assign the fixedGradient
-        // boundary condition to the solid domain
-
-        volScalarField wallHeatFlux(
-            IOobject(
-                "wallHeatFlux",
-                meshPtr_->time().timeName(),
-                meshPtr_(),
-                IOobject::NO_READ,
-                IOobject::NO_WRITE),
+    IOdictionary transportProperties(
+        IOobject(
+            "transportProperties",
+            meshPtr_->time().constant(),
             meshPtr_(),
-            dimensionedScalar("wallHeatFlux", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
-            "fixedValue");
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false));
+    scalar Cp = readScalar(transportProperties.lookup("Cp"));
 
-        IOdictionary transportProperties(
-            IOobject(
-                "transportProperties",
-                meshPtr_->time().constant(),
-                meshPtr_(),
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE,
-                false));
-        // for incompressible flow, we need to read k from transportProperties
-        // thermal conductivity k. thermal diffusivity DT = k / rho / Cp
-        scalar k = readScalar(transportProperties.lookup("k"));
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
 
-        volScalarField& T =
-            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("T"));
+        mixedFvPatchField<scalar>& mixedPatch =
+            refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
 
-        label localFaceI = 0;
-        forAll(patchList, cI)
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
         {
-            // get the patch id label
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            fixedGradientFvPatchField<scalar>& patchBC =
-                refCast<fixedGradientFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
-
-            scalarField& grad = const_cast<scalarField&>(patchBC.gradient());
-            forAll(grad, faceI)
-            {
-                // ************NOTE********
-                // Here we add a minus sign because the heat fluxes between aero and thermal
-                // have opposite signs. That being said, a positive heatFlux in the fluid domain
-                // corresponds to a negative heatFlux in the solid domain.
-                // ************NOTE********
-                grad[faceI] = -thermal[localFaceI] / k;
-                meanVar += -thermal[localFaceI] * meshPtr_->magSf().boundaryField()[patchI][faceI];
-                wallHeatFlux.boundaryFieldRef()[patchI][faceI] = -thermal[localFaceI];
-                localFaceI++;
-            }
-        }
-        T.correctBoundaryConditions();
-
-        meanVar /= sumArea;
-        reduce(meanVar, sumOp<scalar>());
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            Info << "setThermal mean heat flux " << meanVar << endl;
-        }
-
-        // check if wallHeatFlux exists, if not, write it to the disk. This avoid writing the same file over and over
-        IOobject fileHeader(
-            "wallHeatFlux",
-            meshPtr_->time().timeName(),
-            meshPtr_(),
-            IOobject::NO_READ);
-        if (!fileHeader.typeHeaderOk<volScalarField>())
-        {
-            Info << "Writing wallHeatFlux " << endl;
-            wallHeatFlux.write();
+            // deltaCoeffs = 1 / d
+            scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+            scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
+            scalar myKDeltaCoeffs = Cp * alphaEffBf * deltaCoeffs;
+            scalar neighKDeltaCoeffs = thermal[localFaceI];
+            mixedPatch.valueFraction()[faceI] = neighKDeltaCoeffs / (myKDeltaCoeffs + neighKDeltaCoeffs);
+            localFaceI++;
         }
     }
+#endif
+
+#ifdef CompressibleFlow
+    // for compressible flow Q = alphaEff * dHE/dz, so if enthalpy is used, kappa = Cp * alphaEff
+    // if the internalEnergy is used, kappa = (Cp - R) * alphaEff
+
+    DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+    volScalarField alphaEff = daTurb.alphaEff();
+    // compressible flow, H = alphaEff * dHE/dz
+    fluidThermo& thermo = const_cast<fluidThermo&>(daModelPtr_->getThermo());
+    volScalarField& he = thermo.he();
+
+    const IOdictionary& thermoDict = meshPtr_->thisDb().lookupObject<IOdictionary>("thermophysicalProperties");
+    dictionary mixSubDict = thermoDict.subDict("mixture");
+    dictionary specieSubDict = mixSubDict.subDict("specie");
+    scalar molWeight = specieSubDict.getScalar("molWeight");
+    dictionary thermodynamicsSubDict = mixSubDict.subDict("thermodynamics");
+    scalar Cp = thermodynamicsSubDict.getScalar("Cp");
+
+    // 8314.4700665  gas constant in OpenFOAM
+    // src/OpenFOAM/global/constants/thermodynamic/thermodynamicConstants.H
+    scalar RR = Foam::constant::thermodynamic::RR;
+
+    // R = RR/molWeight
+    // Foam::specie::R() function in src/thermophysicalModels/specie/specie/specieI.H
+    scalar R = RR / molWeight;
+
+    scalar tmpVal = 0;
+    // e = (Cp - R) * T, so Q = alphaEff * (Cp-R) * dT/dz
+    if (he.name() == "e")
+    {
+        tmpVal = Cp - R;
+    }
+    // h = Cp * T, so Q = alphaEff * Cp * dT/dz
     else
     {
-        FatalErrorIn("") << varName << " not valid! "
-                         << abort(FatalError);
+        tmpVal = Cp;
     }
+
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+
+        mixedFvPatchField<scalar>& mixedPatch =
+            refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
+
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // deltaCoeffs = 1 / d
+            scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+            scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
+            scalar myKDeltaCoeffs = tmpVal * alphaEffBf * deltaCoeffs;
+            scalar neighKDeltaCoeffs = thermal[localFaceI];
+            mixedPatch.valueFraction()[faceI] = neighKDeltaCoeffs / (myKDeltaCoeffs + neighKDeltaCoeffs);
+            localFaceI++;
+        }
+    }
+#endif
+
+#ifdef SolidDASolver
+    // for solid solvers Q = k * dT/dz, so kappa = k
+    IOdictionary transportProperties(
+        IOobject(
+            "transportProperties",
+            meshPtr_->time().constant(),
+            meshPtr_(),
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false));
+    scalar k = readScalar(transportProperties.lookup("k"));
+
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+
+        mixedFvPatchField<scalar>& mixedPatch =
+            refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
+
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // deltaCoeffs = 1 / d
+            scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+            scalar myKDeltaCoeffs = k * deltaCoeffs;
+            scalar neighKDeltaCoeffs = thermal[localFaceI];
+            mixedPatch.valueFraction()[faceI] = neighKDeltaCoeffs / (myKDeltaCoeffs + neighKDeltaCoeffs);
+            localFaceI++;
+        }
+    }
+#endif
 }
 
 void DASolver::getThermal(
-    const word outputName,
     const scalar* volCoords,
     const scalar* states,
     scalar* thermal)
 {
     /*
     Description:
-        Compute the temperature or heat flux for all of the faces on the conjugate heat 
+        Compute the thermal variables for all of the faces on the conjugate heat 
         transfer patches.
+
+        NOTE: we have two separate variables to assign to the thermal array. 
+        One is the near wall temperature and the other is kappa/d. 
+        So the size of thermal array is 2 * nCouplingFaces
+
         NOTE: this function can be called by either fluid or solid domain!
 
+        This conjugate heat transfer coupling uses the OpenFOAM's implementation in
+        turbulentTemperatureCoupledBaffleMixed.C
+
     Inputs:
-        outputName: Either temperature or heatFlux
 
         volCoords: volume coordinates
 
         states: state variables
 
     Output:
-        thermal: the temperature or heatFlux on the conjugate heat transfer patch
+        thermal: the thermal variables on the conjugate heat transfer patch
     */
 
     this->updateOFMesh(volCoords);
@@ -705,186 +763,138 @@ void DASolver::getThermal(
     List<word> patchList;
     this->getCouplingPatchList(patchList);
 
-    // calculate the sum of patch area and reduce it across procs
-    scalar meanVar = 0.0;
-    scalar sumArea = 0.0;
+    const objectRegistry& db = meshPtr_->thisDb();
+    const volScalarField& T = db.lookupObject<volScalarField>("T");
+
+    // ************ first loop, get the near wall cell temperature
+    label localFaceI = 0;
     forAll(patchList, cI)
     {
         // get the patch id label
         label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-        const fvPatch& patch = meshPtr_->boundary()[patchI];
-        forAll(patch, faceI)
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
         {
-            sumArea += meshPtr_->magSf().boundaryField()[patchI][faceI];
+            label faceCellI = meshPtr_->boundaryMesh()[patchI].faceCells()[faceI];
+            thermal[localFaceI] = T[faceCellI];
+            localFaceI++;
         }
     }
-    reduce(sumArea, sumOp<scalar>());
 
-    if (outputName == "temperature")
-    {
-        const objectRegistry& db = meshPtr_->thisDb();
-        const volScalarField& T = db.lookupObject<volScalarField>("T");
-
-        volScalarField wallTemperature(
-            IOobject(
-                "wallTemperature",
-                meshPtr_->time().timeName(),
-                meshPtr_(),
-                IOobject::NO_READ,
-                IOobject::NO_WRITE),
-            meshPtr_(),
-            dimensionedScalar("wallTemperature", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
-            "fixedValue");
-
-        label localFaceI = 0;
-        forAll(patchList, cI)
-        {
-            // get the patch id label
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            const fvPatch& patch = meshPtr_->boundary()[patchI];
-            forAll(patch, faceI)
-            {
-                thermal[localFaceI] = T.boundaryField()[patchI][faceI];
-                meanVar += T.boundaryField()[patchI][faceI] * meshPtr_->magSf().boundaryField()[patchI][faceI];
-                wallTemperature.boundaryFieldRef()[patchI][faceI] = T.boundaryField()[patchI][faceI];
-                localFaceI++;
-            }
-        }
-
-        meanVar /= sumArea;
-        reduce(meanVar, sumOp<scalar>());
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            Info << "getThermal mean temperature " << meanVar << endl;
-        }
-
-        // check if wallHeatFlux exists, if not, write it to the disk. This avoid writing the same file over and over
-        IOobject fileHeader(
-            "wallTemperature",
-            meshPtr_->time().timeName(),
-            meshPtr_(),
-            IOobject::NO_READ);
-        if (!fileHeader.typeHeaderOk<volScalarField>())
-        {
-            Info << "Writing wallTemperature " << endl;
-            wallTemperature.write();
-        }
-    }
-    else if (outputName == "heatFlux")
-    {
-        volScalarField wallHeatFlux(
-            IOobject(
-                "wallHeatFlux",
-                meshPtr_->time().timeName(),
-                meshPtr_(),
-                IOobject::NO_READ,
-                IOobject::NO_WRITE),
-            meshPtr_(),
-            dimensionedScalar("wallHeatFlux", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
-            "fixedValue");
+    // ********* second loop, get the (kappa / d) coefficient
 
 #ifdef IncompressibleFlow
 
-        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
-        volScalarField alphaEff = daTurb.alphaEff();
-        // incompressible flow does not have he, so we do H = Cp * alphaEff * dT/dz
-        // initialize the Prandtl number from transportProperties
+    // for incompressible flow  Q = Cp * alphaEff * dT/dz, so kappa = Cp * alphaEff
 
-        IOdictionary transportProperties(
-            IOobject(
-                "transportProperties",
-                meshPtr_->time().constant(),
-                meshPtr_(),
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE,
-                false));
-        // for incompressible flow, we need to read Cp from transportProperties
-        scalar Cp = readScalar(transportProperties.lookup("Cp"));
+    DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+    volScalarField alphaEff = daTurb.alphaEff();
 
-        const objectRegistry& db = meshPtr_->thisDb();
-        const volScalarField& T = db.lookupObject<volScalarField>("T");
+    IOdictionary transportProperties(
+        IOobject(
+            "transportProperties",
+            meshPtr_->time().constant(),
+            meshPtr_(),
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false));
+    scalar Cp = readScalar(transportProperties.lookup("Cp"));
 
-        const volScalarField::Boundary& TBf = T.boundaryField();
-        const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
-
-        label localFaceI = 0;
-        forAll(patchList, cI)
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
         {
-            // get the patch id label
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            scalarField TBfGrad = TBf[patchI].snGrad();
-
-            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
-            {
-                scalar val = Cp * alphaEffBf[patchI][faceI] * TBfGrad[faceI];
-                thermal[localFaceI] = val;
-                meanVar += val * meshPtr_->magSf().boundaryField()[patchI][faceI];
-                wallHeatFlux.boundaryFieldRef()[patchI][faceI] = val;
-                localFaceI++;
-            }
+            // deltaCoeffs = 1 / d
+            scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+            scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
+            thermal[localFaceI] = Cp * alphaEffBf * deltaCoeffs;
+            localFaceI++;
         }
-
+    }
 #endif
 
 #ifdef CompressibleFlow
+    // for compressible flow Q = alphaEff * dHE/dz, so if enthalpy is used, kappa = Cp * alphaEff
+    // if the internalEnergy is used, kappa = (Cp - R) * alphaEff
 
-        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
-        volScalarField alphaEff = daTurb.alphaEff();
-        // compressible flow, H = alphaEff * dHE/dz
-        fluidThermo& thermo = const_cast<fluidThermo&>(daModelPtr_->getThermo());
-        volScalarField& he = thermo.he();
-        const volScalarField::Boundary& heBf = he.boundaryField();
-        const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+    DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+    volScalarField alphaEff = daTurb.alphaEff();
+    // compressible flow, H = alphaEff * dHE/dz
+    fluidThermo& thermo = const_cast<fluidThermo&>(daModelPtr_->getThermo());
+    volScalarField& he = thermo.he();
 
-        label localFaceI = 0;
-        forAll(patchList, cI)
-        {
-            // get the patch id label
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
-            scalarField heBfGrad = heBf[patchI].snGrad();
+    const IOdictionary& thermoDict = meshPtr_->thisDb().lookupObject<IOdictionary>("thermophysicalProperties");
+    dictionary mixSubDict = thermoDict.subDict("mixture");
+    dictionary specieSubDict = mixSubDict.subDict("specie");
+    scalar molWeight = specieSubDict.getScalar("molWeight");
+    dictionary thermodynamicsSubDict = mixSubDict.subDict("thermodynamics");
+    scalar Cp = thermodynamicsSubDict.getScalar("Cp");
 
-            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
-            {
-                scalar val = alphaEffBf[patchI][faceI] * heBfGrad[faceI];
-                thermal[localFaceI] = val;
-                meanVar += val * meshPtr_->magSf().boundaryField()[patchI][faceI];
-                wallHeatFlux.boundaryFieldRef()[patchI][faceI] = val;
-                localFaceI++;
-            }
-        }
+    // 8314.4700665  gas constant in OpenFOAM
+    // src/OpenFOAM/global/constants/thermodynamic/thermodynamicConstants.H
+    scalar RR = Foam::constant::thermodynamic::RR;
 
-#endif
+    // R = RR/molWeight
+    // Foam::specie::R() function in src/thermophysicalModels/specie/specie/specieI.H
+    scalar R = RR / molWeight;
 
-        meanVar /= sumArea;
-        reduce(meanVar, sumOp<scalar>());
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            Info << "getThermal mean heat flux " << meanVar << endl;
-        }
-        // check if wallHeatFlux exists, if not, write it to the disk. This avoid writing the same file over and over
-        IOobject fileHeader(
-            "wallHeatFlux",
-            meshPtr_->time().timeName(),
-            meshPtr_(),
-            IOobject::NO_READ);
-        if (!fileHeader.typeHeaderOk<volScalarField>())
-        {
-            Info << "Writing wallHeatFlux " << endl;
-            wallHeatFlux.write();
-        }
+    scalar tmpVal = 0;
+    // e = (Cp - R) * T, so Q = alphaEff * (Cp-R) * dT/dz
+    if (he.name() == "e")
+    {
+        tmpVal = Cp - R;
     }
+    // h = Cp * T, so Q = alphaEff * Cp * dT/dz
     else
     {
-        FatalErrorIn("getThermal") << " outputName not valid. "
-                                   << abort(FatalError);
+        tmpVal = Cp;
     }
+
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // deltaCoeffs = 1 / d
+            scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+            scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
+            thermal[localFaceI] = tmpVal * alphaEffBf * deltaCoeffs;
+            localFaceI++;
+        }
+    }
+#endif
+
+#ifdef SolidDASolver
+    // for solid solvers Q = k * dT/dz, so kappa = k
+    IOdictionary transportProperties(
+        IOobject(
+            "transportProperties",
+            meshPtr_->time().constant(),
+            meshPtr_(),
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false));
+    scalar k = readScalar(transportProperties.lookup("k"));
+
+    forAll(patchList, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+        {
+            // deltaCoeffs = 1 / d
+            scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+            thermal[localFaceI] = k * deltaCoeffs;
+            localFaceI++;
+        }
+    }
+#endif
 }
 
 void DASolver::getThermalAD(
     const word inputName,
-    const word outputName,
     const double* volCoords,
     const double* states,
     const double* seeds,
@@ -896,8 +906,6 @@ void DASolver::getThermalAD(
     
     Input:
         inputName: either volCoords or states
-
-        outputName: either temperature or heatFlux
 
         volCoords: the volume mesh coordinate 
 
@@ -925,7 +933,7 @@ void DASolver::getThermalAD(
         statesArray[i] = states[i];
     }
 
-    scalar* thermalArray = new scalar[nCouplingFaces];
+    scalar* thermalArray = new scalar[nCouplingFaces * 2];
 
     // update the OpenFOAM variables and reset their seeds (gradient part) to zeros
     this->resetOFSeeds();
@@ -956,10 +964,10 @@ void DASolver::getThermalAD(
     }
 
     // calculate outputs
-    this->getThermal(outputName, volCoordsArray, statesArray, thermalArray);
+    this->getThermal(volCoordsArray, statesArray, thermalArray);
 
     // register outputs
-    for (label i = 0; i < nCouplingFaces; i++)
+    for (label i = 0; i < nCouplingFaces * 2; i++)
     {
         this->globalADTape_.registerOutput(thermalArray[i]);
     }
@@ -968,7 +976,7 @@ void DASolver::getThermalAD(
     this->globalADTape_.setPassive();
 
     // set seeds to the outputs
-    for (label i = 0; i < nCouplingFaces; i++)
+    for (label i = 0; i < nCouplingFaces * 2; i++)
     {
         thermalArray[i].setGradient(seeds[i]);
     }
@@ -996,6 +1004,29 @@ void DASolver::getThermalAD(
         FatalErrorIn("getThermalAD") << " inputName not valid. "
                                      << abort(FatalError);
     }
+
+    // ******************************* NOTE! ******************************
+    // This step is tricky. We need to clean up the AD seeds for all variables before the next AD
+    // This is usually done by theses two calls: updateOFField(wVec) and updateOFMesh(xvVec)
+    // The above two calls will assign zeros to the gradient() part of all scalar variables because
+    // the wVec and xvVec's gradient() part is zero (they are double instead of scalar).
+    // HOWEVER, the above two calls will NOT clean the seeds for field variables's boundary values
+    // This will not cause problems for most of the functions because their boundary values always
+    // have zero seeds. However, the getThermal function actually propagates non-zeros seeds for boundary
+    // values, so here we need to manually clean up the BC's gradient part. NOT doing this will
+    // mess up the AD computation for the following function.
+    // The way we clean it is that we set a zero-seed thermal var and call getThermal to propagate
+    // the zero seeds to all intermediate vars.
+    // ******************************* NOTE! ******************************
+    for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+    {
+        volCoordsArray[i].setGradient(0.0);
+    }
+    for (label i = 0; i < daIndexPtr_->nLocalAdjointStates; i++)
+    {
+        statesArray[i].setGradient(0.0);
+    }
+    this->getThermal(volCoordsArray, statesArray, thermalArray);
 
     delete[] volCoordsArray;
     delete[] statesArray;
@@ -5419,7 +5450,6 @@ void DASolver::calcdFdXvAD(
 }
 
 void DASolver::calcdRdThermalTPsiAD(
-    const word varName,
     const double* volCoords,
     const double* states,
     const double* thermal,
@@ -5458,8 +5488,8 @@ void DASolver::calcdRdThermalTPsiAD(
     }
 
     label nCouplingFaces = this->getNCouplingFaces();
-    scalar* thermalArray = new scalar[nCouplingFaces];
-    for (label i = 0; i < nCouplingFaces; i++)
+    scalar* thermalArray = new scalar[nCouplingFaces * 2];
+    for (label i = 0; i < nCouplingFaces * 2; i++)
     {
         thermalArray[i] = thermal[i];
     }
@@ -5475,13 +5505,13 @@ void DASolver::calcdRdThermalTPsiAD(
     this->globalADTape_.setActive();
 
     // register inputs
-    for (label i = 0; i < nCouplingFaces; i++)
+    for (label i = 0; i < nCouplingFaces * 2; i++)
     {
         this->globalADTape_.registerInput(thermalArray[i]);
     }
 
     // calculate outputs
-    this->setThermal(varName, thermalArray);
+    this->setThermal(thermalArray);
 
     // compute residuals
     daResidualPtr_->correctBoundaryConditions();
@@ -5507,7 +5537,7 @@ void DASolver::calcdRdThermalTPsiAD(
     this->globalADTape_.evaluate();
 
     // get the matrix-vector product from the inputs
-    for (label i = 0; i < nCouplingFaces; i++)
+    for (label i = 0; i < nCouplingFaces * 2; i++)
     {
         product[i] = thermalArray[i].getGradient();
     }
@@ -5525,11 +5555,11 @@ void DASolver::calcdRdThermalTPsiAD(
     // The way we clean it is that we set a zero-seed thermal var and call setThermal to propagate
     // the zero seeds to all intermediate vars.
     // ******************************* NOTE! ******************************
-    for (label i = 0; i < nCouplingFaces; i++)
+    for (label i = 0; i < nCouplingFaces * 2; i++)
     {
         thermalArray[i].setGradient(0.0);
     }
-    this->setThermal(varName, thermalArray);
+    this->setThermal(thermalArray);
 
     delete[] thermalArray;
     delete[] volCoordsArray;

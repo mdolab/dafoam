@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "3.0.6"
+__version__ = "3.0.7"
 
 import subprocess
 import os
@@ -953,7 +953,7 @@ class PYDAFOAM(object):
         self.solverRegistry = {
             "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam", "DAPimpleFoam", "DAPimpleDyMFoam"],
             "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam"],
-            "Solid": ["DASolidDisplacementFoam", "DALaplacianFoam", "DAScalarTransportFoam"],
+            "Solid": ["DASolidDisplacementFoam", "DALaplacianFoam", "DAHeatTransferFoam", "DAScalarTransportFoam"],
         }
 
     def __call__(self):

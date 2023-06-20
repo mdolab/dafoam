@@ -11,6 +11,7 @@ DAModel/DAModel.C
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoSolidDisplacementFoam.C
 DAStateInfo/DAStateInfoLaplacianFoam.C
+DAStateInfo/DAStateInfoHeatTransferFoam.C
 DAStateInfo/DAStateInfoScalarTransportFoam.C
 
 DAIndex/DAIndex.C
@@ -31,6 +32,7 @@ DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C
 DAResidual/DAResidualSolidDisplacementFoam.C
 DAResidual/DAResidualLaplacianFoam.C
+DAResidual/DAResidualHeatTransferFoam.C
 DAResidual/DAResidualScalarTransportFoam.C
 
 DAColoring/DAColoring.C
@@ -53,6 +55,7 @@ DALinearEqn/DALinearEqn.C
 DASolver/DASolver.C
 DASolver/DASolidDisplacementFoam/DASolidDisplacementFoam.C
 DASolver/DALaplacianFoam/DALaplacianFoam.C
+DASolver/DAHeatTransferFoam/DAHeatTransferFoam.C
 DASolver/DAScalarTransportFoam/DAScalarTransportFoam.C
 
 boundaryConditions/tractionDisplacement/tractionDisplacementFvPatchVectorField.C

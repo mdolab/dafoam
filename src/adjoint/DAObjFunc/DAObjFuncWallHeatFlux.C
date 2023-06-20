@@ -131,10 +131,6 @@ DAObjFuncWallHeatFlux::DAObjFuncWallHeatFlux(
     {
         k_ = readScalar(transportProperties.lookup("k"));
     }
-    if (DT_ < 0)
-    {
-        DT_ = readScalar(transportProperties.lookup("DT"));
-    }
 #endif
 }
 
