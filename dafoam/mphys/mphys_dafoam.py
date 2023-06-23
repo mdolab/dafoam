@@ -939,6 +939,12 @@ class DAFoamSolver(ImplicitComponent):
                             DASolver.ksp = PETSc.KSP().create(self.comm)
                             DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
 
+                # if useNonZeroInitGuess is False, we will manually reset self.psi to zero
+                # this is important because we need the correct psi to update the KSP tolerance
+                # in the next line
+                if not self.DASolver.getOption("adjEqnOption")["useNonZeroInitGuess"]:
+                    self.psi.set(0)
+
                 if self.DASolver.getOption("adjEqnOption")["dynAdjustTol"]:
                     # if we want to dynamically adjust the tolerance, call this function. This is mostly used
                     # in the block Gauss-Seidel method in two discipline coupling
