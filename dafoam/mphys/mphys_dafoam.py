@@ -208,9 +208,17 @@ class DAFoamGroup(Group):
 
         if self.prop_coupling is not None:
             if self.prop_coupling == "Prop":
+
+                wingPropNameList = list(self.DASolver.getOption("wingProp").keys())
+
+                if len(wingPropNameList) != 1:
+                    raise RuntimeError("if prop_coupling = Prop, we should set only one propeller for wingProp key.")
+
+                propName = wingPropNameList[0]
+
                 self.add_subsystem(
-                    "profile",
-                    DAFoamPropForce(solver=self.DASolver),
+                    propName,
+                    DAFoamPropForce(solver=self.DASolver, propName=propName),
                     promotes_inputs=["*"],
                     promotes_outputs=["*"],
                 )
@@ -1702,15 +1710,17 @@ class DAFoamPropForce(ExplicitComponent):
     
     def initialize(self):
         self.options.declare("solver", recordable=False)
+        self.options.declare("propName", recordable=False)
 
     def setup(self):
 
         self.DASolver = self.options["solver"]
+        self.propName = self.options["propName"]
 
         self.discipline = self.DASolver.getOption("discipline")
 
         # inputs
-        self.nForceSections = self.DASolver.getOption("wingProp")["test_propeller_default"]["nForceSections"]
+        self.nForceSections = self.DASolver.getOption("wingProp")[self.propName]["nForceSections"]
         self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input("prop_center", distributed=False, shape=3, tags=["mphys_coupling"])
@@ -1740,7 +1750,7 @@ class DAFoamPropForce(ExplicitComponent):
         prop_center_vec = DASolver.array2VecSeq(prop_center)
 
         DASolver.solver.calcForceProfile(
-            "test_propeller_default".encode(),
+            self.propName.encode(),
             prop_center_vec,
             axialForceProfileVec,
             tangentialForceProfileVec,
@@ -1772,7 +1782,7 @@ class DAFoamPropForce(ExplicitComponent):
             if "%s_states" % self.discipline in d_inputs:
                 prodVec = self.DASolver.wVec.duplicate()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD("test_propeller_default".encode(), "aForce".encode(), "state".encode, xvVec, stateVec, aFBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "aForce".encode(), "state".encode, xvVec, stateVec, aFBarVec, prodVec)
                 aBar = DASolver.vec2ArraySeq(prodVec)
                 aBar = self.comm.allreduce(aBar, op=MPI.SUM)
                 d_inputs["%s_states" % self.discipline] += aBar
@@ -1790,7 +1800,7 @@ class DAFoamPropForce(ExplicitComponent):
             if "%s_states" % self.discipline in d_inputs:
                 prodVec = self.DASolver.wVec.duplicate()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD("test_propeller_default".encode(), "tForce".encode(), "state".encode, xvVec, stateVec, tFBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "tForce".encode(), "state".encode, xvVec, stateVec, tFBarVec, prodVec)
                 tBar = DASolver.vec2ArraySeq(prodVec)
                 tBar = self.comm.allreduce(aBar, op=MPI.SUM)
                 d_inputs["%s_states" % self.discipline] += tBar
