@@ -798,17 +798,28 @@ public:
 
     /// calculate the radial profile of the force on the propeller surface
     void calcForceProfile(
+        const word propName,
         Vec center,
-        Vec aForceL,
-        Vec tForceL,
-        Vec rDistL);
+        Vec aForce,
+        Vec tForce,
+        Vec rDist);
 
     void calcForceProfileInternal(
-        fvMesh& mesh,
+        const word propName,
         const vector& center,
-        scalarList& aForceL,
-        scalarList& tForceL,
-        scalarList& rDistL);
+        scalarList& aForce,
+        scalarList& tForce,
+        scalarList& rDist);
+
+    void calcdForceProfiledXvWAD(
+        const word propName,
+        const word inputMode,
+        const word outputMode,
+        const Vec xvVec,
+        const Vec wVec,
+        Vec center,
+        Vec psi,
+        Vec dForcedXvW);
 
     void calcdForcedStateTPsiAD(
         const word mode,

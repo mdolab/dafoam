@@ -770,12 +770,26 @@ public:
     }
 
     void calcForceProfile(
+        const word propName,
         Vec center,
-        Vec aForceL,
-        Vec tForceL,
-        Vec rDistL)
+        Vec aForce,
+        Vec tForce,
+        Vec rDist)
     {
-        DASolverPtr_->calcForceProfile(center, aForceL, tForceL, rDistL);
+        DASolverPtr_->calcForceProfile(propName, center, aForce, tForce, rDist);
+    }
+
+    void calcdForceProfiledXvWAD(
+        const word propName,
+        const word inputMode,
+        const word outputMode,
+        const Vec xvVec,
+        const Vec wVec,
+        Vec center,
+        Vec psi,
+        Vec dForcedXvW)
+    {
+        DASolverPtr_->calcdForceProfiledXvWAD(propName, inputMode, outputMode, xvVec, wVec, center, psi, dForcedXvW);
     }
 
     void calcdForcedStateTPsiAD(
