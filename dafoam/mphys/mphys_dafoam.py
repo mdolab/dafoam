@@ -220,7 +220,9 @@ class DAFoamGroup(Group):
                         nActiveProps += 1
 
                 if nActiveProps != 1:
-                    raise RuntimeError("if prop_coupling = Prop, we should set only one active propeller for wingProp key.")
+                    raise RuntimeError(
+                        "if prop_coupling = Prop, we should set only one active propeller for wingProp key."
+                    )
 
                 self.add_subsystem(
                     activeProp,
@@ -1740,7 +1742,7 @@ class DAFoamPropForce(ExplicitComponent):
         # outputs
         self.add_output("axial_force", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
         self.add_output("tangential_force", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
-        self.add_output("radial_location", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])    
+        self.add_output("radial_location", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):
 
@@ -1796,25 +1798,52 @@ class DAFoamPropForce(ExplicitComponent):
             if "%s_states" % self.discipline in d_inputs:
                 prodVec = self.DASolver.wVec.duplicate()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "aForce".encode(), "state".encode(), xvVec, stateVec, centerVec, aFBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(
+                    self.propName.encode(),
+                    "aForce".encode(),
+                    "state".encode(),
+                    xvVec,
+                    stateVec,
+                    centerVec,
+                    aFBarVec,
+                    prodVec,
+                )
                 sBar = DASolver.vec2ArraySeq(prodVec)
-                #sBar = self.comm.allreduce(sBar, op=MPI.SUM)
+                # sBar = self.comm.allreduce(sBar, op=MPI.SUM)
                 d_inputs["%s_states" % self.discipline] += sBar
 
             if "%s_vol_coords" % self.discipline in d_inputs:
                 prodVec = self.DASolver.xvVec.duplicate()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "aForce".encode(), "mesh".encode(), xvVec, stateVec, centerVec, aFBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(
+                    self.propName.encode(),
+                    "aForce".encode(),
+                    "mesh".encode(),
+                    xvVec,
+                    stateVec,
+                    centerVec,
+                    aFBarVec,
+                    prodVec,
+                )
                 vBar = DASolver.vec2ArraySeq(prodVec)
-                #vBar = self.comm.allreduce(vBar, op=MPI.SUM)
+                # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
                 d_inputs["%s_vol_coords" % self.discipline] += vBar
 
             if "prop_center" in d_inputs:
                 prodVec = PETSc.Vec().createSeq(3, bsize=1, comm=PETSc.COMM_SELF)
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "aForce".encode(), "center".encode(), xvVec, stateVec, centerVec, aFBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(
+                    self.propName.encode(),
+                    "aForce".encode(),
+                    "center".encode(),
+                    xvVec,
+                    stateVec,
+                    centerVec,
+                    aFBarVec,
+                    prodVec,
+                )
                 cBar = DASolver.vec2ArraySeq(prodVec)
-                #cBar = self.comm.allreduce(cBar, op=MPI.SUM)
+                # cBar = self.comm.allreduce(cBar, op=MPI.SUM)
                 d_inputs["prop_center"] += cBar
 
         if "tangential_force" in d_outputs:
@@ -1824,25 +1853,52 @@ class DAFoamPropForce(ExplicitComponent):
             if "%s_states" % self.discipline in d_inputs:
                 prodVec = self.DASolver.wVec.duplicate()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "tForce".encode(), "state".encode(), xvVec, stateVec, centerVec, tFBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(
+                    self.propName.encode(),
+                    "tForce".encode(),
+                    "state".encode(),
+                    xvVec,
+                    stateVec,
+                    centerVec,
+                    tFBarVec,
+                    prodVec,
+                )
                 sBar = DASolver.vec2ArraySeq(prodVec)
-                #sBar = self.comm.allreduce(sBar, op=MPI.SUM)
+                # sBar = self.comm.allreduce(sBar, op=MPI.SUM)
                 d_inputs["%s_states" % self.discipline] += sBar
 
             if "%s_vol_coords" % self.discipline in d_inputs:
                 prodVec = self.DASolver.xvVec.duplicate()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "tForce".encode(), "mesh".encode(), xvVec, stateVec, centerVec, tFBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(
+                    self.propName.encode(),
+                    "tForce".encode(),
+                    "mesh".encode(),
+                    xvVec,
+                    stateVec,
+                    centerVec,
+                    tFBarVec,
+                    prodVec,
+                )
                 vBar = DASolver.vec2ArraySeq(prodVec)
-                #vBar = self.comm.allreduce(vBar, op=MPI.SUM)
+                # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
                 d_inputs["%s_vol_coords" % self.discipline] += vBar
 
             if "prop_center" in d_inputs:
                 prodVec = PETSc.Vec().createSeq(3, bsize=1, comm=PETSc.COMM_SELF)
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "tForce".encode(), "center".encode(), xvVec, stateVec, centerVec, tFBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(
+                    self.propName.encode(),
+                    "tForce".encode(),
+                    "center".encode(),
+                    xvVec,
+                    stateVec,
+                    centerVec,
+                    tFBarVec,
+                    prodVec,
+                )
                 cBar = DASolver.vec2ArraySeq(prodVec)
-                #cBar = self.comm.allreduce(cBar, op=MPI.SUM)
+                # cBar = self.comm.allreduce(cBar, op=MPI.SUM)
                 d_inputs["prop_center"] += cBar
 
         if "radial_location" in d_inputs:
@@ -1851,25 +1907,52 @@ class DAFoamPropForce(ExplicitComponent):
             if "%s_states" % self.discipline in d_inputs:
                 prodVec = self.DASolver.wVec.duplicate()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "rDist".encode(), "state".encode(), xvVec, stateVec, centerVec, rDBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(
+                    self.propName.encode(),
+                    "rDist".encode(),
+                    "state".encode(),
+                    xvVec,
+                    stateVec,
+                    centerVec,
+                    rDBarVec,
+                    prodVec,
+                )
                 sBar = DASolver.vec2ArraySeq(prodVec)
-                #sBar = self.comm.allreduce(sBar, op=MPI.SUM)
+                # sBar = self.comm.allreduce(sBar, op=MPI.SUM)
                 d_inputs["%s_states" % self.discipline] += sBar
 
             if "%s_vol_coords" % self.discipline in d_inputs:
                 prodVec = self.DASolver.xvVec.duplicate()
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "rDist".encode(), "mesh".encode(), xvVec, stateVec, centerVec, rDBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(
+                    self.propName.encode(),
+                    "rDist".encode(),
+                    "mesh".encode(),
+                    xvVec,
+                    stateVec,
+                    centerVec,
+                    rDBarVec,
+                    prodVec,
+                )
                 vBar = DASolver.vec2ArraySeq(prodVec)
-                #vBar = self.comm.allreduce(vBar, op=MPI.SUM)
+                # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
                 d_inputs["%s_vol_coords" % self.discipline] += vBar
 
             if "prop_center" in d_inputs:
                 prodVec = PETSc.Vec().createSeq(3, bsize=1, comm=PETSc.COMM_SELF)
                 prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(self.propName.encode(), "rDist".encode(), "center".encode()(), xvVec, stateVec, centerVec, rDBarVec, prodVec)
+                DASolver.solverAD.calcdForceProfiledXvWAD(
+                    self.propName.encode(),
+                    "rDist".encode(),
+                    "center".encode()(),
+                    xvVec,
+                    stateVec,
+                    centerVec,
+                    rDBarVec,
+                    prodVec,
+                )
                 cBar = DASolver.vec2ArraySeq(prodVec)
-                #cBar = self.comm.allreduce(cBar, op=MPI.SUM)
+                # cBar = self.comm.allreduce(cBar, op=MPI.SUM)
                 d_inputs["prop_center"] += cBar
 
 
