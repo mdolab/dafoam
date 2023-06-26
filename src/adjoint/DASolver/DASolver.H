@@ -818,6 +818,7 @@ public:
         const Vec xvVec,
         const Vec wVec,
         Vec center,
+        Vec psi,
         Vec dForcedXvW);
 
     void calcdForcedStateTPsiAD(

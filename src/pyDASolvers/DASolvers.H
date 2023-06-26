@@ -786,9 +786,10 @@ public:
         const Vec xvVec,
         const Vec wVec,
         Vec center,
+        Vec psi,
         Vec dForcedXvW)
     {
-        DASolverPtr_->calcdForceProfiledXvWAD(propName, inputMode, outputMode, xvVec, wVec, center, dForcedXvW);
+        DASolverPtr_->calcdForceProfiledXvWAD(propName, inputMode, outputMode, xvVec, wVec, center, psi, dForcedXvW);
     }
 
     void calcdForcedStateTPsiAD(

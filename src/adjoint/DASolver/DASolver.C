@@ -1800,11 +1800,12 @@ void DASolver::calcForceProfileInternal(
 
 void DASolver::calcdForceProfiledXvWAD(
     const word propName,
-    const word inputMode,
     const word outputMode,
+    const word inputMode,
     const Vec xvVec,
     const Vec wVec,
     Vec center,
+    Vec psi,
     Vec dForcedXvW)
 {
     /*
@@ -1817,7 +1818,6 @@ void DASolver::calcdForceProfiledXvWAD(
     Info << "Calculating [dForceProfile/dInputs]^T*Psi using reverse-mode AD. PropName: "
          << propName << endl;
 
-    // Buradan basliyorum
     VecZeroEntries(dForcedXvW);
 
     this->updateOFField(wVec);
@@ -1832,6 +1832,7 @@ void DASolver::calcdForceProfiledXvWAD(
     vector centerVector = vector::zero;
     pointField meshPoints = meshPtr_->points();
 
+    const PetscScalar* vecArrayPsi;
     PetscScalar* vecArrayCenter;
     VecGetArray(center, &vecArrayCenter);
     centerVector[0] = vecArrayCenter[0];
@@ -1844,18 +1845,7 @@ void DASolver::calcdForceProfiledXvWAD(
     this->globalADTape_.setActive();
 
     // Step 2
-    /*
-    forAll(meshPoints, i)
-    {
-        for (label j = 0; j < 3; j++)
-        {
-            this->globalADTape_.registerInput(meshPoints[i][j]);
-        }
-    }
-    meshPtr_->movePoints(meshPoints);
-    meshPtr_->moving(false);
-    */
-    if (outputMode == "mesh")
+    if (inputMode == "mesh")
     {
         forAll(meshPoints, i)
         {
@@ -1867,13 +1857,20 @@ void DASolver::calcdForceProfiledXvWAD(
         meshPtr_->movePoints(meshPoints);
         meshPtr_->moving(false);
     }
-    else if (outputMode == "state")
+    else if (inputMode == "state")
     {
         this->registerStateVariableInput4AD();
     }
+    else if (inputMode == "center")
+    {
+        for (label i = 0; i < 3; i++)
+        {
+            this->globalADTape_.registerInput(centerVector[i]);
+        }
+    }
     else
     {
-        FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "outputMode not valid"
+        FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "inputMode not valid"
                                                    << abort(FatalError);
     }
     daResidualPtr_->correctBoundaryConditions();
@@ -1885,23 +1882,30 @@ void DASolver::calcdForceProfiledXvWAD(
     this->calcForceProfileInternal(propName, centerVector, aForce, tForce, rDist);
 
     // Step 4
-    if (inputMode == "aForce")
+    if (outputMode == "aForce")
     {
         for(label i = 0; i<nPoints; i++)
         {
             this->globalADTape_.registerOutput(aForce[i]);
         }
     }
-    else if (inputMode == "tForce")
+    else if (outputMode == "tForce")
     {
         for(label i = 0; i<nPoints; i++)
         {
             this->globalADTape_.registerOutput(tForce[i]);
         }
     }
+    else if (outputMode == "rDist")
+    {
+        for(label i = 0; i<nPoints; i++)
+        {
+            this->globalADTape_.registerOutput(rDist[i]);
+        }
+    }
     else
     {
-        FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "inputMode not valid"
+        FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "outputMode not valid"
                                                    << abort(FatalError);
     }
     
@@ -1909,37 +1913,36 @@ void DASolver::calcdForceProfiledXvWAD(
     this->globalADTape_.setPassive();
 
     // Step 6
-    if (inputMode == "aForce")
+    VecGetArrayRead(psi, &vecArrayPsi);
+    if (outputMode == "aForce")
     {
         forAll(aForce, i)
         {
-            aForce[i].setGradient(1.0);
+            aForce[i].setGradient(vecArrayPsi[i]);
         }
     }
-    else if (inputMode == "tForce")
+    else if (outputMode == "tForce")
     {
         forAll(tForce, i)
         {
-            tForce[i].setGradient(1.0);
+            tForce[i].setGradient(vecArrayPsi[i]);
         }
     }
+    else if (outputMode == "rDist")
+    {
+        forAll(tForce, i)
+        {
+            rDist[i].setGradient(vecArrayPsi[i]);
+        }
+    
+    }
+    VecRestoreArrayRead(psi, &vecArrayPsi);
 
     // Step 7
     this->globalADTape_.evaluate();
 
     // Step 8
-    /*
-    forAll(meshPoints, i)
-    {
-        for (label j = 0; j < 3; j++)
-        {
-            label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
-            PetscScalar val = meshPoints[i][j].getGradient();
-            VecSetValue(dForcedXvW, rowI, val, INSERT_VALUES);
-        }
-    }
-    */
-    if (outputMode == "mesh")
+    if (inputMode == "mesh")
     {
         forAll(meshPoints, i)
         {
@@ -1950,17 +1953,30 @@ void DASolver::calcdForceProfiledXvWAD(
                 VecSetValue(dForcedXvW, rowI, val, INSERT_VALUES);
             }
         }
+        VecAssemblyBegin(dForcedXvW);
+        VecAssemblyEnd(dForcedXvW);
     }
-    else if (outputMode == "state")
+    else if (inputMode == "state")
     {
         this->assignStateGradient2Vec(dForcedXvW);
+        VecAssemblyBegin(dForcedXvW);
+        VecAssemblyEnd(dForcedXvW);
     }
-    VecAssemblyBegin(dForcedXvW);
-    VecAssemblyEnd(dForcedXvW);
+    else if (inputMode == "center")
+    {
+        PetscScalar* vecArrayCenter;
+        VecGetArray(dForcedXvW, &vecArrayCenter);
+        forAll(centerVector, i)
+        {
+            vecArrayCenter[i] = centerVector[i].getGradient();
+        }
+        VecRestoreArray(dForcedXvW, &vecArrayCenter);
+    }
 
     // Step 9
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+    
 #endif
 }
 
