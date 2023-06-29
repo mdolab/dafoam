@@ -126,7 +126,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcFvSource(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdFvSourcedInputsTPsiAD(char *, char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcForceProfile(char *, PetscVec, PetscVec, PetscVec, PetscVec)
-        void calcdForceProfiledXvWAD(char *, char *, char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdForceProfiledXvWAD(char *, char *, char *, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
         int runFPAdj(PetscVec, PetscVec, PetscVec, PetscVec)
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *)
@@ -509,11 +509,11 @@ cdef class pyDASolvers:
     def calcdFvSourcedInputsTPsiAD(self, propName, mode, Vec aForce, Vec tForce, Vec rDist, Vec targetForce, Vec center, Vec psi, Vec dFvSource):
         self._thisptr.calcdFvSourcedInputsTPsiAD(propName, mode, aForce.vec, tForce.vec, rDist.vec, targetForce.vec, center.vec, psi.vec, dFvSource.vec)
     
-    def calcForceProfile(self, propName, Vec center, Vec aForce, Vec tForce, Vec rDist):
-        self._thisptr.calcForceProfile(propName, center.vec, aForce.vec, tForce.vec, rDist.vec)
+    def calcForceProfile(self, propName, Vec aForce, Vec tForce, Vec rDist, Vec integralForce):
+        self._thisptr.calcForceProfile(propName, aForce.vec, tForce.vec, rDist.vec, integralForce.vec)
 
-    def calcdForceProfiledXvWAD(self, propName, inputMode, outputMode, Vec xvVec, Vec wVec, Vec center, Vec psi, Vec dForcedXvW):
-        self._thisptr.calcdForceProfiledXvWAD(propName, inputMode, outputMode, xvVec.vec, wVec.vec, center.vec, psi.vec, dForcedXvW.vec)
+    def calcdForceProfiledXvWAD(self, propName, inputMode, outputMode, Vec xvVec, Vec wVec, Vec psi, Vec dForcedXvW):
+        self._thisptr.calcdForceProfiledXvWAD(propName, inputMode, outputMode, xvVec.vec, wVec.vec, psi.vec, dForcedXvW.vec)
     
     def calcdForcedStateTPsiAD(self, mode, Vec xv, Vec state, Vec psi, Vec prod):
         self._thisptr.calcdForcedStateTPsiAD(mode, xv.vec, state.vec, psi.vec, prod.vec)

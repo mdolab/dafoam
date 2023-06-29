@@ -1565,10 +1565,10 @@ void DASolver::getAcousticDataInternal(
 
 void DASolver::calcForceProfile(
     const word propName,
-    Vec center,
     Vec aForce,
     Vec tForce,
-    Vec rDist)
+    Vec rDist,
+    Vec integralForce)
 {
     /*
     Description:
@@ -1588,22 +1588,17 @@ void DASolver::calcForceProfile(
     label nPoints = propSubDict.getLabel("nForceSections");
 
     // Allocate Arrays
-    Vector<scalar> centerTemp;
     Field<scalar> aForceTemp(nPoints);
     Field<scalar> tForceTemp(nPoints);
     List<scalar> rDistTemp(nPoints);
+    List<scalar> integralForceTemp(2);
 
     // Get PETSc Arrays
-    PetscScalar* vecArrayCenter;
-    VecGetArray(center, &vecArrayCenter);
 
     // Set Values
-    centerTemp[0] = vecArrayCenter[0];
-    centerTemp[1] = vecArrayCenter[1];
-    centerTemp[2] = vecArrayCenter[2];
 
     // Compute force profiles
-    this->calcForceProfileInternal(propName, centerTemp, aForceTemp, tForceTemp, rDistTemp);
+    this->calcForceProfileInternal(propName, aForceTemp, tForceTemp, rDistTemp, integralForceTemp);
 
     VecZeroEntries(aForce);
     PetscScalar* vecArrayAForce;
@@ -1614,6 +1609,9 @@ void DASolver::calcForceProfile(
     VecZeroEntries(rDist);
     PetscScalar* vecArrayRDist;
     VecGetArray(rDist, &vecArrayRDist);
+    VecZeroEntries(integralForce);
+    PetscScalar* vecArrayIntegralForce;
+    VecGetArray(integralForce, &vecArrayIntegralForce);
 
     // Tranfer to PETSc Array for force profiles and radius
     forAll(aForceTemp, cI)
@@ -1629,21 +1627,26 @@ void DASolver::calcForceProfile(
         vecArrayTForce[cI] = val2;
         vecArrayRDist[cI] = val3;
     }
+    PetscScalar val1, val2;
+    assignValueCheckAD(val1, integralForceTemp[0]);
+    assignValueCheckAD(val2, integralForceTemp[1]);
+    vecArrayIntegralForce[0] = val1;
+    vecArrayIntegralForce[1] = val2;
 
-    VecRestoreArray(center, &vecArrayCenter);
     VecRestoreArray(aForce, &vecArrayAForce);
     VecRestoreArray(tForce, &vecArrayTForce);
     VecRestoreArray(rDist, &vecArrayRDist);
+    VecRestoreArray(integralForce, &vecArrayIntegralForce);
 
     return;
 }
 
 void DASolver::calcForceProfileInternal(
     const word propName,
-    const vector& center,
     scalarList& aForce,
     scalarList& tForce,
-    scalarList& rDist)
+    scalarList& rDist,
+    scalarList& integralForce)
 {
     /*
     Description:
@@ -1656,11 +1659,17 @@ void DASolver::calcForceProfileInternal(
     fvMesh& mesh = meshPtr_();
 
     scalarList axisDummy;
+    scalarList rotationCenterDummy;
     propSubDict.readEntry<scalarList>("axis", axisDummy);
+    propSubDict.readEntry<scalarList>("rotationCenter", rotationCenterDummy);
     vector axis;
     axis[0] = axisDummy[0];
     axis[1] = axisDummy[1];
     axis[2] = axisDummy[2];
+    vector rotationCenter;
+    rotationCenter[0] = rotationCenterDummy[0];
+    rotationCenter[1] = rotationCenterDummy[1];
+    rotationCenter[2] = rotationCenterDummy[2];
 
     // Ensure that axis is a unit vector
     axis = axis / sqrt(sqr(axis[0]) + sqr(axis[1]) + sqr(axis[2]));
@@ -1687,15 +1696,15 @@ void DASolver::calcForceProfileInternal(
 
     // radius limits initialization
     scalar minRadius = 1000000;
-    scalar minRadiIndx = -1;
+    //scalar minRadiIndx = -1;
     scalar maxRadius = -1000000;
-    scalar maxRadiIndx = -1;
+    //scalar maxRadiIndx = -1;
 
     forAll(p.boundaryField()[bladePatchI], faceI)
     {
         // directional vector from the propeller center to the cell center & dictance between them
         cellCen = mesh.Cf().boundaryField()[bladePatchI][faceI];
-        cellDir = cellCen - center;
+        cellDir = cellCen - rotationCenter;
         length = sqrt(sqr(cellDir[0]) + sqr(cellDir[1]) + sqr(cellDir[2]));
 
         // unit vector conversion
@@ -1705,7 +1714,7 @@ void DASolver::calcForceProfileInternal(
         axialDist = (cellDir & axis) * length;
 
         // projected point of the cell center on the axis
-        projP = {center[0] + axis[0] * axialDist, center[1] + axis[1] * axialDist, center[2] + axis[2] * axialDist};
+        projP = {rotationCenter[0] + axis[0] * axialDist, rotationCenter[1] + axis[1] * axialDist, rotationCenter[2] + axis[2] * axialDist};
 
         // radius of the cell center
         radiiCell[faceI] = sqrt(sqr(cellCen[0] - projP[0]) + sqr(cellCen[1] - projP[1]) + sqr(cellCen[2] - projP[2]));
@@ -1713,12 +1722,12 @@ void DASolver::calcForceProfileInternal(
         if (radiiCell[faceI] < minRadius)
         {
             minRadius = radiiCell[faceI];
-            minRadiIndx = faceI;
+            //minRadiIndx = faceI;
         }
         if (radiiCell[faceI] > maxRadius)
         {
             maxRadius = radiiCell[faceI];
-            maxRadiIndx = faceI;
+            //maxRadiIndx = faceI;
         }
 
         // storing tangential vector as a unit vector
@@ -1726,6 +1735,11 @@ void DASolver::calcForceProfileInternal(
         length = sqrt(sqr(meshTanDir[faceI][0]) + sqr(meshTanDir[faceI][1]) + sqr(meshTanDir[faceI][2]));
         meshTanDir[faceI] = meshTanDir[faceI] / length;
     }
+
+    minRadius = -minRadius;
+    reduce(maxRadius, maxOp<scalar>());
+    reduce(minRadius, maxOp<scalar>());
+    minRadius = -minRadius;
 
     // generating empty lists
     scalarList axialForce(sections);
@@ -1736,6 +1750,9 @@ void DASolver::calcForceProfileInternal(
     scalarList areaCounter = axialForce;
     scalarList axialForce2 = axialForce;
     scalarList tangtForce2 = axialForce;
+    scalarList intForce(2);
+    intForce[0] = 0.0;
+    intForce[1] = 0.0;
 
     // sectional radius computation
     scalar sectRad = (maxRadius - minRadius) / sections;
@@ -1763,6 +1780,8 @@ void DASolver::calcForceProfileInternal(
 
     forAll(counter, index)
     {
+        intForce[0] = intForce[0] + axialForce[index];
+        intForce[1] = intForce[1] + tangtForce[index];
         axialForce[index] = axialForce[index] / areaCounter[index];
         tangtForce[index] = tangtForce[index] / areaCounter[index];
     }
@@ -1787,6 +1806,8 @@ void DASolver::calcForceProfileInternal(
     }
     forAll(counter, index)
     {
+        intForce[0] = intForce[0] + axialForce2[index];
+        intForce[1] = intForce[1] + tangtForce2[index];
         axialForce[index] = axialForce[index] + axialForce2[index] / areaCounter[index];
         tangtForce[index] = tangtForce[index] + tangtForce2[index] / areaCounter[index];
     }
@@ -1796,6 +1817,15 @@ void DASolver::calcForceProfileInternal(
     aForce = axialForce;
     tForce = tangtForce;
     rDist = radialDist;
+    integralForce = intForce;
+    forAll(aForce, index)
+    {
+        reduce(aForce[index], sumOp<scalar>());
+        reduce(tForce[index], sumOp<scalar>());
+        reduce(rDist[index], sumOp<scalar>());
+    }
+    reduce(integralForce[0], sumOp<scalar>());
+    reduce(integralForce[1], sumOp<scalar>());
 }
 
 void DASolver::calcdForceProfiledXvWAD(
@@ -1804,7 +1834,6 @@ void DASolver::calcdForceProfiledXvWAD(
     const word inputMode,
     const Vec xvVec,
     const Vec wVec,
-    Vec center,
     Vec psi,
     Vec dForcedXvW)
 {
@@ -1829,16 +1858,10 @@ void DASolver::calcdForceProfiledXvWAD(
     List<scalar> aForce(nPoints);
     List<scalar> tForce(nPoints);
     List<scalar> rDist(nPoints);
-    vector centerVector = vector::zero;
+    List<scalar> integralForce(2);
     pointField meshPoints = meshPtr_->points();
 
     const PetscScalar* vecArrayPsi;
-    PetscScalar* vecArrayCenter;
-    VecGetArray(center, &vecArrayCenter);
-    centerVector[0] = vecArrayCenter[0];
-    centerVector[1] = vecArrayCenter[1];
-    centerVector[2] = vecArrayCenter[2];
-    VecRestoreArray(center, &vecArrayCenter);
 
     // Step 1
     this->globalADTape_.reset();
@@ -1861,13 +1884,6 @@ void DASolver::calcdForceProfiledXvWAD(
     {
         this->registerStateVariableInput4AD();
     }
-    else if (inputMode == "center")
-    {
-        for (label i = 0; i < 3; i++)
-        {
-            this->globalADTape_.registerInput(centerVector[i]);
-        }
-    }
     else
     {
         FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "inputMode not valid"
@@ -1879,7 +1895,7 @@ void DASolver::calcdForceProfiledXvWAD(
     daModelPtr_->updateIntermediateVariables();
 
     // Step 3
-    this->calcForceProfileInternal(propName, centerVector, aForce, tForce, rDist);
+    this->calcForceProfileInternal(propName, aForce, tForce, rDist, integralForce);
 
     // Step 4
     if (outputMode == "aForce")
@@ -1902,6 +1918,11 @@ void DASolver::calcdForceProfiledXvWAD(
         {
             this->globalADTape_.registerOutput(rDist[i]);
         }
+    }
+    else if (outputMode == "integralForce")
+    {
+        this->globalADTape_.registerOutput(integralForce[0]);
+        this->globalADTape_.registerOutput(integralForce[1]);
     }
     else
     {
@@ -1930,11 +1951,16 @@ void DASolver::calcdForceProfiledXvWAD(
     }
     else if (outputMode == "rDist")
     {
-        forAll(tForce, i)
+        forAll(rDist, i)
         {
             rDist[i].setGradient(vecArrayPsi[i]);
         }
     
+    }
+    else if (outputMode == "integralForce")
+    {
+        integralForce[0].setGradient(vecArrayPsi[0]);    
+        integralForce[1].setGradient(vecArrayPsi[1]); 
     }
     VecRestoreArrayRead(psi, &vecArrayPsi);
 
@@ -1961,16 +1987,6 @@ void DASolver::calcdForceProfiledXvWAD(
         this->assignStateGradient2Vec(dForcedXvW);
         VecAssemblyBegin(dForcedXvW);
         VecAssemblyEnd(dForcedXvW);
-    }
-    else if (inputMode == "center")
-    {
-        PetscScalar* vecArrayCenter;
-        VecGetArray(dForcedXvW, &vecArrayCenter);
-        forAll(centerVector, i)
-        {
-            vecArrayCenter[i] = centerVector[i].getGradient();
-        }
-        VecRestoreArray(dForcedXvW, &vecArrayCenter);
     }
 
     // Step 9

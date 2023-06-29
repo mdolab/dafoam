@@ -76,6 +76,7 @@ daOptionsWing = {
             "active": True,
             "nForceSections": 5,
             "axis": [0.0, 0.0, 1.0],
+            "rotationCenter": [0.0, 0.0, 0.0],
             "actEps": 0.2,
             "rotDir": "right",
             "interpScheme": "gauss",
@@ -84,6 +85,7 @@ daOptionsWing = {
             "active": True,
             "nForceSections": 5,
             "axis": [0.0, 0.0, 1.0],
+            "rotationCenter": [0.0, 0.0, 0.0],
             "actEps": 0.2,
             "rotDir": "left",
             "interpScheme": "gauss",
@@ -142,6 +144,7 @@ daOptionsProp = {
             "active": True,
             "nForceSections": 5,
             "axis": [0.0, 0.0, 1.0],
+            "rotationCenter": [0.0, 0.0, 0.0],
             "actEps": 0.2,
             "rotDir": "right",
             "interpScheme": "gauss",
@@ -239,7 +242,7 @@ class Top(Multipoint):
         self.dvs.add_output("shape_prop", val=np.array([0] * nShapesProp))
         self.dvs.add_output("prop1_center", val=np.array([-0.2, 0.2, 0.05]))
         self.dvs.add_output("prop2_center", val=np.array([-0.2, -0.2, 0.05]))
-        self.dvs.add_output("prop_rot_center", val=np.array([0, 0, 0]))
+        # self.dvs.add_output("prop_rot_center", val=np.array([0, 0, 0]))
         self.dvs.add_output("prop_integral_force", val=np.array([5, 2]))
 
         for i in [1, 2]:
@@ -251,7 +254,7 @@ class Top(Multipoint):
 
         self.connect("twist_wing", "geometry_wing.twist_wing")
         self.connect("shape_prop", "geometry_prop.shape_prop")
-        self.connect("prop_rot_center", "cruise_prop.prop_center")
+        # self.connect("prop_rot_center", "cruise_prop.prop_center")
 
         # define the design variables
         self.add_design_var("twist_wing", lower=-10.0, upper=10.0, scaler=1.0)
