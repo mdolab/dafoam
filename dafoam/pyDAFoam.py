@@ -654,6 +654,7 @@ class DAOPTION(object):
                 "actEps": 0.02,
                 "rotDir": "right",
                 "interpScheme": "Poly4Gauss",
+                "bladeName": "blade",
             },
         }
 

@@ -80,6 +80,7 @@ daOptionsWing = {
             "actEps": 0.2,
             "rotDir": "right",
             "interpScheme": "gauss",
+            "bladeName": "blade",
         },
         "prop2": {
             "active": True,
@@ -89,6 +90,7 @@ daOptionsWing = {
             "actEps": 0.2,
             "rotDir": "left",
             "interpScheme": "gauss",
+            "bladeName": "blade",
         },
     },
 }
@@ -148,6 +150,7 @@ daOptionsProp = {
             "actEps": 0.2,
             "rotDir": "right",
             "interpScheme": "gauss",
+            "bladeName": "blade",
         },
     },
 }
@@ -242,19 +245,16 @@ class Top(Multipoint):
         self.dvs.add_output("shape_prop", val=np.array([0] * nShapesProp))
         self.dvs.add_output("prop1_center", val=np.array([-0.2, 0.2, 0.05]))
         self.dvs.add_output("prop2_center", val=np.array([-0.2, -0.2, 0.05]))
-        # self.dvs.add_output("prop_rot_center", val=np.array([0, 0, 0]))
-        self.dvs.add_output("prop_integral_force", val=np.array([5, 2]))
 
         for i in [1, 2]:
             self.connect("cruise_prop.axial_force", "cruise_wing.prop%d_axial_force" % i)
             self.connect("cruise_prop.tangential_force", "cruise_wing.prop%d_tangential_force" % i)
             self.connect("cruise_prop.radial_location", "cruise_wing.prop%d_radial_location" % i)
+            self.connect("cruise_prop.integral_force", "cruise_wing.prop%d_integral_force" % i)
             self.connect("prop%d_center" % i, "cruise_wing.prop%d_prop_center" % i)
-            self.connect("prop_integral_force", "cruise_wing.prop%d_integral_force" % i)
 
         self.connect("twist_wing", "geometry_wing.twist_wing")
         self.connect("shape_prop", "geometry_prop.shape_prop")
-        # self.connect("prop_rot_center", "cruise_prop.prop_center")
 
         # define the design variables
         self.add_design_var("twist_wing", lower=-10.0, upper=10.0, scaler=1.0)
