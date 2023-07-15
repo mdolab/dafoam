@@ -486,6 +486,11 @@ class DAOPTION(object):
         ## This option will be used in DAPimpleDyMFoam to simulate dynamicMesh motion
         self.rigidBodyMotion = {"mode": "dummy"}
 
+        ## whether we have iterative BC such as totaPressure
+        ## If True, we will call the correctBoundaryConditions and updateIntermediateVariables
+        ## multiple times to make sure the AD seeds are propagated properly for the iterative BCs.
+        self.hasIterativeBC = False
+
         # *********************************************************************************************
         # ************************************ Advance Options ****************************************
         # *********************************************************************************************
