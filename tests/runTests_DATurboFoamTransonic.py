@@ -28,28 +28,19 @@ if gcomm.rank == 0:
     os.system("cp -r 0.compressible 0")
     os.system("cp -r 0/U.transonic 0/U")
     os.system("cp -r 0/p.transonic 0/p")
+    os.system("cp -r 0/T.transonic 0/T")
     os.system("cp -r constant/thermophysicalProperties.h constant/thermophysicalProperties")
     os.system("cp -r constant/MRFProperties.transonic constant/MRFProperties")
     os.system("cp -r system/fvSolution.transonic system/fvSolution")
     os.system("cp -r system/fvSchemes.transonic system/fvSchemes")
-    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
 
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DATurboFoam",
-    "useAD": {"mode": "fd"},
     "designSurfaces": ["blade"],
     "primalMinResTol": 1e-12,
-    "primalVarBounds": {
-        "UMax": 1000.0,
-        "UMin": -1000.0,
-        "pMax": 500000.0,
-        "pMin": 20000.0,
-        "eMax": 500000.0,
-        "eMin": 100000.0,
-        "rhoMax": 5.0,
-        "rhoMin": 0.2,
-    },
+    "hasIterativeBC": True,
     "objFunc": {
         "TPR": {
             "part1": {

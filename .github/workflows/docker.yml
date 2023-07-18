@@ -1,0 +1,18 @@
+name: docker
+
+on: [push]
+
+env:
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+jobs:
+  push_to_registry:
+    name: Run
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build and push
+      run: |
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u dafoam --password-stdin
+        docker build -t dafoam/opt-packages:latest -f .dockerfile --progress=plain --no-cache .
+        docker push dafoam/opt-packages:latest

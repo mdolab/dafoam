@@ -904,6 +904,12 @@ public:
     void updateBoundaryConditions(
         const word fieldName,
         const word fieldType);
+    
+    /// update the boundary conditions for all states and intermediate variables
+    void updateStateBoundaryConditions();
+
+    /// calculate the residuals
+    void calcResiduals(label isPC = 0);
 
     /// synchronize the values in DAOption and actuatorDiskDVs_
     void syncDAOptionToActuatorDVs()
