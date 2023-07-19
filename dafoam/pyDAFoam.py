@@ -655,9 +655,11 @@ class DAOPTION(object):
                 "active": False,
                 "nForceSections": 10,
                 "axis": [1.0, 0.0, 0.0],
+                "rotationCenter": [0.0, 0.0, 0.0],
                 "actEps": 0.02,
                 "rotDir": "right",
                 "interpScheme": "Poly4Gauss",
+                "bladeName": "blade",
             },
         }
 
