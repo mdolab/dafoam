@@ -20,7 +20,7 @@ gcomm = MPI.COMM_WORLD
 os.chdir("./input/WingProp")
 
 if gcomm.rank == 0:
-    os.system("rm -rf 0 processor*")
+    os.system("rm -rf */processor*")
 
 # aero setup
 daOptionsWing = {
@@ -278,9 +278,12 @@ om.n2(prob, show_browser=False, outfile="mphys_wing_prop.html")
 prob.run_model()
 totals = prob.compute_totals()
 
-print(totals)
-
 if gcomm.rank == 0:
+    objFuncDict = {}
+    objFuncDict["power"] = prob.get_val("cruise_prop.aero_post.power")
+    objFuncDict["lift"] = prob.get_val("cruise_wing.aero_post.lift")
+    objFuncDict["drag"] = prob.get_val("cruise_wing.aero_post.drag")
+    objFuncDict["thrust"] = prob.get_val("cruise_prop.aero_post.thrust")
     derivDict = {}
     derivDict["force_balance"] = {}
     derivDict["force_balance"]["prop_shape"] = totals[("force_balance.value", "dvs.shape_prop")][0]
@@ -291,4 +294,5 @@ if gcomm.rank == 0:
     derivDict["power"] = {}
     derivDict["power"]["prop_shape"] = totals[("cruise_prop.aero_post.functionals.power", "dvs.shape_prop")][0]
     derivDict["power"]["wing_twist"] = totals[("cruise_prop.aero_post.functionals.power", "dvs.twist_wing")][0]
+    reg_write_dict(objFuncDict, 1e-8, 1e-10)
     reg_write_dict(derivDict, 1e-4, 1e-6)

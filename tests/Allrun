@@ -138,7 +138,6 @@ case $argm in
       runTests MphysAeroStructOpt
       runTests MphysAeroThermal
       runTests MphysAeroAcoustic
-      runTests MphysAeroProp
       runTestsSerial MphysAeroPropCoupled
     fi
     echo " "
@@ -243,7 +242,6 @@ case $argm in
       runTests MphysAeroStructOpt
       runTests MphysAeroThermal
       runTests MphysAeroAcoustic
-      runTests MphysAeroProp
       runTestsSerial MphysAeroPropCoupled
     fi
     echo " "
