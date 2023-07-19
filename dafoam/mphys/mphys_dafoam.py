@@ -1748,6 +1748,8 @@ class DAFoamPropForce(ExplicitComponent):
 
         DASolver = self.DASolver
 
+        DASolver.setStates(inputs["%s_states" % self.discipline])
+
         # initialize output to zeros
         axialForceProfileVec = PETSc.Vec().createSeq(self.nForceSections, bsize=1, comm=PETSc.COMM_SELF)
         axialForceProfileVec.zeroEntries()

@@ -1682,7 +1682,7 @@ void DASolver::calcForceProfileInternal(
     scalar length, axialDist;
 
     // get the pressure in the memory
-    const volScalarField &p = mesh.thisDb().lookupObject<volScalarField>("p");
+    const volScalarField& p = mesh.thisDb().lookupObject<volScalarField>("p");
 
     // find the patch ID of the blade surface
     label bladePatchI = mesh.boundaryMesh().findPatchID(bladePatchName);
@@ -1739,7 +1739,10 @@ void DASolver::calcForceProfileInternal(
 
     // generating empty lists
     scalarList axialForce(sections);
-    forAll(axialForce, Index) { axialForce[Index] = 0; }
+    forAll(axialForce, Index)
+    {
+        axialForce[Index] = 0;
+    }
     scalarList tangtForce = axialForce;
     scalarList radialDist = axialForce;
     scalarList intForce(2);
@@ -1768,8 +1771,8 @@ void DASolver::calcForceProfileInternal(
         }
 
         // pressure direction is opposite of the surface normal
-        axialForce[quot] = axialForce[quot] - (mesh.Sf().boundaryField()[bladePatchI][faceI] & axis) * p.boundaryField()[bladePatchI][faceI];
-        tangtForce[quot] = tangtForce[quot] - (mesh.Sf().boundaryField()[bladePatchI][faceI] & meshTanDir[faceI]) * p.boundaryField()[bladePatchI][faceI];
+        axialForce[quot] = axialForce[quot] + (mesh.Sf().boundaryField()[bladePatchI][faceI] & axis) * p.boundaryField()[bladePatchI][faceI];
+        tangtForce[quot] = tangtForce[quot] + (mesh.Sf().boundaryField()[bladePatchI][faceI] & meshTanDir[faceI]) * p.boundaryField()[bladePatchI][faceI];
 
         vector fT(mesh.Sf().boundaryField()[bladePatchI][faceI] & devRhoReffb[bladePatchI][faceI]);
         axialForce[quot] = axialForce[quot] + (fT & axis);
@@ -1797,15 +1800,10 @@ void DASolver::calcForceProfileInternal(
     rDist = radialDist;
     integralForce = intForce;
 
-    Info << " " << endl;
-    Info << " " << endl;
-    Info << " " << endl;
-    Info << " " << endl;
-    Info << "INTEGRAL FORCE = " << integralForce << endl;
-    Info << " " << endl;
-    Info << " " << endl;
-    Info << " " << endl;
-    Info << " " << endl;
+    if (daOptionPtr_->getOption<label>("debug"))
+    {
+        Info << "integral force " << integralForce << endl;
+    }
 
 #endif
 }
@@ -1827,7 +1825,7 @@ void DASolver::calcdForceProfiledXvWAD(
 #ifdef CODI_AD_REVERSE
 
     Info << "Calculating [dForceProfile/dInputs]^T*Psi using reverse-mode AD. PropName: "
-         << propName << endl;
+         << propName << " inputMode: " << inputMode << " ouputMode: " << outputMode << endl;
 
     VecZeroEntries(dForcedXvW);
 
@@ -1882,21 +1880,21 @@ void DASolver::calcdForceProfiledXvWAD(
     // Step 4
     if (outputMode == "aForce")
     {
-        for(label i = 0; i<nPoints; i++)
+        for (label i = 0; i < nPoints; i++)
         {
             this->globalADTape_.registerOutput(aForce[i]);
         }
     }
     else if (outputMode == "tForce")
     {
-        for(label i = 0; i<nPoints; i++)
+        for (label i = 0; i < nPoints; i++)
         {
             this->globalADTape_.registerOutput(tForce[i]);
         }
     }
     else if (outputMode == "rDist")
     {
-        for(label i = 0; i<nPoints; i++)
+        for (label i = 0; i < nPoints; i++)
         {
             this->globalADTape_.registerOutput(rDist[i]);
         }
@@ -1911,7 +1909,7 @@ void DASolver::calcdForceProfiledXvWAD(
         FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "outputMode not valid"
                                                    << abort(FatalError);
     }
-    
+
     // Step 5
     this->globalADTape_.setPassive();
 
@@ -1937,12 +1935,11 @@ void DASolver::calcdForceProfiledXvWAD(
         {
             rDist[i].setGradient(vecArrayPsi[i]);
         }
-    
     }
     else if (outputMode == "integralForce")
     {
-        integralForce[0].setGradient(vecArrayPsi[0]);    
-        integralForce[1].setGradient(vecArrayPsi[1]); 
+        integralForce[0].setGradient(vecArrayPsi[0]);
+        integralForce[1].setGradient(vecArrayPsi[1]);
     }
     VecRestoreArrayRead(psi, &vecArrayPsi);
 
@@ -1974,7 +1971,7 @@ void DASolver::calcdForceProfiledXvWAD(
     // Step 9
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
-    
+
 #endif
 }
 
