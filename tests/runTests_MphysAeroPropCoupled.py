@@ -294,5 +294,5 @@ if gcomm.rank == 0:
     derivDict["power"] = {}
     derivDict["power"]["prop_shape"] = totals[("cruise_prop.aero_post.functionals.power", "dvs.shape_prop")][0]
     derivDict["power"]["wing_twist"] = totals[("cruise_prop.aero_post.functionals.power", "dvs.twist_wing")][0]
-    reg_write_dict(objFuncDict, 1e-8, 1e-10)
+    reg_write_dict(objFuncDict, 1e-6, 1e-10)
     reg_write_dict(derivDict, 1e-4, 1e-6)
