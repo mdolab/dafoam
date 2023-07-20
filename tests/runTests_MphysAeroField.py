@@ -63,7 +63,7 @@ daOptions = {
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
     "adjPartDerivFDStep": {"State": 1e-6},
     "designVar": {
-        "shape": {"designVarType": "FFD"},
+        "twist": {"designVarType": "FFD"},
         "aoa": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
         "alphaPorosity": {"designVarType": "Field", "fieldName": "alphaPorosity", "fieldType": "scalar"},
     },
@@ -132,24 +132,27 @@ class Top(Multipoint):
         self.cruise.coupling.solver.add_dv_func("alphaPorosity", alphaPorosity)
         self.cruise.aero_post.add_dv_func("alphaPorosity", alphaPorosity)
 
-        # Select all points
-        pts = self.geometry.DVGeo.getLocalIndex(0)
-        indexList = pts[:, :, :].flatten()
-        PS = geo_utils.PointSelect("list", indexList)
-        nShapes = self.geometry.nom_addLocalDV(dvName="shape", pointSelect=PS)
+        # Set up global design variables. We dont change the root twist
+        nRefAxPts = self.geometry.nom_addRefAxis(name="wingAxis", xFraction=0.25, alignIndex="k")
+
+        def twist(val, geo):
+            for i in range(nRefAxPts):
+                geo.rot_z["wingAxis"].coef[i] = -val[0]
+
+        self.geometry.nom_addGlobalDV(dvName="twist", value=np.array([0]), func=twist)
 
         # add dvs to ivc and connect
-        self.dvs.add_output("shape", val=np.array([0] * nShapes))
+        self.dvs.add_output("twist", val=np.array([0]))
         self.dvs.add_output("aoa", val=np.array([aoa0]))
         nLocalCells = self.cruise.coupling.DASolver.solver.getNLocalCells()
         self.dvs.add_output("alphaPorosity", val=np.zeros(nLocalCells, dtype="d"))
 
-        self.connect("shape", "geometry.shape")
+        self.connect("twist", "geometry.twist")
         self.connect("aoa", "cruise.aoa")
         self.connect("alphaPorosity", "cruise.alphaPorosity")
 
         # define the design variables
-        self.add_design_var("shape", lower=-1.0, upper=1.0, scaler=1.0)
+        self.add_design_var("twist", lower=-10.0, upper=10.0, scaler=1.0)
         self.add_design_var("aoa", lower=-10.0, upper=10.0, scaler=1.0)
         self.add_design_var("alphaPorosity", lower=0, upper=1e-4, scaler=1.0)
 
@@ -191,14 +194,16 @@ optFuncs = OptFuncs(daOptions, prob)
 prob.run_model()
 totals = prob.compute_totals()
 
-
 alphaNorm = np.linalg.norm(totals[("cruise.aero_post.functionals.CL", "dvs.alphaPorosity")].flatten())
 alphaNormSum = gcomm.allreduce(alphaNorm, op=MPI.SUM)
 
 if gcomm.rank == 0:
+    objFuncDict = {}
+    objFuncDict["CL"] = prob.get_val("cruise.aero_post.CL")
     derivDict = {}
     derivDict["CL"] = {}
     derivDict["CL"]["alpha"] = [alphaNormSum]
-    derivDict["CL"]["shape"] = totals[("cruise.aero_post.functionals.CL", "dvs.shape")][0]
+    derivDict["CL"]["twist"] = totals[("cruise.aero_post.functionals.CL", "dvs.twist")][0]
     derivDict["CL"]["aoa"] = totals[("cruise.aero_post.functionals.CL", "dvs.aoa")][0]
+    reg_write_dict(objFuncDict, 1e-6, 1e-8)
     reg_write_dict(derivDict, 1e-4, 1e-6)

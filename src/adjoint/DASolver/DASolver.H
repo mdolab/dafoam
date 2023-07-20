@@ -346,6 +346,16 @@ public:
         const word designVarName,
         Vec dFdBC);
 
+    /// assign the BC val to OF var
+    void setBCToOFVars(
+        const dictionary& dvSubDict,
+        const scalar& BC);
+    
+    /// get the BC val from OF var
+    void getBCFromOFVars(
+        const dictionary& dvSubDict,
+        scalar& BC);
+
     /// compute dRdBCAD
     void calcdRdBCTPsiAD(
         const Vec xvVec,
@@ -538,8 +548,16 @@ public:
     /// register all state variables as the input for reverse-mode AD
     void registerStateVariableInput4AD(const label oldTimeLevel = 0);
 
+    /// deactivate all state variables as the input for reverse-mode AD
+    void deactivateStateVariableInput4AD();
+
     /// register field variables as the input for reverse-mode AD
     void registerFieldVariableInput4AD(
+        const word fieldName,
+        const word fieldType);
+
+    /// deactivate the field variables for reverse-mode AD
+    void deactivateFieldVariableInput4AD(
         const word fieldName,
         const word fieldType);
 
@@ -904,7 +922,7 @@ public:
     void updateBoundaryConditions(
         const word fieldName,
         const word fieldType);
-    
+
     /// update the boundary conditions for all states and intermediate variables
     void updateStateBoundaryConditions();
 
@@ -997,7 +1015,7 @@ public:
 
     /// initialize tensorflow functions and interfaces for callback
     void initTensorFlowFuncs(
-        pyComputeInterface computeInterface, 
+        pyComputeInterface computeInterface,
         void* compute,
         pyJacVecProdInterface jacVecProdInterface,
         void* jacVecProd)

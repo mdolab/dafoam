@@ -475,12 +475,21 @@ void DASolver::calcCouplingFaceCoordsAD(
         product[i] = volCoordsArray[i].getGradient();
     }
 
-    delete[] volCoordsArray;
-    delete[] surfCoordsArray;
-
     // clean up AD
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+    for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+    {
+        this->globalADTape_.deactivateValue(volCoordsArray[i]);
+    }
+    this->calcCouplingFaceCoords(volCoordsArray, surfCoordsArray);
+
+    delete[] volCoordsArray;
+    delete[] surfCoordsArray;
 
 #endif
 }
@@ -1005,36 +1014,27 @@ void DASolver::getThermalAD(
                                      << abort(FatalError);
     }
 
-    // ******************************* NOTE! ******************************
-    // This step is tricky. We need to clean up the AD seeds for all variables before the next AD
-    // This is usually done by theses two calls: updateOFField(wVec) and updateOFMesh(xvVec)
-    // The above two calls will assign zeros to the gradient() part of all scalar variables because
-    // the wVec and xvVec's gradient() part is zero (they are double instead of scalar).
-    // HOWEVER, the above two calls will NOT clean the seeds for field variables's boundary values
-    // This will not cause problems for most of the functions because their boundary values always
-    // have zero seeds. However, the getThermal function actually propagates non-zeros seeds for boundary
-    // values, so here we need to manually clean up the BC's gradient part. NOT doing this will
-    // mess up the AD computation for the following function.
-    // The way we clean it is that we set a zero-seed thermal var and call getThermal to propagate
-    // the zero seeds to all intermediate vars.
-    // ******************************* NOTE! ******************************
+    // clean up AD
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
     for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
     {
-        volCoordsArray[i].setGradient(0.0);
+        this->globalADTape_.deactivateValue(volCoordsArray[i]);
     }
     for (label i = 0; i < daIndexPtr_->nLocalAdjointStates; i++)
     {
-        statesArray[i].setGradient(0.0);
+        this->globalADTape_.deactivateValue(statesArray[i]);
     }
     this->getThermal(volCoordsArray, statesArray, thermalArray);
 
     delete[] volCoordsArray;
     delete[] statesArray;
     delete[] thermalArray;
-
-    // clean up AD
-    this->globalADTape_.clearAdjoints();
-    this->globalADTape_.reset();
 
 #endif
 }
@@ -1869,10 +1869,7 @@ void DASolver::calcdForceProfiledXvWAD(
         FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "inputMode not valid"
                                                    << abort(FatalError);
     }
-    daResidualPtr_->correctBoundaryConditions();
-    daResidualPtr_->updateIntermediateVariables();
-    daModelPtr_->correctBoundaryConditions();
-    daModelPtr_->updateIntermediateVariables();
+    this->updateStateBoundaryConditions();
 
     // Step 3
     this->calcForceProfileInternal(propName, aForce, tForce, rDist, integralForce);
@@ -1971,6 +1968,29 @@ void DASolver::calcdForceProfiledXvWAD(
     // Step 9
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    if (inputMode == "mesh")
+    {
+        forAll(meshPoints, i)
+        {
+            for (label j = 0; j < 3; j++)
+            {
+                this->globalADTape_.deactivateValue(meshPoints[i][j]);
+            }
+        }
+        meshPtr_->movePoints(meshPoints);
+        meshPtr_->moving(false);
+    }
+    else if (inputMode == "state")
+    {
+        this->deactivateStateVariableInput4AD();
+    }
+    this->updateStateBoundaryConditions();
+    this->calcForceProfileInternal(propName, aForce, tForce, rDist, integralForce);
 
 #endif
 }
@@ -2640,6 +2660,48 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    if (mode == "aForce")
+    {
+        for (label i = 0; i < nPoints; i++)
+        {
+            this->globalADTape_.deactivateValue(aForceField[i]);
+        }
+    }
+    else if (mode == "tForce")
+    {
+        for (label i = 0; i < nPoints; i++)
+        {
+            this->globalADTape_.deactivateValue(tForceField[i]);
+        }
+    }
+    else if (mode == "rDist")
+    {
+        for (label i = 0; i < nPoints; i++)
+        {
+            this->globalADTape_.deactivateValue(rDistField[i]);
+        }
+    }
+    else if (mode == "targetForce")
+    {
+        for (label i = 0; i < 2; i++)
+        {
+            this->globalADTape_.deactivateValue(targetForceList[i]);
+        }
+    }
+    else if (mode == "center")
+    {
+        for (label i = 0; i < 3; i++)
+        {
+            this->globalADTape_.deactivateValue(centerVector[i]);
+        }
+    }
+
+    this->calcFvSourceInternal(propName, aForceField, tForceField, rDistField, targetForceList, centerVector, fvSourceVField);
 #endif
 }
 
@@ -3537,6 +3599,159 @@ void DASolver::calcdRdAOA(
     }
 }
 
+void DASolver::setBCToOFVars(
+    const dictionary& dvSubDict,
+    const scalar& BC)
+{
+    /*
+    Description:
+        Assign the boundary condition (BC) value to OF variables
+    
+    Input:
+
+        dvSubDict: the design variable subDict that contains the inform for setting BCs
+
+        BC: the BC value
+    */
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the variable for changing the boundary condition
+    word varName = dvSubDict.getWord("variable");
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the component of a vector variable, ignore when it is a scalar
+    label comp = dvSubDict.getLabel("comp");
+
+    // set the BC
+    forAll(patches, idxI)
+    {
+        word patchName = patches[idxI];
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+        if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+        {
+            volVectorField& state(const_cast<volVectorField&>(
+                meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    forAll(state.boundaryFieldRef()[patchI], faceI)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI][comp] = BC;
+                    }
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<vector>& inletOutletPatch =
+                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                    vector val = inletOutletPatch.refValue()[0];
+                    val[comp] = BC;
+                    inletOutletPatch.refValue() = val;
+                }
+            }
+        }
+        else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+        {
+            volScalarField& state(const_cast<volScalarField&>(
+                meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    forAll(state.boundaryFieldRef()[patchI], faceI)
+                    {
+                        state.boundaryFieldRef()[patchI][faceI] = BC;
+                    }
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<scalar>& inletOutletPatch =
+                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                    inletOutletPatch.refValue() = BC;
+                }
+            }
+        }
+    }
+}
+
+void DASolver::getBCFromOFVars(
+    const dictionary& dvSubDict,
+    scalar& BC)
+{
+    /*
+    Description:
+        Get the boundary condition (BC) value from OF variables
+    
+    Input:
+
+        dvSubDict: the design variable subDict that contains the inform for setting BCs
+
+    Output:
+        BC: the BC value
+    */
+
+    // get info from dvSubDict. This needs to be defined in the pyDAFoam
+    // name of the variable for changing the boundary condition
+    word varName = dvSubDict.getWord("variable");
+    // name of the boundary patch
+    wordList patches;
+    dvSubDict.readEntry<wordList>("patches", patches);
+    // the component of a vector variable, ignore when it is a scalar
+    label comp = dvSubDict.getLabel("comp");
+
+    // Now get the BC value
+    forAll(patches, idxI)
+    {
+        word patchName = patches[idxI];
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+        if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+        {
+            volVectorField& state(const_cast<volVectorField&>(
+                meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    BC = state.boundaryFieldRef()[patchI][0][comp];
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<vector>& inletOutletPatch =
+                        refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
+                    BC = inletOutletPatch.refValue()[0][comp];
+                }
+            }
+        }
+        else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+        {
+            volScalarField& state(const_cast<volScalarField&>(
+                meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
+            // for decomposed domain, don't set BC if the patch is empty
+            if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+            {
+                if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
+                {
+                    BC = state.boundaryFieldRef()[patchI][0];
+                }
+                else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
+                         || state.boundaryFieldRef()[patchI].type() == "outletInlet")
+                {
+                    mixedFvPatchField<scalar>& inletOutletPatch =
+                        refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
+                    BC = inletOutletPatch.refValue()[0];
+                }
+            }
+        }
+    }
+}
+
 void DASolver::calcdRdBCTPsiAD(
     const Vec xvVec,
     const Vec wVec,
@@ -3615,61 +3830,8 @@ void DASolver::calcdRdBCTPsiAD(
     else
     {
 
-        // get info from dvSubDict. This needs to be defined in the pyDAFoam
-        // name of the variable for changing the boundary condition
-        word varName = dvSubDict.getWord("variable");
-        // name of the boundary patch
-        wordList patches;
-        dvSubDict.readEntry<wordList>("patches", patches);
-        // the component of a vector variable, ignore when it is a scalar
-        label comp = dvSubDict.getLabel("comp");
-
-        // Now get the BC value
-        forAll(patches, idxI)
-        {
-            word patchName = patches[idxI];
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
-            {
-                volVectorField& state(const_cast<volVectorField&>(
-                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        BC = state.boundaryFieldRef()[patchI][0][comp];
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<vector>& inletOutletPatch =
-                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                        BC = inletOutletPatch.refValue()[0][comp];
-                    }
-                }
-            }
-            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
-            {
-                volScalarField& state(const_cast<volScalarField&>(
-                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        BC = state.boundaryFieldRef()[patchI][0];
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<scalar>& inletOutletPatch =
-                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                        BC = inletOutletPatch.refValue()[0];
-                    }
-                }
-            }
-        }
+        // get the BC value from the OF vars
+        this->getBCFromOFVars(dvSubDict, BC);
         // need to reduce the BC value across all processors, this is because some of
         // the processors might not own the prescribed patches so their BC value will be still -1e16, but
         // when calling the following reduce function, they will get the correct BC from other processors
@@ -3680,59 +3842,7 @@ void DASolver::calcdRdBCTPsiAD(
         // register BC as the input
         this->globalADTape_.registerInput(BC);
         // ******* now set BC ******
-        forAll(patches, idxI)
-        {
-            word patchName = patches[idxI];
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
-            {
-                volVectorField& state(const_cast<volVectorField&>(
-                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        forAll(state.boundaryFieldRef()[patchI], faceI)
-                        {
-                            state.boundaryFieldRef()[patchI][faceI][comp] = BC;
-                        }
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<vector>& inletOutletPatch =
-                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                        vector val = inletOutletPatch.refValue()[0];
-                        val[comp] = BC;
-                        inletOutletPatch.refValue() = val;
-                    }
-                }
-            }
-            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
-            {
-                volScalarField& state(const_cast<volScalarField&>(
-                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        forAll(state.boundaryFieldRef()[patchI], faceI)
-                        {
-                            state.boundaryFieldRef()[patchI][faceI] = BC;
-                        }
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<scalar>& inletOutletPatch =
-                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                        inletOutletPatch.refValue() = BC;
-                    }
-                }
-            }
-        }
+        this->setBCToOFVars(dvSubDict, BC);
     }
     // ******* now set BC done******
     // compute residuals
@@ -3754,6 +3864,34 @@ void DASolver::calcdRdBCTPsiAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    this->globalADTape_.deactivateValue(BC);
+    if (designVarName == "MRF")
+    {
+        const IOMRFZoneListDF& MRF = meshPtr_->thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties");
+        scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
+        omega = BC;
+    }
+    else if (designVarName == "fvSource")
+    {
+        volVectorField& fvSource = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
+        label comp = dvSubDict.getLabel("comp");
+        forAll(fvSource, cellI)
+        {
+            fvSource[cellI][comp] = BC;
+        }
+    }
+    else
+    {
+        this->setBCToOFVars(dvSubDict, BC);
+    }
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
@@ -3826,61 +3964,8 @@ void DASolver::calcdFdBCAD(
     }
     else
     {
-        // get info from dvSubDict. This needs to be defined in the pyDAFoam
-        // name of the variable for changing the boundary condition
-        word varName = dvSubDict.getWord("variable");
-        // name of the boundary patch
-        wordList patches;
-        dvSubDict.readEntry<wordList>("patches", patches);
-        // the compoent of a vector variable, ignore when it is a scalar
-        label comp = dvSubDict.getLabel("comp");
-
-        // Now get the BC value
-        forAll(patches, idxI)
-        {
-            word patchName = patches[idxI];
-            label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-            if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
-            {
-                volVectorField& state(const_cast<volVectorField&>(
-                    meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        BC = state.boundaryFieldRef()[patchI][0][comp];
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<vector>& inletOutletPatch =
-                            refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                        BC = inletOutletPatch.refValue()[0][comp];
-                    }
-                }
-            }
-            else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
-            {
-                volScalarField& state(const_cast<volScalarField&>(
-                    meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-                // for decomposed domain, don't set BC if the patch is empty
-                if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                {
-                    if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                    {
-                        BC = state.boundaryFieldRef()[patchI][0];
-                    }
-                    else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                             || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                    {
-                        mixedFvPatchField<scalar>& inletOutletPatch =
-                            refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                        BC = inletOutletPatch.refValue()[0];
-                    }
-                }
-            }
-        }
+        // get the BC value from the OF vars
+        this->getBCFromOFVars(dvSubDict, BC);
         // need to reduce the BC value across all processors, this is because some of
         // the processors might not own the prescribed patches so their BC value will be still -1e16, but
         // when calling the following reduce function, they will get the correct BC from other processors
@@ -3936,67 +4021,8 @@ void DASolver::calcdFdBCAD(
         }
         else
         {
-            // get info from dvSubDict. This needs to be defined in the pyDAFoam
-            // name of the variable for changing the boundary condition
-            word varName = dvSubDict.getWord("variable");
-            // name of the boundary patch
-            wordList patches;
-            dvSubDict.readEntry<wordList>("patches", patches);
-            // the compoent of a vector variable, ignore when it is a scalar
-            label comp = dvSubDict.getLabel("comp");
-            forAll(patches, idxI)
-            {
-                word patchName = patches[idxI];
-                label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
-                if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
-                {
-                    volVectorField& state(const_cast<volVectorField&>(
-                        meshPtr_->thisDb().lookupObject<volVectorField>(varName)));
-                    // for decomposed domain, don't set BC if the patch is empty
-                    if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                    {
-                        if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                        {
-                            forAll(state.boundaryFieldRef()[patchI], faceI)
-                            {
-                                state.boundaryFieldRef()[patchI][faceI][comp] = BC;
-                            }
-                        }
-                        else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                                 || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                        {
-                            mixedFvPatchField<vector>& inletOutletPatch =
-                                refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
-                            vector val = inletOutletPatch.refValue()[0];
-                            val[comp] = BC;
-                            inletOutletPatch.refValue() = val;
-                        }
-                    }
-                }
-                else if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
-                {
-                    volScalarField& state(const_cast<volScalarField&>(
-                        meshPtr_->thisDb().lookupObject<volScalarField>(varName)));
-                    // for decomposed domain, don't set BC if the patch is empty
-                    if (meshPtr_->boundaryMesh()[patchI].size() > 0)
-                    {
-                        if (state.boundaryFieldRef()[patchI].type() == "fixedValue")
-                        {
-                            forAll(state.boundaryFieldRef()[patchI], faceI)
-                            {
-                                state.boundaryFieldRef()[patchI][faceI] = BC;
-                            }
-                        }
-                        else if (state.boundaryFieldRef()[patchI].type() == "inletOutlet"
-                                 || state.boundaryFieldRef()[patchI].type() == "outletInlet")
-                        {
-                            mixedFvPatchField<scalar>& inletOutletPatch =
-                                refCast<mixedFvPatchField<scalar>>(state.boundaryFieldRef()[patchI]);
-                            inletOutletPatch.refValue() = BC;
-                        }
-                    }
-                }
-            }
+            // ******* now set BC ******
+            this->setBCToOFVars(dvSubDict, BC);
         }
         // update all intermediate variables and boundary conditions
         this->updateStateBoundaryConditions();
@@ -4025,13 +4051,45 @@ void DASolver::calcdFdBCAD(
         VecAssemblyBegin(dFdBCPart);
         VecAssemblyEnd(dFdBCPart);
 
+        // we need to add dFdBCPart to dFdBC because we want to sum
+        // all dFdBCPart for all parts of this objFuncName.
+        VecAXPY(dFdBC, 1.0, dFdBCPart);
+
+        VecDestroy(&dFdBCPart);
+
         // need to clear adjoint and tape after the computation is done!
         this->globalADTape_.clearAdjoints();
         this->globalADTape_.reset();
 
-        // we need to add dFdBCPart to dFdBC because we want to sum
-        // all dFdBCPart for all parts of this objFuncName.
-        VecAXPY(dFdBC, 1.0, dFdBCPart);
+        // **********************************************************************************************
+        // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+        // **********************************************************************************************
+
+        this->globalADTape_.deactivateValue(BC);
+        if (designVarName == "MRF")
+        {
+            const IOMRFZoneListDF& MRF = meshPtr_->thisDb().lookupObject<IOMRFZoneListDF>("MRFProperties");
+            scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
+            omega = BC;
+        }
+        else if (designVarName == "fvSource")
+        {
+            volVectorField& fvSource = const_cast<volVectorField&>(
+                meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
+
+            label comp = dvSubDict.getLabel("comp");
+
+            forAll(fvSource, cellI)
+            {
+                fvSource[cellI][comp] = BC;
+            }
+        }
+        else
+        {
+            this->setBCToOFVars(dvSubDict, BC);
+        }
+        this->updateStateBoundaryConditions();
+        fRef = daObjFunc->getObjFuncValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
@@ -4039,8 +4097,6 @@ void DASolver::calcdFdBCAD(
             this->calcPrimalResidualStatistics("print");
             Info << objFuncName << ": " << fRef << endl;
         }
-
-        VecDestroy(&dFdBCPart);
     }
 
     wordList writeJacobians;
@@ -4333,6 +4389,48 @@ void DASolver::calcdRdAOATPsiAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    this->globalADTape_.deactivateValue(aoa);
+
+    forAll(patches, idxI)
+    {
+        word patchName = patches[idxI];
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchName);
+
+        if (meshPtr_->boundaryMesh()[patchI].size() > 0)
+        {
+            scalar UMag = sqrt(Ux0 * Ux0 + Uy0 * Uy0);
+            scalar UxNew = UMag * cos(aoa);
+            scalar UyNew = UMag * sin(aoa);
+
+            if (U.boundaryField()[patchI].type() == "fixedValue")
+            {
+                forAll(U.boundaryField()[patchI], faceI)
+                {
+                    U.boundaryFieldRef()[patchI][faceI][flowAxisIndex] = UxNew;
+                    U.boundaryFieldRef()[patchI][faceI][normalAxisIndex] = UyNew;
+                }
+            }
+            else if (U.boundaryField()[patchI].type() == "inletOutlet")
+            {
+                mixedFvPatchField<vector>& inletOutletPatch =
+                    refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
+
+                forAll(U.boundaryField()[patchI], faceI)
+                {
+                    inletOutletPatch.refValue()[faceI][flowAxisIndex] = UxNew;
+                    inletOutletPatch.refValue()[faceI][normalAxisIndex] = UyNew;
+                }
+            }
+        }
+    }
+    // compute residuals
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
@@ -4837,13 +4935,22 @@ void DASolver::calcdFdFieldAD(
         VecZeroEntries(dFdFieldPart);
         this->assignFieldGradient2Vec(fieldName, fieldType, dFdFieldPart);
 
+        // we need to add dFdFieldPart to dFdField because we want to sum
+        // all dFdFieldPart for all parts of this objFuncName.
+        VecAXPY(dFdField, 1.0, dFdFieldPart);
+
         // need to clear adjoint and tape after the computation is done!
         this->globalADTape_.clearAdjoints();
         this->globalADTape_.reset();
 
-        // we need to add dFdFieldPart to dFdField because we want to sum
-        // all dFdFieldPart for all parts of this objFuncName.
-        VecAXPY(dFdField, 1.0, dFdFieldPart);
+        // **********************************************************************************************
+        // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+        // **********************************************************************************************
+
+        this->deactivateFieldVariableInput4AD(fieldName, fieldType);
+        this->updateBoundaryConditions(fieldName, fieldType);
+        this->updateStateBoundaryConditions();
+        fRef = daObjFunc->getObjFuncValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
@@ -5253,13 +5360,21 @@ void DASolver::calcdFdWAD(
         VecZeroEntries(dFdWPart);
         this->assignStateGradient2Vec(dFdWPart);
 
+        // we need to add dFdWPart to dFdW because we want to sum
+        // all dFdWPart for all parts of this objFuncName.
+        VecAXPY(dFdW, 1.0, dFdWPart);
+
         // need to clear adjoint and tape after the computation is done!
         this->globalADTape_.clearAdjoints();
         this->globalADTape_.reset();
 
-        // we need to add dFdWPart to dFdW because we want to sum
-        // all dFdWPart for all parts of this objFuncName.
-        VecAXPY(dFdW, 1.0, dFdWPart);
+        // **********************************************************************************************
+        // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+        // **********************************************************************************************
+
+        this->deactivateStateVariableInput4AD();
+        this->updateStateBoundaryConditions();
+        fRef = daObjFunc->getObjFuncValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
@@ -5392,21 +5507,37 @@ void DASolver::calcdFdXvAD(
         VecAssemblyBegin(dFdXvPart);
         VecAssemblyEnd(dFdXvPart);
 
+        // we need to add dFd*Part to dFd* because we want to sum
+        // all dFd*Part for all parts of this objFuncName.
+        VecAXPY(dFdXv, 1.0, dFdXvPart);
+
+        VecDestroy(&dFdXvPart);
+
         // need to clear adjoint and tape after the computation is done!
         this->globalADTape_.clearAdjoints();
         this->globalADTape_.reset();
 
-        // we need to add dFd*Part to dFd* because we want to sum
-        // all dFd*Part for all parts of this objFuncName.
-        VecAXPY(dFdXv, 1.0, dFdXvPart);
+        // **********************************************************************************************
+        // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+        // **********************************************************************************************
+
+        forAll(meshPoints, i)
+        {
+            for (label j = 0; j < 3; j++)
+            {
+                this->globalADTape_.deactivateValue(meshPoints[i][j]);
+            }
+        }
+        meshPtr_->movePoints(meshPoints);
+        meshPtr_->moving(false);
+        this->updateStateBoundaryConditions();
+        fRef = daObjFunc->getObjFuncValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
             this->calcPrimalResidualStatistics("print");
             Info << objFuncName << ": " << fRef << endl;
         }
-
-        VecDestroy(&dFdXvPart);
     }
 
     wordList writeJacobians;
@@ -5506,32 +5637,25 @@ void DASolver::calcdRdThermalTPsiAD(
         product[i] = thermalArray[i].getGradient();
     }
 
-    // ******************************* NOTE! ******************************
-    // This step is tricky. We need to clean up the AD seeds for all variables before the next AD
-    // This is usually done by theses two calls: updateOFField(wVec) and updateOFMesh(xvVec)
-    // The above two calls will assign zeros to the gradient() part of all scalar variables because
-    // the wVec and xvVec's gradient() part is zero (they are double instead of scalar).
-    // HOWEVER, the above two calls will NOT clean the seeds for field variables's boundary values
-    // This will not cause problems for most of the functions because their boundary values always
-    // have zero seeds. However, the setThermal function actually sets non-zeros seeds for boundary
-    // values, so here we need to manually clean up the BC's gradient part. NOT doing this will
-    // mess up the AD computation for the following function.
-    // The way we clean it is that we set a zero-seed thermal var and call setThermal to propagate
-    // the zero seeds to all intermediate vars.
-    // ******************************* NOTE! ******************************
+    // clean up AD
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
     for (label i = 0; i < nCouplingFaces * 2; i++)
     {
-        thermalArray[i].setGradient(0.0);
+        this->globalADTape_.deactivateValue(thermalArray[i]);
     }
     this->setThermal(thermalArray);
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
 
     delete[] thermalArray;
     delete[] volCoordsArray;
     delete[] statesArray;
-
-    // clean up AD
-    this->globalADTape_.clearAdjoints();
-    this->globalADTape_.reset();
 
 #endif
 }
@@ -5603,6 +5727,23 @@ void DASolver::calcdRdXvTPsiAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.deactivateValue(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
+
 #endif
 }
 
@@ -5682,6 +5823,23 @@ void DASolver::calcdForcedXvAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.deactivateValue(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+    this->updateStateBoundaryConditions();
+    this->getForcesInternal(fX, fY, fZ, patchList);
+
 #endif
 }
 
@@ -5813,6 +5971,23 @@ void DASolver::calcdAcousticsdXvAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    forAll(meshPoints, i)
+    {
+        for (label j = 0; j < 3; j++)
+        {
+            this->globalADTape_.deactivateValue(meshPoints[i][j]);
+        }
+    }
+    meshPtr_->movePoints(meshPoints);
+    meshPtr_->moving(false);
+    this->updateStateBoundaryConditions();
+    this->getAcousticDataInternal(x, y, z, nX, nY, nZ, a, fX, fY, fZ, patchList);
+
 #endif
 }
 
@@ -5875,6 +6050,15 @@ void DASolver::calcdRdFieldTPsiAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    this->deactivateFieldVariableInput4AD(fieldName, fieldType);
+    this->updateBoundaryConditions(fieldName, fieldType);
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
@@ -6015,21 +6199,37 @@ void DASolver::calcdFdACTAD(
                 VecAssemblyBegin(dFdACTPart);
                 VecAssemblyEnd(dFdACTPart);
 
+                // we need to add dFd*Part to dFd* because we want to sum
+                // all dFd*Part for all parts of this objFuncName.
+                VecAXPY(dFdACT, 1.0, dFdACTPart);
+
+                VecDestroy(&dFdACTPart);
+
                 // need to clear adjoint and tape after the computation is done!
                 this->globalADTape_.clearAdjoints();
                 this->globalADTape_.reset();
 
-                // we need to add dFd*Part to dFd* because we want to sum
-                // all dFd*Part for all parts of this objFuncName.
-                VecAXPY(dFdACT, 1.0, dFdACTPart);
+                // **********************************************************************************************
+                // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+                // **********************************************************************************************
+
+                for (label i = 0; i < 10; i++)
+                {
+                    this->globalADTape_.deactivateValue(actDVList[i]);
+                }
+                for (label i = 0; i < 10; i++)
+                {
+                    fvSource.setActuatorDVs(diskName, i, actDVList[i]);
+                }
+                fvSource.updateFvSource();
+                this->updateStateBoundaryConditions();
+                fRef = daObjFunc->getObjFuncValue();
 
                 if (daOptionPtr_->getOption<label>("debug"))
                 {
                     this->calcPrimalResidualStatistics("print");
                     Info << objFuncName << ": " << fRef << endl;
                 }
-
-                VecDestroy(&dFdACTPart);
             }
         }
         else
@@ -6145,6 +6345,21 @@ void DASolver::calcdRdActTPsiAD(
 
             this->globalADTape_.clearAdjoints();
             this->globalADTape_.reset();
+
+            // **********************************************************************************************
+            // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+            // **********************************************************************************************
+
+            for (label i = 0; i < 10; i++)
+            {
+                this->globalADTape_.deactivateValue(actDVList[i]);
+            }
+            for (label i = 0; i < 10; i++)
+            {
+                fvSource.setActuatorDVs(diskName, i, actDVList[i]);
+            }
+            this->updateStateBoundaryConditions();
+            this->calcResiduals();
         }
         else
         {
@@ -6235,6 +6450,14 @@ void DASolver::calcdForcedWAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    this->deactivateStateVariableInput4AD();
+    this->updateStateBoundaryConditions();
+    this->getForcesInternal(fX, fY, fZ, patchList);
 #endif
 }
 
@@ -6357,6 +6580,14 @@ void DASolver::calcdAcousticsdWAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    this->deactivateStateVariableInput4AD();
+    this->updateStateBoundaryConditions();
+    this->getAcousticDataInternal(x, y, z, nX, nY, nZ, a, fX, fY, fZ, patchList);
 #endif
 }
 
@@ -6396,15 +6627,8 @@ void DASolver::calcdRdWTPsiAD(
         this->registerStateVariableInput4AD();
 
         // compute residuals
-        daResidualPtr_->correctBoundaryConditions();
-        daResidualPtr_->updateIntermediateVariables();
-        daModelPtr_->correctBoundaryConditions();
-        daModelPtr_->updateIntermediateVariables();
-        label isPC = 0;
-        dictionary options;
-        options.set("isPC", isPC);
-        daResidualPtr_->calcResiduals(options);
-        daModelPtr_->calcResiduals(options);
+        this->updateStateBoundaryConditions();
+        this->calcResiduals();
 
         this->registerResidualOutput4AD();
         this->globalADTape_.setPassive();
@@ -6484,6 +6708,13 @@ void DASolver::calcdRdWTPsiAD(
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
 
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+    this->deactivateStateVariableInput4AD();
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
+
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
     if (writeJacobians.found("dRdWTPsi") || writeJacobians.found("all"))
@@ -6551,6 +6782,13 @@ void DASolver::calcdRdWOldTPsiAD(
 
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    // ************** TODO *****************
+    // We need to deactivate the old time. NOT implemented yet.
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
@@ -6720,6 +6958,75 @@ void DASolver::registerStateVariableInput4AD(const label oldTimeLevel)
 #endif
 }
 
+void DASolver::deactivateStateVariableInput4AD()
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Deactivate all state variables as the input for reverse-mode AD
+    */
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+
+        forAll(state, cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                this->globalADTape_.deactivateValue(state[cellI][i]);
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        forAll(state, cellI)
+        {
+            this->globalADTape_.deactivateValue(state[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        forAll(state, cellI)
+        {
+
+            this->globalADTape_.deactivateValue(state[cellI]);
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+        forAll(state, faceI)
+        {
+            this->globalADTape_.deactivateValue(state[faceI]);
+        }
+        forAll(state.boundaryField(), patchI)
+        {
+            forAll(state.boundaryField()[patchI], faceI)
+            {
+                this->globalADTape_.deactivateValue(state.boundaryFieldRef()[patchI][faceI]);
+            }
+        }
+    }
+
+#endif
+}
+
 void DASolver::registerFieldVariableInput4AD(
     const word fieldName,
     const word fieldType)
@@ -6755,6 +7062,53 @@ void DASolver::registerFieldVariableInput4AD(
             for (label i = 0; i < 3; i++)
             {
                 this->globalADTape_.registerInput(state[cellI][i]);
+            }
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << "fieldType not valid. Options: scalar or vector"
+                         << abort(FatalError);
+    }
+
+#endif
+}
+
+void DASolver::deactivateFieldVariableInput4AD(
+    const word fieldName,
+    const word fieldType)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Deacitvate field variables as the input for reverse-mode AD
+    
+    Input:
+        fieldName: the name of the flow field to register
+
+        fieldType: can be either scalar or vector
+    */
+
+    if (fieldType == "scalar")
+    {
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
+
+        forAll(state, cellI)
+        {
+            this->globalADTape_.deactivateValue(state[cellI]);
+        }
+    }
+    else if (fieldType == "vector")
+    {
+        volVectorField& state = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(fieldName));
+
+        forAll(state, cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                this->globalADTape_.deactivateValue(state[cellI][i]);
             }
         }
     }
