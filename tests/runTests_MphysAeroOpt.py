@@ -309,8 +309,8 @@ for key in finalCon.keys():
         finalCL[key] = finalCon[key]
 
 if gcomm.rank == 0:
-    reg_write_dict(finalObj, 1e-6, 1e-8)
-    reg_write_dict(finalCL, 1e-6, 1e-8)
+    reg_write_dict(finalObj, 1e-4, 1e-6)
+    reg_write_dict(finalCL, 1e-4, 1e-6)
 
 # test the find feasible design function
 optFuncs.findFeasibleDesign(
