@@ -6,16 +6,24 @@ on:
       - main
 
 env:
-  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
+  DOCKER_OF_ADF_BASHRC: '/home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADF/etc/bashrc'
+  DOCKER_OF_ADR_BASHRC: '/home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc'
 
 jobs:
   push_to_registry:
     name: Deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
     - name: Build and push
       run: |
         echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u dafoam --password-stdin
-        docker build -t dafoam/opt-packages:latest -f .dockerfile --progress=plain --no-cache .
+        docker pull dafoam/opt-packages:latest
+        docker run -i -d -u dafoamuser --name build_latest dafoam/opt-packages:latest /bin/bash
+        docker exec -i -e DAFOAM_NO_WARNINGS=1 build_latest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd /home/dafoamuser/dafoam/repos && git clone https://github.com/mdolab/dafoam && cd dafoam && ./Allmake && . ${{env.DOCKER_OF_ADR_BASHRC}} && ./Allclean && ./Allmake && . ${{env.DOCKER_OF_ADF_BASHRC}} && ./Allclean && ./Allmake && pip install . && cd .. && rm -rf /home/dafoamuser/dafoam/repos/dafoam && rm ~/.bashrc_history && history -c"
+        docker export build_latest > build_latest.tar
+        docker rm -f $(docker ps -a -q)
+        docker rmi -f dafoam/opt-packages:latest
+        docker import build_latest.tar dafoam/opt-packages:latest
         docker push dafoam/opt-packages:latest
