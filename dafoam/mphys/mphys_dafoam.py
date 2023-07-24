@@ -137,6 +137,10 @@ class DAFoamBuilder(Builder):
                         nodes += 1 + parameters["nNodes"]
         return nodes
 
+    def get_ndof(self):
+        # The number of degrees of freedom used at each output location.
+        return -1
+
 
 class DAFoamGroup(Group):
     """
