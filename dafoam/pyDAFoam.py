@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "3.0.7"
+__version__ = "3.0.8"
 
 import subprocess
 import os
@@ -490,6 +490,13 @@ class DAOPTION(object):
         ## If True, we will call the correctBoundaryConditions and updateIntermediateVariables
         ## multiple times to make sure the AD seeds are propagated properly for the iterative BCs.
         self.hasIterativeBC = False
+
+        ## whether to use the constrainHbyA in the pEqn. The DASolvers are similar to OpenFOAM's native
+        ## solvers except that we directly compute the HbyA term without any constraints. In other words,
+        ## we comment out the constrainHbyA line in the pEqn. However, some cases may diverge without
+        ## the constrainHbyA, e.g., the MRF cases with the SST model. Here we have an option to add the
+        ## constrainHbyA back to the primal and adjoint solvers.
+        self.useConstrainHbyA = False
 
         # *********************************************************************************************
         # ************************************ Advance Options ****************************************

@@ -146,14 +146,16 @@ void DAResidualSimpleTFoam::calcResiduals(const dictionary& options)
     scalar pRefValue = 0.0;
 
     volScalarField rAU(1.0 / UEqn.A());
-    //volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U_, p_));
+    volVectorField HbyA(constrainHbyA(rAU * UEqn.H(), U_, p_));
     //***************** NOTE *******************
-    // constrainHbyA has been used since OpenFOAM-v1606; however, We do NOT use the constrainHbyA
-    // function in DAFoam because we found it significantly degrades the accuracy of shape derivatives.
+    // constrainHbyA has been used since OpenFOAM-v1606; however, it may degrade the accuracy of derivatives.
     // Basically, we should not constrain any variable because it will create discontinuity.
-    // Instead, we use the old implementation used in OpenFOAM-3.0+ and before
-    volVectorField HbyA("HbyA", U_);
-    HbyA = rAU * UEqn.H();
+    // Here we have a option to use the old implementation in OpenFOAM-3.0+ and before (no constraint for HbyA)
+    label useConstrainHbyA = daOption_.getOption<label>("useConstrainHbyA");
+    if (!useConstrainHbyA)
+    {
+        HbyA = rAU * UEqn.H();
+    }
 
     surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
 
