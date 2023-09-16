@@ -142,14 +142,23 @@ void DAResidualRhoSimpleCFoam::calcResiduals(const dictionary& options)
     // copied and modified from pEqn.H
     volScalarField rAU(1.0 / UEqn.A());
     volScalarField rAtU(1.0 / (1.0 / rAU - UEqn.H1()));
-    //volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
     //***************** NOTE *******************
-    // constrainHbyA has been used since OpenFOAM-v1606; however, We do NOT use the constrainHbyA
-    // function in DAFoam because we found it significantly degrades the accuracy of shape derivatives.
-    // Basically, we should not constrain any variable because it will create discontinuity.
-    // Instead, we use the old implementation used in OpenFOAM-3.0+ and before
-    volVectorField HbyA("HbyA", U_);
-    HbyA = rAU * UEqn.H();
+    // constrainHbyA has been used since OpenFOAM-v1606; however, it may degrade the accuracy of derivatives
+    // because constraining variables will create discontinuity. Here we have a option to use the old
+    // implementation in OpenFOAM-3.0+ and before (no constraint for HbyA)
+    autoPtr<volVectorField> HbyAPtr = nullptr;
+    label useConstrainHbyA = daOption_.getOption<label>("useConstrainHbyA");
+    if (useConstrainHbyA)
+    {
+        HbyAPtr.reset(new volVectorField(constrainHbyA(rAU * UEqn.H(), U_, p_)));
+    }
+    else
+    {
+        HbyAPtr.reset(new volVectorField("HbyA", U_));
+        HbyAPtr() = rAU * UEqn.H();
+    }
+    volVectorField& HbyA = HbyAPtr();
+
     tUEqn.clear();
 
     surfaceScalarField phiHbyA("phiHbyA", fvc::interpolate(rho_) * fvc::flux(HbyA));
@@ -191,7 +200,6 @@ void DAResidualRhoSimpleCFoam::calcResiduals(const dictionary& options)
     // copied and modified from pEqn.H
     phiRes_ = phiHbyA + pEqn.flux() - phi_;
     normalizePhiResiduals(phiRes);
-
 }
 
 void DAResidualRhoSimpleCFoam::updateIntermediateVariables()
