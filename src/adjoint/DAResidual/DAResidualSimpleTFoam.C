@@ -151,7 +151,7 @@ void DAResidualSimpleTFoam::calcResiduals(const dictionary& options)
     // because constraining variables will create discontinuity. Here we have a option to use the old
     // implementation in OpenFOAM-3.0+ and before (no constraint for HbyA)
     autoPtr<volVectorField> HbyAPtr = nullptr;
-    label useConstrainHbyA = daOptionPtr_->getOption<label>("useConstrainHbyA");
+    label useConstrainHbyA = daOption_.getOption<label>("useConstrainHbyA");
     if (useConstrainHbyA)
     {
         HbyAPtr.reset(new volVectorField(constrainHbyA(rAU * UEqn.H(), U_, p_)));
