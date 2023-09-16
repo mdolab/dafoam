@@ -22,6 +22,7 @@
 #include "DAField.H"
 #include "DAFvSource.H"
 #include "IOMRFZoneListDF.H"
+#include "constrainHbyA.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
