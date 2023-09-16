@@ -104,9 +104,9 @@ meshOptions = {
 }
 
 optOptions = {
-    "ACC": 1.0e-5,  # convergence accuracy
-    "MAXIT": 2,  # max optimization iterations
-    "IFILE": "opt_SLSQP.out",
+    "tol": 1.0e-5,
+    "max_iter": 2,
+    "output_file": "opt_IPOPT.txt",
 }
 
 # DVGeo
@@ -217,8 +217,8 @@ optProb.addCon("CMZ", lower=CM_target, upper=CM_target, scale=1)
 if gcomm.rank == 0:
     print(optProb)
 
-opt = OPT("slsqp", options=optOptions)
-histFile = os.path.join("./", "slsqp_hist.hst")
+opt = OPT("ipopt", options=optOptions)
+histFile = os.path.join("./", "ipopt_hist.hst")
 sol = opt(optProb, sens=optFuncs.calcObjFuncSensMP, storeHistory=histFile)
 
 if gcomm.rank == 0:
