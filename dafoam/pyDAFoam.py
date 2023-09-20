@@ -1147,13 +1147,16 @@ class PYDAFOAM(object):
         # check the patchNames from primalBC dict
         primalBCDict = self.getOption("primalBC")
         for bcKey in primalBCDict:
-            if type(primalBCDict[bcKey]) is dict:
-                for patchName in primalBCDict[bcKey]["patches"]:
-                    if patchName not in self.boundaries.keys():
-                        raise Error(
-                            "primalBC-%s-patches-%s is not valid. Please use a patchName from the boundaries list: %s"
-                            % (bcKey, patchName, self.boundaries.keys())
-                        )
+            try:
+                patches = primalBCDict[bcKey]["patches"]
+            except Exception:
+                continue
+            for patchName in patches:
+                if patchName not in self.boundaries.keys():
+                    raise Error(
+                        "primalBC-%s-patches-%s is not valid. Please use a patchName from the boundaries list: %s"
+                        % (bcKey, patchName, self.boundaries.keys())
+                    )
 
         # check the patch names from objFunc dict
         objFuncDict = self.getOption("objFunc")
@@ -1162,7 +1165,7 @@ class PYDAFOAM(object):
                 try:
                     patches = objFuncDict[objKey][part]["patches"]
                 except Exception:
-                    break
+                    continue
                 for patchName in patches:
                     if patchName not in self.boundaries.keys():
                         raise Error(
