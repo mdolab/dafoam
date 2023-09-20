@@ -724,9 +724,6 @@ class PYDAFOAM(object):
         # initialize comm for parallel communication
         self._initializeComm(comm)
 
-        # check if the combination of options is valid.
-        self._checkOptions()
-
         # Initialize families
         self.families = OrderedDict()
 
@@ -772,6 +769,9 @@ class PYDAFOAM(object):
 
         # initialize mesh information and read grids
         self._readMeshInfo()
+
+        # check if the combination of options is valid.
+        self._checkOptions()
 
         # initialize the mesh point vector xvVec
         self._initializeMeshPointVec()
@@ -1124,6 +1124,7 @@ class PYDAFOAM(object):
         if self.getOption("discipline") not in ["aero", "thermal"]:
             raise Error("discipline: %s not supported. Options are: aero or thermal" % self.getOption("discipline"))
 
+        # check coupling Info
         nActivated = 0
         for coupling in self.getOption("couplingInfo"):
             if self.getOption("couplingInfo")[coupling]["active"]:
@@ -1142,6 +1143,35 @@ class PYDAFOAM(object):
             raise Error(
                 "Only one couplingSurfaceGroups is supported for aerostructural, while %i found" % nAeroStructSurfaces
             )
+
+        # check the patchNames from primalBC dict
+        primalBCDict = self.getOption("primalBC")
+        for bcKey in primalBCDict:
+            try:
+                patches = primalBCDict[bcKey]["patches"]
+            except Exception:
+                continue
+            for patchName in patches:
+                if patchName not in self.boundaries.keys():
+                    raise Error(
+                        "primalBC-%s-patches-%s is not valid. Please use a patchName from the boundaries list: %s"
+                        % (bcKey, patchName, self.boundaries.keys())
+                    )
+
+        # check the patch names from objFunc dict
+        objFuncDict = self.getOption("objFunc")
+        for objKey in objFuncDict:
+            for part in objFuncDict[objKey]:
+                try:
+                    patches = objFuncDict[objKey][part]["patches"]
+                except Exception:
+                    continue
+                for patchName in patches:
+                    if patchName not in self.boundaries.keys():
+                        raise Error(
+                            "objFunc-%s-%s-patches-%s is not valid. Please use a patchName from the boundaries list: %s"
+                            % (objKey, part, patchName, self.boundaries.keys())
+                        )
 
         # check other combinations...
 
