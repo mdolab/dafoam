@@ -15,6 +15,7 @@ DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
 DAModel/DATurbulenceModel/DAkOmegaFieldInversionOmega.C
 DAModel/DATurbulenceModel/DAkOmegaSST.C
+DAModel/DATurbulenceModel/DAkOmega.C
 DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
 DAModel/DATurbulenceModel/DAkEpsilon.C
 
