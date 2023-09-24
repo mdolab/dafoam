@@ -46,3 +46,4 @@ Dictionary Key: alpha
 Dictionary Key: shapey
 @value 1.820149804938819e-08 1e-05 1e-07
 @value -5.444254757889892e-05 1e-05 1e-07
+@value -0.01256026206213756 1e-05 1e-07
