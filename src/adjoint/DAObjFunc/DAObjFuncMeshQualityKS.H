@@ -36,6 +36,12 @@ protected:
     /// which mesh quality metric to use
     word metric_;
 
+    /// whether to include the processor patches for mesh quality calculation
+    label includeProcPatches_;
+
+    /// a list of included faces for the mesh quality calculation
+    labelList includeFaceList_;
+
 
 public:
     TypeName("meshQualityKS");
