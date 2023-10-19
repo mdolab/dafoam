@@ -4,8 +4,8 @@
     Version : v3
 
     Description:
-        Calculating lift per surface area. This will be used to plot the 
-        spanwise lift distribution
+        Calculating force per surface area. This will be used to plot the 
+        spanwise force distribution
 
 \*---------------------------------------------------------------------------*/
 
@@ -25,7 +25,7 @@ using namespace Foam;
 
 int main(int argc, char* argv[])
 {
-    Info << "Computing liftPerS...." << endl;
+    Info << "Computing forcePerS...." << endl;
 
     argList::addOption(
         "patchNames",
@@ -33,9 +33,9 @@ int main(int argc, char* argv[])
         "List of patch names to compute");
 
     argList::addOption(
-        "liftDir",
+        "forceDir",
         "'(0 0 1)'",
-        "Lift direction");
+        "Force direction");
 
     argList::addOption(
         "time",
@@ -71,30 +71,30 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    List<scalar> liftDir1;
-    if (args.optionFound("liftDir"))
+    List<scalar> forceDir1;
+    if (args.optionFound("forceDir"))
     {
-        liftDir1 = scalarList(args.optionLookup("liftDir")());
+        forceDir1 = scalarList(args.optionLookup("forceDir")());
     }
     else
     {
-        Info << "liftDir not set! Exit." << endl;
+        Info << "forceDir not set! Exit." << endl;
         return 1;
     }
-    vector liftDir(vector::zero);
-    liftDir.x() = liftDir1[0];
-    liftDir.y() = liftDir1[1];
-    liftDir.z() = liftDir1[2];
+    vector forceDir(vector::zero);
+    forceDir.x() = forceDir1[0];
+    forceDir.y() = forceDir1[1];
+    forceDir.z() = forceDir1[2];
 
-    volScalarField liftPerS(
+    volScalarField forcePerS(
         IOobject(
-            "liftPerS",
+            "forcePerS",
             runTime.timeName(),
             mesh,
             IOobject::NO_READ,
             IOobject::NO_WRITE),
         mesh,
-        dimensionedScalar("liftPerS", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+        dimensionedScalar("forcePerS", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
         fixedValueFvPatchScalarField::typeName);
 
     // this code is pulled from:
@@ -125,15 +125,15 @@ int main(int argc, char* argv[])
             forces.x() = fN[faceI].x() + fT[faceI].x();
             forces.y() = fN[faceI].y() + fT[faceI].y();
             forces.z() = fN[faceI].z() + fT[faceI].z();
-            scalar lift = forces & liftDir;
-            liftPerS.boundaryFieldRef()[patchI][faceI] = lift / magSfb[patchI][faceI];
+            scalar force = forces & forceDir;
+            forcePerS.boundaryFieldRef()[patchI][faceI] = force / magSfb[patchI][faceI];
         }
     }
-    liftPerS.write();
+    forcePerS.write();
 
     Info << "Force: " << forces << endl;
 
-    Info << "Computing liftPerS.... Completed!" << endl;
+    Info << "Computing forcePerS.... Completed!" << endl;
 
     return 0;
 }
