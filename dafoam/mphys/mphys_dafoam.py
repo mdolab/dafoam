@@ -588,6 +588,12 @@ class DAFoamSolver(ImplicitComponent):
         # Initialize the design variable functions, e.g., aoa, actuator
         self.dv_funcs = {}
 
+        # pointer to the DVGeo object
+        self.DVGeo = None
+
+        # pointer to the DVCon object
+        self.DVCon = None
+
         # initialize the dRdWT matrix-free matrix in DASolver
         DASolver.solverAD.initializedRdWTMatrixFree(DASolver.xvVec, DASolver.wVec)
 
@@ -655,6 +661,12 @@ class DAFoamSolver(ImplicitComponent):
                 self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
+
+    def add_dvgeo(self, DVGeo):
+        self.DVGeo = DVGeo
+    
+    def add_dvcon(self, DVCon):
+        self.DVCon = DVCon
 
     def add_dv_func(self, dvName, dv_func):
         # add a design variable function to self.dv_func
@@ -933,7 +945,21 @@ class DAFoamSolver(ImplicitComponent):
                     # so we don't want to print the total info and recompute PC for each obj, we need to use renamed
                     # to check if a recompute is needed. In other words, we only recompute the PC for the first obj func
                     # adjoint solution
+
+                    if DASolver.getOption("writeDeformedFFDs"):
+                        if self.DVGeo is None:
+                            raise RuntimeError("writeDeformedFFDs is set but no DVGeo object found! Please call add_dvgeo in the run script!")
+                        else:
+                            self.DVGeo.writeTecplot("deformedFFDs_%d.dat" % self.solution_counter)
+                    
+                    if DASolver.getOption("writeDeformedConstraints"):
+                        if self.DVCon is None:
+                            raise RuntimeError("writeDeformedConstraints is set but no DVCon object found! Please call add_dvcon in the run script!")
+                        else:
+                            self.DVCon.writeTecplot("deformedConstraints_%d.dat" % self.solution_counter)
+
                     solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
+
                     if renamed:
                         # write the deformed FFD for post-processing
                         # DASolver.writeDeformedFFDs(self.solution_counter)
@@ -1937,6 +1963,7 @@ class DAFoamPropForce(ExplicitComponent):
                 vBar = DASolver.vec2Array(prodVec)
                 # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
                 d_inputs["%s_vol_coords" % self.discipline] += vBar
+
 
 class DAFoamFvSource(ExplicitComponent):
     """

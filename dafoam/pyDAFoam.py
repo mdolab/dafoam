@@ -637,8 +637,11 @@ class DAOPTION(object):
         ##     "writeSensMap" : ["shapex", "shapey"]
         self.writeSensMap = ["NONE"]
 
-        ## Whether to write deformed FFDs to the disk during optimization
+        ## Whether to write deformed FFDs to the disk during optimization, i.e., DVGeo.writeTecplot
         self.writeDeformedFFDs = False
+
+        ## Whether to write deformed constraints to disk during optimization, i.e., DVCon.writeTecplot
+        self.writeDeformedConstraints = False
 
         ## The max number of correctBoundaryConditions calls in the updateOFField function.
         self.maxCorrectBCCalls = 10
@@ -1308,16 +1311,11 @@ class PYDAFOAM(object):
         Write the deformed FFDs to the disk during optimization
         """
 
-        if self.comm.rank == 0:
-            print("writeDeformedFFDs is deprecated since v3.0.1!")
-
-        """
         if self.getOption("writeDeformedFFDs"):
             if counter is None:
-                self.DVGeo.writeTecplot("deformedFFD.dat", self.nSolveAdjoints)
+                self.DVGeo.writeTecplot("deformedFFD_%d.dat" % self.nSolveAdjoints)
             else:
-                self.DVGeo.writeTecplot("deformedFFD.dat", counter)
-        """
+                self.DVGeo.writeTecplot("deformedFFD_%d.dat" % counter)
 
     def writeTotalDeriv(self, fileName, sens, evalFuncs):
         """

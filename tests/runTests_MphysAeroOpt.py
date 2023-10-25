@@ -35,6 +35,8 @@ daOptions = {
     "designSurfaces": ["wing", "wing_te"],
     "solverName": "DASimpleFoam",
     "primalMinResTol": 1.0e-10,
+    "writeDeformedFFDs": True,
+    "writeDeformedConstraints": True,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
@@ -167,6 +169,12 @@ class Top(Multipoint):
         # create constraint DV setup
         tri_points = self.mesh.mphys_get_triangulated_surface()
         self.geometry.nom_setConstraintSurface(tri_points)
+
+        # add the dv_geo object to the builder solver. This will be used to write deformed FFDs
+        self.cruise.coupling.solver.add_dvgeo(self.geometry.DVGeo)
+
+        # add the dv_con object to the builder solver. This will be used to write deformed constraints
+        self.cruise.coupling.solver.add_dvcon(self.geometry.DVCon)
 
         # geometry setup
 
