@@ -1308,16 +1308,11 @@ class PYDAFOAM(object):
         Write the deformed FFDs to the disk during optimization
         """
 
-        if self.comm.rank == 0:
-            print("writeDeformedFFDs is deprecated since v3.0.1!")
-
-        """
         if self.getOption("writeDeformedFFDs"):
             if counter is None:
-                self.DVGeo.writeTecplot("deformedFFD.dat", self.nSolveAdjoints)
+                self.DVGeo.writeTecplot("deformedFFD_%d.dat" % self.nSolveAdjoints)
             else:
-                self.DVGeo.writeTecplot("deformedFFD.dat", counter)
-        """
+                self.DVGeo.writeTecplot("deformedFFD_%d.dat" % counter)
 
     def writeTotalDeriv(self, fileName, sens, evalFuncs):
         """
