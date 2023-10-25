@@ -637,8 +637,11 @@ class DAOPTION(object):
         ##     "writeSensMap" : ["shapex", "shapey"]
         self.writeSensMap = ["NONE"]
 
-        ## Whether to write deformed FFDs to the disk during optimization
+        ## Whether to write deformed FFDs to the disk during optimization, i.e., DVGeo.writeTecplot
         self.writeDeformedFFDs = False
+
+        ## Whether to write deformed constraints to disk during optimization, i.e., DVCon.writeTecplot
+        self.writeDeformedConstraints = False
 
         ## The max number of correctBoundaryConditions calls in the updateOFField function.
         self.maxCorrectBCCalls = 10
