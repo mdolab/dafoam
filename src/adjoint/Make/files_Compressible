@@ -49,6 +49,7 @@ DAObjFunc/DAObjFuncVariableVolSum.C
 DAObjFunc/DAObjFuncMeshQualityKS.C
 DAObjFunc/DAObjFuncFieldInversion.C
 DAObjFunc/DAObjFuncPatchMean.C
+DAObjFunc/DAObjFuncLocation.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
