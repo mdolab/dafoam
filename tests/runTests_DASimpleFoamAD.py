@@ -87,6 +87,18 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+        "R1": {
+            "part1": {
+                "type": "location",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "mode": "maxRadius",
+                "axis": [0.0, 0.0, 1.0],
+                "coeffKS": 100.0,
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        }
     },
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3, "ACTD": 1.0e-3},
