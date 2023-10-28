@@ -5,6 +5,8 @@ Dictionary Key: CL
 Dictionary Key: COP
 @value   0.2298218575123644 1e-08 1e-10
 Dictionary Key: R1
+@value   0.9988274383772859 1e-08 1e-10
+Dictionary Key: R1KS
 @value    1.022285515682389 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
@@ -17,6 +19,8 @@ Dictionary Key: shapey
 @value -0.01063654962455561 1e-05 1e-07
 @value 0.005827183649506049 1e-05 1e-07
 @value  0.01999380242276746 1e-05 1e-07
+Dictionary Key: twist
+@value 0.002313367328235666 1e-05 1e-07
 Dictionary Key: CL
 Dictionary Key: alpha
 @value  0.08995513866374753 1e-05 1e-07
@@ -24,6 +28,8 @@ Dictionary Key: shapey
 @value   0.7008636073013889 1e-05 1e-07
 @value   0.6091514298213649 1e-05 1e-07
 @value    1.418731716621286 1e-05 1e-07
+Dictionary Key: twist
+@value  0.09008667655578639 1e-05 1e-07
 Dictionary Key: COP
 Dictionary Key: alpha
 @value -0.002070288134429892 1e-05 1e-07
@@ -31,13 +37,26 @@ Dictionary Key: shapey
 @value  0.02508770027211096 1e-05 1e-07
 @value    0.397331785797213 1e-05 1e-07
 @value    1.137565574218442 1e-05 1e-07
+Dictionary Key: twist
+@value -0.001378560585184985 1e-05 1e-07
 Dictionary Key: R1
+Dictionary Key: alpha
+@value                    0 1e-05 1e-07
+Dictionary Key: shapey
+@value -2.09670026639443e-10 1e-05 1e-07
+@value -8.466467024008695e-08 1e-05 1e-07
+@value -1.136770130241234e-05 1e-05 1e-07
+Dictionary Key: twist
+@value -4.573679551391674e-06 1e-05 1e-07
+Dictionary Key: R1KS
 Dictionary Key: alpha
 @value                    0 1e-05 1e-07
 Dictionary Key: shapey
 @value 3.445986662700833e-10 1e-05 1e-07
 @value 3.454954650172768e-08 1e-05 1e-07
 @value 1.51360700044254e-06 1e-05 1e-07
+Dictionary Key: twist
+@value -1.990527426047606e-20 1e-05 1e-07
 Dictionary Key: dForcedW
 @value    1.968811128068832 1e-05 1e-07
 Dictionary Key: dForcedxV

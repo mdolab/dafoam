@@ -65,7 +65,50 @@ DAObjFuncLocation::DAObjFuncLocation(
         center_ = {centerRead[0], centerRead[1], centerRead[2]};
     }
 
-    
+    if (mode_ == "maxRadius")
+    {
+        // we need to identify the patchI and faceI that has maxR
+        // the proc that does not own the maxR face will have negative patchI and faceI
+        // we assume the patchI and faceI do not change during the optimization
+        // otherwise, we should use maxRadiusKS instead
+        scalar maxR = -100000;
+        label maxRPatchI, maxRFaceI;
+        forAll(objFuncFaceSources_, idxI)
+        {
+            const label& objFuncFaceI = objFuncFaceSources_[idxI];
+            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+            const label patchI = daIndex_.bFacePatchI[bFaceI];
+            const label faceI = daIndex_.bFaceFaceI[bFaceI];
+
+            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center_;
+
+            tensor faceCTensor(tensor::zero);
+            faceCTensor.xx() = faceC.x();
+            faceCTensor.yy() = faceC.y();
+            faceCTensor.zz() = faceC.z();
+
+            vector faceCAxial = faceCTensor & axis_;
+            vector faceCRadial = faceC - faceCAxial;
+
+            scalar radius = mag(faceCRadial);
+
+            if (radius > maxR)
+            {
+                maxR = radius;
+                maxRPatchI = patchI;
+                maxRFaceI = faceI;
+            }
+        }
+
+        scalar maxRGlobal = maxR;
+        reduce(maxRGlobal, maxOp<scalar>());
+
+        if (fabs(maxRGlobal - maxR) < 1e-8)
+        {
+            maxRPatchI_ = maxRPatchI;
+            maxRFaceI_ = maxRFaceI;
+        }
+    }
 }
 
 /// calculate the value of objective function
@@ -103,19 +146,20 @@ void DAObjFuncLocation::calcObjFunc(
     // initialize objFunValue
     objFuncValue = 0.0;
 
-    // calculate Location
-    scalar objValTmp = 0.0;
-    forAll(objFuncFaceSources, idxI)
+    if (mode_ == "maxRadiusKS")
     {
-        const label& objFuncFaceI = objFuncFaceSources[idxI];
-        label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
-        const label patchI = daIndex_.bFacePatchI[bFaceI];
-        const label faceI = daIndex_.bFaceFaceI[bFaceI];
+        // calculate Location
+        scalar objValTmp = 0.0;
 
-        vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center_;
-
-        if (mode_ == "maxRadius")
+        forAll(objFuncFaceSources, idxI)
         {
+            const label& objFuncFaceI = objFuncFaceSources[idxI];
+            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+            const label patchI = daIndex_.bFacePatchI[bFaceI];
+            const label faceI = daIndex_.bFaceFaceI[bFaceI];
+
+            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center_;
+
             tensor faceCTensor(tensor::zero);
             faceCTensor.xx() = faceC.x();
             faceCTensor.yy() = faceC.y();
@@ -136,21 +180,43 @@ void DAObjFuncLocation::calcObjFunc(
                                   << "Reduce coeffKS! " << abort(FatalError);
             }
         }
-        else
-        {
-            FatalErrorIn("DAObjFuncLocation") << "mode: " << mode_ << " not supported!"
-                                              << "Options are: maxRadius"
-                                              << abort(FatalError);
-        }
+
+        // need to reduce the sum of force across all processors
+        reduce(objValTmp, sumOp<scalar>());
+
+        // expSumKS stores sum[exp(coeffKS*x_i)], it will be used to scale dFdW
+        expSumKS = objValTmp;
+
+        objFuncValue = log(objValTmp) / coeffKS_;
     }
+    else if (mode_ == "maxRadius")
+    {
+        scalar radius = 0.0;
+        if (maxRPatchI_ >= 0 && maxRFaceI_ >= 0)
+        {
+            vector faceC = mesh_.Cf().boundaryField()[maxRPatchI_][maxRFaceI_] - center_;
 
-    // need to reduce the sum of force across all processors
-    reduce(objValTmp, sumOp<scalar>());
+            tensor faceCTensor(tensor::zero);
+            faceCTensor.xx() = faceC.x();
+            faceCTensor.yy() = faceC.y();
+            faceCTensor.zz() = faceC.z();
 
-    // expSumKS stores sum[exp(coeffKS*x_i)], it will be used to scale dFdW
-    expSumKS = objValTmp;
+            vector faceCAxial = faceCTensor & axis_;
+            vector faceCRadial = faceC - faceCAxial;
 
-    objFuncValue = log(objValTmp) / coeffKS_;
+            radius = mag(faceCRadial);
+        }
+
+        reduce(radius, sumOp<scalar>());
+
+        objFuncValue = radius;
+    }
+    else
+    {
+        FatalErrorIn("DAObjFuncLocation") << "mode: " << mode_ << " not supported!"
+                                          << "Options are: maxRadius"
+                                          << abort(FatalError);
+    }
 
     return;
 }

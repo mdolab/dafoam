@@ -37,7 +37,14 @@ protected:
     /// axis for radius computation
     vector axis_ = {1, 0, 0};
 
+    /// center for radius computation
     vector center_ = {0, 0, 0};
+
+    /// maxRadius patchI
+    label maxRPatchI_ = -1;
+
+    /// maxRadius patchI
+    label maxRFaceI_ = -1;
 
 public:
     TypeName("location");

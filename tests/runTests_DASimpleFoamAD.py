@@ -94,11 +94,22 @@ aeroOptions = {
                 "patches": ["wing"],
                 "mode": "maxRadius",
                 "axis": [0.0, 0.0, 1.0],
+                "scale": 1.0,
+                "addToAdjoint": True,
+            }
+        },
+        "R1KS": {
+            "part1": {
+                "type": "location",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "mode": "maxRadiusKS",
+                "axis": [0.0, 0.0, 1.0],
                 "coeffKS": 100.0,
                 "scale": 1.0,
                 "addToAdjoint": True,
             }
-        }
+        },
     },
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3, "ACTD": 1.0e-3},
@@ -107,6 +118,7 @@ aeroOptions = {
     "designVar": {
         "shapey": {"designVarType": "FFD"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+        "twist": {"designVarType": "FFD"}
     },
 }
 
@@ -133,12 +145,18 @@ def alpha(val, geo):
     DASolver.updateDAOption()
 
 
+def twist(val, geo):
+    for i in range(2):
+        geo.rot_z["bodyAxis"].coef[i] = -val[0]
+
+
 # select points
 pts = DVGeo.getLocalIndex(0)
 indexList = pts[1:4, 1, 0].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 DVGeo.addLocalDV("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
 DVGeo.addGlobalDV("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
+DVGeo.addGlobalDV("twist", np.zeros(1), twist, lower=-10.0, upper=10.0, scale=1.0)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
@@ -219,5 +237,6 @@ else:
         lines = f.readlines()
         f.close()
         line4 = float(lines[4])
-        if abs(line4 - 0.002349192076814971) / line4 > 1e-3:
+        print(line4)
+        if abs(line4 - 0.0022861597134965495) / line4 > 1e-3:
             exit(1)
