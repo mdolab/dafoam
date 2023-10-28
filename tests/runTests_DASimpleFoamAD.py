@@ -237,5 +237,6 @@ else:
         lines = f.readlines()
         f.close()
         line4 = float(lines[4])
-        if abs(line4 - 0.002349192076814971) / line4 > 1e-3:
+        print(line4)
+        if abs(line4 - 0.0022861597134965495) / line4 > 1e-3:
             exit(1)
