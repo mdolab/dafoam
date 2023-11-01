@@ -8048,11 +8048,11 @@ void DASolver::setFieldValue4GlobalCellI(
 
     if (meshPtr_->thisDb().foundObject<volVectorField>(fieldName))
     {
-        if (daIndexPtr_->globalCellVectorNumbering.isLocal(globalCellI))
+        if (daIndexPtr_->globalCellNumbering.isLocal(globalCellI))
         {
             volVectorField& field =
                 const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(fieldName));
-            label localCellI = daIndexPtr_->globalCellVectorNumbering.toLocal(globalCellI);
+            label localCellI = daIndexPtr_->globalCellNumbering.toLocal(globalCellI);
             field[localCellI][compI] = val;
         }
     }

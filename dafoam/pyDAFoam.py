@@ -1814,13 +1814,14 @@ class PYDAFOAM(object):
                 fSens.write(")\n")
                 fSens.write(";\n")
             elif fieldType == "vector":
+                size = len(sensList) // 3
                 self._writeOpenFoamHeader(fSens, "volVectorField", sensDir, "sens_%s_%s" % (objFuncName, designVarName))
                 fSens.write("dimensions      [0 0 0 0 0 0 0];\n")
                 fSens.write("internalField   nonuniform List<vector>\n")
-                fSens.write("%d\n" % len(sensList) / 3)
+                fSens.write("%d\n" % size)
                 fSens.write("(\n")
                 counterI = 0
-                for i in range(len(sensList) / 3):
+                for i in range(size):
                     fSens.write("(")
                     for j in range(3):
                         fSens.write("%g " % sensList[counterI])
