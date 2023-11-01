@@ -26,13 +26,23 @@ volVectorField U
     mesh
 );
 
+Info<< "Reading field nut\n" << endl;
+volScalarField nut
+(
+    IOobject
+    (
+        "nut",
+        runTime.timeName(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh
+);
+
 #include "createPhi.H"
 
 singlePhaseTransportModel laminarTransport(U, phi);
 
-autoPtr<incompressible::turbulenceModel> turbulence
-(
-    incompressible::turbulenceModel::New(U, phi, laminarTransport)
-);
-
+volScalarField nuEff = nut + laminarTransport.nu();
 

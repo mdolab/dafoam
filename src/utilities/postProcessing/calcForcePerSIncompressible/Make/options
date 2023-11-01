@@ -3,8 +3,6 @@ EXE_INC = \
     -Wno-old-style-cast \
     -Wno-conversion-null \
     -Wno-deprecated-copy \
-    -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude \
-    -I$(LIB_SRC)/TurbulenceModels/incompressible/lnInclude \
     -I$(LIB_SRC)/transportModels \
     -I$(LIB_SRC)/transportModels/incompressible/singlePhaseTransportModel \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
@@ -14,7 +12,6 @@ EXE_INC = \
 
 EXE_LIBS = \
     -lturbulenceModels \
-    -lincompressibleTurbulenceModels \
     -lincompressibleTransportModels \
     -lfiniteVolume \
     -lmeshTools \

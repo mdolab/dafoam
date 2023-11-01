@@ -34,17 +34,22 @@ volVectorField U
     mesh
 );
 
-#include "compressibleCreatePhi.H"
-
-autoPtr<compressible::turbulenceModel> turbulence
+Info<< "Reading field nut\n" << endl;
+volScalarField nut
 (
-    compressible::turbulenceModel::New
+    IOobject
     (
-        rho,
-        U,
-        phi,
-        thermo
-    )
+        "nut",
+        runTime.timeName(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh
 );
+
+volScalarField nuEff = nut + thermo.nu();
+
+#include "compressibleCreatePhi.H"
 
 

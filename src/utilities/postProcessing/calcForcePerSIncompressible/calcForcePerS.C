@@ -17,7 +17,6 @@
 #include "simpleControl.H"
 #include "fvOptions.H"
 #include "singlePhaseTransportModel.H"
-#include "turbulentTransportModel.H"
 
 using namespace Foam;
 
@@ -105,13 +104,26 @@ int main(int argc, char* argv[])
     const surfaceVectorField::Boundary& Sfb = mesh.Sf().boundaryField();
     const surfaceScalarField::Boundary& magSfb = mesh.magSf().boundaryField();
 
-    tmp<volSymmTensorField> tdevRhoReff = turbulence->devRhoReff();
-    const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
+    volSymmTensorField devRhoReff(
+        IOobject(
+            IOobject::groupName("devRhoReff", U.group()),
+            mesh.time().timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        -nuEff * dev(twoSymm(fvc::grad(U))));
+
+    const volSymmTensorField::Boundary& devRhoReffb = devRhoReff.boundaryField();
 
     forAll(patchNames, cI)
     {
         // get the patch id label
         label patchI = mesh.boundaryMesh().findPatchID(patchNames[cI]);
+        if (patchI < 0)
+        {
+            Info << "ERROR: Patch name " << patchNames[cI] << " not found in constant/polyMesh/boundary! Exit!" << endl;
+            return 1;
+        }
         // create a shorter handle for the boundary patch
         const fvPatch& patch = mesh.boundary()[patchI];
         // normal force
