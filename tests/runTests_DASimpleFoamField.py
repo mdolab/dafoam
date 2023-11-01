@@ -26,7 +26,7 @@ os.chdir("./input/NACA0012FieldInversion")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.incompressible 0")
-    # rename reference U field 
+    # rename reference U field
     os.system("cp 0/varRefFieldInversion 0/UData")
 
 replace_text_in_file("0/varRefFieldInversion", "    object      varRefFieldInversion;", "    object      UData;")
@@ -45,7 +45,7 @@ aeroOptions = {
     "designSurfaces": ["wing"],
     "primalMinResTol": 1e-12,
     "writeJacobians": ["all"],
-    "writeSensMap": ["betaSA", "alphaPorosity"],
+    "writeSensMap": ["betaSA", "alphaPorosity", "fvSource"],
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
@@ -107,6 +107,7 @@ aeroOptions = {
         "beta": {"designVarType": "Field", "fieldName": "betaFieldInversion", "fieldType": "scalar"},
         "alphaPorosity": {"designVarType": "Field", "fieldName": "alphaPorosity", "fieldType": "scalar"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+        "fvSource": {"designVarType": "Field", "fieldName": "fvSource", "fieldType": "vector"},
     },
 }
 
@@ -132,15 +133,28 @@ def alpha(val, geo):
     DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
     DASolver.updateDAOption()
 
+
 def betaFieldInversion(val, geo):
     for idxI, v in enumerate(val):
         DASolver.setFieldValue4GlobalCellI(b"betaFieldInversion", v, idxI)
         DASolver.updateBoundaryConditions(b"betaFieldInversion", b"scalar")
 
+
 def alphaPorosity(val, geo):
     for idxI, v in enumerate(val):
         DASolver.setFieldValue4GlobalCellI(b"alphaPorosity", v, idxI)
         DASolver.updateBoundaryConditions(b"alphaPorosity", b"scalar")
+
+
+def fvSource(val, geo):
+    nVals = int(len(val) // 3)
+    for cellI in range(nVals):
+        for i in range(3):
+            idxI = cellI * 3 + i
+            v = val[idxI]
+            DASolver.setFieldValue4GlobalCellI(b"fvSource", float(v), cellI, i)
+            DASolver.updateBoundaryConditions(b"fvSource", b"vector")
+
 
 # select points
 DVGeo.addGlobalDV("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
@@ -150,6 +164,9 @@ DVGeo.addGlobalDV("beta", value=beta0, func=betaFieldInversion, lower=1e-5, uppe
 
 alphaPorosity0 = np.zeros(nCells, dtype="d")
 DVGeo.addGlobalDV("alphaPorosity", value=alphaPorosity0, func=alphaPorosity, lower=0, upper=100.0, scale=1.0)
+
+fvSource0 = np.zeros(nCells * 3, dtype="d")
+DVGeo.addGlobalDV("fvSource", value=fvSource0, func=fvSource, lower=-10, upper=10.0, scale=1.0)
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
@@ -194,6 +211,10 @@ else:
     alphaPorositySens = funcsSens["FI"]["alphaPorosity"]
     funcsSens["FI"]["alphaPorosity"] = np.zeros(1, "d")
     funcsSens["FI"]["alphaPorosity"][0] = np.linalg.norm(alphaPorositySens)
+
+    fvSourceSens = funcsSens["FI"]["fvSource"]
+    funcsSens["FI"]["fvSource"] = np.zeros(1, "d")
+    funcsSens["FI"]["fvSource"][0] = np.linalg.norm(fvSourceSens)
 
     # Do not consider alpha deriv, just assign it to 0
     funcsSens["FI"]["alpha"] = 0
