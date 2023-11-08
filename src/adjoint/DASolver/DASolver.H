@@ -549,7 +549,7 @@ public:
     void registerStateVariableInput4AD(const label oldTimeLevel = 0);
 
     /// deactivate all state variables as the input for reverse-mode AD
-    void deactivateStateVariableInput4AD();
+    void deactivateStateVariableInput4AD(const label oldTimeLevel = 0);
 
     /// register field variables as the input for reverse-mode AD
     void registerFieldVariableInput4AD(
