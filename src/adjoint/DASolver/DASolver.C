@@ -5033,6 +5033,13 @@ label DASolver::solveLinearEqn(
     // adjoint solution need to re-initialize the AD tape
     globalADTape4dRdWTInitialized = 0;
 
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+    this->deactivateStateVariableInput4AD();
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
+
     return error;
 }
 
@@ -8364,6 +8371,159 @@ void DASolver::setTimeInstanceField(const label instanceI)
         daResidualPtr_->updateIntermediateVariables();
         daModelPtr_->correctBoundaryConditions();
         daModelPtr_->updateIntermediateVariables();
+    }
+}
+
+void DASolver::readStateVars(
+    word timeName,
+    label timeLevel)
+{
+    /*
+    Description:
+        Read the state variables from the disk and assign the value to the prescribe time level
+    
+    Inputs:
+        
+        timeName: Which time to read, i.e., time.timeName()
+
+        timeLevel: 
+            0: read the states and assign to the current time level
+            -1: read the states and assign to the previous time level (oldTime())
+            -2: read the states and assign to the 2 previous time level (oldTime().oldTime())
+    */
+
+    fvMesh& mesh = meshPtr_();
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state =
+            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+
+        volVectorField stateRead(
+            IOobject(
+                stateName,
+                timeName,
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh);
+
+        if (timeLevel == 0)
+        {
+            state = stateRead;
+        }
+        else if (timeLevel == -1)
+        {
+            state.oldTime() = stateRead;
+        }
+        else if (timeLevel == -2)
+        {
+            state.oldTime().oldTime() = stateRead;
+        }
+        else
+        {
+            FatalErrorIn("") << "timeLevel can only be 0, -1, and -2!" << abort(FatalError);
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        volScalarField stateRead(
+            IOobject(
+                stateName,
+                timeName,
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh);
+
+        if (timeLevel == 0)
+        {
+            state = stateRead;
+        }
+        else if (timeLevel == -1)
+        {
+            state.oldTime() = stateRead;
+        }
+        else if (timeLevel == -2)
+        {
+            state.oldTime().oldTime() = stateRead;
+        }
+        else
+        {
+            FatalErrorIn("") << "timeLevel can only be 0, -1, and -2!" << abort(FatalError);
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        volScalarField stateRead(
+            IOobject(
+                stateName,
+                timeName,
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh);
+
+        if (timeLevel == 0)
+        {
+            state = stateRead;
+        }
+        else if (timeLevel == -1)
+        {
+            state.oldTime() = stateRead;
+        }
+        else if (timeLevel == -2)
+        {
+            state.oldTime().oldTime() = stateRead;
+        }
+        else
+        {
+            FatalErrorIn("") << "timeLevel can only be 0, -1, and -2!" << abort(FatalError);
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state =
+            const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+
+        surfaceScalarField stateRead(
+            IOobject(
+                stateName,
+                timeName,
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh);
+
+        if (timeLevel == 0)
+        {
+            state = stateRead;
+        }
+        else if (timeLevel == -1)
+        {
+            state.oldTime() = stateRead;
+        }
+        else if (timeLevel == -2)
+        {
+            state.oldTime().oldTime() = stateRead;
+        }
+        else
+        {
+            FatalErrorIn("") << "timeLevel can only be 0, -1, and -2!" << abort(FatalError);
+        }
     }
 }
 

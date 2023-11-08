@@ -350,7 +350,7 @@ public:
     void setBCToOFVars(
         const dictionary& dvSubDict,
         const scalar& BC);
-    
+
     /// get the BC val from OF var
     void getBCFromOFVars(
         const dictionary& dvSubDict,
@@ -1012,6 +1012,11 @@ public:
 
     /// write the failed mesh to disk
     void writeFailedMesh();
+
+    /// read the state variables from the disk and assign the value to the prescribe time level
+    void readStateVars(
+        word timeName,
+        label timeLevel = 0);
 
     /// initialize tensorflow functions and interfaces for callback
     void initTensorFlowFuncs(

@@ -90,25 +90,6 @@ void DAPimpleFoam::initSolver()
         {
             FatalErrorIn("") << "periodicity <= 0!" << abort(FatalError);
         }
-    }
-    else if (mode_ == "timeAccurateAdjoint")
-    {
-
-        nTimeInstances_ =
-            daOptionPtr_->getSubDictOption<label>("unsteadyAdjoint", "nTimeInstances");
-
-        scalar endTime = runTimePtr_->endTime().value();
-        scalar deltaT = runTimePtr_->deltaTValue();
-        label maxNTimeInstances = round(endTime / deltaT) + 1;
-        if (nTimeInstances_ != maxNTimeInstances)
-        {
-            FatalErrorIn("") << "nTimeInstances in timeAccurateAdjoint is not equal to "
-                             << "the maximal possible value!" << abort(FatalError);
-        }
-    }
-
-    if (mode_ == "hybridAdjoint" || mode_ == "timeAccurateAdjoint")
-    {
 
         if (nTimeInstances_ <= 0)
         {
@@ -128,6 +109,17 @@ void DAPimpleFoam::initSolver()
             runTimeAllInstances_[idxI] = 0.0;
             runTimeIndexAllInstances_[idxI] = 0;
         }
+    }
+    else if (mode_ == "timeAccurateAdjoint")
+    {
+        scalar endTime = runTimePtr_->endTime().value();
+        scalar deltaT = runTimePtr_->deltaTValue();
+        nTimeInstances_ = round(endTime / deltaT);
+    }
+    else
+    {
+        FatalErrorIn("") << "mode " << mode_ << " not valid! Options: hybridAdjoint or timeAccurateAdjoint"
+                         << abort(FatalError);
     }
 
     // initialize fvSource and the source term
@@ -192,11 +184,6 @@ label DAPimpleFoam::solvePrimal(
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;
-    // for time accurate adjoints, we need to save states for Time = 0
-    if (mode_ == "timeAccurateAdjoint")
-    {
-        this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
-    }
     // main loop
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
@@ -246,11 +233,6 @@ label DAPimpleFoam::solvePrimal(
         if (mode_ == "hybridAdjoint")
         {
             this->saveTimeInstanceFieldHybrid(timeInstanceI);
-        }
-
-        if (mode_ == "timeAccurateAdjoint")
-        {
-            this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
         }
     }
 

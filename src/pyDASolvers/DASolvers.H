@@ -681,6 +681,34 @@ public:
         DASolverPtr_->setTimeInstanceVar(mode, stateMat, stateBCMat, timeVec, timeIdxVec);
     }
 
+    /// read the state variables from the disk and assign the value to the prescribe time level
+    void readStateVars(
+        word timeName,
+        label timeLevel = 0)
+    {
+        DASolverPtr_->readStateVars(timeName, timeLevel);
+    }
+
+    /// return the endTime
+    double getEndTime()
+    {
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        return DASolverPtr_->getRunTime().endTime().value();
+#endif
+        FatalErrorIn("getEndTime") << "should not call this func in AD mode!"
+                                   << abort(FatalError);
+    }
+
+    /// return the deltaT
+    double getDeltaT()
+    {
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        return DASolverPtr_->getRunTime().deltaT().value();
+#endif
+        FatalErrorIn("getDeltaT") << "should not call this func in AD mode!"
+                                   << abort(FatalError);
+    }
+
     /// return the value of objective function at the given time instance and name
     double getTimeInstanceObjFunc(
         const label instanceI,
@@ -812,7 +840,7 @@ public:
 
     /// initialize the call back function pointer
     void initTensorFlowFuncs(
-        pyComputeInterface computeInterface, 
+        pyComputeInterface computeInterface,
         void* compute,
         pyJacVecProdInterface jacVecProdInterface,
         void* jacVecProd)

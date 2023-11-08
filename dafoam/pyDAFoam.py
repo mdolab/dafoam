@@ -2044,6 +2044,113 @@ class PYDAFOAM(object):
 
         return
 
+    def readStateVars(self, timeName):
+        """
+        Read the state variables in to OpenFOAM's state fields
+        """
+
+        # read current time
+        self.solver.readStateVars(timeName, 0)
+        self.solverAD.readStateVars(timeName, 0)
+
+        # read old time
+        self.solver.readStateVars(timeName, -1)
+        self.solverAD.readStateVars(timeName, -1)
+
+    def solveAdjointUnsteady(self):
+        """
+        Run adjoint solver to compute the total derivs for unsteady solvers
+
+        Input:
+        ------
+        xvVec: vector that contains all the mesh point coordinates
+
+        wVec: vector that contains all the state variables
+
+        Output:
+        -------
+        self.adjTotalDeriv: the dict contains all the total derivative vectors
+
+        self.adjointFail: if the adjoint solution fails, assigns 1, otherwise 0
+        """
+
+        if self.getOption("useAD")["mode"] != "reverse":
+            raise Error("solveAdjointUnsteady only supports useAD->mode=reverse")
+
+        if not self.getOption("writeMinorIterations"):
+            solutionTime, renamed = self.renameSolution(self.nSolveAdjoints)
+
+        self.setOption("runStatus", "solveAdjoint")
+        self.updateDAOption()
+
+        self.adjointFail = 0
+
+        # init dRdWTMF
+        self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
+
+        # calc the preconditioner mat
+        self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+        self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
+
+        # Initialize the KSP object
+        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
+        self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
+
+        # loop over all objFunc, calculate dFdW, and solve the adjoint
+        objFuncDict = self.getOption("objFunc")
+        wSize = self.solver.getNLocalAdjointStates()
+        dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
+        dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
+        dFdW.setFromOptions()
+
+        designVarDict = self.getOption("designVar")
+
+        endTime = self.solver.getEndTime()
+        deltaT = self.solver.getDeltaT()
+        nInstances = round(endTime / deltaT)
+        for objFuncName in objFuncDict:
+            if objFuncName in self.objFuncNames4Adj:
+                for n in range(nInstances, 0, -1):
+                    timeName = str(n * deltaT)
+                    self.readStateVars(timeName)
+                    self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
+                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
+
+                    for designVarName in designVarDict:
+                        Info("Computing total derivatives for %s" % designVarName)
+                        if designVarDict[designVarName]["designVarType"] == "BC":
+                            nDVs = 1
+                            # calculate dFdBC
+                            dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                            dFdBC.setFromOptions()
+                            self.solverAD.calcdFdBCAD(
+                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
+                            )
+                            # Calculate dRBCT^Psi
+                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+                            totalDeriv.setFromOptions()
+                            self.solverAD.calcdRdBCTPsiAD(
+                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+                            )
+                            # totalDeriv = dFdBC - dRdBCT*psi
+                            totalDeriv.scale(-1.0)
+                            totalDeriv.axpy(1.0, dFdBC)
+                            # assign the total derivative to self.adjTotalDeriv
+                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                            # we need to convert the parallel vec to seq vec
+                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                            for i in range(nDVs):
+                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
+                            totalDeriv.destroy()
+                            totalDerivSeq.destroy()
+                            dFdBC.destroy()
+        
+        self.nSolveAdjoints += 1
+
     def solveAdjoint(self):
         """
         Run adjoint solver to compute the adjoint vector psiVec
