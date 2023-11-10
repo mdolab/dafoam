@@ -209,7 +209,10 @@ def calcObjFuncSens(xDV, funcs):
     DVCon.evalFunctionsSens(funcsSens)
 
     # Solve the adjoint
-    DASolver.solveAdjoint()
+    if DASolver.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
+        DASolver.solveAdjointUnsteady()
+    else:
+        DASolver.solveAdjoint()
 
     # Evaluate the CFD derivatives
     DASolver.evalFunctionsSens(funcsSens, evalFuncs=evalFuncs)
@@ -334,9 +337,9 @@ def calcObjFuncSensUnsteady(xDV, funcs):
 
     mode = DASolver.getOption("unsteadyAdjoint")["mode"]
     nTimeInstances = DASolver.getOption("unsteadyAdjoint")["nTimeInstances"]
-    if mode == "hybridAdjoint":
+    if mode == "hybrid":
         iEnd = -1
-    elif mode == "timeAccurateAdjoint":
+    elif mode == "timeAccurate":
         iEnd = 0
 
     # NOTE: calling calcRes here is critical because it will setup the correct
@@ -347,7 +350,7 @@ def calcObjFuncSensUnsteady(xDV, funcs):
     DASolver.calcPrimalResidualStatistics("calc")
 
     # set these vectors zeros
-    DASolver.zeroTimeAccurateAdjointVectors()
+    DASolver.zerotimeAccurateVectors()
 
     for i in range(nTimeInstances - 1, iEnd, -1):
 

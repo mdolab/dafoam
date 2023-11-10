@@ -456,7 +456,7 @@ class DAOPTION(object):
         ## This is used only for transonic solvers such as DARhoSimpleCFoam
         self.transonicPCOption = -1
 
-        ## Options for unsteady adjoint. mode can be hybridAdjoint or timeAccurateAdjoint
+        ## Options for unsteady adjoint. mode can be hybrid or timeAccurate
         ## Here nTimeInstances is the number of time instances and periodicity is the
         ## periodicity of flow oscillation (hybrid adjoint only)
         self.unsteadyAdjoint = {"mode": "None", "nTimeInstances": -1, "periodicity": -1.0}
@@ -1017,7 +1017,7 @@ class PYDAFOAM(object):
         time steps 0 and 00 for both state and residuals. This is
         because the backward ddt scheme depends on U, U0, and U00
         """
-        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
+        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
             objFuncDict = self.getOption("objFunc")
             wSize = self.solver.getNLocalAdjointStates()
             self.dRdW0TPsi = {}
@@ -1055,7 +1055,7 @@ class PYDAFOAM(object):
                     self.dR00dW00TPsi[objFuncName] = vecF
 
     def zeroTimeAccurateAdjointVectors(self):
-        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
+        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
             objFuncDict = self.getOption("objFunc")
             for objFuncName in objFuncDict:
                 if objFuncName in self.objFuncNames4Adj:
@@ -1102,9 +1102,9 @@ class PYDAFOAM(object):
             raise Error("useAD->mode only supports fd, reverse, or forward!")
 
         # check time accurate adjoint
-        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
+        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
             if not self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-                raise Error("timeAccurateAdjoint only supports useAD->mode=forward|reverse")
+                raise Error("timeAccurate only supports useAD->mode=forward|reverse")
 
         if "NONE" not in self.getOption("writeSensMap"):
             if not self.getOption("useAD")["mode"] in ["reverse"]:
@@ -1235,7 +1235,7 @@ class PYDAFOAM(object):
         nLocalAdjointBoundaryStates = self.solver.getNLocalAdjointBoundaryStates()
         nTimeInstances = -99999
         adjMode = self.getOption("unsteadyAdjoint")["mode"]
-        if adjMode == "hybridAdjoint" or adjMode == "timeAccurateAdjoint":
+        if adjMode == "hybrid":
             nTimeInstances = self.getOption("unsteadyAdjoint")["nTimeInstances"]
 
         self.stateMat = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -1429,7 +1429,59 @@ class PYDAFOAM(object):
             else:
                 # call self.solver.getObjFuncValue to get the objFuncValue from
                 # the DASolver
-                objFuncValue = self.solver.getObjFuncValue(funcName.encode())
+                if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
+                    objFuncValue = self.solver.getObjFuncValueUnsteady(funcName.encode())
+                else:
+                    objFuncValue = self.solver.getObjFuncValue(funcName.encode())
+                funcs[funcName] = objFuncValue
+                # assign the objFuncValuePrevIter
+                self.objFuncValuePrevIter[funcName] = funcs[funcName]
+
+        if self.primalFail:
+            funcs["fail"] = True
+        else:
+            funcs["fail"] = False
+
+        return
+    
+    def evalFunctionsUnsteady(self, funcs, evalFuncs=None, ignoreMissing=False):
+        """
+        This is the unsteady version of evalFunctions()
+
+        Parameters
+        ----------
+        funcs : dict
+            Dictionary into which the functions are saved.
+
+        evalFuncs : iterable object containing strings
+          If not None, use these functions to evaluate.
+
+        ignoreMissing : bool
+            Flag to suppress checking for a valid function. Please use
+            this option with caution.
+
+        Examples
+        --------
+        >>> funcs = {}
+        >>> CFDsolver()
+        >>> CFDsolver.evalFunctionsUnsteady(funcs, ['CD', 'CL'])
+        >>> funcs
+        >>> # Result will look like:
+        >>> # {'CD':0.501, 'CL':0.02750}
+        """
+
+        for funcName in evalFuncs:
+            if self.primalFail:
+                if len(self.objFuncValuePrevIter) == 0:
+                    raise Error("Primal solution failed for the baseline design!")
+                else:
+                    # do not call self.solver.getObjFuncValue because they can be nonphysical,
+                    # assign funcs based on self.objFuncValuePrevIter instead
+                    funcs[funcName] = self.objFuncValuePrevIter[funcName]
+            else:
+                # call self.solver.getObjFuncValue to get the objFuncValue from
+                # the DASolver
+                objFuncValue = self.solver.getObjFuncValueUnsteady(funcName.encode())
                 funcs[funcName] = objFuncValue
                 # assign the objFuncValuePrevIter
                 self.objFuncValuePrevIter[funcName] = funcs[funcName]
@@ -2044,18 +2096,22 @@ class PYDAFOAM(object):
 
         return
 
-    def readStateVars(self, timeName):
+    def readStateVars(self, timeVal, deltaT):
         """
         Read the state variables in to OpenFOAM's state fields
         """
 
         # read current time
-        self.solver.readStateVars(timeName, 0)
-        self.solverAD.readStateVars(timeName, 0)
+        self.solver.readStateVars(str(timeVal), 0)
+        self.solverAD.readStateVars(str(timeVal), 0)
 
         # read old time
-        self.solver.readStateVars(timeName, -1)
-        self.solverAD.readStateVars(timeName, -1)
+        self.solver.readStateVars(str(timeVal - deltaT), -1)
+        self.solverAD.readStateVars(str(timeVal - deltaT), -1)
+
+        # assign the state from OF field to wVec so that the wVec
+        # is update to date for unsteady adjoint
+        self.solver.ofField2StateVec(self.wVec)
 
     def solveAdjointUnsteady(self):
         """
@@ -2077,9 +2133,6 @@ class PYDAFOAM(object):
         if self.getOption("useAD")["mode"] != "reverse":
             raise Error("solveAdjointUnsteady only supports useAD->mode=reverse")
 
-        if not self.getOption("writeMinorIterations"):
-            solutionTime, renamed = self.renameSolution(self.nSolveAdjoints)
-
         self.setOption("runStatus", "solveAdjoint")
         self.updateDAOption()
 
@@ -2096,25 +2149,36 @@ class PYDAFOAM(object):
         ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
         self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
 
-        # loop over all objFunc, calculate dFdW, and solve the adjoint
         objFuncDict = self.getOption("objFunc")
+        designVarDict = self.getOption("designVar")
+
+        # init the dFdW vec
         wSize = self.solver.getNLocalAdjointStates()
         dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
         dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
         dFdW.setFromOptions()
+        # initialize the adjoint rhs vec
+        adjRhs = dFdW.duplicate()
 
-        designVarDict = self.getOption("designVar")
-
+        # loop over all objFunc, calculate dFdW, and solve the adjoint
         endTime = self.solver.getEndTime()
         deltaT = self.solver.getDeltaT()
         nInstances = round(endTime / deltaT)
         for objFuncName in objFuncDict:
             if objFuncName in self.objFuncNames4Adj:
+                adjRhs.zeroEntries()
                 for n in range(nInstances, 0, -1):
-                    timeName = str(n * deltaT)
-                    self.readStateVars(timeName)
+                    timeVal = n * deltaT
+                    self.readStateVars(timeVal, deltaT)
                     self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
-                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
+
+                    objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+                    dFdW.scale(objFuncUnsteadyScaling)
+
+                    adjRhs.scale(-1.0)
+                    adjRhs.axpy(1.0, dFdW)
+
+                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, adjRhs, self.adjVectors[objFuncName])
 
                     for designVarName in designVarDict:
                         Info("Computing total derivatives for %s" % designVarName)
@@ -2138,17 +2202,22 @@ class PYDAFOAM(object):
                             totalDeriv.scale(-1.0)
                             totalDeriv.axpy(1.0, dFdBC)
                             # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+
                             # we need to convert the parallel vec to seq vec
                             totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
                             self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+
+                            if self.adjTotalDeriv[objFuncName][designVarName] is None:
+                                self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
                             for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+                                self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
 
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdBC.destroy()
-        
+
+                    self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[objFuncName], adjRhs)
+
         self.nSolveAdjoints += 1
 
     def solveAdjoint(self):
@@ -2231,25 +2300,11 @@ class PYDAFOAM(object):
                 elif self.getOption("useAD")["mode"] == "reverse":
                     self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
 
-                # if it is time accurate adjoint, add extra terms for dFdW
-                if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
-                    # first copy the vectors from previous residual time step level
-                    self.dR0dW0TPsi[objFuncName].copy(self.dR00dW0TPsi[objFuncName])
-                    self.dR0dW00TPsi[objFuncName].copy(self.dR00dW00TPsi[objFuncName])
-                    self.dRdW0TPsi[objFuncName].copy(self.dR0dW0TPsi[objFuncName])
-                    self.dRdW00TPsi[objFuncName].copy(self.dR0dW00TPsi[objFuncName])
-                    dFdW.axpy(-1.0, self.dR0dW0TPsi[objFuncName])
-                    dFdW.axpy(-1.0, self.dR00dW00TPsi[objFuncName])
-
                 # Initialize the adjoint vector psi and solve for it
                 if self.getOption("useAD")["mode"] == "fd":
                     self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
                 elif self.getOption("useAD")["mode"] == "reverse":
                     self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
-
-                if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurateAdjoint":
-                    self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[objFuncName], self.dRdW0TPsi[objFuncName])
-                    self.solverAD.calcdRdWOldTPsiAD(2, self.adjVectors[objFuncName], self.dRdW00TPsi[objFuncName])
 
                 dFdW.destroy()
 
@@ -2982,7 +3037,7 @@ class PYDAFOAM(object):
             self.solver.printAllOptions()
 
         adjMode = self.getOption("unsteadyAdjoint")["mode"]
-        if adjMode == "hybridAdjoint" or adjMode == "timeAccurateAdjoint":
+        if adjMode == "hybrid":
             self.initTimeInstanceMats()
 
         self.solverInitialized = 1

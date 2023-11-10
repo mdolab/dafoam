@@ -24,11 +24,6 @@ os.chdir("./input/CurvedCubeHexMesh")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
-    os.system("cp -r 0.unsteady 0")
-    os.system("cp -r system/controlDict.unsteady system/controlDict")
-    os.system("cp -r system/fvSchemes.unsteady system/fvSchemes")
-    os.system("cp -r system/fvSolution.unsteady system/fvSolution")
-    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
 
 replace_text_in_file("system/controlDict", "endTime         40;", "endTime         0.05;")
 
@@ -39,7 +34,7 @@ daOptions = {
     "printIntervalUnsteady": 100,
     "writeJacobians": ["all"],
     "useAD": {"mode": "reverse"},
-    "unsteadyAdjoint": {"mode": "timeAccurateAdjoint", "nTimeInstances": 6},
+    "unsteadyAdjoint": {"mode": "timeAccurate", "nTimeInstances": 6},
     "objFunc": {
         "CD": {
             "part1": {

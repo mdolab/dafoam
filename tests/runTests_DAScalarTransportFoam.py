@@ -27,7 +27,7 @@ aeroOptions = {
     "useAD": {"mode": "reverse"},
     "printIntervalUnsteady": 1,
     "primalBC": {"T0": {"variable": "T", "patches": ["inlet"], "value": [TRef]}},
-    "unsteadyAdjoint": {"mode": "timeAccurateAdjoint", "nTimeInstances": 3},
+    "unsteadyAdjoint": {"mode": "timeAccurate", "nTimeInstances": 3},
     "objFunc": {
         "TVOL": {
             "part1": {

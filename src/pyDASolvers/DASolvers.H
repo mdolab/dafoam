@@ -481,6 +481,21 @@ public:
         return returnVal;
     }
 
+    double getObjFuncValueUnsteady(const word objFuncName)
+    {
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValueUnsteady(objFuncName));
+        return returnVal;
+    }
+
+    double getObjFuncUnsteadyScaling(const word objFuncName)
+    {
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncUnsteadyScaling(objFuncName));
+        return returnVal;
+    }
+
+
     void calcCouplingFaceCoords(
         const double* volCoords,
         double* surfCoords)

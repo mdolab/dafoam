@@ -103,7 +103,7 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
         + daTurb_.divDevReff(U_)
         - fvSource_);
 
-    if (mode_ == "hybridAdjoint")
+    if (mode_ == "hybrid")
     {
         UEqn -= fvm::ddt(U_);
     }
@@ -131,15 +131,14 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
 
     surfaceScalarField phiHbyA(
         "phiHbyA",
-        fvc::flux(HbyA)
-            + fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_));
+        fvc::flux(HbyA));
 
-    if (mode_ == "hybridAdjoint")
+    if (mode_ == "hybrid")
     {
         phiHbyA -= fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_);
     }
 
-    adjustPhi(phiHbyA, U_, p_);
+    // adjustPhi(phiHbyA, U_, p_);
 
     tmp<volScalarField> rAtU(rAU);
 

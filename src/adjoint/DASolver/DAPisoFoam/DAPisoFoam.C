@@ -77,7 +77,7 @@ void DAPisoFoam::initSolver()
 
     mode_ = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
 
-    if (mode_ == "hybridAdjoint")
+    if (mode_ == "hybrid")
     {
 
         nTimeInstances_ =
@@ -91,7 +91,7 @@ void DAPisoFoam::initSolver()
             FatalErrorIn("") << "periodicity <= 0!" << abort(FatalError);
         }
     }
-    else if (mode_ == "timeAccurateAdjoint")
+    else if (mode_ == "timeAccurate")
     {
 
         nTimeInstances_ =
@@ -102,12 +102,12 @@ void DAPisoFoam::initSolver()
         label maxNTimeInstances = round(endTime / deltaT) + 1;
         if (nTimeInstances_ != maxNTimeInstances)
         {
-            FatalErrorIn("") << "nTimeInstances in timeAccurateAdjoint is not equal to "
+            FatalErrorIn("") << "nTimeInstances in timeAccurate is not equal to "
                              << "the maximal possible value!" << abort(FatalError);
         }
     }
 
-    if (mode_ == "hybridAdjoint" || mode_ == "timeAccurateAdjoint")
+    if (mode_ == "hybrid" || mode_ == "timeAccurate")
     {
 
         if (nTimeInstances_ <= 0)
@@ -193,7 +193,7 @@ label DAPisoFoam::solvePrimal(
     label printToScreen = 0;
     label timeInstanceI = 0;
     // for time accurate adjoints, we need to save states for Time = 0
-    if (mode_ == "timeAccurateAdjoint")
+    if (mode_ == "timeAccurate")
     {
         this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
     }
@@ -241,12 +241,12 @@ label DAPisoFoam::solvePrimal(
 
         runTime.write();
 
-        if (mode_ == "hybridAdjoint")
+        if (mode_ == "hybrid")
         {
             this->saveTimeInstanceFieldHybrid(timeInstanceI);
         }
 
-        if (mode_ == "timeAccurateAdjoint")
+        if (mode_ == "timeAccurate")
         {
             this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
         }

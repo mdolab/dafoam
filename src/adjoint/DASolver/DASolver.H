@@ -203,6 +203,12 @@ protected:
     /// save primal variable to time instance list for time accurate adjoint (unsteady)
     void saveTimeInstanceFieldTimeAccurate(label& timeInstanceI);
 
+    /// a hash table that save the unsteady obj funcs, e.g., time-averaged drag
+    HashTable<scalar> unsteadyObjFuncs_;
+
+    /// a scaling factor related to the unsteady obj func timeOperator e.g., in dFdW calculation
+    HashTable<scalar> unsteadyObjFuncsScaling_;
+
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -723,6 +729,31 @@ public:
 
     /// calculate the values of all objective functions and print them to screen
     void printAllObjFuncs();
+
+    /// reset the unsteady objFunction to zero
+    void initUnsteadyObjFuncs()
+    {
+        forAll(daObjFuncPtrList_, idxI)
+        {
+            DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
+            word objFuncName = daObjFunc.getObjFuncName();
+            unsteadyObjFuncs_[objFuncName] = 0.0;
+        }
+    }
+
+    /// calculate and save the unsteady objective function
+    void calcUnsteadyObjFuncs();
+
+    /// return the unsteady objFunc values
+    scalar getObjFuncValueUnsteady(const word objFuncName)
+    {
+        return unsteadyObjFuncs_[objFuncName];
+    }
+
+    scalar getObjFuncUnsteadyScaling(const word objFuncName)
+    {
+        return unsteadyObjFuncsScaling_[objFuncName];
+    }
 
     /// check the mesh quality and return meshOK
     label checkMesh() const

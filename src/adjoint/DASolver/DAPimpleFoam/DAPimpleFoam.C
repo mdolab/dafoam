@@ -77,7 +77,7 @@ void DAPimpleFoam::initSolver()
 
     mode_ = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
 
-    if (mode_ == "hybridAdjoint")
+    if (mode_ == "hybrid")
     {
 
         nTimeInstances_ =
@@ -110,7 +110,7 @@ void DAPimpleFoam::initSolver()
             runTimeIndexAllInstances_[idxI] = 0;
         }
     }
-    else if (mode_ == "timeAccurateAdjoint")
+    else if (mode_ == "timeAccurate")
     {
         scalar endTime = runTimePtr_->endTime().value();
         scalar deltaT = runTimePtr_->deltaTValue();
@@ -118,7 +118,7 @@ void DAPimpleFoam::initSolver()
     }
     else
     {
-        FatalErrorIn("") << "mode " << mode_ << " not valid! Options: hybridAdjoint or timeAccurateAdjoint"
+        FatalErrorIn("") << "mode " << mode_ << " not valid! Options: hybrid or timeAccurate"
                          << abort(FatalError);
     }
 
@@ -184,6 +184,10 @@ label DAPimpleFoam::solvePrimal(
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;
+
+    // reset the unsteady obj func to zeros
+    this->initUnsteadyObjFuncs();
+    
     // main loop
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
@@ -217,6 +221,7 @@ label DAPimpleFoam::solvePrimal(
             daTurbulenceModelPtr_->printYPlus();
 
             this->printAllObjFuncs();
+            this->calcUnsteadyObjFuncs();
 
             if (daOptionPtr_->getOption<label>("debug"))
             {
@@ -230,7 +235,7 @@ label DAPimpleFoam::solvePrimal(
 
         runTime.write();
 
-        if (mode_ == "hybridAdjoint")
+        if (mode_ == "hybrid")
         {
             this->saveTimeInstanceFieldHybrid(timeInstanceI);
         }

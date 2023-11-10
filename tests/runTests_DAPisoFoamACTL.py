@@ -38,7 +38,7 @@ daOptions = {
     "writeJacobians": ["all"],
     "useAD": {"mode": "fd"},
     "adjPCLag": 3,
-    "unsteadyAdjoint": {"mode": "hybridAdjoint", "nTimeInstances": 3, "periodicity": 1.0},
+    "unsteadyAdjoint": {"mode": "hybrid", "nTimeInstances": 3, "periodicity": 1.0},
     "fvSource": {
         "line1": {
             "type": "actuatorLine",

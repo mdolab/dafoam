@@ -157,6 +157,46 @@ label DASolver::loop(Time& runTime)
     }
 }
 
+void DASolver::calcUnsteadyObjFuncs()
+{
+    /*
+    Description:
+        Calculate unsteady objective function, e.g., the time average obj func
+    */
+
+    if (daObjFuncPtrList_.size() == 0)
+    {
+        FatalErrorIn("calcUnsteadyObjFuncs") << "daObjFuncPtrList_.size() ==0... "
+                                             << "Forgot to call setDAObjFuncList?"
+                                             << abort(FatalError);
+    }
+
+    scalar objFuncValue = 0.0;
+
+    forAll(daObjFuncPtrList_, idxI)
+    {
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
+        word objFuncName = daObjFunc.getObjFuncName();
+        if (daObjFunc.getObjFuncTimeOperator() == "None")
+        {
+            // do nothing
+        }
+        else if (daObjFunc.getObjFuncTimeOperator() == "average")
+        {
+            unsteadyObjFuncs_[objFuncName] += this->getObjFuncValue(objFuncName) * unsteadyObjFuncsScaling_[objFuncName];
+        }
+        else if (daObjFunc.getObjFuncTimeOperator() == "sum")
+        {
+            unsteadyObjFuncs_[objFuncName] += this->getObjFuncValue(objFuncName) * unsteadyObjFuncsScaling_[objFuncName];
+        }
+        else
+        {
+            FatalErrorIn("calcUnsteadyObjFuncs") << "timeOperator not valid! Options are None, average, or sum"
+                                                 << abort(FatalError);
+        }
+    }
+}
+
 void DASolver::printAllObjFuncs()
 {
     /*
@@ -325,6 +365,32 @@ void DASolver::setDAObjFuncList()
                     .ptr());
 
             objFuncInstanceI++;
+        }
+    }
+
+    // here we also initialize the unsteadyObjFuncs hashtable
+    forAll(daObjFuncPtrList_, idxI)
+    {
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
+        word objFuncName = daObjFunc.getObjFuncName();
+        unsteadyObjFuncs_.set(objFuncName, 0.0);
+
+        word timeOperator = daObjFunc.getObjFuncTimeOperator();
+        if (timeOperator == "None" || timeOperator == "sum")
+        {
+            unsteadyObjFuncsScaling_.set(objFuncName, 1.0);
+        }
+        else if (timeOperator == "average")
+        {
+            scalar endTime = runTimePtr_->endTime().value();
+            scalar deltaT = runTimePtr_->deltaT().value();
+            label nInstances = round(endTime / deltaT);
+            unsteadyObjFuncsScaling_.set(objFuncName, 1.0 / nInstances);
+        }
+        else
+        {
+            FatalErrorIn("calcUnsteadyObjFuncs") << "timeOperator not valid! Options are None, average, or sum"
+                                                 << abort(FatalError);
         }
     }
 }
@@ -8426,7 +8492,7 @@ void DASolver::setTimeInstanceField(const label instanceI)
 
     // for time accurate adjoint, in addition to assign current fields,
     // we need to assign oldTime fields.
-    if (mode == "timeAccurateAdjoint")
+    if (mode == "timeAccurate")
     {
         // assign U.oldTime()
         oldTimeLevel = 1;
