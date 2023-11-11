@@ -25,6 +25,7 @@ UPtr_.reset(
 volVectorField& U = UPtr_();
 
 #include "createPhiPython.H"
+phi.write();
 
 // actuator related stuff
 Info << "Creating source term. " << endl;

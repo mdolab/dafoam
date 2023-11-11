@@ -1443,7 +1443,7 @@ class PYDAFOAM(object):
             funcs["fail"] = False
 
         return
-    
+
     def evalFunctionsUnsteady(self, funcs, evalFuncs=None, ignoreMissing=False):
         """
         This is the unsteady version of evalFunctions()
@@ -2102,12 +2102,18 @@ class PYDAFOAM(object):
         """
 
         # read current time
-        self.solver.readStateVars(str(timeVal), 0)
-        self.solverAD.readStateVars(str(timeVal), 0)
+        self.solver.readStateVars(timeVal, 0)
+        self.solverAD.readStateVars(timeVal, 0)
 
         # read old time
-        self.solver.readStateVars(str(timeVal - deltaT), -1)
-        self.solverAD.readStateVars(str(timeVal - deltaT), -1)
+        t0 = timeVal - deltaT
+        self.solver.readStateVars(t0, 1)
+        self.solverAD.readStateVars(t0, 1)
+
+        # read old old time
+        t00 = timeVal - 2 * deltaT
+        self.solver.readStateVars(t00, 2)
+        self.solverAD.readStateVars(t00, 2)
 
         # assign the state from OF field to wVec so that the wVec
         # is update to date for unsteady adjoint
@@ -2157,29 +2163,60 @@ class PYDAFOAM(object):
         dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
         dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
         dFdW.setFromOptions()
-        # initialize the adjoint rhs vec
-        adjRhs = dFdW.duplicate()
+        # initialize the adjoint vecs
+        dRdW0TPsi = dFdW.duplicate()
+        dRdW00TPsi = dFdW.duplicate()
+        dRdW00TPsiBuffer = dFdW.duplicate()
 
-        # loop over all objFunc, calculate dFdW, and solve the adjoint
+        # calc the total number of time instances
         endTime = self.solver.getEndTime()
         deltaT = self.solver.getDeltaT()
         nInstances = round(endTime / deltaT)
+
+        ddtSchemeOrder = self.solver.getDdtSchemeOrder()
+
+        # loop over all objFunc, calculate dFdW, and solve the adjoint
         for objFuncName in objFuncDict:
             if objFuncName in self.objFuncNames4Adj:
-                adjRhs.zeroEntries()
+                # zero the vecs
+                dRdW0TPsi.zeroEntries()
+                dRdW00TPsi.zeroEntries()
+                dRdW00TPsiBuffer.zeroEntries()
+                dFdW.zeroEntries()
+                # get the dFdW scaling factor
+                objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+                # loop over all time steps and solve the adjoint and accumulate the totals
                 for n in range(nInstances, 0, -1):
-                    timeVal = n * deltaT
-                    self.readStateVars(timeVal, deltaT)
-                    self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
 
-                    objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+                    # read the state, state.oldTime, etc and update self.wVec for this time instance
+                    timeVal = n * deltaT
+                    # set the time value and index in the OpenFOAM layer. Note: this is critical
+                    # because if timeIndex < 2, OpenFOAM will not use the oldTime.oldTime for 2nd
+                    # ddtScheme and mess up the totals. Check backwardDdtScheme.C
+                    self.solver.setTime(timeVal, n)
+                    self.solverAD.setTime(timeVal, n)
+                    # now we can read the variables
+                    self.readStateVars(timeVal, deltaT)
+
+                    # calculate dFdW
+                    self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
                     dFdW.scale(objFuncUnsteadyScaling)
 
-                    adjRhs.scale(-1.0)
-                    adjRhs.axpy(1.0, dFdW)
+                    # do dFdW - dRdW0TPsi - dRdW00TPsi
+                    if ddtSchemeOrder == 1:
+                        dFdW.axpy(-1.0, dRdW0TPsi)
+                    elif ddtSchemeOrder == 2:
+                        dFdW.axpy(-1.0, dRdW0TPsi)
+                        dFdW.axpy(-1.0, dRdW00TPsi)
+                        # now copy the buffer vec dRdW00TPsiBuffer to dRdW00TPsi for the next time step
+                        dRdW00TPsi = dRdW00TPsiBuffer.copy()
+                    else:
+                        raise Error("ddtSchemeOrder not valid!" % ddtSchemeOrder)
 
-                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, adjRhs, self.adjVectors[objFuncName])
+                    # now solve the adjoint eqn
+                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
 
+                    # loop over all the design vars and accumulate totals
                     for designVarName in designVarDict:
                         Info("Computing total derivatives for %s" % designVarName)
                         if designVarDict[designVarName]["designVarType"] == "BC":
@@ -2216,7 +2253,14 @@ class PYDAFOAM(object):
                             totalDerivSeq.destroy()
                             dFdBC.destroy()
 
-                    self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[objFuncName], adjRhs)
+                    # we need to calculate dRdW0TPsi for the previous time step
+                    if ddtSchemeOrder == 1:
+                        self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[objFuncName], dRdW0TPsi)
+                    elif ddtSchemeOrder == 2:
+                        # do the same for the previous previous step, but we need to save it to a buffer vec
+                        # because dRdW00TPsi will be used 2 steps before
+                        self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[objFuncName], dRdW0TPsi)
+                        self.solverAD.calcdRdWOldTPsiAD(2, self.adjVectors[objFuncName], dRdW00TPsiBuffer)
 
         self.nSolveAdjoints += 1
 

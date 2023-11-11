@@ -262,6 +262,34 @@ public:
     /// assign primal variables based on the current time instance
     void setTimeInstanceField(const label instanceI);
 
+    /// setTime for OF fields
+    void setTime(scalar time, label timeIndex)
+    {
+        runTimePtr_->setTime(time, timeIndex);
+    }
+
+    /// get the ddtScheme order
+    label getDdtSchemeOrder()
+    {
+        const fvSchemes& myFvSchemes = meshPtr_->thisDb().lookupObject<fvSchemes>("fvSchemes");
+
+        word ddtSchemeName = myFvSchemes.subDict("ddtSchemes").getWord("default");
+
+        if (ddtSchemeName == "Euler")
+        {
+            return 1;
+        }
+        else if (ddtSchemeName == "backward")
+        {
+            return 2;
+        }
+        else
+        {
+            FatalErrorIn("") << "ddtScheme " << ddtSchemeName << " not supported! Options: Euler or backward"
+                             << abort(FatalError);
+        }
+    }
+
     /// return the value of objective function at the given time instance and name
     scalar getTimeInstanceObjFunc(
         const label instanceI,
@@ -1046,8 +1074,8 @@ public:
 
     /// read the state variables from the disk and assign the value to the prescribe time level
     void readStateVars(
-        word timeName,
-        label timeLevel = 0);
+        scalar timeVal,
+        label oldTimeLevel = 0);
 
     /// initialize tensorflow functions and interfaces for callback
     void initTensorFlowFuncs(

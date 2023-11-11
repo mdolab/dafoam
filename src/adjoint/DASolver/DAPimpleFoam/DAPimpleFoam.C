@@ -187,10 +187,13 @@ label DAPimpleFoam::solvePrimal(
 
     // reset the unsteady obj func to zeros
     this->initUnsteadyObjFuncs();
-    
+
     // main loop
-    while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
+    while (runTime.run())
     {
+
+        ++runTime;
+
         printToScreen = this->isPrintTime(runTime, printInterval);
 
         if (printToScreen)

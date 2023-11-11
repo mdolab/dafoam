@@ -132,9 +132,11 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
         int runFPAdj(PetscVec, PetscVec, PetscVec, PetscVec)
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *)
-        void readStateVars(char *, int)
+        void readStateVars(double, int)
         double getEndTime()
         double getDeltaT()
+        void setTime(double, int)
+        int getDdtSchemeOrder()
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -514,8 +516,14 @@ cdef class pyDASolvers:
     def setPrimalBoundaryConditions(self, printInfo):
         self._thisptr.setPrimalBoundaryConditions(printInfo)
     
-    def readStateVars(self, timeName, timeLevel):
-        self._thisptr.readStateVars(timeName.encode(), timeLevel)
+    def readStateVars(self, timeVal, timeLevel):
+        self._thisptr.readStateVars(timeVal, timeLevel)
+    
+    def setTime(self, time, timeIndex):
+        self._thisptr.setTime(time, timeIndex)
+
+    def getDdtSchemeOrder(self):
+        return self._thisptr.getDdtSchemeOrder()
     
     def getEndTime(self):
         return self._thisptr.getEndTime()

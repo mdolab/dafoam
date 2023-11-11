@@ -698,10 +698,22 @@ public:
 
     /// read the state variables from the disk and assign the value to the prescribe time level
     void readStateVars(
-        word timeName,
+        scalar timeVal,
         label timeLevel = 0)
     {
-        DASolverPtr_->readStateVars(timeName, timeLevel);
+        DASolverPtr_->readStateVars(timeVal, timeLevel);
+    }
+
+    /// setTime for OF fields
+    void setTime(scalar time, label timeIndex)
+    {
+        DASolverPtr_->setTime(time, timeIndex);
+    }
+
+    /// get the ddtScheme order
+    label getDdtSchemeOrder()
+    {
+        return DASolverPtr_->getDdtSchemeOrder();
     }
 
     /// return the endTime
