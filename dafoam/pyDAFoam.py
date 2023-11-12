@@ -2144,8 +2144,20 @@ class PYDAFOAM(object):
 
         self.adjointFail = 0
 
+        # calc the total number of time instances
+        endTime = self.solver.getEndTime()
+        deltaT = self.solver.getDeltaT()
+        nInstances = round(endTime / deltaT)
+
+        ddtSchemeOrder = self.solver.getDdtSchemeOrder()
+
         # init dRdWTMF
         self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
+
+        self.solver.setTime(endTime, nInstances)
+        self.solverAD.setTime(endTime, nInstances)
+        # now we can read the variables
+        self.readStateVars(endTime, deltaT)
 
         # calc the preconditioner mat
         self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -2167,13 +2179,6 @@ class PYDAFOAM(object):
         dRdW0TPsi = dFdW.duplicate()
         dRdW00TPsi = dFdW.duplicate()
         dRdW00TPsiBuffer = dFdW.duplicate()
-
-        # calc the total number of time instances
-        endTime = self.solver.getEndTime()
-        deltaT = self.solver.getDeltaT()
-        nInstances = round(endTime / deltaT)
-
-        ddtSchemeOrder = self.solver.getDdtSchemeOrder()
 
         # loop over all objFunc, calculate dFdW, and solve the adjoint
         for objFuncName in objFuncDict:
@@ -2252,6 +2257,43 @@ class PYDAFOAM(object):
                             totalDeriv.destroy()
                             totalDerivSeq.destroy()
                             dFdBC.destroy()
+
+                        elif designVarDict[designVarName]["designVarType"] == "FFD":
+                            try:
+                                nDVs = len(self.DVGeo.getValues()[designVarName])
+                            except Exception:
+                                nDVs = 1
+                            xvSize = len(self.xv) * 3
+                            # Calculate dFdXv
+                            dFdXv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            dFdXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
+                            dFdXv.setFromOptions()
+                            self.solverAD.calcdFdXvAD(
+                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdXv
+                            )
+
+                            # Calculate dRXvT^Psi
+                            totalDerivXv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            totalDerivXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
+                            totalDerivXv.setFromOptions()
+                            self.solverAD.calcdRdXvTPsiAD(
+                                self.xvVec, self.wVec, self.adjVectors[objFuncName], totalDerivXv
+                            )
+
+                            # totalDeriv = dFdXv - dRdXvT*psi
+                            totalDerivXv.scale(-1.0)
+                            totalDerivXv.axpy(1.0, dFdXv)
+
+                            if self.DVGeo is not None and self.DVGeo.getNDV() > 0:
+                                dFdFFD = self.mapdXvTodFFD(totalDerivXv)
+                                # assign the total derivative to self.adjTotalDeriv
+                                if self.adjTotalDeriv[objFuncName][designVarName] is None:
+                                    self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                                for i in range(nDVs):
+                                    self.adjTotalDeriv[objFuncName][designVarName][i] += dFdFFD[designVarName][0][i]
+
+                            totalDerivXv.destroy()
+                            dFdXv.destroy()
 
                     # we need to calculate dRdW0TPsi for the previous time step
                     if ddtSchemeOrder == 1:
