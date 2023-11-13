@@ -37,7 +37,7 @@ while (pimple.correctNonOrthogonal())
     // and final residuals
     SolverPerformance<scalar> solverP = pEqn.solve(mesh.solver(p.select(pimple.finalInnerIter())));
 
-    this->primalResidualControl<scalar>(solverP, printToScreen, printInterval, "p");
+    this->primalResidualControl<scalar>(solverP, pimplePrintToScreen, printInterval, "p");
 
     if (pimple.finalNonOrthogonalIter())
     {
@@ -45,7 +45,7 @@ while (pimple.correctNonOrthogonal())
     }
 }
 
-if (printToScreen)
+if (pimplePrintToScreen)
 {
 #include "continuityErrsPython.H"
 }

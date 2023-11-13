@@ -2193,6 +2193,8 @@ class PYDAFOAM(object):
                 # loop over all time steps and solve the adjoint and accumulate the totals
                 for n in range(nInstances, 0, -1):
 
+                    Info("Solving unsteady adjoint for %s. n = %d" % (objFuncName, n))
+
                     # read the state, state.oldTime, etc and update self.wVec for this time instance
                     timeVal = n * deltaT
                     # set the time value and index in the OpenFOAM layer. Note: this is critical
@@ -2233,6 +2235,8 @@ class PYDAFOAM(object):
                             self.solverAD.calcdFdBCAD(
                                 self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
                             )
+                            dFdBC.scale(objFuncUnsteadyScaling)
+
                             # Calculate dRBCT^Psi
                             totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
                             totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
@@ -2271,6 +2275,7 @@ class PYDAFOAM(object):
                             self.solverAD.calcdFdXvAD(
                                 self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdXv
                             )
+                            dFdXv.scale(objFuncUnsteadyScaling)
 
                             # Calculate dRXvT^Psi
                             totalDerivXv = PETSc.Vec().create(PETSc.COMM_WORLD)
@@ -2294,6 +2299,50 @@ class PYDAFOAM(object):
 
                             totalDerivXv.destroy()
                             dFdXv.destroy()
+                        
+                        elif designVarDict[designVarName]["designVarType"] == "Field":
+                            xDV = self.DVGeo.getValues()
+                            nDVs = len(xDV[designVarName])
+                            fieldType = designVarDict[designVarName]["fieldType"]
+                            if fieldType == "scalar":
+                                fieldComp = 1
+                            elif fieldType == "vector":
+                                fieldComp = 3
+                            nLocalCells = self.solver.getNLocalCells()
+
+                            # calculate dFdField
+                            dFdField = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            dFdField.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
+                            dFdField.setFromOptions()
+                            self.solverAD.calcdFdFieldAD(
+                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdField
+                            )
+                            dFdField.scale(objFuncUnsteadyScaling)
+
+                            # call the total deriv
+                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+                            totalDeriv.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
+                            totalDeriv.setFromOptions()
+                            # calculate dRdFieldT*Psi and save it to totalDeriv
+                            self.solverAD.calcdRdFieldTPsiAD(
+                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+                            )
+
+                            # totalDeriv = dFdField - dRdFieldT*psi
+                            totalDeriv.scale(-1.0)
+                            totalDeriv.axpy(1.0, dFdField)
+
+                            # assign the total derivative to self.adjTotalDeriv
+                            if self.adjTotalDeriv[objFuncName][designVarName] is None:
+                                self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                            # we need to convert the parallel vec to seq vec
+                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+                            for i in range(nDVs):
+                                self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
+                            totalDeriv.destroy()
+                            totalDerivSeq.destroy()
+                            dFdField.destroy()
 
                     # we need to calculate dRdW0TPsi for the previous time step
                     if ddtSchemeOrder == 1:

@@ -180,7 +180,7 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           k_),
-   /// field inversion parameters
+      /// field inversion parameters
       betaFieldInversion_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("betaFieldInversion"))),
       surfaceFriction_(const_cast<volScalarField&>(
@@ -193,30 +193,8 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
           mesh.thisDb().lookupObject<volVectorField>("UData"))),
       USingleComponentData_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("USingleComponentData"))),
-      y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")) 
+      y_(mesh_.thisDb().lookupObject<volScalarField>("yWall"))
 {
-
-    // initialize printInterval_ we need to check whether it is a steady state
-    // or unsteady primal solver
-    IOdictionary fvSchemes(
-        IOobject(
-            "fvSchemes",
-            mesh.time().system(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE,
-            false));
-    word ddtScheme = word(fvSchemes.subDict("ddtSchemes").lookup("default"));
-    if (ddtScheme == "steadyState")
-    {
-        printInterval_ =
-            daOption.getAllOptions().lookupOrDefault<label>("printInterval", 100);
-    }
-    else
-    {
-        printInterval_ =
-            daOption.getAllOptions().lookupOrDefault<label>("printIntervalUnsteady", 500);
-    }
 
     // calculate the size of omegaWallFunction faces
     label nWallFaces = 0;
@@ -696,7 +674,7 @@ void DAkOmegaSSTFieldInversion::addModelResidualCon(HashTable<List<List<word>>>&
 #endif
 }
 
-void DAkOmegaSSTFieldInversion::correct()
+void DAkOmegaSSTFieldInversion::correct(label printToScreen)
 {
     /*
     Descroption:
@@ -710,6 +688,7 @@ void DAkOmegaSSTFieldInversion::correct()
     // we will solve and update nuTilda
     solveTurbState_ = 1;
     dictionary dummyOptions;
+    dummyOptions.set("printToScreen", printToScreen);
     this->calcResiduals(dummyOptions);
     // after it, we reset solveTurbState_ = 0 such that calcResiduals will not
     // update nuTilda when calling from the adjoint class, i.e., solveAdjoint from DASolver.
@@ -737,8 +716,6 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
     */
 
     // Copy and modify based on the "correct" function
-
-    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
 
     word divKScheme = "div(phi,k)";
     word divOmegaScheme = "div(phi,omega)";
@@ -793,7 +770,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
         tmp<fvScalarMatrix> omegaEqn(
             fvm::ddt(phase_, rho_, omega_)
                 + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
-                - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_) 
+                - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
             == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFieldInversion_()
                 - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
                 - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
@@ -810,6 +787,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
 
         if (solveTurbState_)
         {
+            label printToScreen = options.getLabel("printToScreen");
 
             // get the solver performance info such as initial
             // and final residuals
@@ -839,7 +817,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, k_)
             + fvm::div(phaseRhoPhi_, k_, divKScheme)
             - fvm::laplacian(phase_ * rho_ * DkEff(F1), k_)
-        == phase_() * rho_() * Pk(G) 
+        == phase_() * rho_() * Pk(G)
             - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
             - fvm::Sp(phase_() * rho_() * epsilonByk(F1, tgradU()), k_)
             + kSource());
@@ -850,6 +828,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
 
     if (solveTurbState_)
     {
+        label printToScreen = options.getLabel("printToScreen");
 
         // get the solver performance info such as initial
         // and final residuals

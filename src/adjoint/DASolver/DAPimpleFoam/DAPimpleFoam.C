@@ -184,6 +184,7 @@ label DAPimpleFoam::solvePrimal(
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;
+    label pimplePrintToScreen = 0;
 
     // reset the unsteady obj func to zeros
     this->initUnsteadyObjFuncs();
@@ -204,6 +205,14 @@ label DAPimpleFoam::solvePrimal(
         // --- Pressure-velocity PIMPLE corrector loop
         while (pimple.loop())
         {
+            if (pimple.finalIter() && printToScreen)
+            {
+                pimplePrintToScreen = 1;
+            }
+            else
+            {
+                pimplePrintToScreen = 0;
+            }
 
 #include "UEqnPimple.H"
 
@@ -214,8 +223,10 @@ label DAPimpleFoam::solvePrimal(
             }
 
             laminarTransport.correct();
-            daTurbulenceModelPtr_->correct();
+            daTurbulenceModelPtr_->correct(pimplePrintToScreen);
         }
+
+        this->calcUnsteadyObjFuncs();
 
         if (printToScreen)
         {
@@ -224,7 +235,6 @@ label DAPimpleFoam::solvePrimal(
             daTurbulenceModelPtr_->printYPlus();
 
             this->printAllObjFuncs();
-            this->calcUnsteadyObjFuncs();
 
             if (daOptionPtr_->getOption<label>("debug"))
             {

@@ -222,9 +222,6 @@ protected:
     /// whether to solve for turb states
     label solveTurbState_ = 0;
 
-    /// time step interval to print residual
-    label printInterval_;
-
 public:
     TypeName("kOmegaSSTFIML");
     // Constructors
@@ -270,7 +267,7 @@ public:
     virtual void calcResiduals(const dictionary& options);
 
     /// solve the residual equations and update the state
-    virtual void correct();
+    virtual void correct(label printToScreen);
 
     /// save near wall omega values to omegaNearWall_
     void saveOmegaNearWall();

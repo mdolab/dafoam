@@ -8577,15 +8577,15 @@ void DASolver::readStateVars(
             if (oldTimeLevel == 0)
             {
                 state = stateRead;
+                state.correctBoundaryConditions();
             }
             else if (oldTimeLevel == 1)
             {
-
                 state.oldTime() = stateRead;
+                state.oldTime().correctBoundaryConditions();
             }
             else if (oldTimeLevel == 2)
             {
-
                 if (timeVal < 0)
                 {
                     volVectorField state0Read(
@@ -8602,6 +8602,7 @@ void DASolver::readStateVars(
                 {
                     state.oldTime().oldTime() = stateRead;
                 }
+                state.oldTime().oldTime().correctBoundaryConditions();
             }
             else
             {
@@ -8633,10 +8634,12 @@ void DASolver::readStateVars(
             if (oldTimeLevel == 0)
             {
                 state = stateRead;
+                state.correctBoundaryConditions();
             }
             else if (oldTimeLevel == 1)
             {
                 state.oldTime() = stateRead;
+                state.oldTime().correctBoundaryConditions();
             }
             else if (oldTimeLevel == 2)
             {
@@ -8656,6 +8659,7 @@ void DASolver::readStateVars(
                 {
                     state.oldTime().oldTime() = stateRead;
                 }
+                state.oldTime().oldTime().correctBoundaryConditions();
             }
             else
             {
@@ -8687,10 +8691,12 @@ void DASolver::readStateVars(
             if (oldTimeLevel == 0)
             {
                 state = stateRead;
+                state.correctBoundaryConditions();
             }
             else if (oldTimeLevel == 1)
             {
                 state.oldTime() = stateRead;
+                state.oldTime().correctBoundaryConditions();
             }
             else if (oldTimeLevel == 2)
             {
@@ -8710,6 +8716,7 @@ void DASolver::readStateVars(
                 {
                     state.oldTime().oldTime() = stateRead;
                 }
+                state.oldTime().oldTime().correctBoundaryConditions();
             }
             else
             {

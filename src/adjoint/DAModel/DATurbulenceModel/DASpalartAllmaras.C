@@ -98,28 +98,6 @@ DASpalartAllmaras::DASpalartAllmaras(
           zeroGradientFvPatchField<scalar>::typeName),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
-
-    // initialize printInterval_ we need to check whether it is a steady state
-    // or unsteady primal solver
-    IOdictionary fvSchemes(
-        IOobject(
-            "fvSchemes",
-            mesh.time().system(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE,
-            false));
-    word ddtScheme = word(fvSchemes.subDict("ddtSchemes").lookup("default"));
-    if (ddtScheme == "steadyState")
-    {
-        printInterval_ =
-            daOption.getAllOptions().lookupOrDefault<label>("printInterval", 100);
-    }
-    else
-    {
-        printInterval_ =
-            daOption.getAllOptions().lookupOrDefault<label>("printIntervalUnsteady", 500);
-    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -387,7 +365,7 @@ void DASpalartAllmaras::addModelResidualCon(HashTable<List<List<word>>>& allCon)
 #endif
 }
 
-void DASpalartAllmaras::correct()
+void DASpalartAllmaras::correct(label printToScreen)
 {
     /*
     Descroption:
@@ -401,6 +379,7 @@ void DASpalartAllmaras::correct()
     // we will solve and update nuTilda
     solveTurbState_ = 1;
     dictionary dummyOptions;
+    dummyOptions.set("printToScreen", printToScreen);
     this->calcResiduals(dummyOptions);
     // after it, we reset solveTurbState_ = 0 such that calcResiduals will not
     // update nuTilda when calling from the adjoint class, i.e., solveAdjoint from DASolver.
@@ -428,8 +407,6 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
     */
 
     // Copy and modify based on the "correct" function
-
-    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
 
     word divNuTildaScheme = "div(phi,nuTilda)";
 
@@ -462,6 +439,7 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
 
     if (solveTurbState_)
     {
+        label printToScreen = options.getLabel("printToScreen");
 
         // get the solver performance info such as initial
         // and final residuals

@@ -120,7 +120,7 @@ label DATurboFoam::solvePrimal(
 #include "pEqnTurbo.H"
 #include "EEqnTurbo.H"
 
-        daTurbulenceModelPtr_->correct();
+        daTurbulenceModelPtr_->correct(printToScreen);
 
         if (printToScreen)
         {
