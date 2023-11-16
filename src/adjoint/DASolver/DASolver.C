@@ -179,13 +179,10 @@ void DASolver::calcUnsteadyObjFuncs()
         word objFuncName = daObjFunc.getObjFuncName();
         if (daObjFunc.getObjFuncTimeOperator() == "None")
         {
-            // do nothing
+            FatalErrorIn("") << "calcUnsteadyObjFuncs is called but the timeOperator is not set!!! Options are: average or sum"
+                             << abort(FatalError);
         }
-        else if (daObjFunc.getObjFuncTimeOperator() == "average")
-        {
-            unsteadyObjFuncs_[objFuncName] += this->getObjFuncValue(objFuncName) * unsteadyObjFuncsScaling_[objFuncName];
-        }
-        else if (daObjFunc.getObjFuncTimeOperator() == "sum")
+        else if (daObjFunc.getObjFuncTimeOperator() == "average" || daObjFunc.getObjFuncTimeOperator() == "sum")
         {
             unsteadyObjFuncs_[objFuncName] += this->getObjFuncValue(objFuncName) * unsteadyObjFuncsScaling_[objFuncName];
         }
@@ -231,6 +228,11 @@ void DASolver::printAllObjFuncs()
             // assign the forward mode AD derivative to forwardADDerivVal_
             // such that we can get this value later
             forwardADDerivVal_.set(objFuncName, objFuncVal.getGradient());
+
+            if (daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode") == "timeAccurate")
+            {
+                Info << " Unsteady: " << unsteadyObjFuncs_[objFuncName].getGradient() << endl;
+            }
         }
 #endif
         Info << endl;

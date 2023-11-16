@@ -2144,6 +2144,16 @@ class PYDAFOAM(object):
 
         self.adjointFail = 0
 
+        # update the state to self.solver and self.solverAD
+        self.solver.updateOFField(self.wVec)
+        self.solver.updateOFMesh(self.xvVec)
+        self.solverAD.updateOFField(self.wVec)
+        self.solverAD.updateOFMesh(self.xvVec)
+
+        # NOTE: this step is critical because we need to compute the residual for
+        # self.solverAD once to get the proper oldTime level for unsteady adjoint
+        self.solverAD.calcPrimalResidualStatistics("print".encode())
+
         # calc the total number of time instances
         endTime = self.solver.getEndTime()
         deltaT = self.solver.getDeltaT()
@@ -2154,6 +2164,7 @@ class PYDAFOAM(object):
         # init dRdWTMF
         self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
 
+        # read the latest solution
         self.solver.setTime(endTime, nInstances)
         self.solverAD.setTime(endTime, nInstances)
         # now we can read the variables
@@ -2193,7 +2204,7 @@ class PYDAFOAM(object):
                 # loop over all time steps and solve the adjoint and accumulate the totals
                 for n in range(nInstances, 0, -1):
 
-                    Info("Solving unsteady adjoint for %s. n = %d" % (objFuncName, n))
+                    Info("---- Solving unsteady adjoint for %s. n = %d ----" % (objFuncName, n))
 
                     # read the state, state.oldTime, etc and update self.wVec for this time instance
                     timeVal = n * deltaT
@@ -2244,6 +2255,7 @@ class PYDAFOAM(object):
                             self.solverAD.calcdRdBCTPsiAD(
                                 self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
                             )
+
                             # totalDeriv = dFdBC - dRdBCT*psi
                             totalDeriv.scale(-1.0)
                             totalDeriv.axpy(1.0, dFdBC)
@@ -2299,7 +2311,7 @@ class PYDAFOAM(object):
 
                             totalDerivXv.destroy()
                             dFdXv.destroy()
-                        
+
                         elif designVarDict[designVarName]["designVarType"] == "Field":
                             xDV = self.DVGeo.getValues()
                             nDVs = len(xDV[designVarName])
@@ -4208,6 +4220,25 @@ class PYDAFOAM(object):
 
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.updateOFField(self.wVec)
+
+        return
+
+    def setVolCoords(self, vol_coords):
+        """
+        Set the vol_coords to the OpenFOAM field
+        """
+        Istart, Iend = self.xvVec.getOwnershipRange()
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            self.xvVec[i] = vol_coords[iRel]
+
+        self.xvVec.assemblyBegin()
+        self.xvVec.assemblyEnd()
+
+        self.solver.updateOFMesh(self.xvVec)
+
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.updateOFMesh(self.xvVec)
 
         return
 

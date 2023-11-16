@@ -156,6 +156,11 @@ label DAPimpleFoam::solvePrimal(
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
+    // we need to read in the states from the 0 folder every time we start the primal
+    // here we read in all time levels
+    this->readStateVars(0.0, 0);
+    this->readStateVars(0.0, 1);
+
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
 
@@ -173,6 +178,9 @@ label DAPimpleFoam::solvePrimal(
         this->writeFailedMesh();
         return 1;
     }
+
+    // if the forwardModeAD is active, we need to set the seed here
+#include "setForwardADSeeds.H"
 
     // We need to set the mesh moving to false, otherwise we will get V0 not found error.
     // Need to dig into this issue later

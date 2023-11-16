@@ -275,6 +275,10 @@ public:
 
         word ddtSchemeName = myFvSchemes.subDict("ddtSchemes").getWord("default");
 
+        if (ddtSchemeName == "steadyState")
+        {
+            return 0;
+        }
         if (ddtSchemeName == "Euler")
         {
             return 1;
@@ -285,7 +289,7 @@ public:
         }
         else
         {
-            FatalErrorIn("") << "ddtScheme " << ddtSchemeName << " not supported! Options: Euler or backward"
+            FatalErrorIn("") << "ddtScheme " << ddtSchemeName << " not supported! Options: steadyState, Euler, or backward"
                              << abort(FatalError);
         }
     }
