@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "3.0.8"
+__version__ = "3.1.0"
 
 import subprocess
 import os
@@ -2119,6 +2119,217 @@ class PYDAFOAM(object):
         # is update to date for unsteady adjoint
         self.solver.ofField2StateVec(self.wVec)
 
+    def calcTotalDerivsBC(self, objFuncName, designVarName, unsteady=False):
+
+        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
+        # for steady state (default) objFuncUnsteadyScaling = 1
+        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
+        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+
+        nDVs = 1
+        # calculate dFdBC
+        dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
+        dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+        dFdBC.setFromOptions()
+        self.solverAD.calcdFdBCAD(self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC)
+        dFdBC.scale(objFuncUnsteadyScaling)
+
+        # Calculate dRBCT^Psi
+        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+        totalDeriv.setFromOptions()
+        self.solverAD.calcdRdBCTPsiAD(
+            self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+        )
+
+        # totalDeriv = dFdBC - dRdBCT*psi
+        totalDeriv.scale(-1.0)
+        totalDeriv.axpy(1.0, dFdBC)
+        # assign the total derivative to self.adjTotalDeriv
+
+        # we need to convert the parallel vec to seq vec
+        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+
+        if self.adjTotalDeriv[objFuncName][designVarName] is None:
+            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+
+        for i in range(nDVs):
+            if unsteady is True:
+                self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
+            else:
+                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
+    def calcTotalDerivsFFD(self, objFuncName, designVarName, unsteady=False):
+
+        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
+        # for steady state (default) objFuncUnsteadyScaling = 1
+        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
+        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+
+        try:
+            nDVs = len(self.DVGeo.getValues()[designVarName])
+        except Exception:
+            nDVs = 1
+        xvSize = len(self.xv) * 3
+
+        # Calculate dFdXv
+        dFdXv = PETSc.Vec().create(PETSc.COMM_WORLD)
+        dFdXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
+        dFdXv.setFromOptions()
+        self.solverAD.calcdFdXvAD(self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdXv)
+        dFdXv.scale(objFuncUnsteadyScaling)
+
+        # Calculate dRXvT^Psi
+        totalDerivXv = PETSc.Vec().create(PETSc.COMM_WORLD)
+        totalDerivXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
+        totalDerivXv.setFromOptions()
+        self.solverAD.calcdRdXvTPsiAD(self.xvVec, self.wVec, self.adjVectors[objFuncName], totalDerivXv)
+
+        # totalDeriv = dFdXv - dRdXvT*psi
+        totalDerivXv.scale(-1.0)
+        totalDerivXv.axpy(1.0, dFdXv)
+
+        if self.DVGeo is not None and self.DVGeo.getNDV() > 0:
+            dFdFFD = self.mapdXvTodFFD(totalDerivXv)
+            # assign the total derivative to self.adjTotalDeriv
+            if self.adjTotalDeriv[objFuncName][designVarName] is None:
+                self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+
+            for i in range(nDVs):
+                if unsteady is True:
+                    self.adjTotalDeriv[objFuncName][designVarName][i] += dFdFFD[designVarName][0][i]
+                else:
+                    self.adjTotalDeriv[objFuncName][designVarName][i] = dFdFFD[designVarName][0][i]
+
+    def calcTotalDerivsField(self, objFuncName, designVarName, fieldType, unsteady=False):
+        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
+        # for steady state (default) objFuncUnsteadyScaling = 1
+        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
+        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+
+        xDV = self.DVGeo.getValues()
+        nDVs = len(xDV[designVarName])
+        if fieldType == "scalar":
+            fieldComp = 1
+        elif fieldType == "vector":
+            fieldComp = 3
+        nLocalCells = self.solver.getNLocalCells()
+
+        # calculate dFdField
+        dFdField = PETSc.Vec().create(PETSc.COMM_WORLD)
+        dFdField.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
+        dFdField.setFromOptions()
+        self.solverAD.calcdFdFieldAD(self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdField)
+
+        dFdField.scale(objFuncUnsteadyScaling)
+
+        # call the total deriv
+        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+        totalDeriv.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
+        totalDeriv.setFromOptions()
+        # calculate dRdFieldT*Psi and save it to totalDeriv
+        self.solverAD.calcdRdFieldTPsiAD(
+            self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+        )
+
+        # totalDeriv = dFdField - dRdFieldT*psi
+        totalDeriv.scale(-1.0)
+        totalDeriv.axpy(1.0, dFdField)
+
+        # assign the total derivative to self.adjTotalDeriv
+        if self.adjTotalDeriv[objFuncName][designVarName] is None:
+            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+
+        # we need to convert the parallel vec to seq vec
+        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+
+        for i in range(nDVs):
+            if unsteady is True:
+                self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
+            else:
+                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
+    def calcTotalDerivsAOA(self, objFuncName, designVarName, unsteady=False):
+
+        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
+        # for steady state (default) objFuncUnsteadyScaling = 1
+        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
+        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+
+        nDVs = 1
+        # calculate dFdAOA
+        dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
+        dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+        dFdAOA.setFromOptions()
+        self.calcdFdAOAAnalytical(objFuncName, dFdAOA)
+        dFdAOA.scale(objFuncUnsteadyScaling)
+
+        # Calculate dRAOAT^Psi
+        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+        totalDeriv.setFromOptions()
+        self.solverAD.calcdRdAOATPsiAD(
+            self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+        )
+        # totalDeriv = dFdAOA - dRdAOAT*psi
+        totalDeriv.scale(-1.0)
+        totalDeriv.axpy(1.0, dFdAOA)
+        # assign the total derivative to self.adjTotalDeriv
+        if self.adjTotalDeriv[objFuncName][designVarName] is None:
+            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+        # we need to convert the parallel vec to seq vec
+        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+        for i in range(nDVs):
+            if unsteady is True:
+                self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
+            else:
+                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
+    def calcTotalDerivsACT(self, objFuncName, designVarName, designVarType, unsteady=False):
+
+        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
+        # for steady state (default) objFuncUnsteadyScaling = 1
+        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
+        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+
+        nDVTable = {"ACTP": 9, "ACTD": 10, "ACTL": 11}
+        nDVs = nDVTable[designVarType]
+
+        # calculate dFdACT
+        dFdACT = PETSc.Vec().create(PETSc.COMM_WORLD)
+        dFdACT.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+        dFdACT.setFromOptions()
+        self.solverAD.calcdFdACTAD(self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdACT)
+        dFdACT.scale(objFuncUnsteadyScaling)
+
+        # call the total deriv
+        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
+        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
+        totalDeriv.setFromOptions()
+        # calculate dRdActT*Psi and save it to totalDeriv
+        self.solverAD.calcdRdActTPsiAD(
+            self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+        )
+
+        # totalDeriv = dFdAct - dRdActT*psi
+        totalDeriv.scale(-1.0)
+        totalDeriv.axpy(1.0, dFdACT)
+
+        # assign the total derivative to self.adjTotalDeriv
+        if self.adjTotalDeriv[objFuncName][designVarName] is None:
+            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+        # we need to convert the parallel vec to seq vec
+        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
+        for i in range(nDVs):
+            if unsteady is True:
+                self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
+            else:
+                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+
     def solveAdjointUnsteady(self):
         """
         Run adjoint solver to compute the total derivs for unsteady solvers
@@ -2191,6 +2402,9 @@ class PYDAFOAM(object):
         dRdW00TPsi = dFdW.duplicate()
         dRdW00TPsiBuffer = dFdW.duplicate()
 
+        # we need to reset the total derivative every time we call solveAdjointUnsteady!
+        self.adjTotalDeriv = self._initializeAdjTotalDeriv()
+
         # loop over all objFunc, calculate dFdW, and solve the adjoint
         for objFuncName in objFuncDict:
             if objFuncName in self.objFuncNames4Adj:
@@ -2236,125 +2450,19 @@ class PYDAFOAM(object):
 
                     # loop over all the design vars and accumulate totals
                     for designVarName in designVarDict:
-                        Info("Computing total derivatives for %s" % designVarName)
+                        Info("Computing total derivatives of %s wrt %s" % (objFuncName, designVarName))
                         if designVarDict[designVarName]["designVarType"] == "BC":
-                            nDVs = 1
-                            # calculate dFdBC
-                            dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            dFdBC.setFromOptions()
-                            self.solverAD.calcdFdBCAD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
-                            )
-                            dFdBC.scale(objFuncUnsteadyScaling)
-
-                            # Calculate dRBCT^Psi
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            totalDeriv.setFromOptions()
-                            self.solverAD.calcdRdBCTPsiAD(
-                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
-                            )
-
-                            # totalDeriv = dFdBC - dRdBCT*psi
-                            totalDeriv.scale(-1.0)
-                            totalDeriv.axpy(1.0, dFdBC)
-                            # assign the total derivative to self.adjTotalDeriv
-
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-
-                            if self.adjTotalDeriv[objFuncName][designVarName] is None:
-                                self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
-
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdBC.destroy()
-
+                            self.calcTotalDerivsBC(objFuncName, designVarName, True)
+                        elif designVarDict[designVarName]["designVarType"] == "AOA":
+                            self.calcTotalDerivsAOA(objFuncName, designVarName, True)
                         elif designVarDict[designVarName]["designVarType"] == "FFD":
-                            try:
-                                nDVs = len(self.DVGeo.getValues()[designVarName])
-                            except Exception:
-                                nDVs = 1
-                            xvSize = len(self.xv) * 3
-                            # Calculate dFdXv
-                            dFdXv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
-                            dFdXv.setFromOptions()
-                            self.solverAD.calcdFdXvAD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdXv
-                            )
-                            dFdXv.scale(objFuncUnsteadyScaling)
-
-                            # Calculate dRXvT^Psi
-                            totalDerivXv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDerivXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
-                            totalDerivXv.setFromOptions()
-                            self.solverAD.calcdRdXvTPsiAD(
-                                self.xvVec, self.wVec, self.adjVectors[objFuncName], totalDerivXv
-                            )
-
-                            # totalDeriv = dFdXv - dRdXvT*psi
-                            totalDerivXv.scale(-1.0)
-                            totalDerivXv.axpy(1.0, dFdXv)
-
-                            if self.DVGeo is not None and self.DVGeo.getNDV() > 0:
-                                dFdFFD = self.mapdXvTodFFD(totalDerivXv)
-                                # assign the total derivative to self.adjTotalDeriv
-                                if self.adjTotalDeriv[objFuncName][designVarName] is None:
-                                    self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                                for i in range(nDVs):
-                                    self.adjTotalDeriv[objFuncName][designVarName][i] += dFdFFD[designVarName][0][i]
-
-                            totalDerivXv.destroy()
-                            dFdXv.destroy()
-
+                            self.calcTotalDerivsFFD(objFuncName, designVarName, True)
+                        elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
+                            designVarType = designVarDict[designVarName]["designVarType"]
+                            self.calcTotalDerivsACT(objFuncName, designVarName, designVarType, True)
                         elif designVarDict[designVarName]["designVarType"] == "Field":
-                            xDV = self.DVGeo.getValues()
-                            nDVs = len(xDV[designVarName])
                             fieldType = designVarDict[designVarName]["fieldType"]
-                            if fieldType == "scalar":
-                                fieldComp = 1
-                            elif fieldType == "vector":
-                                fieldComp = 3
-                            nLocalCells = self.solver.getNLocalCells()
-
-                            # calculate dFdField
-                            dFdField = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdField.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
-                            dFdField.setFromOptions()
-                            self.solverAD.calcdFdFieldAD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdField
-                            )
-                            dFdField.scale(objFuncUnsteadyScaling)
-
-                            # call the total deriv
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
-                            totalDeriv.setFromOptions()
-                            # calculate dRdFieldT*Psi and save it to totalDeriv
-                            self.solverAD.calcdRdFieldTPsiAD(
-                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
-                            )
-
-                            # totalDeriv = dFdField - dRdFieldT*psi
-                            totalDeriv.scale(-1.0)
-                            totalDeriv.axpy(1.0, dFdField)
-
-                            # assign the total derivative to self.adjTotalDeriv
-                            if self.adjTotalDeriv[objFuncName][designVarName] is None:
-                                self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdField.destroy()
+                            self.calcTotalDerivsField(objFuncName, designVarName, fieldType, True)
 
                     # we need to calculate dRdW0TPsi for the previous time step
                     if ddtSchemeOrder == 1:
@@ -2504,38 +2612,10 @@ class PYDAFOAM(object):
                             dFdBC.destroy()
                     dRdBC.destroy()
                 elif self.getOption("useAD")["mode"] == "reverse":
-                    nDVs = 1
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            # calculate dFdBC
-                            dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            dFdBC.setFromOptions()
-                            self.solverAD.calcdFdBCAD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC
-                            )
-                            # Calculate dRBCT^Psi
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            totalDeriv.setFromOptions()
-                            self.solverAD.calcdRdBCTPsiAD(
-                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
-                            )
-                            # totalDeriv = dFdBC - dRdBCT*psi
-                            totalDeriv.scale(-1.0)
-                            totalDeriv.axpy(1.0, dFdBC)
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
-
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdBC.destroy()
+                            self.calcTotalDerivsBC(objFuncName, designVarName, False)
             ###################### AOA: angle of attack as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "AOA":
                 if self.getOption("useAD")["mode"] == "fd":
@@ -2571,36 +2651,10 @@ class PYDAFOAM(object):
                             dFdAOA.destroy()
                     dRdAOA.destroy()
                 elif self.getOption("useAD")["mode"] == "reverse":
-                    nDVs = 1
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            # calculate dFdAOA
-                            dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            dFdAOA.setFromOptions()
-                            self.calcdFdAOAAnalytical(objFuncName, dFdAOA)
-                            # Calculate dRAOAT^Psi
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            totalDeriv.setFromOptions()
-                            self.solverAD.calcdRdAOATPsiAD(
-                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
-                            )
-                            # totalDeriv = dFdAOA - dRdAOAT*psi
-                            totalDeriv.scale(-1.0)
-                            totalDeriv.axpy(1.0, dFdAOA)
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
-
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdAOA.destroy()
+                            self.calcTotalDerivsAOA(objFuncName, designVarName, False)
             ################### FFD: FFD points as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "FFD":
                 if self.getOption("useAD")["mode"] == "fd":
@@ -2635,55 +2689,9 @@ class PYDAFOAM(object):
                             dFdFFD.destroy()
                     dRdFFD.destroy()
                 elif self.getOption("useAD")["mode"] == "reverse":
-                    try:
-                        nDVs = len(self.DVGeo.getValues()[designVarName])
-                    except Exception:
-                        nDVs = 1
-                    xvSize = len(self.xv) * 3
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            # Calculate dFdXv
-                            dFdXv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
-                            dFdXv.setFromOptions()
-                            self.solverAD.calcdFdXvAD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdXv
-                            )
-
-                            # Calculate dRXvT^Psi
-                            totalDerivXv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDerivXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
-                            totalDerivXv.setFromOptions()
-                            self.solverAD.calcdRdXvTPsiAD(
-                                self.xvVec, self.wVec, self.adjVectors[objFuncName], totalDerivXv
-                            )
-
-                            # totalDeriv = dFdXv - dRdXvT*psi
-                            totalDerivXv.scale(-1.0)
-                            totalDerivXv.axpy(1.0, dFdXv)
-
-                            # write the matrix
-                            if "dFdXvTotalDeriv" in self.getOption("writeJacobians") or "all" in self.getOption(
-                                "writeJacobians"
-                            ):
-                                self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv)
-                                self.writePetscVecMat("dFdXvTotalDeriv_%s" % objFuncName, totalDerivXv, "ASCII")
-
-                            if self.DVGeo is not None and self.DVGeo.getNDV() > 0:
-                                dFdFFD = self.mapdXvTodFFD(totalDerivXv)
-                                if designVarName in self.getOption("writeSensMap"):
-                                    # we can't save the surface sensitivity time with the primal solution
-                                    # because surfaceSensMap needs to have its own mesh (design surface only)
-                                    sensSolTime = float(solutionTime) / 1000.0
-                                    self.writeSurfaceSensitivityMap(objFuncName, designVarName, sensSolTime)
-
-                                # assign the total derivative to self.adjTotalDeriv
-                                self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                                for i in range(nDVs):
-                                    self.adjTotalDeriv[objFuncName][designVarName][i] = dFdFFD[designVarName][0][i]
-
-                            totalDerivXv.destroy()
-                            dFdXv.destroy()
+                            self.calcTotalDerivsFFD(objFuncName, designVarName, False)
             ################### ACT: actuator models as design variable ###################
             elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
                 if self.getOption("useAD")["mode"] == "fd":
@@ -2728,103 +2736,18 @@ class PYDAFOAM(object):
                     dRdACT.destroy()
                 elif self.getOption("useAD")["mode"] == "reverse":
                     designVarType = designVarDict[designVarName]["designVarType"]
-                    nDVTable = {"ACTP": 9, "ACTD": 10, "ACTL": 11}
-                    nDVs = nDVTable[designVarType]
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            # calculate dFdACT
-                            dFdACT = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdACT.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            dFdACT.setFromOptions()
-                            self.solverAD.calcdFdACTAD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdACT
-                            )
-                            # call the total deriv
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            totalDeriv.setFromOptions()
-                            # calculate dRdActT*Psi and save it to totalDeriv
-                            self.solverAD.calcdRdActTPsiAD(
-                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
-                            )
-
-                            # totalDeriv = dFdAct - dRdActT*psi
-                            totalDeriv.scale(-1.0)
-                            totalDeriv.axpy(1.0, dFdACT)
-
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
+                            self.calcTotalDerivsACT(objFuncName, designVarName, designVarType, False)
             ################### Field: field variables (e.g., alphaPorosity, betaSA) as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "Field":
                 if self.getOption("useAD")["mode"] == "reverse":
-
-                    xDV = self.DVGeo.getValues()
-                    nDVs = len(xDV[designVarName])
                     fieldType = designVarDict[designVarName]["fieldType"]
-                    if fieldType == "scalar":
-                        fieldComp = 1
-                    elif fieldType == "vector":
-                        fieldComp = 3
-                    nLocalCells = self.solver.getNLocalCells()
-
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-
-                            # calculate dFdField
-                            dFdField = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdField.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
-                            dFdField.setFromOptions()
-                            self.solverAD.calcdFdFieldAD(
-                                self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdField
-                            )
-
-                            # call the total deriv
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
-                            totalDeriv.setFromOptions()
-                            # calculate dRdFieldT*Psi and save it to totalDeriv
-                            self.solverAD.calcdRdFieldTPsiAD(
-                                self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
-                            )
-
-                            # totalDeriv = dFdField - dRdFieldT*psi
-                            totalDeriv.scale(-1.0)
-                            totalDeriv.axpy(1.0, dFdField)
-
-                            # write the matrix
-                            if "dFdFieldTotalDeriv" in self.getOption("writeJacobians") or "all" in self.getOption(
-                                "writeJacobians"
-                            ):
-                                self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv)
-                                self.writePetscVecMat("dFdFieldTotalDeriv_%s" % objFuncName, totalDeriv, "ASCII")
-
-                            # check if we need to save the sensitivity maps
-                            if designVarName in self.getOption("writeSensMap"):
-                                # we will write the field sensitivity with the primal solution because they
-                                # share the same mesh
-                                self.writeFieldSensitivityMap(
-                                    objFuncName, designVarName, float(solutionTime), fieldType, totalDeriv
-                                )
-
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdField.destroy()
+                            self.calcTotalDerivsField(objFuncName, designVarName, fieldType, False)
                 else:
                     raise Error("For Field design variable type, we only support useAD->mode=reverse")
             else:
