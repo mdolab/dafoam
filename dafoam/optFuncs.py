@@ -505,7 +505,11 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
     for funcName in evalFuncs:
         gradFD[funcName] = {}
         for shapeVar in xDV:
-            gradFD[funcName][shapeVar] = np.zeros(len(xDV[shapeVar]))
+            try:
+                nDVs = len(xDV[shapeVar])
+            except Exception:
+                nDVs = 1
+            gradFD[funcName][shapeVar] = np.zeros(nDVs)
     if gcomm.rank == 0:
         print("-------FD----------", deltaX, flush=True)
 
