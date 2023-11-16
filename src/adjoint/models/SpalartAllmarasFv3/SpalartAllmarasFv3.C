@@ -53,7 +53,16 @@ SpalartAllmarasFv3<BasicTurbulenceModel>::SpalartAllmarasFv3(
               IOobject::MUST_READ,
               IOobject::AUTO_WRITE),
           this->mesh_),
-
+      betaFI_(
+          IOobject(
+              "betaFI",
+              this->runTime_.timeName(),
+              this->mesh_,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          this->mesh_,
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          "zeroGradient"),
       y_(wallDist::New(this->mesh_).y())
 {
 }

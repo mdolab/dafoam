@@ -96,6 +96,8 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
           dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
+      betaFI_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("betaFI"))),
       // pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
       pseudoNuTilda_(
           IOobject(
@@ -247,7 +249,6 @@ void DASpalartAllmarasFv3::correctBoundaryConditions()
 
     // correct the BCs for the perturbed fields
     nuTilda_.correctBoundaryConditions();
-
 }
 
 void DASpalartAllmarasFv3::updateIntermediateVariables()
@@ -458,7 +459,7 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
             + fvm::div(phaseRhoPhi_, nuTilda_, divNuTildaScheme)
             - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.ref().relax();

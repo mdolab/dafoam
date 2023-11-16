@@ -87,6 +87,9 @@ protected:
     volScalarField nuTildaRes_;
     //@}
 
+    /// optional beta field for field inversion
+    volScalarField& betaFI_;
+
     /// pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
     volScalarField pseudoNuTilda_;
     fvScalarMatrix pseudoNuTildaEqn_;
