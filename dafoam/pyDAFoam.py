@@ -2615,7 +2615,7 @@ class PYDAFOAM(object):
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            self.calcTotalDerivsBC(objFuncName, designVarName, False)
+                            self.calcTotalDerivsBC(objFuncName, designVarName)
             ###################### AOA: angle of attack as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "AOA":
                 if self.getOption("useAD")["mode"] == "fd":
@@ -2654,7 +2654,7 @@ class PYDAFOAM(object):
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            self.calcTotalDerivsAOA(objFuncName, designVarName, False)
+                            self.calcTotalDerivsAOA(objFuncName, designVarName)
             ################### FFD: FFD points as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "FFD":
                 if self.getOption("useAD")["mode"] == "fd":
@@ -2691,7 +2691,7 @@ class PYDAFOAM(object):
                 elif self.getOption("useAD")["mode"] == "reverse":
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            self.calcTotalDerivsFFD(objFuncName, designVarName, False)
+                            self.calcTotalDerivsFFD(objFuncName, designVarName)
             ################### ACT: actuator models as design variable ###################
             elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
                 if self.getOption("useAD")["mode"] == "fd":
@@ -2739,7 +2739,7 @@ class PYDAFOAM(object):
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            self.calcTotalDerivsACT(objFuncName, designVarName, designVarType, False)
+                            self.calcTotalDerivsACT(objFuncName, designVarName, designVarType)
             ################### Field: field variables (e.g., alphaPorosity, betaSA) as design variable ###################
             elif designVarDict[designVarName]["designVarType"] == "Field":
                 if self.getOption("useAD")["mode"] == "reverse":
@@ -2747,7 +2747,7 @@ class PYDAFOAM(object):
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            self.calcTotalDerivsField(objFuncName, designVarName, fieldType, False)
+                            self.calcTotalDerivsField(objFuncName, designVarName, fieldType)
                 else:
                     raise Error("For Field design variable type, we only support useAD->mode=reverse")
             else:
