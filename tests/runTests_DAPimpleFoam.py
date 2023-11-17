@@ -20,41 +20,100 @@ if len(sys.argv) != 1:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/CurvedCubeHexMesh")
+os.chdir("./input/NACA0012Unsteady")
 
 if gcomm.rank == 0:
-    os.system("rm -rf 0 processor*")
+    os.system("rm -rf processor*")
+    os.system("./preProcessing.sh")
 
-replace_text_in_file("system/controlDict", "endTime         40;", "endTime         0.05;")
+twist0 = 30
+U0 = 10
+nCells = 4032
+alpha0 = 0
 
 # test incompressible solvers
 daOptions = {
+    "designSurfaces": ["wing"],
     "solverName": "DAPimpleFoam",
-    "designSurfaces": ["wallsbump"],
-    "printIntervalUnsteady": 100,
-    "writeJacobians": ["all"],
-    "useAD": {"mode": "reverse"},
-    "unsteadyAdjoint": {"mode": "timeAccurate", "nTimeInstances": 6},
+    "primalBC": {"U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0, 0]}, "useWallFunction": True},
+    "unsteadyAdjoint": {"mode": "timeAccurate"},
+    "printIntervalUnsteady": 1,
+    "fvSource": {
+        "disk1": {
+            "type": "actuatorDisk",
+            "source": "cylinderAnnulusSmooth",
+            "center": [-0.55, 0.0, 0.05],
+            "direction": [1.0, 0.0, 0.0],
+            "innerRadius": 0.01,
+            "outerRadius": 0.4,
+            "rotDir": "right",
+            "scale": 100.0,
+            "POD": 0.0,
+            "eps": 0.1,  # eps should be of cell size
+            "expM": 1.0,
+            "expN": 0.5,
+            "adjustThrust": 0,
+            "targetThrust": 1.0,
+        },
+    },
     "objFunc": {
         "CD": {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
-                "patches": ["wallsbump"],
-                "directionMode": "fixedDirection",
-                "direction": [1.0, 0.0, 0.0],
+                "patches": ["wing"],
+                "directionMode": "parallelToFlow",
+                "alphaName": "alpha",
                 "scale": 1.0,
-                "addToAdjoint": True,
+                "addToAdjoint": False,
+                "timeOperator": "average",
             }
         },
+        "CL": {
+            "part1": {
+                "type": "force",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "directionMode": "normalToFlow",
+                "alphaName": "alpha",
+                "scale": 1.0,
+                "addToAdjoint": True,
+                "timeOperator": "average",
+            }
+        },
+        "UVar": {
+            "part1": {
+                "type": "variance",
+                "source": "boxToCell",
+                "min": [-100.0, -100.0, -100.0],
+                "max": [100.0, 100.0, 100.0],
+                "scale": 1.0,
+                "varName": "U",
+                "varType": "vector",
+                "addToAdjoint": True,
+                "timeOperator": "average",
+            },
+        },
     },
-    "primalMinResTol": 1e-16,
     "adjStateOrdering": "cell",
-    "adjEqnOption": {"pcFillLevel": 0, "jacMatReOrdering": "natural", "useNonZeroInitGuess": False},
-    "normalizeStates": {"U": 1.0, "p": 1.0, "nuTilda": 0.1, "phi": 1.0},
-    "adjPartDerivFDStep": {"State": 1e-7, "FFD": 1e-2},
-    "designVar": {},
-    "adjPCLag": 1000,
+    "adjEqnOption": {
+        "gmresRelTol": 1.0e-8,
+        "pcFillLevel": 1,
+        "jacMatReOrdering": "natural",
+        "useNonZeroInitGuess": True,
+    },
+    "normalizeStates": {
+        "U": 10,
+        "p": 50,
+        "nuTilda": 1e-3,
+        "phi": 1.0,
+    },
+    "designVar": {
+        "uin": {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0},
+        "twist": {"designVarType": "FFD"},
+        "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+        "actuator": {"actuatorName": "disk1", "designVarType": "ACTD", "comps": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]},
+    },
 }
 
 # mesh warping parameters, users need to manually specify the symmetry plane
@@ -62,93 +121,125 @@ meshOptions = {
     "gridFile": os.getcwd(),
     "fileType": "OpenFOAM",
     # point and normal for the symmetry plane
-    "symmetryPlanes": [],
+    "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], [[0.0, 0.0, 0.1], [0.0, 0.0, 1.0]]],
 }
 
-# DVGeo
-DVGeo = DVGeometry("./FFD/bumpFFD.xyz")
-# select points
-iVol = 0
-pts = DVGeo.getLocalIndex(iVol)
-indexList = pts[2, 1, 2].flatten()
-PS = geo_utils.PointSelect("list", indexList)
-# shape
-DVGeo.addLocalDV("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
-daOptions["designVar"]["shapey"] = {"designVarType": "FFD"}
+# =============================================================================
+# Design variable setup
+# =============================================================================
+DVGeo = DVGeometry("./FFD/FFD.xyz")
+DVGeo.addRefAxis("bodyAxis", xFraction=0.25, alignIndex="k")
+# twist
+def twist(val, geo):
+    for i in range(2):
+        geo.rot_z["bodyAxis"].coef[i] = -val[0]
 
-# DAFoam
+
+DVGeo.addGlobalDV("twist", [twist0], twist, lower=-100.0, upper=100.0, scale=1.0)
+
+
+def uin(val, geo):
+    inletU = float(val[0])
+    DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": [inletU, 0, 0]}})
+    DASolver.updateDAOption()
+
+
+DVGeo.addGlobalDV("uin", [U0], uin, lower=0.0, upper=100.0, scale=1.0)
+
+
+def alpha(val, geo):
+    aoa = val[0] * np.pi / 180.0
+    inletU = [float(U0 * np.cos(aoa)), float(U0 * np.sin(aoa)), 0]
+    DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
+    DASolver.updateDAOption()
+
+
+DVGeo.addGlobalDV("alpha", value=[alpha0], func=alpha, lower=0.0, upper=10.0, scale=1.0)
+
+
+def actuator(val, geo):
+    actX = float(val[0])
+    actY = float(val[1])
+    actZ = float(val[2])
+    actR1 = float(val[3])
+    actR2 = float(val[4])
+    actScale = float(val[5])
+    actPOD = float(val[6])
+    actExpM = float(val[7])
+    actExpN = float(val[8])
+    T = float(val[9])
+    DASolver.setOption(
+        "fvSource",
+        {
+            "disk1": {
+                "type": "actuatorDisk",
+                "source": "cylinderAnnulusSmooth",
+                "center": [actX, actY, actZ],
+                "direction": [1.0, 0.0, 0.0],
+                "innerRadius": actR1,
+                "outerRadius": actR2,
+                "rotDir": "right",
+                "scale": actScale,
+                "POD": actPOD,
+                "eps": 0.1,  # eps should be of cell size
+                "expM": actExpM,
+                "expN": actExpN,
+                "adjustThrust": 0,
+                "targetThrust": T,
+            },
+        },
+    )
+    DASolver.updateDAOption()
+
+
+# actuator
+DVGeo.addGlobalDV(
+    "actuator",
+    value=[-0.55, 0.0, 0.05, 0.01, 0.4, 100.0, 0.0, 1.0, 0.5, 1.0],
+    func=actuator,
+    lower=-100.0,
+    upper=100.0,
+    scale=1.0,
+)
+
+# =============================================================================
+# DAFoam initialization
+# =============================================================================
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
 DASolver.setDVGeo(DVGeo)
 mesh = USMesh(options=meshOptions, comm=gcomm)
 DASolver.printFamilyList()
 DASolver.setMesh(mesh)
-# set evalFuncs
 evalFuncs = []
 DASolver.setEvalFuncs(evalFuncs)
 
-# DVCon
+# =============================================================================
+# Constraint setup
+# =============================================================================
 DVCon = DVConstraints()
 DVCon.setDVGeo(DVGeo)
-[p0, v1, v2] = DASolver.getTriangulatedMeshSurface(groupName=DASolver.designSurfacesGroup)
-surf = [p0, v1, v2]
-DVCon.setSurface(surf)
+DVCon.setSurface(DASolver.getTriangulatedMeshSurface(groupName=DASolver.designSurfacesGroup))
 
-# optFuncs
-def setObjFuncsUnsteady(DASolver, funcs, evalFuncs):
-    nTimeInstances = DASolver.getOption("unsteadyAdjoint")["nTimeInstances"]
-    for func in evalFuncs:
-        avgObjVal = 0.0
-        for i in range(1, nTimeInstances):
-            avgObjVal += DASolver.getTimeInstanceObjFunc(i, func)
-        funcs[func] = avgObjVal # / (nTimeInstances - 1)
-
-    funcs["fail"] = False
-
-
-def setObjFuncsSensUnsteady(DASolver, funcs, funcsSensAllTimeInstances, funcsSensCombined):
-
-    nTimeInstances = 1.0 * len(funcsSensAllTimeInstances)
-    for funcsSens in funcsSensAllTimeInstances:
-        for objFunc in funcsSens:
-            if objFunc != "fail":
-                funcsSensCombined[objFunc] = {}
-                for dv in funcsSens[objFunc]:
-                    funcsSensCombined[objFunc][dv] = np.zeros_like(funcsSens[objFunc][dv], dtype="d")
-
-    for funcsSens in funcsSensAllTimeInstances:
-        for objFunc in funcsSens:
-            if objFunc != "fail":
-                for dv in funcsSens[objFunc]:
-                    funcsSensCombined[objFunc][dv] += funcsSens[objFunc][dv] # / nTimeInstances
-
-    funcsSensCombined["fail"] = False
-
-    if gcomm.rank == 0:
-        print(funcsSensCombined)
-    return
-
+# =============================================================================
+# Initialize optFuncs for optimization
+# =============================================================================
 optFuncs.DASolver = DASolver
 optFuncs.DVGeo = DVGeo
 optFuncs.DVCon = DVCon
 optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
-optFuncs.setObjFuncsUnsteady = setObjFuncsUnsteady
-optFuncs.setObjFuncsSensUnsteady = setObjFuncsSensUnsteady
 
 # Run
 if calcFDSens == 1:
-    optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValuesUnsteady, fileName="sensFD.txt")
+    optFuncs.calcFDSens()
 else:
     DASolver.runColoring()
     xDV = DVGeo.getValues()
     funcs = {}
-    funcs, fail = optFuncs.calcObjFuncValuesUnsteady(xDV)
+    funcs, fail = optFuncs.calcObjFuncValues(xDV)
     funcsSens = {}
-    funcsSens, fail = optFuncs.calcObjFuncSensUnsteady(xDV, funcs)
+    funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
 
-    # this code is not fully implemented yet, so do not test it
-    funcsSens["CD"]["shapey"] = 0
-    
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-4, 1e-6)

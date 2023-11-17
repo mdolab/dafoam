@@ -2214,6 +2214,8 @@ class PYDAFOAM(object):
             fieldComp = 1
         elif fieldType == "vector":
             fieldComp = 3
+        else:
+            raise Error("fieldType not valid!")
         nLocalCells = self.solver.getNLocalCells()
 
         # calculate dFdField
@@ -2463,6 +2465,8 @@ class PYDAFOAM(object):
                         elif designVarDict[designVarName]["designVarType"] == "Field":
                             fieldType = designVarDict[designVarName]["fieldType"]
                             self.calcTotalDerivsField(objFuncName, designVarName, fieldType, True)
+                        else:
+                            raise Error("designVarType not valid!")
 
                     # we need to calculate dRdW0TPsi for the previous time step
                     if ddtSchemeOrder == 1:

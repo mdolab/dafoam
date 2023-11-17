@@ -23,11 +23,9 @@ TRef = 1.0
 aeroOptions = {
     "designSurfaces": ["upperWall"],
     "solverName": "DAScalarTransportFoam",
-    "adjPCLag": 1000,
-    "useAD": {"mode": "reverse"},
     "printIntervalUnsteady": 1,
     "primalBC": {"T0": {"variable": "T", "patches": ["inlet"], "value": [TRef]}},
-    "unsteadyAdjoint": {"mode": "timeAccurate", "nTimeInstances": 3},
+    "unsteadyAdjoint": {"mode": "timeAccurate"},
     "objFunc": {
         "TVOL": {
             "part1": {
@@ -102,57 +100,15 @@ DVCon.setDVGeo(DVGeo)
 surf = [p0, v1, v2]
 DVCon.setSurface(surf)
 
-
-def setObjFuncsUnsteady(DASolver, funcs, evalFuncs):
-    nTimeInstances = DASolver.getOption("unsteadyAdjoint")["nTimeInstances"]
-    for func in evalFuncs:
-        avgObjVal = 0.0
-        for i in range(1, nTimeInstances):
-            avgObjVal += DASolver.getTimeInstanceObjFunc(i, func)
-        funcs[func] = avgObjVal  # / (nTimeInstances - 1)
-
-    funcs["fail"] = False
-
-
-def setObjFuncsSensUnsteady(DASolver, funcs, funcsSensAllTimeInstances, funcsSensCombined):
-
-    nTimeInstances = 1.0 * len(funcsSensAllTimeInstances)
-    for funcsSens in funcsSensAllTimeInstances:
-        for objFunc in funcsSens:
-            if objFunc != "fail":
-                funcsSensCombined[objFunc] = {}
-                for dv in funcsSens[objFunc]:
-                    funcsSensCombined[objFunc][dv] = np.zeros_like(funcsSens[objFunc][dv], dtype="d")
-
-    for funcsSens in funcsSensAllTimeInstances:
-        for objFunc in funcsSens:
-            if objFunc != "fail":
-                for dv in funcsSens[objFunc]:
-                    funcsSensCombined[objFunc][dv] += funcsSens[objFunc][dv]  # / nTimeInstances
-
-    funcsSensCombined["fail"] = False
-
-    if gcomm.rank == 0:
-        print(funcsSensCombined)
-    return
-
-
 # optFuncs
 optFuncs.DASolver = DASolver
 optFuncs.DVGeo = DVGeo
 optFuncs.DVCon = DVCon
 optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
-optFuncs.setObjFuncsUnsteady = setObjFuncsUnsteady
-optFuncs.setObjFuncsSensUnsteady = setObjFuncsSensUnsteady
-
 # Run
-DASolver.runColoring()
 xDV = DVGeo.getValues()
 funcs = {}
-funcs, fail = optFuncs.calcObjFuncValuesUnsteady(xDV)
-funcsSens = {}
-funcsSens, fail = optFuncs.calcObjFuncSensUnsteady(xDV, funcs)
+funcs, fail = optFuncs.calcObjFunc(xDV)
 if gcomm.rank == 0:
     reg_write_dict(funcs, 1e-8, 1e-10)
-    reg_write_dict(funcsSens, 1e-4, 1e-6)
