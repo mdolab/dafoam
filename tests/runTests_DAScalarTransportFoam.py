@@ -107,8 +107,10 @@ optFuncs.DVCon = DVCon
 optFuncs.evalFuncs = evalFuncs
 optFuncs.gcomm = gcomm
 # Run
-xDV = DVGeo.getValues()
+DASolver()
 funcs = {}
-funcs, fail = optFuncs.calcObjFunc(xDV)
+evalFuncs = ["TVOL"]
+DASolver.evalFunctions(funcs, evalFuncs)
+
 if gcomm.rank == 0:
     reg_write_dict(funcs, 1e-8, 1e-10)
