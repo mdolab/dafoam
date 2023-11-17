@@ -349,9 +349,6 @@ def calcObjFuncSensUnsteady(xDV, funcs):
     # this will create issues for the setTimeInstanceField call (nOldTimes)
     DASolver.calcPrimalResidualStatistics("calc")
 
-    # set these vectors zeros
-    DASolver.zerotimeAccurateVectors()
-
     for i in range(nTimeInstances - 1, iEnd, -1):
 
         Info("--Solving Adjoint for Time Instance %d--" % i)

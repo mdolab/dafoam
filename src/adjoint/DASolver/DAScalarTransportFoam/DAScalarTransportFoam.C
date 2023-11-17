@@ -84,25 +84,6 @@ void DAScalarTransportFoam::initSolver()
         {
             FatalErrorIn("") << "periodicity <= 0!" << abort(FatalError);
         }
-    }
-    else if (mode_ == "timeAccurate")
-    {
-
-        nTimeInstances_ =
-            daOptionPtr_->getSubDictOption<label>("unsteadyAdjoint", "nTimeInstances");
-
-        scalar endTime = runTimePtr_->endTime().value();
-        scalar deltaT = runTimePtr_->deltaTValue();
-        label maxNTimeInstances = round(endTime / deltaT) + 1;
-        if (nTimeInstances_ != maxNTimeInstances)
-        {
-            FatalErrorIn("") << "nTimeInstances in timeAccurate is not equal to "
-                             << "the maximal possible value!" << abort(FatalError);
-        }
-    }
-
-    if (mode_ == "hybrid" || mode_ == "timeAccurate")
-    {
 
         if (nTimeInstances_ <= 0)
         {
@@ -170,11 +151,7 @@ label DAScalarTransportFoam::solvePrimal(
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;
-    // for time accurate adjoints, we need to save states for Time = 0
-    if (mode_ == "timeAccurate")
-    {
-        this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
-    }
+
     // main loop
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
@@ -217,11 +194,6 @@ label DAScalarTransportFoam::solvePrimal(
         if (mode_ == "hybrid")
         {
             this->saveTimeInstanceFieldHybrid(timeInstanceI);
-        }
-
-        if (mode_ == "timeAccurate")
-        {
-            this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
         }
     }
 
