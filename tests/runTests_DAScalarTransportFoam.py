@@ -25,7 +25,7 @@ aeroOptions = {
     "solverName": "DAScalarTransportFoam",
     "printIntervalUnsteady": 1,
     "primalBC": {"T0": {"variable": "T", "patches": ["inlet"], "value": [TRef]}},
-    "unsteadyAdjoint": {"mode": "timeAccurate"},
+    #"unsteadyAdjoint": {"mode": "timeAccurate"},
     "objFunc": {
         "TVOL": {
             "part1": {
@@ -40,6 +40,7 @@ aeroOptions = {
                 "divByTotalVol": 0,
                 "scale": 1.0,
                 "addToAdjoint": True,
+                "timeOperator": "average"
             }
         },
     },
@@ -109,7 +110,6 @@ optFuncs.gcomm = gcomm
 # Run
 DASolver()
 funcs = {}
-evalFuncs = ["TVOL"]
 DASolver.evalFunctions(funcs, evalFuncs)
 
 if gcomm.rank == 0:
