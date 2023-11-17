@@ -137,6 +137,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getDeltaT()
         void setTime(double, int)
         int getDdtSchemeOrder()
+        int getUnsteadyObjFuncStartTimeIndex()
+        int getUnsteadyObjFuncEndTimeIndex()
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -530,6 +532,12 @@ cdef class pyDASolvers:
     
     def getDeltaT(self):
         return self._thisptr.getDeltaT()
+    
+    def getUnsteadyObjFuncStartTimeIndex(self):
+        return self._thisptr.getUnsteadyObjFuncStartTimeIndex()
+    
+    def getUnsteadyObjFuncEndTimeIndex(self):
+        return self._thisptr.getUnsteadyObjFuncEndTimeIndex()
     
     def calcFvSource(self, propName, Vec aForce, Vec tForce, Vec rDist, Vec targetForce, Vec center, Vec fvSource):
         self._thisptr.calcFvSource(propName, aForce.vec, tForce.vec, rDist.vec, targetForce.vec, center.vec, fvSource.vec)

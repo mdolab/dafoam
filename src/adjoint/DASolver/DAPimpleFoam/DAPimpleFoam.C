@@ -75,53 +75,6 @@ void DAPimpleFoam::initSolver()
 
     this->setDAObjFuncList();
 
-    mode_ = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
-
-    if (mode_ == "hybrid")
-    {
-
-        nTimeInstances_ =
-            daOptionPtr_->getSubDictOption<label>("unsteadyAdjoint", "nTimeInstances");
-
-        periodicity_ =
-            daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "periodicity");
-
-        if (periodicity_ <= 0)
-        {
-            FatalErrorIn("") << "periodicity <= 0!" << abort(FatalError);
-        }
-
-        if (nTimeInstances_ <= 0)
-        {
-            FatalErrorIn("") << "nTimeInstances <= 0!" << abort(FatalError);
-        }
-
-        stateAllInstances_.setSize(nTimeInstances_);
-        stateBoundaryAllInstances_.setSize(nTimeInstances_);
-        objFuncsAllInstances_.setSize(nTimeInstances_);
-        runTimeAllInstances_.setSize(nTimeInstances_);
-        runTimeIndexAllInstances_.setSize(nTimeInstances_);
-
-        forAll(stateAllInstances_, idxI)
-        {
-            stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
-            stateBoundaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
-            runTimeAllInstances_[idxI] = 0.0;
-            runTimeIndexAllInstances_[idxI] = 0;
-        }
-    }
-    else if (mode_ == "timeAccurate")
-    {
-        scalar endTime = runTimePtr_->endTime().value();
-        scalar deltaT = runTimePtr_->deltaTValue();
-        nTimeInstances_ = round(endTime / deltaT);
-    }
-    else
-    {
-        FatalErrorIn("") << "mode " << mode_ << " not valid! Options: hybrid or timeAccurate"
-                         << abort(FatalError);
-    }
-
     // initialize fvSource and the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)
@@ -158,6 +111,7 @@ label DAPimpleFoam::solvePrimal(
 
     // we need to read in the states from the 0 folder every time we start the primal
     // here we read in all time levels
+    runTime.setTime(0.0, 0);
     this->readStateVars(0.0, 0);
     this->readStateVars(0.0, 1);
 

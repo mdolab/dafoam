@@ -495,7 +495,6 @@ public:
         return returnVal;
     }
 
-
     void calcCouplingFaceCoords(
         const double* volCoords,
         double* surfCoords)
@@ -733,7 +732,27 @@ public:
         return DASolverPtr_->getRunTime().deltaT().value();
 #endif
         FatalErrorIn("getDeltaT") << "should not call this func in AD mode!"
-                                   << abort(FatalError);
+                                  << abort(FatalError);
+    }
+
+    /// get the unsteady adjoint start time
+    int getUnsteadyObjFuncStartTimeIndex()
+    {
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        return DASolverPtr_->getUnsteadyObjFuncStartTimeIndex();
+#endif
+        FatalErrorIn("getUnsteadyObjFuncStartTimeIndex") << "should not call this func in AD mode!"
+                                                    << abort(FatalError);
+    }
+
+    /// get the unsteady adjoint end time
+    int getUnsteadyObjFuncEndTimeIndex()
+    {
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        return DASolverPtr_->getUnsteadyObjFuncEndTimeIndex();
+#endif
+        FatalErrorIn("getUnsteadyObjFuncEndTimeIndex") << "should not call this func in AD mode!"
+                                                    << abort(FatalError);
     }
 
     /// return the value of objective function at the given time instance and name

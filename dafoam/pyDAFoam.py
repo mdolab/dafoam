@@ -459,7 +459,13 @@ class DAOPTION(object):
         ## Options for unsteady adjoint. mode can be hybrid or timeAccurate
         ## Here nTimeInstances is the number of time instances and periodicity is the
         ## periodicity of flow oscillation (hybrid adjoint only)
-        self.unsteadyAdjoint = {"mode": "None", "nTimeInstances": -1, "periodicity": -1.0}
+        self.unsteadyAdjoint = {
+            "mode": "None",
+            "nTimeInstances": -1,
+            "periodicity": -1.0,
+            "objFuncStartTime": -1.0,
+            "objFuncEndTime": -1.0,
+        }
 
         ## At which iteration should we start the averaging of objective functions.
         ## This is only used for unsteady solvers
@@ -2119,12 +2125,7 @@ class PYDAFOAM(object):
         # is update to date for unsteady adjoint
         self.solver.ofField2StateVec(self.wVec)
 
-    def calcTotalDerivsBC(self, objFuncName, designVarName, unsteady=False):
-
-        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
-        # for steady state (default) objFuncUnsteadyScaling = 1
-        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
-        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+    def calcTotalDerivsBC(self, objFuncName, designVarName, dFScaling=1.0, accumulateTotal=False):
 
         nDVs = 1
         # calculate dFdBC
@@ -2132,7 +2133,7 @@ class PYDAFOAM(object):
         dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
         dFdBC.setFromOptions()
         self.solverAD.calcdFdBCAD(self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdBC)
-        dFdBC.scale(objFuncUnsteadyScaling)
+        dFdBC.scale(dFScaling)
 
         # Calculate dRBCT^Psi
         totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
@@ -2155,17 +2156,12 @@ class PYDAFOAM(object):
             self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
 
         for i in range(nDVs):
-            if unsteady is True:
+            if accumulateTotal is True:
                 self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
             else:
                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
 
-    def calcTotalDerivsFFD(self, objFuncName, designVarName, unsteady=False):
-
-        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
-        # for steady state (default) objFuncUnsteadyScaling = 1
-        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
-        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+    def calcTotalDerivsFFD(self, objFuncName, designVarName, dFScaling=1.0, accumulateTotal=False):
 
         try:
             nDVs = len(self.DVGeo.getValues()[designVarName])
@@ -2178,7 +2174,7 @@ class PYDAFOAM(object):
         dFdXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
         dFdXv.setFromOptions()
         self.solverAD.calcdFdXvAD(self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdXv)
-        dFdXv.scale(objFuncUnsteadyScaling)
+        dFdXv.scale(dFScaling)
 
         # Calculate dRXvT^Psi
         totalDerivXv = PETSc.Vec().create(PETSc.COMM_WORLD)
@@ -2197,16 +2193,12 @@ class PYDAFOAM(object):
                 self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
 
             for i in range(nDVs):
-                if unsteady is True:
+                if accumulateTotal is True:
                     self.adjTotalDeriv[objFuncName][designVarName][i] += dFdFFD[designVarName][0][i]
                 else:
                     self.adjTotalDeriv[objFuncName][designVarName][i] = dFdFFD[designVarName][0][i]
 
-    def calcTotalDerivsField(self, objFuncName, designVarName, fieldType, unsteady=False):
-        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
-        # for steady state (default) objFuncUnsteadyScaling = 1
-        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
-        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+    def calcTotalDerivsField(self, objFuncName, designVarName, fieldType, dFScaling=1.0, accumulateTotal=False):
 
         xDV = self.DVGeo.getValues()
         nDVs = len(xDV[designVarName])
@@ -2224,7 +2216,7 @@ class PYDAFOAM(object):
         dFdField.setFromOptions()
         self.solverAD.calcdFdFieldAD(self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdField)
 
-        dFdField.scale(objFuncUnsteadyScaling)
+        dFdField.scale(dFScaling)
 
         # call the total deriv
         totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
@@ -2248,17 +2240,12 @@ class PYDAFOAM(object):
         self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
 
         for i in range(nDVs):
-            if unsteady is True:
+            if accumulateTotal is True:
                 self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
             else:
                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
 
-    def calcTotalDerivsAOA(self, objFuncName, designVarName, unsteady=False):
-
-        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
-        # for steady state (default) objFuncUnsteadyScaling = 1
-        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
-        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+    def calcTotalDerivsAOA(self, objFuncName, designVarName, dFScaling=1.0, accumulateTotal=False):
 
         nDVs = 1
         # calculate dFdAOA
@@ -2266,7 +2253,7 @@ class PYDAFOAM(object):
         dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
         dFdAOA.setFromOptions()
         self.calcdFdAOAAnalytical(objFuncName, dFdAOA)
-        dFdAOA.scale(objFuncUnsteadyScaling)
+        dFdAOA.scale(dFScaling)
 
         # Calculate dRAOAT^Psi
         totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
@@ -2285,17 +2272,12 @@ class PYDAFOAM(object):
         totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
         self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
         for i in range(nDVs):
-            if unsteady is True:
+            if accumulateTotal is True:
                 self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
             else:
                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
 
-    def calcTotalDerivsACT(self, objFuncName, designVarName, designVarType, unsteady=False):
-
-        # a scaling factor for unsteady objFuncs, e.g., time-average objFunc
-        # for steady state (default) objFuncUnsteadyScaling = 1
-        # for time-average objFunc, objFuncUnsteadyScaling = nInstances
-        objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+    def calcTotalDerivsACT(self, objFuncName, designVarName, designVarType, dFScaling=1.0, accumulateTotal=False):
 
         nDVTable = {"ACTP": 9, "ACTD": 10, "ACTL": 11}
         nDVs = nDVTable[designVarType]
@@ -2305,7 +2287,7 @@ class PYDAFOAM(object):
         dFdACT.setSizes((PETSc.DECIDE, nDVs), bsize=1)
         dFdACT.setFromOptions()
         self.solverAD.calcdFdACTAD(self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdACT)
-        dFdACT.scale(objFuncUnsteadyScaling)
+        dFdACT.scale(dFScaling)
 
         # call the total deriv
         totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
@@ -2327,7 +2309,7 @@ class PYDAFOAM(object):
         totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
         self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
         for i in range(nDVs):
-            if unsteady is True:
+            if accumulateTotal is True:
                 self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
             else:
                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
@@ -2368,20 +2350,25 @@ class PYDAFOAM(object):
         self.solverAD.calcPrimalResidualStatistics("print".encode())
 
         # calc the total number of time instances
-        endTime = self.solver.getEndTime()
+        # we assume the adjoint is for deltaT to endTime
+        # but users can also prescribed a custom time range
+        objFuncStartTimeIndex = self.solver.getUnsteadyObjFuncStartTimeIndex()
+        objFuncEndTimeIndex = self.solver.getUnsteadyObjFuncEndTimeIndex()
         deltaT = self.solver.getDeltaT()
-        nInstances = round(endTime / deltaT)
+
+        endTime = self.solver.getEndTime()
+        endTimeIndex = round(endTime / deltaT)
 
         ddtSchemeOrder = self.solver.getDdtSchemeOrder()
 
-        # init dRdWTMF
-        self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
-
         # read the latest solution
-        self.solver.setTime(endTime, nInstances)
-        self.solverAD.setTime(endTime, nInstances)
+        self.solver.setTime(endTime, endTimeIndex)
+        self.solverAD.setTime(endTime, endTimeIndex)
         # now we can read the variables
         self.readStateVars(endTime, deltaT)
+
+        # init dRdWTMF
+        self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
 
         # calc the preconditioner mat
         self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -2416,25 +2403,34 @@ class PYDAFOAM(object):
                 dRdW00TPsiBuffer.zeroEntries()
                 dFdW.zeroEntries()
                 # get the dFdW scaling factor
-                objFuncUnsteadyScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
                 # loop over all time steps and solve the adjoint and accumulate the totals
-                for n in range(nInstances, 0, -1):
+                for n in range(endTimeIndex, 0, -1):
 
-                    Info("---- Solving unsteady adjoint for %s. n = %d ----" % (objFuncName, n))
-
-                    # read the state, state.oldTime, etc and update self.wVec for this time instance
                     timeVal = n * deltaT
+
+                    Info("---- Solving unsteady adjoint for %s. t = %f ----" % (objFuncName, timeVal))
+
                     # set the time value and index in the OpenFOAM layer. Note: this is critical
                     # because if timeIndex < 2, OpenFOAM will not use the oldTime.oldTime for 2nd
                     # ddtScheme and mess up the totals. Check backwardDdtScheme.C
                     self.solver.setTime(timeVal, n)
                     self.solverAD.setTime(timeVal, n)
                     # now we can read the variables
+                    # read the state, state.oldTime, etc and update self.wVec for this time instance
                     self.readStateVars(timeVal, deltaT)
 
-                    # calculate dFdW
+                    # calculate dFdW, if time index is within the unsteady objective function
+                    # index range, prescribed in unsteadyAdjointDict, we calculate dFdW
+                    # otherwise, we use dFdW=0 because the unsteady obj does not depend
+                    # on the state at this time index
+                    dFScaling = 1.0
+                    if n >= objFuncStartTimeIndex and n <= objFuncEndTimeIndex:
+                        dFScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+                    else:
+                        dFScaling = 0.0
+
                     self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
-                    dFdW.scale(objFuncUnsteadyScaling)
+                    dFdW.scale(dFScaling)
 
                     # do dFdW - dRdW0TPsi - dRdW00TPsi
                     if ddtSchemeOrder == 1:
@@ -2454,17 +2450,17 @@ class PYDAFOAM(object):
                     for designVarName in designVarDict:
                         Info("Computing total derivatives of %s wrt %s" % (objFuncName, designVarName))
                         if designVarDict[designVarName]["designVarType"] == "BC":
-                            self.calcTotalDerivsBC(objFuncName, designVarName, True)
+                            self.calcTotalDerivsBC(objFuncName, designVarName, dFScaling, True)
                         elif designVarDict[designVarName]["designVarType"] == "AOA":
-                            self.calcTotalDerivsAOA(objFuncName, designVarName, True)
+                            self.calcTotalDerivsAOA(objFuncName, designVarName, dFScaling, True)
                         elif designVarDict[designVarName]["designVarType"] == "FFD":
-                            self.calcTotalDerivsFFD(objFuncName, designVarName, True)
+                            self.calcTotalDerivsFFD(objFuncName, designVarName, dFScaling, True)
                         elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
                             designVarType = designVarDict[designVarName]["designVarType"]
-                            self.calcTotalDerivsACT(objFuncName, designVarName, designVarType, True)
+                            self.calcTotalDerivsACT(objFuncName, designVarName, designVarType, dFScaling, True)
                         elif designVarDict[designVarName]["designVarType"] == "Field":
                             fieldType = designVarDict[designVarName]["fieldType"]
-                            self.calcTotalDerivsField(objFuncName, designVarName, fieldType, True)
+                            self.calcTotalDerivsField(objFuncName, designVarName, fieldType, dFScaling, True)
                         else:
                             raise Error("designVarType not valid!")
 

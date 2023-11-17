@@ -182,9 +182,28 @@ void DASolver::calcUnsteadyObjFuncs()
             FatalErrorIn("") << "calcUnsteadyObjFuncs is called but the timeOperator is not set!!! Options are: average or sum"
                              << abort(FatalError);
         }
-        else if (daObjFunc.getObjFuncTimeOperator() == "average" || daObjFunc.getObjFuncTimeOperator() == "sum")
+        else if (daObjFunc.getObjFuncTimeOperator() == "sum")
         {
-            unsteadyObjFuncs_[objFuncName] += this->getObjFuncValue(objFuncName) * unsteadyObjFuncsScaling_[objFuncName];
+            label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
+            label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
+            label timeIndex = runTimePtr_->timeIndex();
+            if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
+            {
+                unsteadyObjFuncs_[objFuncName] += this->getObjFuncValue(objFuncName);
+            }
+        }
+        else if (daObjFunc.getObjFuncTimeOperator() == "average")
+        {
+            // calculate the average on the fly, i.e., moving average
+            label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
+            label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
+            label timeIndex = runTimePtr_->timeIndex();
+            if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
+            {
+                label n = timeIndex - startTimeIndex + 1;
+                scalar objFuncVal = this->getObjFuncValue(objFuncName);
+                unsteadyObjFuncs_[objFuncName] = (unsteadyObjFuncs_[objFuncName] * (n - 1) + objFuncVal ) / n;
+            }
         }
         else
         {
@@ -218,6 +237,10 @@ void DASolver::printAllObjFuncs()
              << "-" << daObjFunc.getObjFuncPart()
              << "-" << daObjFunc.getObjFuncType()
              << ": " << objFuncVal;
+        if (daObjFunc.getObjFuncTimeOperator() == "average" || daObjFunc.getObjFuncTimeOperator() == "sum")
+        {
+            Info << " Unsteady " << daObjFunc.getObjFuncTimeOperator() << " " << unsteadyObjFuncs_[objFuncName];
+        }
 #ifdef CODI_AD_FORWARD
 
         // if the forwardModeAD is active,, we need to get the total derivatives here
@@ -231,7 +254,7 @@ void DASolver::printAllObjFuncs()
 
             if (daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode") == "timeAccurate")
             {
-                Info << " Unsteady: " << unsteadyObjFuncs_[objFuncName].getGradient() << endl;
+                Info << " Unsteady Deriv: " << unsteadyObjFuncs_[objFuncName].getGradient();
             }
         }
 #endif
@@ -384,9 +407,9 @@ void DASolver::setDAObjFuncList()
         }
         else if (timeOperator == "average")
         {
-            scalar endTime = runTimePtr_->endTime().value();
-            scalar deltaT = runTimePtr_->deltaT().value();
-            label nInstances = round(endTime / deltaT);
+            label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
+            label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
+            label nInstances = endTimeIndex - startTimeIndex + 1;
             unsteadyObjFuncsScaling_.set(objFuncName, 1.0 / nInstances);
         }
         else

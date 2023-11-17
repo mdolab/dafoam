@@ -782,9 +782,40 @@ public:
         return unsteadyObjFuncs_[objFuncName];
     }
 
+    /// get the objective func scaling for unsteady adjoint
     scalar getObjFuncUnsteadyScaling(const word objFuncName)
     {
         return unsteadyObjFuncsScaling_[objFuncName];
+    }
+
+    /// get the unsteady adjoint start time index
+    label getUnsteadyObjFuncStartTimeIndex()
+    {
+        // we assume the adjoint is for deltaT to endTime
+        // but users can also prescribed a custom time range
+        scalar startTime = this->getRunTime().deltaT().value();
+        scalar startTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "objFuncStartTime");
+        if (startTimeRead >= 0)
+        {
+            startTime = startTimeRead;
+        }
+        scalar deltaT = this->getRunTime().deltaT().value();
+        return round(startTime / deltaT);
+    }
+
+    /// get the unsteady adjoint end time index
+    label getUnsteadyObjFuncEndTimeIndex()
+    {
+        // we assume the adjoint is for deltaT to endTime
+        // but users can also prescribed a custom time range
+        scalar endTime = this->getRunTime().endTime().value();
+        scalar endTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "objFuncEndTime");
+        if (endTimeRead >= 0)
+        {
+            endTime = endTimeRead;
+        }
+        scalar deltaT = this->getRunTime().deltaT().value();
+        return round(endTime / deltaT);
     }
 
     /// check the mesh quality and return meshOK
