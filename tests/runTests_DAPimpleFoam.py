@@ -24,11 +24,9 @@ os.chdir("./input/NACA0012Unsteady")
 
 if gcomm.rank == 0:
     os.system("rm -rf processor*")
-    os.system("./preProcessing.sh")
 
 twist0 = 30
 U0 = 10
-nCells = 4032
 alpha0 = 0
 
 # test incompressible solvers
@@ -80,19 +78,6 @@ daOptions = {
                 "addToAdjoint": True,
                 "timeOperator": "average",
             }
-        },
-        "UVar": {
-            "part1": {
-                "type": "variance",
-                "source": "boxToCell",
-                "min": [-100.0, -100.0, -100.0],
-                "max": [100.0, 100.0, 100.0],
-                "scale": 1.0,
-                "varName": "U",
-                "varType": "vector",
-                "addToAdjoint": True,
-                "timeOperator": "average",
-            },
         },
     },
     "adjStateOrdering": "cell",
