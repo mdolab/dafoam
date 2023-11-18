@@ -96,6 +96,8 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
           dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
+      betaFI_(const_cast<volScalarField&>(
+          mesh.thisDb().lookupObject<volScalarField>("betaFI"))),
       // pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
       pseudoNuTilda_(
           IOobject(
@@ -108,28 +110,6 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
       pseudoNuTildaEqn_(fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
 {
-
-    // initialize printInterval_ we need to check whether it is a steady state
-    // or unsteady primal solver
-    IOdictionary fvSchemes(
-        IOobject(
-            "fvSchemes",
-            mesh.time().system(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE,
-            false));
-    word ddtScheme = word(fvSchemes.subDict("ddtSchemes").lookup("default"));
-    if (ddtScheme == "steadyState")
-    {
-        printInterval_ =
-            daOption.getAllOptions().lookupOrDefault<label>("printInterval", 100);
-    }
-    else
-    {
-        printInterval_ =
-            daOption.getAllOptions().lookupOrDefault<label>("printIntervalUnsteady", 500);
-    }
 
     // get fvSolution and fvSchemes info for fixed-point adjoint
     const fvSolution& myFvSolution = mesh.thisDb().lookupObject<fvSolution>("fvSolution");
@@ -410,7 +390,7 @@ void DASpalartAllmarasFv3::addModelResidualCon(HashTable<List<List<word>>>& allC
 #endif
 }
 
-void DASpalartAllmarasFv3::correct()
+void DASpalartAllmarasFv3::correct(label printToScreen)
 {
     /*
     Descroption:
@@ -424,6 +404,7 @@ void DASpalartAllmarasFv3::correct()
     // we will solve and update nuTilda
     solveTurbState_ = 1;
     dictionary dummyOptions;
+    dummyOptions.set("printToScreen", printToScreen);
     this->calcResiduals(dummyOptions);
     // after it, we reset solveTurbState_ = 0 such that calcResiduals will not
     // update nuTilda when calling from the adjoint class, i.e., solveAdjoint from DASolver.
@@ -452,8 +433,6 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
 
     // Copy and modify based on the "correct" function
 
-    label printToScreen = this->isPrintTime(mesh_.time(), printInterval_);
-
     word divNuTildaScheme = "div(phi,nuTilda)";
 
     label isPC = 0;
@@ -480,13 +459,14 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
             + fvm::div(phaseRhoPhi_, nuTilda_, divNuTildaScheme)
             - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.ref().relax();
 
     if (solveTurbState_)
     {
+        label printToScreen = options.getLabel("printToScreen");
 
         // get the solver performance info such as initial
         // and final residuals

@@ -79,6 +79,8 @@ DAObjFuncWallHeatFlux::DAObjFuncWallHeatFlux(
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
 
+    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
+
 #ifdef CompressibleFlow
 
     // setup the connectivity for heat flux, this is needed in Foam::DAJacCondFdW

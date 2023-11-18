@@ -157,6 +157,62 @@ label DASolver::loop(Time& runTime)
     }
 }
 
+void DASolver::calcUnsteadyObjFuncs()
+{
+    /*
+    Description:
+        Calculate unsteady objective function, e.g., the time average obj func
+    */
+
+    if (daObjFuncPtrList_.size() == 0)
+    {
+        FatalErrorIn("calcUnsteadyObjFuncs") << "daObjFuncPtrList_.size() ==0... "
+                                             << "Forgot to call setDAObjFuncList?"
+                                             << abort(FatalError);
+    }
+
+    scalar objFuncValue = 0.0;
+
+    forAll(daObjFuncPtrList_, idxI)
+    {
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
+        word objFuncName = daObjFunc.getObjFuncName();
+        if (daObjFunc.getObjFuncTimeOperator() == "None")
+        {
+            FatalErrorIn("") << "calcUnsteadyObjFuncs is called but the timeOperator is not set!!! Options are: average or sum"
+                             << abort(FatalError);
+        }
+        else if (daObjFunc.getObjFuncTimeOperator() == "sum")
+        {
+            label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
+            label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
+            label timeIndex = runTimePtr_->timeIndex();
+            if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
+            {
+                unsteadyObjFuncs_[objFuncName] += this->getObjFuncValue(objFuncName);
+            }
+        }
+        else if (daObjFunc.getObjFuncTimeOperator() == "average")
+        {
+            // calculate the average on the fly, i.e., moving average
+            label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
+            label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
+            label timeIndex = runTimePtr_->timeIndex();
+            if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
+            {
+                label n = timeIndex - startTimeIndex + 1;
+                scalar objFuncVal = this->getObjFuncValue(objFuncName);
+                unsteadyObjFuncs_[objFuncName] = (unsteadyObjFuncs_[objFuncName] * (n - 1) + objFuncVal ) / n;
+            }
+        }
+        else
+        {
+            FatalErrorIn("calcUnsteadyObjFuncs") << "timeOperator not valid! Options are None, average, or sum"
+                                                 << abort(FatalError);
+        }
+    }
+}
+
 void DASolver::printAllObjFuncs()
 {
     /*
@@ -181,6 +237,10 @@ void DASolver::printAllObjFuncs()
              << "-" << daObjFunc.getObjFuncPart()
              << "-" << daObjFunc.getObjFuncType()
              << ": " << objFuncVal;
+        if (daObjFunc.getObjFuncTimeOperator() == "average" || daObjFunc.getObjFuncTimeOperator() == "sum")
+        {
+            Info << " Unsteady " << daObjFunc.getObjFuncTimeOperator() << " " << unsteadyObjFuncs_[objFuncName];
+        }
 #ifdef CODI_AD_FORWARD
 
         // if the forwardModeAD is active,, we need to get the total derivatives here
@@ -191,6 +251,11 @@ void DASolver::printAllObjFuncs()
             // assign the forward mode AD derivative to forwardADDerivVal_
             // such that we can get this value later
             forwardADDerivVal_.set(objFuncName, objFuncVal.getGradient());
+
+            if (daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode") == "timeAccurate")
+            {
+                Info << " Unsteady Deriv: " << unsteadyObjFuncs_[objFuncName].getGradient();
+            }
         }
 #endif
         Info << endl;
@@ -325,6 +390,32 @@ void DASolver::setDAObjFuncList()
                     .ptr());
 
             objFuncInstanceI++;
+        }
+    }
+
+    // here we also initialize the unsteadyObjFuncs hashtable
+    forAll(daObjFuncPtrList_, idxI)
+    {
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
+        word objFuncName = daObjFunc.getObjFuncName();
+        unsteadyObjFuncs_.set(objFuncName, 0.0);
+
+        word timeOperator = daObjFunc.getObjFuncTimeOperator();
+        if (timeOperator == "None" || timeOperator == "sum")
+        {
+            unsteadyObjFuncsScaling_.set(objFuncName, 1.0);
+        }
+        else if (timeOperator == "average")
+        {
+            label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
+            label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
+            label nInstances = endTimeIndex - startTimeIndex + 1;
+            unsteadyObjFuncsScaling_.set(objFuncName, 1.0 / nInstances);
+        }
+        else
+        {
+            FatalErrorIn("calcUnsteadyObjFuncs") << "timeOperator not valid! Options are None, average, or sum"
+                                                 << abort(FatalError);
         }
     }
 }
@@ -5033,6 +5124,13 @@ label DASolver::solveLinearEqn(
     // adjoint solution need to re-initialize the AD tape
     globalADTape4dRdWTInitialized = 0;
 
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+    this->deactivateStateVariableInput4AD();
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
+
     return error;
 }
 
@@ -6786,9 +6884,9 @@ void DASolver::calcdRdWOldTPsiAD(
     // **********************************************************************************************
     // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
     // **********************************************************************************************
-
-    // ************** TODO *****************
-    // We need to deactivate the old time. NOT implemented yet.
+    this->deactivateStateVariableInput4AD(oldTimeLevel);
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
 
     wordList writeJacobians;
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
@@ -6958,13 +7056,25 @@ void DASolver::registerStateVariableInput4AD(const label oldTimeLevel)
 #endif
 }
 
-void DASolver::deactivateStateVariableInput4AD()
+void DASolver::deactivateStateVariableInput4AD(const label oldTimeLevel)
 {
 #ifdef CODI_AD_REVERSE
     /*
     Description:
         Deactivate all state variables as the input for reverse-mode AD
+    Input:
+        oldTimeLevel: which time level to register, the default value
+        is 0, meaning it will register the state itself. If its 
+        value is 1, it will register state.oldTime(), if its value
+        is 2, it will register state.oldTime().oldTime(). For
+        steady-state adjoint oldTimeLevel = 0
     */
+
+    if (oldTimeLevel < 0 || oldTimeLevel > 2)
+    {
+        FatalErrorIn("") << "oldTimeLevel not valid. Options: 0, 1, or 2"
+                         << abort(FatalError);
+    }
 
     forAll(stateInfo_["volVectorStates"], idxI)
     {
@@ -6972,11 +7082,27 @@ void DASolver::deactivateStateVariableInput4AD()
         volVectorField& state = const_cast<volVectorField&>(
             meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
 
-        forAll(state, cellI)
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            for (label i = 0; i < 3; i++)
+            forAll(state, cellI)
             {
-                this->globalADTape_.deactivateValue(state[cellI][i]);
+                for (label i = 0; i < 3; i++)
+                {
+                    if (oldTimeLevel == 0)
+                    {
+                        this->globalADTape_.deactivateValue(state[cellI][i]);
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        this->globalADTape_.deactivateValue(state.oldTime()[cellI][i]);
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        this->globalADTape_.deactivateValue(state.oldTime().oldTime()[cellI][i]);
+                    }
+                }
             }
         }
     }
@@ -6987,9 +7113,25 @@ void DASolver::deactivateStateVariableInput4AD()
         volScalarField& state = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        forAll(state, cellI)
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            this->globalADTape_.deactivateValue(state[cellI]);
+            forAll(state, cellI)
+            {
+                if (oldTimeLevel == 0)
+                {
+                    this->globalADTape_.deactivateValue(state[cellI]);
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    this->globalADTape_.deactivateValue(state.oldTime()[cellI]);
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    this->globalADTape_.deactivateValue(state.oldTime().oldTime()[cellI]);
+                }
+            }
         }
     }
 
@@ -6999,10 +7141,25 @@ void DASolver::deactivateStateVariableInput4AD()
         volScalarField& state = const_cast<volScalarField&>(
             meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        forAll(state, cellI)
-        {
+        label maxOldTimes = state.nOldTimes();
 
-            this->globalADTape_.deactivateValue(state[cellI]);
+        if (maxOldTimes >= oldTimeLevel)
+        {
+            forAll(state, cellI)
+            {
+                if (oldTimeLevel == 0)
+                {
+                    this->globalADTape_.deactivateValue(state[cellI]);
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    this->globalADTape_.deactivateValue(state.oldTime()[cellI]);
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    this->globalADTape_.deactivateValue(state.oldTime().oldTime()[cellI]);
+                }
+            }
         }
     }
 
@@ -7011,15 +7168,43 @@ void DASolver::deactivateStateVariableInput4AD()
         const word stateName = stateInfo_["surfaceScalarStates"][idxI];
         surfaceScalarField& state = const_cast<surfaceScalarField&>(
             meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
-        forAll(state, faceI)
+
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
         {
-            this->globalADTape_.deactivateValue(state[faceI]);
-        }
-        forAll(state.boundaryField(), patchI)
-        {
-            forAll(state.boundaryField()[patchI], faceI)
+            forAll(state, faceI)
             {
-                this->globalADTape_.deactivateValue(state.boundaryFieldRef()[patchI][faceI]);
+                if (oldTimeLevel == 0)
+                {
+                    this->globalADTape_.deactivateValue(state[faceI]);
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    this->globalADTape_.deactivateValue(state.oldTime()[faceI]);
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    this->globalADTape_.deactivateValue(state.oldTime().oldTime()[faceI]);
+                }
+            }
+            forAll(state.boundaryField(), patchI)
+            {
+                forAll(state.boundaryField()[patchI], faceI)
+                {
+                    if (oldTimeLevel == 0)
+                    {
+                        this->globalADTape_.deactivateValue(state.boundaryFieldRef()[patchI][faceI]);
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        this->globalADTape_.deactivateValue(state.oldTime().boundaryFieldRef()[patchI][faceI]);
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        this->globalADTape_.deactivateValue(state.oldTime().oldTime().boundaryFieldRef()[patchI][faceI]);
+                    }
+                }
             }
         }
     }
@@ -8332,7 +8517,7 @@ void DASolver::setTimeInstanceField(const label instanceI)
 
     // for time accurate adjoint, in addition to assign current fields,
     // we need to assign oldTime fields.
-    if (mode == "timeAccurateAdjoint")
+    if (mode == "timeAccurate")
     {
         // assign U.oldTime()
         oldTimeLevel = 1;
@@ -8364,6 +8549,258 @@ void DASolver::setTimeInstanceField(const label instanceI)
         daResidualPtr_->updateIntermediateVariables();
         daModelPtr_->correctBoundaryConditions();
         daModelPtr_->updateIntermediateVariables();
+    }
+}
+
+void DASolver::readStateVars(
+    scalar timeVal,
+    label oldTimeLevel)
+{
+    /*
+    Description:
+        Read the state variables from the disk and assign the value to the prescribe time level
+    
+    Inputs:
+        
+        timeName: Which time to read, i.e., time.timeName()
+
+        oldTimeLevel: 
+            0: read the states and assign to the current time level
+            1: read the states and assign to the previous time level (oldTime())
+            2: read the states and assign to the 2 previous time level (oldTime().oldTime())
+        
+    */
+
+    // we can't read negatiev time, so if the timeName is negative, we just read the vars from the 0 folder
+    word timeName = Foam::name(timeVal);
+    if (timeVal < 0)
+    {
+        timeName = "0";
+    }
+
+    fvMesh& mesh = meshPtr_();
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state =
+            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
+        {
+            volVectorField stateRead(
+                IOobject(
+                    stateName,
+                    timeName,
+                    mesh,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE),
+                mesh);
+
+            if (oldTimeLevel == 0)
+            {
+                state = stateRead;
+                state.correctBoundaryConditions();
+            }
+            else if (oldTimeLevel == 1)
+            {
+                state.oldTime() = stateRead;
+                state.oldTime().correctBoundaryConditions();
+            }
+            else if (oldTimeLevel == 2)
+            {
+                if (timeVal < 0)
+                {
+                    volVectorField state0Read(
+                        IOobject(
+                            stateName + "_0",
+                            timeName,
+                            mesh,
+                            IOobject::READ_IF_PRESENT,
+                            IOobject::NO_WRITE),
+                        stateRead);
+                    state.oldTime().oldTime() = state0Read;
+                }
+                else
+                {
+                    state.oldTime().oldTime() = stateRead;
+                }
+                state.oldTime().oldTime().correctBoundaryConditions();
+            }
+            else
+            {
+                FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
+        {
+
+            volScalarField stateRead(
+                IOobject(
+                    stateName,
+                    timeName,
+                    mesh,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE),
+                mesh);
+
+            if (oldTimeLevel == 0)
+            {
+                state = stateRead;
+                state.correctBoundaryConditions();
+            }
+            else if (oldTimeLevel == 1)
+            {
+                state.oldTime() = stateRead;
+                state.oldTime().correctBoundaryConditions();
+            }
+            else if (oldTimeLevel == 2)
+            {
+                if (timeVal < 0)
+                {
+                    volScalarField state0Read(
+                        IOobject(
+                            stateName + "_0",
+                            timeName,
+                            mesh,
+                            IOobject::READ_IF_PRESENT,
+                            IOobject::NO_WRITE),
+                        stateRead);
+                    state.oldTime().oldTime() = state0Read;
+                }
+                else
+                {
+                    state.oldTime().oldTime() = stateRead;
+                }
+                state.oldTime().oldTime().correctBoundaryConditions();
+            }
+            else
+            {
+                FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
+            }
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
+        {
+
+            volScalarField stateRead(
+                IOobject(
+                    stateName,
+                    timeName,
+                    mesh,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE),
+                mesh);
+
+            if (oldTimeLevel == 0)
+            {
+                state = stateRead;
+                state.correctBoundaryConditions();
+            }
+            else if (oldTimeLevel == 1)
+            {
+                state.oldTime() = stateRead;
+                state.oldTime().correctBoundaryConditions();
+            }
+            else if (oldTimeLevel == 2)
+            {
+                if (timeVal < 0)
+                {
+                    volScalarField state0Read(
+                        IOobject(
+                            stateName + "_0",
+                            timeName,
+                            mesh,
+                            IOobject::READ_IF_PRESENT,
+                            IOobject::NO_WRITE),
+                        stateRead);
+                    state.oldTime().oldTime() = state0Read;
+                }
+                else
+                {
+                    state.oldTime().oldTime() = stateRead;
+                }
+                state.oldTime().oldTime().correctBoundaryConditions();
+            }
+            else
+            {
+                FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
+            }
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state =
+            const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
+        {
+            surfaceScalarField stateRead(
+                IOobject(
+                    stateName,
+                    timeName,
+                    mesh,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE),
+                mesh);
+
+            if (oldTimeLevel == 0)
+            {
+                state = stateRead;
+            }
+            else if (oldTimeLevel == 1)
+            {
+                state.oldTime() = stateRead;
+            }
+            else if (oldTimeLevel == 2)
+            {
+                if (timeVal < 0)
+                {
+                    surfaceScalarField state0Read(
+                        IOobject(
+                            stateName + "_0",
+                            timeName,
+                            mesh,
+                            IOobject::READ_IF_PRESENT,
+                            IOobject::NO_WRITE),
+                        stateRead);
+                    state.oldTime().oldTime() = state0Read;
+                }
+                else
+                {
+                    state.oldTime().oldTime() = stateRead;
+                }
+            }
+            else
+            {
+                FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
+            }
+        }
     }
 }
 

@@ -104,9 +104,6 @@ protected:
 
     /// whether to solve for turb states
     label solveTurbState_ = 0;
-
-    /// time step interval to print residual
-    label printInterval_;
         
     /// A beta field multiplying to the production term
     volScalarField& betaFieldInversion_; 
@@ -165,7 +162,7 @@ public:
     virtual void calcResiduals(const dictionary& options);
 
     /// solve the residual equations and update the state
-    virtual void correct();
+    virtual void correct(label printToScreen);
 
     /// save near wall omega values to omegaNearWall_
     void saveOmegaNearWall();

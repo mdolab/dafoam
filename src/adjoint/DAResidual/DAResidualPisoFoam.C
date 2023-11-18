@@ -104,7 +104,7 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
         + daTurb_.divDevReff(U_)
         - fvSource_);
 
-    if (mode_ == "hybridAdjoint")
+    if (mode_ == "hybrid")
     {
         UEqn -= fvm::ddt(U_);
     }
@@ -135,7 +135,7 @@ void DAResidualPisoFoam::calcResiduals(const dictionary& options)
         fvc::flux(HbyA)
             + fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_));
 
-    if (mode_ == "hybridAdjoint")
+    if (mode_ == "hybrid")
     {
         phiHbyA -= fvc::interpolate(rAU) * fvc::ddtCorr(U_, phi_);
     }

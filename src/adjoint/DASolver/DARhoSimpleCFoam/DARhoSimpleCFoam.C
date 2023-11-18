@@ -150,7 +150,7 @@ label DARhoSimpleCFoam::solvePrimal(
 #include "EEqnRhoSimpleC.H"
 #include "pEqnRhoSimpleC.H"
 
-        daTurbulenceModelPtr_->correct();
+        daTurbulenceModelPtr_->correct(printToScreen);
 
         if (printToScreen)
         {

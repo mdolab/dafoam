@@ -209,7 +209,7 @@ public:
     virtual void calcResiduals(const dictionary& options) = 0;
 
     /// solve the residual equations and update the state
-    virtual void correct() = 0;
+    virtual void correct(label printToScreen) = 0;
 
     /// return the value of the production term from the Spalart Allmaras model
     virtual void getTurbProdTerm(scalarList& prodTerm) const;

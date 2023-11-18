@@ -167,7 +167,7 @@ label DARhoSimpleFoam::solvePrimal(
 #include "EEqnRhoSimple.H"
 #include "pEqnRhoSimple.H"
 
-        daTurbulenceModelPtr_->correct();
+        daTurbulenceModelPtr_->correct(printToScreen);
 
         if (printToScreen)
         {

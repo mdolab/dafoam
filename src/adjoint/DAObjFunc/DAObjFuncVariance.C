@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAObjFuncMass.H"
+#include "DAObjFuncVariance.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAObjFuncMass, 0);
-addToRunTimeSelectionTable(DAObjFunc, DAObjFuncMass, dictionary);
+defineTypeNameAndDebug(DAObjFuncVariance, 0);
+addToRunTimeSelectionTable(DAObjFunc, DAObjFuncVariance, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAObjFuncMass::DAObjFuncMass(
+DAObjFuncVariance::DAObjFuncVariance(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
@@ -35,20 +35,26 @@ DAObjFuncMass::DAObjFuncMass(
         objFuncPart,
         objFuncDict)
 {
+
     // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
-    // setup the connectivity for mass. It does actually not depends on D
-    // here we set zero level of D as a place holder.
-    objFuncConInfo_ = {{"D"}};
-
     objFuncDict_.readEntry<scalar>("scale", scale_);
 
+    objFuncDict_.readEntry<word>("varName", varName_);
+
+    objFuncDict_.readEntry<word>("varType", varType_);
+
     timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
+
+    if (daIndex.adjStateNames.found(varName_))
+    {
+        objFuncConInfo_ = {{varName_}};
+    }
 }
 
 /// calculate the value of objective function
-void DAObjFuncMass::calcObjFunc(
+void DAObjFuncVariance::calcObjFunc(
     const labelList& objFuncFaceSources,
     const labelList& objFuncCellSources,
     scalarList& objFuncFaceValues,
@@ -57,7 +63,8 @@ void DAObjFuncMass::calcObjFunc(
 {
     /*
     Description:
-        Calculate the mass = density * volume of the mesh
+        Calculate the obj = mesh volume * variable (whether to take a square of the variable
+        depends on isSquare)
 
     Input:
         objFuncFaceSources: List of face source (index) for this objective
@@ -74,24 +81,68 @@ void DAObjFuncMass::calcObjFunc(
         objFuncValue: the sum of objective, reduced across all processors and scaled by "scale"
     */
 
-    // initialize faceValues to zero
-    forAll(objFuncCellValues, idxI)
-    {
-        objFuncCellValues[idxI] = 0.0;
-    }
     // initialize objFunValue
     objFuncValue = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
-    const volScalarField& rho = db.lookupObject<volScalarField>("solid:rho");
 
-    // calculate mass
-    forAll(objFuncCellSources, idxI)
+    if (varType_ == "scalar")
     {
-        const label& cellI = objFuncCellSources[idxI];
-        scalar volume = mesh_.V()[cellI];
-        objFuncCellValues[idxI] = scale_ * volume * rho[cellI];
-        objFuncValue += objFuncCellValues[idxI];
+        const volScalarField& var = db.lookupObject<volScalarField>(varName_);
+
+        volScalarField varData(
+            IOobject(
+                varName_ + "Data",
+                mesh_.time().timeName(),
+                mesh_,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh_);
+
+        label nRefPoints = 0;
+        forAll(var, cellI)
+        {
+            if (varData[cellI] < 1e16)
+            {
+                objFuncValue += scale_ * (var[cellI] - varData[cellI]) * (var[cellI] - varData[cellI]);
+                nRefPoints++;
+            }
+        }
+        objFuncValue /= nRefPoints;
+    }
+    else if (varType_ == "vector")
+    {
+        const volVectorField& var = db.lookupObject<volVectorField>(varName_);
+
+        volVectorField varData(
+            IOobject(
+                varName_ + "Data",
+                mesh_.time().timeName(),
+                mesh_,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh_);
+
+        label nRefPoints = 0;
+        forAll(var, cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                if (varData[cellI][comp] < 1e16)
+                {
+                    scalar varDif = (var[cellI][comp] - varData[cellI][comp]);
+                    objFuncValue += scale_ * varDif * varDif;
+                    nRefPoints++;
+                }
+            }
+        }
+        objFuncValue /= nRefPoints;
+    }
+    else
+    {
+        FatalErrorIn("") << "varType " << varType_ << " not supported!"
+                         << "Options are: scalar or vector"
+                         << abort(FatalError);
     }
 
     // need to reduce the sum of force across all processors

@@ -102,7 +102,7 @@ void DADummyTurbulenceModel::addModelResidualCon(HashTable<List<List<word>>>& al
     // Do nothing
 }
 
-void DADummyTurbulenceModel::correct()
+void DADummyTurbulenceModel::correct(label printToScreen)
 {
     // Do nothing
 }

@@ -55,6 +55,7 @@ DAObjFunc/DAObjFuncMeshQualityKS.C
 DAObjFunc/DAObjFuncPatchMean.C
 DAObjFunc/DAObjFuncMassFlowRate.C
 DAObjFunc/DAObjFuncLocation.C
+DAObjFunc/DAObjFuncVariance.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C

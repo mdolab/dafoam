@@ -1,11 +1,28 @@
 volScalarField rAU(1.0 / UEqn.A());
-volVectorField HbyA(constrainHbyA(rAU* UEqn.H(), U, p));
+//***************** NOTE *******************
+// constrainHbyA has been used since OpenFOAM-v1606; however, it may degrade the accuracy of derivatives
+// because constraining variables will create discontinuity. Here we have a option to use the old
+// implementation in OpenFOAM-3.0+ and before (no constraint for HbyA)
+autoPtr<volVectorField> HbyAPtr = nullptr;
+label useConstrainHbyA = daOptionPtr_->getOption<label>("useConstrainHbyA");
+if (useConstrainHbyA)
+{
+    HbyAPtr.reset(new volVectorField(constrainHbyA(rAU * UEqn.H(), U, p)));
+}
+else
+{
+    HbyAPtr.reset(new volVectorField("HbyA", U));
+    HbyAPtr() = rAU * UEqn.H();
+}
+volVectorField& HbyA = HbyAPtr();
 surfaceScalarField phiHbyA(
     "phiHbyA",
-    fvc::flux(HbyA)
-        + fvc::interpolate(rAU) * fvc::ddtCorr(U, phi));
+    fvc::flux(HbyA));
 
-adjustPhi(phiHbyA, U, p);
+if (p.needReference())
+{
+    adjustPhi(phiHbyA, U, p);
+}
 
 tmp<volScalarField> rAtU(rAU);
 
@@ -35,7 +52,7 @@ while (pimple.correctNonOrthogonal())
     // and final residuals
     SolverPerformance<scalar> solverP = pEqn.solve(mesh.solver(p.select(pimple.finalInnerIter())));
 
-    this->primalResidualControl<scalar>(solverP, printToScreen, printInterval, "p");
+    this->primalResidualControl<scalar>(solverP, pimplePrintToScreen, printInterval, "p");
 
     if (pimple.finalNonOrthogonalIter())
     {
@@ -43,7 +60,7 @@ while (pimple.correctNonOrthogonal())
     }
 }
 
-if (printToScreen)
+if (pimplePrintToScreen)
 {
 #include "continuityErrsPython.H"
 }

@@ -203,6 +203,12 @@ protected:
     /// save primal variable to time instance list for time accurate adjoint (unsteady)
     void saveTimeInstanceFieldTimeAccurate(label& timeInstanceI);
 
+    /// a hash table that save the unsteady obj funcs, e.g., time-averaged drag
+    HashTable<scalar> unsteadyObjFuncs_;
+
+    /// a scaling factor related to the unsteady obj func timeOperator e.g., in dFdW calculation
+    HashTable<scalar> unsteadyObjFuncsScaling_;
+
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -255,6 +261,38 @@ public:
 
     /// assign primal variables based on the current time instance
     void setTimeInstanceField(const label instanceI);
+
+    /// setTime for OF fields
+    void setTime(scalar time, label timeIndex)
+    {
+        runTimePtr_->setTime(time, timeIndex);
+    }
+
+    /// get the ddtScheme order
+    label getDdtSchemeOrder()
+    {
+        const fvSchemes& myFvSchemes = meshPtr_->thisDb().lookupObject<fvSchemes>("fvSchemes");
+
+        word ddtSchemeName = myFvSchemes.subDict("ddtSchemes").getWord("default");
+
+        if (ddtSchemeName == "steadyState")
+        {
+            return 0;
+        }
+        if (ddtSchemeName == "Euler")
+        {
+            return 1;
+        }
+        else if (ddtSchemeName == "backward")
+        {
+            return 2;
+        }
+        else
+        {
+            FatalErrorIn("") << "ddtScheme " << ddtSchemeName << " not supported! Options: steadyState, Euler, or backward"
+                             << abort(FatalError);
+        }
+    }
 
     /// return the value of objective function at the given time instance and name
     scalar getTimeInstanceObjFunc(
@@ -350,7 +388,7 @@ public:
     void setBCToOFVars(
         const dictionary& dvSubDict,
         const scalar& BC);
-    
+
     /// get the BC val from OF var
     void getBCFromOFVars(
         const dictionary& dvSubDict,
@@ -549,7 +587,7 @@ public:
     void registerStateVariableInput4AD(const label oldTimeLevel = 0);
 
     /// deactivate all state variables as the input for reverse-mode AD
-    void deactivateStateVariableInput4AD();
+    void deactivateStateVariableInput4AD(const label oldTimeLevel = 0);
 
     /// register field variables as the input for reverse-mode AD
     void registerFieldVariableInput4AD(
@@ -723,6 +761,62 @@ public:
 
     /// calculate the values of all objective functions and print them to screen
     void printAllObjFuncs();
+
+    /// reset the unsteady objFunction to zero
+    void initUnsteadyObjFuncs()
+    {
+        forAll(daObjFuncPtrList_, idxI)
+        {
+            DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
+            word objFuncName = daObjFunc.getObjFuncName();
+            unsteadyObjFuncs_[objFuncName] = 0.0;
+        }
+    }
+
+    /// calculate and save the unsteady objective function
+    void calcUnsteadyObjFuncs();
+
+    /// return the unsteady objFunc values
+    scalar getObjFuncValueUnsteady(const word objFuncName)
+    {
+        return unsteadyObjFuncs_[objFuncName];
+    }
+
+    /// get the objective func scaling for unsteady adjoint
+    scalar getObjFuncUnsteadyScaling(const word objFuncName)
+    {
+        return unsteadyObjFuncsScaling_[objFuncName];
+    }
+
+    /// get the unsteady adjoint start time index
+    label getUnsteadyObjFuncStartTimeIndex()
+    {
+        // we assume the adjoint is for deltaT to endTime
+        // but users can also prescribed a custom time range
+        scalar startTime = this->getRunTime().deltaT().value();
+        scalar startTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "objFuncStartTime");
+        if (startTimeRead >= 0)
+        {
+            startTime = startTimeRead;
+        }
+        scalar deltaT = this->getRunTime().deltaT().value();
+        return round(startTime / deltaT);
+    }
+
+    /// get the unsteady adjoint end time index
+    label getUnsteadyObjFuncEndTimeIndex()
+    {
+        // we assume the adjoint is for deltaT to endTime
+        // but users can also prescribed a custom time range
+        scalar endTime = this->getRunTime().endTime().value();
+        scalar endTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "objFuncEndTime");
+        if (endTimeRead >= 0)
+        {
+            endTime = endTimeRead;
+        }
+        scalar deltaT = this->getRunTime().deltaT().value();
+        return round(endTime / deltaT);
+    }
 
     /// check the mesh quality and return meshOK
     label checkMesh() const
@@ -1012,6 +1106,11 @@ public:
 
     /// write the failed mesh to disk
     void writeFailedMesh();
+
+    /// read the state variables from the disk and assign the value to the prescribe time level
+    void readStateVars(
+        scalar timeVal,
+        label oldTimeLevel = 0);
 
     /// initialize tensorflow functions and interfaces for callback
     void initTensorFlowFuncs(

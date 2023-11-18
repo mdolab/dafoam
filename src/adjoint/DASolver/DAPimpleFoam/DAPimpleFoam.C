@@ -75,61 +75,6 @@ void DAPimpleFoam::initSolver()
 
     this->setDAObjFuncList();
 
-    mode_ = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode");
-
-    if (mode_ == "hybridAdjoint")
-    {
-
-        nTimeInstances_ =
-            daOptionPtr_->getSubDictOption<label>("unsteadyAdjoint", "nTimeInstances");
-
-        periodicity_ =
-            daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "periodicity");
-
-        if (periodicity_ <= 0)
-        {
-            FatalErrorIn("") << "periodicity <= 0!" << abort(FatalError);
-        }
-    }
-    else if (mode_ == "timeAccurateAdjoint")
-    {
-
-        nTimeInstances_ =
-            daOptionPtr_->getSubDictOption<label>("unsteadyAdjoint", "nTimeInstances");
-
-        scalar endTime = runTimePtr_->endTime().value();
-        scalar deltaT = runTimePtr_->deltaTValue();
-        label maxNTimeInstances = round(endTime / deltaT) + 1;
-        if (nTimeInstances_ != maxNTimeInstances)
-        {
-            FatalErrorIn("") << "nTimeInstances in timeAccurateAdjoint is not equal to "
-                             << "the maximal possible value!" << abort(FatalError);
-        }
-    }
-
-    if (mode_ == "hybridAdjoint" || mode_ == "timeAccurateAdjoint")
-    {
-
-        if (nTimeInstances_ <= 0)
-        {
-            FatalErrorIn("") << "nTimeInstances <= 0!" << abort(FatalError);
-        }
-
-        stateAllInstances_.setSize(nTimeInstances_);
-        stateBoundaryAllInstances_.setSize(nTimeInstances_);
-        objFuncsAllInstances_.setSize(nTimeInstances_);
-        runTimeAllInstances_.setSize(nTimeInstances_);
-        runTimeIndexAllInstances_.setSize(nTimeInstances_);
-
-        forAll(stateAllInstances_, idxI)
-        {
-            stateAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointStates);
-            stateBoundaryAllInstances_[idxI].setSize(daIndexPtr_->nLocalAdjointBoundaryStates);
-            runTimeAllInstances_[idxI] = 0.0;
-            runTimeIndexAllInstances_[idxI] = 0;
-        }
-    }
-
     // initialize fvSource and the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)
@@ -164,6 +109,12 @@ label DAPimpleFoam::solvePrimal(
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
+    // we need to read in the states from the 0 folder every time we start the primal
+    // here we read in all time levels
+    runTime.setTime(0.0, 0);
+    this->readStateVars(0.0, 0);
+    this->readStateVars(0.0, 1);
+
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
 
@@ -182,6 +133,9 @@ label DAPimpleFoam::solvePrimal(
         return 1;
     }
 
+    // if the forwardModeAD is active, we need to set the seed here
+#include "setForwardADSeeds.H"
+
     // We need to set the mesh moving to false, otherwise we will get V0 not found error.
     // Need to dig into this issue later
     // NOTE: we have commented this out. Setting mesh.moving(false) has been done
@@ -192,14 +146,17 @@ label DAPimpleFoam::solvePrimal(
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;
-    // for time accurate adjoints, we need to save states for Time = 0
-    if (mode_ == "timeAccurateAdjoint")
-    {
-        this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
-    }
+    label pimplePrintToScreen = 0;
+
+    // reset the unsteady obj func to zeros
+    this->initUnsteadyObjFuncs();
+
     // main loop
-    while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
+    while (runTime.run())
     {
+
+        ++runTime;
+
         printToScreen = this->isPrintTime(runTime, printInterval);
 
         if (printToScreen)
@@ -210,6 +167,14 @@ label DAPimpleFoam::solvePrimal(
         // --- Pressure-velocity PIMPLE corrector loop
         while (pimple.loop())
         {
+            if (pimple.finalIter() && printToScreen)
+            {
+                pimplePrintToScreen = 1;
+            }
+            else
+            {
+                pimplePrintToScreen = 0;
+            }
 
 #include "UEqnPimple.H"
 
@@ -220,8 +185,10 @@ label DAPimpleFoam::solvePrimal(
             }
 
             laminarTransport.correct();
-            daTurbulenceModelPtr_->correct();
+            daTurbulenceModelPtr_->correct(pimplePrintToScreen);
         }
+
+        this->calcUnsteadyObjFuncs();
 
         if (printToScreen)
         {
@@ -243,14 +210,9 @@ label DAPimpleFoam::solvePrimal(
 
         runTime.write();
 
-        if (mode_ == "hybridAdjoint")
+        if (mode_ == "hybrid")
         {
             this->saveTimeInstanceFieldHybrid(timeInstanceI);
-        }
-
-        if (mode_ == "timeAccurateAdjoint")
-        {
-            this->saveTimeInstanceFieldTimeAccurate(timeInstanceI);
         }
     }
 

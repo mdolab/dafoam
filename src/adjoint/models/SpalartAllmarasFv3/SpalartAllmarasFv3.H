@@ -45,6 +45,9 @@ protected:
 
     volScalarField nuTilda_;
 
+    /// a beta field multiplied to the SA's production term
+    volScalarField betaFI_;
+
     //- Wall distance
     //  Note: different to wall distance in parent RASModel
     //  which is for near-wall cells only

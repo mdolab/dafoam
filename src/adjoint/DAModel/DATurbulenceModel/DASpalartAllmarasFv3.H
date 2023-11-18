@@ -87,6 +87,9 @@ protected:
     volScalarField nuTildaRes_;
     //@}
 
+    /// optional beta field for field inversion
+    volScalarField& betaFI_;
+
     /// pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
     volScalarField pseudoNuTilda_;
     fvScalarMatrix pseudoNuTildaEqn_;
@@ -96,9 +99,6 @@ protected:
 
     /// whether to solve for turb states
     label solveTurbState_ = 0;
-
-    /// time step interval to print residual
-    label printInterval_;
 
     // fvSolutions parameters
     scalar relaxNuTildaEqn_ = 1.0;
@@ -146,7 +146,7 @@ public:
     virtual void calcResiduals(const dictionary& options);
 
     /// solve the residual equations and update the state
-    virtual void correct();
+    virtual void correct(label printToScreen);
 
     /// Inverse transpose product, A_nuTilda^(-T)
     virtual void invTranProdNuTildaEqn(

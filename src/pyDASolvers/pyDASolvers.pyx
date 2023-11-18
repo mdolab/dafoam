@@ -92,6 +92,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getNCouplingPoints()
         int checkMesh()
         double getObjFuncValue(char *)
+        double getObjFuncValueUnsteady(char *)
+        double getObjFuncUnsteadyScaling(char *)
         void calcCouplingFaceCoords(double *, double *)
         void calcCouplingFaceCoordsAD(double *, double *, double *)
         void getForces(PetscVec, PetscVec, PetscVec)
@@ -130,6 +132,13 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
         int runFPAdj(PetscVec, PetscVec, PetscVec, PetscVec)
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *)
+        void readStateVars(double, int)
+        double getEndTime()
+        double getDeltaT()
+        void setTime(double, int)
+        int getDdtSchemeOrder()
+        int getUnsteadyObjFuncStartTimeIndex()
+        int getUnsteadyObjFuncEndTimeIndex()
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -357,6 +366,12 @@ cdef class pyDASolvers:
     
     def getObjFuncValue(self, objFuncName):
         return self._thisptr.getObjFuncValue(objFuncName)
+    
+    def getObjFuncValueUnsteady(self, objFuncName):
+        return self._thisptr.getObjFuncValueUnsteady(objFuncName)
+    
+    def getObjFuncUnsteadyScaling(self, objFuncName):
+        return self._thisptr.getObjFuncUnsteadyScaling(objFuncName)
         
     def calcCouplingFaceCoords(self, 
             np.ndarray[double, ndim=1, mode="c"] volCoords,
@@ -502,6 +517,27 @@ cdef class pyDASolvers:
     
     def setPrimalBoundaryConditions(self, printInfo):
         self._thisptr.setPrimalBoundaryConditions(printInfo)
+    
+    def readStateVars(self, timeVal, timeLevel):
+        self._thisptr.readStateVars(timeVal, timeLevel)
+    
+    def setTime(self, time, timeIndex):
+        self._thisptr.setTime(time, timeIndex)
+
+    def getDdtSchemeOrder(self):
+        return self._thisptr.getDdtSchemeOrder()
+    
+    def getEndTime(self):
+        return self._thisptr.getEndTime()
+    
+    def getDeltaT(self):
+        return self._thisptr.getDeltaT()
+    
+    def getUnsteadyObjFuncStartTimeIndex(self):
+        return self._thisptr.getUnsteadyObjFuncStartTimeIndex()
+    
+    def getUnsteadyObjFuncEndTimeIndex(self):
+        return self._thisptr.getUnsteadyObjFuncEndTimeIndex()
     
     def calcFvSource(self, propName, Vec aForce, Vec tForce, Vec rDist, Vec targetForce, Vec center, Vec fvSource):
         self._thisptr.calcFvSource(propName, aForce.vec, tForce.vec, rDist.vec, targetForce.vec, center.vec, fvSource.vec)
