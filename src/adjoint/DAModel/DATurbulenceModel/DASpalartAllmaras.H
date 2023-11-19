@@ -90,6 +90,9 @@ protected:
     /// 3D wall distance
     const volScalarField& y_;
 
+    /// beta field for field inversion
+    volScalarField betaFI_;
+
     /// whether to solve for turb states
     label solveTurbState_ = 0;
 

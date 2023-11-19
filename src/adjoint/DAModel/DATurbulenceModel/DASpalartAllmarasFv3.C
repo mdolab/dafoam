@@ -96,8 +96,6 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
           dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      betaFI_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("betaFI"))),
       // pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
       pseudoNuTilda_(
           IOobject(
@@ -108,7 +106,17 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
               IOobject::NO_WRITE),
           nuTilda_),
       pseudoNuTildaEqn_(fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")),
-      y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
+      y_(mesh.thisDb().lookupObject<volScalarField>("yWall")),
+      betaFI_(
+          IOobject(
+              "betaFI",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          "zeroGradient")
 {
 
     // get fvSolution and fvSchemes info for fixed-point adjoint
@@ -662,7 +670,7 @@ void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)
         fvm::div(phi_, nuTilda_, "div(phi,nuTilda)")
             - fvm::laplacian(DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * Stilda * nuTilda_
+        == Cb1_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     List<scalar>& nuTildaSource = nuTildaEqn.source();

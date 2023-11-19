@@ -89,6 +89,9 @@ protected:
     volScalarField kRes_;
     //@}
 
+    /// beta field for field inversion
+    volScalarField betaFI_;
+
     /// cell-center epsilon values near the wall, this is to fix the issue that the
     /// epsilonWallFunction will try to modify epsilon values for the cells near walls
     /// this will cause issue for FD-based partial derivatives, so here we basically

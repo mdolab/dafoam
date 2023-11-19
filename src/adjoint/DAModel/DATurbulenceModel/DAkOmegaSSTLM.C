@@ -194,7 +194,17 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
           zeroGradientFvPatchScalarField::typeName),
       gammaIntEff_(const_cast<volScalarField::Internal&>(
           mesh_.thisDb().lookupObject<volScalarField::Internal>("gammaIntEff"))),
-      y_(mesh_.thisDb().lookupObject<volScalarField>("yWall"))
+      y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")),
+      betaFI_(
+          IOobject(
+              "betaFI",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          "zeroGradient")
 {
 
     // calculate the size of omegaWallFunction faces
@@ -1074,7 +1084,7 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
                 fvm::ddt(phase_, rho_, omega_)
                     + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
                     - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
-                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2())
+                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFI_()
                     - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
                     - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
                     - fvm::SuSp(
@@ -1349,7 +1359,7 @@ void DAkOmegaSSTLM::getFvMatrixFields(
                 fvm::ddt(phase_, rho_, omega_)
                     + fvm::div(phaseRhoPhi_, omega_, "div(pc)")
                     - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
-                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2())
+                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFI_()
                     - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
                     - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
                     - fvm::SuSp(

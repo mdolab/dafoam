@@ -96,6 +96,9 @@ protected:
     volScalarField kRes_;
     //@}
 
+    /// beta field for field inversion
+    volScalarField betaFI_;
+
     /// cell-center omega values near the wall, this is to fix the issue that the
     /// omegaWallFunction will try to modify omega values for the cells near walls
     /// this will cause issue for FD-based partial derivatives, so here we basically

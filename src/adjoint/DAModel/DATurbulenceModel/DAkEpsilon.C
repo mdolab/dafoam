@@ -102,7 +102,17 @@ DAkEpsilon::DAkEpsilon(
 #ifdef IncompressibleFlow
           dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
 #endif
-          zeroGradientFvPatchField<scalar>::typeName)
+          zeroGradientFvPatchField<scalar>::typeName),
+      betaFI_(
+          IOobject(
+              "betaFI",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          "zeroGradient")
 {
 
     // calculate the size of epsilonWallFunction faces
@@ -546,7 +556,7 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, epsilon_)
             + fvm::div(phaseRhoPhi_, epsilon_, divEpsilonScheme)
             - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
-        == C1_ * phase_() * rho_() * G * epsilon_() / k_()
+        == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFI_()
             - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
             - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
             + epsilonSource());
@@ -662,7 +672,7 @@ void DAkEpsilon::getFvMatrixFields(
             fvm::ddt(phase_, rho_, epsilon_)
                 + fvm::div(phaseRhoPhi_, epsilon_, "div(pc)")
                 - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
-            == C1_ * phase_() * rho_() * G * epsilon_() / k_()
+            == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFI_()
                 - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
                 - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
                 + epsilonSource());
