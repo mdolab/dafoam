@@ -23,7 +23,7 @@ os.chdir("./input/NACA0012Unsteady")
 
 funcs = {}
 
-for model in ["SA", "KE", "KW", "SST", "SSTLM"]:
+for model in ["SA", "KE", "KW", "SST"]:
 
     if gcomm.rank == 0:
         os.system("rm -rf processor* *.bin")

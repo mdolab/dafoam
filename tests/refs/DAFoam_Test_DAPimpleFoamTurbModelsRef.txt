@@ -6,5 +6,3 @@ Dictionary Key: SA
 @value    971575.5314966908 0.0001 1e-06
 Dictionary Key: SST
 @value    53061978.30341727 0.0001 1e-06
-Dictionary Key: SSTLM
-@value    53061978.30341727 0.0001 1e-06

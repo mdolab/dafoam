@@ -1,9 +1,9 @@
 Dictionary Key: UVar
-@value  0.03824197210464036 1e-08 1e-10
+@value  0.02398585520269912 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: UVar
 Dictionary Key: beta
-@value 0.002932478588713911 0.0001 1e-06
+@value  0.00184051952257561 0.0001 1e-06
 Dictionary Key: fail
 @value                    0 0.0001 1e-06
