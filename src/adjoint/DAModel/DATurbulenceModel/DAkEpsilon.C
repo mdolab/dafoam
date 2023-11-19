@@ -102,7 +102,17 @@ DAkEpsilon::DAkEpsilon(
 #ifdef IncompressibleFlow
           dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
 #endif
-          zeroGradientFvPatchField<scalar>::typeName)
+          zeroGradientFvPatchField<scalar>::typeName),
+      betaFI_(
+          IOobject(
+              "betaFI",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          "zeroGradient")
 {
 
     // calculate the size of epsilonWallFunction faces
@@ -544,9 +554,9 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
     // Dissipation equation
     tmp<fvScalarMatrix> epsEqn(
         fvm::ddt(phase_, rho_, epsilon_)
-            + fvm::div(phaseRhoPhi_, epsilon_)
+            + fvm::div(phaseRhoPhi_, epsilon_, divEpsilonScheme)
             - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
-        == C1_ * phase_() * rho_() * G * epsilon_() / k_()
+        == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFI_()
             - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
             - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
             + epsilonSource());
@@ -619,6 +629,80 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
     }
 
     return;
+}
+
+void DAkEpsilon::getFvMatrixFields(
+    const word varName,
+    scalarField& diag,
+    scalarField& upper,
+    scalarField& lower)
+{
+    /* 
+    Description:
+        return the diag(), upper(), and lower() scalarFields from the turbulence model's fvMatrix
+        this will be use to compute the preconditioner matrix
+    */
+
+    if (varName != "k" && varName != "epsilon")
+    {
+        FatalErrorIn(
+            "varName not valid. It has to be k or epsilon")
+            << exit(FatalError);
+    }
+
+    // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
+    // while for the incompresssible "this->phi()" returns phi only
+    // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
+    volScalarField::Internal divU(
+        fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_))().v());
+
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    volScalarField::Internal G(
+        "kEpsilon:G",
+        nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
+    tgradU.clear();
+
+    // special treatment for epsilon BC
+    this->correctEpsilonBoundaryConditions();
+
+    if (varName == "epsilon")
+    {
+        // Dissipation equation
+        fvScalarMatrix epsEqn(
+            fvm::ddt(phase_, rho_, epsilon_)
+                + fvm::div(phaseRhoPhi_, epsilon_, "div(pc)")
+                - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
+            == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFI_()
+                - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
+                - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
+                + epsilonSource());
+
+        epsEqn.relax();
+
+        // reset the corrected omega near wall cell to its perturbed value
+        this->setEpsilonNearWall();
+
+        diag = epsEqn.D();
+        upper = epsEqn.upper();
+        lower = epsEqn.lower();
+    }
+    else if (varName == "k")
+    {
+        fvScalarMatrix kEqn(
+            fvm::ddt(phase_, rho_, k_)
+                + fvm::div(phaseRhoPhi_, k_, "div(pc)")
+                - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
+            == phase_() * rho_() * G
+                - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
+                - fvm::Sp(phase_() * rho_() * epsilon_() / k_(), k_)
+                + kSource());
+
+        kEqn.relax();
+
+        diag = kEqn.D();
+        upper = kEqn.upper();
+        lower = kEqn.lower();
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

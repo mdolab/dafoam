@@ -111,6 +111,7 @@ case $argm in
     runTests DAPisoFoamACTL
     runTests DAPimpleFoam
     runTests DAPimpleFoamField
+    runTests DAPimpleFoamTurbModels
     runTests DAPimpleDyMFoam
     if python -c "import tensorflow" &> /dev/null; then
         runTests DASimpleFoamkOmegaSSTFIML
@@ -167,6 +168,7 @@ case $argm in
     runTests DAPisoFoamACTL
     runTests DAPimpleFoam
     runTests DAPimpleFoamField
+    runTests DAPimpleFoamTurbModels
     runTests DAPimpleDyMFoam
     if python -c "import tensorflow" &> /dev/null; then
         runTests DASimpleFoamkOmegaSSTFIML

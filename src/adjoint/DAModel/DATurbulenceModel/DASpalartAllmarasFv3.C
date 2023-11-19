@@ -96,8 +96,6 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
           dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      betaFI_(const_cast<volScalarField&>(
-          mesh.thisDb().lookupObject<volScalarField>("betaFI"))),
       // pseudoNuTilda_ and pseudoNuTildaEqn_ for solving adjoint equation
       pseudoNuTilda_(
           IOobject(
@@ -108,7 +106,17 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
               IOobject::NO_WRITE),
           nuTilda_),
       pseudoNuTildaEqn_(fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")),
-      y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
+      y_(mesh.thisDb().lookupObject<volScalarField>("yWall")),
+      betaFI_(
+          IOobject(
+              "betaFI",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          "zeroGradient")
 {
 
     // get fvSolution and fvSchemes info for fixed-point adjoint
@@ -662,7 +670,7 @@ void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)
         fvm::div(phi_, nuTilda_, "div(phi,nuTilda)")
             - fvm::laplacian(DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * Stilda * nuTilda_
+        == Cb1_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     List<scalar>& nuTildaSource = nuTildaEqn.source();
@@ -694,6 +702,47 @@ void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)
 
     // Below is not necessary, but it doesn't hurt
     nuTildaRes.correctBoundaryConditions();
+}
+
+void DASpalartAllmarasFv3::getFvMatrixFields(
+    const word varName,
+    scalarField& diag,
+    scalarField& upper,
+    scalarField& lower)
+{
+    /* 
+    Description:
+        return the diag(), upper(), and lower() scalarFields from the turbulence model's fvMatrix
+        this will be use to compute the preconditioner matrix
+    */
+
+    if (varName != "nuTilda")
+    {
+        FatalErrorIn(
+            "varName not valid. It has to be nuTilda")
+            << exit(FatalError);
+    }
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    const volScalarField Stilda(
+        this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
+        + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
+
+    fvScalarMatrix nuTildaEqn(
+        fvm::ddt(phase_, rho_, nuTilda_)
+            + fvm::div(phaseRhoPhi_, nuTilda_, "div(pc)")
+            - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
+            - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFI_
+            - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
+    
+    nuTildaEqn.relax();
+
+    diag = nuTildaEqn.D();
+    upper = nuTildaEqn.upper();
+    lower = nuTildaEqn.lower();
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

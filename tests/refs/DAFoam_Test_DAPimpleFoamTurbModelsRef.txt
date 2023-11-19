@@ -1,0 +1,8 @@
+Dictionary Key: KE
+@value    9121653.834586881 0.0001 1e-06
+Dictionary Key: KW
+@value    46329777.30831263 0.0001 1e-06
+Dictionary Key: SA
+@value    971575.5314966908 0.0001 1e-06
+Dictionary Key: SST
+@value    53061978.30341727 0.0001 1e-06

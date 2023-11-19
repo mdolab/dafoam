@@ -155,6 +155,13 @@ void DAResidual::masterFunction(
     }
 }
 
+void DAResidual::calcPCMatWithFvMatrix(Mat PCMat)
+{
+    FatalErrorIn("DAResidual::calcPCMatWithFvMatrix")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

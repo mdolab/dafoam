@@ -343,6 +343,11 @@ public:
         const Mat jacPCMat,
         KSP ksp);
 
+    /// Update the preconditioner matrix for the ksp object
+    void updateKSPPCMat(
+        Mat PCMat,
+        KSP ksp);
+
     /// solve the linear equation given a ksp and right-hand-side vector
     label solveLinearEqn(
         const KSP ksp,
@@ -1111,6 +1116,9 @@ public:
     void readStateVars(
         scalar timeVal,
         label oldTimeLevel = 0);
+
+    /// calculate the PC mat using fvMatrix
+    void calcPCMatWithFvMatrix(Mat PCMat);
 
     /// initialize tensorflow functions and interfaces for callback
     void initTensorFlowFuncs(

@@ -465,6 +465,8 @@ class DAOPTION(object):
             "periodicity": -1.0,
             "objFuncStartTime": -1.0,
             "objFuncEndTime": -1.0,
+            "PCMatPrecomputeInterval": 100,
+            "PCMatUpdateInterval": 1,
         }
 
         ## At which iteration should we start the averaging of objective functions.
@@ -594,6 +596,8 @@ class DAOPTION(object):
             "omegaRes": 2,
             "p_rghRes": 2,
             "DRes": 2,
+            "gammaIntRes": 2,
+            "ReThetatRes": 2,
         }
 
         ## The min bound for Jacobians, any value that is smaller than the bound will be set to 0
@@ -861,8 +865,8 @@ class PYDAFOAM(object):
         # initialize the adjoint vector dict
         self.adjVectors = self._initializeAdjVectors()
 
-        # initialize the dRdWOldTPsi vectors
-        self._initializeTimeAccurateAdjointVectors()
+        # initialize the dRdWTPC dict for unsteady adjoint
+        self.dRdWTPCUnsteady = None
 
         if self.getOption("tensorflow")["active"]:
             TensorFlowHelper.options = self.getOption("tensorflow")
@@ -1015,62 +1019,6 @@ class PYDAFOAM(object):
                     adjTotalDeriv[objFuncName][designVarName] = None
 
         return adjTotalDeriv
-
-    def _initializeTimeAccurateAdjointVectors(self):
-        """
-        Initialize the dRdWTPsi vectors for time accurate adjoint.
-        Here we need to initialize current time step and two previous
-        time steps 0 and 00 for both state and residuals. This is
-        because the backward ddt scheme depends on U, U0, and U00
-        """
-        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
-            objFuncDict = self.getOption("objFunc")
-            wSize = self.solver.getNLocalAdjointStates()
-            self.dRdW0TPsi = {}
-            self.dRdW00TPsi = {}
-            self.dR0dW0TPsi = {}
-            self.dR0dW00TPsi = {}
-            self.dR00dW0TPsi = {}
-            self.dR00dW00TPsi = {}
-            for objFuncName in objFuncDict:
-                if objFuncName in self.objFuncNames4Adj:
-                    vecA = PETSc.Vec().create(PETSc.COMM_WORLD)
-                    vecA.setSizes((wSize, PETSc.DECIDE), bsize=1)
-                    vecA.setFromOptions()
-                    vecA.zeroEntries()
-                    self.dRdW0TPsi[objFuncName] = vecA
-
-                    vecB = vecA.duplicate()
-                    vecB.zeroEntries()
-                    self.dRdW00TPsi[objFuncName] = vecB
-
-                    vecC = vecA.duplicate()
-                    vecC.zeroEntries()
-                    self.dR0dW0TPsi[objFuncName] = vecC
-
-                    vecD = vecA.duplicate()
-                    vecD.zeroEntries()
-                    self.dR0dW00TPsi[objFuncName] = vecD
-
-                    vecE = vecA.duplicate()
-                    vecE.zeroEntries()
-                    self.dR00dW0TPsi[objFuncName] = vecE
-
-                    vecF = vecA.duplicate()
-                    vecF.zeroEntries()
-                    self.dR00dW00TPsi[objFuncName] = vecF
-
-    def zeroTimeAccurateAdjointVectors(self):
-        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
-            objFuncDict = self.getOption("objFunc")
-            for objFuncName in objFuncDict:
-                if objFuncName in self.objFuncNames4Adj:
-                    self.dRdW0TPsi[objFuncName].zeroEntries()
-                    self.dRdW00TPsi[objFuncName].zeroEntries()
-                    self.dR0dW0TPsi[objFuncName].zeroEntries()
-                    self.dR0dW00TPsi[objFuncName].zeroEntries()
-                    self.dR00dW0TPsi[objFuncName].zeroEntries()
-                    self.dR00dW00TPsi[objFuncName].zeroEntries()
 
     def _calcObjFuncNames4Adj(self):
         """
@@ -2337,6 +2285,9 @@ class PYDAFOAM(object):
         self.setOption("runStatus", "solveAdjoint")
         self.updateDAOption()
 
+        PCMatPrecompute = self.getOption("unsteadyAdjoint")["PCMatPrecomputeInterval"]
+        PCMatUpdate = self.getOption("unsteadyAdjoint")["PCMatUpdateInterval"]
+
         self.adjointFail = 0
 
         # update the state to self.solver and self.solverAD
@@ -2370,13 +2321,48 @@ class PYDAFOAM(object):
         # init dRdWTMF
         self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
 
-        # calc the preconditioner mat
-        self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
-        self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
+        # precompute the KSP preconditioner Mat and save them to the self.dRdWTPCUnsteady dict
+        if self.dRdWTPCUnsteady is None:
 
-        # Initialize the KSP object
+            self.dRdWTPCUnsteady = {}
+
+            # always calculate the PC mat for the endTime
+            self.solver.setTime(endTime, endTimeIndex)
+            self.solverAD.setTime(endTime, endTimeIndex)
+            # now we can read the variables
+            self.readStateVars(endTime, deltaT)
+            # calc the preconditioner mat for endTime
+            Info("Pre-Computing preconditiner mat for t = %f" % endTime)
+            dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+            self.solver.calcdRdWT(self.xvVec, self.wVec, 1, dRdWTPC)
+            # always update the PC mat values using OpenFOAM's fvMatrix
+            self.solver.calcPCMatWithFvMatrix(dRdWTPC)
+            self.dRdWTPCUnsteady[str(endTime)] = dRdWTPC
+
+            # if we define some extra PCMat in PCMatPrecomputeInterval, calculate them here
+            # and set them to the self.dRdWTPCUnsteady dict
+            if objFuncEndTimeIndex > PCMatPrecompute:
+                for timeIndex in range(objFuncEndTimeIndex - 1, 0, -1):
+                    if timeIndex % PCMatPrecompute == 0:
+                        t = timeIndex * deltaT
+                        Info("Pre-Computing preconditiner mat for t = %f" % t)
+                        # read the latest solution
+                        self.solver.setTime(t, timeIndex)
+                        self.solverAD.setTime(t, timeIndex)
+                        # now we can read the variables
+                        self.readStateVars(t, deltaT)
+
+                        # calc the preconditioner mat
+                        dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+                        self.solver.calcdRdWT(self.xvVec, self.wVec, 1, dRdWTPC)
+                        # always update the PC mat values using OpenFOAM's fvMatrix
+                        self.solver.calcPCMatWithFvMatrix(dRdWTPC)
+                        self.dRdWTPCUnsteady[str(t)] = dRdWTPC
+
+        # Initialize the KSP object using the PCMat from the endTime
+        PCMat = self.dRdWTPCUnsteady[str(endTime)]
         ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-        self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
+        self.solverAD.createMLRKSPMatrixFree(PCMat, ksp)
 
         objFuncDict = self.getOption("objFunc")
         designVarDict = self.getOption("designVar")
@@ -2442,6 +2428,16 @@ class PYDAFOAM(object):
                         dRdW00TPsi = dRdW00TPsiBuffer.copy()
                     else:
                         raise Error("ddtSchemeOrder not valid!" % ddtSchemeOrder)
+
+                    # check if we need to update the PC Mat vals or use the pre-computed PC matrix
+                    if str(timeVal) in list(self.dRdWTPCUnsteady.keys()):
+                        Info("Using pre-computed KSP PC mat for %f" % timeVal)
+                        PCMat = self.dRdWTPCUnsteady[str(timeVal)]
+                        self.solverAD.updateKSPPCMat(PCMat, ksp)
+                    if n % PCMatUpdate == 0 and n < endTimeIndex:
+                        # udpate part of the PC mat
+                        Info("Updating dRdWTPC mat value using OF fvMatrix")
+                        self.solver.calcPCMatWithFvMatrix(PCMat)
 
                     # now solve the adjoint eqn
                     self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])

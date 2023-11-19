@@ -34,7 +34,7 @@ daOptions = {
     "designSurfaces": ["wing"],
     "solverName": "DAPimpleFoam",
     "primalBC": {"U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0, 0]}, "useWallFunction": True},
-    "unsteadyAdjoint": {"mode": "timeAccurate"},
+    "unsteadyAdjoint": {"mode": "timeAccurate", "PCMatPrecomputeInterval": 5, "PCMatUpdateInterval": 1},
     "printIntervalUnsteady": 1,
     "fvSource": {
         "disk1": {
@@ -63,7 +63,7 @@ daOptions = {
                 "directionMode": "parallelToFlow",
                 "alphaName": "alpha",
                 "scale": 1.0,
-                "addToAdjoint": False,
+                "addToAdjoint": True,
                 "timeOperator": "average",
             }
         },
@@ -75,7 +75,7 @@ daOptions = {
                 "directionMode": "normalToFlow",
                 "alphaName": "alpha",
                 "scale": 1.0,
-                "addToAdjoint": True,
+                "addToAdjoint": False,
                 "timeOperator": "average",
             }
         },

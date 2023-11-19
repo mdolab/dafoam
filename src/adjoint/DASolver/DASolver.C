@@ -202,7 +202,7 @@ void DASolver::calcUnsteadyObjFuncs()
             {
                 label n = timeIndex - startTimeIndex + 1;
                 scalar objFuncVal = this->getObjFuncValue(objFuncName);
-                unsteadyObjFuncs_[objFuncName] = (unsteadyObjFuncs_[objFuncName] * (n - 1) + objFuncVal ) / n;
+                unsteadyObjFuncs_[objFuncName] = (unsteadyObjFuncs_[objFuncName] * (n - 1) + objFuncVal) / n;
             }
         }
         else
@@ -5079,6 +5079,17 @@ void DASolver::createMLRKSP(
     daLinearEqnPtr_->createMLRKSP(jacMat, jacPCMat, ksp);
 }
 
+void DASolver::updateKSPPCMat(
+    Mat PCMat,
+    KSP ksp)
+{
+    /*
+    Description:
+        Update the preconditioner matrix for the ksp object
+    */
+    KSPSetOperators(ksp, dRdWTMF_, PCMat);
+}
+
 void DASolver::createMLRKSPMatrixFree(
     const Mat jacPCMat,
     KSP ksp)
@@ -8552,6 +8563,107 @@ void DASolver::setTimeInstanceField(const label instanceI)
     }
 }
 
+void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
+{
+    /*
+    Description:
+        calculate the PC mat using fvMatrix. Here we only calculate the block diagonal components, 
+        e.g., dR_U/dU, dR_p/dp, etc.
+    */
+
+#ifndef SolidDASolver
+    //DAUtility::writeMatrixASCII(PCMat, "MatOrig");
+
+    // MatZeroEntries(PCMat);
+
+    // non turbulence variables
+    daResidualPtr_->calcPCMatWithFvMatrix(PCMat);
+
+    // turbulence variables
+    DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+    const labelUList& owner = meshPtr_->owner();
+    const labelUList& neighbour = meshPtr_->neighbour();
+
+    PetscScalar val;
+
+    dictionary normStateDict = daOptionPtr_->getAllOptions().subDict("normalizeStates");
+    wordList normResDict = daOptionPtr_->getOption<wordList>("normalizeResiduals");
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const word resName = stateName + "Res";
+        label nCells = meshPtr_->nCells();
+        label nInternalFaces = daIndexPtr_->nLocalInternalFaces;
+        scalarField D(nCells, 0.0);
+        scalarField upper(nInternalFaces, 0.0);
+        scalarField lower(nInternalFaces, 0.0);
+        daTurb.getFvMatrixFields(stateName, D, upper, lower);
+
+        scalar stateScaling = 1.0;
+        if (normStateDict.found(stateName))
+        {
+            stateScaling = normStateDict.getScalar(stateName);
+        }
+        scalar resScaling = 1.0;
+        // set diag
+        forAll(meshPtr_->cells(), cellI)
+        {
+            if (normResDict.found(resName))
+            {
+                resScaling = meshPtr_->V()[cellI];
+            }
+
+            PetscInt rowI = daIndexPtr_->getGlobalAdjointStateIndex(stateName, cellI);
+            PetscInt colI = rowI;
+            scalar val1 = D[cellI] * stateScaling / resScaling;
+            assignValueCheckAD(val, val1);
+            MatSetValues(PCMat, 1, &rowI, 1, &colI, &val, INSERT_VALUES);
+        }
+
+        // set lower/owner
+        for (label faceI = 0; faceI < daIndexPtr_->nLocalInternalFaces; faceI++)
+        {
+            label ownerCellI = owner[faceI];
+            label neighbourCellI = neighbour[faceI];
+
+            if (normResDict.found(resName))
+            {
+                resScaling = meshPtr_->V()[neighbourCellI];
+            }
+
+            PetscInt rowI = daIndexPtr_->getGlobalAdjointStateIndex(stateName, neighbourCellI);
+            PetscInt colI = daIndexPtr_->getGlobalAdjointStateIndex(stateName, ownerCellI);
+            scalar val1 = lower[faceI] * stateScaling / resScaling;
+            assignValueCheckAD(val, val1);
+            MatSetValues(PCMat, 1, &colI, 1, &rowI, &val, INSERT_VALUES);
+        }
+
+        // set upper/neighbour
+        for (label faceI = 0; faceI < daIndexPtr_->nLocalInternalFaces; faceI++)
+        {
+            label ownerCellI = owner[faceI];
+            label neighbourCellI = neighbour[faceI];
+
+            if (normResDict.found(resName))
+            {
+                resScaling = meshPtr_->V()[ownerCellI];
+            }
+
+            PetscInt rowI = daIndexPtr_->getGlobalAdjointStateIndex(stateName, ownerCellI);
+            PetscInt colI = daIndexPtr_->getGlobalAdjointStateIndex(stateName, neighbourCellI);
+            scalar val1 = upper[faceI] * stateScaling / resScaling;
+            assignValueCheckAD(val, val1);
+            MatSetValues(PCMat, 1, &colI, 1, &rowI, &val, INSERT_VALUES);
+        }
+    }
+
+    MatAssemblyBegin(PCMat, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(PCMat, MAT_FINAL_ASSEMBLY);
+
+    //DAUtility::writeMatrixASCII(PCMat, "MatNew");
+#endif
+}
+
 void DASolver::readStateVars(
     scalar timeVal,
     label oldTimeLevel)
@@ -8602,12 +8714,10 @@ void DASolver::readStateVars(
             if (oldTimeLevel == 0)
             {
                 state = stateRead;
-                state.correctBoundaryConditions();
             }
             else if (oldTimeLevel == 1)
             {
                 state.oldTime() = stateRead;
-                state.oldTime().correctBoundaryConditions();
             }
             else if (oldTimeLevel == 2)
             {
@@ -8627,7 +8737,6 @@ void DASolver::readStateVars(
                 {
                     state.oldTime().oldTime() = stateRead;
                 }
-                state.oldTime().oldTime().correctBoundaryConditions();
             }
             else
             {
@@ -8659,12 +8768,10 @@ void DASolver::readStateVars(
             if (oldTimeLevel == 0)
             {
                 state = stateRead;
-                state.correctBoundaryConditions();
             }
             else if (oldTimeLevel == 1)
             {
                 state.oldTime() = stateRead;
-                state.oldTime().correctBoundaryConditions();
             }
             else if (oldTimeLevel == 2)
             {
@@ -8684,7 +8791,6 @@ void DASolver::readStateVars(
                 {
                     state.oldTime().oldTime() = stateRead;
                 }
-                state.oldTime().oldTime().correctBoundaryConditions();
             }
             else
             {
@@ -8716,12 +8822,10 @@ void DASolver::readStateVars(
             if (oldTimeLevel == 0)
             {
                 state = stateRead;
-                state.correctBoundaryConditions();
             }
             else if (oldTimeLevel == 1)
             {
                 state.oldTime() = stateRead;
-                state.oldTime().correctBoundaryConditions();
             }
             else if (oldTimeLevel == 2)
             {
@@ -8741,7 +8845,6 @@ void DASolver::readStateVars(
                 {
                     state.oldTime().oldTime() = stateRead;
                 }
-                state.oldTime().oldTime().correctBoundaryConditions();
             }
             else
             {
@@ -8802,6 +8905,9 @@ void DASolver::readStateVars(
             }
         }
     }
+
+    // update the BC and intermediate variables. This is important, e.g., for turbulent cases
+    this->updateStateBoundaryConditions();
 }
 
 void DASolver::setTimeInstanceVar(

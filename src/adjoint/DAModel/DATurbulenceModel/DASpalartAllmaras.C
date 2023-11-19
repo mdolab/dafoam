@@ -96,7 +96,17 @@ DASpalartAllmaras::DASpalartAllmaras(
           dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      y_(mesh.thisDb().lookupObject<volScalarField>("yWall"))
+      y_(mesh.thisDb().lookupObject<volScalarField>("yWall")),
+      betaFI_(
+          IOobject(
+              "betaFI",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          "zeroGradient")
 {
 }
 
@@ -432,7 +442,7 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
             + fvm::div(phaseRhoPhi_, nuTilda_, divNuTildaScheme)
             - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.ref().relax();
@@ -468,6 +478,45 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
     }
 
     return;
+}
+
+void DASpalartAllmaras::getFvMatrixFields(
+    const word varName,
+    scalarField& diag,
+    scalarField& upper,
+    scalarField& lower)
+{
+    /* 
+    Description:
+        return the diag(), upper(), and lower() scalarFields from the turbulence model's fvMatrix
+        this will be use to compute the preconditioner matrix
+    */
+
+    if (varName != "nuTilda")
+    {
+        FatalErrorIn(
+            "varName not valid. It has to be nuTilda")
+            << exit(FatalError);
+    }
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    const volScalarField Stilda(this->Stilda(chi, fv1));
+
+    fvScalarMatrix nuTildaEqn(
+        fvm::ddt(phase_, rho_, nuTilda_)
+            + fvm::div(phaseRhoPhi_, nuTilda_, "div(pc)")
+            - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
+            - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFI_
+            - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
+
+    nuTildaEqn.relax();
+
+    diag = nuTildaEqn.D();
+    upper = nuTildaEqn.upper();
+    lower = nuTildaEqn.lower();
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
