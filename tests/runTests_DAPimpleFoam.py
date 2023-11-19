@@ -34,7 +34,7 @@ daOptions = {
     "designSurfaces": ["wing"],
     "solverName": "DAPimpleFoam",
     "primalBC": {"U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0, 0]}, "useWallFunction": True},
-    "unsteadyAdjoint": {"mode": "timeAccurate"},
+    "unsteadyAdjoint": {"mode": "timeAccurate", "PCMatPrecomputeInterval": 5, "PCMatUpdateInterval": 1},
     "printIntervalUnsteady": 1,
     "fvSource": {
         "disk1": {
