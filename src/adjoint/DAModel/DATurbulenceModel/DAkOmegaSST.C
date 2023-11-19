@@ -792,6 +792,95 @@ void DAkOmegaSST::calcResiduals(const dictionary& options)
 
     return;
 }
+
+void DAkOmegaSST::getFvMatrixFields(
+    const word varName,
+    scalarField& diag,
+    scalarField& upper,
+    scalarField& lower)
+{
+    /* 
+    Description:
+        return the diag(), upper(), and lower() scalarFields from the turbulence model's fvMatrix
+        this will be use to compute the preconditioner matrix
+    */
+
+    if (varName != "k" && varName != "omega")
+    {
+        FatalErrorIn(
+            "varName not valid. It has to be k or omega")
+            << exit(FatalError);
+    }
+
+    // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
+    // while for the incompresssible "this->phi()" returns phi only
+    // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
+    volScalarField::Internal divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_)));
+
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    volScalarField S2(2 * magSqr(symm(tgradU())));
+    volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
+    volScalarField::Internal G("kOmegaSST:G", nut_ * GbyNu0);
+
+    // NOTE instead of calling omega_.boundaryFieldRef().updateCoeffs();
+    // here we call our self-defined boundary conditions
+    this->correctOmegaBoundaryConditions();
+
+    volScalarField CDkOmega(
+        (scalar(2) * alphaOmega2_) * (fvc::grad(k_) & fvc::grad(omega_)) / omega_);
+
+    volScalarField F1(this->F1(CDkOmega));
+    volScalarField F23(this->F23());
+
+    if (varName == "omega")
+    {
+        volScalarField::Internal gamma(this->gamma(F1));
+        volScalarField::Internal beta(this->beta(F1));
+
+        // Turbulent frequency equation
+        fvScalarMatrix omegaEqn(
+            fvm::ddt(phase_, rho_, omega_)
+                + fvm::div(phaseRhoPhi_, omega_, "div(pc)")
+                - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
+            == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2())
+                - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
+                - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
+                - fvm::SuSp(
+                    phase_() * rho_() * (F1() - scalar(1)) * CDkOmega() / omega_(),
+                    omega_)
+                + Qsas(S2(), gamma, beta)
+                + omegaSource()
+
+        );
+
+        omegaEqn.relax();
+
+        // reset the corrected omega near wall cell to its perturbed value
+        this->setOmegaNearWall();
+
+        diag = omegaEqn.D();
+        upper = omegaEqn.upper();
+        lower = omegaEqn.lower();
+    }
+    else if (varName == "k")
+    {
+        // Turbulent kinetic energy equation
+        fvScalarMatrix kEqn(
+            fvm::ddt(phase_, rho_, k_)
+                + fvm::div(phaseRhoPhi_, k_, "div(pc)")
+                - fvm::laplacian(phase_ * rho_ * DkEff(F1), k_)
+            == phase_() * rho_() * Pk(G)
+                - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
+                - fvm::Sp(phase_() * rho_() * epsilonByk(F1, tgradU()), k_)
+                + kSource());
+
+        kEqn.relax();
+
+        diag = kEqn.D();
+        upper = kEqn.upper();
+        lower = kEqn.lower();
+    }
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

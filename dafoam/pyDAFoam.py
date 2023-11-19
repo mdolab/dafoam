@@ -596,6 +596,8 @@ class DAOPTION(object):
             "omegaRes": 2,
             "p_rghRes": 2,
             "DRes": 2,
+            "gammaIntRes": 2,
+            "ReThetatRes": 2,
         }
 
         ## The min bound for Jacobians, any value that is smaller than the bound will be set to 0

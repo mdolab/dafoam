@@ -136,6 +136,13 @@ public:
 
     /// solve the residual equations and update the state
     virtual void correct(label printToScreen);
+
+    /// return the diag(), upper(), and lower() scalarFields from the turbulence model's fvMatrix
+    virtual void getFvMatrixFields(
+        const word varName,
+        scalarField& diag,
+        scalarField& upper,
+        scalarField& lower);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
