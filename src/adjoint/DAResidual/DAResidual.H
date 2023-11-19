@@ -120,6 +120,9 @@ public:
         const Vec xvVec,
         const Vec wVec,
         Vec resVec);
+    
+    /// calculating the adjoint preconditioner matrix using fvMatrix
+    virtual void calcPCMatWithFvMatrix(Mat PCMat);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

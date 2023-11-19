@@ -86,6 +86,8 @@ public:
 
     /// update the boundary condition for all the states in the selected solver
     virtual void correctBoundaryConditions();
+
+    virtual void calcPCMatWithFvMatrix(Mat PCMat);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

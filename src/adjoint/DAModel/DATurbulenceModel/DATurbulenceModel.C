@@ -542,6 +542,18 @@ void DATurbulenceModel::rhsSolvePseudoNuTildaEqn(const volScalarField& nuTildaSo
         << abort(FatalError);
 }
 
+/// return the diag(), upper(), and lower() scalarFields from the turbulence model's fvMatrix
+void DATurbulenceModel::getFvMatrixFields(
+    const word varName,
+    scalarField& diag,
+    scalarField& upper,
+    scalarField& lower)
+{
+    FatalErrorIn("DATurbulenceModel::getFvMatrixFields")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

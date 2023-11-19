@@ -194,6 +194,14 @@ public:
         DASolverPtr_->createMLRKSP(jacMat, jacPCMat, ksp);
     }
 
+    /// Update the preconditioner matrix for the ksp object
+    void updateKSPPCMat(
+        Mat PCMat,
+        KSP ksp)
+    {
+        DASolverPtr_->updateKSPPCMat(PCMat, ksp);
+    }
+
     /// create a multi-level, Richardson KSP object with matrix-free Jacobians
     void createMLRKSPMatrixFree(
         const Mat jacPCMat,
@@ -703,6 +711,12 @@ public:
         DASolverPtr_->readStateVars(timeVal, timeLevel);
     }
 
+    /// calculate the PC mat using fvMatrix
+    void calcPCMatWithFvMatrix(Mat PCMat)
+    {
+        DASolverPtr_->calcPCMatWithFvMatrix(PCMat);
+    }
+
     /// setTime for OF fields
     void setTime(scalar time, label timeIndex)
     {
@@ -742,7 +756,7 @@ public:
         return DASolverPtr_->getUnsteadyObjFuncStartTimeIndex();
 #endif
         FatalErrorIn("getUnsteadyObjFuncStartTimeIndex") << "should not call this func in AD mode!"
-                                                    << abort(FatalError);
+                                                         << abort(FatalError);
     }
 
     /// get the unsteady adjoint end time
@@ -752,7 +766,7 @@ public:
         return DASolverPtr_->getUnsteadyObjFuncEndTimeIndex();
 #endif
         FatalErrorIn("getUnsteadyObjFuncEndTimeIndex") << "should not call this func in AD mode!"
-                                                    << abort(FatalError);
+                                                       << abort(FatalError);
     }
 
     /// return the value of objective function at the given time instance and name

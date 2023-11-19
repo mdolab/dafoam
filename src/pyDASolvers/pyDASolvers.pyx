@@ -51,6 +51,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdFdWAD(PetscVec, PetscVec, char *, PetscVec)
         void createMLRKSP(PetscMat, PetscMat, PetscKSP)
         void createMLRKSPMatrixFree(PetscMat, PetscKSP)
+        void updateKSPPCMat(PetscMat, PetscKSP)
         void solveLinearEqn(PetscKSP, PetscVec, PetscVec)
         void calcdRdBC(PetscVec, PetscVec, char *, PetscMat)
         void calcdFdBC(PetscVec, PetscVec, char *, char *, PetscVec)
@@ -133,6 +134,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int runFPAdj(PetscVec, PetscVec, PetscVec, PetscVec)
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *)
         void readStateVars(double, int)
+        void calcPCMatWithFvMatrix(PetscMat)
         double getEndTime()
         double getDeltaT()
         void setTime(double, int)
@@ -208,6 +210,9 @@ cdef class pyDASolvers:
     
     def createMLRKSPMatrixFree(self, Mat jacPCMat, KSP myKSP):
         self._thisptr.createMLRKSPMatrixFree(jacPCMat.mat, myKSP.ksp)
+    
+    def updateKSPPCMat(self, Mat PCMat, KSP myKSP):
+        self._thisptr.updateKSPPCMat(PCMat.mat, myKSP.ksp)
     
     def solveLinearEqn(self, KSP myKSP, Vec rhsVec, Vec solVec):
         self._thisptr.solveLinearEqn(myKSP.ksp, rhsVec.vec, solVec.vec)
@@ -520,6 +525,9 @@ cdef class pyDASolvers:
     
     def readStateVars(self, timeVal, timeLevel):
         self._thisptr.readStateVars(timeVal, timeLevel)
+    
+    def calcPCMatWithFvMatrix(self, Mat PCMat):
+        self._thisptr.calcPCMatWithFvMatrix(PCMat.mat)
     
     def setTime(self, time, timeIndex):
         self._thisptr.setTime(time, timeIndex)
