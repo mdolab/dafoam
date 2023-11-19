@@ -63,7 +63,7 @@ daOptions = {
                 "directionMode": "parallelToFlow",
                 "alphaName": "alpha",
                 "scale": 1.0,
-                "addToAdjoint": False,
+                "addToAdjoint": True,
                 "timeOperator": "average",
             }
         },
@@ -75,7 +75,7 @@ daOptions = {
                 "directionMode": "normalToFlow",
                 "alphaName": "alpha",
                 "scale": 1.0,
-                "addToAdjoint": True,
+                "addToAdjoint": False,
                 "timeOperator": "average",
             }
         },
