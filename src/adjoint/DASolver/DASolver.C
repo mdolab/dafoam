@@ -8563,7 +8563,6 @@ void DASolver::setTimeInstanceField(const label instanceI)
     }
 }
 
-
 void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
 {
     /*
@@ -8572,6 +8571,7 @@ void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
         e.g., dR_U/dU, dR_p/dp, etc.
     */
 
+#ifndef SolidDASolver
     //DAUtility::writeMatrixASCII(PCMat, "MatOrig");
 
     // MatZeroEntries(PCMat);
@@ -8661,6 +8661,7 @@ void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
     MatAssemblyEnd(PCMat, MAT_FINAL_ASSEMBLY);
 
     //DAUtility::writeMatrixASCII(PCMat, "MatNew");
+#endif
 }
 
 void DASolver::readStateVars(
