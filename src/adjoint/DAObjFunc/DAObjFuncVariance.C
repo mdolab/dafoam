@@ -83,6 +83,7 @@ void DAObjFuncVariance::calcObjFunc(
 
     // initialize objFunValue
     objFuncValue = 0.0;
+    label nRefPoints = 0;
 
     const objectRegistry& db = mesh_.thisDb();
 
@@ -99,16 +100,15 @@ void DAObjFuncVariance::calcObjFunc(
                 IOobject::NO_WRITE),
             mesh_);
 
-        label nRefPoints = 0;
         forAll(var, cellI)
         {
             if (varData[cellI] < 1e16)
             {
-                objFuncValue += scale_ * (var[cellI] - varData[cellI]) * (var[cellI] - varData[cellI]);
+                scalar varDif = (var[cellI] - varData[cellI]);
+                objFuncValue += scale_ * varDif * varDif;
                 nRefPoints++;
             }
         }
-        objFuncValue /= nRefPoints;
     }
     else if (varType_ == "vector")
     {
@@ -123,7 +123,6 @@ void DAObjFuncVariance::calcObjFunc(
                 IOobject::NO_WRITE),
             mesh_);
 
-        label nRefPoints = 0;
         forAll(var, cellI)
         {
             for (label comp = 0; comp < 3; comp++)
@@ -136,7 +135,6 @@ void DAObjFuncVariance::calcObjFunc(
                 }
             }
         }
-        objFuncValue /= nRefPoints;
     }
     else
     {
@@ -145,8 +143,13 @@ void DAObjFuncVariance::calcObjFunc(
                          << abort(FatalError);
     }
 
+    // reduce the sum of all the ref points for averaging
+    reduce(nRefPoints, sumOp<label>());
+
     // need to reduce the sum of force across all processors
     reduce(objFuncValue, sumOp<scalar>());
+
+    objFuncValue /= nRefPoints;
 
     return;
 }
