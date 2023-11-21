@@ -45,11 +45,143 @@ DAObjFuncVariance::DAObjFuncVariance(
 
     objFuncDict_.readEntry<word>("varType", varType_);
 
+    varUpperBound_ = objFuncDict_.lookupOrDefault<scalar>("varUpperBound", 1e15);
+
     timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 
     if (daIndex.adjStateNames.found(varName_))
     {
         objFuncConInfo_ = {{varName_}};
+    }
+
+    // first loop, we find the number of ref points. We expect the ref data
+    // are the same across the runtime, so we read in the endTime and compute
+    // nRefPoints
+    nRefPoints_ = 0;
+    scalar endTime = mesh_.time().endTime().value();
+    scalar deltaT = mesh_.time().deltaT().value();
+    label nTimeSteps = round(endTime / deltaT);
+
+    if (varType_ == "scalar")
+    {
+        volScalarField varData(
+            IOobject(
+                varName_ + "Data",
+                Foam::name(endTime),
+                mesh_,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh_);
+
+        forAll(varData, cellI)
+        {
+            if (fabs(varData[cellI]) < varUpperBound_)
+            {
+                nRefPoints_++;
+            }
+        }
+    }
+    else if (varType_ == "vector")
+    {
+        volVectorField varData(
+            IOobject(
+                varName_ + "Data",
+                Foam::name(endTime),
+                mesh_,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh_);
+
+        forAll(varData, cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                if (fabs(varData[cellI][comp]) < varUpperBound_)
+                {
+                    nRefPoints_++;
+                }
+            }
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << "varType " << varType_ << " not supported!"
+                         << "Options are: scalar or vector"
+                         << abort(FatalError);
+    }
+
+    // reduce the sum of all the ref points for averaging
+    nRefPointsGlobal_ = nRefPoints_;
+    reduce(nRefPointsGlobal_, sumOp<label>());
+
+    refCellIndex_.setSize(nRefPoints_, -1);
+    refCellComp_.setSize(nRefPoints_, -1);
+    refValue_.setSize(nTimeSteps);
+
+    // second loop, set refValue
+    if (varType_ == "scalar")
+    {
+        for (label n = 0; n < nTimeSteps; n++)
+        {
+            scalar t = (n + 1) * deltaT;
+            word timeName = Foam::name(t);
+
+            refValue_[n].setSize(nRefPoints_);
+
+            volScalarField varData(
+                IOobject(
+                    varName_ + "Data",
+                    timeName,
+                    mesh_,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE),
+                mesh_);
+
+            label pointI = 0;
+            forAll(varData, cellI)
+            {
+                if (fabs(varData[cellI]) < varUpperBound_)
+                {
+                    refValue_[n][pointI] = varData[cellI];
+                    refCellIndex_[pointI] = cellI;
+                    pointI++;
+                }
+            }
+        }
+    }
+    else if (varType_ == "vector")
+    {
+        for (label n = 0; n < nTimeSteps; n++)
+        {
+            scalar t = (n + 1) * deltaT;
+            word timeName = Foam::name(t);
+
+            refValue_[n].setSize(nRefPoints_);
+
+            volVectorField varData(
+                IOobject(
+                    varName_ + "Data",
+                    timeName,
+                    mesh_,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE),
+                mesh_);
+
+            label pointI = 0;
+            forAll(varData, cellI)
+            {
+                for (label comp = 0; comp < 3; comp++)
+                {
+                    if (fabs(varData[cellI][comp]) < varUpperBound_)
+                    {
+                        refValue_[n][pointI] = varData[cellI][comp];
+                        refCellIndex_[pointI] = cellI;
+                        refCellComp_[pointI] = comp;
+                        pointI++;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -83,57 +215,32 @@ void DAObjFuncVariance::calcObjFunc(
 
     // initialize objFunValue
     objFuncValue = 0.0;
-    label nRefPoints = 0;
 
     const objectRegistry& db = mesh_.thisDb();
+
+    label timeIndex = mesh_.time().timeIndex();
 
     if (varType_ == "scalar")
     {
         const volScalarField& var = db.lookupObject<volScalarField>(varName_);
 
-        volScalarField varData(
-            IOobject(
-                varName_ + "Data",
-                mesh_.time().timeName(),
-                mesh_,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE),
-            mesh_);
-
-        forAll(var, cellI)
+        forAll(refCellIndex_, idxI)
         {
-            if (varData[cellI] < 1e16)
-            {
-                scalar varDif = (var[cellI] - varData[cellI]);
-                objFuncValue += scale_ * varDif * varDif;
-                nRefPoints++;
-            }
+            label cellI = refCellIndex_[idxI];
+            scalar varDif = (var[cellI] - refValue_[timeIndex - 1][idxI]);
+            objFuncValue += scale_ * varDif * varDif;
         }
     }
     else if (varType_ == "vector")
     {
         const volVectorField& var = db.lookupObject<volVectorField>(varName_);
 
-        volVectorField varData(
-            IOobject(
-                varName_ + "Data",
-                mesh_.time().timeName(),
-                mesh_,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE),
-            mesh_);
-
-        forAll(var, cellI)
+        forAll(refCellIndex_, idxI)
         {
-            for (label comp = 0; comp < 3; comp++)
-            {
-                if (varData[cellI][comp] < 1e16)
-                {
-                    scalar varDif = (var[cellI][comp] - varData[cellI][comp]);
-                    objFuncValue += scale_ * varDif * varDif;
-                    nRefPoints++;
-                }
-            }
+            label cellI = refCellIndex_[idxI];
+            label comp = refCellComp_[idxI];
+            scalar varDif = (var[cellI][comp] - refValue_[timeIndex - 1][idxI]);
+            objFuncValue += scale_ * varDif * varDif;
         }
     }
     else
@@ -142,14 +249,10 @@ void DAObjFuncVariance::calcObjFunc(
                          << "Options are: scalar or vector"
                          << abort(FatalError);
     }
-
-    // reduce the sum of all the ref points for averaging
-    reduce(nRefPoints, sumOp<label>());
-
     // need to reduce the sum of force across all processors
     reduce(objFuncValue, sumOp<scalar>());
 
-    objFuncValue /= nRefPoints;
+    objFuncValue /= nRefPointsGlobal_;
 
     return;
 }
