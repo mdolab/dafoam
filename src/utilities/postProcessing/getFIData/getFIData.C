@@ -46,6 +46,16 @@ int main(int argc, char* argv[])
         dictionary dataSubDict = FIDataDict.subDict(varName);
         word dataType = dataSubDict.getWord("dataType");
         word fieldType = dataSubDict.getWord("fieldType");
+        scalar largeValue = dataSubDict.lookupOrDefault<scalar>("largeValue", 1e16);
+        labelList comps;
+        if (dataSubDict.found("components"))
+        {
+            dataSubDict.readEntry<List<label>>("components", comps);
+        }
+        else
+        {
+            comps = {0, 1, 2};
+        }
 
         if (dataType == "probePoints")
         {
@@ -81,7 +91,7 @@ int main(int argc, char* argv[])
                     {
                         if (!probePointCellIList.found(cellI))
                         {
-                            varRead[cellI] = 1e17;
+                            varRead[cellI] = largeValue;
                         }
                     }
 
@@ -105,7 +115,17 @@ int main(int argc, char* argv[])
                         {
                             for (label i = 0; i < 3; i++)
                             {
-                                varRead[cellI][i] = 1e17;
+                                varRead[cellI][i] = largeValue;
+                            }
+                        }
+                        else
+                        {
+                            for (label i = 0; i < 3; i++)
+                            {
+                                if (!comps.found(i))
+                                {
+                                    varRead[cellI][i] = largeValue;
+                                }
                             }
                         }
                     }

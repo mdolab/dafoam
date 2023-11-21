@@ -35,6 +35,24 @@ protected:
     /// type of the variable either vector or scalar
     word varType_;
 
+    /// cell index of the probe points
+    labelList refCellIndex_;
+
+    /// component for vector at the above probe points cellI
+    labelList refCellComp_;
+ 
+    /// probe value
+    List<List<scalar>> refValue_;
+
+    /// number of reference points
+    label nRefPoints_;
+
+    /// the global reference points in parallel
+    label nRefPointsGlobal_;
+
+    /// upper bound to be considered as non-data
+    scalar varUpperBound_;
+
 public:
     TypeName("variance");
     // Constructors
