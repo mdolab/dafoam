@@ -2227,7 +2227,7 @@ class PYDAFOAM(object):
 
     def calcTotalDerivsACT(self, objFuncName, designVarName, designVarType, dFScaling=1.0, accumulateTotal=False):
 
-        nDVTable = {"ACTP": 9, "ACTD": 10, "ACTL": 11}
+        nDVTable = {"ACTP": 9, "ACTD": 13, "ACTL": 11}
         nDVs = nDVTable[designVarType]
 
         # calculate dFdACT
@@ -2692,7 +2692,7 @@ class PYDAFOAM(object):
             elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
                 if self.getOption("useAD")["mode"] == "fd":
                     designVarType = designVarDict[designVarName]["designVarType"]
-                    nDVTable = {"ACTP": 9, "ACTD": 10, "ACTL": 11}
+                    nDVTable = {"ACTP": 9, "ACTD": 13, "ACTL": 11}
                     nDVs = nDVTable[designVarType]
                     # calculate dRdACT
                     dRdACT = PETSc.Mat().create(PETSc.COMM_WORLD)

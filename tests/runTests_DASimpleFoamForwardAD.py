@@ -126,13 +126,16 @@ def actuator(val, geo):
     actX = float(val[0])
     actY = float(val[1])
     actZ = float(val[2])
-    actR1 = float(val[3])
-    actR2 = float(val[4])
-    actScale = float(val[5])
-    actPOD = float(val[6])
-    actExpM = float(val[7])
-    actExpN = float(val[8])
-    T = float(val[9])
+    actDirx = float(val[3])
+    actDiry = float(val[4])
+    actDirz = float(val[5])
+    actR1 = float(val[6])
+    actR2 = float(val[7])
+    actScale = float(val[8])
+    actPOD = float(val[9])
+    actExpM = float(val[10])
+    actExpN = float(val[11])
+    T = float(val[12])
     DASolver.setOption(
         "fvSource",
         {
@@ -140,7 +143,7 @@ def actuator(val, geo):
                 "type": "actuatorDisk",
                 "source": "cylinderAnnulusSmooth",
                 "center": [actX, actY, actZ],
-                "direction": [1.0, 0.0, 0.0],
+                "direction": [actDirx, actDiry, actDirz],
                 "innerRadius": actR1,
                 "outerRadius": actR2,
                 "rotDir": "right",
@@ -182,7 +185,7 @@ daOptions["designVar"]["alpha"] = {"designVarType": "AOA", "patches": ["inout"],
 # Actuator
 DVGeo.addGlobalDV(
     "actuator",
-    value=[-0.5, 0.0, 0.05, 0.01, 0.4, 10.0, 0.8, 1.0, 0.5, 0.2],
+    value=[-0.5, 0.0, 0.05, 1.0, 0.0, 0.0, 0.01, 0.4, 10.0, 0.8, 1.0, 0.5, 0.2],
     func=actuator,
     lower=-100.0,
     upper=100.0,
@@ -264,21 +267,21 @@ funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))
 funcsSens["CL"]["actuator"].append(DASolver.getForwardADDerivVal("CL"))
 funcsSens["CMZ"]["actuator"].append(DASolver.getForwardADDerivVal("CMZ"))
 # 3th
-DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 3})
+DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 6})
 DASolver.updateDAOption()
 DASolver()
 funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))
 funcsSens["CL"]["actuator"].append(DASolver.getForwardADDerivVal("CL"))
 funcsSens["CMZ"]["actuator"].append(DASolver.getForwardADDerivVal("CMZ"))
 # 5th
-DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 5})
+DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 8})
 DASolver.updateDAOption()
 DASolver()
 funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))
 funcsSens["CL"]["actuator"].append(DASolver.getForwardADDerivVal("CL"))
 funcsSens["CMZ"]["actuator"].append(DASolver.getForwardADDerivVal("CMZ"))
 # 7th
-DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 7})
+DASolver.setOption("useAD", {"dvName": "actuator", "seedIndex": 10})
 DASolver.updateDAOption()
 DASolver()
 funcsSens["CD"]["actuator"].append(DASolver.getForwardADDerivVal("CD"))

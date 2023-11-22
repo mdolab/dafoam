@@ -653,7 +653,7 @@ class DAFoamSolver(ImplicitComponent):
             elif dvType == "BC":  # add boundary conditions
                 self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "ACTD":  # add actuator parameter variables
-                nACTDVars = 10
+                nACTDVars = 13
                 if "comps" in list(designVariables[dvName].keys()):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
@@ -859,7 +859,7 @@ class DAFoamSolver(ImplicitComponent):
                     # compute [dRdActD]^T*Psi using reverse mode AD
                     elif self.dvType[inputName] == "ACTD":
                         prodVec = PETSc.Vec().create(self.comm)
-                        prodVec.setSizes((PETSc.DECIDE, 10), bsize=1)
+                        prodVec.setSizes((PETSc.DECIDE, 13), bsize=1)
                         prodVec.setFromOptions()
                         DASolver.solverAD.calcdRdActTPsiAD(
                             DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
@@ -1195,7 +1195,7 @@ class DAFoamFunctions(ExplicitComponent):
             elif dvType == "BC":  # add boundary conditions
                 self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "ACTD":  # add actuator parameter variables
-                nACTDVars = 10
+                nACTDVars = 13
                 if "comps" in list(designVariables[dvName].keys()):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
@@ -1367,7 +1367,7 @@ class DAFoamFunctions(ExplicitComponent):
                     # compute dFdActD
                     elif self.dvType[inputName] == "ACTD":
                         dFdACTD = PETSc.Vec().create(self.comm)
-                        dFdACTD.setSizes((PETSc.DECIDE, 10), bsize=1)
+                        dFdACTD.setSizes((PETSc.DECIDE, 13), bsize=1)
                         dFdACTD.setFromOptions()
                         DASolver.solverAD.calcdFdACTAD(
                             DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdACTD
@@ -2249,15 +2249,15 @@ class DAFoamActuator(ExplicitComponent):
         self.fvSourceDict = self.DASolver.getOption("fvSource")
 
         for fvSource, _ in self.aerostructDict["fvSource"].items():
-            self.add_input("dv_actuator_%s" % fvSource, shape=(7), distributed=False, tags=["mphys_coupling"])
+            self.add_input("dv_actuator_%s" % fvSource, shape=(10), distributed=False, tags=["mphys_coupling"])
             self.add_input("x_prop_%s" % fvSource, shape_by_conn=True, distributed=True, tags=["mphys_coupling"])
 
-            self.add_output("actuator_%s" % fvSource, shape_by_conn=(10), distributed=False, tags=["mphys_coupling"])
+            self.add_output("actuator_%s" % fvSource, shape_by_conn=(13), distributed=False, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):
         # Loop over all actuator disks
         for fvSource, _ in self.aerostructDict["fvSource"].items():
-            actuator = np.zeros(10)
+            actuator = np.zeros(13)
             # Update variables on root proc
             if self.comm.rank == 0:
                 actuator[3:] = inputs["dv_actuator_%s" % fvSource][:]

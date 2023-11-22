@@ -269,18 +269,22 @@ class Top(Multipoint):
             actX = float(val[0])
             actY = float(val[1])
             actZ = float(val[2])
-            actR1 = float(val[3])
-            actR2 = float(val[4])
-            actScale = float(val[5])
-            actPOD = float(val[6])
-            actExpM = float(val[7])
-            actExpN = float(val[8])
-            T = float(val[9])
+            actDirx = float(val[3])
+            actDiry = float(val[4])
+            actDirz = float(val[5])
+            actR1 = float(val[6])
+            actR2 = float(val[7])
+            actScale = float(val[8])
+            actPOD = float(val[9])
+            actExpM = float(val[10])
+            actExpN = float(val[11])
+            T = float(val[12])
             DASolver.setOption(
                 "fvSource",
                 {
                     "disk1": {
                         "center": [actX, actY, actZ],
+                        "direction": [actDirx, actDiry, actDirz],
                         "innerRadius": actR1,
                         "outerRadius": actR2,
                         "scale": actScale,
@@ -307,10 +311,10 @@ class Top(Multipoint):
         # add dvs to ivc and connect
         self.dvs.add_output("twist", val=np.array([aoa0] * (nRefAxPts - 1)))
         self.dvs.add_output("shape", val=np.array([0] * nShapes))
-        self.dvs.add_output("actuator", val=np.array([7.0, 0.0, 14.0, 0.1, 1.0, 1.0, 0.0, 1.0, 0.5, 2000.0]))
+        self.dvs.add_output("actuator", val=np.array([7.0, 0.0, 14.0, 1.0, 0.0, 0.0, 0.1, 1.0, 1.0, 0.0, 1.0, 0.5, 2000.0]))
         self.connect("twist", "geometry.twist")
         self.connect("shape", "geometry.shape")
-        self.connect("actuator", "cruise.dv_actuator_disk1", src_indices=[3, 4, 5, 6, 7, 8, 9])
+        self.connect("actuator", "cruise.dv_actuator_disk1", src_indices=[3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
         self.connect("actuator", "cruise.x_prop0_disk1", src_indices=[0, 1, 2])
 
         # define the design variables

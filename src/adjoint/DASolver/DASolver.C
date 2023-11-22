@@ -6210,6 +6210,8 @@ void DASolver::calcdFdACTAD(
 
     VecZeroEntries(dFdACT);
 
+    label nActDVs = 13;
+
     // first check if the input is valid
     dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
     word designVarType = dvSubDict.getWord("designVarType");
@@ -6249,8 +6251,8 @@ void DASolver::calcdFdACTAD(
                     objFuncSubDictPart));
 
                 // get the design variable vals
-                scalarList actDVList(10);
-                for (label i = 0; i < 10; i++)
+                scalarList actDVList(nActDVs);
+                for (label i = 0; i < nActDVs; i++)
                 {
                     actDVList[i] = fvSource.getActuatorDVs(diskName, i);
                 }
@@ -6260,12 +6262,12 @@ void DASolver::calcdFdACTAD(
                 // activate tape, start recording
                 this->globalADTape_.setActive();
                 // register  the input
-                for (label i = 0; i < 10; i++)
+                for (label i = 0; i < nActDVs; i++)
                 {
                     this->globalADTape_.registerInput(actDVList[i]);
                 }
                 // set dv values to fvSource obj for all procs
-                for (label i = 0; i < 10; i++)
+                for (label i = 0; i < nActDVs; i++)
                 {
                     fvSource.setActuatorDVs(diskName, i, actDVList[i]);
                 }
@@ -6298,7 +6300,7 @@ void DASolver::calcdFdACTAD(
                 VecDuplicate(dFdACT, &dFdACTPart);
                 VecZeroEntries(dFdACTPart);
 
-                for (label i = 0; i < 10; i++)
+                for (label i = 0; i < nActDVs; i++)
                 {
                     PetscScalar valIn = actDVList[i].getGradient();
                     // we need to do ADD_VALUES to get contribution from all procs
@@ -6322,11 +6324,11 @@ void DASolver::calcdFdACTAD(
                 // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
                 // **********************************************************************************************
 
-                for (label i = 0; i < 10; i++)
+                for (label i = 0; i < nActDVs; i++)
                 {
                     this->globalADTape_.deactivateValue(actDVList[i]);
                 }
-                for (label i = 0; i < 10; i++)
+                for (label i = 0; i < nActDVs; i++)
                 {
                     fvSource.setActuatorDVs(diskName, i, actDVList[i]);
                 }
@@ -6394,6 +6396,8 @@ void DASolver::calcdRdActTPsiAD(
 
     VecZeroEntries(dRdActTPsi);
 
+    label nActDVs = 13;
+
     dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
     word designVarType = dvSubDict.getWord("designVarType");
     if (designVarType == "ACTD")
@@ -6412,8 +6416,8 @@ void DASolver::calcdRdActTPsiAD(
             this->updateOFField(wVec);
             this->updateOFMesh(xvVec);
 
-            scalarList actDVList(10);
-            for (label i = 0; i < 10; i++)
+            scalarList actDVList(nActDVs);
+            for (label i = 0; i < nActDVs; i++)
             {
                 actDVList[i] = fvSource.getActuatorDVs(diskName, i);
             }
@@ -6421,13 +6425,13 @@ void DASolver::calcdRdActTPsiAD(
             this->globalADTape_.reset();
             this->globalADTape_.setActive();
 
-            for (label i = 0; i < 10; i++)
+            for (label i = 0; i < nActDVs; i++)
             {
                 this->globalADTape_.registerInput(actDVList[i]);
             }
 
             // set dv values to fvSource obj for all procs
-            for (label i = 0; i < 10; i++)
+            for (label i = 0; i < nActDVs; i++)
             {
                 fvSource.setActuatorDVs(diskName, i, actDVList[i]);
             }
@@ -6442,7 +6446,7 @@ void DASolver::calcdRdActTPsiAD(
             this->assignVec2ResidualGradient(psi);
             this->globalADTape_.evaluate();
 
-            for (label i = 0; i < 10; i++)
+            for (label i = 0; i < nActDVs; i++)
             {
                 PetscScalar valIn = actDVList[i].getGradient();
                 // we need to do ADD_VALUES to get contribution from all procs
@@ -6459,11 +6463,11 @@ void DASolver::calcdRdActTPsiAD(
             // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
             // **********************************************************************************************
 
-            for (label i = 0; i < 10; i++)
+            for (label i = 0; i < nActDVs; i++)
             {
                 this->globalADTape_.deactivateValue(actDVList[i]);
             }
-            for (label i = 0; i < 10; i++)
+            for (label i = 0; i < nActDVs; i++)
             {
                 fvSource.setActuatorDVs(diskName, i, actDVList[i]);
             }
