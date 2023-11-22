@@ -961,6 +961,7 @@ public:
         Vec rDist,
         Vec targetForce,
         Vec center,
+        Vec xvVec,
         Vec fvSource);
 
     void calcdFvSourcedInputsTPsiAD(
@@ -971,6 +972,7 @@ public:
         Vec rDist,
         Vec targetForce,
         Vec center,
+        Vec xvVec,
         Vec psi,
         Vec dFvSource);
 

@@ -2462,6 +2462,7 @@ void DASolver::calcFvSource(
     Vec rDist,
     Vec targetForce,
     Vec center,
+    Vec xvVec,
     Vec fvSource)
 {
     /*
@@ -2525,6 +2526,8 @@ void DASolver::calcFvSource(
     centerTemp[1] = vecArrayCenter[1];
     centerTemp[2] = vecArrayCenter[2];
 
+    this->updateOFMesh(xvVec);
+
     // Compute fvSource
     this->calcFvSourceInternal(propName, aForceTemp, tForceTemp, rDistTemp, targetForceTemp, centerTemp, fvSourceTemp);
 
@@ -2565,6 +2568,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     Vec rDist,
     Vec targetForce,
     Vec center,
+    Vec xvVec,
     Vec psi,
     Vec dFvSource)
 {
@@ -2580,6 +2584,8 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
 
     VecZeroEntries(dFvSource);
 
+    this->updateOFMesh(xvVec);
+
     const dictionary& propSubDict = daOptionPtr_->getAllOptions().subDict("wingProp").subDict(propName);
     label nPoints = propSubDict.getLabel("nForceSections");
 
@@ -2588,6 +2594,7 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
     Field<scalar> rDistField(nPoints);
     List<scalar> targetForceList(2);
     vector centerVector = vector::zero;
+    pointField meshPoints = meshPtr_->points();
 
     volVectorField fvSourceVField(
         IOobject(
@@ -2677,6 +2684,18 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
             this->globalADTape_.registerInput(centerVector[i]);
         }
     }
+    else if (mode == "mesh")
+    {
+        forAll(meshPoints, i)
+        {
+            for (label j = 0; j < 3; j++)
+            {
+                this->globalADTape_.registerInput(meshPoints[i][j]);
+            }
+        }
+        meshPtr_->movePoints(meshPoints);
+        meshPtr_->moving(false);
+    }
     else
     {
         FatalErrorIn("calcdFvSourcedInputsTPsiAD") << "mode not valid"
@@ -2746,6 +2765,20 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
             vecArrayProd[i] = centerVector[i].getGradient();
         }
     }
+    else if (mode == "mesh")
+    {
+        forAll(meshPoints, i)
+        {
+            for (label j = 0; j < 3; j++)
+            {
+                label rowI = daIndexPtr_->getGlobalXvIndex(i, j);
+                PetscScalar val = meshPoints[i][j].getGradient();
+                VecSetValue(dFvSource, rowI, val, INSERT_VALUES);
+            }
+        }
+        VecAssemblyBegin(dFvSource);
+        VecAssemblyEnd(dFvSource);
+    }
 
     VecRestoreArray(dFvSource, &vecArrayProd);
 
@@ -2790,6 +2823,18 @@ void DASolver::calcdFvSourcedInputsTPsiAD(
         {
             this->globalADTape_.deactivateValue(centerVector[i]);
         }
+    }
+    else if (mode == "mesh")
+    {
+        forAll(meshPoints, i)
+        {
+            for (label j = 0; j < 3; j++)
+            {
+                this->globalADTape_.deactivateValue(meshPoints[i][j]);
+            }
+        }
+        meshPtr_->movePoints(meshPoints);
+        meshPtr_->moving(false);
     }
 
     this->calcFvSourceInternal(propName, aForceField, tForceField, rDistField, targetForceList, centerVector, fvSourceVField);
