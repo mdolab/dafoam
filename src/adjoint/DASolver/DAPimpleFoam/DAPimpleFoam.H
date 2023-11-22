@@ -95,8 +95,8 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
-    /// whether the hybrid adjoint or time accurate adjoint is active
-    word mode_ = "None";
+    /// the primal IO interval
+    label IOInterval_ = 1; 
 
 public:
     TypeName("DAPimpleFoam");

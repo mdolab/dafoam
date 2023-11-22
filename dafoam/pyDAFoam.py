@@ -467,6 +467,7 @@ class DAOPTION(object):
             "objFuncEndTime": -1.0,
             "PCMatPrecomputeInterval": 100,
             "PCMatUpdateInterval": 1,
+            "reduceIO": True,
         }
 
         ## At which iteration should we start the averaging of objective functions.
@@ -3126,18 +3127,21 @@ class PYDAFOAM(object):
             from .pyColoringIncompressible import pyColoringIncompressible
 
             solverArg = "ColoringIncompressible -python " + self.parallelFlag
+
             solver = pyColoringIncompressible(solverArg.encode(), self.options)
         elif solverName in self.solverRegistry["Compressible"]:
 
             from .pyColoringCompressible import pyColoringCompressible
 
             solverArg = "ColoringCompressible -python " + self.parallelFlag
+
             solver = pyColoringCompressible(solverArg.encode(), self.options)
         elif solverName in self.solverRegistry["Solid"]:
 
             from .pyColoringSolid import pyColoringSolid
 
             solverArg = "ColoringSolid -python " + self.parallelFlag
+
             solver = pyColoringSolid(solverArg.encode(), self.options)
         else:
             raise Error("pyDAFoam: %s not registered! Check _solverRegistry(self)." % solverName)
