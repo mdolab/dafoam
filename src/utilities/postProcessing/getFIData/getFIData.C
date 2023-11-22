@@ -47,6 +47,7 @@ int main(int argc, char* argv[])
         word dataType = dataSubDict.getWord("dataType");
         word fieldType = dataSubDict.getWord("fieldType");
         scalar largeValue = dataSubDict.lookupOrDefault<scalar>("largeValue", 1e16);
+        word findMode = dataSubDict.lookupOrDefault<word>("findMode", "cell");
         labelList comps;
         if (dataSubDict.found("components"))
         {
@@ -68,7 +69,20 @@ int main(int argc, char* argv[])
             forAll(probePointCoords, idxI)
             {
                 point point = {probePointCoords[idxI][0], probePointCoords[idxI][1], probePointCoords[idxI][2]};
-                probePointCellIList[idxI] = mesh.findCell(point);
+                if (findMode == "cell")
+                {
+                    probePointCellIList[idxI] = mesh.findCell(point);
+                }
+                else if (findMode == "nearestCell")
+                {
+                    probePointCellIList[idxI] = mesh.findNearestCell(point);
+                }
+                else
+                {
+                    FatalErrorIn("")
+                        << "findMode " << findMode << " not supported! Options are: cell or nearestCell"
+                        << abort(FatalError);
+                }
             }
 
             for (label n = 1; n < nInstances + 1; n++)
