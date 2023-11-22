@@ -222,21 +222,18 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             word diskName = fvSourceSubDict.toc()[idxI];
             dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
 
-            scalarList direction;
-            diskSubDict.readEntry<scalarList>("direction", direction);
-            vector dirNorm = {direction[0], direction[1], direction[2]};
+            vector center = {actuatorDiskDVs_[diskName][0], actuatorDiskDVs_[diskName][1], actuatorDiskDVs_[diskName][2]};
+            vector dirNorm = {actuatorDiskDVs_[diskName][3], actuatorDiskDVs_[diskName][4], actuatorDiskDVs_[diskName][5]};
             dirNorm = dirNorm / mag(dirNorm);
-            vector center = {
-                actuatorDiskDVs_[diskName][0], actuatorDiskDVs_[diskName][1], actuatorDiskDVs_[diskName][2]};
-            scalar innerRadius = actuatorDiskDVs_[diskName][3];
-            scalar outerRadius = actuatorDiskDVs_[diskName][4];
+            scalar innerRadius = actuatorDiskDVs_[diskName][6];
+            scalar outerRadius = actuatorDiskDVs_[diskName][7];
             word rotDir = diskSubDict.getWord("rotDir");
             // we will calculate or read scale later
             scalar scale;
-            scalar POD = actuatorDiskDVs_[diskName][6];
+            scalar POD = actuatorDiskDVs_[diskName][9];
             scalar eps = diskSubDict.getScalar("eps");
-            scalar expM = actuatorDiskDVs_[diskName][7];
-            scalar expN = actuatorDiskDVs_[diskName][8];
+            scalar expM = actuatorDiskDVs_[diskName][10];
+            scalar expN = actuatorDiskDVs_[diskName][11];
             // Now we need to compute normalized eps in the radial direction, i.e. epsRStar this is because
             // we need to smooth the radial distribution of the thrust, here the radial location is
             // normalized as rStar = (r - rInner) / (rOuter - rInner), so to make epsRStar consistent with this
@@ -310,12 +307,12 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                     tmpThrustSumAll += fAxial * mesh_.V()[cellI];
                 }
                 reduce(tmpThrustSumAll, sumOp<scalar>());
-                scalar targetThrust = actuatorDiskDVs_[diskName][9];
+                scalar targetThrust = actuatorDiskDVs_[diskName][12];
                 scale = targetThrust / tmpThrustSumAll;
             }
             else
             {
-                scale = actuatorDiskDVs_[diskName][5];
+                scale = actuatorDiskDVs_[diskName][8];
             }
 
             // now we have the correct scale, repeat the loop to assign fvSource

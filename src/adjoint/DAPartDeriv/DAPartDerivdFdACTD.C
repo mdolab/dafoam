@@ -128,6 +128,8 @@ void DAPartDerivdFdACTD::calcPartDerivMat(
 
     scalarList center;
     diskModelSubDict.readEntry<scalarList>("center", center);
+    scalarList direction;
+    diskModelSubDict.readEntry<scalarList>("direction", direction);
     scalar innerRadius = diskModelSubDict.getScalar("innerRadius");
     scalar outerRadius = diskModelSubDict.getScalar("outerRadius");
     scalar POD = diskModelSubDict.getScalar("POD");
@@ -162,41 +164,59 @@ void DAPartDerivdFdACTD::calcPartDerivMat(
         }
         else if (i == 3)
         {
+            // perturb dir_x
+            direction[0] += delta;
+            diskModelSubDict.set("direction", direction);
+        }
+        else if (i == 4)
+        {
+            // perturb dir_y
+            direction[1] += delta;
+            diskModelSubDict.set("direction", direction);
+        }
+        else if (i == 5)
+        {
+            // perturb dir_z
+            direction[2] += delta;
+            diskModelSubDict.set("direction", direction);
+        }
+        else if (i == 6)
+        {
             // perturb innerRadius
             innerRadius += delta;
             diskModelSubDict.set("innerRadius", innerRadius);
         }
-        else if (i == 4)
+        else if (i == 7)
         {
             // perturb outerRadius
             outerRadius += delta;
             diskModelSubDict.set("outerRadius", outerRadius);
         }
-        else if (i == 5)
+        else if (i == 8)
         {
             // perturb scale
             scale += delta;
             diskModelSubDict.set("scale", scale);
         }
-        else if (i == 6)
+        else if (i == 9)
         {
             // perturb POD
             POD += delta;
             diskModelSubDict.set("POD", POD);
         }
-        else if (i == 7)
+        else if (i == 10)
         {
             // perturb expM
             expM += delta;
             diskModelSubDict.set("expM", expM);
         }
-        else if (i == 8)
+        else if (i == 11)
         {
             // perturb expN
             expN += delta;
             diskModelSubDict.set("expN", expN);
         }
-        else if (i == 9)
+        else if (i == 12)
         {
             targetThrust += delta;
             diskModelSubDict.set("targetThrust", targetThrust);
@@ -230,41 +250,59 @@ void DAPartDerivdFdACTD::calcPartDerivMat(
         }
         else if (i == 3)
         {
+            // reset dir_x
+            direction[0] -= delta;
+            diskModelSubDict.set("direction", direction);
+        }
+        else if (i == 4)
+        {
+            // reset dir_y
+            direction[1] -= delta;
+            diskModelSubDict.set("direction", direction);
+        }
+        else if (i == 5)
+        {
+            // reset dir_z
+            direction[2] -= delta;
+            diskModelSubDict.set("direction", direction);
+        }
+        else if (i == 6)
+        {
             // reset innerRadius
             innerRadius -= delta;
             diskModelSubDict.set("innerRadius", innerRadius);
         }
-        else if (i == 4)
+        else if (i == 7)
         {
             // reset outerRadius
             outerRadius -= delta;
             diskModelSubDict.set("outerRadius", outerRadius);
         }
-        else if (i == 5)
+        else if (i == 8)
         {
             // reset scale
             scale -= delta;
             diskModelSubDict.set("scale", scale);
         }
-        else if (i == 6)
+        else if (i == 9)
         {
             // reset POD
             POD -= delta;
             diskModelSubDict.set("POD", POD);
         }
-        else if (i == 7)
+        else if (i == 10)
         {
             // reset expM
             expM -= delta;
             diskModelSubDict.set("expM", expM);
         }
-        else if (i == 8)
+        else if (i == 11)
         {
             // reset expN
             expN -= delta;
             diskModelSubDict.set("expN", expN);
         }
-        else if (i == 9)
+        else if (i == 12)
         {
             targetThrust -= delta;
             diskModelSubDict.set("targetThrust", targetThrust);

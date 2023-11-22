@@ -198,18 +198,22 @@ class Top(Multipoint):
             actX = float(val[0])
             actY = float(val[1])
             actZ = float(val[2])
-            actR1 = float(val[3])
-            actR2 = float(val[4])
-            actScale = float(val[5])
-            actPOD = float(val[6])
-            actExpM = float(val[7])
-            actExpN = float(val[8])
-            T = float(val[9])
+            actDirx = float(val[3])
+            actDiry = float(val[4])
+            actDirz = float(val[5])
+            actR1 = float(val[6])
+            actR2 = float(val[7])
+            actScale = float(val[8])
+            actPOD = float(val[9])
+            actExpM = float(val[10])
+            actExpN = float(val[11])
+            T = float(val[12])
             DASolver.setOption(
                 "fvSource",
                 {
                     "disk1": {
                         "center": [actX, actY, actZ],
+                        "direction": [actDirx, actDiry, actDirz],
                         "innerRadius": actR1,
                         "outerRadius": actR2,
                         "scale": actScale,
@@ -250,7 +254,7 @@ class Top(Multipoint):
         self.dvs.add_output("twist", val=np.array([pitch0] * nRefAxPts))
         self.dvs.add_output("shape", val=np.array([0] * nShapes))
         self.dvs.add_output("uin", val=np.array([U0]))
-        self.dvs.add_output("actuator", val=np.array([-1, 0.0, 5, 0.5, 5.0, 1.0, 1.0, 1.0, 0.5, 100.0]))
+        self.dvs.add_output("actuator", val=np.array([-1, 0.0, 5, 1.0, 0.0, 0.0, 0.5, 5.0, 1.0, 1.0, 1.0, 0.5, 100.0]))
         self.connect("twist", "geometry.twist")
         self.connect("shape", "geometry.shape")
         self.connect("uin", "cruise.uin")

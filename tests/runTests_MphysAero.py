@@ -94,7 +94,7 @@ daOptions = {
     "designVar": {
         "shape": {"designVarType": "FFD"},
         "aoa": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
-        "actuator_radius": {"designVarType": "ACTD", "actuatorName": "disk1", "comps": [4]},
+        "actuator_radius": {"designVarType": "ACTD", "actuatorName": "disk1", "comps": [7]},
         "actuator_center": {"designVarType": "ACTD", "actuatorName": "disk1", "comps": [0, 1, 2]},
         "uin": {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0},
     },

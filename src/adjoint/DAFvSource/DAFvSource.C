@@ -143,18 +143,24 @@ void DAFvSource::syncDAOptionToActuatorDVs()
                 scalarList centerList;
                 diskSubDict.readEntry<scalarList>("center", centerList);
 
-                // we have 9 design variables for each disk
-                scalarList dvList(10);
+                scalarList dirList;
+                diskSubDict.readEntry<scalarList>("direction", dirList);
+
+                // we have 13 design variables for each disk
+                scalarList dvList(13);
                 dvList[0] = centerList[0];
                 dvList[1] = centerList[1];
                 dvList[2] = centerList[2];
-                dvList[3] = diskSubDict.getScalar("innerRadius");
-                dvList[4] = diskSubDict.getScalar("outerRadius");
-                dvList[5] = diskSubDict.getScalar("scale");
-                dvList[6] = diskSubDict.getScalar("POD");
-                dvList[7] = diskSubDict.getScalar("expM");
-                dvList[8] = diskSubDict.getScalar("expN");
-                dvList[9] = diskSubDict.getScalar("targetThrust");
+                dvList[3] = dirList[0];
+                dvList[4] = dirList[1];
+                dvList[5] = dirList[2];
+                dvList[6] = diskSubDict.getScalar("innerRadius");
+                dvList[7] = diskSubDict.getScalar("outerRadius");
+                dvList[8] = diskSubDict.getScalar("scale");
+                dvList[9] = diskSubDict.getScalar("POD");
+                dvList[10] = diskSubDict.getScalar("expM");
+                dvList[11] = diskSubDict.getScalar("expN");
+                dvList[12] = diskSubDict.getScalar("targetThrust");
 
                 // set actuatorDiskDVs_
                 actuatorDiskDVs_.set(diskName, dvList);

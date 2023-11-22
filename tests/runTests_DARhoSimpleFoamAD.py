@@ -203,13 +203,16 @@ def actuator(val, geo):
     actX = float(val[0])
     actY = float(val[1])
     actZ = float(val[2])
-    actR1 = float(val[3])
-    actR2 = float(val[4])
-    actScale = float(val[5])
-    actPOD = float(val[6])
-    actExpM = float(val[7])
-    actExpN = float(val[8])
-    T = float(val[9])
+    actDirx = float(val[3])
+    actDiry = float(val[4])
+    actDirz = float(val[5])
+    actR1 = float(val[6])
+    actR2 = float(val[7])
+    actScale = float(val[8])
+    actPOD = float(val[9])
+    actExpM = float(val[10])
+    actExpN = float(val[11])
+    T = float(val[12])
     DASolver.setOption(
         "fvSource",
         {
@@ -217,7 +220,7 @@ def actuator(val, geo):
                 "type": "actuatorDisk",
                 "source": "cylinderAnnulusSmooth",
                 "center": [actX, actY, actZ],
-                "direction": [1.0, 0.0, 0.0],
+                "direction": [actDirx, actDiry, actDirz],
                 "innerRadius": actR1,
                 "outerRadius": actR2,
                 "rotDir": "right",
@@ -243,7 +246,7 @@ DVGeo.addGlobalDV("uin", [U0], uin, lower=0.0, upper=100.0, scale=1.0)
 # actuator
 DVGeo.addGlobalDV(
     "actuator",
-    value=[0.5, 0.5, 0.5, 0.05, 0.6, 10.0, 0.7, 1.0, 0.5, 1.2],
+    value=[0.5, 0.5, 0.5, 1.0, 0.0, 0.0, 0.05, 0.6, 10.0, 0.7, 1.0, 0.5, 1.2],
     func=actuator,
     lower=-100.0,
     upper=100.0,
