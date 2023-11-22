@@ -151,6 +151,14 @@ label DAPimpleFoam::solvePrimal(
     // reset the unsteady obj func to zeros
     this->initUnsteadyObjFuncs();
 
+    // we need to reduce the number of files written to the disk to minimize the file IO load
+    label reduceIO = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("reduceIO");
+    if (reduceIO)
+    {
+        // set all states and vars to NO_WRITE
+        this->disableStateAutoWrite();
+    }
+
     // main loop
     while (runTime.run())
     {
@@ -210,9 +218,9 @@ label DAPimpleFoam::solvePrimal(
 
         runTime.write();
 
-        if (mode_ == "hybrid")
+        if (reduceIO)
         {
-            this->saveTimeInstanceFieldHybrid(timeInstanceI);
+            this->writeAdjStates();
         }
     }
 

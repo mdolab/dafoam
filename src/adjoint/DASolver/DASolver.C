@@ -8668,6 +8668,131 @@ void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
 #endif
 }
 
+void DASolver::disableStateAutoWrite()
+{
+    /*
+    Description:
+        set state variables to NO_WRITE to reduce the file IO load
+    */
+
+    // volVector states
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state =
+            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+
+        state.writeOpt() = IOobject::NO_WRITE;
+    }
+
+    // volScalar states
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        state.writeOpt() = IOobject::NO_WRITE;
+    }
+
+    // model states
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        state.writeOpt() = IOobject::NO_WRITE;
+    }
+
+    // surfaceScalar states
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state =
+            const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+
+        state.writeOpt() = IOobject::NO_WRITE;
+    }
+
+    // some potential extra variables
+    if (meshPtr_->thisDb().foundObject<volScalarField>("nut"))
+    {
+        volScalarField& nut =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("nut"));
+        nut.writeOpt() = IOobject::NO_WRITE;
+    }
+
+    if (meshPtr_->thisDb().foundObject<volScalarField>("betaFI"))
+    {
+        volScalarField& betaFI =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("betaFI"));
+        betaFI.writeOpt() = IOobject::NO_WRITE;
+    }
+
+    if (meshPtr_->thisDb().foundObject<volVectorField>("fvSource"))
+    {
+        volVectorField& fvSource =
+            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
+        fvSource.writeOpt() = IOobject::NO_WRITE;
+    }
+
+    if (meshPtr_->thisDb().foundObject<surfaceScalarField>("meshPhi"))
+    {
+        surfaceScalarField& meshPhi =
+            const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>("meshPhi"));
+        meshPhi.writeOpt() = IOobject::NO_WRITE;
+    }
+}
+
+void DASolver::writeAdjStates()
+{
+    /*
+    Description:
+        Write only the adjoint states
+    */
+
+    // volVector states
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state =
+            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+
+        state.write();
+    }
+
+    // volScalar states
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        state.write();
+    }
+
+    // model states
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        state.write();
+    }
+
+    // surfaceScalar states
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state =
+            const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+
+        state.write();
+    }
+}
+
 void DASolver::readStateVars(
     scalar timeVal,
     label oldTimeLevel)
