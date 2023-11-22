@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
             forAll(probePointCoords, idxI)
             {
                 point point = {probePointCoords[idxI][0], probePointCoords[idxI][1], probePointCoords[idxI][2]};
-                probePointCellIList[idxI] = mesh.findNearestCell(point);
+                probePointCellIList[idxI] = mesh.findCell(point);
             }
 
             for (label n = 1; n < nInstances + 1; n++)
