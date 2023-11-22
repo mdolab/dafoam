@@ -8736,13 +8736,6 @@ void DASolver::disableStateAutoWrite()
             const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
         fvSource.writeOpt() = IOobject::NO_WRITE;
     }
-
-    if (meshPtr_->thisDb().foundObject<surfaceScalarField>("meshPhi"))
-    {
-        surfaceScalarField& meshPhi =
-            const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>("meshPhi"));
-        meshPhi.writeOpt() = IOobject::NO_WRITE;
-    }
 }
 
 void DASolver::writeAdjStates()

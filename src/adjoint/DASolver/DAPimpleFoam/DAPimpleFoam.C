@@ -216,11 +216,13 @@ label DAPimpleFoam::solvePrimal(
                  << nl << endl;
         }
 
-        runTime.write();
-
         if (reduceIO)
         {
             this->writeAdjStates();
+        }
+        else
+        {
+            runTime.write();
         }
     }
 
