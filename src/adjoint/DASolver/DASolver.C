@@ -8784,6 +8784,32 @@ void DASolver::writeAdjStates()
 
         state.write();
     }
+
+    scalar endTime = runTimePtr_->endTime().value();
+    scalar deltaT = runTimePtr_->deltaT().value();
+    label nInstances = round(endTime / deltaT);
+
+    // write these extra suppressed variables for the last time step
+    if (runTimePtr_->timeIndex() == nInstances)
+    {
+        if (meshPtr_->thisDb().foundObject<volScalarField>("nut"))
+        {
+            const volScalarField& nut = meshPtr_->thisDb().lookupObject<volScalarField>("nut");
+            nut.write();
+        }
+
+        if (meshPtr_->thisDb().foundObject<volScalarField>("betaFI"))
+        {
+            const volScalarField& betaFI = meshPtr_->thisDb().lookupObject<volScalarField>("betaFI");
+            betaFI.write();
+        }
+
+        if (meshPtr_->thisDb().foundObject<volVectorField>("fvSource"))
+        {
+            const volVectorField& fvSource = meshPtr_->thisDb().lookupObject<volVectorField>("fvSource");
+            fvSource.write();
+        }
+    }
 }
 
 void DASolver::readStateVars(
