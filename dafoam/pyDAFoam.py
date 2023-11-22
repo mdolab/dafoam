@@ -3038,60 +3038,59 @@ class PYDAFOAM(object):
 
         solverName = self.getOption("solverName")
         solverArg = solverName + " -python " + self.parallelFlag
-        solverArgEncoded = solverArg.encode()
         if solverName in self.solverRegistry["Incompressible"]:
 
             from .pyDASolverIncompressible import pyDASolvers
 
-            self.solver = pyDASolvers(solverArgEncoded, self.options)
+            self.solver = pyDASolvers(solverArg.encode(), self.options)
 
             if self.getOption("useAD")["mode"] == "forward":
 
                 from .pyDASolverIncompressibleADF import pyDASolvers as pyDASolversAD
 
-                self.solverAD = pyDASolversAD(solverArgEncoded, self.options)
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
             elif self.getOption("useAD")["mode"] == "reverse":
 
                 from .pyDASolverIncompressibleADR import pyDASolvers as pyDASolversAD
 
-                self.solverAD = pyDASolversAD(solverArgEncoded, self.options)
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
         elif solverName in self.solverRegistry["Compressible"]:
 
             from .pyDASolverCompressible import pyDASolvers
 
-            self.solver = pyDASolvers(solverArgEncoded, self.options)
+            self.solver = pyDASolvers(solverArg.encode(), self.options)
 
             if self.getOption("useAD")["mode"] == "forward":
 
                 from .pyDASolverCompressibleADF import pyDASolvers as pyDASolversAD
 
-                self.solverAD = pyDASolversAD(solverArgEncoded, self.options)
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
             elif self.getOption("useAD")["mode"] == "reverse":
 
                 from .pyDASolverCompressibleADR import pyDASolvers as pyDASolversAD
 
-                self.solverAD = pyDASolversAD(solverArgEncoded, self.options)
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
         elif solverName in self.solverRegistry["Solid"]:
 
             from .pyDASolverSolid import pyDASolvers
 
-            self.solver = pyDASolvers(solverArgEncoded, self.options)
+            self.solver = pyDASolvers(solverArg.encode(), self.options)
 
             if self.getOption("useAD")["mode"] == "forward":
 
                 from .pyDASolverSolidADF import pyDASolvers as pyDASolversAD
 
-                self.solverAD = pyDASolversAD(solverArgEncoded, self.options)
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
             elif self.getOption("useAD")["mode"] == "reverse":
 
                 from .pyDASolverSolidADR import pyDASolvers as pyDASolversAD
 
-                self.solverAD = pyDASolversAD(solverArgEncoded, self.options)
+                self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
         else:
             raise Error("pyDAFoam: %s not registered! Check _solverRegistry(self)." % solverName)
 
@@ -3127,22 +3126,22 @@ class PYDAFOAM(object):
             from .pyColoringIncompressible import pyColoringIncompressible
 
             solverArg = "ColoringIncompressible -python " + self.parallelFlag
-            solverArgEncoded = solverArg.encode()
-            solver = pyColoringIncompressible(solverArgEncoded, self.options)
+
+            solver = pyColoringIncompressible(solverArg.encode(), self.options)
         elif solverName in self.solverRegistry["Compressible"]:
 
             from .pyColoringCompressible import pyColoringCompressible
 
             solverArg = "ColoringCompressible -python " + self.parallelFlag
-            solverArgEncoded = solverArg.encode()
-            solver = pyColoringCompressible(solverArgEncoded, self.options)
+
+            solver = pyColoringCompressible(solverArg.encode(), self.options)
         elif solverName in self.solverRegistry["Solid"]:
 
             from .pyColoringSolid import pyColoringSolid
 
             solverArg = "ColoringSolid -python " + self.parallelFlag
-            solverArgEncoded = solverArg.encode()
-            solver = pyColoringSolid(solverArgEncoded, self.options)
+
+            solver = pyColoringSolid(solverArg.encode(), self.options)
         else:
             raise Error("pyDAFoam: %s not registered! Check _solverRegistry(self)." % solverName)
         solver.run()
