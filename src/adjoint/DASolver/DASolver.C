@@ -8818,7 +8818,8 @@ void DASolver::readStateVars(
 {
     /*
     Description:
-        Read the state variables from the disk and assign the value to the prescribe time level
+        Read the state variables from the disk and assign the value to the prescribe time level.
+        NOTE: we use == to assign both internal and boundary fields!
     
     Inputs:
         
@@ -8861,11 +8862,11 @@ void DASolver::readStateVars(
 
             if (oldTimeLevel == 0)
             {
-                state = stateRead;
+                state == stateRead;
             }
             else if (oldTimeLevel == 1)
             {
-                state.oldTime() = stateRead;
+                state.oldTime() == stateRead;
             }
             else if (oldTimeLevel == 2)
             {
@@ -8879,11 +8880,11 @@ void DASolver::readStateVars(
                             IOobject::READ_IF_PRESENT,
                             IOobject::NO_WRITE),
                         stateRead);
-                    state.oldTime().oldTime() = state0Read;
+                    state.oldTime().oldTime() == state0Read;
                 }
                 else
                 {
-                    state.oldTime().oldTime() = stateRead;
+                    state.oldTime().oldTime() == stateRead;
                 }
             }
             else
@@ -8915,11 +8916,11 @@ void DASolver::readStateVars(
 
             if (oldTimeLevel == 0)
             {
-                state = stateRead;
+                state == stateRead;
             }
             else if (oldTimeLevel == 1)
             {
-                state.oldTime() = stateRead;
+                state.oldTime() == stateRead;
             }
             else if (oldTimeLevel == 2)
             {
@@ -8933,11 +8934,11 @@ void DASolver::readStateVars(
                             IOobject::READ_IF_PRESENT,
                             IOobject::NO_WRITE),
                         stateRead);
-                    state.oldTime().oldTime() = state0Read;
+                    state.oldTime().oldTime() == state0Read;
                 }
                 else
                 {
-                    state.oldTime().oldTime() = stateRead;
+                    state.oldTime().oldTime() == stateRead;
                 }
             }
             else
@@ -8969,11 +8970,11 @@ void DASolver::readStateVars(
 
             if (oldTimeLevel == 0)
             {
-                state = stateRead;
+                state == stateRead;
             }
             else if (oldTimeLevel == 1)
             {
-                state.oldTime() = stateRead;
+                state.oldTime() == stateRead;
             }
             else if (oldTimeLevel == 2)
             {
@@ -8987,11 +8988,11 @@ void DASolver::readStateVars(
                             IOobject::READ_IF_PRESENT,
                             IOobject::NO_WRITE),
                         stateRead);
-                    state.oldTime().oldTime() = state0Read;
+                    state.oldTime().oldTime() == state0Read;
                 }
                 else
                 {
-                    state.oldTime().oldTime() = stateRead;
+                    state.oldTime().oldTime() == stateRead;
                 }
             }
             else
@@ -9022,11 +9023,11 @@ void DASolver::readStateVars(
 
             if (oldTimeLevel == 0)
             {
-                state = stateRead;
+                state == stateRead;
             }
             else if (oldTimeLevel == 1)
             {
-                state.oldTime() = stateRead;
+                state.oldTime() == stateRead;
             }
             else if (oldTimeLevel == 2)
             {
@@ -9040,11 +9041,11 @@ void DASolver::readStateVars(
                             IOobject::READ_IF_PRESENT,
                             IOobject::NO_WRITE),
                         stateRead);
-                    state.oldTime().oldTime() = state0Read;
+                    state.oldTime().oldTime() == state0Read;
                 }
                 else
                 {
-                    state.oldTime().oldTime() = stateRead;
+                    state.oldTime().oldTime() == stateRead;
                 }
             }
             else
