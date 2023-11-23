@@ -159,8 +159,12 @@ label DAPimpleFoam::solvePrimal(
         this->disableStateAutoWrite();
     }
 
+    scalar endTime = runTime.endTime().value();
+    scalar deltaT = runTime.deltaT().value();
+    label nInstances = round(endTime / deltaT);
+
     // main loop
-    while (runTime.run())
+    for (label iter = 1; iter <= nInstances; iter++)
     {
 
         ++runTime;
