@@ -1136,6 +1136,12 @@ public:
         DAUtility::pyCalcBetaJacVecProd = jacVecProd;
     }
 
+    /// set state variables to NO_WRITE
+    void disableStateAutoWrite();
+
+    /// write state variables that are NO_WRITE to disk
+    void writeAdjStates();
+
 #ifdef CODI_AD_REVERSE
 
     /// global tape for reverse-mode AD
