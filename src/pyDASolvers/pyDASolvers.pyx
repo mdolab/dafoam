@@ -126,8 +126,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getForwardADDerivVal(char *)
         void calcResidualVec(PetscVec)
         void setPrimalBoundaryConditions(int)
-        void calcFvSource(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
-        void calcdFvSourcedInputsTPsiAD(char *, char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcFvSource(char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
+        void calcdFvSourcedInputsTPsiAD(char *, char *, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcForceProfile(char *, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForceProfiledXvWAD(char *, char *, char *, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
@@ -547,11 +547,11 @@ cdef class pyDASolvers:
     def getUnsteadyObjFuncEndTimeIndex(self):
         return self._thisptr.getUnsteadyObjFuncEndTimeIndex()
     
-    def calcFvSource(self, propName, Vec aForce, Vec tForce, Vec rDist, Vec targetForce, Vec center, Vec fvSource):
-        self._thisptr.calcFvSource(propName, aForce.vec, tForce.vec, rDist.vec, targetForce.vec, center.vec, fvSource.vec)
+    def calcFvSource(self, propName, Vec aForce, Vec tForce, Vec rDist, Vec targetForce, Vec center, Vec xvVec, Vec fvSource):
+        self._thisptr.calcFvSource(propName, aForce.vec, tForce.vec, rDist.vec, targetForce.vec, center.vec, xvVec.vec, fvSource.vec)
     
-    def calcdFvSourcedInputsTPsiAD(self, propName, mode, Vec aForce, Vec tForce, Vec rDist, Vec targetForce, Vec center, Vec psi, Vec dFvSource):
-        self._thisptr.calcdFvSourcedInputsTPsiAD(propName, mode, aForce.vec, tForce.vec, rDist.vec, targetForce.vec, center.vec, psi.vec, dFvSource.vec)
+    def calcdFvSourcedInputsTPsiAD(self, propName, mode, Vec aForce, Vec tForce, Vec rDist, Vec targetForce, Vec center, Vec xvVec, Vec psi, Vec dFvSource):
+        self._thisptr.calcdFvSourcedInputsTPsiAD(propName, mode, aForce.vec, tForce.vec, rDist.vec, targetForce.vec, center.vec, xvVec.vec, psi.vec, dFvSource.vec)
     
     def calcForceProfile(self, propName, Vec aForce, Vec tForce, Vec rDist, Vec integralForce):
         self._thisptr.calcForceProfile(propName, aForce.vec, tForce.vec, rDist.vec, integralForce.vec)
