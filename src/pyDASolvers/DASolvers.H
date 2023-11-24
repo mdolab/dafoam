@@ -576,6 +576,15 @@ public:
         DASolverPtr_->calcdRdThermalTPsiAD(volCoords, states, thermal, seeds, product);
     }
 
+    /// get a variable from OF layer
+    void getOFField(
+        const word fieldName,
+        const word fieldType,
+        Vec field)
+    {
+        DASolverPtr_->getOFField(fieldName, fieldType, field);
+    }
+
     /// return the acoustic data values
     void getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, word groupName)
     {

@@ -101,6 +101,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void getThermal(double *, double *, double *)
         void getThermalAD(char *, double *, double *, double *, double *)
         void setThermal(double *)
+        void getOFField(char *, char *, PetscVec)
         void getAcousticData(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, char*)
         void printAllOptions()
         void updateDAOption(object)
@@ -407,6 +408,9 @@ cdef class pyDASolvers:
 
     def getForces(self, Vec fX, Vec fY, Vec fZ):
         self._thisptr.getForces(fX.vec, fY.vec, fZ.vec)
+    
+    def getOFField(self, fieldName, fieldType, Vec fieldVec):
+        self._thisptr.getOFField(fieldName, fieldType, fieldVec.vec)
     
     def getThermal(self, 
             np.ndarray[double, ndim=1, mode="c"] volCoords,

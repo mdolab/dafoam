@@ -689,6 +689,12 @@ public:
         daFieldPtr_->resVec2OFResField(resVec);
     }
 
+    /// get a variable from OF layer
+    void getOFField(
+        const word fieldName,
+        const word fieldType,
+        Vec field) const;
+
     /// write the matrix in binary format
     void writeMatrixBinary(
         const Mat matIn,

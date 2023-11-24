@@ -1130,6 +1130,49 @@ void DASolver::getThermalAD(
 #endif
 }
 
+void DASolver::getOFField(
+    const word fieldName,
+    const word fieldType,
+    Vec field) const
+{
+    /*
+    Description:
+        assign a OpenFoam layer field variable in mesh.Db() to field
+    */
+
+    PetscScalar* vecArray;
+    VecGetArray(field, &vecArray);
+
+    if (fieldType == "scalar")
+    {
+        const volScalarField& field = meshPtr_->thisDb().lookupObject<volScalarField>(fieldName);
+        forAll(field, cellI)
+        {
+            assignValueCheckAD(vecArray[cellI], field[cellI]);
+        }
+    }
+    else if (fieldType == "vector")
+    {
+        const volVectorField& field = meshPtr_->thisDb().lookupObject<volVectorField>(fieldName);
+        label localIdx = 0;
+        forAll(field, cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                assignValueCheckAD(vecArray[localIdx], field[cellI][comp]);
+                localIdx++;
+            }
+        }
+    }
+    else
+    {
+        FatalErrorIn("getField") << " fieldType not valid. Options: scalar or vector"
+                                 << abort(FatalError);
+    }
+
+    VecRestoreArray(field, &vecArray);
+}
+
 void DASolver::getForces(Vec fX, Vec fY, Vec fZ)
 {
     /*
