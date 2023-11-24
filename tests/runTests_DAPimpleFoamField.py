@@ -28,7 +28,6 @@ if gcomm.rank == 0:
 
 twist0 = 30
 U0 = 10
-nCells = 4032
 alpha0 = 0
 
 # test incompressible solvers
@@ -85,17 +84,6 @@ meshOptions = {
 DVGeo = DVGeometry("./FFD/FFD.xyz")
 DVGeo.addRefAxis("bodyAxis", xFraction=0.25, alignIndex="k")
 
-
-def betaFieldInversion(val, geo):
-    for idxI, v in enumerate(val):
-        DASolver.setFieldValue4GlobalCellI(b"betaFI", v, idxI)
-        DASolver.updateBoundaryConditions(b"betaFI", b"scalar")
-
-
-beta0 = np.ones(nCells, dtype="d")
-beta0[0] = 1.0
-DVGeo.addGlobalDV("beta", value=beta0, func=betaFieldInversion, lower=1e-5, upper=10.0, scale=1.0)
-
 # =============================================================================
 # DAFoam initialization
 # =============================================================================
@@ -106,6 +94,16 @@ DASolver.printFamilyList()
 DASolver.setMesh(mesh)
 evalFuncs = []
 DASolver.setEvalFuncs(evalFuncs)
+
+
+def betaFieldInversion(val, geo):
+    for idxI, v in enumerate(val):
+        DASolver.setFieldValue4GlobalCellI(b"betaFI", v, idxI)
+        DASolver.updateBoundaryConditions(b"betaFI", b"scalar")
+
+
+beta0 = DASolver.getOFField("betaFI", "scalar", False)
+DVGeo.addGlobalDV("beta", value=beta0, func=betaFieldInversion, lower=1e-5, upper=10.0, scale=1.0)
 
 # =============================================================================
 # Constraint setup

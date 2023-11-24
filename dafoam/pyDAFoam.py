@@ -2962,6 +2962,47 @@ class PYDAFOAM(object):
         # Finally map the vector as required.
         return positions, normals, areas, forces
 
+    def getOFField(self, fieldName, fieldType, distributed=False):
+        """
+        Get the OpenFOAM field variable in mesh.Db() and return it as a serial or parallel array
+
+        Input:
+        ------
+        fieldName: name of the OF field
+
+        fieldType: type of the OF Field, can be either scalar or vector
+
+        distributed: whether the array is distributed (parallel)
+
+        Output:
+        ------
+        field: numpy array that saves the field
+
+        """
+
+        if fieldType == "scalar":
+            fieldComp = 1
+        elif fieldType == "vector":
+            fieldComp = 3
+        else:
+            raise Error("fieldType not valid!")
+        nLocalCells = self.solver.getNLocalCells()
+
+        vecSize = fieldComp * nLocalCells
+        fieldVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fieldVec.setSizes((vecSize, PETSc.DECIDE), bsize=1)
+        fieldVec.setFromOptions()
+        fieldVec.zeroEntries()
+
+        self.solver.getOFField(fieldName.encode(), fieldType.encode(), fieldVec)
+
+        if distributed:
+            field = self.vec2Array(fieldVec)
+        else:
+            field = self.convertMPIVec2SeqArray(fieldVec)
+
+        return field
+
     def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
         Compute total derivative
