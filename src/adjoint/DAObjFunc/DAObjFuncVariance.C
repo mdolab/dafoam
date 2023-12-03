@@ -64,14 +64,17 @@ DAObjFuncVariance::DAObjFuncVariance(
 
     if (varType_ == "scalar")
     {
+        scalar greatVal = varUpperBound_ * 10.0;
         volScalarField varData(
             IOobject(
                 varName_ + "Data",
                 Foam::name(endTime),
                 mesh_,
-                IOobject::MUST_READ,
+                IOobject::READ_IF_PRESENT,
                 IOobject::NO_WRITE),
-            mesh_);
+            mesh_,
+            dimensionedScalar("dummy", dimensionSet(0, 0, 0, 0, 0, 0, 0), greatVal),
+            "zeroGradient");
 
         forAll(varData, cellI)
         {
@@ -83,14 +86,17 @@ DAObjFuncVariance::DAObjFuncVariance(
     }
     else if (varType_ == "vector")
     {
+        scalar greatVal = varUpperBound_ * 10.0;
         volVectorField varData(
             IOobject(
                 varName_ + "Data",
                 Foam::name(endTime),
                 mesh_,
-                IOobject::MUST_READ,
+                IOobject::READ_IF_PRESENT,
                 IOobject::NO_WRITE),
-            mesh_);
+            mesh_,
+            dimensionedVector("dummy", dimensionSet(0, 0, 0, 0, 0, 0, 0), {greatVal, greatVal, greatVal}),
+            "zeroGradient");
 
         forAll(varData, cellI)
         {
@@ -114,70 +120,88 @@ DAObjFuncVariance::DAObjFuncVariance(
     nRefPointsGlobal_ = nRefPoints_;
     reduce(nRefPointsGlobal_, sumOp<label>());
 
-    refCellIndex_.setSize(nRefPoints_, -1);
-    refCellComp_.setSize(nRefPoints_, -1);
-    refValue_.setSize(nTimeSteps);
-
-    // second loop, set refValue
-    if (varType_ == "scalar")
+    if (nRefPointsGlobal_ == 0)
     {
-        for (label n = 0; n < nTimeSteps; n++)
+        // if we cant find the varData file or there is no valid values in the varData file
+        // we just create a zero-size refCellIndex_, and the calcObjFunc will return 0
+        // without calculating the variance. Plus, we will print out an warning.
+        refCellIndex_.setSize(0);
+
+        Info << endl;
+        Info << "**************************************************************************** " << endl;
+        Info << "*         WARNING! Can't find data files or can't find valid               * " << endl;
+        Info << "*         values in the data file for the variance objFunc!                * " << endl;
+        Info << "**************************************************************************** " << endl;
+        Info << endl;
+    }
+    else
+    {
+
+        refCellIndex_.setSize(nRefPoints_, -1);
+        refCellComp_.setSize(nRefPoints_, -1);
+        refValue_.setSize(nTimeSteps);
+
+        // second loop, set refValue
+        if (varType_ == "scalar")
         {
-            scalar t = (n + 1) * deltaT;
-            word timeName = Foam::name(t);
-
-            refValue_[n].setSize(nRefPoints_);
-
-            volScalarField varData(
-                IOobject(
-                    varName_ + "Data",
-                    timeName,
-                    mesh_,
-                    IOobject::MUST_READ,
-                    IOobject::NO_WRITE),
-                mesh_);
-
-            label pointI = 0;
-            forAll(varData, cellI)
+            for (label n = 0; n < nTimeSteps; n++)
             {
-                if (fabs(varData[cellI]) < varUpperBound_)
+                scalar t = (n + 1) * deltaT;
+                word timeName = Foam::name(t);
+
+                refValue_[n].setSize(nRefPoints_);
+
+                volScalarField varData(
+                    IOobject(
+                        varName_ + "Data",
+                        timeName,
+                        mesh_,
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE),
+                    mesh_);
+
+                label pointI = 0;
+                forAll(varData, cellI)
                 {
-                    refValue_[n][pointI] = varData[cellI];
-                    refCellIndex_[pointI] = cellI;
-                    pointI++;
+                    if (fabs(varData[cellI]) < varUpperBound_)
+                    {
+                        refValue_[n][pointI] = varData[cellI];
+                        refCellIndex_[pointI] = cellI;
+                        pointI++;
+                    }
                 }
             }
         }
-    }
-    else if (varType_ == "vector")
-    {
-        for (label n = 0; n < nTimeSteps; n++)
+        else if (varType_ == "vector")
         {
-            scalar t = (n + 1) * deltaT;
-            word timeName = Foam::name(t);
-
-            refValue_[n].setSize(nRefPoints_);
-
-            volVectorField varData(
-                IOobject(
-                    varName_ + "Data",
-                    timeName,
-                    mesh_,
-                    IOobject::MUST_READ,
-                    IOobject::NO_WRITE),
-                mesh_);
-
-            label pointI = 0;
-            forAll(varData, cellI)
+            for (label n = 0; n < nTimeSteps; n++)
             {
-                for (label comp = 0; comp < 3; comp++)
+                scalar t = (n + 1) * deltaT;
+                word timeName = Foam::name(t);
+
+                refValue_[n].setSize(nRefPoints_);
+
+                volVectorField varData(
+                    IOobject(
+                        varName_ + "Data",
+                        timeName,
+                        mesh_,
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE),
+                    mesh_);
+
+                label pointI = 0;
+                forAll(varData, cellI)
                 {
-                    if (fabs(varData[cellI][comp]) < varUpperBound_)
+                    for (label comp = 0; comp < 3; comp++)
                     {
-                        refValue_[n][pointI] = varData[cellI][comp];
-                        refCellIndex_[pointI] = cellI;
-                        refCellComp_[pointI] = comp;
-                        pointI++;
+                        if (fabs(varData[cellI][comp]) < varUpperBound_)
+                        {
+                            refValue_[n][pointI] = varData[cellI][comp];
+                            refCellIndex_[pointI] = cellI;
+                            refCellComp_[pointI] = comp;
+                            pointI++;
+                        }
                     }
                 }
             }
@@ -252,7 +276,10 @@ void DAObjFuncVariance::calcObjFunc(
     // need to reduce the sum of force across all processors
     reduce(objFuncValue, sumOp<scalar>());
 
-    objFuncValue /= nRefPointsGlobal_;
+    if (nRefPointsGlobal_ != 0)
+    {
+        objFuncValue /= nRefPointsGlobal_;
+    }
 
     return;
 }
