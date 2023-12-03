@@ -503,6 +503,22 @@ public:
         return returnVal;
     }
 
+    /// return the elapsed clock time for testing speed
+    double getElapsedClockTime()
+    {
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getElapsedClockTime());
+        return returnVal;
+    }
+
+    /// return the elapsed CPU time for testing speed
+    double getElapsedCpuTime()
+    {
+        double returnVal = 0.0;
+        assignValueCheckAD(returnVal, DASolverPtr_->getElapsedCpuTime());
+        return returnVal;
+    }
+
     void calcCouplingFaceCoords(
         const double* volCoords,
         double* surfCoords)
