@@ -2299,7 +2299,7 @@ class PYDAFOAM(object):
 
         # NOTE: this step is critical because we need to compute the residual for
         # self.solverAD once to get the proper oldTime level for unsteady adjoint
-        self.solverAD.calcPrimalResidualStatistics("print".encode())
+        self.solverAD.calcPrimalResidualStatistics("calc".encode())
 
         # calc the total number of time instances
         # we assume the adjoint is for deltaT to endTime
@@ -2318,6 +2318,9 @@ class PYDAFOAM(object):
         self.solverAD.setTime(endTime, endTimeIndex)
         # now we can read the variables
         self.readStateVars(endTime, deltaT)
+
+        # now we can print the residual for the endTime state
+        self.solverAD.calcPrimalResidualStatistics("print".encode())
 
         # init dRdWTMF
         self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
