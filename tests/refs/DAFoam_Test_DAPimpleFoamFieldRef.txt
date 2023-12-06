@@ -1,9 +1,24 @@
 Dictionary Key: UVar
 @value  0.00599646380067478 1e-08 1e-10
+Dictionary Key: UVarProbe
+@value 1.248866229574679e-07 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
+Dictionary Key: pVar
+@value  0.04197221737453448 1e-08 1e-10
+Dictionary Key: wallShearStressVar
+@value 0.0006665194518553904 1e-08 1e-10
 Dictionary Key: UVar
 Dictionary Key: beta
-@value 0.0004601298806439026 0.0001 1e-06
+@value 0.0004601298806438439 0.0001 1e-06
+Dictionary Key: UVarProbe
+Dictionary Key: beta
+@value 2.065456515673644e-08 0.0001 1e-06
 Dictionary Key: fail
 @value                    0 0.0001 1e-06
+Dictionary Key: pVar
+Dictionary Key: beta
+@value 0.003702060823881352 0.0001 1e-06
+Dictionary Key: wallShearStressVar
+Dictionary Key: beta
+@value 5.772757583725657e-05 0.0001 1e-06

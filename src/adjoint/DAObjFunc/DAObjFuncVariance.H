@@ -28,30 +28,41 @@ class DAObjFuncVariance
 {
 
 protected:
-
     /// name of the variable
     word varName_;
+
+    /// data mode options are probePoint surface or field
+    word mode_;
 
     /// type of the variable either vector or scalar
     word varType_;
 
-    /// cell index of the probe points
-    labelList refCellIndex_;
+    /// component of the vector variable
+    List<label> components_;
 
-    /// component for vector at the above probe points cellI
-    labelList refCellComp_;
- 
+    /// cell index of the probe points
+    labelList probeCellIndex_;
+
+    /// coordinates of the probe points
+    List<List<scalar>> probePointCoords_;
+
+    /// names of the surfaces for ref data
+    List<word> surfaceNames_;
+
     /// probe value
     List<List<scalar>> refValue_;
 
-    /// number of reference points
-    label nRefPoints_;
-
-    /// the global reference points in parallel
-    label nRefPointsGlobal_;
+    /// total number of reference points
+    label nRefPoints_ = 0;
 
     /// upper bound to be considered as non-data
     scalar varUpperBound_;
+
+    /// whether we find the reference data
+    label isRefData_;
+
+    /// DATurbulenceModel object
+    const DATurbulenceModel& daTurb_;
 
 public:
     TypeName("variance");

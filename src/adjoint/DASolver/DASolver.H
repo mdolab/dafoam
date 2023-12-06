@@ -1148,6 +1148,18 @@ public:
     /// write state variables that are NO_WRITE to disk
     void writeAdjStates();
 
+    /// return the elapsed clock time for testing speed
+    scalar getElapsedClockTime()
+    {
+        return runTimePtr_->elapsedClockTime();
+    }
+
+    /// return the elapsed CPU time for testing speed
+    scalar getElapsedCpuTime()
+    {
+        return runTimePtr_->elapsedCpuTime();
+    }
+
 #ifdef CODI_AD_REVERSE
 
     /// global tape for reverse-mode AD

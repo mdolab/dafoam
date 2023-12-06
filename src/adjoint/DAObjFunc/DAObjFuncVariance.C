@@ -33,7 +33,8 @@ DAObjFuncVariance::DAObjFuncVariance(
         daResidual,
         objFuncName,
         objFuncPart,
-        objFuncDict)
+        objFuncDict),
+      daTurb_(daModel.getDATurbulenceModel())
 {
 
     // Assign type, this is common for all objectives
@@ -41,11 +42,28 @@ DAObjFuncVariance::DAObjFuncVariance(
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
 
+    // read the parameters
+
+    objFuncDict_.readEntry<word>("mode", mode_);
+
+    if (mode_ == "surface")
+    {
+        objFuncDict_.readEntry<wordList>("surfaceNames", surfaceNames_);
+    }
+
+    if (mode_ == "probePoint")
+    {
+        objFuncDict_.readEntry<List<List<scalar>>>("probePointCoords", probePointCoords_);
+    }
+
     objFuncDict_.readEntry<word>("varName", varName_);
 
     objFuncDict_.readEntry<word>("varType", varType_);
 
-    varUpperBound_ = objFuncDict_.lookupOrDefault<scalar>("varUpperBound", 1e15);
+    if (varType_ == "vector")
+    {
+        objFuncDict_.readEntry<labelList>("components", components_);
+    }
 
     timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 
@@ -54,17 +72,15 @@ DAObjFuncVariance::DAObjFuncVariance(
         objFuncConInfo_ = {{varName_}};
     }
 
-    // first loop, we find the number of ref points. We expect the ref data
-    // are the same across the runtime, so we read in the endTime and compute
-    // nRefPoints
-    nRefPoints_ = 0;
+    // get the time information
     scalar endTime = mesh_.time().endTime().value();
     scalar deltaT = mesh_.time().deltaT().value();
     label nTimeSteps = round(endTime / deltaT);
 
+    // check if the reference data files exist
+    isRefData_ = 1;
     if (varType_ == "scalar")
     {
-        scalar greatVal = varUpperBound_ * 10.0;
         volScalarField varData(
             IOobject(
                 varName_ + "Data",
@@ -73,20 +89,16 @@ DAObjFuncVariance::DAObjFuncVariance(
                 IOobject::READ_IF_PRESENT,
                 IOobject::NO_WRITE),
             mesh_,
-            dimensionedScalar("dummy", dimensionSet(0, 0, 0, 0, 0, 0, 0), greatVal),
+            dimensionedScalar("dummy", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1e16),
             "zeroGradient");
 
-        forAll(varData, cellI)
+        if (gSumMag(varData) > 1e16)
         {
-            if (fabs(varData[cellI]) < varUpperBound_)
-            {
-                nRefPoints_++;
-            }
+            isRefData_ = 0;
         }
     }
     else if (varType_ == "vector")
     {
-        scalar greatVal = varUpperBound_ * 10.0;
         volVectorField varData(
             IOobject(
                 varName_ + "Data",
@@ -95,18 +107,12 @@ DAObjFuncVariance::DAObjFuncVariance(
                 IOobject::READ_IF_PRESENT,
                 IOobject::NO_WRITE),
             mesh_,
-            dimensionedVector("dummy", dimensionSet(0, 0, 0, 0, 0, 0, 0), {greatVal, greatVal, greatVal}),
+            dimensionedVector("dummy", dimensionSet(0, 0, 0, 0, 0, 0, 0), {1e16, 1e16, 1e16}),
             "zeroGradient");
 
-        forAll(varData, cellI)
+        if (mag(gSumCmptMag(varData)) > 1e16)
         {
-            for (label comp = 0; comp < 3; comp++)
-            {
-                if (fabs(varData[cellI][comp]) < varUpperBound_)
-                {
-                    nRefPoints_++;
-                }
-            }
+            isRefData_ = 0;
         }
     }
     else
@@ -116,40 +122,29 @@ DAObjFuncVariance::DAObjFuncVariance(
                          << abort(FatalError);
     }
 
-    // reduce the sum of all the ref points for averaging
-    nRefPointsGlobal_ = nRefPoints_;
-    reduce(nRefPointsGlobal_, sumOp<label>());
-
-    if (nRefPointsGlobal_ == 0)
+    // if no varData file found, we print out a warning
+    if (isRefData_ == 0)
     {
-        // if we cant find the varData file or there is no valid values in the varData file
-        // we just create a zero-size refCellIndex_, and the calcObjFunc will return 0
-        // without calculating the variance. Plus, we will print out an warning.
-        refCellIndex_.setSize(0);
-
         Info << endl;
         Info << "**************************************************************************** " << endl;
         Info << "*         WARNING! Can't find data files or can't find valid               * " << endl;
-        Info << "*         values in the data file for the variance objFunc!                * " << endl;
+        Info << "*         values in data files for the variance objFunc " << varName_ << "       * " << endl;
         Info << "**************************************************************************** " << endl;
         Info << endl;
     }
     else
     {
+        // varData file found, we need to read in the ref values for all time instances
 
-        refCellIndex_.setSize(nRefPoints_, -1);
-        refCellComp_.setSize(nRefPoints_, -1);
         refValue_.setSize(nTimeSteps);
 
-        // second loop, set refValue
+        // set refValue
         if (varType_ == "scalar")
         {
             for (label n = 0; n < nTimeSteps; n++)
             {
                 scalar t = (n + 1) * deltaT;
                 word timeName = Foam::name(t);
-
-                refValue_[n].setSize(nRefPoints_);
 
                 volScalarField varData(
                     IOobject(
@@ -160,15 +155,58 @@ DAObjFuncVariance::DAObjFuncVariance(
                         IOobject::NO_WRITE),
                     mesh_);
 
-                label pointI = 0;
-                forAll(varData, cellI)
+                nRefPoints_ = 0;
+
+                if (mode_ == "probePoint")
                 {
-                    if (fabs(varData[cellI]) < varUpperBound_)
+                    probeCellIndex_.setSize(0);
+
+                    forAll(probePointCoords_, idxI)
                     {
-                        refValue_[n][pointI] = varData[cellI];
-                        refCellIndex_[pointI] = cellI;
-                        pointI++;
+                        point pointCoord = {probePointCoords_[idxI][0], probePointCoords_[idxI][1], probePointCoords_[idxI][2]};
+                        label cellI = mesh_.findCell(pointCoord);
+                        if (cellI >= 0)
+                        {
+                            probeCellIndex_.append(cellI);
+                            refValue_[n].append(varData[cellI]);
+                            nRefPoints_++;
+                        }
                     }
+                }
+                else if (mode_ == "surface")
+                {
+                    forAll(surfaceNames_, idxI)
+                    {
+                        word surfaceName = surfaceNames_[idxI];
+                        label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
+                        if (patchI >= 0)
+                        {
+                            forAll(varData.boundaryField()[patchI], faceI)
+                            {
+                                refValue_[n].append(varData.boundaryField()[patchI][faceI]);
+                                nRefPoints_++;
+                            }
+                        }
+                        else
+                        {
+                            FatalErrorIn("") << "surfaceName " << surfaceName << " not found!"
+                                             << abort(FatalError);
+                        }
+                    }
+                }
+                else if (mode_ == "field")
+                {
+                    forAll(varData, cellI)
+                    {
+                        refValue_[n].append(varData[cellI]);
+                        nRefPoints_++;
+                    }
+                }
+                else
+                {
+                    FatalErrorIn("") << "mode " << mode_ << " not supported!"
+                                     << "Options are: probePoint, field, or surface"
+                                     << abort(FatalError);
                 }
             }
         }
@@ -179,8 +217,6 @@ DAObjFuncVariance::DAObjFuncVariance(
                 scalar t = (n + 1) * deltaT;
                 word timeName = Foam::name(t);
 
-                refValue_[n].setSize(nRefPoints_);
-
                 volVectorField varData(
                     IOobject(
                         varName_ + "Data",
@@ -190,21 +226,81 @@ DAObjFuncVariance::DAObjFuncVariance(
                         IOobject::NO_WRITE),
                     mesh_);
 
-                label pointI = 0;
-                forAll(varData, cellI)
+                nRefPoints_ = 0;
+
+                if (mode_ == "probePoint")
                 {
-                    for (label comp = 0; comp < 3; comp++)
+                    probeCellIndex_.setSize(0);
+
+                    forAll(probePointCoords_, idxI)
                     {
-                        if (fabs(varData[cellI][comp]) < varUpperBound_)
+                        point pointCoord = {probePointCoords_[idxI][0], probePointCoords_[idxI][1], probePointCoords_[idxI][2]};
+                        label cellI = mesh_.findCell(pointCoord);
+                        if (cellI >= 0)
                         {
-                            refValue_[n][pointI] = varData[cellI][comp];
-                            refCellIndex_[pointI] = cellI;
-                            refCellComp_[pointI] = comp;
-                            pointI++;
+                            probeCellIndex_.append(cellI);
+                            forAll(components_, idxJ)
+                            {
+                                label compI = components_[idxJ];
+                                refValue_[n].append(varData[cellI][compI]);
+                                nRefPoints_++;
+                            }
                         }
                     }
                 }
+                else if (mode_ == "surface")
+                {
+                    forAll(surfaceNames_, idxI)
+                    {
+                        word surfaceName = surfaceNames_[idxI];
+                        label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
+                        if (patchI >= 0)
+                        {
+                            forAll(varData.boundaryField()[patchI], faceI)
+                            {
+                                forAll(components_, idxJ)
+                                {
+                                    label compI = components_[idxJ];
+                                    refValue_[n].append(varData.boundaryField()[patchI][faceI][compI]);
+                                    nRefPoints_++;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            FatalErrorIn("") << "surfaceName " << surfaceName << " not found!"
+                                             << abort(FatalError);
+                        }
+                    }
+                }
+                else if (mode_ == "field")
+                {
+                    forAll(varData, cellI)
+                    {
+                        forAll(components_, idxJ)
+                        {
+                            label compI = components_[idxJ];
+                            refValue_[n].append(varData[cellI][compI]);
+                            nRefPoints_++;
+                        }
+                    }
+                }
+                else
+                {
+                    FatalErrorIn("") << "mode " << mode_ << " not supported!"
+                                     << "Options are: probePoint, field, or surface"
+                                     << abort(FatalError);
+                }
             }
+        }
+
+        reduce(nRefPoints_, sumOp<label>());
+
+        Info << "Find " << nRefPoints_ << " reference points for variance of " << varName_ << endl;
+        if (nRefPoints_ == 0)
+        {
+            FatalErrorIn("") << "varData field exists but one can not find any valid data!"
+                             << abort(FatalError);
         }
     }
 }
@@ -240,45 +336,150 @@ void DAObjFuncVariance::calcObjFunc(
     // initialize objFunValue
     objFuncValue = 0.0;
 
-    const objectRegistry& db = mesh_.thisDb();
-
-    label timeIndex = mesh_.time().timeIndex();
-
-    if (varType_ == "scalar")
+    if (isRefData_)
     {
-        const volScalarField& var = db.lookupObject<volScalarField>(varName_);
 
-        forAll(refCellIndex_, idxI)
+        const objectRegistry& db = mesh_.thisDb();
+
+        label timeIndex = mesh_.time().timeIndex();
+
+        if (varName_ == "wallShearStress")
         {
-            label cellI = refCellIndex_[idxI];
-            scalar varDif = (var[cellI] - refValue_[timeIndex - 1][idxI]);
-            objFuncValue += scale_ * varDif * varDif;
-        }
-    }
-    else if (varType_ == "vector")
-    {
-        const volVectorField& var = db.lookupObject<volVectorField>(varName_);
+            volSymmTensorField devRhoReff = daTurb_.devRhoReff();
 
-        forAll(refCellIndex_, idxI)
+            label pointI = 0;
+            forAll(surfaceNames_, idxI)
+            {
+                word surfaceName = surfaceNames_[idxI];
+                label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
+
+                if (mesh_.boundaryMesh().size() > 0)
+                {
+                    const vectorField& SfB = mesh_.Sf().boundaryField()[patchI];
+                    const scalarField& magSfB = mesh_.magSf().boundaryField()[patchI];
+                    const symmTensorField& ReffB = devRhoReff.boundaryField()[patchI];
+
+                    vectorField shearB = (-SfB / magSfB) & ReffB;
+
+                    forAll(shearB, faceI)
+                    {
+                        forAll(components_, idxJ)
+                        {
+                            label compI = components_[idxJ];
+                            scalar varDif = (shearB[faceI][compI] - refValue_[timeIndex - 1][pointI]);
+                            objFuncValue += scale_ * varDif * varDif;
+                            pointI++;
+                        }
+                    }
+                }
+            }
+        }
+        else
         {
-            label cellI = refCellIndex_[idxI];
-            label comp = refCellComp_[idxI];
-            scalar varDif = (var[cellI][comp] - refValue_[timeIndex - 1][idxI]);
-            objFuncValue += scale_ * varDif * varDif;
-        }
-    }
-    else
-    {
-        FatalErrorIn("") << "varType " << varType_ << " not supported!"
-                         << "Options are: scalar or vector"
-                         << abort(FatalError);
-    }
-    // need to reduce the sum of force across all processors
-    reduce(objFuncValue, sumOp<scalar>());
+            if (varType_ == "scalar")
+            {
+                const volScalarField& var = db.lookupObject<volScalarField>(varName_);
 
-    if (nRefPointsGlobal_ != 0)
-    {
-        objFuncValue /= nRefPointsGlobal_;
+                if (mode_ == "probePoint")
+                {
+                    forAll(probeCellIndex_, idxI)
+                    {
+                        label cellI = probeCellIndex_[idxI];
+                        scalar varDif = (var[cellI] - refValue_[timeIndex - 1][idxI]);
+                        objFuncValue += scale_ * varDif * varDif;
+                    }
+                }
+                else if (mode_ == "surface")
+                {
+                    label pointI = 0;
+                    forAll(surfaceNames_, idxI)
+                    {
+                        word surfaceName = surfaceNames_[idxI];
+                        label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
+                        forAll(var.boundaryField()[patchI], faceI)
+                        {
+                            scalar varDif = (var.boundaryField()[patchI][faceI] - refValue_[timeIndex - 1][pointI]);
+                            objFuncValue += scale_ * varDif * varDif;
+                            pointI++;
+                        }
+                    }
+                }
+                else if (mode_ == "field")
+                {
+                    forAll(var, cellI)
+                    {
+                        scalar varDif = (var[cellI] - refValue_[timeIndex - 1][cellI]);
+                        objFuncValue += scale_ * varDif * varDif;
+                    }
+                }
+            }
+            else if (varType_ == "vector")
+            {
+                const volVectorField& var = db.lookupObject<volVectorField>(varName_);
+
+                if (mode_ == "probePoint")
+                {
+                    label pointI = 0;
+                    forAll(probeCellIndex_, idxI)
+                    {
+                        label cellI = probeCellIndex_[idxI];
+                        forAll(components_, idxJ)
+                        {
+                            label compI = components_[idxJ];
+                            scalar varDif = (var[cellI][compI] - refValue_[timeIndex - 1][pointI]);
+                            objFuncValue += scale_ * varDif * varDif;
+                            pointI++;
+                        }
+                    }
+                }
+                else if (mode_ == "surface")
+                {
+                    label pointI = 0;
+                    forAll(surfaceNames_, idxI)
+                    {
+                        word surfaceName = surfaceNames_[idxI];
+                        label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
+                        forAll(var.boundaryField()[patchI], faceI)
+                        {
+                            forAll(components_, idxJ)
+                            {
+                                label compI = components_[idxJ];
+                                scalar varDif = (var.boundaryField()[patchI][faceI][compI] - refValue_[timeIndex - 1][pointI]);
+                                objFuncValue += scale_ * varDif * varDif;
+                                pointI++;
+                            }
+                        }
+                    }
+                }
+                else if (mode_ == "field")
+                {
+                    label pointI = 0;
+                    forAll(var, cellI)
+                    {
+                        forAll(components_, idxJ)
+                        {
+                            label compI = components_[idxJ];
+                            scalar varDif = (var[cellI][compI] - refValue_[timeIndex - 1][pointI]);
+                            objFuncValue += scale_ * varDif * varDif;
+                            pointI++;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                FatalErrorIn("") << "varType " << varType_ << " not supported!"
+                                 << "Options are: scalar or vector"
+                                 << abort(FatalError);
+            }
+        }
+        // need to reduce the sum of force across all processors
+        reduce(objFuncValue, sumOp<scalar>());
+
+        if (nRefPoints_ != 0)
+        {
+            objFuncValue /= nRefPoints_;
+        }
     }
 
     return;

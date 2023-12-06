@@ -95,6 +95,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getObjFuncValue(char *)
         double getObjFuncValueUnsteady(char *)
         double getObjFuncUnsteadyScaling(char *)
+        double getElapsedClockTime()
+        double getElapsedCpuTime()
         void calcCouplingFaceCoords(double *, double *)
         void calcCouplingFaceCoordsAD(double *, double *, double *)
         void getForces(PetscVec, PetscVec, PetscVec)
@@ -378,6 +380,12 @@ cdef class pyDASolvers:
     
     def getObjFuncUnsteadyScaling(self, objFuncName):
         return self._thisptr.getObjFuncUnsteadyScaling(objFuncName)
+    
+    def getElapsedClockTime(self):
+        return self._thisptr.getElapsedClockTime()
+    
+    def getElapsedCpuTime(self):
+        return self._thisptr.getElapsedCpuTime()
         
     def calcCouplingFaceCoords(self, 
             np.ndarray[double, ndim=1, mode="c"] volCoords,
