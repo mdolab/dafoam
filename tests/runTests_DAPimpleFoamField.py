@@ -29,7 +29,7 @@ if gcomm.rank == 0:
     os.system("getFIData -refFieldName U -refFieldType vector")
     os.system("getFIData -refFieldName p -refFieldType scalar")
     os.system("getFIData -refFieldName wallShearStress -refFieldType vector")
-    os.system("decomposePar -time \'0:\'")
+    os.system("decomposePar -time '0:'")
     os.system("cp constant/turbulenceProperties_SAFV3 constant/turbulenceProperties")
     os.system("rm -rf 0.*")
 
@@ -58,6 +58,22 @@ daOptions = {
                 "varName": "U",
                 "varType": "vector",
                 "components": [0, 1, 2],
+                "addToAdjoint": True,
+                "timeOperator": "average",
+            },
+        },
+        "UVarProbe": {
+            "part1": {
+                "type": "variance",
+                "source": "boxToCell",
+                "min": [-100.0, -100.0, -100.0],
+                "max": [100.0, 100.0, 100.0],
+                "scale": 1.0,
+                "mode": "probePoint",
+                "probePointCoords": [[1.5565, -0.4780, 0.025], [1.5775, -0.1781, 0.025], [1.6245, 0.4924, 0.025]],
+                "varName": "U",
+                "varType": "vector",
+                "components": [0, 1],
                 "addToAdjoint": True,
                 "timeOperator": "average",
             },
@@ -176,6 +192,9 @@ else:
 
     betaNormU = np.linalg.norm(funcsSens["UVar"]["beta"])
     funcsSens["UVar"]["beta"] = betaNormU
+
+    betaNormUProb = np.linalg.norm(funcsSens["UVarProbe"]["beta"])
+    funcsSens["UVarProbe"]["beta"] = betaNormUProb
 
     betaNormP = np.linalg.norm(funcsSens["pVar"]["beta"])
     funcsSens["pVar"]["beta"] = betaNormP

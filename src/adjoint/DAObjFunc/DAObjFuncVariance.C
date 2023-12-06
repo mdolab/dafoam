@@ -136,9 +136,6 @@ DAObjFuncVariance::DAObjFuncVariance(
     {
         // varData file found, we need to read in the ref values for all time instances
 
-        nRefPoints_ = 0;
-
-        probeCellIndex_.setSize(0);
         refValue_.setSize(nTimeSteps);
 
         // set refValue
@@ -158,8 +155,12 @@ DAObjFuncVariance::DAObjFuncVariance(
                         IOobject::NO_WRITE),
                     mesh_);
 
+                nRefPoints_ = 0;
+
                 if (mode_ == "probePoint")
                 {
+                    probeCellIndex_.setSize(0);
+
                     forAll(probePointCoords_, idxI)
                     {
                         point pointCoord = {probePointCoords_[idxI][0], probePointCoords_[idxI][1], probePointCoords_[idxI][2]};
@@ -225,8 +226,12 @@ DAObjFuncVariance::DAObjFuncVariance(
                         IOobject::NO_WRITE),
                     mesh_);
 
+                nRefPoints_ = 0;
+
                 if (mode_ == "probePoint")
                 {
+                    probeCellIndex_.setSize(0);
+
                     forAll(probePointCoords_, idxI)
                     {
                         point pointCoord = {probePointCoords_[idxI][0], probePointCoords_[idxI][1], probePointCoords_[idxI][2]};
@@ -291,7 +296,7 @@ DAObjFuncVariance::DAObjFuncVariance(
 
         reduce(nRefPoints_, sumOp<label>());
 
-        Info << "Find " << nRefPoints_ << " reference points for variance" << endl;
+        Info << "Find " << nRefPoints_ << " reference points for variance of " << varName_ << endl;
         if (nRefPoints_ == 0)
         {
             FatalErrorIn("") << "varData field exists but one can not find any valid data!"
