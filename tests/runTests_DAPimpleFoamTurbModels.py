@@ -44,7 +44,7 @@ for model in ["SA", "KE", "KW", "SST"]:
             "epsilon0": {"variable": "epsilon", "patches": ["inout"], "value": [0.135]},
             "useWallFunction": True,
         },
-        "unsteadyAdjoint": {"mode": "timeAccurate", "PCMatPrecomputeInterval": 5, "PCMatUpdateInterval": 1},
+        "unsteadyAdjoint": {"mode": "timeAccurate", "PCMatPrecomputeInterval": 5, "PCMatUpdateInterval": 1, "objFuncTimeOperator": "average"},
         "printIntervalUnsteady": 1,
         "primalVarBounds": {"kMin": -1e16, "omegaMin": -1e16, "epsilonMin": -1e16},
         "useConstrainHbyA": True,
@@ -58,7 +58,6 @@ for model in ["SA", "KE", "KW", "SST"]:
                     "alphaName": "alpha",
                     "scale": 1.0,
                     "addToAdjoint": True,
-                    "timeOperator": "average",
                 }
             },
             "CL": {
@@ -70,7 +69,6 @@ for model in ["SA", "KE", "KW", "SST"]:
                     "alphaName": "alpha",
                     "scale": 1.0,
                     "addToAdjoint": False,
-                    "timeOperator": "average",
                 }
             },
         },

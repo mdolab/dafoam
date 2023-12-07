@@ -77,7 +77,6 @@ DAObjFuncMeshQualityKS::DAObjFuncMeshQualityKS(
         Info << "includeFaceList " << includeFaceList_ << endl;
     }
 
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 }
 
 /// calculate the value of objective function

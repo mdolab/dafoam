@@ -207,7 +207,7 @@ protected:
     HashTable<scalar> unsteadyObjFuncs_;
 
     /// a scaling factor related to the unsteady obj func timeOperator e.g., in dFdW calculation
-    HashTable<scalar> unsteadyObjFuncsScaling_;
+    scalar unsteadyObjFuncsScaling_;
 
 public:
     /// Runtime type information
@@ -780,7 +780,9 @@ public:
         {
             DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
             word objFuncName = daObjFunc.getObjFuncName();
-            unsteadyObjFuncs_[objFuncName] = 0.0;
+            word objFuncPart = daObjFunc.getObjFuncPart();
+            word uKey = objFuncName + objFuncPart;
+            unsteadyObjFuncs_[uKey] = 0.0;
         }
     }
 
@@ -788,15 +790,12 @@ public:
     void calcUnsteadyObjFuncs();
 
     /// return the unsteady objFunc values
-    scalar getObjFuncValueUnsteady(const word objFuncName)
-    {
-        return unsteadyObjFuncs_[objFuncName];
-    }
+    scalar getObjFuncValueUnsteady(const word objFuncName);
 
     /// get the objective func scaling for unsteady adjoint
-    scalar getObjFuncUnsteadyScaling(const word objFuncName)
+    scalar getObjFuncUnsteadyScaling()
     {
-        return unsteadyObjFuncsScaling_[objFuncName];
+        return unsteadyObjFuncsScaling_;
     }
 
     /// get the unsteady adjoint start time index

@@ -71,8 +71,6 @@ DAObjFuncCenterOfPressure::DAObjFuncCenterOfPressure(
     center_[2] = centerList[2];
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
-
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 }
 
 /// calculate the value of objective function

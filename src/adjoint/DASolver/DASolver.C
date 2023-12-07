@@ -173,26 +173,30 @@ void DASolver::calcUnsteadyObjFuncs()
 
     scalar objFuncValue = 0.0;
 
+    word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "objFuncTimeOperator");
+
     forAll(daObjFuncPtrList_, idxI)
     {
         DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
         word objFuncName = daObjFunc.getObjFuncName();
-        if (daObjFunc.getObjFuncTimeOperator() == "None")
+        word objFuncPart = daObjFunc.getObjFuncPart();
+        word uKey = objFuncName + objFuncPart;
+        if (timeOperator == "None")
         {
             FatalErrorIn("") << "calcUnsteadyObjFuncs is called but the timeOperator is not set!!! Options are: average or sum"
                              << abort(FatalError);
         }
-        else if (daObjFunc.getObjFuncTimeOperator() == "sum")
+        else if (timeOperator == "sum")
         {
             label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
             label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
             label timeIndex = runTimePtr_->timeIndex();
             if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
             {
-                unsteadyObjFuncs_[objFuncName] += this->getObjFuncValue(objFuncName);
+                unsteadyObjFuncs_[uKey] += daObjFunc.getObjFuncValue();
             }
         }
-        else if (daObjFunc.getObjFuncTimeOperator() == "average")
+        else if (timeOperator == "average")
         {
             // calculate the average on the fly, i.e., moving average
             label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
@@ -201,14 +205,14 @@ void DASolver::calcUnsteadyObjFuncs()
             if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
             {
                 label n = timeIndex - startTimeIndex + 1;
-                scalar objFuncVal = this->getObjFuncValue(objFuncName);
-                unsteadyObjFuncs_[objFuncName] = (unsteadyObjFuncs_[objFuncName] * (n - 1) + objFuncVal) / n;
+                scalar objFuncVal = daObjFunc.getObjFuncValue();
+                unsteadyObjFuncs_[uKey] = (unsteadyObjFuncs_[uKey] * (n - 1) + objFuncVal) / n;
             }
         }
         else
         {
-            FatalErrorIn("calcUnsteadyObjFuncs") << "timeOperator not valid! Options are None, average, or sum"
-                                                 << abort(FatalError);
+            FatalErrorIn("") << "calcUnsteadyObjFuncs is called but the timeOperator is not set!!! Options are: average or sum"
+                             << abort(FatalError);
         }
     }
 }
@@ -228,18 +232,22 @@ void DASolver::printAllObjFuncs()
                                          << abort(FatalError);
     }
 
+    word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "objFuncTimeOperator");
+
     forAll(daObjFuncPtrList_, idxI)
     {
         DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
         word objFuncName = daObjFunc.getObjFuncName();
+        word objFuncPart = daObjFunc.getObjFuncPart();
+        word uKey = objFuncName + objFuncPart;
         scalar objFuncVal = daObjFunc.getObjFuncValue();
         Info << objFuncName
-             << "-" << daObjFunc.getObjFuncPart()
+             << "-" << objFuncPart
              << "-" << daObjFunc.getObjFuncType()
              << ": " << objFuncVal;
-        if (daObjFunc.getObjFuncTimeOperator() == "average" || daObjFunc.getObjFuncTimeOperator() == "sum")
+        if (timeOperator == "average" || timeOperator == "sum")
         {
-            Info << " Unsteady " << daObjFunc.getObjFuncTimeOperator() << " " << unsteadyObjFuncs_[objFuncName];
+            Info << " Unsteady " << timeOperator << " " << unsteadyObjFuncs_[uKey];
         }
 #ifdef CODI_AD_FORWARD
 
@@ -254,12 +262,50 @@ void DASolver::printAllObjFuncs()
 
             if (daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode") == "timeAccurate")
             {
-                Info << " Unsteady Deriv: " << unsteadyObjFuncs_[objFuncName].getGradient();
+                Info << " Unsteady Deriv: " << unsteadyObjFuncs_[uKey].getGradient();
             }
         }
 #endif
         Info << endl;
     }
+}
+
+scalar DASolver::getObjFuncValueUnsteady(const word objFuncName)
+{
+    /*
+    Description:
+        Return the value of the objective function for unsteady cases
+        NOTE: we will sum up all the parts in objFuncName
+
+    Input:
+        objFuncName: the name of the objective function
+
+    Output:
+        objFuncValue: the value of the objective
+    */
+    if (daObjFuncPtrList_.size() == 0)
+    {
+        FatalErrorIn("printAllObjFuncs") << "daObjFuncPtrList_.size() ==0... "
+                                         << "Forgot to call setDAObjFuncList?"
+                                         << abort(FatalError);
+    }
+
+    scalar objFuncValue = 0.0;
+
+    forAll(daObjFuncPtrList_, idxI)
+    {
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
+        word objFuncNameI = daObjFunc.getObjFuncName();
+        word objFuncPart = daObjFunc.getObjFuncPart();
+        word uKey = objFuncNameI + objFuncPart;
+
+        if (objFuncNameI == objFuncName)
+        {
+            objFuncValue += unsteadyObjFuncs_[uKey];
+        }
+    }
+
+    return objFuncValue;
 }
 
 scalar DASolver::getObjFuncValue(const word objFuncName)
@@ -398,24 +444,26 @@ void DASolver::setDAObjFuncList()
     {
         DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
         word objFuncName = daObjFunc.getObjFuncName();
-        unsteadyObjFuncs_.set(objFuncName, 0.0);
+        word objFuncPart = daObjFunc.getObjFuncPart();
+        word uKey = objFuncName + objFuncPart;
+        unsteadyObjFuncs_.set(uKey, 0.0);
 
-        word timeOperator = daObjFunc.getObjFuncTimeOperator();
+        word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "objFuncTimeOperator");
         if (timeOperator == "None" || timeOperator == "sum")
         {
-            unsteadyObjFuncsScaling_.set(objFuncName, 1.0);
+            unsteadyObjFuncsScaling_ = 1.0;
         }
         else if (timeOperator == "average")
         {
             label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
             label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
             label nInstances = endTimeIndex - startTimeIndex + 1;
-            unsteadyObjFuncsScaling_.set(objFuncName, 1.0 / nInstances);
+            unsteadyObjFuncsScaling_ = 1.0 / nInstances;
         }
         else
         {
-            FatalErrorIn("calcUnsteadyObjFuncs") << "timeOperator not valid! Options are None, average, or sum"
-                                                 << abort(FatalError);
+            FatalErrorIn("setDAObjFuncList") << "timeOperator not valid! Options are None, average, or sum"
+                                             << abort(FatalError);
         }
     }
 }

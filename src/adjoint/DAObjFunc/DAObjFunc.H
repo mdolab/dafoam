@@ -92,9 +92,6 @@ protected:
     /// the connectivity information for the objective function
     List<List<word>> objFuncConInfo_;
 
-    /// the unsteady objective function type like sum or average
-    word timeOperator_ = "None";
-
 public:
     /// Runtime type information
     TypeName("DAObjFunc");
@@ -232,11 +229,6 @@ public:
     const List<List<word>>& getObjFuncConInfo() const
     {
         return objFuncConInfo_;
-    }
-
-    const word& getObjFuncTimeOperator() const
-    {
-        return timeOperator_;
     }
 
     /// expSumKS stores sum[exp(coeffKS*x_i)] for KS function which will be used to scale dFdW

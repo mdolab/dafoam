@@ -465,6 +465,7 @@ class DAOPTION(object):
             "periodicity": -1.0,
             "objFuncStartTime": -1.0,
             "objFuncEndTime": -1.0,
+            "objFuncTimeOperator": "None",
             "PCMatPrecomputeInterval": 100,
             "PCMatUpdateInterval": 1,
             "reduceIO": True,
@@ -2415,7 +2416,7 @@ class PYDAFOAM(object):
                     # on the state at this time index
                     dFScaling = 1.0
                     if n >= objFuncStartTimeIndex and n <= objFuncEndTimeIndex:
-                        dFScaling = self.solver.getObjFuncUnsteadyScaling(objFuncName.encode())
+                        dFScaling = self.solver.getObjFuncUnsteadyScaling()
                     else:
                         dFScaling = 0.0
 

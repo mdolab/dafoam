@@ -90,8 +90,6 @@ DAObjFuncPower::DAObjFuncPower(
 
     // now replace nut with the corrected name for the selected turbulence model
     daModel.correctModelStates(objFuncConInfo_[0]);
-
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 }
 
 /// calculate the value of objective function

@@ -60,7 +60,6 @@ DAObjFuncTotalTemperatureRatio::DAObjFuncTotalTemperatureRatio(
         Info << "gamma " << gamma_ << endl;
     }
 
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 }
 
 /// calculate the value of objective function
