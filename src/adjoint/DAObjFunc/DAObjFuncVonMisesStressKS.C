@@ -47,7 +47,6 @@ DAObjFuncVonMisesStressKS::DAObjFuncVonMisesStressKS(
 
     objFuncDict_.readEntry<scalar>("coeffKS", coeffKS_);
 
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 }
 
 /// calculate the value of objective function

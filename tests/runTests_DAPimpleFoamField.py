@@ -44,11 +44,11 @@ daOptions = {
     "designSurfaces": ["wing"],
     "solverName": "DAPimpleFoam",
     "primalBC": {"U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0, 0]}, "useWallFunction": True},
-    "unsteadyAdjoint": {"mode": "timeAccurate", "objFuncStartTime": 0.01, "objFuncEndTime": 0.045},
+    "unsteadyAdjoint": {"mode": "timeAccurate", "objFuncStartTime": 0.01, "objFuncEndTime": 0.045, "objFuncTimeOperator": "average"},
     "printIntervalUnsteady": 1,
     "objFunc": {
-        "UVar": {
-            "part1": {
+        "UPVar": {
+            "UVar": {
                 "type": "variance",
                 "source": "boxToCell",
                 "min": [-100.0, -100.0, -100.0],
@@ -59,7 +59,18 @@ daOptions = {
                 "varType": "vector",
                 "components": [0, 1, 2],
                 "addToAdjoint": True,
-                "timeOperator": "average",
+            },
+            "PVar": {
+                "type": "variance",
+                "source": "boxToCell",
+                "min": [-100.0, -100.0, -100.0],
+                "max": [100.0, 100.0, 100.0],
+                "scale": 1.0,
+                "mode": "surface",
+                "varName": "p",
+                "varType": "scalar",
+                "surfaceNames": ["wing"],
+                "addToAdjoint": True,
             },
         },
         "UVarProbe": {
@@ -75,22 +86,6 @@ daOptions = {
                 "varType": "vector",
                 "components": [0, 1],
                 "addToAdjoint": True,
-                "timeOperator": "average",
-            },
-        },
-        "pVar": {
-            "part1": {
-                "type": "variance",
-                "source": "boxToCell",
-                "min": [-100.0, -100.0, -100.0],
-                "max": [100.0, 100.0, 100.0],
-                "scale": 1.0,
-                "mode": "surface",
-                "varName": "p",
-                "varType": "scalar",
-                "surfaceNames": ["wing"],
-                "addToAdjoint": True,
-                "timeOperator": "average",
             },
         },
         "wallShearStressVar": {
@@ -106,7 +101,6 @@ daOptions = {
                 "components": [0, 1],
                 "surfaceNames": ["wing"],
                 "addToAdjoint": True,
-                "timeOperator": "average",
             },
         },
     },
@@ -190,14 +184,11 @@ else:
     funcsSens = {}
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
 
-    betaNormU = np.linalg.norm(funcsSens["UVar"]["beta"])
-    funcsSens["UVar"]["beta"] = betaNormU
+    betaNormU = np.linalg.norm(funcsSens["UPVar"]["beta"])
+    funcsSens["UPVar"]["beta"] = betaNormU
 
     betaNormUProb = np.linalg.norm(funcsSens["UVarProbe"]["beta"])
     funcsSens["UVarProbe"]["beta"] = betaNormUProb
-
-    betaNormP = np.linalg.norm(funcsSens["pVar"]["beta"])
-    funcsSens["pVar"]["beta"] = betaNormP
 
     betaNormS = np.linalg.norm(funcsSens["wallShearStressVar"]["beta"])
     funcsSens["wallShearStressVar"]["beta"] = betaNormS

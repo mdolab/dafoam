@@ -45,8 +45,6 @@ DAObjFuncPatchMean::DAObjFuncPatchMean(
     objFuncDict_.readEntry<word>("varType", varType_);
 
     objFuncDict_.readEntry<label>("component", component_);
-
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 }
 
 /// calculate the value of objective function

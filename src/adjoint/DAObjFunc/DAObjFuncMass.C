@@ -44,7 +44,6 @@ DAObjFuncMass::DAObjFuncMass(
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
 
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 }
 
 /// calculate the value of objective function

@@ -74,8 +74,6 @@ DAObjFuncFieldInversion::DAObjFuncFieldInversion(
     {
         objFuncConInfo_ = {{}}; // level 0
     }
-
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
 }
 
 /// calculate the value of objective function

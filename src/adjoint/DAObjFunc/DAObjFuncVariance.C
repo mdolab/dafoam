@@ -65,8 +65,6 @@ DAObjFuncVariance::DAObjFuncVariance(
         objFuncDict_.readEntry<labelList>("components", components_);
     }
 
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
-
     if (daIndex.adjStateNames.found(varName_))
     {
         objFuncConInfo_ = {{varName_}};

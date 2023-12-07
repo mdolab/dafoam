@@ -496,10 +496,10 @@ public:
         return returnVal;
     }
 
-    double getObjFuncUnsteadyScaling(const word objFuncName)
+    double getObjFuncUnsteadyScaling()
     {
         double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncUnsteadyScaling(objFuncName));
+        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncUnsteadyScaling());
         return returnVal;
     }
 

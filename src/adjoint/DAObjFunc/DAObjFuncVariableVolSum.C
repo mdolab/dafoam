@@ -51,8 +51,6 @@ DAObjFuncVariableVolSum::DAObjFuncVariableVolSum(
 
     objFuncDict_.readEntry<label>("divByTotalVol", divByTotalVol_);
 
-    timeOperator_ = objFuncDict.lookupOrDefault<word>("timeOperator", "None");
-
     if (daIndex.adjStateNames.found(varName_))
     {
         objFuncConInfo_ = {{varName_}};
