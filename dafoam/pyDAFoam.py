@@ -2464,6 +2464,8 @@ class PYDAFOAM(object):
                             self.calcTotalDerivsField(objFuncName, designVarName, fieldType, dFScaling, True)
                         else:
                             raise Error("designVarType not valid!")
+                    
+                    Info("Computing partials for old times %f s" % self.solver.getElapsedClockTime())
 
                     # we need to calculate dRdW0TPsi for the previous time step
                     if ddtSchemeOrder == 1:

@@ -3436,21 +3436,15 @@ void DASolver::calcdFdW(
             daIndexPtr_()));
 
         // initialize objFunc to get objFuncCellSources and objFuncFaceSources
-        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daResidualPtr_(),
-            objFuncName,
-            objFuncPart,
-            objFuncSubDictPart));
+        // get objFunc from daObjFuncPtrList_
+        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
 
         // setup options for daJacCondFdW computation
         dictionary options;
-        const List<List<word>>& objFuncConInfo = daObjFunc->getObjFuncConInfo();
-        const labelList& objFuncFaceSources = daObjFunc->getObjFuncFaceSources();
-        const labelList& objFuncCellSources = daObjFunc->getObjFuncCellSources();
+        const List<List<word>>& objFuncConInfo = daObjFunc.getObjFuncConInfo();
+        const labelList& objFuncFaceSources = daObjFunc.getObjFuncFaceSources();
+        const labelList& objFuncCellSources = daObjFunc.getObjFuncCellSources();
         options.set("objFuncConInfo", objFuncConInfo);
         options.set("objFuncFaceSources", objFuncFaceSources);
         options.set("objFuncCellSources", objFuncCellSources);
@@ -3516,7 +3510,7 @@ void DASolver::calcdFdW(
 
         // clear up
         daJacCon->clear();
-        daObjFunc->clear();
+        daObjFunc.clear();
     }
 
     wordList writeJacobians;
@@ -4208,16 +4202,9 @@ void DASolver::calcdFdBCAD(
         word objFuncPart = objFuncSubDict.toc()[idxK];
         dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
-        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
-        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daResidualPtr_(),
-            objFuncName,
-            objFuncPart,
-            objFuncSubDictPart));
+        // get objFunc from daObjFuncPtrList_
+        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
 
         // reset tape
         this->globalADTape_.reset();
@@ -4254,7 +4241,7 @@ void DASolver::calcdFdBCAD(
         // update all intermediate variables and boundary conditions
         this->updateStateBoundaryConditions();
         // compute the objective function
-        scalar fRef = daObjFunc->getObjFuncValue();
+        scalar fRef = daObjFunc.getObjFuncValue();
         // register f as the output
         this->globalADTape_.registerOutput(fRef);
         // stop recording
@@ -4316,7 +4303,7 @@ void DASolver::calcdFdBCAD(
             this->setBCToOFVars(dvSubDict, BC);
         }
         this->updateStateBoundaryConditions();
-        fRef = daObjFunc->getObjFuncValue();
+        fRef = daObjFunc.getObjFuncValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
@@ -5120,16 +5107,9 @@ void DASolver::calcdFdFieldAD(
         word objFuncPart = objFuncSubDict.toc()[idxK];
         dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
-        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
-        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daResidualPtr_(),
-            objFuncName,
-            objFuncPart,
-            objFuncSubDictPart));
+        // get objFunc from daObjFuncPtrList_
+        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
 
         // reset tape
         this->globalADTape_.reset();
@@ -5141,7 +5121,7 @@ void DASolver::calcdFdFieldAD(
         // update all intermediate variables and boundary conditions
         this->updateStateBoundaryConditions();
         // compute the objective function
-        scalar fRef = daObjFunc->getObjFuncValue();
+        scalar fRef = daObjFunc.getObjFuncValue();
         // register f as the output
         this->globalADTape_.registerOutput(fRef);
         // stop recording
@@ -5177,7 +5157,7 @@ void DASolver::calcdFdFieldAD(
         this->deactivateFieldVariableInput4AD(fieldName, fieldType);
         this->updateBoundaryConditions(fieldName, fieldType);
         this->updateStateBoundaryConditions();
-        fRef = daObjFunc->getObjFuncValue();
+        fRef = daObjFunc.getObjFuncValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
@@ -5564,16 +5544,9 @@ void DASolver::calcdFdWAD(
         word objFuncPart = objFuncSubDict.toc()[idxJ];
         dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
-        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
-        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daResidualPtr_(),
-            objFuncName,
-            objFuncPart,
-            objFuncSubDictPart));
+        // get objFunc from daObjFuncPtrList_
+        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
 
         // reset tape
         this->globalADTape_.reset();
@@ -5584,7 +5557,7 @@ void DASolver::calcdFdWAD(
         // update all intermediate variables and boundary conditions
         this->updateStateBoundaryConditions();
         // compute the objective function
-        scalar fRef = daObjFunc->getObjFuncValue();
+        scalar fRef = daObjFunc.getObjFuncValue();
         // register f as the output
         this->globalADTape_.registerOutput(fRef);
         // stop recording
@@ -5619,7 +5592,7 @@ void DASolver::calcdFdWAD(
 
         this->deactivateStateVariableInput4AD();
         this->updateStateBoundaryConditions();
-        fRef = daObjFunc->getObjFuncValue();
+        fRef = daObjFunc.getObjFuncValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
@@ -5690,16 +5663,9 @@ void DASolver::calcdFdXvAD(
         word objFuncPart = objFuncSubDict.toc()[idxJ];
         dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
-        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
-        autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daResidualPtr_(),
-            objFuncName,
-            objFuncPart,
-            objFuncSubDictPart));
+        // get objFunc from daObjFuncPtrList_
+        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
 
         pointField meshPoints = meshPtr_->points();
 
@@ -5720,7 +5686,7 @@ void DASolver::calcdFdXvAD(
         // update all intermediate variables and boundary conditions
         this->updateStateBoundaryConditions();
         // compute the objective function
-        scalar fRef = daObjFunc->getObjFuncValue();
+        scalar fRef = daObjFunc.getObjFuncValue();
         // register f as the output
         this->globalADTape_.registerOutput(fRef);
         // stop recording
@@ -5776,7 +5742,7 @@ void DASolver::calcdFdXvAD(
         meshPtr_->movePoints(meshPoints);
         meshPtr_->moving(false);
         this->updateStateBoundaryConditions();
-        fRef = daObjFunc->getObjFuncValue();
+        fRef = daObjFunc.getObjFuncValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
@@ -6375,16 +6341,9 @@ void DASolver::calcdFdACTAD(
                 word objFuncPart = objFuncSubDict.toc()[idxJ];
                 dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
-                // initialize objFunc to get objFuncCellSources and objFuncFaceSources
-                autoPtr<DAObjFunc> daObjFunc(DAObjFunc::New(
-                    meshPtr_(),
-                    daOptionPtr_(),
-                    daModelPtr_(),
-                    daIndexPtr_(),
-                    daResidualPtr_(),
-                    objFuncName,
-                    objFuncPart,
-                    objFuncSubDictPart));
+                // get objFunc from daObjFuncPtrList_
+                label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
+                DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
 
                 // get the design variable vals
                 scalarList actDVList(nActDVs);
@@ -6416,7 +6375,7 @@ void DASolver::calcdFdACTAD(
                 // update all intermediate variables and boundary conditions
                 this->updateStateBoundaryConditions();
                 // compute the objective function
-                scalar fRef = daObjFunc->getObjFuncValue();
+                scalar fRef = daObjFunc.getObjFuncValue();
                 // register f as the output
                 this->globalADTape_.registerOutput(fRef);
                 // stop recording
@@ -6470,7 +6429,7 @@ void DASolver::calcdFdACTAD(
                 }
                 fvSource.updateFvSource();
                 this->updateStateBoundaryConditions();
-                fRef = daObjFunc->getObjFuncValue();
+                fRef = daObjFunc.getObjFuncValue();
 
                 if (daOptionPtr_->getOption<label>("debug"))
                 {
