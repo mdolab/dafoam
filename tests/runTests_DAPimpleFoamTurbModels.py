@@ -142,7 +142,7 @@ for model in ["SA", "KE", "KW", "SST"]:
     xDV = DVGeo.getValues()
     optFuncs.calcObjFuncValues(xDV)
 
-    # DASolver.runColoring()
+    DASolver.runColoring()
 
     dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
     DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, dRdWTPC)
