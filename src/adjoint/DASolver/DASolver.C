@@ -3510,7 +3510,6 @@ void DASolver::calcdFdW(
 
         // clear up
         daJacCon->clear();
-        daObjFunc.clear();
     }
 
     wordList writeJacobians;
