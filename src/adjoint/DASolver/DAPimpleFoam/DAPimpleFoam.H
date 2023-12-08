@@ -96,7 +96,10 @@ protected:
     scalar pRefValue_ = 0.0;
 
     /// the primal IO interval
-    label IOInterval_ = 1; 
+    label IOInterval_ = 1;
+
+    /// whether to write mesh for the reduceIO
+    reduceIOWriteMesh_ = 0;
 
 public:
     TypeName("DAPimpleFoam");

@@ -1162,7 +1162,7 @@ public:
     void disableStateAutoWrite();
 
     /// write state variables that are NO_WRITE to disk
-    void writeAdjStates();
+    void writeAdjStates(const label writeMesh);
 
     /// return the elapsed clock time for testing speed
     scalar getElapsedClockTime()

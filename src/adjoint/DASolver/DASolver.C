@@ -4199,7 +4199,6 @@ void DASolver::calcdFdBCAD(
     forAll(objFuncSubDict.toc(), idxK)
     {
         word objFuncPart = objFuncSubDict.toc()[idxK];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
         // get objFunc from daObjFuncPtrList_
         label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
@@ -5104,7 +5103,6 @@ void DASolver::calcdFdFieldAD(
     forAll(objFuncSubDict.toc(), idxK)
     {
         word objFuncPart = objFuncSubDict.toc()[idxK];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
         // get objFunc from daObjFuncPtrList_
         label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
@@ -5541,7 +5539,6 @@ void DASolver::calcdFdWAD(
     {
         // get the subDict for this part
         word objFuncPart = objFuncSubDict.toc()[idxJ];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
         // get objFunc from daObjFuncPtrList_
         label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
@@ -5660,7 +5657,6 @@ void DASolver::calcdFdXvAD(
     {
         // get the subDict for this part
         word objFuncPart = objFuncSubDict.toc()[idxJ];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
         // get objFunc from daObjFuncPtrList_
         label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
@@ -6338,7 +6334,6 @@ void DASolver::calcdFdACTAD(
             {
                 // get the subDict for this part
                 word objFuncPart = objFuncSubDict.toc()[idxJ];
-                dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
 
                 // get objFunc from daObjFuncPtrList_
                 label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
@@ -8832,7 +8827,7 @@ void DASolver::disableStateAutoWrite()
     }
 }
 
-void DASolver::writeAdjStates()
+void DASolver::writeAdjStates(const label writeMesh)
 {
     /*
     Description:
@@ -8903,6 +8898,11 @@ void DASolver::writeAdjStates()
             const volVectorField& fvSource = meshPtr_->thisDb().lookupObject<volVectorField>("fvSource");
             fvSource.write();
         }
+    }
+
+    if (writeMesh)
+    {
+        meshPtr_->write();
     }
 }
 
