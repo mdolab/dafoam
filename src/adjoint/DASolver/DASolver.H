@@ -786,6 +786,23 @@ public:
         }
     }
 
+    /// return the index of a give objFuncName in daObjFuncPtrList_
+    label getObjFuncListIndex(
+        const word objFuncName,
+        const word objFuncPart)
+    {
+        forAll(daObjFuncPtrList_, idxI)
+        {
+            DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
+            word objFuncName1 = daObjFunc.getObjFuncName();
+            word objFuncPart1 = daObjFunc.getObjFuncPart();
+            if (objFuncPart1 == objFuncPart && objFuncName1 == objFuncName)
+            {
+                return idxI;
+            }
+        }
+    }
+
     /// calculate and save the unsteady objective function
     void calcUnsteadyObjFuncs();
 
