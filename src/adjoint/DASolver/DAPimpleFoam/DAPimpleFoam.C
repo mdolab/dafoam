@@ -87,6 +87,18 @@ void DAPimpleFoam::initSolver()
             fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
         daFvSourcePtr_->calcFvSource(fvSource);
     }
+
+    // reduceIO does not write mesh, but if there is a FFD variable, set writeMesh to 1
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar");
+    forAll(dvSubDict.toc(), idxI)
+    {
+        word dvName = dvSubDict.toc()[idxI];
+        if (dvSubDict.subDict(dvName).getWord("designVarType") == "FFD")
+        {
+            reduceIOWriteMesh_ = 1;
+            break;
+        }
+    }
 }
 
 label DAPimpleFoam::solvePrimal(
@@ -222,7 +234,7 @@ label DAPimpleFoam::solvePrimal(
 
         if (reduceIO)
         {
-            this->writeAdjStates();
+            this->writeAdjStates(reduceIOWriteMesh_);
         }
         else
         {

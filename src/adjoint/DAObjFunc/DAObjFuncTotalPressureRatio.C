@@ -64,7 +64,6 @@ DAObjFuncTotalPressureRatio::DAObjFuncTotalPressureRatio(
         Info << "Cp " << Cp_ << endl;
         Info << "gamma " << gamma_ << endl;
     }
-
 }
 
 /// calculate the value of objective function
@@ -98,34 +97,31 @@ void DAObjFuncTotalPressureRatio::calcObjFunc(
         objFuncValue: the sum of objective, reduced across all processors and scaled by "scale"
     */
 
-    // calculate the area of all the inlet/outletPatches
-    if (areaSumInlet_ < 0.0 || areaSumOutlet_ < 0.0)
+    // always calculate the area of all the inlet/outletPatches
+    areaSumInlet_ = 0.0;
+    areaSumOutlet_ = 0.0;
+    forAll(objFuncFaceSources, idxI)
     {
-        areaSumInlet_ = 0.0;
-        areaSumOutlet_ = 0.0;
-        forAll(objFuncFaceSources, idxI)
+        const label& objFuncFaceI = objFuncFaceSources[idxI];
+        label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+        const label patchI = daIndex_.bFacePatchI[bFaceI];
+        const label faceI = daIndex_.bFaceFaceI[bFaceI];
+        word patchName = mesh_.boundaryMesh()[patchI].name();
+        if (DAUtility::isInList<word>(patchName, inletPatches_))
         {
-            const label& objFuncFaceI = objFuncFaceSources[idxI];
-            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
-            const label patchI = daIndex_.bFacePatchI[bFaceI];
-            const label faceI = daIndex_.bFaceFaceI[bFaceI];
-            word patchName = mesh_.boundaryMesh()[patchI].name();
-            if (DAUtility::isInList<word>(patchName, inletPatches_))
-            {
-                areaSumInlet_ += mesh_.magSf().boundaryField()[patchI][faceI];
-            }
-            else if (DAUtility::isInList<word>(patchName, outletPatches_))
-            {
-                areaSumOutlet_ += mesh_.magSf().boundaryField()[patchI][faceI];
-            }
-            else
-            {
-                FatalErrorIn(" ") << "inlet/outletPatches names are not in patches" << abort(FatalError);
-            }
+            areaSumInlet_ += mesh_.magSf().boundaryField()[patchI][faceI];
         }
-        reduce(areaSumInlet_, sumOp<scalar>());
-        reduce(areaSumOutlet_, sumOp<scalar>());
+        else if (DAUtility::isInList<word>(patchName, outletPatches_))
+        {
+            areaSumOutlet_ += mesh_.magSf().boundaryField()[patchI][faceI];
+        }
+        else
+        {
+            FatalErrorIn(" ") << "inlet/outletPatches names are not in patches" << abort(FatalError);
+        }
     }
+    reduce(areaSumInlet_, sumOp<scalar>());
+    reduce(areaSumOutlet_, sumOp<scalar>());
 
     // initialize faceValues to zero
     forAll(objFuncFaceValues, idxI)
