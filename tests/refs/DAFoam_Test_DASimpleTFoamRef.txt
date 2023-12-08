@@ -8,13 +8,13 @@ Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: NU
 Dictionary Key: shapey
-@value   -195.0043088707475 0.001 1e-05
-@value    68.38314109369782 0.001 1e-05
-@value   -42.31471619182776 0.001 1e-05
+@value   -204.6444265560553 0.001 1e-05
+@value     68.3267549079506 0.001 1e-05
+@value   -32.81975544151101 0.001 1e-05
 Dictionary Key: shapez
-@value   -4.218667080313828 0.001 1e-05
-@value   -1.333432116601133 0.001 1e-05
-@value    1.950014791513334 0.001 1e-05
+@value   -4.224928144500048 0.001 1e-05
+@value     -1.3401659269247 0.001 1e-05
+@value    1.943753727554488 0.001 1e-05
 Dictionary Key: PL
 Dictionary Key: shapey
 @value    2.115930039789867 0.001 1e-05
