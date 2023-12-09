@@ -2464,8 +2464,6 @@ class PYDAFOAM(object):
                             self.calcTotalDerivsField(objFuncName, designVarName, fieldType, dFScaling, True)
                         else:
                             raise Error("designVarType not valid!")
-                    
-                    Info("Computing partials for old times %f s" % self.solver.getElapsedClockTime())
 
                     # we need to calculate dRdW0TPsi for the previous time step
                     if ddtSchemeOrder == 1:
@@ -3083,6 +3081,9 @@ class PYDAFOAM(object):
 
         if self.solverInitialized == 1:
             raise Error("pyDAFoam: self._initSolver has been called! One shouldn't initialize solvers twice!")
+        
+        Info("Init solver. ElapsedClockTime %f s" % self.solver.getElapsedClockTime())
+        Info("Init solver. ElapsedCpuTime %f s" % self.solver.getElapsedCpuTime())
 
         solverName = self.getOption("solverName")
         solverArg = solverName + " -python " + self.parallelFlag

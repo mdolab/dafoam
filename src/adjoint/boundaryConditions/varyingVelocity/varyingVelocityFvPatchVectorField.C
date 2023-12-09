@@ -27,34 +27,36 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "varyingFlowDirectionFvPatchVectorField.H"
+#include "varyingVelocityFvPatchVectorField.H"
 #include "volFields.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::varyingFlowDirectionFvPatchVectorField::varyingFlowDirectionFvPatchVectorField(
+Foam::varyingVelocityFvPatchVectorField::varyingVelocityFvPatchVectorField(
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF)
     : fixedValueFvPatchVectorField(p, iF),
-      UMag_(0.0),
-      flowDir_("x"),
-      normalDir_("y"),
+      U0_(0.0),
+      URate_(0.0),
+      flowComponent_(0),
+      normalComponent_(1),
       alpha0_(0),
-      rate_(0)
+      alphaRate_(0)
 {
 }
 
-Foam::varyingFlowDirectionFvPatchVectorField::varyingFlowDirectionFvPatchVectorField(
+Foam::varyingVelocityFvPatchVectorField::varyingVelocityFvPatchVectorField(
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF,
     const dictionary& dict)
     : fixedValueFvPatchVectorField(p, iF),
-      UMag_(dict.lookupOrDefault<scalar>("UMag", 0.0)),
-      flowDir_(dict.lookupOrDefault<word>("flowDir", "x")),
-      normalDir_(dict.lookupOrDefault<word>("normalDir", "y")),
+      U0_(dict.lookupOrDefault<scalar>("U0", 0.0)),
+      URate_(dict.lookupOrDefault<scalar>("URate", 0.0)),
+      flowComponent_(dict.lookupOrDefault<label>("flowComponent", 0)),
+      normalComponent_(dict.lookupOrDefault<label>("normalComponent", 1)),
       alpha0_(dict.lookupOrDefault<scalar>("alpha0", 0.0)),
-      rate_(dict.lookupOrDefault<scalar>("rate", 0.0))
+      alphaRate_(dict.lookupOrDefault<scalar>("alphaRate", 0.0))
 {
 
     if (dict.found("value"))
@@ -68,66 +70,63 @@ Foam::varyingFlowDirectionFvPatchVectorField::varyingFlowDirectionFvPatchVectorF
     }
 }
 
-Foam::varyingFlowDirectionFvPatchVectorField::varyingFlowDirectionFvPatchVectorField(
-    const varyingFlowDirectionFvPatchVectorField& ptf,
+Foam::varyingVelocityFvPatchVectorField::varyingVelocityFvPatchVectorField(
+    const varyingVelocityFvPatchVectorField& ptf,
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF,
     const fvPatchFieldMapper& mapper)
     : fixedValueFvPatchVectorField(p, iF),
-      UMag_(ptf.UMag_),
-      flowDir_(ptf.flowDir_),
-      normalDir_(ptf.normalDir_),
+      U0_(ptf.U0_),
+      URate_(ptf.URate_),
+      flowComponent_(ptf.flowComponent_),
+      normalComponent_(ptf.normalComponent_),
       alpha0_(ptf.alpha0_),
-      rate_(ptf.rate_)
+      alphaRate_(ptf.alphaRate_)
 {
     this->evaluate();
 }
 
-Foam::varyingFlowDirectionFvPatchVectorField::varyingFlowDirectionFvPatchVectorField(
-    const varyingFlowDirectionFvPatchVectorField& wbppsf)
+Foam::varyingVelocityFvPatchVectorField::varyingVelocityFvPatchVectorField(
+    const varyingVelocityFvPatchVectorField& wbppsf)
     : fixedValueFvPatchVectorField(wbppsf),
-      UMag_(wbppsf.UMag_),
-      flowDir_(wbppsf.flowDir_),
-      normalDir_(wbppsf.normalDir_),
+      U0_(wbppsf.U0_),
+      URate_(wbppsf.URate_),
+      flowComponent_(wbppsf.flowComponent_),
+      normalComponent_(wbppsf.normalComponent_),
       alpha0_(wbppsf.alpha0_),
-      rate_(wbppsf.rate_)
+      alphaRate_(wbppsf.alphaRate_)
 {
     this->evaluate();
 }
 
-Foam::varyingFlowDirectionFvPatchVectorField::varyingFlowDirectionFvPatchVectorField(
-    const varyingFlowDirectionFvPatchVectorField& wbppsf,
+Foam::varyingVelocityFvPatchVectorField::varyingVelocityFvPatchVectorField(
+    const varyingVelocityFvPatchVectorField& wbppsf,
     const DimensionedField<vector, volMesh>& iF)
     : fixedValueFvPatchVectorField(wbppsf, iF),
-      UMag_(wbppsf.UMag_),
-      flowDir_(wbppsf.flowDir_),
-      normalDir_(wbppsf.normalDir_),
+      U0_(wbppsf.U0_),
+      URate_(wbppsf.URate_),
+      flowComponent_(wbppsf.flowComponent_),
+      normalComponent_(wbppsf.normalComponent_),
       alpha0_(wbppsf.alpha0_),
-      rate_(wbppsf.rate_)
+      alphaRate_(wbppsf.alphaRate_)
 {
     this->evaluate();
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-void Foam::varyingFlowDirectionFvPatchVectorField::updateCoeffs()
+void Foam::varyingVelocityFvPatchVectorField::updateCoeffs()
 {
     // calculate patch values
     const scalar t = this->db().time().timeOutputValue();
-    scalar alpha = alpha0_ + t * rate_;
-
-    HashTable<label> compTable;
-    compTable.set("x", 0);
-    compTable.set("y", 1);
-    compTable.set("z", 2);
+    scalar alpha = alpha0_ + t * alphaRate_;
+    scalar U = U0_ + t * URate_;
 
     vectorField& thisPatchRef = *this;
     vectorField thisPatch = thisPatchRef;
-    forAll(thisPatch, idxI) 
+    forAll(thisPatch, idxI)
     {
-        label compFlow = compTable[flowDir_];
-        label compNormal = compTable[normalDir_];
-        thisPatch[idxI][compFlow] = UMag_ * cos(alpha);
-        thisPatch[idxI][compNormal] = UMag_ * sin(alpha);
+        thisPatch[idxI][flowComponent_] = U * cos(alpha);
+        thisPatch[idxI][normalComponent_] = U * sin(alpha);
     }
 
     fvPatchVectorField::operator==(thisPatch);
@@ -135,14 +134,15 @@ void Foam::varyingFlowDirectionFvPatchVectorField::updateCoeffs()
     fixedValueFvPatchVectorField::updateCoeffs();
 }
 
-void Foam::varyingFlowDirectionFvPatchVectorField::write(Ostream& os) const
+void Foam::varyingVelocityFvPatchVectorField::write(Ostream& os) const
 {
     fixedValueFvPatchVectorField::write(os);
-    os.writeEntry("UMag", UMag_);
-    os.writeEntry("flowDir", flowDir_);
-    os.writeEntry("normalDir", normalDir_);
+    os.writeEntry("U0", U0_);
+    os.writeEntry("URate", URate_);
+    os.writeEntry("flowComponent", flowComponent_);
+    os.writeEntry("normalComponent", normalComponent_);
     os.writeEntry("alpha0", alpha0_);
-    os.writeEntry("rate", rate_);
+    os.writeEntry("alphaRate", alphaRate_);
     //writeEntry("value", os);
 }
 
@@ -152,7 +152,7 @@ namespace Foam
 {
 makePatchTypeField(
     fvPatchVectorField,
-    varyingFlowDirectionFvPatchVectorField);
+    varyingVelocityFvPatchVectorField);
 }
 
 // ************************************************************************* //
