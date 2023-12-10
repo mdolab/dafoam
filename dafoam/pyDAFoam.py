@@ -2464,8 +2464,6 @@ class PYDAFOAM(object):
                             self.calcTotalDerivsField(objFuncName, designVarName, fieldType, dFScaling, True)
                         else:
                             raise Error("designVarType not valid!")
-                    
-                    Info("Computing partials for old times %f s" % self.solver.getElapsedClockTime())
 
                     # we need to calculate dRdW0TPsi for the previous time step
                     if ddtSchemeOrder == 1:
@@ -3153,6 +3151,9 @@ class PYDAFOAM(object):
         adjMode = self.getOption("unsteadyAdjoint")["mode"]
         if adjMode == "hybrid":
             self.initTimeInstanceMats()
+        
+        Info("Init solver done! ElapsedClockTime %f s" % self.solver.getElapsedClockTime())
+        Info("Init solver done!. ElapsedCpuTime %f s" % self.solver.getElapsedCpuTime())
 
         self.solverInitialized = 1
 

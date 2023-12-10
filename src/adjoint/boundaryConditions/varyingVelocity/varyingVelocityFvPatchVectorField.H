@@ -27,39 +27,42 @@
 
     Description:
 
-        This boundary condition provides a varying flow direction at the far field
+        This boundary condition provides a varying velocity for the patch
     
-        U_flowDir = UMag * cos(alpha)
-        U_normalDir = UMag * sin(alpha)
-        alpha = alpha0 + rate * t
+        U[flowComponent] = U * cos(alpha)
+        U[normalComponent] = U * sin(alpha)
+        alpha = alpha0 + alphaRate * t
+        U = U0 + URate * t
     
         where
     
-        U_flowDir    : velocity component parallel to the flow. Options are: x, y, or z
-        U_normalDir  : velocity component normal to the flow. Options are: x, y, or z
-        UMag         : velocity magnitude [m/s]
+        flowComponent   : velocity component parallel to the flow. Options are: 0, 1, or 2, which corresponds to x, y, and z
+        normalComponent : velocity component normal to the flow. Options are: 0, 1, or 2, which corresponds to x, y, and z
+        U0           : initial velocity magnitude [m/s]
+        URate        : rate of change for the velocity magnitude
         alpha0       : initial flow angle [rad]
-        rate         : rate of change for the flow angle [rad/s]
+        alphaRate    : rate of change for the flow angle [rad/s]
     
         Example of the boundary condition specification:
         myPatch
         {
-            type             varyingFlowDirection;
-            UMag             10;
-            flowDir          x;
-            normalDir        y;
+            type             varyingVelocity;
+            U0               10;
+            URate            -0.2;
+            flowComponent     0;
+            normalComponent   1;
             alpha0           0;
-            rate             0.1;
+            alphaRate        0.1;
         }
     
         This will change the flow direction with a rate of 0.1 rad/s starting from 0 rad
-        U[0] = cos(0+0.1*t) 
-        U[1] = sin(0+0.1*t) 
+        U[0] = (10-0.2*t)*cos(0+0.1*t) 
+        U[1] = (10-0.2*t)*sin(0+0.1*t) 
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef varyingFlowDirectionFvPatchVectorFields_H
-#define varyingFlowDirectionFvPatchVectorFields_H
+#ifndef varyingVelocityFvPatchVectorFields_H
+#define varyingVelocityFvPatchVectorFields_H
 
 #include "fixedValueFvPatchFields.H"
 
@@ -69,59 +72,60 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-             Class varyingFlowDirectionFvPatchVectorField Declaration
+             Class varyingVelocityFvPatchVectorField Declaration
 \*---------------------------------------------------------------------------*/
 
-class varyingFlowDirectionFvPatchVectorField
+class varyingVelocityFvPatchVectorField
     : public fixedValueFvPatchVectorField
 {
     // Private data
 
-    scalar UMag_;
-    word flowDir_;
-    word normalDir_;
+    scalar U0_;
+    scalar URate_;
+    label flowComponent_;
+    label normalComponent_;
     scalar alpha0_;
-    scalar rate_;
+    scalar alphaRate_;
 
 public:
     //- Runtime type information
-    TypeName("varyingFlowDirection");
+    TypeName("varyingVelocity");
 
     // Constructors
 
     //- Construct from patch and internal field
-    varyingFlowDirectionFvPatchVectorField(
+    varyingVelocityFvPatchVectorField(
         const fvPatch&,
         const DimensionedField<vector, volMesh>&);
 
     //- Construct from patch, internal field and dictionary
-    varyingFlowDirectionFvPatchVectorField(
+    varyingVelocityFvPatchVectorField(
         const fvPatch&,
         const DimensionedField<vector, volMesh>&,
         const dictionary&);
 
-    //- Construct by mapping given varyingFlowDirectionFvPatchVectorField onto
+    //- Construct by mapping given varyingVelocityFvPatchVectorField onto
     //  a new patch
-    varyingFlowDirectionFvPatchVectorField(
-        const varyingFlowDirectionFvPatchVectorField&,
+    varyingVelocityFvPatchVectorField(
+        const varyingVelocityFvPatchVectorField&,
         const fvPatch&,
         const DimensionedField<vector, volMesh>&,
         const fvPatchFieldMapper&);
 
     //- Construct as copy
-    varyingFlowDirectionFvPatchVectorField(
-        const varyingFlowDirectionFvPatchVectorField&);
+    varyingVelocityFvPatchVectorField(
+        const varyingVelocityFvPatchVectorField&);
 
     //- Construct and return a clone
     virtual tmp<fvPatchVectorField> clone() const
     {
         return tmp<fvPatchVectorField>(
-            new varyingFlowDirectionFvPatchVectorField(*this));
+            new varyingVelocityFvPatchVectorField(*this));
     }
 
     //- Construct as copy setting internal field reference
-    varyingFlowDirectionFvPatchVectorField(
-        const varyingFlowDirectionFvPatchVectorField&,
+    varyingVelocityFvPatchVectorField(
+        const varyingVelocityFvPatchVectorField&,
         const DimensionedField<vector, volMesh>&);
 
     //- Construct and return a clone setting internal field reference
@@ -129,7 +133,7 @@ public:
         const DimensionedField<vector, volMesh>& iF) const
     {
         return tmp<fvPatchVectorField>(
-            new varyingFlowDirectionFvPatchVectorField(*this, iF));
+            new varyingVelocityFvPatchVectorField(*this, iF));
     }
 
     // Member functions
