@@ -3081,9 +3081,6 @@ class PYDAFOAM(object):
 
         if self.solverInitialized == 1:
             raise Error("pyDAFoam: self._initSolver has been called! One shouldn't initialize solvers twice!")
-        
-        Info("Init solver. ElapsedClockTime %f s" % self.solver.getElapsedClockTime())
-        Info("Init solver. ElapsedCpuTime %f s" % self.solver.getElapsedCpuTime())
 
         solverName = self.getOption("solverName")
         solverArg = solverName + " -python " + self.parallelFlag
@@ -3154,6 +3151,9 @@ class PYDAFOAM(object):
         adjMode = self.getOption("unsteadyAdjoint")["mode"]
         if adjMode == "hybrid":
             self.initTimeInstanceMats()
+        
+        Info("Init solver done! ElapsedClockTime %f s" % self.solver.getElapsedClockTime())
+        Info("Init solver done!. ElapsedCpuTime %f s" % self.solver.getElapsedCpuTime())
 
         self.solverInitialized = 1
 
