@@ -1131,6 +1131,7 @@ public:
         return forwardADDerivVal_[objFuncName];
     }
 
+#ifndef SolidDASolver
     /// get the number of regression model parameters
     label getNRegressionParameters()
     {
@@ -1162,6 +1163,7 @@ public:
         const double* parameters,
         const double* seeds,
         double* product);
+#endif
 
     /// update the primal state boundary condition based on the primalBC dict
     void setPrimalBoundaryConditions(const label printInfo = 1);
