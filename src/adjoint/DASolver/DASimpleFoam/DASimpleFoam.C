@@ -103,7 +103,6 @@ void DASimpleFoam::initSolver()
             fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
     }
 
-    hasRegModel_ = daOptionPtr_->getAllOptions().subDict("regressionModel").getLabel("active");
 }
 
 label DASimpleFoam::solvePrimal(
