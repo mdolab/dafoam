@@ -518,6 +518,27 @@ void DASpalartAllmaras::getFvMatrixFields(
     upper = nuTildaEqn.upper();
     lower = nuTildaEqn.lower();
 }
+
+void DASpalartAllmaras::getTurbProdOverDestruct(scalarList& PoD) const
+{
+    /*
+    Description:
+        Return the value of the production over destruction term from the turbulence model 
+    */
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    const volScalarField Stilda(this->Stilda(chi, fv1));
+
+    volScalarField P = Cb1_ * phase_ * rho_ * Stilda * nuTilda_;
+    volScalarField D = Cw1_ * phase_ * rho_ * fw(Stilda) * sqr(nuTilda_ / y_);
+
+    forAll(P, cellI)
+    {
+        PoD[cellI] = P[cellI] / D[cellI];
+    }
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

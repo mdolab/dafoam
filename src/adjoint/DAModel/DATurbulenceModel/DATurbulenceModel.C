@@ -487,7 +487,19 @@ void DATurbulenceModel::getTurbProdTerm(scalarList& prodTerm) const
         Return the value of the production term from the turbulence model 
     */
 
-    FatalErrorIn("DATurbulenceModel::getSAProdTerm")
+    FatalErrorIn("DATurbulenceModel::getTurbProdTerm")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
+void DATurbulenceModel::getTurbProdOverDestruct(scalarList& PoD) const
+{
+    /*
+    Description:
+        Return the value of the production over destruction term from the turbulence model 
+    */
+
+    FatalErrorIn("DATurbulenceModel::getTurbProdOverDestruct")
         << "Child class not implemented!"
         << abort(FatalError);
 }

@@ -26,6 +26,8 @@ DAModel/DARadiationModel/DAP1.C
 
 DAModel/DAModel.C
 
+DARegression/DARegression.C
+
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoRhoSimpleFoam.C
 DAStateInfo/DAStateInfoRhoSimpleCFoam.C

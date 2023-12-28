@@ -102,6 +102,7 @@ void DASimpleFoam::initSolver()
         daFvSourcePtr_.reset(DAFvSource::New(
             fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
     }
+
 }
 
 label DASimpleFoam::solvePrimal(
@@ -156,6 +157,9 @@ label DASimpleFoam::solvePrimal(
         }
     }
 
+    // check if the parameters are set in the Python layer
+    daRegressionPtr_->validate();
+
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
@@ -176,6 +180,9 @@ label DASimpleFoam::solvePrimal(
 #include "UEqnSimple.H"
 #include "pEqnSimple.H"
         }
+
+        // update the output field value at each iteration, if the regression model is active
+        daRegressionPtr_->compute();
 
         laminarTransport.correct();
         daTurbulenceModelPtr_->correct(printToScreen);
@@ -1057,7 +1064,7 @@ void DASimpleFoam::invTranProdUEqn(
         We won't ADR this function, so we can treat most of the arguments as const
     */
 
-/*
+    /*
     const objectRegistry& db = meshPtr_->thisDb();
     const surfaceScalarField& phi = db.lookupObject<surfaceScalarField>("phi");
     volScalarField nuEff = daTurbulenceModelPtr_->nuEff();
@@ -1113,7 +1120,7 @@ void DASimpleFoam::invTranProdPEqn(
         We won't ADR this function, so we can treat most of the arguments as const
     */
 
-/*
+    /*
     const objectRegistry& db = meshPtr_->thisDb();
     const volVectorField& U = db.lookupObject<volVectorField>("U");
     const surfaceScalarField& phi = db.lookupObject<surfaceScalarField>("phi");

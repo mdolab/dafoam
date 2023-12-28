@@ -43,7 +43,8 @@ DASolver::DASolver(
       daFieldPtr_(nullptr),
       daCheckMeshPtr_(nullptr),
       daLinearEqnPtr_(nullptr),
-      daResidualPtr_(nullptr)
+      daResidualPtr_(nullptr),
+      daRegressionPtr_(nullptr)
 #ifdef CODI_AD_REVERSE
       ,
       globalADTape_(codi::RealReverse::getTape())
@@ -5860,6 +5861,125 @@ void DASolver::calcdRdThermalTPsiAD(
     this->calcResiduals();
 
     delete[] thermalArray;
+    delete[] volCoordsArray;
+    delete[] statesArray;
+
+#endif
+}
+
+void DASolver::calcdRdRegParTPsiAD(
+    const double* volCoords,
+    const double* states,
+    const double* parameters,
+    const double* seeds,
+    double* product)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute the matrix-vector products [dR/dRegParameters]^T*Psi using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        parameters: the parameters for the regression model
+
+        psi: the vector to multiply dRdXv
+    
+    Output:
+        prodVec: the matrix-vector products [dR/dRegParameters]^T*Psi
+    */
+
+    Info << "Calculating [dRdRegPar]^T * Psi using reverse-mode AD" << endl;
+
+    scalar* volCoordsArray = new scalar[daIndexPtr_->nLocalXv];
+    for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+    {
+        volCoordsArray[i] = volCoords[i];
+    }
+
+    scalar* statesArray = new scalar[daIndexPtr_->nLocalAdjointStates];
+    for (label i = 0; i < daIndexPtr_->nLocalAdjointStates; i++)
+    {
+        statesArray[i] = states[i];
+    }
+
+    label nParameters = this->getNRegressionParameters();
+    scalar* parametersArray = new scalar[nParameters];
+    for (label i = 0; i < nParameters; i++)
+    {
+        parametersArray[i] = parameters[i];
+    }
+
+    this->updateOFMesh(volCoordsArray);
+    this->updateOFField(statesArray);
+
+    // update the OpenFOAM variables and reset their seeds (gradient part) to zeros
+    this->resetOFSeeds();
+    // reset the AD tape
+    this->globalADTape_.reset();
+    // start recording
+    this->globalADTape_.setActive();
+
+    // register inputs
+    for (label i = 0; i < nParameters; i++)
+    {
+        this->globalADTape_.registerInput(parametersArray[i]);
+    }
+    for (label i = 0; i < nParameters; i++)
+    {
+        this->setRegressionParameter(i, parametersArray[i]);
+    }
+
+    // calculate outputs
+    this->regressionModelCompute();
+
+    // compute residuals
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
+
+    // register outputs
+    this->registerResidualOutput4AD();
+
+    // stop recording
+    this->globalADTape_.setPassive();
+
+    // set seeds to the outputs
+    this->assignSeeds2ResidualGradient(seeds);
+
+    // now calculate the reverse matrix-vector product
+    this->globalADTape_.evaluate();
+
+    // get the matrix-vector product from the inputs
+    for (label i = 0; i < nParameters; i++)
+    {
+        product[i] = parametersArray[i].getGradient();
+    }
+
+    // clean up AD
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+
+    for (label i = 0; i < nParameters; i++)
+    {
+        this->globalADTape_.deactivateValue(parametersArray[i]);
+    }
+    for (label i = 0; i < nParameters; i++)
+    {
+        this->setRegressionParameter(i, parametersArray[i]);
+    }
+    this->regressionModelCompute();
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
+
+    delete[] parametersArray;
     delete[] volCoordsArray;
     delete[] statesArray;
 

@@ -582,6 +582,36 @@ public:
                                    << abort(FatalError);
     }
 
+    /// get the number of regression model parameters
+    label getNRegressionParameters()
+    {
+        return DASolverPtr_->getNRegressionParameters();
+    }
+
+    /// call the compute method of the regression model
+    void regressionModelCompute()
+    {
+        DASolverPtr_->regressionModelCompute();
+    }
+
+    /// set the regression parameter
+    void setRegressionParameter(label idxI, double val)
+    {
+        scalar val1 = val;
+        DASolverPtr_->setRegressionParameter(idxI, val1);
+    }
+
+    /// calculte [dR/dRegParameters]^T * psi
+    void calcdRdRegParTPsiAD(
+        const double* volCoords,
+        const double* states,
+        const double* parameters,
+        const double* seeds,
+        double* product)
+    {
+        DASolverPtr_->calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, product);
+    }
+
     void calcdRdThermalTPsiAD(
         const double* volCoords,
         const double* states,

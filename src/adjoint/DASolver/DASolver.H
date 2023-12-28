@@ -33,6 +33,7 @@
 #include "DAField.H"
 #include "DAPartDeriv.H"
 #include "DALinearEqn.H"
+#include "DARegression.H"
 #include "volPointInterpolation.H"
 #include "IOMRFZoneListDF.H"
 #include "interpolateSplineXY.H"
@@ -98,6 +99,9 @@ protected:
 
     /// DAStateInfo pointer
     autoPtr<DAStateInfo> daStateInfoPtr_;
+
+    /// DARegression pointer
+    autoPtr<DARegression> daRegressionPtr_;
 
     /// the stateInfo_ list from DAStateInfo object
     HashTable<wordList> stateInfo_;
@@ -1126,6 +1130,50 @@ public:
     {
         return forwardADDerivVal_[objFuncName];
     }
+
+    /// get the number of regression model parameters
+    label getNRegressionParameters()
+    {
+#ifdef SolidDASolver
+        return 0;
+#else
+        return daRegressionPtr_->nParameters();
+#endif
+    }
+
+    /// get the regression parameter
+    scalar getRegressionParameter(const label idxI)
+    {
+#ifdef SolidDASolver
+        return 0.0;
+#else
+        return daRegressionPtr_->getParameter(idxI);
+#endif
+    }
+
+    /// set the regression parameter
+    void setRegressionParameter(const label idxI, scalar val)
+    {
+#ifndef SolidDASolver
+        daRegressionPtr_->setParameter(idxI, val);
+#endif
+    }
+
+    /// call the compute method of the regression model
+    void regressionModelCompute()
+    {
+#ifndef SolidDASolver
+        daRegressionPtr_->compute();
+#endif
+    }
+
+    /// calculte [dR/dRegParameters]^T * psi
+    void calcdRdRegParTPsiAD(
+        const double* volCoords,
+        const double* states,
+        const double* parameters,
+        const double* seeds,
+        double* product);
 
     /// update the primal state boundary condition based on the primalBC dict
     void setPrimalBoundaryConditions(const label printInfo = 1);

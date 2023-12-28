@@ -175,6 +175,9 @@ label DAPimpleFoam::solvePrimal(
     scalar deltaT = runTime.deltaT().value();
     label nInstances = round(endTime / deltaT);
 
+    // check if the parameters are set in the Python layer
+    daRegressionPtr_->validate();
+
     // main loop
     for (label iter = 1; iter <= nInstances; iter++)
     {
@@ -207,6 +210,9 @@ label DAPimpleFoam::solvePrimal(
             {
 #include "pEqnPimple.H"
             }
+
+            // update the output field value at each iteration, if the regression model is active
+            daRegressionPtr_->compute();
 
             laminarTransport.correct();
             daTurbulenceModelPtr_->correct(pimplePrintToScreen);

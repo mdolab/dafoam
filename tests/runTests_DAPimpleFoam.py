@@ -34,7 +34,12 @@ daOptions = {
     "designSurfaces": ["wing"],
     "solverName": "DAPimpleFoam",
     "primalBC": {"U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0, 0]}, "useWallFunction": True},
-    "unsteadyAdjoint": {"mode": "timeAccurate", "PCMatPrecomputeInterval": 5, "PCMatUpdateInterval": 1, "objFuncTimeOperator": "average"},
+    "unsteadyAdjoint": {
+        "mode": "timeAccurate",
+        "PCMatPrecomputeInterval": 5,
+        "PCMatUpdateInterval": 1,
+        "objFuncTimeOperator": "average",
+    },
     "printIntervalUnsteady": 1,
     "fvSource": {
         "disk1": {
@@ -53,6 +58,14 @@ daOptions = {
             "adjustThrust": 0,
             "targetThrust": 1.0,
         },
+    },
+    "regressionModel": {
+        "active": True,
+        "modelType": "neuralNetwork",
+        "inputNames": ["PoD", "SoQ", "chiSA", "pGradStream"],
+        "outputName": "betaFI",
+        "hiddenLayerNeurons": [5, 5],
+        "outputShift": 1.0,
     },
     "objFunc": {
         "CD": {
@@ -95,7 +108,12 @@ daOptions = {
         "uin": {"designVarType": "BC", "patches": ["inout"], "variable": "U", "comp": 0},
         "twist": {"designVarType": "FFD"},
         "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
-        "actuator": {"actuatorName": "disk1", "designVarType": "ACTD", "comps": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]},
+        "actuator": {
+            "actuatorName": "disk1",
+            "designVarType": "ACTD",
+            "comps": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        },
+        "parameter": {"designVarType": "RegPar"},
     },
 }
 
@@ -188,10 +206,23 @@ DVGeo.addGlobalDV(
     scale=1.0,
 )
 
+
+def regModel(val, geo):
+    for idxI in range(len(val)):
+        val1 = float(val[idxI])
+        DASolver.setRegressionParameter(idxI, val1)
+
+
 # =============================================================================
 # DAFoam initialization
 # =============================================================================
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
+
+nParameters = DASolver.solver.getNRegressionParameters()
+
+parameter0 = np.ones(nParameters) * 0.1
+DVGeo.addGlobalDV("parameter", parameter0, regModel, lower=-100.0, upper=100.0, scale=1.0)
+
 DASolver.setDVGeo(DVGeo)
 mesh = USMesh(options=meshOptions, comm=gcomm)
 DASolver.printFamilyList()
@@ -225,6 +256,9 @@ else:
     funcs, fail = optFuncs.calcObjFuncValues(xDV)
     funcsSens = {}
     funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
+
+    parameterNormU = np.linalg.norm(funcsSens["CD"]["parameter"])
+    funcsSens["CD"]["parameter"] = parameterNormU
 
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
