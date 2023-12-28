@@ -99,6 +99,8 @@ void DAPimpleFoam::initSolver()
             break;
         }
     }
+
+    hasRegModel_ = daOptionPtr_->getAllOptions().subDict("regressionModel").getLabel("active");
 }
 
 label DAPimpleFoam::solvePrimal(
@@ -175,6 +177,16 @@ label DAPimpleFoam::solvePrimal(
     scalar deltaT = runTime.deltaT().value();
     label nInstances = round(endTime / deltaT);
 
+    // check if the parameters are set in the Python layer
+    if (hasRegModel_)
+    {
+        scalar testVal = daRegressionPtr_->getParameter(0);
+        if (testVal > 1e15)
+        {
+            FatalErrorIn("") << "regressionModel is active but the parameter values are not set!" << abort(FatalError);
+        }
+    }
+
     // main loop
     for (label iter = 1; iter <= nInstances; iter++)
     {
@@ -206,6 +218,12 @@ label DAPimpleFoam::solvePrimal(
             while (pimple.correct())
             {
 #include "pEqnPimple.H"
+            }
+
+            if (hasRegModel_)
+            {
+                // if the regression model is active, update the output field value at each iteration
+                daRegressionPtr_->compute();
             }
 
             laminarTransport.correct();

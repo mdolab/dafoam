@@ -292,6 +292,28 @@ void DAModel::getTurbProdTerm(scalarList& prodTerm) const
 
 }
 
+void DAModel::getTurbProdOverDestruct(scalarList& PoD) const
+{
+    /*
+    Description: 
+        Return the value of the production/destruction term from the turbulence model 
+    */
+
+#ifndef SolidDASolver
+    if (hasTurbulenceModel_)
+    {
+        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(
+            mesh_.thisDb().lookupObject<DATurbulenceModel>("DATurbulenceModel"));
+        daTurb.getTurbProdOverDestruct(PoD);
+    }
+
+    if (hasRadiationModel_)
+    {
+    }
+#endif
+
+}
+
 #ifdef CompressibleFlow
 const fluidThermo& DAModel::getThermo() const
 {

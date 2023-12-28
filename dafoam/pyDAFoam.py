@@ -508,6 +508,17 @@ class DAOPTION(object):
         ## constrainHbyA back to the primal and adjoint solvers.
         self.useConstrainHbyA = False
 
+        ## parameters for regression models
+        self.regressionModel = {
+            "active": False,
+            "modelType": "neuralNetwork",
+            "inputNames": ["None"],
+            "outputName": "None",
+            "hiddenLayerNeurons": [0],
+            "outputShift": 0.0,
+            "outputScale": 1.0,
+        }
+
         # *********************************************************************************************
         # ************************************ Advance Options ****************************************
         # *********************************************************************************************
@@ -2264,6 +2275,44 @@ class PYDAFOAM(object):
             else:
                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
 
+    def calcTotalDerivsRegPar(self, objFuncName, designVarName, accumulateTotal=False):
+
+        xDV = self.DVGeo.getValues()
+        nDVs = len(xDV[designVarName])
+
+        nParameters = self.solver.getNRegressionParameters()
+        if nDVs != nParameters:
+            raise Error("number of parameters not valid!")
+
+        # We assume  dFdRegPar is always zero
+        # call the total deriv
+
+        xvArray = self.vec2Array(self.xvVec)
+        wArray = self.vec2Array(self.wVec)
+        seedArray = self.vec2Array(self.adjVectors[objFuncName])
+        parameters = xDV[designVarName].copy(order="C")
+        productArray = np.zeros(nDVs)
+
+        # calculate dRdFieldT*Psi and save it to totalDeriv
+        self.solverAD.calcdRdRegParTPsiAD(xvArray, wArray, parameters, seedArray, productArray)
+        # all reduce because parameters is a global DV
+        productArray = self.comm.allreduce(productArray, op=MPI.SUM)
+
+        # totalDeriv = dFdRegPar - dRdRegParT*psi
+        productArray *= -1.0
+
+        # assign the total derivative to self.adjTotalDeriv
+        if self.adjTotalDeriv[objFuncName][designVarName] is None:
+            self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+
+        # NOTE: productArray is already in Seq
+
+        for i in range(nDVs):
+            if accumulateTotal is True:
+                self.adjTotalDeriv[objFuncName][designVarName][i] += productArray[i]
+            else:
+                self.adjTotalDeriv[objFuncName][designVarName][i] = productArray[i]
+
     def solveAdjointUnsteady(self):
         """
         Run adjoint solver to compute the total derivs for unsteady solvers
@@ -2273,6 +2322,8 @@ class PYDAFOAM(object):
         xvVec: vector that contains all the mesh point coordinates
 
         wVec: vector that contains all the state variables
+
+        designVariable: a dictionary that contain the design variable values
 
         Output:
         -------
@@ -2462,6 +2513,8 @@ class PYDAFOAM(object):
                         elif designVarDict[designVarName]["designVarType"] == "Field":
                             fieldType = designVarDict[designVarName]["fieldType"]
                             self.calcTotalDerivsField(objFuncName, designVarName, fieldType, dFScaling, True)
+                        elif designVarDict[designVarName]["designVarType"] == "RegPar":
+                            self.calcTotalDerivsRegPar(objFuncName, designVarName, True)
                         else:
                             raise Error("designVarType not valid!")
 
@@ -2749,6 +2802,15 @@ class PYDAFOAM(object):
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
                             self.calcTotalDerivsField(objFuncName, designVarName, fieldType)
+                else:
+                    raise Error("For Field design variable type, we only support useAD->mode=reverse")
+            ################### RegPar: regression model's parameters ###################
+            elif designVarDict[designVarName]["designVarType"] == "RegPar":
+                if self.getOption("useAD")["mode"] == "reverse":
+                    # loop over all objectives
+                    for objFuncName in objFuncDict:
+                        if objFuncName in self.objFuncNames4Adj:
+                            self.calcTotalDerivsRegPar(objFuncName, designVarName)
                 else:
                     raise Error("For Field design variable type, we only support useAD->mode=reverse")
             else:
@@ -3151,7 +3213,7 @@ class PYDAFOAM(object):
         adjMode = self.getOption("unsteadyAdjoint")["mode"]
         if adjMode == "hybrid":
             self.initTimeInstanceMats()
-        
+
         Info("Init solver done! ElapsedClockTime %f s" % self.solver.getElapsedClockTime())
         Info("Init solver done!. ElapsedCpuTime %f s" % self.solver.getElapsedCpuTime())
 
@@ -4002,6 +4064,23 @@ class PYDAFOAM(object):
                 "Expected data type is %-47s \n "
                 "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
             )
+ 
+    def setRegressionParameter(self, idx, val):
+        """
+        Update the regression parameters
+
+        Parameters
+        ----------
+        idx: int
+            the index of the parameter
+
+        val, float
+            the parameter value to set
+        """
+
+        self.solver.setRegressionParameter(idx, val)
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.setRegressionParameter(idx, val)
 
     def setFieldValue4GlobalCellI(self, fieldName, val, globalCellI, compI=0):
         """

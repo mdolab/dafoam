@@ -75,6 +75,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdThermalTPsiAD(double *, double *, double *, double *, double *)
+        void calcdRdRegParTPsiAD(double *, double *, double *, double *, double *)
         void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
@@ -103,6 +104,9 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void getThermal(double *, double *, double *)
         void getThermalAD(char *, double *, double *, double *, double *)
         void setThermal(double *)
+        int getNRegressionParameters()
+        void setRegressionParameter(int, double)
+        void regressionModelCompute()
         void getOFField(char *, char *, PetscVec)
         void getAcousticData(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, char*)
         void printAllOptions()
@@ -471,6 +475,41 @@ cdef class pyDASolvers:
         assert len(thermal) == self.getNCouplingFaces() * 2, "invalid array size!"
         cdef double *thermal_data = <double*>thermal.data
         self._thisptr.setThermal(thermal_data)
+    
+    def getNRegressionParameters(self):
+        return self._thisptr.getNRegressionParameters()
+    
+    def setRegressionParameter(self, idx, val):
+        self._thisptr.setRegressionParameter(idx, val)
+    
+    def regressionModelCompute(self):
+        self._thisptr.regressionModelCompute()
+    
+    def calcdRdRegParTPsiAD(self, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] states,
+            np.ndarray[double, ndim=1, mode="c"] parameters,
+            np.ndarray[double, ndim=1, mode="c"] seeds,
+            np.ndarray[double, ndim=1, mode="c"] product):
+        
+        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
+        assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
+        assert len(parameters) == self.getNRegressionParameters(), "invalid array size!"
+        assert len(seeds) == self.getNLocalAdjointStates(), "invalid array size!"
+        assert len(product) == self.getNRegressionParameters(), "invalid array size!"
+
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *states_data = <double*>states.data
+        cdef double *parameters_data = <double*>parameters.data
+        cdef double *seeds_data = <double*>seeds.data
+        cdef double *product_data = <double*>product.data
+
+        self._thisptr.calcdRdRegParTPsiAD(
+            volCoords_data, 
+            states_data, 
+            parameters_data, 
+            seeds_data, 
+            product_data)
 
     def getAcousticData(self, Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, groupName):
         self._thisptr.getAcousticData(x.vec, y.vec, z.vec, nX.vec, nY.vec, nZ.vec, a.vec, fX.vec, fY.vec, fZ.vec, groupName)

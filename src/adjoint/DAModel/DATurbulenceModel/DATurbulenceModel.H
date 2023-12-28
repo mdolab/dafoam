@@ -211,8 +211,11 @@ public:
     /// solve the residual equations and update the state
     virtual void correct(label printToScreen) = 0;
 
-    /// return the value of the production term from the Spalart Allmaras model
+    /// return the value of the production term from the turbulence model
     virtual void getTurbProdTerm(scalarList& prodTerm) const;
+
+    /// return the value of the destruction term from the turbulence model
+    virtual void getTurbProdOverDestruct(scalarList& PoD) const;
 
     /// dev terms
     tmp<volSymmTensorField> devRhoReff() const;
