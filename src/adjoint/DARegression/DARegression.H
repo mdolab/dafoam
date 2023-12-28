@@ -69,6 +69,9 @@ protected:
     /// the parameters for the regression model
     scalarList parameters_;
 
+    /// whether the regression model is active
+    label active_;
+
 public:
     /// Constructors
     DARegression(
@@ -83,20 +86,40 @@ public:
 
     // Members
 
+    /// compute the output based on the latest parameters and inputs
     void compute();
 
+    /// get the number of parameters for this regression model
     label nParameters();
 
+    /// get a specific parameter value
     scalar getParameter(label idxI)
     {
         return parameters_[idxI];
     }
 
+    /// set a value to a parameter give an index and a value
     void setParameter(label idxI, scalar val)
     {
         parameters_[idxI] = val;
     }
 
+    /// check if the regression model is initialized properly
+    void validate()
+    {
+        if (!active_)
+        {
+            return;
+        }
+        else
+        {
+            scalar testVal = this->getParameter(0);
+            if (fabs(testVal) > 1e15)
+            {
+                FatalErrorIn("") << "regressionModel is active but the parameter values are not set!" << abort(FatalError);
+            }
+        }
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

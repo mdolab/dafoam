@@ -1131,29 +1131,40 @@ public:
         return forwardADDerivVal_[objFuncName];
     }
 
-#ifndef SolidDASolver
     /// get the number of regression model parameters
     label getNRegressionParameters()
     {
+#ifdef SolidDASolver
+        return 0;
+#else
         return daRegressionPtr_->nParameters();
+#endif
     }
 
     /// get the regression parameter
     scalar getRegressionParameter(const label idxI)
     {
+#ifdef SolidDASolver
+        return 0.0;
+#else
         return daRegressionPtr_->getParameter(idxI);
+#endif
     }
 
     /// set the regression parameter
     void setRegressionParameter(const label idxI, scalar val)
     {
+#ifndef SolidDASolver
         daRegressionPtr_->setParameter(idxI, val);
+#endif
     }
 
     /// call the compute method of the regression model
     void regressionModelCompute()
     {
+#ifndef SolidDASolver
         daRegressionPtr_->compute();
+#endif
     }
 
     /// calculte [dR/dRegParameters]^T * psi
@@ -1163,7 +1174,6 @@ public:
         const double* parameters,
         const double* seeds,
         double* product);
-#endif
 
     /// update the primal state boundary condition based on the primalBC dict
     void setPrimalBoundaryConditions(const label printInfo = 1);

@@ -101,9 +101,6 @@ protected:
     /// whether to write mesh for the reduceIO
     label reduceIOWriteMesh_ = 0;
 
-    /// whether we have a regression model to update the field
-    label hasRegModel_ = 0;
-
 public:
     TypeName("DAPimpleFoam");
     // Constructors

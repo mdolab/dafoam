@@ -43,6 +43,8 @@ DARegression::DARegression(
     {
         parameters_[idxI] = 1e16;
     }
+
+    active_ = daOption_.getAllOptions().subDict("regressionModel").getLabel("active");
 }
 
 void DARegression::compute()
@@ -65,6 +67,11 @@ void DARegression::compute()
     Output:
         a volScalarField prescribed by outputName
     */
+
+    if (!active_)
+    {
+        return;
+    }
 
     volScalarField& outputField = const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>(outputName_));
 
@@ -186,6 +193,11 @@ label DARegression::nParameters()
     Description:
         get the number of parameters
     */
+
+    if (!active_)
+    {
+        FatalErrorIn("") << "nParameters() is called but the regression model is not active!" << abort(FatalError);
+    }
 
     if (modelType_ == "neuralNetwork")
     {
