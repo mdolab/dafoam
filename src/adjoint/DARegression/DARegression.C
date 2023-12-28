@@ -39,11 +39,14 @@ DARegression::DARegression(
     }
 
     // initialize parameters and give it large values
-    label nParameters = this->nParameters();
-    parameters_.setSize(nParameters);
-    forAll(parameters_, idxI)
+    if (active_)
     {
-        parameters_[idxI] = 1e16;
+        label nParameters = this->nParameters();
+        parameters_.setSize(nParameters);
+        forAll(parameters_, idxI)
+        {
+            parameters_[idxI] = 1e16;
+        }
     }
 }
 
