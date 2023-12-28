@@ -146,6 +146,9 @@ label DARhoSimpleFoam::solvePrimal(
         }
     }
 
+    // check if the parameters are set in the Python layer
+    daRegressionPtr_->validate();
+
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
@@ -166,6 +169,9 @@ label DARhoSimpleFoam::solvePrimal(
 #include "UEqnRhoSimple.H"
 #include "EEqnRhoSimple.H"
 #include "pEqnRhoSimple.H"
+
+        // update the output field value at each iteration, if the regression model is active
+        daRegressionPtr_->compute();
 
         daTurbulenceModelPtr_->correct(printToScreen);
 

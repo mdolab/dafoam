@@ -31,6 +31,8 @@ DARegression::DARegression(
 
     regSubDict.readEntry<scalar>("outputScale", outputScale_);
 
+    active_ = regSubDict.getLabel("active");
+
     if (modelType_ == "neuralNetwork")
     {
         regSubDict.readEntry<labelList>("hiddenLayerNeurons", hiddenLayerNeurons_);
@@ -43,8 +45,6 @@ DARegression::DARegression(
     {
         parameters_[idxI] = 1e16;
     }
-
-    active_ = daOption_.getAllOptions().subDict("regressionModel").getLabel("active");
 }
 
 void DARegression::compute()
@@ -88,6 +88,7 @@ void DARegression::compute()
             word inputName = inputNames_[idxI];
             if (inputName == "SoQ")
             {
+                // Shear / vorticity
                 const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
                 const tmp<volTensorField> tgradU(fvc::grad(U));
                 const volTensorField& gradU = tgradU();
@@ -100,11 +101,13 @@ void DARegression::compute()
             }
             else if (inputName == "PoD")
             {
+                // production / destruction
                 daModel_.getTurbProdOverDestruct(inputFields[idxI]);
             }
             else if (inputName == "chiSA")
             {
 #ifndef SolidDASolver
+                // the chi() function from SA
                 const volScalarField& nuTilda = mesh_.thisDb().lookupObject<volScalarField>("nuTilda");
                 volScalarField nu = daModel_.getDATurbulenceModel().nu();
                 forAll(inputFields[idxI], cellI)
@@ -113,9 +116,22 @@ void DARegression::compute()
                 }
 #endif
             }
+            else if (inputName == "pGradStream")
+            {
+                // pressure gradient along stream
+                const volScalarField& p = mesh_.thisDb().lookupObject<volScalarField>("p");
+                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+                volVectorField pGrad("gradP", fvc::grad(p));
+                volScalarField pG_denominator(mag(U) * mag(pGrad) + mag(U & pGrad));
+                volScalarField pGradAlongStream = (U & pGrad) / Foam::max(pG_denominator, dimensionedScalar("minpG", dimensionSet(0, 2, -3, 0, 0, 0, 0), SMALL));
+                forAll(inputFields[idxI], cellI)
+                {
+                    inputFields[idxI][cellI] = pGradAlongStream[cellI];
+                }
+            }
             else
             {
-                FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: SoQ, PoD" << abort(FatalError);
+                FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: SoQ, PoD, chiSA, pGradStream" << abort(FatalError);
             }
         }
 
