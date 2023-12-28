@@ -51,6 +51,8 @@ DAObjFuncVariableVolSum::DAObjFuncVariableVolSum(
 
     objFuncDict_.readEntry<label>("divByTotalVol", divByTotalVol_);
 
+    multiplyVol_ = objFuncDict_.lookupOrDefault<label>("multiplyVol", 1);
+
     if (daIndex.adjStateNames.found(varName_))
     {
         objFuncConInfo_ = {{varName_}};
@@ -114,7 +116,11 @@ void DAObjFuncVariableVolSum::calcObjFunc(
         forAll(objFuncCellSources, idxI)
         {
             const label& cellI = objFuncCellSources[idxI];
-            scalar volume = mesh_.V()[cellI];
+            scalar volume = 1.0;
+            if (multiplyVol_)
+            {
+                volume = mesh_.V()[cellI];
+            }
             if (isSquare_)
             {
                 objFuncCellValues[idxI] = scale_ * volume * var[cellI] * var[cellI];
@@ -133,7 +139,11 @@ void DAObjFuncVariableVolSum::calcObjFunc(
         forAll(objFuncCellSources, idxI)
         {
             const label& cellI = objFuncCellSources[idxI];
-            scalar volume = mesh_.V()[cellI];
+            scalar volume = 1.0;
+            if (multiplyVol_)
+            {
+                volume = mesh_.V()[cellI];
+            }
             if (isSquare_)
             {
                 objFuncCellValues[idxI] = scale_ * volume * var[cellI][component_] * var[cellI][component_];

@@ -44,6 +44,9 @@ protected:
     /// whether to normalize the volume sum with the total volume
     label divByTotalVol_;
 
+    /// whether to multiply the variable by the volume
+    label multiplyVol_;
+
 public:
     TypeName("variableVolSum");
     // Constructors
