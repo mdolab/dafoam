@@ -171,6 +171,8 @@ void DARegression::compute()
 
             outputField[cellI] = outputScale_ * (outputVal + outputShift_);
         }
+
+        outputField.correctBoundaryConditions();
     }
     else
     {
