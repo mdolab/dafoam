@@ -569,6 +569,15 @@ public:
         const word designVarName,
         Vec dFdACT);
 
+    /// compute dFdRegPar AD
+    void calcdFdRegParAD(
+        const double* volCoords,
+        const double* states,
+        const double* parameters,
+        const word objFuncName,
+        const word designVarName,
+        double* dFdRegPar);
+
     /// compute dRdWOld^T*Psi
     void calcdRdWOldTPsiAD(
         const label oldTimeLevel,

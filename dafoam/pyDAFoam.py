@@ -2275,7 +2275,7 @@ class PYDAFOAM(object):
             else:
                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
 
-    def calcTotalDerivsRegPar(self, objFuncName, designVarName, accumulateTotal=False):
+    def calcTotalDerivsRegPar(self, objFuncName, designVarName, dFScaling=1.0, accumulateTotal=False):
 
         xDV = self.DVGeo.getValues()
         nDVs = len(xDV[designVarName])
@@ -2284,34 +2284,39 @@ class PYDAFOAM(object):
         if nDVs != nParameters:
             raise Error("number of parameters not valid!")
 
-        # We assume  dFdRegPar is always zero
-        # call the total deriv
-
         xvArray = self.vec2Array(self.xvVec)
         wArray = self.vec2Array(self.wVec)
         seedArray = self.vec2Array(self.adjVectors[objFuncName])
         parameters = xDV[designVarName].copy(order="C")
-        productArray = np.zeros(nDVs)
+        totalDerivArray = np.zeros(nDVs)
+        dFdRegPar = np.zeros(nDVs)
+
+        # calc dFdRegPar
+        self.solverAD.calcdFdRegParAD(
+            xvArray, wArray, parameters, objFuncName.encode(), designVarName.encode(), dFdRegPar
+        )
+        dFdRegPar *= dFScaling
 
         # calculate dRdFieldT*Psi and save it to totalDeriv
-        self.solverAD.calcdRdRegParTPsiAD(xvArray, wArray, parameters, seedArray, productArray)
+        self.solverAD.calcdRdRegParTPsiAD(xvArray, wArray, parameters, seedArray, totalDerivArray)
         # all reduce because parameters is a global DV
-        productArray = self.comm.allreduce(productArray, op=MPI.SUM)
+        totalDerivArray = self.comm.allreduce(totalDerivArray, op=MPI.SUM)
 
         # totalDeriv = dFdRegPar - dRdRegParT*psi
-        productArray *= -1.0
+        totalDerivArray = dFdRegPar - totalDerivArray
 
         # assign the total derivative to self.adjTotalDeriv
         if self.adjTotalDeriv[objFuncName][designVarName] is None:
             self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
 
-        # NOTE: productArray is already in Seq
+        # NOTE: totalDerivArray is already in Seq because we have called all reduce in dFdRegPar
+        # and after calcdRdRegParTPsiAD
 
         for i in range(nDVs):
             if accumulateTotal is True:
-                self.adjTotalDeriv[objFuncName][designVarName][i] += productArray[i]
+                self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivArray[i]
             else:
-                self.adjTotalDeriv[objFuncName][designVarName][i] = productArray[i]
+                self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivArray[i]
 
     def solveAdjointUnsteady(self):
         """
@@ -2514,7 +2519,7 @@ class PYDAFOAM(object):
                             fieldType = designVarDict[designVarName]["fieldType"]
                             self.calcTotalDerivsField(objFuncName, designVarName, fieldType, dFScaling, True)
                         elif designVarDict[designVarName]["designVarType"] == "RegPar":
-                            self.calcTotalDerivsRegPar(objFuncName, designVarName, True)
+                            self.calcTotalDerivsRegPar(objFuncName, designVarName, dFScaling, True)
                         else:
                             raise Error("designVarType not valid!")
 
@@ -4064,7 +4069,7 @@ class PYDAFOAM(object):
                 "Expected data type is %-47s \n "
                 "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
             )
- 
+
     def setRegressionParameter(self, idx, val):
         """
         Update the regression parameters

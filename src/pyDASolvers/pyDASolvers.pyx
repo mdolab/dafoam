@@ -76,6 +76,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdThermalTPsiAD(double *, double *, double *, double *, double *)
         void calcdRdRegParTPsiAD(double *, double *, double *, double *, double *)
+        void calcdFdRegParAD(double *, double *, double *, char *, char *, double *)
         void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
@@ -510,6 +511,32 @@ cdef class pyDASolvers:
             parameters_data, 
             seeds_data, 
             product_data)
+    
+    def calcdFdRegParAD(self, 
+            np.ndarray[double, ndim=1, mode="c"] volCoords,
+            np.ndarray[double, ndim=1, mode="c"] states,
+            np.ndarray[double, ndim=1, mode="c"] parameters,
+            objFuncName,
+            designVarName,
+            np.ndarray[double, ndim=1, mode="c"] dFdRegPar):
+        
+        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
+        assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
+        assert len(parameters) == self.getNRegressionParameters(), "invalid array size!"
+        assert len(dFdRegPar) == self.getNRegressionParameters(), "invalid array size!"
+
+        cdef double *volCoords_data = <double*>volCoords.data
+        cdef double *states_data = <double*>states.data
+        cdef double *parameters_data = <double*>parameters.data
+        cdef double *dFdRegPar_data = <double*>dFdRegPar.data
+
+        self._thisptr.calcdFdRegParAD(
+            volCoords_data, 
+            states_data, 
+            parameters_data, 
+            objFuncName,
+            designVarName,
+            dFdRegPar_data)
 
     def getAcousticData(self, Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, groupName):
         self._thisptr.getAcousticData(x.vec, y.vec, z.vec, nX.vec, nY.vec, nZ.vec, a.vec, fX.vec, fY.vec, fZ.vec, groupName)

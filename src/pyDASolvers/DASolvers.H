@@ -612,6 +612,18 @@ public:
         DASolverPtr_->calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, product);
     }
 
+    /// compute dFdRegPar AD
+    void calcdFdRegParAD(
+        const double* volCoords,
+        const double* states,
+        const double* parameters,
+        const word objFuncName,
+        const word designVarName,
+        double* dFdRegPar)
+    {
+        DASolverPtr_->calcdFdRegParAD(volCoords, states, parameters, objFuncName, designVarName, dFdRegPar);
+    }
+
     void calcdRdThermalTPsiAD(
         const double* volCoords,
         const double* states,

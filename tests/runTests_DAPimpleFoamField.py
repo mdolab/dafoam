@@ -59,6 +59,7 @@ daOptions = {
                 "varType": "vector",
                 "components": [0, 1, 2],
                 "addToAdjoint": True,
+                "timeDependentRefData": True,
             },
             "PVar": {
                 "type": "variance",
@@ -71,6 +72,7 @@ daOptions = {
                 "varType": "scalar",
                 "surfaceNames": ["wing"],
                 "addToAdjoint": True,
+                "timeDependentRefData": True,
             },
         },
         "UVarProbe": {
@@ -86,6 +88,7 @@ daOptions = {
                 "varType": "vector",
                 "components": [0, 1],
                 "addToAdjoint": True,
+                "timeDependentRefData": True,
             },
         },
         "wallShearStressVar": {
@@ -101,6 +104,7 @@ daOptions = {
                 "components": [0, 1],
                 "surfaceNames": ["wing"],
                 "addToAdjoint": True,
+                "timeDependentRefData": True,
             },
         },
     },
