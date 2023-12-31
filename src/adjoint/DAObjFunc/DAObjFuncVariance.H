@@ -61,6 +61,9 @@ protected:
     /// whether we find the reference data
     label isRefData_;
 
+    /// whether the ref data is time dependent if yes we need data in all time folders otherwise get it from the 0 folder
+    label timeDependentRefData_;
+
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;
 

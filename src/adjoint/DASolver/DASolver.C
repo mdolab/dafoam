@@ -5305,6 +5305,10 @@ void DASolver::updateOFField(const Vec wVec)
     }
     this->setPrimalBoundaryConditions(printInfo);
     daFieldPtr_->stateVec2OFField(wVec);
+
+    // if we have regression models, we also need to update them because they will update the fields
+    this->regressionModelCompute();
+
     // We need to call correctBC multiple times to reproduce
     // the exact residual, this is needed for some boundary conditions
     // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
@@ -5328,6 +5332,10 @@ void DASolver::updateOFField(const scalar* states)
     }
     this->setPrimalBoundaryConditions(printInfo);
     daFieldPtr_->state2OFField(states);
+
+    // if we have regression models, we also need to update them because they will update the fields
+    this->regressionModelCompute();
+
     // We need to call correctBC multiple times to reproduce
     // the exact residual, this is needed for some boundary conditions
     // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
@@ -5758,6 +5766,158 @@ void DASolver::calcdFdXvAD(
 #endif
 }
 
+void DASolver::calcdFdRegParAD(
+    const double* volCoords,
+    const double* states,
+    const double* parameters,
+    const word objFuncName,
+    const word designVarName,
+    double* dFdRegPar)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute dFdRegPar using reverse-mode AD
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: the name of the objective function
+
+        designVarName: name of the design variable
+    
+    Output:
+        dFdRegPar: dF/dRegPar
+    */
+
+    Info << "Calculating dFdRegPar using reverse-mode AD" << endl;
+
+    scalar* volCoordsArray = new scalar[daIndexPtr_->nLocalXv];
+    for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
+    {
+        volCoordsArray[i] = volCoords[i];
+    }
+
+    scalar* statesArray = new scalar[daIndexPtr_->nLocalAdjointStates];
+    for (label i = 0; i < daIndexPtr_->nLocalAdjointStates; i++)
+    {
+        statesArray[i] = states[i];
+    }
+
+    label nParameters = this->getNRegressionParameters();
+    scalar* parametersArray = new scalar[nParameters];
+    for (label i = 0; i < nParameters; i++)
+    {
+        parametersArray[i] = parameters[i];
+        // NOTE: we also zero out the dFdRegPar array
+        dFdRegPar[i] = 0;
+    }
+    // for each objFunc part
+    scalarList dFdRegParPart(nParameters, 0.0);
+
+    this->updateOFMesh(volCoordsArray);
+    this->updateOFField(statesArray);
+
+    // get the subDict for this objective function
+    dictionary objFuncSubDict =
+        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+
+    // loop over all parts for this objFuncName
+    forAll(objFuncSubDict.toc(), idxJ)
+    {
+        // get the subDict for this part
+        word objFuncPart = objFuncSubDict.toc()[idxJ];
+
+        // get objFunc from daObjFuncPtrList_
+        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
+
+        // reset tape
+        this->globalADTape_.reset();
+        // activate tape, start recording
+        this->globalADTape_.setActive();
+        // register inputs
+        for (label i = 0; i < nParameters; i++)
+        {
+            this->globalADTape_.registerInput(parametersArray[i]);
+        }
+        for (label i = 0; i < nParameters; i++)
+        {
+            this->setRegressionParameter(i, parametersArray[i]);
+        }
+
+        // update the BC, this func will also call regressionModelCompute
+        this->updateStateBoundaryConditions();
+
+        // compute the objective function
+        scalar fRef = daObjFunc.getObjFuncValue();
+        // register f as the output
+        this->globalADTape_.registerOutput(fRef);
+        // stop recording
+        this->globalADTape_.setPassive();
+
+        // Note: since we used reduced objFunc, we only need to
+        // assign the seed for master proc
+        if (Pstream::master())
+        {
+            fRef.setGradient(1.0);
+        }
+        // evaluate tape to compute derivative
+        this->globalADTape_.evaluate();
+
+        // get the partials from the inputs.
+        for (label i = 0; i < nParameters; i++)
+        {
+            dFdRegParPart[i] = parametersArray[i].getGradient();
+        }
+
+        for (label i = 0; i < nParameters; i++)
+        {
+            // we need to reduce all the contributions from processors because regPar is a serial input
+            reduce(dFdRegParPart[i], sumOp<scalar>());
+
+            // we need to add dFd*Part to dFd* because we want to sum
+            // all dFd*Part for all parts of this objFuncName.
+            dFdRegPar[i] += dFdRegParPart[i].getValue();
+        }
+
+        // need to clear adjoint and tape after the computation is done!
+        this->globalADTape_.clearAdjoints();
+        this->globalADTape_.reset();
+
+        // **********************************************************************************************
+        // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+        // **********************************************************************************************
+
+        for (label i = 0; i < nParameters; i++)
+        {
+            this->globalADTape_.deactivateValue(parametersArray[i]);
+        }
+        for (label i = 0; i < nParameters; i++)
+        {
+            this->setRegressionParameter(i, parametersArray[i]);
+        }
+
+        this->updateStateBoundaryConditions();
+        fRef = daObjFunc.getObjFuncValue();
+
+        if (daOptionPtr_->getOption<label>("debug"))
+        {
+            this->calcPrimalResidualStatistics("print");
+            Info << objFuncName << ": " << fRef << endl;
+        }
+    }
+
+    delete[] parametersArray;
+    delete[] volCoordsArray;
+    delete[] statesArray;
+
+#endif
+}
+
 void DASolver::calcdRdThermalTPsiAD(
     const double* volCoords,
     const double* states,
@@ -5934,11 +6094,10 @@ void DASolver::calcdRdRegParTPsiAD(
         this->setRegressionParameter(i, parametersArray[i]);
     }
 
-    // calculate outputs
-    this->regressionModelCompute();
+    // update the BC, this func will also call regressionModelCompute
+    this->updateStateBoundaryConditions();
 
     // compute residuals
-    this->updateStateBoundaryConditions();
     this->calcResiduals();
 
     // register outputs
@@ -5975,7 +6134,6 @@ void DASolver::calcdRdRegParTPsiAD(
     {
         this->setRegressionParameter(i, parametersArray[i]);
     }
-    this->regressionModelCompute();
     this->updateStateBoundaryConditions();
     this->calcResiduals();
 
@@ -8624,6 +8782,9 @@ void DASolver::updateStateBoundaryConditions()
         Update the boundary condition and intermediate variables for all state variables
     */
 
+    // if we have regression models, we also need to update them because they will update the fields
+    this->regressionModelCompute();
+
     label nBCCalls = 1;
     if (daOptionPtr_->getOption<label>("hasIterativeBC"))
     {
@@ -8763,6 +8924,9 @@ void DASolver::setTimeInstanceField(const label instanceI)
             stateBoundaryAllInstances_[idxI],
             oldTimeLevel);
     }
+
+    // if we have regression models, we also need to update them because they will update the fields
+    this->regressionModelCompute();
 
     // We need to call correctBC multiple times to reproduce
     // the exact residual for mulitpoint, this is needed for some boundary conditions

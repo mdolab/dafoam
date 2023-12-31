@@ -65,6 +65,8 @@ DAObjFuncVariance::DAObjFuncVariance(
         objFuncDict_.readEntry<labelList>("components", components_);
     }
 
+    timeDependentRefData_ = objFuncDict_.getLabel("timeDependentRefData");
+
     if (daIndex.adjStateNames.found(varName_))
     {
         objFuncConInfo_ = {{varName_}};
@@ -75,6 +77,21 @@ DAObjFuncVariance::DAObjFuncVariance(
     scalar deltaT = mesh_.time().deltaT().value();
     label nTimeSteps = round(endTime / deltaT);
 
+    word checkRefDataFolder;
+    label nRefValueInstances;
+    if (timeDependentRefData_)
+    {
+        // check if we can find the ref data in the endTime folder
+        checkRefDataFolder = Foam::name(endTime);
+        nRefValueInstances = nTimeSteps;
+    }
+    else
+    {
+        // check if we can find the ref data in the 0 folder
+        checkRefDataFolder = Foam::name(0);
+        nRefValueInstances = 1;
+    }
+
     // check if the reference data files exist
     isRefData_ = 1;
     if (varType_ == "scalar")
@@ -82,7 +99,7 @@ DAObjFuncVariance::DAObjFuncVariance(
         volScalarField varData(
             IOobject(
                 varName_ + "Data",
-                Foam::name(endTime),
+                checkRefDataFolder,
                 mesh_,
                 IOobject::READ_IF_PRESENT,
                 IOobject::NO_WRITE),
@@ -100,7 +117,7 @@ DAObjFuncVariance::DAObjFuncVariance(
         volVectorField varData(
             IOobject(
                 varName_ + "Data",
-                Foam::name(endTime),
+                checkRefDataFolder,
                 mesh_,
                 IOobject::READ_IF_PRESENT,
                 IOobject::NO_WRITE),
@@ -134,15 +151,23 @@ DAObjFuncVariance::DAObjFuncVariance(
     {
         // varData file found, we need to read in the ref values for all time instances
 
-        refValue_.setSize(nTimeSteps);
+        refValue_.setSize(nRefValueInstances);
 
         // set refValue
         if (varType_ == "scalar")
         {
-            for (label n = 0; n < nTimeSteps; n++)
+            for (label n = 0; n < nRefValueInstances; n++)
             {
-                scalar t = (n + 1) * deltaT;
-                word timeName = Foam::name(t);
+                word timeName;
+                if (timeDependentRefData_)
+                {
+                    scalar t = (n + 1) * deltaT;
+                    timeName = Foam::name(t);
+                }
+                else
+                {
+                    timeName = Foam::name(0);
+                }
 
                 volScalarField varData(
                     IOobject(
@@ -210,10 +235,18 @@ DAObjFuncVariance::DAObjFuncVariance(
         }
         else if (varType_ == "vector")
         {
-            for (label n = 0; n < nTimeSteps; n++)
+            for (label n = 0; n < nRefValueInstances; n++)
             {
-                scalar t = (n + 1) * deltaT;
-                word timeName = Foam::name(t);
+                word timeName;
+                if (timeDependentRefData_)
+                {
+                    scalar t = (n + 1) * deltaT;
+                    timeName = Foam::name(t);
+                }
+                else
+                {
+                    timeName = Foam::name(0);
+                }
 
                 volVectorField varData(
                     IOobject(
@@ -339,7 +372,15 @@ void DAObjFuncVariance::calcObjFunc(
 
         const objectRegistry& db = mesh_.thisDb();
 
-        label timeIndex = mesh_.time().timeIndex();
+        label timeIndex;
+        if (timeDependentRefData_)
+        {
+            timeIndex = mesh_.time().timeIndex();
+        }
+        else
+        {
+            timeIndex = 1;
+        }
 
         if (varName_ == "wallShearStress")
         {
