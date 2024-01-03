@@ -27,6 +27,10 @@ DARegression::DARegression(
     regSubDict.readEntry<wordList>("inputNames", inputNames_);
     regSubDict.readEntry<word>("outputName", outputName_);
 
+    regSubDict.readEntry<scalarList>("inputShift", inputShift_);
+
+    regSubDict.readEntry<scalarList>("inputScale", inputScale_);
+
     regSubDict.readEntry<scalar>("outputShift", outputShift_);
 
     regSubDict.readEntry<scalar>("outputScale", outputScale_);
@@ -36,6 +40,7 @@ DARegression::DARegression(
     if (modelType_ == "neuralNetwork")
     {
         regSubDict.readEntry<labelList>("hiddenLayerNeurons", hiddenLayerNeurons_);
+        regSubDict.readEntry<word>("activationFunction", activationFunction_);
     }
 
     // initialize parameters and give it large values
@@ -99,7 +104,7 @@ void DARegression::compute()
                 volScalarField magS = mag(symm(gradU));
                 forAll(inputFields[idxI], cellI)
                 {
-                    inputFields[idxI][cellI] = magS[cellI] / magOmega[cellI];
+                    inputFields[idxI][cellI] = (magS[cellI] / magOmega[cellI] - inputShift_[idxI]) * inputScale_[idxI];
                 }
             }
             else if (inputName == "PoD")
@@ -115,7 +120,7 @@ void DARegression::compute()
                 volScalarField nu = daModel_.getDATurbulenceModel().nu();
                 forAll(inputFields[idxI], cellI)
                 {
-                    inputFields[idxI][cellI] = nuTilda[cellI] / nu[cellI];
+                    inputFields[idxI][cellI] = (nuTilda[cellI] / nu[cellI] - inputShift_[idxI]) * inputScale_[idxI];
                 }
 #endif
             }
@@ -126,10 +131,17 @@ void DARegression::compute()
                 const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
                 volVectorField pGrad("gradP", fvc::grad(p));
                 volScalarField pG_denominator(mag(U) * mag(pGrad) + mag(U & pGrad));
-                volScalarField pGradAlongStream = (U & pGrad) / Foam::max(pG_denominator, dimensionedScalar("minpG", dimensionSet(0, 2, -3, 0, 0, 0, 0), SMALL));
+                forAll(pG_denominator, cellI)
+                {
+                    if (fabs(pG_denominator[cellI]) < 1e-16)
+                    {
+                        pG_denominator[cellI] = 1e-16;
+                    }
+                }
+                volScalarField pGradAlongStream = (U & pGrad) / pG_denominator;
                 forAll(inputFields[idxI], cellI)
                 {
-                    inputFields[idxI][cellI] = pGradAlongStream[cellI];
+                    inputFields[idxI][cellI] = (pGradAlongStream[cellI] - inputShift_[idxI]) * inputScale_[idxI];
                 }
             }
             else
@@ -181,7 +193,18 @@ void DARegression::compute()
                     layerVals[layerI][neuronI] += parameters_[counterI];
                     counterI++;
                     // activation function
-                    layerVals[layerI][neuronI] = 1 / (1 + exp(-layerVals[layerI][neuronI]));
+                    if (activationFunction_ == "sigmoid")
+                    {
+                        layerVals[layerI][neuronI] = 1 / (1 + exp(-layerVals[layerI][neuronI]));
+                    }
+                    else if (activationFunction_ == "tanh")
+                    {
+                        layerVals[layerI][neuronI] = (exp(2 * layerVals[layerI][neuronI]) - 1) / (exp(2 * layerVals[layerI][neuronI]) + 1);
+                    }
+                    else
+                    {
+                        FatalErrorIn("") << "activationFunction not valid. Options are: sigmoid and tanh" << abort(FatalError);
+                    }
                 }
             }
             // final output layer, we have only one output

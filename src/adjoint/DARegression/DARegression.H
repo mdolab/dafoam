@@ -60,6 +60,12 @@ protected:
     /// number of neurons hidden layers of the neural network
     labelList hiddenLayerNeurons_;
 
+    /// we can shift each input. we always shift before scaling it.
+    scalarList inputShift_;
+
+    /// we can scale each input. we always shift before scaling it.
+    scalarList inputScale_;
+
     /// we can shift the output. we always shift before scaling it.
     scalar outputShift_;
 
@@ -71,6 +77,9 @@ protected:
 
     /// whether the regression model is active
     label active_;
+
+    /// neural network activation function
+    word activationFunction_;
 
 public:
     /// Constructors

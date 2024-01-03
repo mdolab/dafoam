@@ -515,8 +515,11 @@ class DAOPTION(object):
             "inputNames": ["None"],
             "outputName": "None",
             "hiddenLayerNeurons": [0],
+            "inputShift": [0.0],
+            "inputScale": [1.0],
             "outputShift": 0.0,
             "outputScale": 1.0,
+            "activationFunction": "sigmoid",
         }
 
         # *********************************************************************************************
