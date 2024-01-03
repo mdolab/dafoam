@@ -65,7 +65,11 @@ daOptions = {
         "inputNames": ["PoD", "SoQ", "chiSA", "pGradStream"],
         "outputName": "betaFI",
         "hiddenLayerNeurons": [5, 5],
+        "inputShift": [0, 0, 0, 0],
+        "inputScale": [1, 1, 1, 1],
         "outputShift": 1.0,
+        "outputScale": 1.0,
+        "activationFunction": "sigmoid",
     },
     "objFunc": {
         "CD": {
