@@ -764,7 +764,7 @@ void DASpalartAllmarasFv3::getTurbProdOverDestruct(scalarList& PoD) const
 
     forAll(P, cellI)
     {
-        PoD[cellI] = P[cellI] / D[cellI];
+        PoD[cellI] = P[cellI] / (D[cellI] + 1e-16);
     }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

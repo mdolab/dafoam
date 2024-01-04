@@ -169,6 +169,11 @@ label DALaplacianFoam::solvePrimal(
         SolverPerformance<scalar> solverT = TEqn.solve();
         this->primalResidualControl<scalar>(solverT, printToScreen, printInterval, "T");
 
+        if (!this->validateStates())
+        {
+            return 1;
+        }
+
         if (printToScreen)
         {
 

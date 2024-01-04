@@ -519,6 +519,8 @@ class DAOPTION(object):
             "inputScale": [1.0],
             "outputShift": 0.0,
             "outputScale": 1.0,
+            "outputUpperBound": 1e8,
+            "outputLowerBound": -1e8,
             "activationFunction": "sigmoid",
         }
 

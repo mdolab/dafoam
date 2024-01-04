@@ -187,6 +187,11 @@ label DASimpleFoam::solvePrimal(
         laminarTransport.correct();
         daTurbulenceModelPtr_->correct(printToScreen);
 
+        if (!this->validateStates())
+        {
+            return 1;
+        }
+
         if (printToScreen)
         {
             daTurbulenceModelPtr_->printYPlus();

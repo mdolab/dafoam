@@ -81,6 +81,12 @@ protected:
     /// neural network activation function
     word activationFunction_;
 
+    /// the upper bound for the output
+    scalar outputUpperBound_;
+
+    /// the lower bound for the output
+    scalar outputLowerBound_;
+
 public:
     /// Constructors
     DARegression(
@@ -129,6 +135,9 @@ public:
             }
         }
     }
+
+    /// check if the output values are valid otherwise bound or fix them
+    void checkOutput(volScalarField& outputField);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
