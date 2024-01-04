@@ -163,6 +163,11 @@ label DASolidDisplacementFoam::solvePrimal(
 
         } while (initialResidual > convergenceTolerance_ && ++iCorr < nCorr_);
 
+        if (!this->validateStates())
+        {
+            return 1;
+        }
+
         if (printToScreen)
         {
             this->printAllObjFuncs();
@@ -172,7 +177,6 @@ label DASolidDisplacementFoam::solvePrimal(
         }
 
         runTime.write();
-
     }
 
 #include "calculateStressSolidDisplacement.H"

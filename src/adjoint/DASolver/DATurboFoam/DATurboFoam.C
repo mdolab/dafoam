@@ -122,6 +122,11 @@ label DATurboFoam::solvePrimal(
 
         daTurbulenceModelPtr_->correct(printToScreen);
 
+        if (!this->validateStates())
+        {
+            return 1;
+        }
+
         if (printToScreen)
         {
             daTurbulenceModelPtr_->printYPlus();

@@ -35,6 +35,10 @@ DARegression::DARegression(
 
     regSubDict.readEntry<scalar>("outputScale", outputScale_);
 
+    regSubDict.readEntry<scalar>("outputUpperBound", outputUpperBound_);
+
+    regSubDict.readEntry<scalar>("outputLowerBound", outputLowerBound_);
+
     active_ = regSubDict.getLabel("active");
 
     if (modelType_ == "neuralNetwork")
@@ -104,7 +108,7 @@ void DARegression::compute()
                 volScalarField magS = mag(symm(gradU));
                 forAll(inputFields[idxI], cellI)
                 {
-                    inputFields[idxI][cellI] = (magS[cellI] / magOmega[cellI] - inputShift_[idxI]) * inputScale_[idxI];
+                    inputFields[idxI][cellI] = (magS[cellI] / (magOmega[cellI] + 1e-16) - inputShift_[idxI]) * inputScale_[idxI];
                 }
             }
             else if (inputName == "PoD")
@@ -133,10 +137,7 @@ void DARegression::compute()
                 volScalarField pG_denominator(mag(U) * mag(pGrad) + mag(U & pGrad));
                 forAll(pG_denominator, cellI)
                 {
-                    if (fabs(pG_denominator[cellI]) < 1e-16)
-                    {
-                        pG_denominator[cellI] = 1e-16;
-                    }
+                    pG_denominator[cellI] += 1e-16;
                 }
                 volScalarField pGradAlongStream = (U & pGrad) / pG_denominator;
                 forAll(inputFields[idxI], cellI)
@@ -173,6 +174,7 @@ void DARegression::compute()
                 {
                     if (layerI == 0)
                     {
+                        // for the 1st hidden layer, we use the input layer as the input
                         forAll(inputNames_, neuronJ)
                         {
                             // weighted sum
@@ -182,6 +184,7 @@ void DARegression::compute()
                     }
                     else
                     {
+                        // for the rest of hidden layer, we use the previous hidden layer as the input
                         forAll(layerVals[layerI - 1], neuronJ)
                         {
                             // weighted sum
@@ -218,8 +221,13 @@ void DARegression::compute()
             // bias
             outputVal += parameters_[counterI];
 
+            // no activation function for the output layer
+
             outputField[cellI] = outputScale_ * (outputVal + outputShift_);
         }
+
+        // check if the output values are valid otherwise fix/bound them
+        this->checkOutput(outputField);
 
         outputField.correctBoundaryConditions();
     }
@@ -267,6 +275,56 @@ label DARegression::nParameters()
         nParameters += 1;
 
         return nParameters;
+    }
+}
+
+void DARegression::checkOutput(volScalarField& outputField)
+{
+    /*
+    Description:
+        check if the output values are valid otherwise bound or fix them
+    */
+
+    // check if the output value is valid.
+    label isNaN = 0;
+    label isInf = 0;
+    label isBounded = 0;
+    forAll(mesh_.cells(), cellI)
+    {
+        if (std::isnan(outputField[cellI]))
+        {
+            outputField[cellI] = 0;
+            isNaN = 1;
+        }
+        if (std::isinf(outputField[cellI]))
+        {
+            outputField[cellI] = 0;
+            isInf = 1;
+        }
+        if (outputField[cellI] > outputUpperBound_)
+        {
+            outputField[cellI] = outputUpperBound_;
+            isBounded = 1;
+        }
+        if (outputField[cellI] < outputLowerBound_)
+        {
+            outputField[cellI] = outputLowerBound_;
+            isBounded = 1;
+        }
+    }
+    if (isBounded == 1)
+    {
+        Info << "************* Warning! output values are bounded. ******************" << endl;
+    }
+
+    if (isNaN == 1)
+    {
+        Info << "************* Warning! output values have nan and were set to zeros ******************" << endl;
+    }
+
+    if (isInf == 1)
+    {
+        Info << "************* Warning! output values have inf and were set to zeros ******************" << endl;
     }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

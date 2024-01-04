@@ -218,6 +218,11 @@ label DAPimpleFoam::solvePrimal(
             daTurbulenceModelPtr_->correct(pimplePrintToScreen);
         }
 
+        if (!this->validateStates())
+        {
+            return 1;
+        }
+
         this->calcUnsteadyObjFuncs();
 
         if (printToScreen)

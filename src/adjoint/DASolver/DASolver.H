@@ -1239,6 +1239,17 @@ public:
     codi::RealReverse::Tape& globalADTape_;
 
 #endif
+
+    /// check if a field variable has nan
+    template<class classType>
+    label validateField(const classType& field);
+
+    /// check if a field variable has nan
+    template<class classType>
+    label validateVectorField(const classType& field);
+
+    /// check if the state variables have valid values
+    label validateStates();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -1263,6 +1274,74 @@ void DASolver::primalResidualControl(
         Info << varName << " Initial residual: " << solverP.initialResidual() << endl
              << varName << "   Final residual: " << solverP.finalResidual() << endl;
     }
+}
+
+template<class classType>
+label DASolver::validateField(const classType& field)
+{
+    /*
+    Description:
+        Check if a field variable has invalid in it. If the values are valid, return 1
+    */
+
+    forAll(field, idxI)
+    {
+        const scalar& val = field[idxI];
+        if (std::isnan(val) || std::isinf(val) || fabs(val) > 1e15)
+        {
+            return 0;
+        }
+    }
+    forAll(field.boundaryField(), patchI)
+    {
+        forAll(field.boundaryField()[patchI], faceI)
+        {
+            const scalar& val = field.boundaryField()[patchI][faceI];
+            if (std::isnan(val) || std::isinf(val) || fabs(val) > 1e15)
+            {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+template<class classType>
+label DASolver::validateVectorField(const classType& field)
+{
+    /*
+    Description:
+        Check if a field variable has invalid in it. If the values are valid, return 1
+    */
+
+    forAll(field, idxI)
+    {
+        for (label compI = 0; compI < 3; compI++)
+        {
+            const scalar& val = field[idxI][compI];
+            if (std::isnan(val) || std::isinf(val) || fabs(val) > 1e15)
+            {
+                return 0;
+            }
+        }
+    }
+    forAll(field.boundaryField(), patchI)
+    {
+        forAll(field.boundaryField()[patchI], faceI)
+        {
+            for (label compI = 0; compI < 3; compI++)
+            {
+                const scalar& val = field.boundaryField()[patchI][faceI][compI];
+                if (std::isnan(val) || std::isinf(val) || fabs(val) > 1e15)
+                {
+                    return 0;
+                }
+            }
+        }
+    }
+
+    return 1;
 }
 
 } // End namespace Foam
