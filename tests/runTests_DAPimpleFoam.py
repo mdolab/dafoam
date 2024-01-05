@@ -62,14 +62,15 @@ daOptions = {
     "regressionModel": {
         "active": True,
         "modelType": "neuralNetwork",
-        "inputNames": ["PoD", "SoQ", "chiSA", "pGradStream"],
+        "inputNames": ["VoS", "PoD", "chiSA", "pGradStream", "PSoSS", "SCurv", "UOrth"],
         "outputName": "betaFI",
         "hiddenLayerNeurons": [5, 5],
-        "inputShift": [0, 0, 0, 0],
-        "inputScale": [1, 1, 1, 1],
+        "inputShift": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        "inputScale": [1.0, 0.00001, 0.01, 1.0, 1.0, 1.0, 1.0],
         "outputShift": 1.0,
         "outputScale": 1.0,
-        "activationFunction": "sigmoid",
+        "activationFunction": "tanh",
+        "printInputRange": False,
     },
     "objFunc": {
         "CD": {
