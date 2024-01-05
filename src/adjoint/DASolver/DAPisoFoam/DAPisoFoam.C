@@ -198,8 +198,11 @@ label DAPisoFoam::solvePrimal(
         laminarTransport.correct();
         daTurbulenceModelPtr_->correct(printToScreen);
 
-        if (!this->validateStates())
+        if (this->validateStates())
         {
+            // write data to files and quit
+            runTime.writeNow();
+            mesh.write();
             return 1;
         }
 

@@ -9601,47 +9601,46 @@ label DASolver::validateStates()
         check if the state variables have valid values, if yes, return 1
     */
 
+    label fail = 0;
+
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         const word stateName = stateInfo_["volVectorStates"][idxI];
         const volVectorField& state = meshPtr_->thisDb().lookupObject<volVectorField>(stateName);
-        if (!this->validateVectorField(state))
-        {
-            return 0;
-        }
+        fail += this->validateVectorField(state);
     }
 
     forAll(stateInfo_["volScalarStates"], idxI)
     {
         const word stateName = stateInfo_["volScalarStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        if (!this->validateField(state))
-        {
-            return 0;
-        }
+        fail += this->validateField(state);
     }
 
     forAll(stateInfo_["modelStates"], idxI)
     {
         const word stateName = stateInfo_["modelStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        if (!this->validateField(state))
-        {
-            return 0;
-        }
+        fail += this->validateField(state);
     }
 
     forAll(stateInfo_["surfaceScalarStates"], idxI)
     {
         const word stateName = stateInfo_["surfaceScalarStates"][idxI];
         const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
-        if (!this->validateField(state))
-        {
-            return 0;
-        }
+        fail += this->validateField(state);
     }
 
-    return 1;
+    reduce(fail, sumOp<label>());
+
+    if (fail > 0)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

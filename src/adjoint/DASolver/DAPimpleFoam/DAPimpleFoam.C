@@ -218,8 +218,11 @@ label DAPimpleFoam::solvePrimal(
             daTurbulenceModelPtr_->correct(pimplePrintToScreen);
         }
 
-        if (!this->validateStates())
+        if (this->validateStates())
         {
+            // write data to files and quit
+            runTime.writeNow();
+            mesh.write();
             return 1;
         }
 
