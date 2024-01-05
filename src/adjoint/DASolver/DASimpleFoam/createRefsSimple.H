@@ -13,3 +13,4 @@ label& pRefCell = pRefCell_;
 scalar& pRefValue = pRefValue_;
 volVectorField& fvSource = fvSourcePtr_();
 IOMRFZoneListDF& MRF = MRFPtr_();
+const dictionary& allOptions = daOptionPtr_->getAllOptions();

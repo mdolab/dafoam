@@ -24,3 +24,6 @@ if (pimple.momentumPredictor())
 
     this->primalResidualControl<vector>(solverU, pimplePrintToScreen, printInterval, "U");
 }
+
+// bound U
+DAUtility::boundVar(allOptions, U, printToScreen);

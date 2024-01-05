@@ -17,3 +17,4 @@ volScalarField& T = TPtr_();
 dimensionedScalar Pr = PrPtr_();
 dimensionedScalar Prt = PrtPtr_();
 volScalarField& alphat = alphatPtr_();
+const dictionary& allOptions = daOptionPtr_->getAllOptions();

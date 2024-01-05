@@ -750,6 +750,9 @@ class PYDAFOAM(object):
         # name
         self.name = "PYDAFOAM"
 
+        # register solver names and set their types
+        self._solverRegistry()
+
         # initialize options for adjoints
         self._initializeOptions(options)
 
@@ -777,9 +780,6 @@ class PYDAFOAM(object):
 
         # run decomposePar for parallel runs
         self.runDecomposePar()
-
-        # register solver names and set their types
-        self._solverRegistry()
 
         # initialize the pySolvers
         self.solverInitialized = 0
@@ -979,6 +979,13 @@ class PYDAFOAM(object):
 
         # initialize the DAOPTION object
         daOption = DAOPTION()
+
+        # we need to adjust the default p primalValueBounds based on the solver type, incompressible or compressible
+        if daOption.solverName in self.solverRegistry["Incompressible"]:
+            daOption.primalVarBounds["pMin"] = -50000
+            daOption.primalVarBounds["pMax"] = 50000
+            daOption.primalVarBounds["p_rghMin"] = -50000
+            daOption.primalVarBounds["p_rghMax"] = 50000
 
         defOpts = {}
 

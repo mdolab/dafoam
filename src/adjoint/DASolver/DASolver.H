@@ -213,6 +213,9 @@ protected:
     /// a scaling factor related to the unsteady obj func timeOperator e.g., in dFdW calculation
     scalar unsteadyObjFuncsScaling_;
 
+    /// initial values for validateStates
+    HashTable<scalar> initStateVals_;
+
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -1250,6 +1253,12 @@ public:
 
     /// check if the state variables have valid values
     label validateStates();
+
+    /// calculate the initial value for validate states
+    void getInitStateVals(HashTable<scalar>& initState);
+
+    /// reset the states to its initial values this usually happens when we have nan in states
+    void resetStateVals();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

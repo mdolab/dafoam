@@ -22,3 +22,6 @@ if (piso.momentumPredictor())
 
     this->primalResidualControl<vector>(solverU, printToScreen, printInterval, "U");
 }
+
+// bound U
+DAUtility::boundVar(allOptions, U, printToScreen);
