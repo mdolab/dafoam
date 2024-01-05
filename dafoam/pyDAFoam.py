@@ -980,13 +980,6 @@ class PYDAFOAM(object):
         # initialize the DAOPTION object
         daOption = DAOPTION()
 
-        # we need to adjust the default p primalValueBounds based on the solver type, incompressible or compressible
-        if daOption.solverName in self.solverRegistry["Incompressible"]:
-            daOption.primalVarBounds["pMin"] = -50000
-            daOption.primalVarBounds["pMax"] = 50000
-            daOption.primalVarBounds["p_rghMin"] = -50000
-            daOption.primalVarBounds["p_rghMax"] = 50000
-
         defOpts = {}
 
         # assign all the attribute of daOptoin to defOpts
@@ -1750,6 +1743,13 @@ class PYDAFOAM(object):
 
         # Load all the option information:
         self.defaultOptions = self._getDefOptions()
+
+        # we need to adjust the default p primalValueBounds for incompressible solvers
+        if options["solverName"] in self.solverRegistry["Incompressible"]:
+            self.defaultOptions["primalVarBounds"][1]["pMin"] = -50000.0
+            self.defaultOptions["primalVarBounds"][1]["pMax"] = 50000.0
+            self.defaultOptions["primalVarBounds"][1]["p_rghMin"] = -50000.0
+            self.defaultOptions["primalVarBounds"][1]["p_rghMax"] = 50000.0
 
         # Set options based on defaultOptions
         # we basically overwrite defaultOptions with the given options
