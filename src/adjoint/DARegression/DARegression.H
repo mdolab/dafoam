@@ -87,6 +87,9 @@ protected:
     /// the lower bound for the output
     scalar outputLowerBound_;
 
+    /// whether to print the input range info this is used to scale the input
+    label printInputRange_;
+
 public:
     /// Constructors
     DARegression(
