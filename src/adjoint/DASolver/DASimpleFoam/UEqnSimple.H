@@ -30,3 +30,6 @@ if (simple.momentumPredictor())
 
     fvOptions.correct(U);
 }
+
+// bound U
+DAUtility::boundVar(allOptions, U, printToScreen);

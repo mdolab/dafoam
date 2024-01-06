@@ -213,6 +213,9 @@ protected:
     /// a scaling factor related to the unsteady obj func timeOperator e.g., in dFdW calculation
     scalar unsteadyObjFuncsScaling_;
 
+    /// initial values for validateStates
+    HashTable<scalar> initStateVals_;
+
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -1250,6 +1253,12 @@ public:
 
     /// check if the state variables have valid values
     label validateStates();
+
+    /// calculate the initial value for validate states
+    void getInitStateVals(HashTable<scalar>& initState);
+
+    /// reset the states to its initial values this usually happens when we have nan in states
+    void resetStateVals();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -1281,7 +1290,7 @@ label DASolver::validateField(const classType& field)
 {
     /*
     Description:
-        Check if a field variable has invalid in it. If the values are valid, return 1
+        Check if a field variable has invalid in it. If the values are valid, return 0
     */
 
     forAll(field, idxI)
@@ -1289,7 +1298,7 @@ label DASolver::validateField(const classType& field)
         const scalar& val = field[idxI];
         if (std::isnan(val) || std::isinf(val) || fabs(val) > 1e15)
         {
-            return 0;
+            return 1;
         }
     }
     forAll(field.boundaryField(), patchI)
@@ -1299,12 +1308,12 @@ label DASolver::validateField(const classType& field)
             const scalar& val = field.boundaryField()[patchI][faceI];
             if (std::isnan(val) || std::isinf(val) || fabs(val) > 1e15)
             {
-                return 0;
+                return 1;
             }
         }
     }
 
-    return 1;
+    return 0;
 }
 
 template<class classType>
@@ -1312,7 +1321,7 @@ label DASolver::validateVectorField(const classType& field)
 {
     /*
     Description:
-        Check if a field variable has invalid in it. If the values are valid, return 1
+        Check if a field variable has invalid in it. If the values are valid, return 0
     */
 
     forAll(field, idxI)
@@ -1322,7 +1331,7 @@ label DASolver::validateVectorField(const classType& field)
             const scalar& val = field[idxI][compI];
             if (std::isnan(val) || std::isinf(val) || fabs(val) > 1e15)
             {
-                return 0;
+                return 1;
             }
         }
     }
@@ -1335,13 +1344,13 @@ label DASolver::validateVectorField(const classType& field)
                 const scalar& val = field.boundaryField()[patchI][faceI][compI];
                 if (std::isnan(val) || std::isinf(val) || fabs(val) > 1e15)
                 {
-                    return 0;
+                    return 1;
                 }
             }
         }
     }
 
-    return 1;
+    return 0;
 }
 
 } // End namespace Foam

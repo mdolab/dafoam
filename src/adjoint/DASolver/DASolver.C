@@ -9594,20 +9594,20 @@ label DASolver::runFPAdj(
     return 1;
 }
 
-label DASolver::validateStates()
+void DASolver::getInitStateVals(HashTable<scalar>& initState)
 {
     /*
     Description:
-        check if the state variables have valid values, if yes, return 1
+        Get the initial state values from the field's 1st index
     */
 
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         const word stateName = stateInfo_["volVectorStates"][idxI];
         const volVectorField& state = meshPtr_->thisDb().lookupObject<volVectorField>(stateName);
-        if (!this->validateVectorField(state))
+        for (label i = 0; i < 3; i++)
         {
-            return 0;
+            initState.set(stateName + Foam::name(i), state[0][i]);
         }
     }
 
@@ -9615,33 +9615,127 @@ label DASolver::validateStates()
     {
         const word stateName = stateInfo_["volScalarStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        if (!this->validateField(state))
-        {
-            return 0;
-        }
+        initState.set(stateName, state[0]);
     }
 
     forAll(stateInfo_["modelStates"], idxI)
     {
         const word stateName = stateInfo_["modelStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        if (!this->validateField(state))
-        {
-            return 0;
-        }
+        initState.set(stateName, state[0]);
     }
 
     forAll(stateInfo_["surfaceScalarStates"], idxI)
     {
         const word stateName = stateInfo_["surfaceScalarStates"][idxI];
         const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
-        if (!this->validateField(state))
+        initState.set(stateName, state[0]);
+    }
+
+    Info << "initState: " << initState << endl;
+}
+
+void DASolver::resetStateVals()
+{
+    /*
+    Description:
+        Reset the initial state values using DASolver::initStateVals_
+    */
+
+    Info << "Resetting state to its initial values" << endl;
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state = const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+        forAll(state, cellI)
         {
-            return 0;
+            for (label i = 0; i < 3; i++)
+            {
+                state[cellI][i] = initStateVals_[stateName + Foam::name(i)];
+            }
         }
     }
 
-    return 1;
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+        forAll(state, cellI)
+        {
+            state[cellI] = initStateVals_[stateName];
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+        forAll(state, cellI)
+        {
+            state[cellI] = initStateVals_[stateName];
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state = const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+        forAll(state, faceI)
+        {
+            state[faceI] = initStateVals_[stateName];
+        }
+    }
+}
+
+label DASolver::validateStates()
+{
+    /*
+    Description:
+        check if the state variables have valid values, if yes, return 1
+    */
+
+    label fail = 0;
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const volVectorField& state = meshPtr_->thisDb().lookupObject<volVectorField>(stateName);
+        fail += this->validateVectorField(state);
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
+        fail += this->validateField(state);
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
+        fail += this->validateField(state);
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
+        fail += this->validateField(state);
+    }
+
+    reduce(fail, sumOp<label>());
+
+    if (fail > 0)
+    {
+        this->resetStateVals();
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

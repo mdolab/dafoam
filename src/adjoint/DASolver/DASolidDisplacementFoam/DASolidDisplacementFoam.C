@@ -163,8 +163,11 @@ label DASolidDisplacementFoam::solvePrimal(
 
         } while (initialResidual > convergenceTolerance_ && ++iCorr < nCorr_);
 
-        if (!this->validateStates())
+        if (this->validateStates())
         {
+            // write data to files and quit
+            runTime.writeNow();
+            mesh.write();
             return 1;
         }
 

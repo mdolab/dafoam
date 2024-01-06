@@ -65,8 +65,13 @@
     // Explicitly relax pressure for momentum corrector
     p.relax();
 
+    // bound p
+    DAUtility::boundVar(allOptions, p, printToScreen);
+
     // Momentum corrector
     U = HbyA - rAtU() * fvc::grad(p);
+    // bound U
+    DAUtility::boundVar(allOptions, U, printToScreen);
     U.correctBoundaryConditions();
     fvOptions.correct(U);
 }

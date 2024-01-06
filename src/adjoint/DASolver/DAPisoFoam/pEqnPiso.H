@@ -34,5 +34,10 @@ if (printToScreen)
 #include "continuityErrsPython.H"
 }
 
+// bound p
+DAUtility::boundVar(allOptions, p, printToScreen);
+
 U = HbyA - rAU * fvc::grad(p);
+// bound U
+DAUtility::boundVar(allOptions, U, printToScreen);
 U.correctBoundaryConditions();

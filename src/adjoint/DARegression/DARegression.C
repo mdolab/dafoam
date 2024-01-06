@@ -39,6 +39,8 @@ DARegression::DARegression(
 
     regSubDict.readEntry<scalar>("outputLowerBound", outputLowerBound_);
 
+    regSubDict.readEntry<label>("printInputRange", printInputRange_);
+
     active_ = regSubDict.getLabel("active");
 
     if (modelType_ == "neuralNetwork")
@@ -98,9 +100,9 @@ void DARegression::compute()
         {
             inputFields[idxI].setSize(mesh_.nCells());
             word inputName = inputNames_[idxI];
-            if (inputName == "SoQ")
+            if (inputName == "VoS")
             {
-                // Shear / vorticity
+                // vorticity / strain
                 const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
                 const tmp<volTensorField> tgradU(fvc::grad(U));
                 const volTensorField& gradU = tgradU();
@@ -108,13 +110,18 @@ void DARegression::compute()
                 volScalarField magS = mag(symm(gradU));
                 forAll(inputFields[idxI], cellI)
                 {
-                    inputFields[idxI][cellI] = (magS[cellI] / (magOmega[cellI] + 1e-16) - inputShift_[idxI]) * inputScale_[idxI];
+                    inputFields[idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) - inputShift_[idxI]) * inputScale_[idxI];
                 }
             }
             else if (inputName == "PoD")
             {
                 // production / destruction
                 daModel_.getTurbProdOverDestruct(inputFields[idxI]);
+                forAll(inputFields[idxI], cellI)
+                {
+                    inputFields[idxI][cellI] = (inputFields[idxI][cellI] - inputShift_[idxI]) * inputScale_[idxI];
+                }
+
             }
             else if (inputName == "chiSA")
             {
@@ -145,9 +152,64 @@ void DARegression::compute()
                     inputFields[idxI][cellI] = (pGradAlongStream[cellI] - inputShift_[idxI]) * inputScale_[idxI];
                 }
             }
+            else if (inputName == "PSoSS")
+            {
+                // pressure normal stress over shear stress
+                const volScalarField& p = mesh_.thisDb().lookupObject<volScalarField>("p");
+                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+                const tmp<volTensorField> tgradU(fvc::grad(U));
+                const volTensorField& gradU = tgradU();
+                volVectorField pGrad("gradP", fvc::grad(p));
+                vector diagUGrad = vector::zero;
+                scalar val = 0;
+                forAll(inputFields[idxI], cellI)
+                {
+                    diagUGrad[0] = gradU[cellI].xx();
+                    diagUGrad[1] = gradU[cellI].yy();
+                    diagUGrad[2] = gradU[cellI].zz();
+                    val = mag(pGrad[cellI]) / (mag(pGrad[cellI]) + mag(3.0 * cmptAv(U[cellI] & diagUGrad)) + 1e-16);
+                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                }
+            }
+            else if (inputName == "SCurv")
+            {
+                // streamline curvature
+                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+                const tmp<volTensorField> tgradU(fvc::grad(U));
+                const volTensorField& gradU = tgradU();
+
+                scalar val = 0;
+                forAll(inputFields[idxI], cellI)
+                {
+                    val = mag(U[cellI] & gradU[cellI]) / (mag(U[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI]) + 1e-16);
+                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                }
+            }
+            else if (inputName == "UOrth")
+            {
+                // Non-orthogonality between velocity and its gradient
+                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+                const tmp<volTensorField> tgradU(fvc::grad(U));
+                const volTensorField& gradU = tgradU();
+
+                scalar val = 0;
+                forAll(inputFields[idxI], cellI)
+                {
+                    val = mag(U[cellI] & gradU[cellI] & U[cellI]) / (mag(U[cellI]) * mag(gradU[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI] & U[cellI]) + 1e-16);
+                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                }
+            }
             else
             {
-                FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: SoQ, PoD, chiSA, pGradStream" << abort(FatalError);
+                FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: VoS, PoD, chiSA, pGradStream, PSoSS, SCurv, UOrth" << abort(FatalError);
+            }
+        }
+
+        if (printInputRange_)
+        {
+            forAll(inputNames_, idxI)
+            {
+                Info << inputNames_[idxI] << " Max: " << gMax(inputFields[idxI]) << " Min: " << gMin(inputFields[idxI]) << endl;
             }
         }
 
@@ -202,7 +264,7 @@ void DARegression::compute()
                     }
                     else if (activationFunction_ == "tanh")
                     {
-                        layerVals[layerI][neuronI] = (exp(2 * layerVals[layerI][neuronI]) - 1) / (exp(2 * layerVals[layerI][neuronI]) + 1);
+                        layerVals[layerI][neuronI] = (1 - exp(-2 * layerVals[layerI][neuronI])) / (1 + exp(-2 * layerVals[layerI][neuronI]));
                     }
                     else
                     {

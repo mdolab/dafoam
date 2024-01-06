@@ -522,6 +522,7 @@ class DAOPTION(object):
             "outputUpperBound": 1e8,
             "outputLowerBound": -1e8,
             "activationFunction": "sigmoid",
+            "printInputRange": False,
         }
 
         # *********************************************************************************************
@@ -749,6 +750,9 @@ class PYDAFOAM(object):
         # name
         self.name = "PYDAFOAM"
 
+        # register solver names and set their types
+        self._solverRegistry()
+
         # initialize options for adjoints
         self._initializeOptions(options)
 
@@ -776,9 +780,6 @@ class PYDAFOAM(object):
 
         # run decomposePar for parallel runs
         self.runDecomposePar()
-
-        # register solver names and set their types
-        self._solverRegistry()
 
         # initialize the pySolvers
         self.solverInitialized = 0
@@ -1742,6 +1743,13 @@ class PYDAFOAM(object):
 
         # Load all the option information:
         self.defaultOptions = self._getDefOptions()
+
+        # we need to adjust the default p primalValueBounds for incompressible solvers
+        if options["solverName"] in self.solverRegistry["Incompressible"]:
+            self.defaultOptions["primalVarBounds"][1]["pMin"] = -50000.0
+            self.defaultOptions["primalVarBounds"][1]["pMax"] = 50000.0
+            self.defaultOptions["primalVarBounds"][1]["p_rghMin"] = -50000.0
+            self.defaultOptions["primalVarBounds"][1]["p_rghMax"] = 50000.0
 
         # Set options based on defaultOptions
         # we basically overwrite defaultOptions with the given options
