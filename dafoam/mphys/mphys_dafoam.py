@@ -664,7 +664,7 @@ class DAFoamSolver(ImplicitComponent):
 
     def add_dvgeo(self, DVGeo):
         self.DVGeo = DVGeo
-    
+
     def add_dvcon(self, DVCon):
         self.DVCon = DVCon
 
@@ -724,10 +724,10 @@ class DAFoamSolver(ImplicitComponent):
             if couplingInfo["aerothermal"]["active"]:
                 if self.discipline == "aero":
                     T_convect = inputs["T_convect"]
-                    DASolver.solver.setThermal(T_convect)
+                    DASolver.setThermal(T_convect)
                 elif self.discipline == "thermal":
                     q_conduct = inputs["q_conduct"]
-                    DASolver.solver.setThermal(q_conduct)
+                    DASolver.setThermal(q_conduct)
                 else:
                     raise AnalysisError("discipline not valid!")
 
@@ -948,13 +948,17 @@ class DAFoamSolver(ImplicitComponent):
 
                     if DASolver.getOption("writeDeformedFFDs"):
                         if self.DVGeo is None:
-                            raise RuntimeError("writeDeformedFFDs is set but no DVGeo object found! Please call add_dvgeo in the run script!")
+                            raise RuntimeError(
+                                "writeDeformedFFDs is set but no DVGeo object found! Please call add_dvgeo in the run script!"
+                            )
                         else:
                             self.DVGeo.writeTecplot("deformedFFDs_%d.dat" % self.solution_counter)
-                    
+
                     if DASolver.getOption("writeDeformedConstraints"):
                         if self.DVCon is None:
-                            raise RuntimeError("writeDeformedConstraints is set but no DVCon object found! Please call add_dvcon in the run script!")
+                            raise RuntimeError(
+                                "writeDeformedConstraints is set but no DVCon object found! Please call add_dvcon in the run script!"
+                            )
                         else:
                             self.DVCon.writeTecplot("deformedConstraints_%d.dat" % self.solution_counter)
 
@@ -2122,7 +2126,16 @@ class DAFoamFvSource(ExplicitComponent):
                         prodVec = PETSc.Vec().createSeq(2, bsize=1, comm=PETSc.COMM_SELF)
                         prodVec.zeroEntries()
                         DASolver.solverAD.calcdFvSourcedInputsTPsiAD(
-                            propName.encode(), "targetForce".encode(), aVec, tVec, rVec, fVec, cVec, xvVec, sBarVec, prodVec
+                            propName.encode(),
+                            "targetForce".encode(),
+                            aVec,
+                            tVec,
+                            rVec,
+                            fVec,
+                            cVec,
+                            xvVec,
+                            sBarVec,
+                            prodVec,
                         )
                         fBar = DASolver.vec2ArraySeq(prodVec)
                         fBar = self.comm.allreduce(fBar, op=MPI.SUM)
@@ -2147,6 +2160,7 @@ class DAFoamFvSource(ExplicitComponent):
                 vBar = DASolver.vec2Array(prodVec)
                 # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
                 d_inputs["%s_vol_coords" % self.discipline] += vBar
+
 
 class DAFoamPropNodes(ExplicitComponent):
     """
