@@ -9729,6 +9729,9 @@ label DASolver::validateStates()
 
     if (fail > 0)
     {
+        Info << "*************************************** Warning! ***************************************" << endl;
+        Info << "Invalid values found. Return primal failure and reset the states to their initial values" << endl;
+        Info << "*************************************** Warning! ***************************************" << endl;
         this->resetStateVals();
         return 1;
     }

@@ -574,12 +574,15 @@ public:
     /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches
     void setThermal(double* thermal)
     {
-#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        DASolverPtr_->setThermal(thermal);
-        return;
-#endif
-        FatalErrorIn("setThermal") << "should not call this func in AD mode!"
-                                   << abort(FatalError);
+        label nCouplingFaces = this->getNCouplingFaces();
+        scalar* thermalArray = new scalar[nCouplingFaces * 2];
+        for (label i = 0; i < nCouplingFaces * 2; i++)
+        {
+            thermalArray[i] = thermal[i];
+        }
+
+        DASolverPtr_->setThermal(thermalArray);
+        delete[] thermalArray;
     }
 
     /// get the number of regression model parameters
