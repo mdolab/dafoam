@@ -209,7 +209,7 @@ void DARegression::compute()
         {
             forAll(inputNames_, idxI)
             {
-                Info << inputNames_[idxI] << " Max: " << gMax(inputFields[idxI]) << " Min: " << gMin(inputFields[idxI]) << endl;
+                Info << inputNames_[idxI] << " Max: " << gMax(inputFields[idxI]) << " Min: " << gMin(inputFields[idxI]) << " Avg: " << gAverage(inputFields[idxI]) << endl;
             }
         }
 
