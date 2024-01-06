@@ -4083,6 +4083,20 @@ class PYDAFOAM(object):
                 "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
             )
 
+    def setThermal(self, thermalArray):
+        """
+        Update the values in thermalArray to OpenFOAM's temperature boundary conditions
+
+        Parameters
+        ----------
+        thermalArray: array
+            thermal array that contains the boundary values for OpenFOAM's temperature variable
+        """
+
+        self.solver.setThermal(thermalArray)
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.setThermal(thermalArray)
+
     def setRegressionParameter(self, idx, val):
         """
         Update the regression parameters
