@@ -1546,8 +1546,18 @@ class PYDAFOAM(object):
         """
 
         for dvName in self.internalDV:
-            for i in range(self.internalDV[dvName]["value"]):
+            for i in range(len(self.internalDV[dvName]["value"])):
                 self.internalDV[dvName]["value"][i] = xDVs[dvName][i]
+
+    def getInternalDVDict(self):
+        """
+        Get the internal design variable values
+        """
+        internalDVDict = {}
+        for dvName in self.internalDV:
+            internalDVDict[dvName] = self.internalDV[dvName]["value"]
+        
+        return internalDVDict
 
     def addInternalDV(self, dvName, dvInit, dvFunc, lower, upper, scale):
         """
@@ -1570,6 +1580,8 @@ class PYDAFOAM(object):
         self.internalDV[dvName]["scale"] = scale
         nInternalDVs = len(dvInit)
         self.internalDV[dvName]["value"] = np.zeros(nInternalDVs)
+        for i in range(nInternalDVs):
+            self.internalDV[dvName]["value"][i] = self.internalDV[dvName]["init"][i]
 
     def runInternalDVFunc(self):
         """
@@ -2364,12 +2376,11 @@ class PYDAFOAM(object):
             xDV = self.DVGeo.getValues()
             if designVarName in xDV:
                 nDVs = len(xDV[designVarName])
-            parameters = xDV[designVarName].copy(order="C")
-        elif designVarName in self.internalDV:
+                parameters = xDV[designVarName].copy(order="C")
+                
+        if designVarName in self.internalDV:
             nDVs = len(self.internalDV[designVarName]["init"])
             parameters = self.internalDV[designVarName]["value"]
-        else:
-            raise Error("design variable %s not found..." % designVarName)
 
         nParameters = self.solver.getNRegressionParameters()
         if nDVs != nParameters:

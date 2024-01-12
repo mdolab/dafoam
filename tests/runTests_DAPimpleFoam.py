@@ -257,10 +257,12 @@ if calcFDSens == 1:
 else:
     DASolver.runColoring()
     xDV = DVGeo.getValues()
+    iDV = DASolver.getInternalDVDict()
+    allDV = {**xDV, **iDV}
     funcs = {}
-    funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    funcs, fail = optFuncs.calcObjFuncValues(allDV)
     funcsSens = {}
-    funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
+    funcsSens, fail = optFuncs.calcObjFuncSens(allDV, funcs)
 
     parameterNormU = np.linalg.norm(funcsSens["CD"]["parameter"])
     funcsSens["CD"]["parameter"] = parameterNormU
