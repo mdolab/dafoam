@@ -226,7 +226,7 @@ DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
 nParameters = DASolver.solver.getNRegressionParameters()
 
 parameter0 = np.ones(nParameters) * 0.1
-DVGeo.addGlobalDV("parameter", parameter0, regModel, lower=-100.0, upper=100.0, scale=1.0)
+DASolver.addInternalDV("parameter", parameter0, regModel, lower=-100.0, upper=100.0, scale=1.0)
 
 DASolver.setDVGeo(DVGeo)
 mesh = USMesh(options=meshOptions, comm=gcomm)

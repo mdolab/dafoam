@@ -523,7 +523,7 @@ class DAOPTION(object):
             "outputLowerBound": -1e8,
             "activationFunction": "sigmoid",
             "printInputRange": False,
-            "defaultOutputVal": 0.0,
+            "defaultOutputValue": 0.0,
         }
 
         # *********************************************************************************************
