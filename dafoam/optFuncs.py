@@ -43,7 +43,7 @@ def calcObjFuncValues(xDV):
 
     # Set the current design variables in the DV object
     DVGeo.setDesignVars(xDV)
-    DASolver.setDesignVars(xDV)
+    DASolver.setInternalDesignVars(xDV)
 
     # Evaluate the geometric constraints and add them to the funcs dictionary
     DVCon.evalFunctions(funcs)
@@ -88,7 +88,7 @@ def calcObjFuncValuesMP(xDV):
 
     # Set the current design variables in the DV object
     DVGeo.setDesignVars(xDV)
-    DASolver.setDesignVars(xDV)
+    DASolver.setInternalDesignVars(xDV)
 
     nMultiPoints = DASolver.getOption("nMultiPoints")
 
@@ -157,7 +157,7 @@ def calcObjFuncValuesUnsteady(xDV):
 
     # Set the current design variables in the DV object
     DVGeo.setDesignVars(xDV)
-    DASolver.setDesignVars(xDV)
+    DASolver.setInternalDesignVars(xDV)
 
     # Evaluate the geometric constraints and add them to the funcs dictionary
     DVCon.evalFunctions(funcs)

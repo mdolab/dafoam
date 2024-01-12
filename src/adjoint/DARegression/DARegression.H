@@ -90,6 +90,9 @@ protected:
     /// whether to print the input range info this is used to scale the input
     label printInputRange_;
 
+    /// default output values
+    scalar defaultOutputValue_;
+
 public:
     /// Constructors
     DARegression(

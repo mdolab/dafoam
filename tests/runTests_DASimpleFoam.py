@@ -162,7 +162,7 @@ DVGeo = DVGeometry(FFDFile)
 nTwists = DVGeo.addRefAxis("bodyAxis", xFraction=0.25, alignIndex="k")
 
 
-def alpha(val, geo):
+def alpha(val, DASolver):
     aoa = val[0] * np.pi / 180.0
     inletU = [float(U0 * np.cos(aoa)), float(U0 * np.sin(aoa)), 0]
     DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
@@ -212,7 +212,6 @@ pts = DVGeo.getLocalIndex(0)
 indexList = pts[1:4, 1, 0].flatten()
 PS = geo_utils.PointSelect("list", indexList)
 DVGeo.addLocalDV("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
-DVGeo.addGlobalDV("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
 # actuator
 DVGeo.addGlobalDV(
     "actuator",
@@ -225,6 +224,7 @@ DVGeo.addGlobalDV(
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
+DASolver.addInternalDV("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
 DASolver.setDVGeo(DVGeo)
 mesh = USMesh(options=meshOptions, comm=gcomm)
 DASolver.printFamilyList()
@@ -253,8 +253,10 @@ if calcFDSens == 1:
 else:
     DASolver.runColoring()
     xDV = DVGeo.getValues()
+    iDV = DASolver.getInternalDVDict()
+    allDV = {**xDV, **iDV}
     funcs = {}
-    funcs, fail = optFuncs.calcObjFuncValues(xDV)
+    funcs, fail = optFuncs.calcObjFuncValues(allDV)
     # test getForces
     forces = DASolver.getForces()
     fNorm = np.linalg.norm(forces.flatten())
@@ -262,7 +264,7 @@ else:
     funcs["forces"] = fNormSum
     
     funcsSens = {}
-    funcsSens, fail = optFuncs.calcObjFuncSens(xDV, funcs)
+    funcsSens, fail = optFuncs.calcObjFuncSens(allDV, funcs)
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
         reg_write_dict(funcsSens, 1e-4, 1e-6)

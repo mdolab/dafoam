@@ -523,6 +523,7 @@ class DAOPTION(object):
             "outputLowerBound": -1e8,
             "activationFunction": "sigmoid",
             "printInputRange": False,
+            "defaultOutputValue": 0.0,
         }
 
         # *********************************************************************************************
@@ -887,6 +888,9 @@ class PYDAFOAM(object):
         # initialize the dRdWTPC dict for unsteady adjoint
         self.dRdWTPCUnsteady = None
 
+        # initialize the user defined internal dvs dict
+        self.internalDV = {}
+
         if self.getOption("tensorflow")["active"]:
             TensorFlowHelper.options = self.getOption("tensorflow")
             TensorFlowHelper.initialize()
@@ -957,6 +961,9 @@ class PYDAFOAM(object):
                 dvType = self.getOption("designVar")[dvName]["designVarType"]
                 if dvType == "FFD":
                     self.calcFFD2XvSeedVec()
+
+        # now call the internal design var function to update DASolver parameters
+        self.runInternalDVFunc()
 
         # update the primal boundary condition right before calling solvePrimal
         self.setPrimalBoundaryConditions()
@@ -1486,15 +1493,23 @@ class PYDAFOAM(object):
         >>> CFDsolver.evalFunctionsSens(funcSens, ['CD', 'CL'])
         """
 
-        if self.DVGeo is None:
-            raise Error("DVGeo not set!")
-
-        dvs = self.DVGeo.getValues()
-
         for funcName in evalFuncs:
             funcsSens[funcName] = {}
-            for dvName in dvs:
-                nDVs = len(dvs[dvName])
+
+        if self.DVGeo is not None:
+
+            dvs = self.DVGeo.getValues()
+
+            for funcName in evalFuncs:
+                for dvName in dvs:
+                    nDVs = len(dvs[dvName])
+                    funcsSens[funcName][dvName] = np.zeros(nDVs, self.dtype)
+                    for i in range(nDVs):
+                        funcsSens[funcName][dvName][i] = self.adjTotalDeriv[funcName][dvName][i]
+
+        for funcName in evalFuncs:
+            for dvName in self.internalDV:
+                nDVs = len(self.internalDV[dvName]["init"])
                 funcsSens[funcName][dvName] = np.zeros(nDVs, self.dtype)
                 for i in range(nDVs):
                     funcsSens[funcName][dvName][i] = self.adjTotalDeriv[funcName][dvName][i]
@@ -1524,6 +1539,72 @@ class PYDAFOAM(object):
         """
 
         self.DVGeo = DVGeo
+
+    def setInternalDesignVars(self, xDVs):
+        """
+        Set the internal design variables.
+        """
+
+        for dvName in self.internalDV:
+            for i in range(len(self.internalDV[dvName]["value"])):
+                self.internalDV[dvName]["value"][i] = xDVs[dvName][i]
+
+    def getInternalDVDict(self):
+        """
+        Get the internal design variable values
+        """
+        internalDVDict = {}
+        for dvName in self.internalDV:
+            internalDVDict[dvName] = self.internalDV[dvName]["value"]
+        
+        return internalDVDict
+
+    def addInternalDV(self, dvName, dvInit, dvFunc, lower, upper, scale):
+        """
+        Add design variable.
+
+        Inputs:
+            dvName: [str] Name of of the design variable
+            dvInit: [array] Initial values for the design variables
+            fvFunc: [function] A function that define how to apply the change
+                     based on the design variable values. The form of this func
+                     is dvFunc(dvVal, DASolver)
+            lower/upper [scalar] The lower/upper bound of the DV
+            scale [scalar] The scaling factor for the DV
+        """
+        self.internalDV[dvName] = {}
+        self.internalDV[dvName]["init"] = dvInit
+        self.internalDV[dvName]["func"] = dvFunc
+        self.internalDV[dvName]["lower"] = lower
+        self.internalDV[dvName]["upper"] = upper
+        self.internalDV[dvName]["scale"] = scale
+        nInternalDVs = len(dvInit)
+        self.internalDV[dvName]["value"] = np.zeros(nInternalDVs)
+        for i in range(nInternalDVs):
+            self.internalDV[dvName]["value"][i] = self.internalDV[dvName]["init"][i]
+
+    def runInternalDVFunc(self):
+        """
+        call the design variable function
+        """
+        for dvName in self.internalDV:
+            Info("Calling internal design variable functioins %s" % dvName)
+            func = self.internalDV[dvName]["func"]
+            dvVal = self.internalDV[dvName]["value"]
+            func(dvVal, self)
+
+    def addVariablesPyOpt(self, optProb):
+        """
+        Add the design variable for optProb. This is similar to the
+        function in DVGeo
+        """
+        for dvName in self.internalDV:
+            dvInit = self.internalDV[dvName]["init"]
+            lower = self.internalDV[dvName]["lower"]
+            upper = self.internalDV[dvName]["upper"]
+            scale = self.internalDV[dvName]["scale"]
+            nDVs = len(dvInit)
+            optProb.addVarGroup(dvName, nDVs, "c", value=dvInit, lower=lower, upper=upper, scale=scale)
 
     def addFamilyGroup(self, groupName, families):
         """
@@ -1713,15 +1794,6 @@ class PYDAFOAM(object):
         Print a nicely formatted dictionary of the family names
         """
         Info(self.families)
-
-    def setDesignVars(self, x):
-        """
-        Set the internal design variables.
-        At the moment we don't have any internal DVs to set.
-        """
-        pass
-
-        return
 
     def _initializeOptions(self, options):
         """
@@ -2174,8 +2246,16 @@ class PYDAFOAM(object):
 
     def calcTotalDerivsField(self, objFuncName, designVarName, fieldType, dFScaling=1.0, accumulateTotal=False):
 
-        xDV = self.DVGeo.getValues()
-        nDVs = len(xDV[designVarName])
+        nDVs = 0
+        if self.DVGeo is not None:
+            xDV = self.DVGeo.getValues()
+            if designVarName in xDV:
+                nDVs = len(xDV[designVarName])
+        elif designVarName in self.internalDV:
+            nDVs = len(self.internalDV[designVarName]["init"])
+        else:
+            raise Error("design variable %s not found..." % designVarName)
+
         if fieldType == "scalar":
             fieldComp = 1
         elif fieldType == "vector":
@@ -2290,8 +2370,17 @@ class PYDAFOAM(object):
 
     def calcTotalDerivsRegPar(self, objFuncName, designVarName, dFScaling=1.0, accumulateTotal=False):
 
-        xDV = self.DVGeo.getValues()
-        nDVs = len(xDV[designVarName])
+        nDVs = 0
+        parameters = None
+        if self.DVGeo is not None:
+            xDV = self.DVGeo.getValues()
+            if designVarName in xDV:
+                nDVs = len(xDV[designVarName])
+                parameters = xDV[designVarName].copy(order="C")
+                
+        if designVarName in self.internalDV:
+            nDVs = len(self.internalDV[designVarName]["init"])
+            parameters = self.internalDV[designVarName]["value"]
 
         nParameters = self.solver.getNRegressionParameters()
         if nDVs != nParameters:
@@ -2300,7 +2389,6 @@ class PYDAFOAM(object):
         xvArray = self.vec2Array(self.xvVec)
         wArray = self.vec2Array(self.wVec)
         seedArray = self.vec2Array(self.adjVectors[objFuncName])
-        parameters = xDV[designVarName].copy(order="C")
         totalDerivArray = np.zeros(nDVs)
         dFdRegPar = np.zeros(nDVs)
 
@@ -2370,6 +2458,9 @@ class PYDAFOAM(object):
         # NOTE: this step is critical because we need to compute the residual for
         # self.solverAD once to get the proper oldTime level for unsteady adjoint
         self.solverAD.calcPrimalResidualStatistics("calc".encode())
+
+        # call the internal design var function to update DASolver parameters
+        self.runInternalDVFunc()
 
         # calc the total number of time instances
         # we assume the adjoint is for deltaT to endTime
@@ -2589,6 +2680,9 @@ class PYDAFOAM(object):
             self.solver.updateOFField(self.wVec)
             if self.getOption("useAD")["mode"] == "reverse":
                 self.solverAD.updateOFField(self.wVec)
+
+        # call the internal design var function to update DASolver parameters
+        self.runInternalDVFunc()
 
         self.adjointFail = 0
 
