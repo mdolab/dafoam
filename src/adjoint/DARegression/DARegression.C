@@ -41,6 +41,8 @@ DARegression::DARegression(
 
     regSubDict.readEntry<label>("printInputRange", printInputRange_);
 
+    regSubDict.readEntry<scalar>("defaultOutputValue", defaultOutputValue_);
+
     active_ = regSubDict.getLabel("active");
 
     if (modelType_ == "neuralNetwork")
@@ -355,12 +357,12 @@ void DARegression::checkOutput(volScalarField& outputField)
     {
         if (std::isnan(outputField[cellI]))
         {
-            outputField[cellI] = 0;
+            outputField[cellI] = defaultOutputValue_;
             isNaN = 1;
         }
         if (std::isinf(outputField[cellI]))
         {
-            outputField[cellI] = 0;
+            outputField[cellI] = defaultOutputValue_;
             isInf = 1;
         }
         if (outputField[cellI] > outputUpperBound_)
@@ -376,17 +378,17 @@ void DARegression::checkOutput(volScalarField& outputField)
     }
     if (isBounded == 1)
     {
-        Info << "************* Warning! output values are bounded. ******************" << endl;
+        Info << "************* Warning! output values are bounded between " << outputLowerBound_ << " and " << outputUpperBound_ << endl;
     }
 
     if (isNaN == 1)
     {
-        Info << "************* Warning! output values have nan and were set to zeros ******************" << endl;
+        Info << "************* Warning! output values have nan and are set to " << defaultOutputValue_ << endl;
     }
 
     if (isInf == 1)
     {
-        Info << "************* Warning! output values have inf and were set to zeros ******************" << endl;
+        Info << "************* Warning! output values have inf and are set to " << defaultOutputValue_ << endl;
     }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
