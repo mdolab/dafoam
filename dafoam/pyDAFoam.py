@@ -1545,8 +1545,8 @@ class PYDAFOAM(object):
         Set the internal design variables.
         """
 
-        for dvName in xDVs:
-            for i in range(len(xDVs[dvName])):
+        for dvName in self.internalDV:
+            for i in range(self.internalDV[dvName]["value"]):
                 self.internalDV[dvName]["value"][i] = xDVs[dvName][i]
 
     def addInternalDV(self, dvName, dvInit, dvFunc, lower, upper, scale):
