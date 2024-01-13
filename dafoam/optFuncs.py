@@ -42,11 +42,13 @@ def calcObjFuncValues(xDV):
     funcs = {}
 
     # Set the current design variables in the DV object
-    DVGeo.setDesignVars(xDV)
+    if DVGeo is not None:
+        DVGeo.setDesignVars(xDV)
     DASolver.setInternalDesignVars(xDV)
 
     # Evaluate the geometric constraints and add them to the funcs dictionary
-    DVCon.evalFunctions(funcs)
+    if DVCon is not None:
+        DVCon.evalFunctions(funcs)
 
     # Solve the CFD problem
     DASolver()
@@ -87,7 +89,8 @@ def calcObjFuncValuesMP(xDV):
     funcsMP = {}
 
     # Set the current design variables in the DV object
-    DVGeo.setDesignVars(xDV)
+    if DVGeo is not None:
+        DVGeo.setDesignVars(xDV)
     DASolver.setInternalDesignVars(xDV)
 
     nMultiPoints = DASolver.getOption("nMultiPoints")
@@ -99,7 +102,8 @@ def calcObjFuncValuesMP(xDV):
         funcs = {}
 
         # Evaluate the geometric constraints and add them to the funcs dictionary
-        DVCon.evalFunctions(funcs)
+        if DVCon is not None:
+            DVCon.evalFunctions(funcs)
 
         # set the multi point condition provided by users in the
         # runScript.py script. This function should define what
@@ -156,11 +160,13 @@ def calcObjFuncValuesUnsteady(xDV):
     funcs = {}
 
     # Set the current design variables in the DV object
-    DVGeo.setDesignVars(xDV)
+    if DVGeo is not None:
+        DVGeo.setDesignVars(xDV)
     DASolver.setInternalDesignVars(xDV)
 
     # Evaluate the geometric constraints and add them to the funcs dictionary
-    DVCon.evalFunctions(funcs)
+    if DVCon is not None:
+        DVCon.evalFunctions(funcs)
 
     # Solve the CFD problem
     DASolver()
@@ -206,7 +212,8 @@ def calcObjFuncSens(xDV, funcs):
     funcsSens = {}
 
     # Evaluate the geometric constraint derivatives
-    DVCon.evalFunctionsSens(funcsSens)
+    if DVCon is not None:
+        DVCon.evalFunctionsSens(funcsSens)
 
     # Solve the adjoint
     if DASolver.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
@@ -266,7 +273,8 @@ def calcObjFuncSensMP(xDV, funcs):
         funcsSens = {}
 
         # Evaluate the geometric constraint derivatives
-        DVCon.evalFunctionsSens(funcsSens)
+        if DVCon is not None:
+            DVCon.evalFunctionsSens(funcsSens)
 
         # set the state vector for case i
         DASolver.setMultiPointField(i)
@@ -356,7 +364,8 @@ def calcObjFuncSensUnsteady(xDV, funcs):
         funcsSens = {}
 
         # Evaluate the geometric constraint derivatives
-        DVCon.evalFunctionsSens(funcsSens)
+        if DVCon is not None:
+            DVCon.evalFunctionsSens(funcsSens)
 
         # set the state vector for case i
         DASolver.setTimeInstanceField(i)
@@ -397,9 +406,14 @@ def runPrimal(objFun=calcObjFuncValues):
     Just run the primal
     """
 
-    xDV = DVGeo.getValues()
+    xDV = {}
+    if DVGeo is not None:
+        xDV = DVGeo.getValues()
+    iDV = DASolver.getInternalDVDict()
+    allDV = {**xDV, **iDV}
+
     funcs = {}
-    funcs, fail = objFun(xDV)
+    funcs, fail = objFun(allDV)
 
     return funcs, fail
 
@@ -410,18 +424,23 @@ def runAdjoint(objFun=calcObjFuncValues, sensFun=calcObjFuncSens, fileName=None)
     """
 
     DASolver.runColoring()
-    xDV = DVGeo.getValues()
+    xDV = {}
+    if DVGeo is not None:
+        xDV = DVGeo.getValues()
+    iDV = DASolver.getInternalDVDict()
+    allDV = {**xDV, **iDV}
+
     funcs = {}
-    funcs, fail = objFun(xDV)
+    funcs, fail = objFun(allDV)
     funcsSens = {}
-    funcsSens, fail = sensFun(xDV, funcs)
+    funcsSens, fail = sensFun(allDV, funcs)
 
     # Optionally, we can write the sensitivity to a file if fileName is provided
     if fileName is not None:
         if gcomm.rank == 0:
             fOut = open(fileName, "w")
             for funcName in evalFuncs:
-                for shapeVar in xDV:
+                for shapeVar in allDV:
                     fOut.write(funcName + " " + shapeVar + "\n")
                     try:
                         nDVs = len(funcsSens[funcName][shapeVar])
@@ -463,14 +482,18 @@ def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues, eps=1e-2, to
     Info("+--------------------------------------------------------------------------+")
     Info("eps: %g  tol: %g  maxit: %g" % (eps, tol, maxit))
 
-    xDVs = DVGeo.getValues()
-    alpha = xDVs[alphaName]
+    xDV = {}
+    if DVGeo is not None:
+        xDV = DVGeo.getValues()
+    iDV = DASolver.getInternalDVDict()
+    allDV = {**xDV, **iDV}
+    alpha = allDV[alphaName]
 
     for i in range(maxit):
         # Solve the CFD problem
-        xDVs[alphaName] = alpha
+        allDV[alphaName] = alpha
         funcs = {}
-        funcs, fail = objFun(xDVs)
+        funcs, fail = objFun(allDV)
         CL0 = funcs[liftName]
         Info("alpha: %f, CL: %f" % (alpha.real, CL0))
         if abs(CL0 - CL_star) / CL_star < tol:
@@ -478,9 +501,9 @@ def solveCL(CL_star, alphaName, liftName, objFun=calcObjFuncValues, eps=1e-2, to
             return alpha.real
         # compute sens
         alphaVal = alpha + eps
-        xDVs[alphaName] = alphaVal
+        allDV[alphaName] = alphaVal
         funcsP = {}
-        funcsP, fail = objFun(xDVs)
+        funcsP, fail = objFun(allDV)
         CLP = funcsP[liftName]
         deltaAlpha = (CL_star - CL0) * eps / (CLP - CL0)
         alpha += deltaAlpha
@@ -493,7 +516,11 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
     Compute finite-difference sensitivity
     """
 
-    xDV = DVGeo.getValues()
+    xDV = {}
+    if DVGeo is not None:
+        xDV = DVGeo.getValues()
+    iDV = DASolver.getInternalDVDict()
+    allDV = {**xDV, **iDV}
 
     # gradFD
     deltaX = DASolver.getOption("adjPartDerivFDStep")["FFD"]
@@ -501,28 +528,28 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
     gradFD = {}
     for funcName in evalFuncs:
         gradFD[funcName] = {}
-        for shapeVar in xDV:
+        for shapeVar in allDV:
             try:
-                nDVs = len(xDV[shapeVar])
+                nDVs = len(allDV[shapeVar])
             except Exception:
                 nDVs = 1
             gradFD[funcName][shapeVar] = np.zeros(nDVs)
     if gcomm.rank == 0:
         print("-------FD----------", deltaX, flush=True)
 
-    for shapeVar in xDV:
+    for shapeVar in allDV:
         try:
-            nDVs = len(xDV[shapeVar])
+            nDVs = len(allDV[shapeVar])
         except Exception:
             nDVs = 1
         for i in range(nDVs):
             funcp = {}
             funcm = {}
-            xDV[shapeVar][i] += deltaX
-            funcp, fail = objFun(xDV)
-            xDV[shapeVar][i] -= 2.0 * deltaX
-            funcm, fail = objFun(xDV)
-            xDV[shapeVar][i] += deltaX
+            allDV[shapeVar][i] += deltaX
+            funcp, fail = objFun(allDV)
+            allDV[shapeVar][i] -= 2.0 * deltaX
+            funcm, fail = objFun(allDV)
+            allDV[shapeVar][i] += deltaX
             for funcName in evalFuncs:
                 gradFD[funcName][shapeVar][i] = (funcp[funcName] - funcm[funcName]) / (2.0 * deltaX)
             Info(gradFD)
@@ -532,7 +559,7 @@ def calcFDSens(objFun=calcObjFuncValues, fileName=None):
             fOut = open(fileName, "w")
             fOut.write("DeltaX: " + str(deltaX) + "\n")
             for funcName in evalFuncs:
-                for shapeVar in xDV:
+                for shapeVar in allDV:
                     fOut.write(funcName + " " + shapeVar + "\n")
                     try:
                         nDVs = len(gradFD[funcName][shapeVar])
