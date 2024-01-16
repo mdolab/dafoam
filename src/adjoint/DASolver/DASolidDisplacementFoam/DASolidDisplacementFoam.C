@@ -42,16 +42,13 @@ DASolidDisplacementFoam::DASolidDisplacementFoam(
     char* argsAll,
     PyObject* pyOptions)
     : DASolver(argsAll, pyOptions),
-      mechanicalPropertiesPtr_(nullptr),
       rhoPtr_(nullptr),
       muPtr_(nullptr),
       lambdaPtr_(nullptr),
       EPtr_(nullptr),
       nuPtr_(nullptr),
       DPtr_(nullptr),
-      sigmaDPtr_(nullptr),
-      gradDPtr_(nullptr),
-      divSigmaExpPtr_(nullptr)
+      gradDPtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -66,7 +63,6 @@ void DASolidDisplacementFoam::initSolver()
     Info << "Initializing fields for DASolidDisplacementFoam" << endl;
     Time& runTime = runTimePtr_();
     fvMesh& mesh = meshPtr_();
-#include "createControlsSolidDisplacement.H"
 #include "createFieldsSolidDisplacement.H"
 #include "createAdjointSolid.H"
     // initialize checkMesh
@@ -125,43 +121,21 @@ label DASolidDisplacementFoam::solvePrimal(
             Info << "Iteration = " << runTime.value() << nl << endl;
         }
 
-        label iCorr = 0;
-        scalar initialResidual = 0;
+        gradD = fvc::grad(D);
+        volSymmTensorField sigmaD = mu * twoSymm(gradD) + (lambda * I) * tr(gradD);
 
-        do
-        {
-            fvVectorMatrix DEqn(
-                fvm::d2dt2(D)
-                == fvm::laplacian(2 * mu + lambda, D, "laplacian(DD,D)")
-                    + divSigmaExp);
+        volVectorField divSigmaExp = fvc::div(sigmaD - (2 * mu + lambda) * gradD, "div(sigmaD)");
 
-            // get the solver performance info such as initial
-            // and final residuals
-            SolverPerformance<vector> solverU = DEqn.solve();
-            initialResidual = solverU.max().initialResidual();
+        fvVectorMatrix DEqn(
+            fvm::d2dt2(D)
+            == fvm::laplacian(2 * mu + lambda, D, "laplacian(DD,D)")
+                + divSigmaExp);
 
-            this->primalResidualControl<vector>(solverU, printToScreen, printInterval, "U");
+        // get the solver performance info such as initial
+        // and final residuals
+        SolverPerformance<vector> solverD = DEqn.solve();
 
-            if (!compactNormalStress_)
-            {
-                divSigmaExp = fvc::div(DEqn.flux());
-            }
-
-            gradD = fvc::grad(D);
-            sigmaD = mu * twoSymm(gradD) + (lambda * I) * tr(gradD);
-
-            if (compactNormalStress_)
-            {
-                divSigmaExp = fvc::div(
-                    sigmaD - (2 * mu + lambda) * gradD,
-                    "div(sigmaD)");
-            }
-            else
-            {
-                divSigmaExp += fvc::div(sigmaD);
-            }
-
-        } while (initialResidual > convergenceTolerance_ && ++iCorr < nCorr_);
+        this->primalResidualControl<vector>(solverD, printToScreen, printInterval, "D");
 
         if (this->validateStates())
         {

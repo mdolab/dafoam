@@ -28,21 +28,15 @@ class DAResidualSolidDisplacementFoam
 {
 
 protected:
+
     /// \name These are state variables, state residuals, and partial derivatives
     //@{
     volVectorField& D_;
     volVectorField DRes_;
     //@}
-
     volTensorField& gradD_;
-    volSymmTensorField& sigmaD_;
-    volVectorField& divSigmaExp_;
     volScalarField& lambda_;
     volScalarField& mu_;
-
-    label isTractionDisplacementBC_;
-
-    void updateDAndGradD();
 
 public:
     TypeName("DASolidDisplacementFoam");

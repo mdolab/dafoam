@@ -1,15 +1,13 @@
 Info << "Reading mechanical properties\n"
      << endl;
 
-mechanicalPropertiesPtr_.reset(
-    new IOdictionary(
-        IOobject(
-            "mechanicalProperties",
-            runTime.constant(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE)));
-IOdictionary& mechanicalProperties = mechanicalPropertiesPtr_();
+IOdictionary mechanicalProperties(
+    IOobject(
+        "mechanicalProperties",
+        runTime.constant(),
+        mesh,
+        IOobject::MUST_READ,
+        IOobject::NO_WRITE));
 
 const dictionary& rhoDict(mechanicalProperties.subDict("rho"));
 word rhoType(rhoDict.lookup("type"));
