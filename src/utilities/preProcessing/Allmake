@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+if [ -z "$WM_PROJECT" ]; then
+  echo "OpenFOAM environment not found, forgot to source the OpenFOAM bashrc?"
+  exit 1
+fi
+
+if [ "$WM_CODI_AD_MODE" = "CODI_AD_FORWARD" ]; then
+  exit 0
+elif [ "$WM_CODI_AD_MODE" = "CODI_AD_REVERSE" ]; then
+  exit 0
+fi
+
+for d in ./*/ ; do 
+  cd "$d" 
+  wmake
+  cd ../
+done

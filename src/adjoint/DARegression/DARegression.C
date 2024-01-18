@@ -123,7 +123,6 @@ void DARegression::compute()
                 {
                     inputFields[idxI][cellI] = (inputFields[idxI][cellI] - inputShift_[idxI]) * inputScale_[idxI];
                 }
-
             }
             else if (inputName == "chiSA")
             {
@@ -201,9 +200,57 @@ void DARegression::compute()
                     inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
                 }
             }
+            else if (inputName == "KoU2")
+            {
+                // turbulence intensity / velocity square
+                const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
+                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+                scalar val = 0;
+                forAll(inputFields[idxI], cellI)
+                {
+                    val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + 1e-16);
+                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                }
+            }
+            else if (inputName == "ReWall")
+            {
+                // wall distance based Reynolds number
+                const volScalarField& y = mesh_.thisDb().lookupObject<volScalarField>("yWall");
+                const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
+                volScalarField nu = daModel_.getDATurbulenceModel().nu();
+                scalar val = 0;
+                forAll(inputFields[idxI], cellI)
+                {
+                    val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
+                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                }
+            }
+            else if (inputName == "CoP")
+            {
+                // convective / production
+                daModel_.getTurbConvOverProd(inputFields[idxI]);
+                forAll(inputFields[idxI], cellI)
+                {
+                    inputFields[idxI][cellI] = (inputFields[idxI][cellI] - inputShift_[idxI]) * inputScale_[idxI];
+                }
+            }
+            else if (inputName == "TauoK")
+            {
+                // ratio of total to normal Reynolds stress
+                const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
+                const volScalarField& nut = mesh_.thisDb().lookupObject<volScalarField>("nut");
+                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+                volSymmTensorField tau(2.0 / 3.0 * I * k - nut * twoSymm(fvc::grad(U)));
+                scalar val = 0;
+                forAll(inputFields[idxI], cellI)
+                {
+                    val = mag(tau[cellI]) / (k[cellI] + 1e-16);
+                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                }
+            }
             else
             {
-                FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: VoS, PoD, chiSA, pGradStream, PSoSS, SCurv, UOrth" << abort(FatalError);
+                FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: VoS, PoD, chiSA, pGradStream, PSoSS, SCurv, UOrth, KoU2, ReWall, CoP, TauoK" << abort(FatalError);
             }
         }
 

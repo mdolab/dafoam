@@ -111,6 +111,9 @@ public:
     /// return the value of the destruction term from the turbulence model
     void getTurbProdOverDestruct(scalarList& PoD) const;
 
+    /// return the value of the convective over production term from the turbulence model
+    void getTurbConvOverProd(scalarList& CoP) const;
+
 #ifndef SolidDASolver
     /// get a reference to DATurbulenceModel
     const DATurbulenceModel& getDATurbulenceModel() const;

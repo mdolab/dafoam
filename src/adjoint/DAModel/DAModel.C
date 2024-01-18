@@ -314,6 +314,28 @@ void DAModel::getTurbProdOverDestruct(scalarList& PoD) const
 
 }
 
+void DAModel::getTurbConvOverProd(scalarList& CoP) const
+{
+    /*
+    Description: 
+        return the value of the convective over production term from the turbulence model
+    */
+
+#ifndef SolidDASolver
+    if (hasTurbulenceModel_)
+    {
+        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(
+            mesh_.thisDb().lookupObject<DATurbulenceModel>("DATurbulenceModel"));
+        daTurb.getTurbConvOverProd(CoP);
+    }
+
+    if (hasRadiationModel_)
+    {
+    }
+#endif
+
+}
+
 #ifdef CompressibleFlow
 const fluidThermo& DAModel::getThermo() const
 {

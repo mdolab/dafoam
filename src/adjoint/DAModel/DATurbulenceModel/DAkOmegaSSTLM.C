@@ -1477,6 +1477,65 @@ void DAkOmegaSSTLM::getFvMatrixFields(
         }
     }
 }
+
+void DAkOmegaSSTLM::getTurbProdOverDestruct(scalarList& PoD) const
+{
+    /*
+    Description:
+        Return the value of the production over destruction term from the turbulence model 
+    */
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    volScalarField S2(2 * magSqr(symm(tgradU())));
+    volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
+    volScalarField::Internal G("kOmegaSSTLM:G", nut_ * GbyNu0);
+
+    volScalarField CDkOmega(
+        (scalar(2) * alphaOmega2_) * (fvc::grad(k_) & fvc::grad(omega_)) / omega_);
+
+    volScalarField F1(this->F1(CDkOmega));
+    volScalarField F23(this->F23());
+
+    volScalarField::Internal gamma(this->gamma(F1));
+    volScalarField::Internal beta(this->beta(F1));
+
+    volScalarField::Internal P = phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2());
+    volScalarField::Internal D = phase_() * rho_() * beta * sqr(omega_());
+
+    forAll(P, cellI)
+    {
+        PoD[cellI] = P[cellI] / (D[cellI] + 1e-16);
+    }
+}
+
+void DAkOmegaSSTLM::getTurbConvOverProd(scalarList& CoP) const
+{
+    /*
+    Description:
+        Return the value of the convective over production term from the turbulence model 
+    */
+
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    volScalarField S2(2 * magSqr(symm(tgradU())));
+    volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
+    volScalarField::Internal G("kOmegaSSTLM:G", nut_ * GbyNu0);
+
+    volScalarField CDkOmega(
+        (scalar(2) * alphaOmega2_) * (fvc::grad(k_) & fvc::grad(omega_)) / omega_);
+
+    volScalarField F1(this->F1(CDkOmega));
+    volScalarField F23(this->F23());
+
+    volScalarField::Internal gamma(this->gamma(F1));
+    volScalarField::Internal beta(this->beta(F1));
+
+    volScalarField::Internal P = phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2());
+    volScalarField C = fvc::div(phaseRhoPhi_, omega_);
+
+    forAll(P, cellI)
+    {
+        CoP[cellI] = C[cellI] / (P[cellI] + 1e-16);
+    }
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

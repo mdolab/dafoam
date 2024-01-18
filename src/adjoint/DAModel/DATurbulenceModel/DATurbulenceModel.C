@@ -504,6 +504,18 @@ void DATurbulenceModel::getTurbProdOverDestruct(scalarList& PoD) const
         << abort(FatalError);
 }
 
+void DATurbulenceModel::getTurbConvOverProd(scalarList& CoP) const
+{
+    /*
+    Description:
+        Return the value of the convective over production term from the turbulence model 
+    */
+
+    FatalErrorIn("DATurbulenceModel::getTurbConvOverProd")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
 void DATurbulenceModel::invTranProdNuTildaEqn(
     const volScalarField& mySource,
     volScalarField& pseudoNuTilda)

@@ -64,8 +64,16 @@ protected:
     /// whether the ref data is time dependent if yes we need data in all time folders otherwise get it from the 0 folder
     label timeDependentRefData_;
 
+#ifdef CompressibleFlow
+    /// thermophysical property
+    fluidThermo& thermo_;
+#endif
+
     /// DATurbulenceModel object
-    const DATurbulenceModel& daTurb_;
+    DATurbulenceModel& daTurb_;
+
+    /// Cp used in incompressible heatFlux calculation
+    scalar Cp_ = -9999.0;
 
 public:
     TypeName("variance");

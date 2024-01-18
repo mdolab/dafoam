@@ -539,6 +539,27 @@ void DASpalartAllmaras::getTurbProdOverDestruct(scalarList& PoD) const
         PoD[cellI] = P[cellI] / (D[cellI] + 1e-16);
     }
 }
+
+void DASpalartAllmaras::getTurbConvOverProd(scalarList& CoP) const
+{
+    /*
+    Description:
+        Return the value of the convective over production term from the turbulence model 
+    */
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    const volScalarField Stilda(this->Stilda(chi, fv1));
+
+    volScalarField P = Cb1_ * phase_ * rho_ * Stilda * nuTilda_;
+    volScalarField C = fvc::div(phaseRhoPhi_, nuTilda_);
+
+    forAll(P, cellI)
+    {
+        CoP[cellI] = C[cellI] / (P[cellI] + 1e-16);
+    }
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
