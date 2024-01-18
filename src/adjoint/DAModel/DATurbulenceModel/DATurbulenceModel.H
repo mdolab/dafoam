@@ -214,8 +214,11 @@ public:
     /// return the value of the production term from the turbulence model
     virtual void getTurbProdTerm(scalarList& prodTerm) const;
 
-    /// return the value of the destruction term from the turbulence model
+    /// return the ratio of the production over destruction term from the turbulence model
     virtual void getTurbProdOverDestruct(scalarList& PoD) const;
+
+    /// return the value of the convective over production term from the turbulence model
+    virtual void getTurbConvOverProd(scalarList& CoP) const;
 
     /// dev terms
     tmp<volSymmTensorField> devRhoReff() const;

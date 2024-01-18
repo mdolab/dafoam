@@ -705,6 +705,43 @@ void DAkOmega::getFvMatrixFields(
         lower = kEqn.lower();
     }
 }
+
+void DAkOmega::getTurbProdOverDestruct(scalarList& PoD) const
+{
+    /*
+    Description:
+        Return the value of the production over destruction term from the turbulence model 
+    */
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
+
+    volScalarField P = gamma_ * phase_ * rho_ * G * omega_ / k_;
+    volScalarField D = beta_ * phase_ * rho_ * sqr(omega_);
+
+    forAll(P, cellI)
+    {
+        PoD[cellI] = P[cellI] / (D[cellI] + 1e-16);
+    }
+}
+
+void DAkOmega::getTurbConvOverProd(scalarList& CoP) const
+{
+    /*
+    Description:
+        Return the value of the convective over production term from the turbulence model 
+    */
+
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
+
+    volScalarField P = gamma_ * phase_ * rho_ * G * omega_ / k_;
+    volScalarField C = fvc::div(phaseRhoPhi_, omega_);
+
+    forAll(P, cellI)
+    {
+        CoP[cellI] = C[cellI] / (P[cellI] + 1e-16);
+    }
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

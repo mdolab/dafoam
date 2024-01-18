@@ -9,4 +9,5 @@ cd src/adjoint && ./Allclean && cd -
 cd src/pyDASolvers && ./Allclean && cd -
 cd src/utilities/coloring && ./Allclean && cd -
 cd src/utilities/postProcessing && ./Allclean && cd -
+cd src/utilities/preProcessing && ./Allclean && cd -
 cd tests && ./Allclean && cd -

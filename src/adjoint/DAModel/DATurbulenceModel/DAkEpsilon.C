@@ -704,6 +704,47 @@ void DAkEpsilon::getFvMatrixFields(
         lower = kEqn.lower();
     }
 }
+
+void DAkEpsilon::getTurbProdOverDestruct(scalarList& PoD) const
+{
+    /*
+    Description:
+        Return the value of the production over destruction term from the turbulence model 
+    */
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    volScalarField::Internal G(
+        "kEpsilon:G",
+        nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
+
+    volScalarField::Internal P = C1_ * phase_() * rho_() * G * epsilon_() / k_();
+    volScalarField::Internal D = C2_ * phase_() * rho_() * sqr(epsilon_()) / k_();
+
+    forAll(P, cellI)
+    {
+        PoD[cellI] = P[cellI] / (D[cellI] + 1e-16);
+    }
+}
+
+void DAkEpsilon::getTurbConvOverProd(scalarList& CoP) const
+{
+    /*
+    Description:
+        Return the value of the convective over production term from the turbulence model 
+    */
+
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    volScalarField::Internal G(
+        "kEpsilon:G",
+        nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
+
+    volScalarField::Internal P = C1_ * phase_() * rho_() * G * epsilon_() / k_();
+    volScalarField C = fvc::div(phaseRhoPhi_, epsilon_);
+
+    forAll(P, cellI)
+    {
+        CoP[cellI] = C[cellI] / (P[cellI] + 1e-16);
+    }
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

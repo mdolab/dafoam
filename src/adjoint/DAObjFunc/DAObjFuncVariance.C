@@ -34,7 +34,10 @@ DAObjFuncVariance::DAObjFuncVariance(
         objFuncName,
         objFuncPart,
         objFuncDict),
-      daTurb_(daModel.getDATurbulenceModel())
+#ifdef CompressibleFlow
+      thermo_(const_cast<fluidThermo&>(daModel.getThermo())),
+#endif
+      daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel()))
 {
 
     // Assign type, this is common for all objectives
@@ -57,6 +60,23 @@ DAObjFuncVariance::DAObjFuncVariance(
     }
 
     objFuncDict_.readEntry<word>("varName", varName_);
+
+    if (varName_ == "wallHeatFlux")
+    {
+#ifdef IncompressibleFlow
+        // initialize the Prandtl number from transportProperties
+        IOdictionary transportProperties(
+            IOobject(
+                "transportProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false));
+        // for incompressible flow, we need to read Cp from transportProperties
+        Cp_ = readScalar(transportProperties.lookup("Cp"));
+#endif
+    }
 
     objFuncDict_.readEntry<word>("varType", varType_);
 
@@ -392,7 +412,7 @@ void DAObjFuncVariance::calcObjFunc(
                 word surfaceName = surfaceNames_[idxI];
                 label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
 
-                if (mesh_.boundaryMesh().size() > 0)
+                if (mesh_.boundaryMesh()[patchI].size() > 0)
                 {
                     const vectorField& SfB = mesh_.Sf().boundaryField()[patchI];
                     const scalarField& magSfB = mesh_.magSf().boundaryField()[patchI];
@@ -412,6 +432,63 @@ void DAObjFuncVariance::calcObjFunc(
                     }
                 }
             }
+        }
+        else if (varName_ == "wallHeatFlux")
+        {
+#ifdef IncompressibleFlow
+            // incompressible flow does not have he, so we do H = Cp * alphaEff * dT/dz
+            const volScalarField& T = mesh_.thisDb().lookupObject<volScalarField>("T");
+            volScalarField alphaEff = daTurb_.alphaEff();
+            const volScalarField::Boundary& TBf = T.boundaryField();
+            const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+
+            label pointI = 0;
+            forAll(surfaceNames_, idxI)
+            {
+                word surfaceName = surfaceNames_[idxI];
+                label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
+
+                if (mesh_.boundaryMesh()[patchI].size() > 0)
+                {
+
+                    scalarField hfx = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
+
+                    forAll(mesh_.boundaryMesh()[patchI], faceI)
+                    {
+                        scalar varDif = (hfx[faceI] - refValue_[timeIndex - 1][pointI]);
+                        objFuncValue += scale_ * varDif * varDif;
+                        pointI++;
+                    }
+                }
+            }
+#endif
+
+#ifdef CompressibleFlow
+            // compressible flow, H = alphaEff * dHE/dz
+            volScalarField& he = thermo_.he();
+            const volScalarField::Boundary& heBf = he.boundaryField();
+            volScalarField alphaEff = daTurb_.alphaEff();
+            const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+
+            label pointI = 0;
+            forAll(surfaceNames_, idxI)
+            {
+                word surfaceName = surfaceNames_[idxI];
+                label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
+                if (mesh_.boundaryMesh()[patchI].size() > 0)
+                {
+
+                    scalarField hfx = alphaEffBf[patchI] * heBf[patchI].snGrad();
+
+                    forAll(mesh_.boundaryMesh()[patchI], faceI)
+                    {
+                        scalar varDif = (hfx[faceI] - refValue_[timeIndex - 1][pointI]);
+                        objFuncValue += scale_ * varDif * varDif;
+                        pointI++;
+                    }
+                }
+            }
+#endif
         }
         else
         {
