@@ -2019,7 +2019,7 @@ class PYDAFOAM(object):
             # check if we need to write the sens map
             if designVarName in self.getOption("writeSensMap"):
                 dFdXs = self.mesh.getdXs()
-                dFdXs = self.mapVector(dFdXs, self.allWallsGroup, self.allWallsGroup)
+                dFdXs = self.mapVector(dFdXs, self.allWallsGroup, self.designSurfacesGroup)
                 Xs = self.getSurfaceCoordinates(self.allWallsGroup)
                 dFdXsFlatten = dFdXs.flatten()
                 XsFlatten = Xs.flatten()
@@ -3222,7 +3222,7 @@ class PYDAFOAM(object):
     def renameSolution(self, solIndex):
         """
         Rename the primal solution folder to specific format for post-processing. The renamed time has the
-        format like 0.00000001, 0.00000002, etc. One can load these intermediate shapes and fields and
+        format like 1e-8, 2e-8, etc. One can load these intermediate shapes and fields and
         plot them in paraview.
         The way it is implemented is that we sort the solution folder and consider the largest time folder
         as the solution folder and rename it
@@ -3256,7 +3256,7 @@ class PYDAFOAM(object):
             renamed = False
             return solutionTime, renamed
 
-        distTime = "%.8f" % (solIndex / 1e8)
+        distTime = "%g" % (solIndex / 1e8)
 
         src = os.path.join(checkPath, solutionTime)
         dst = os.path.join(checkPath, distTime)
