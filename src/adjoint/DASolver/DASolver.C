@@ -9741,6 +9741,221 @@ label DASolver::validateStates()
     }
 }
 
+void DASolver::writeSensMapSurface(
+    const word name,
+    const double* dFdXs,
+    const double* Xs,
+    const label size,
+    const double timeName)
+{
+    /*
+    Description:
+        write the sensitivity map for all wall surfaces
+    
+    Inputs:
+        name: the name of the sens map written tot the disk
+
+        dFdXs: the derivative of an objective function wrt the surface point coordinates (flatten)
+
+        Xs: flatten surface point coordinates
+
+        size: the size of the dFdXs array
+
+        timeName: the name of time folder to write sens
+    */
+
+    volVectorField sens(
+        IOobject(
+            name,
+            meshPtr_->time().timeName(),
+            meshPtr_(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        meshPtr_(),
+        dimensionedVector(name, dimensionSet(0, 0, 0, 0, 0, 0, 0), vector::zero),
+        "fixedValue");
+
+    forAll(sens.boundaryField(), patchI)
+    {
+        if (meshPtr_->boundaryMesh()[patchI].type() == "wall")
+        {
+            forAll(sens.boundaryField()[patchI], faceI)
+            {
+                sens.boundaryFieldRef()[patchI][faceI] = vector::zero;
+            }
+        }
+    }
+
+    label nSurfPoints = round(size / 3);
+
+    List<point> surfCoords(nSurfPoints);
+    List<vector> surfdFdXs(nSurfPoints);
+    label counterI = 0;
+    forAll(surfCoords, pointI)
+    {
+        for (label i = 0; i < 3; i++)
+        {
+            surfCoords[pointI][i] = Xs[counterI];
+            surfdFdXs[pointI][i] = dFdXs[counterI];
+            counterI++;
+        }
+    }
+
+    pointField meshPoints = meshPtr_->points();
+
+    scalar distance;
+    scalar minDistanceNorm = 0.0;
+    // loop over all boundary points
+    forAll(meshPtr_->boundaryMesh(), patchI)
+    {
+        if (meshPtr_->boundaryMesh()[patchI].type() == "wall")
+        {
+            forAll(meshPtr_->boundaryMesh()[patchI], faceI)
+            {
+                forAll(meshPtr_->boundaryMesh()[patchI][faceI], pointI)
+                {
+                    // for each point on the boundary, search for the closest point from surfCoords
+                    label faceIPointIndexI = meshPtr_->boundaryMesh()[patchI][faceI][pointI];
+                    scalar minDistance = 9999999;
+                    label minPointJ = -1;
+                    forAll(surfCoords, pointJ)
+                    {
+                        distance = mag(surfCoords[pointJ] - meshPoints[faceIPointIndexI]);
+                        if (distance < minDistance)
+                        {
+                            minDistance = distance;
+                            minPointJ = pointJ;
+                        }
+                    }
+
+                    minDistanceNorm += minDistance * minDistance;
+
+                    // add the sensitivty to the corresponding faces
+                    sens.boundaryFieldRef()[patchI][faceI] += surfdFdXs[minPointJ];
+                }
+            }
+        }
+    }
+
+    minDistanceNorm = sqrt(minDistanceNorm);
+
+    // finally, we need to divide the sens by the number of points for each face
+    forAll(sens.boundaryField(), patchI)
+    {
+        if (meshPtr_->boundaryMesh()[patchI].type() == "wall")
+        {
+            forAll(sens.boundaryField()[patchI], faceI)
+            {
+                sens.boundaryFieldRef()[patchI][faceI] /= sens.boundaryFieldRef()[patchI][faceI].size();
+            }
+        }
+    }
+
+    Info << "Writing sensitivty map for " << name << endl;
+    Info << "minDistance Norm: " << minDistanceNorm << endl;
+
+    // switch to timeName and write sens, then reset the time
+    scalar t = runTimePtr_->timeOutputValue();
+    label timeIndex = runTimePtr_->timeIndex();
+
+    runTimePtr_->setTime(timeName, timeIndex);
+    sens.write();
+    runTimePtr_->setTime(t, timeIndex);
+}
+
+void DASolver::writeSensMapField(
+    const word name,
+    const double* dFdField,
+    const word fieldType,
+    const double timeName)
+{
+    /*
+    Description:
+        write the sensitivity map for the entire field
+    
+    Inputs:
+        name: the name of the sens map written tot the disk
+
+        dFdField: the derivative of an objective function wrt the field variable
+
+        fieldType: scalar or vector for the field variable
+
+        timeName: the name of time folder to write sens
+    */
+
+    if (fieldType == "scalar")
+    {
+        volScalarField sens(
+            IOobject(
+                name,
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedScalar(name, dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+            "fixedValue");
+
+        forAll(sens, cellI)
+        {
+            sens[cellI] = dFdField[cellI];
+        }
+
+        Info << "Writing sensitivty map for " << name << endl;
+
+        // switch to timeName and write sens, then reset the time
+        scalar t = runTimePtr_->timeOutputValue();
+        label timeIndex = runTimePtr_->timeIndex();
+
+        runTimePtr_->setTime(timeName, timeIndex);
+        sens.correctBoundaryConditions();
+        sens.write();
+
+        runTimePtr_->setTime(t, timeIndex);
+    }
+    else if (fieldType == "vector")
+    {
+        volVectorField sens(
+            IOobject(
+                name,
+                meshPtr_->time().timeName(),
+                meshPtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            meshPtr_(),
+            dimensionedVector(name, dimensionSet(0, 0, 0, 0, 0, 0, 0), vector::zero),
+            "fixedValue");
+
+        label counterI = 0;
+        forAll(sens, cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                sens[cellI][i] = dFdField[counterI];
+                counterI++;
+            }
+        }
+
+        Info << "Writing sensitivty map for " << name << endl;
+
+        // switch to timeName and write sens, then reset the time
+        scalar t = runTimePtr_->timeOutputValue();
+        label timeIndex = runTimePtr_->timeIndex();
+
+        runTimePtr_->setTime(timeName, timeIndex);
+        sens.correctBoundaryConditions();
+        sens.write();
+
+        runTimePtr_->setTime(t, timeIndex);
+    }
+    else
+    {
+        FatalErrorIn("DASolver::writeSensMapField")
+            << "fieldType not supported!"
+            << abort(FatalError);
+    }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

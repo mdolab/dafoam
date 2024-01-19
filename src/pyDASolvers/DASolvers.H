@@ -979,6 +979,27 @@ public:
     {
         DASolverPtr_->initTensorFlowFuncs(computeInterface, compute, jacVecProdInterface, jacVecProd);
     }
+
+    /// write the sensitivity map for all wall surfaces
+    void writeSensMapSurface(
+        const word name,
+        const double* dFdXs,
+        const double* Xs,
+        const label size,
+        const double timeName)
+    {
+        DASolverPtr_->writeSensMapSurface(name, dFdXs, Xs, size, timeName);
+    }
+
+    /// write the sensitivity map for the entire field
+    void writeSensMapField(
+        const word name,
+        const double* dFdField,
+        const word fieldType,
+        const double timeName)
+    {
+        DASolverPtr_->writeSensMapField(name, dFdField, fieldType, timeName);
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

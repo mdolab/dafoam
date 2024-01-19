@@ -149,6 +149,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getDdtSchemeOrder()
         int getUnsteadyObjFuncStartTimeIndex()
         int getUnsteadyObjFuncEndTimeIndex()
+        void writeSensMapSurface(char *, double *, double *, int, double)
+        void writeSensMapField(char *, double *, char *, double)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -645,3 +647,46 @@ cdef class pyDASolvers:
     
     def initTensorFlowFuncs(self, compute, jacVecProd):
         self._thisptr.initTensorFlowFuncs(pyCalcBetaCallBack, <void*>compute, pyCalcBetaJacVecProdCallBack, <void*>jacVecProd)
+    
+    def writeSensMapSurface(self, 
+            name,
+            np.ndarray[double, ndim=1, mode="c"] dFdXs,
+            np.ndarray[double, ndim=1, mode="c"] Xs,
+            size,
+            timeName):
+        
+        assert len(dFdXs) == size, "invalid array size!"
+        assert len(Xs) == size, "invalid array size!"
+
+        cdef double *dFdXs_data = <double*>dFdXs.data
+        cdef double *Xs_data = <double*>Xs.data
+
+        self._thisptr.writeSensMapSurface(
+            name.encode(), 
+            dFdXs_data, 
+            Xs_data, 
+            size,
+            timeName)
+    
+    def writeSensMapField(self, 
+            name,
+            np.ndarray[double, ndim=1, mode="c"] dFdField,
+            fieldType,
+            timeName):
+        
+        nCells = self.getNLocalCells()
+        if fieldType == "scalar":
+            assert len(dFdField) == nCells, "invalid array size!"
+        elif fieldType == "vector":
+            assert len(dFdField) == 3 * nCells, "invalid array size!"
+        else:
+            print("fieldType can be either scalar or vector")
+            exit(1)
+
+        cdef double *dFdField_data = <double*>dFdField.data
+
+        self._thisptr.writeSensMapField(
+            name.encode(), 
+            dFdField_data, 
+            fieldType.encode(), 
+            timeName)

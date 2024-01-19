@@ -1259,6 +1259,21 @@ public:
 
     /// reset the states to its initial values this usually happens when we have nan in states
     void resetStateVals();
+
+    /// write the sensitivity map for all wall surfaces
+    void writeSensMapSurface(
+        const word name,
+        const double* dFdXs,
+        const double* Xs,
+        const label size,
+        const double timeName);
+
+    /// write the sensitivity map for the entire field
+    void writeSensMapField(
+        const word name,
+        const double* dFdField,
+        const word fieldType,
+        const double timeName);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
