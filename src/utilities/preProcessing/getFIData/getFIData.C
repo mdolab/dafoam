@@ -68,6 +68,14 @@ int main(int argc, char* argv[])
     if (args.optionFound("time"))
     {
         time = readScalar(args.optionLookup("time")());
+        if (time == 9999)
+        {
+            Info << "Extract latestTime" << endl;
+        }
+        else
+        {
+            Info << "Extract time = " << time << endl;
+        }
     }
     else
     {
@@ -93,10 +101,18 @@ int main(int argc, char* argv[])
         scalar t = -1.0;
         if (time == -1.0)
         {
+            // read all times
             t = n * deltaT;
+        }
+        else if (time == 9999)
+        {
+            // read from the latestTime (it is not necessarily the endTime)
+            instantList timeDirs = runTime.findTimes(runTime.path(), runTime.constant());
+            t = timeDirs.last().value();
         }
         else
         {
+            // read from the specified time
             t = time;
         }
         runTime.setTime(t, n);
