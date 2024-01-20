@@ -180,6 +180,7 @@ label DAPimpleFoam::solvePrimal(
 
     // main loop
     label regModelFail = 0;
+    label fail = 0;
     for (label iter = 1; iter <= nInstances; iter++)
     {
 
@@ -213,7 +214,7 @@ label DAPimpleFoam::solvePrimal(
             }
 
             // update the output field value at each iteration, if the regression model is active
-            label fail = daRegressionPtr_->compute();
+            fail = daRegressionPtr_->compute();
 
             laminarTransport.correct();
             daTurbulenceModelPtr_->correct(pimplePrintToScreen);
