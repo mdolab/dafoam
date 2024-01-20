@@ -179,6 +179,7 @@ label DAPimpleFoam::solvePrimal(
     daRegressionPtr_->validate();
 
     // main loop
+    label regModelFail = 0;
     for (label iter = 1; iter <= nInstances; iter++)
     {
 
@@ -212,11 +213,13 @@ label DAPimpleFoam::solvePrimal(
             }
 
             // update the output field value at each iteration, if the regression model is active
-            daRegressionPtr_->compute();
+            label fail = daRegressionPtr_->compute();
 
             laminarTransport.correct();
             daTurbulenceModelPtr_->correct(pimplePrintToScreen);
         }
+
+        regModelFail += fail;
 
         if (this->validateStates())
         {
@@ -254,6 +257,11 @@ label DAPimpleFoam::solvePrimal(
         {
             runTime.write();
         }
+    }
+
+    if (regModelFail > 0)
+    {
+        return 1;
     }
 
     this->calcPrimalResidualStatistics("print");

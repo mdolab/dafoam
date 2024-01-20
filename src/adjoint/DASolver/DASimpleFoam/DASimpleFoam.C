@@ -163,6 +163,7 @@ label DASimpleFoam::solvePrimal(
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
+    label regModelFail = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
 
@@ -182,7 +183,7 @@ label DASimpleFoam::solvePrimal(
         }
 
         // update the output field value at each iteration, if the regression model is active
-        daRegressionPtr_->compute();
+        regModelFail = daRegressionPtr_->compute();
 
         laminarTransport.correct();
         daTurbulenceModelPtr_->correct(printToScreen);
@@ -207,6 +208,11 @@ label DASimpleFoam::solvePrimal(
         }
 
         runTime.write();
+    }
+
+    if (regModelFail != 0)
+    {
+        return 1;
     }
 
     this->writeAssociatedFields();

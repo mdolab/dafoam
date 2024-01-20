@@ -99,9 +99,13 @@ label DATurboFoam::solvePrimal(
     // if the forwardModeAD is active, we need to set the seed here
 #include "setForwardADSeeds.H"
 
+    // check if the parameters are set in the Python layer
+    daRegressionPtr_->validate();
+
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
+    label regModelFail = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
 
@@ -119,6 +123,9 @@ label DATurboFoam::solvePrimal(
 #include "UEqnTurbo.H"
 #include "pEqnTurbo.H"
 #include "EEqnTurbo.H"
+
+        // update the output field value at each iteration, if the regression model is active
+        regModelFail = daRegressionPtr_->compute();
 
         daTurbulenceModelPtr_->correct(printToScreen);
 
@@ -142,6 +149,11 @@ label DATurboFoam::solvePrimal(
         }
 
         runTime.write();
+    }
+
+    if (regModelFail != 0)
+    {
+        return 1;
     }
 
     this->calcPrimalResidualStatistics("print");
