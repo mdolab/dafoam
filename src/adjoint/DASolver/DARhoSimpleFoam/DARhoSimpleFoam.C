@@ -152,6 +152,7 @@ label DARhoSimpleFoam::solvePrimal(
     primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
+    label regModelFail = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
 
@@ -171,7 +172,7 @@ label DARhoSimpleFoam::solvePrimal(
 #include "pEqnRhoSimple.H"
 
         // update the output field value at each iteration, if the regression model is active
-        daRegressionPtr_->compute();
+        regModelFail = daRegressionPtr_->compute();
 
         daTurbulenceModelPtr_->correct(printToScreen);
 
@@ -195,6 +196,11 @@ label DARhoSimpleFoam::solvePrimal(
         }
 
         runTime.write();
+    }
+
+    if (regModelFail != 0)
+    {
+        return 1;
     }
 
     this->writeAssociatedFields();

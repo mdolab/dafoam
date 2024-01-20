@@ -108,7 +108,7 @@ public:
     // Members
 
     /// compute the output based on the latest parameters and inputs
-    void compute();
+    label compute();
 
     /// get the number of parameters for this regression model
     label nParameters();
@@ -143,7 +143,7 @@ public:
     }
 
     /// check if the output values are valid otherwise bound or fix them
-    void checkOutput(volScalarField& outputField);
+    label checkOutput(volScalarField& outputField);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -63,7 +63,7 @@ DARegression::DARegression(
     }
 }
 
-void DARegression::compute()
+label DARegression::compute()
 {
     /*
     Description:
@@ -79,6 +79,10 @@ void DARegression::compute()
             inputNames: a list of volScalarFields prescribed by inputFields
             hiddenLayerNeurons: number of neurons for each hidden layer. 
             example: {5, 3, 4} means three hidden layers with 5, 3, and 4 neurons.
+    
+    Output:
+
+        Return 1 if there is invalid value in the output. Return 0 if successful
 
     Output:
         a volScalarField prescribed by outputName
@@ -86,8 +90,10 @@ void DARegression::compute()
 
     if (!active_)
     {
-        return;
+        return 0;
     }
+
+    label fail = 0;
 
     volScalarField& outputField = const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>(outputName_));
 
@@ -338,7 +344,7 @@ void DARegression::compute()
         }
 
         // check if the output values are valid otherwise fix/bound them
-        this->checkOutput(outputField);
+        fail = this->checkOutput(outputField);
 
         outputField.correctBoundaryConditions();
     }
@@ -346,6 +352,8 @@ void DARegression::compute()
     {
         FatalErrorIn("") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork" << abort(FatalError);
     }
+
+    return fail;
 }
 
 label DARegression::nParameters()
@@ -389,11 +397,15 @@ label DARegression::nParameters()
     }
 }
 
-void DARegression::checkOutput(volScalarField& outputField)
+label DARegression::checkOutput(volScalarField& outputField)
 {
     /*
     Description:
         check if the output values are valid otherwise bound or fix them
+
+        Output:
+
+            Return 1 if there is invalid value in the output. Return 0 if successful
     */
 
     // check if the output value is valid.
@@ -426,17 +438,22 @@ void DARegression::checkOutput(volScalarField& outputField)
     if (isBounded == 1)
     {
         Info << "************* Warning! output values are bounded between " << outputLowerBound_ << " and " << outputUpperBound_ << endl;
+        return 1;
     }
 
     if (isNaN == 1)
     {
         Info << "************* Warning! output values have nan and are set to " << defaultOutputValue_ << endl;
+        return 1;
     }
 
     if (isInf == 1)
     {
         Info << "************* Warning! output values have inf and are set to " << defaultOutputValue_ << endl;
+        return 1;
     }
+
+    return 0;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
