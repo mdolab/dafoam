@@ -408,6 +408,8 @@ label DARegression::checkOutput(volScalarField& outputField)
             Return 1 if there is invalid value in the output. Return 0 if successful
     */
 
+    label fail = 0;
+
     // check if the output value is valid.
     label isNaN = 0;
     label isInf = 0;
@@ -438,22 +440,24 @@ label DARegression::checkOutput(volScalarField& outputField)
     if (isBounded == 1)
     {
         Info << "************* Warning! output values are bounded between " << outputLowerBound_ << " and " << outputUpperBound_ << endl;
-        return 1;
+        fail = 1;
     }
 
     if (isNaN == 1)
     {
         Info << "************* Warning! output values have nan and are set to " << defaultOutputValue_ << endl;
-        return 1;
+        fail = 1;
     }
 
     if (isInf == 1)
     {
         Info << "************* Warning! output values have inf and are set to " << defaultOutputValue_ << endl;
-        return 1;
+        fail = 1;
     }
 
-    return 0;
+    reduce(fail, sumOp<label>());
+
+    return fail;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
