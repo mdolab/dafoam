@@ -22,16 +22,19 @@ if len(sys.argv) != 1:
 gcomm = MPI.COMM_WORLD
 
 os.chdir("./input/PlateHole")
+if gcomm.rank == 0:
+    os.system("rm -rf processor*")
 
 # test incompressible solvers
 aeroOptions = {
     "debug": True,
-    "maxTractionBCIters": 20,
     "solverName": "DASolidDisplacementFoam",
-    "useAD": {"mode": "fd"},
+    "useAD": {"mode": "reverse"},
     "designSurfaces": ["hole"],
     "primalMinResTol": 1e-10,
     "primalMinResTolDiff": 1e10,
+    "hasIterativeBC": True,
+    "maxCorrectBCCalls": 20,
     "objFunc": {
         "VMS": {
             "part1": {
@@ -57,7 +60,7 @@ aeroOptions = {
     },
     "normalizeStates": {"D": 1.0e-7},
     "adjPartDerivFDStep": {"State": 1e-5, "FFD": 1e-3},
-    "adjEqnOption": {"gmresRelTol": 1.0e-15, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
+    "adjEqnOption": {"gmresRelTol": 1.0e-12, "gmresAbsTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
     "designVar": {
         "shapey": {"designVarType": "FFD"},

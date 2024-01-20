@@ -52,18 +52,6 @@ class DASolidDisplacementFoam
 
 protected:
 
-    /// whether to use compact normal stress
-    Switch compactNormalStress_;
-
-    /// number of correctors
-    label nCorr_;
-
-    /// convergence tolerance for D
-    scalar convergenceTolerance_;
-
-    /// mechanicalProperties pointer
-    autoPtr<IOdictionary> mechanicalPropertiesPtr_;
-
     /// density field pointer
     autoPtr<volScalarField> rhoPtr_;
 
@@ -81,17 +69,10 @@ protected:
 
     /// displacement field pointer
     autoPtr<volVectorField> DPtr_;
-    
-    /// stress field pointer
-    autoPtr<volSymmTensorField> sigmaDPtr_;
 
     /// displacement gradient pointer
     autoPtr<volTensorField> gradDPtr_;
 
-    /// explicit part of div(sigma) pointer
-    autoPtr<volVectorField> divSigmaExpPtr_;
-
-    
 public:
     TypeName("DASolidDisplacementFoam");
     // Constructors
@@ -113,7 +94,6 @@ public:
     virtual label solvePrimal(
         const Vec xvVec,
         Vec wVec);
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

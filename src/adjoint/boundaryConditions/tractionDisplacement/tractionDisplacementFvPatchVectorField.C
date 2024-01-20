@@ -63,7 +63,6 @@ tractionDisplacementFvPatchVectorField::
 {
 }
 
-
 tractionDisplacementFvPatchVectorField::
     tractionDisplacementFvPatchVectorField(
         const fvPatch& p,
@@ -105,7 +104,6 @@ void tractionDisplacementFvPatchVectorField::autoMap(
     fixedGradientFvPatchVectorField::autoMap(m);
     traction_.autoMap(m);
     pressure_.autoMap(m);
-
 }
 
 void tractionDisplacementFvPatchVectorField::rmap(
@@ -120,7 +118,6 @@ void tractionDisplacementFvPatchVectorField::rmap(
 
     traction_.rmap(dmptf.traction_, addr);
     pressure_.rmap(dmptf.pressure_, addr);
-
 }
 
 void tractionDisplacementFvPatchVectorField::updateCoeffs()
@@ -130,39 +127,21 @@ void tractionDisplacementFvPatchVectorField::updateCoeffs()
         return;
     }
 
-    const dictionary& mechanicalProperties =
-        db().lookupObject<IOdictionary>("mechanicalProperties");
-
     const fvPatchField<scalar>& rho =
         patch().lookupPatchField<volScalarField, scalar>("solid:rho");
 
-    const fvPatchField<scalar>& rhoE =
-        patch().lookupPatchField<volScalarField, scalar>("E");
+    const fvPatchField<scalar>& lambda =
+        patch().lookupPatchField<volScalarField, scalar>("solid:lambda");
 
-    const fvPatchField<scalar>& nu =
-        patch().lookupPatchField<volScalarField, scalar>("solid:nu");
+    const fvPatchField<scalar>& mu =
+        patch().lookupPatchField<volScalarField, scalar>("solid:mu");
 
-    scalarField E(rhoE / rho);
-    scalarField mu(E / (2.0 * (1.0 + nu)));
-    scalarField lambda(nu * E / ((1.0 + nu) * (1.0 - 2.0 * nu)));
-
-    Switch planeStress(mechanicalProperties.lookup("planeStress"));
-
-    if (planeStress)
-    {
-        lambda = nu * E / ((1.0 + nu) * (1.0 - nu));
-    }
-
-    scalarField twoMuLambda(2 * mu + lambda);
-
-    vectorField n(patch().nf());
-
-    // NOTE: we can't use the built-in gradient() computation because
-    // it is designed for transient problem, i.e., snGrad() is actually
-    // related to gradient()
-    // Here we implement our owned BC for steady-state
     const fvPatchField<tensor>& gradD =
         patch().lookupPatchField<volTensorField, tensor>("gradD");
+
+    // here we use the BC implementation from:
+    // Tang, Tian: Implementation of solid body stress analysis in OpenFOAM, 2013
+    vectorField n(patch().nf());
     gradient() = ((traction_ - pressure_ * n) / rho
                   - (n & (mu * gradD.T() - (mu + lambda) * gradD))
                   - n * tr(gradD) * lambda)
