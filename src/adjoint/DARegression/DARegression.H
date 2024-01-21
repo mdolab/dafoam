@@ -88,7 +88,7 @@ protected:
     scalar outputLowerBound_;
 
     /// whether to print the input range info this is used to scale the input
-    label printInputRange_;
+    label printInputInfo_;
 
     /// default output values
     scalar defaultOutputValue_;
@@ -109,6 +109,9 @@ public:
 
     /// compute the output based on the latest parameters and inputs
     label compute();
+
+    /// calculate the input flow features
+    void calcInput(List<List<scalar>>& input);
 
     /// get the number of parameters for this regression model
     label nParameters();
@@ -144,6 +147,25 @@ public:
 
     /// check if the output values are valid otherwise bound or fix them
     label checkOutput(volScalarField& outputField);
+
+    /// print the input
+    void printInputInfo()
+    {
+        if (printInputInfo_)
+        {
+            List<List<scalar>> inputFields;
+            inputFields.setSize(inputNames_.size());
+
+            this->calcInput(inputFields);
+
+            forAll(inputNames_, idxI)
+            {
+                word name = inputNames_[idxI];
+                Info << "RegModel input info. " << name << " Min: " << gMin(inputFields[idxI]) << " Max: " << gMax(inputFields[idxI])
+                     << " Avg: " << gAverage(inputFields[idxI]) << " Std: " << sqrt(gSumSqr(inputFields[idxI]) / inputFields[idxI].size()) << endl;
+            }
+        }
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
