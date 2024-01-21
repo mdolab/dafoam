@@ -182,6 +182,8 @@ label DASimpleTFoam::solvePrimal(
 
             this->printAllObjFuncs();
 
+            daRegressionPtr_->printInputInfo();
+
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                  << nl << endl;
