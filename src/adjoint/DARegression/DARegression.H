@@ -151,7 +151,7 @@ public:
     /// print the input
     void printInputInfo()
     {
-        if (printInputInfo_)
+        if (active_ && printInputInfo_)
         {
             List<List<scalar>> inputFields;
             inputFields.setSize(inputNames_.size());
