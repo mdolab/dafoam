@@ -39,7 +39,7 @@ DARegression::DARegression(
 
     regSubDict.readEntry<scalar>("outputLowerBound", outputLowerBound_);
 
-    regSubDict.readEntry<label>("printInputRange", printInputRange_);
+    regSubDict.readEntry<label>("printInputInfo", printInputInfo_);
 
     regSubDict.readEntry<scalar>("defaultOutputValue", defaultOutputValue_);
 
@@ -59,6 +59,170 @@ DARegression::DARegression(
         forAll(parameters_, idxI)
         {
             parameters_[idxI] = 1e16;
+        }
+    }
+}
+
+void DARegression::calcInput(List<List<scalar>>& inputFields)
+{
+    /*
+    Description:
+        Calculate the input features
+    */
+
+    forAll(inputNames_, idxI)
+    {
+        inputFields[idxI].setSize(mesh_.nCells());
+        word inputName = inputNames_[idxI];
+        if (inputName == "VoS")
+        {
+            // vorticity / strain
+            const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+            const tmp<volTensorField> tgradU(fvc::grad(U));
+            const volTensorField& gradU = tgradU();
+            volScalarField magOmega = mag(skew(gradU));
+            volScalarField magS = mag(symm(gradU));
+            forAll(inputFields[idxI], cellI)
+            {
+                inputFields[idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else if (inputName == "PoD")
+        {
+            // production / destruction
+            daModel_.getTurbProdOverDestruct(inputFields[idxI]);
+            forAll(inputFields[idxI], cellI)
+            {
+                inputFields[idxI][cellI] = (inputFields[idxI][cellI] - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else if (inputName == "chiSA")
+        {
+#ifndef SolidDASolver
+            // the chi() function from SA
+            const volScalarField& nuTilda = mesh_.thisDb().lookupObject<volScalarField>("nuTilda");
+            volScalarField nu = daModel_.getDATurbulenceModel().nu();
+            forAll(inputFields[idxI], cellI)
+            {
+                inputFields[idxI][cellI] = (nuTilda[cellI] / nu[cellI] - inputShift_[idxI]) * inputScale_[idxI];
+            }
+#endif
+        }
+        else if (inputName == "pGradStream")
+        {
+            // pressure gradient along stream
+            const volScalarField& p = mesh_.thisDb().lookupObject<volScalarField>("p");
+            const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+            volVectorField pGrad("gradP", fvc::grad(p));
+            volScalarField pG_denominator(mag(U) * mag(pGrad) + mag(U & pGrad));
+            forAll(pG_denominator, cellI)
+            {
+                pG_denominator[cellI] += 1e-16;
+            }
+            volScalarField pGradAlongStream = (U & pGrad) / pG_denominator;
+            forAll(inputFields[idxI], cellI)
+            {
+                inputFields[idxI][cellI] = (pGradAlongStream[cellI] - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else if (inputName == "PSoSS")
+        {
+            // pressure normal stress over shear stress
+            const volScalarField& p = mesh_.thisDb().lookupObject<volScalarField>("p");
+            const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+            const tmp<volTensorField> tgradU(fvc::grad(U));
+            const volTensorField& gradU = tgradU();
+            volVectorField pGrad("gradP", fvc::grad(p));
+            vector diagUGrad = vector::zero;
+            scalar val = 0;
+            forAll(inputFields[idxI], cellI)
+            {
+                diagUGrad[0] = gradU[cellI].xx();
+                diagUGrad[1] = gradU[cellI].yy();
+                diagUGrad[2] = gradU[cellI].zz();
+                val = mag(pGrad[cellI]) / (mag(pGrad[cellI]) + mag(3.0 * cmptAv(U[cellI] & diagUGrad)) + 1e-16);
+                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else if (inputName == "SCurv")
+        {
+            // streamline curvature
+            const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+            const tmp<volTensorField> tgradU(fvc::grad(U));
+            const volTensorField& gradU = tgradU();
+
+            scalar val = 0;
+            forAll(inputFields[idxI], cellI)
+            {
+                val = mag(U[cellI] & gradU[cellI]) / (mag(U[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI]) + 1e-16);
+                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else if (inputName == "UOrth")
+        {
+            // Non-orthogonality between velocity and its gradient
+            const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+            const tmp<volTensorField> tgradU(fvc::grad(U));
+            const volTensorField& gradU = tgradU();
+
+            scalar val = 0;
+            forAll(inputFields[idxI], cellI)
+            {
+                val = mag(U[cellI] & gradU[cellI] & U[cellI]) / (mag(U[cellI]) * mag(gradU[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI] & U[cellI]) + 1e-16);
+                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else if (inputName == "KoU2")
+        {
+            // turbulence intensity / velocity square
+            const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
+            const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+            scalar val = 0;
+            forAll(inputFields[idxI], cellI)
+            {
+                val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + 1e-16);
+                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else if (inputName == "ReWall")
+        {
+            // wall distance based Reynolds number
+            const volScalarField& y = mesh_.thisDb().lookupObject<volScalarField>("yWall");
+            const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
+            volScalarField nu = daModel_.getDATurbulenceModel().nu();
+            scalar val = 0;
+            forAll(inputFields[idxI], cellI)
+            {
+                val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
+                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else if (inputName == "CoP")
+        {
+            // convective / production
+            daModel_.getTurbConvOverProd(inputFields[idxI]);
+            forAll(inputFields[idxI], cellI)
+            {
+                inputFields[idxI][cellI] = (inputFields[idxI][cellI] - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else if (inputName == "TauoK")
+        {
+            // ratio of total to normal Reynolds stress
+            const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
+            const volScalarField& nut = mesh_.thisDb().lookupObject<volScalarField>("nut");
+            const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+            volSymmTensorField tau(2.0 / 3.0 * I * k - nut * twoSymm(fvc::grad(U)));
+            scalar val = 0;
+            forAll(inputFields[idxI], cellI)
+            {
+                val = mag(tau[cellI]) / (k[cellI] + 1e-16);
+                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+            }
+        }
+        else
+        {
+            FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: VoS, PoD, chiSA, pGradStream, PSoSS, SCurv, UOrth, KoU2, ReWall, CoP, TauoK" << abort(FatalError);
         }
     }
 }
@@ -104,169 +268,7 @@ label DARegression::compute()
         List<List<scalar>> inputFields;
         inputFields.setSize(inputNames_.size());
 
-        forAll(inputNames_, idxI)
-        {
-            inputFields[idxI].setSize(mesh_.nCells());
-            word inputName = inputNames_[idxI];
-            if (inputName == "VoS")
-            {
-                // vorticity / strain
-                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
-                const tmp<volTensorField> tgradU(fvc::grad(U));
-                const volTensorField& gradU = tgradU();
-                volScalarField magOmega = mag(skew(gradU));
-                volScalarField magS = mag(symm(gradU));
-                forAll(inputFields[idxI], cellI)
-                {
-                    inputFields[idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else if (inputName == "PoD")
-            {
-                // production / destruction
-                daModel_.getTurbProdOverDestruct(inputFields[idxI]);
-                forAll(inputFields[idxI], cellI)
-                {
-                    inputFields[idxI][cellI] = (inputFields[idxI][cellI] - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else if (inputName == "chiSA")
-            {
-#ifndef SolidDASolver
-                // the chi() function from SA
-                const volScalarField& nuTilda = mesh_.thisDb().lookupObject<volScalarField>("nuTilda");
-                volScalarField nu = daModel_.getDATurbulenceModel().nu();
-                forAll(inputFields[idxI], cellI)
-                {
-                    inputFields[idxI][cellI] = (nuTilda[cellI] / nu[cellI] - inputShift_[idxI]) * inputScale_[idxI];
-                }
-#endif
-            }
-            else if (inputName == "pGradStream")
-            {
-                // pressure gradient along stream
-                const volScalarField& p = mesh_.thisDb().lookupObject<volScalarField>("p");
-                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
-                volVectorField pGrad("gradP", fvc::grad(p));
-                volScalarField pG_denominator(mag(U) * mag(pGrad) + mag(U & pGrad));
-                forAll(pG_denominator, cellI)
-                {
-                    pG_denominator[cellI] += 1e-16;
-                }
-                volScalarField pGradAlongStream = (U & pGrad) / pG_denominator;
-                forAll(inputFields[idxI], cellI)
-                {
-                    inputFields[idxI][cellI] = (pGradAlongStream[cellI] - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else if (inputName == "PSoSS")
-            {
-                // pressure normal stress over shear stress
-                const volScalarField& p = mesh_.thisDb().lookupObject<volScalarField>("p");
-                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
-                const tmp<volTensorField> tgradU(fvc::grad(U));
-                const volTensorField& gradU = tgradU();
-                volVectorField pGrad("gradP", fvc::grad(p));
-                vector diagUGrad = vector::zero;
-                scalar val = 0;
-                forAll(inputFields[idxI], cellI)
-                {
-                    diagUGrad[0] = gradU[cellI].xx();
-                    diagUGrad[1] = gradU[cellI].yy();
-                    diagUGrad[2] = gradU[cellI].zz();
-                    val = mag(pGrad[cellI]) / (mag(pGrad[cellI]) + mag(3.0 * cmptAv(U[cellI] & diagUGrad)) + 1e-16);
-                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else if (inputName == "SCurv")
-            {
-                // streamline curvature
-                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
-                const tmp<volTensorField> tgradU(fvc::grad(U));
-                const volTensorField& gradU = tgradU();
-
-                scalar val = 0;
-                forAll(inputFields[idxI], cellI)
-                {
-                    val = mag(U[cellI] & gradU[cellI]) / (mag(U[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI]) + 1e-16);
-                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else if (inputName == "UOrth")
-            {
-                // Non-orthogonality between velocity and its gradient
-                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
-                const tmp<volTensorField> tgradU(fvc::grad(U));
-                const volTensorField& gradU = tgradU();
-
-                scalar val = 0;
-                forAll(inputFields[idxI], cellI)
-                {
-                    val = mag(U[cellI] & gradU[cellI] & U[cellI]) / (mag(U[cellI]) * mag(gradU[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI] & U[cellI]) + 1e-16);
-                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else if (inputName == "KoU2")
-            {
-                // turbulence intensity / velocity square
-                const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
-                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
-                scalar val = 0;
-                forAll(inputFields[idxI], cellI)
-                {
-                    val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + 1e-16);
-                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else if (inputName == "ReWall")
-            {
-                // wall distance based Reynolds number
-                const volScalarField& y = mesh_.thisDb().lookupObject<volScalarField>("yWall");
-                const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
-                volScalarField nu = daModel_.getDATurbulenceModel().nu();
-                scalar val = 0;
-                forAll(inputFields[idxI], cellI)
-                {
-                    val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
-                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else if (inputName == "CoP")
-            {
-                // convective / production
-                daModel_.getTurbConvOverProd(inputFields[idxI]);
-                forAll(inputFields[idxI], cellI)
-                {
-                    inputFields[idxI][cellI] = (inputFields[idxI][cellI] - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else if (inputName == "TauoK")
-            {
-                // ratio of total to normal Reynolds stress
-                const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
-                const volScalarField& nut = mesh_.thisDb().lookupObject<volScalarField>("nut");
-                const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
-                volSymmTensorField tau(2.0 / 3.0 * I * k - nut * twoSymm(fvc::grad(U)));
-                scalar val = 0;
-                forAll(inputFields[idxI], cellI)
-                {
-                    val = mag(tau[cellI]) / (k[cellI] + 1e-16);
-                    inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
-                }
-            }
-            else
-            {
-                FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: VoS, PoD, chiSA, pGradStream, PSoSS, SCurv, UOrth, KoU2, ReWall, CoP, TauoK" << abort(FatalError);
-            }
-        }
-
-        if (printInputRange_)
-        {
-            forAll(inputNames_, idxI)
-            {
-                Info << inputNames_[idxI] << " Max: " << gMax(inputFields[idxI]) << " Min: " << gMin(inputFields[idxI]) << " Avg: " << gAverage(inputFields[idxI]) << endl;
-            }
-        }
+        this->calcInput(inputFields);
 
         List<List<scalar>> layerVals;
         layerVals.setSize(nHiddenLayers);

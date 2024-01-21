@@ -69,7 +69,7 @@ aeroOptions = {
         "outputShift": 1.0,
         "outputScale": 1.0,
         "activationFunction": "tanh",
-        "printInputRange": False,
+        "printInputInfo": False,
         "defaultOutputValue": 1.0,
     },
     "objFunc": {
