@@ -84,7 +84,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             volScalarField magS = mag(symm(gradU));
             forAll(inputFields[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "PoD")
@@ -93,7 +93,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             daModel_.getTurbProdOverDestruct(inputFields[idxI]);
             forAll(inputFields[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (inputFields[idxI][cellI] - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (inputFields[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "chiSA")
@@ -104,7 +104,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             volScalarField nu = daModel_.getDATurbulenceModel().nu();
             forAll(inputFields[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (nuTilda[cellI] / nu[cellI] - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (nuTilda[cellI] / nu[cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
 #endif
         }
@@ -122,7 +122,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             volScalarField pGradAlongStream = (U & pGrad) / pG_denominator;
             forAll(inputFields[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (pGradAlongStream[cellI] - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (pGradAlongStream[cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "PSoSS")
@@ -141,7 +141,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
                 diagUGrad[1] = gradU[cellI].yy();
                 diagUGrad[2] = gradU[cellI].zz();
                 val = mag(pGrad[cellI]) / (mag(pGrad[cellI]) + mag(3.0 * cmptAv(U[cellI] & diagUGrad)) + 1e-16);
-                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "SCurv")
@@ -155,7 +155,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             forAll(inputFields[idxI], cellI)
             {
                 val = mag(U[cellI] & gradU[cellI]) / (mag(U[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI]) + 1e-16);
-                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "UOrth")
@@ -169,7 +169,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             forAll(inputFields[idxI], cellI)
             {
                 val = mag(U[cellI] & gradU[cellI] & U[cellI]) / (mag(U[cellI]) * mag(gradU[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI] & U[cellI]) + 1e-16);
-                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "KoU2")
@@ -181,7 +181,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             forAll(inputFields[idxI], cellI)
             {
                 val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + 1e-16);
-                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "ReWall")
@@ -194,7 +194,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             forAll(inputFields[idxI], cellI)
             {
                 val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
-                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "CoP")
@@ -203,7 +203,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             daModel_.getTurbConvOverProd(inputFields[idxI]);
             forAll(inputFields[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (inputFields[idxI][cellI] - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (inputFields[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "TauoK")
@@ -217,7 +217,7 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             forAll(inputFields[idxI], cellI)
             {
                 val = mag(tau[cellI]) / (k[cellI] + 1e-16);
-                inputFields[idxI][cellI] = (val - inputShift_[idxI]) * inputScale_[idxI];
+                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else
