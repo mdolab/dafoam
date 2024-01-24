@@ -151,6 +151,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getUnsteadyObjFuncEndTimeIndex()
         void writeSensMapSurface(char *, double *, double *, int, double)
         void writeSensMapField(char *, double *, char *, double)
+        double getLatestTime()
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -690,3 +691,6 @@ cdef class pyDASolvers:
             dFdField_data, 
             fieldType.encode(), 
             timeName)
+    
+    def getLatestTime(self):
+        return self._thisptr.getLatestTime()

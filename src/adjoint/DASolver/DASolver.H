@@ -1274,6 +1274,14 @@ public:
         const double* dFdField,
         const word fieldType,
         const double timeName);
+
+    scalar getLatestTime()
+    {
+        // get the latest time solution from the case folder.
+        instantList timeDirs = runTimePtr_->findTimes(runTimePtr_->path(), runTimePtr_->constant());
+        scalar latestTime = timeDirs.last().value();
+        return latestTime;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
