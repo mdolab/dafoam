@@ -2469,7 +2469,7 @@ class PYDAFOAM(object):
             raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
 
         if not self.getOption("writeMinorIterations"):
-            solutionTime, renamed = self.renameSolution(self.nSolveAdjoints)
+            self.renameSolution(self.nSolveAdjoints)
 
         Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
 
@@ -3233,35 +3233,26 @@ class PYDAFOAM(object):
             The major interation index
         """
 
-        allSolutions = []
         rootDir = os.getcwd()
         if self.parallel:
             checkPath = os.path.join(rootDir, "processor%d" % self.comm.rank)
         else:
             checkPath = rootDir
 
-        folderNames = os.listdir(checkPath)
-        for folderName in folderNames:
-            try:
-                float(folderName)
-                allSolutions.append(folderName)
-            except ValueError:
-                continue
-        allSolutions.sort(reverse=True)
-        # choose the latst solution to rename
-        solutionTime = allSolutions[0]
+        latestTime = self.solver.getLatestTime()
 
-        if float(solutionTime) < 1e-4:
-            Info("Solution time %g less than 1e-4, not renamed." % float(solutionTime))
+        if latestTime < 1e-4:
+            Info("Latest solution time %g less than 1e-4, not renamed." % latestTime)
             renamed = False
-            return solutionTime, renamed
+            return latestTime, renamed
 
         distTime = "%g" % (solIndex / 1e8)
+        targetTime = "%g" % latestTime
 
-        src = os.path.join(checkPath, solutionTime)
+        src = os.path.join(checkPath, targetTime)
         dst = os.path.join(checkPath, distTime)
 
-        Info("Moving time %s to %s" % (solutionTime, distTime))
+        Info("Moving time %s to %s" % (targetTime, distTime))
 
         if os.path.isdir(dst):
             raise Error("%s already exists, moving failed!" % dst)

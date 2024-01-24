@@ -1000,6 +1000,19 @@ public:
     {
         DASolverPtr_->writeSensMapField(name, dFdField, fieldType, timeName);
     }
+
+    /// get the latest solution time
+    double getLatestTime()
+    {
+        double latestTime = 0.0;
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        latestTime = DASolverPtr_->getLatestTime();
+#else
+        scalar tmp = DASolverPtr_->getLatestTime();
+        latestTime = tmp.getValue();
+#endif
+        return latestTime;
+    };
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
