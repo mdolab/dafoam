@@ -9118,44 +9118,48 @@ void DASolver::writeAdjStates(const label writeMesh)
         Write only the adjoint states
     */
 
-    // volVector states
-    forAll(stateInfo_["volVectorStates"], idxI)
+    if (runTimePtr_->writeTime())
     {
-        const word stateName = stateInfo_["volVectorStates"][idxI];
-        volVectorField& state =
-            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
 
-        state.write();
-    }
+        // volVector states
+        forAll(stateInfo_["volVectorStates"], idxI)
+        {
+            const word stateName = stateInfo_["volVectorStates"][idxI];
+            volVectorField& state =
+                const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
 
-    // volScalar states
-    forAll(stateInfo_["volScalarStates"], idxI)
-    {
-        const word stateName = stateInfo_["volScalarStates"][idxI];
-        volScalarField& state =
-            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+            state.write();
+        }
 
-        state.write();
-    }
+        // volScalar states
+        forAll(stateInfo_["volScalarStates"], idxI)
+        {
+            const word stateName = stateInfo_["volScalarStates"][idxI];
+            volScalarField& state =
+                const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-    // model states
-    forAll(stateInfo_["modelStates"], idxI)
-    {
-        const word stateName = stateInfo_["modelStates"][idxI];
-        volScalarField& state =
-            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+            state.write();
+        }
 
-        state.write();
-    }
+        // model states
+        forAll(stateInfo_["modelStates"], idxI)
+        {
+            const word stateName = stateInfo_["modelStates"][idxI];
+            volScalarField& state =
+                const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-    // surfaceScalar states
-    forAll(stateInfo_["surfaceScalarStates"], idxI)
-    {
-        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
-        surfaceScalarField& state =
-            const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+            state.write();
+        }
 
-        state.write();
+        // surfaceScalar states
+        forAll(stateInfo_["surfaceScalarStates"], idxI)
+        {
+            const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+            surfaceScalarField& state =
+                const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+
+            state.write();
+        }
     }
 
     scalar endTime = runTimePtr_->endTime().value();
