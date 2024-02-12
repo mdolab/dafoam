@@ -659,6 +659,9 @@ class DAFoamSolver(ImplicitComponent):
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
                 self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+            elif dvType == "RegPar":
+                nParameters = self.DASolver.solver.getNRegressionParameters()
+                self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
 
@@ -893,6 +896,19 @@ class DAFoamSolver(ImplicitComponent):
                         fieldBar = DASolver.vec2Array(prodVec)
                         d_inputs[inputName] += fieldBar
 
+                    elif self.dvType[inputName] == "RegPar":
+                        volCoords = DASolver.vec2Array(DASolver.xvVec)
+                        states = outputs["%s_states" % self.discipline]
+                        parameters = inputs[inputName]
+                        product = np.zeros_like(parameters)
+                        seeds = d_residuals["%s_states" % self.discipline]
+
+                        DASolver.solverAD.calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, product)
+
+                        # reduce to make sure all procs get the same product
+                        product = self.comm.allreduce(product, op=MPI.SUM)
+
+                        d_inputs[inputName] += product
                     else:
                         raise AnalysisError("designVarType %s not supported! " % self.dvType[inputName])
 
@@ -1205,6 +1221,9 @@ class DAFoamFunctions(ExplicitComponent):
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
                 self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+            elif dvType == "RegPar":
+                nParameters = self.DASolver.solver.getNRegressionParameters()
+                self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
 
@@ -1404,6 +1423,18 @@ class DAFoamFunctions(ExplicitComponent):
                         )
                         fieldBar = DASolver.vec2Array(dFdField)
                         d_inputs[inputName] += fieldBar * fBar
+
+                    elif self.dvType[inputName] == "RegPar":
+                        volCoords = DASolver.vec2Array(DASolver.xvVec)
+                        states = inputs["%s_states" % self.discipline]
+                        parameters = inputs[inputName]
+                        product = np.zeros_like(parameters)
+
+                        DASolver.solverAD.calcdFdRegParAD(
+                            volCoords, states, parameters, objFuncName.encode(), inputName.encode(), product
+                        )
+
+                        d_inputs[inputName] += product * fBar
 
                     else:
                         raise AnalysisError("designVarType %s not supported! " % self.dvType[inputName])
