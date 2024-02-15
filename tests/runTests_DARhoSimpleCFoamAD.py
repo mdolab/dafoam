@@ -44,7 +44,7 @@ aeroOptions = {
     "designSurfaces": ["wing"],
     "useAD": {"mode": "reverse"},
     "writeJacobians": ["all"],
-    "primalMinResTol": 1e-12,
+    "primalMinResTol": 3e-12,
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},

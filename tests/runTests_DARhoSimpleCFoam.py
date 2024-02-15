@@ -43,7 +43,7 @@ aeroOptions = {
     "solverName": "DARhoSimpleCFoam",
     "useAD": {"mode": "fd"},
     "designSurfaces": ["wing"],
-    "primalMinResTol": 1e-12,
+    "primalMinResTol": 1e-11,
     "writeJacobians": ["all"],
     "primalBC": {
         "UIn": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},

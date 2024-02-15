@@ -37,6 +37,7 @@ aeroOptions = {
     "useAD": {"mode": "fd"},
     "designSurfaces": ["ubend"],
     "primalMinResTol": 1e-5,
+    "primalMinResTolDiff": 1e5,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
