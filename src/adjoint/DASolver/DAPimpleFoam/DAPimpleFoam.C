@@ -154,7 +154,6 @@ label DAPimpleFoam::solvePrimal(
     // right after mesh.movePoints() calls.
     //mesh.moving(false);
 
-    primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;

@@ -145,7 +145,6 @@ label DALaplacianFoam::solvePrimal(
     // right after mesh.movePoints() calls.
     //mesh.moving(false);
 
-    primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;
@@ -153,6 +152,8 @@ label DALaplacianFoam::solvePrimal(
     // main loop
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
+        DAUtility::primalMaxInitRes_ = -1e16;
+        
         printToScreen = this->isPrintTime(runTime, printInterval);
 
         if (printToScreen)
@@ -167,7 +168,7 @@ label DALaplacianFoam::solvePrimal(
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverT = TEqn.solve();
-        this->primalResidualControl<scalar>(solverT, printToScreen, printInterval, "T");
+        DAUtility::primalResidualControl(solverT, printToScreen, "T");
 
         if (this->validateStates())
         {

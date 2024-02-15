@@ -108,11 +108,11 @@ label DASolidDisplacementFoam::solvePrimal(
         return 1;
     }
 
-    primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
+        DAUtility::primalMaxInitRes_ = -1e16;
 
         printToScreen = this->isPrintTime(runTime, printInterval);
 
@@ -135,7 +135,7 @@ label DASolidDisplacementFoam::solvePrimal(
         // and final residuals
         SolverPerformance<vector> solverD = DEqn.solve();
 
-        this->primalResidualControl<vector>(solverD, printToScreen, printInterval, "D");
+        DAUtility::primalResidualControl(solverD, printToScreen, "D");
 
         if (this->validateStates())
         {

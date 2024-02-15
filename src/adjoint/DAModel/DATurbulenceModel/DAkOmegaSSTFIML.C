@@ -1047,11 +1047,7 @@ void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)
             // get the solver performance info such as initial
             // and final residuals
             SolverPerformance<scalar> solverOmega = solve(omegaEqn);
-            if (printToScreen)
-            {
-                Info << "omega Initial residual: " << solverOmega.initialResidual() << endl
-                     << "        Final residual: " << solverOmega.finalResidual() << endl;
-            }
+            DAUtility::primalResidualControl(solverOmega, printToScreen, "omega");
 
             DAUtility::boundVar(allOptions_, omega_, printToScreen);
         }
@@ -1088,11 +1084,7 @@ void DAkOmegaSSTFIML::calcResiduals(const dictionary& options)
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverK = solve(kEqn);
-        if (printToScreen)
-        {
-            Info << "k Initial residual: " << solverK.initialResidual() << endl
-                 << "    Final residual: " << solverK.finalResidual() << endl;
-        }
+        DAUtility::primalResidualControl(solverK, printToScreen, "k");
 
         DAUtility::boundVar(allOptions_, k_, printToScreen);
 

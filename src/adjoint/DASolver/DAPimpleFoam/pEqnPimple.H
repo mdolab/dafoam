@@ -52,7 +52,7 @@ while (pimple.correctNonOrthogonal())
     // and final residuals
     SolverPerformance<scalar> solverP = pEqn.solve(mesh.solver(p.select(pimple.finalInnerIter())));
 
-    this->primalResidualControl<scalar>(solverP, pimplePrintToScreen, printInterval, "p");
+    DAUtility::primalResidualControl(solverP, pimplePrintToScreen, "p");
 
     if (pimple.finalNonOrthogonalIter())
     {

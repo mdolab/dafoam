@@ -131,6 +131,21 @@ public:
 
     static void* pyCalcBetaJacVecProd;
     static pyJacVecProdInterface pyCalcBetaJacVecProdInterface;
+
+    /// the max initial residual norms for the primal solution for each state
+    static scalar primalMaxInitRes_;
+
+    /// control when to print the residual and also compute the maxInitRes
+    static void primalResidualControl(
+        const SolverPerformance<scalar>& solverP,
+        const label printToScreen,
+        const word varName);
+    
+    /// control when to print the residual and also compute the maxInitRes
+    static void primalResidualControl(
+        const SolverPerformance<vector>& solverP,
+        const label printToScreen,
+        const word varName);
 };
 
 template<class classType>

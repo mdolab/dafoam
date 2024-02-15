@@ -102,12 +102,12 @@ label DATurboFoam::solvePrimal(
     // check if the parameters are set in the Python layer
     daRegressionPtr_->validate();
 
-    primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
     label regModelFail = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
+        DAUtility::primalMaxInitRes_ = -1e16;
 
         printToScreen = this->isPrintTime(runTime, printInterval);
 

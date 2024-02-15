@@ -572,11 +572,7 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverEpsilon = solve(epsEqn);
-        if (printToScreen)
-        {
-            Info << "epsilon Initial residual: " << solverEpsilon.initialResidual() << endl
-                 << "          Final residual: " << solverEpsilon.finalResidual() << endl;
-        }
+        DAUtility::primalResidualControl(solverEpsilon, printToScreen, "epsilon");
 
         DAUtility::boundVar(allOptions_, epsilon_, printToScreen);
     }
@@ -610,11 +606,7 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverK = solve(kEqn);
-        if (printToScreen)
-        {
-            Info << "k Initial residual: " << solverK.initialResidual() << endl
-                 << "    Final residual: " << solverK.finalResidual() << endl;
-        }
+        DAUtility::primalResidualControl(solverK, printToScreen, "k");
 
         DAUtility::boundVar(allOptions_, k_, printToScreen);
 
