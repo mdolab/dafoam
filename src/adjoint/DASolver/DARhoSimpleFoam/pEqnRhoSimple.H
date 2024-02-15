@@ -47,7 +47,7 @@ while (simple.correctNonOrthogonal())
     // and final residuals
     SolverPerformance<scalar> solverP = pEqn.solve();
 
-    this->primalResidualControl<scalar>(solverP, printToScreen, printInterval, "p");
+    DAUtility::primalResidualControl(solverP, printToScreen, "p");
 
     if (simple.finalNonOrthogonalIter())
     {

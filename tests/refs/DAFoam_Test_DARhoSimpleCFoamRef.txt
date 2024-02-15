@@ -1,22 +1,22 @@
 Dictionary Key: CD
-@value  0.01016659179082796 1e-08 1e-10
+@value  0.01016659179618512 1e-08 1e-10
 Dictionary Key: CL
-@value   0.4536846351797039 1e-08 1e-10
+@value   0.4536846350009314 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: alpha
-@value 0.004336901757235039 0.0001 1e-06
+@value 0.004419288619714606 0.0001 1e-06
 Dictionary Key: shapey
-@value   0.0267621536016065 0.0001 1e-06
-@value  0.04958022286719843 0.0001 1e-06
-@value   0.1319330548362239 0.0001 1e-06
+@value  0.02619137460608506 0.0001 1e-06
+@value  0.05002489637978214 0.0001 1e-06
+@value   0.1314687490333257 0.0001 1e-06
 Dictionary Key: CL
 Dictionary Key: alpha
-@value   0.1540391990713826 0.0001 1e-06
+@value   0.1586052418041611 0.0001 1e-06
 Dictionary Key: shapey
-@value    3.621966829337841 0.0001 1e-06
-@value     2.44543902410904 0.0001 1e-06
-@value    3.016228732003395 0.0001 1e-06
+@value     3.58362402336514 0.0001 1e-06
+@value    2.456281547160383 0.0001 1e-06
+@value     2.99368621643047 0.0001 1e-06
 Dictionary Key: fail
 @value                    0 0.0001 1e-06

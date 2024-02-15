@@ -19,6 +19,8 @@ pyComputeInterface Foam::DAUtility::pyCalcBetaInterface = NULL;
 void* Foam::DAUtility::pyCalcBetaJacVecProd = NULL;
 pyJacVecProdInterface Foam::DAUtility::pyCalcBetaJacVecProdInterface = NULL;
 
+scalar Foam::DAUtility::primalMaxInitRes_ = -1e16;
+
 namespace Foam
 {
 
@@ -134,10 +136,10 @@ label DASolver::loop(Time& runTime)
     }
 
     // check exit condition
-    if (primalMinRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_)
+    if (DAUtility::primalMaxInitRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_)
     {
         Info << "Time = " << t << endl;
-        Info << "Minimal residual " << primalMinRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
+        Info << "Minimal residual " << DAUtility::primalMaxInitRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
         this->printAllObjFuncs();
         runTime.writeNow();
@@ -8481,10 +8483,10 @@ label DASolver::checkResidualTol()
 
     scalar tol = daOptionPtr_->getOption<scalar>("primalMinResTol");
     scalar tolMax = daOptionPtr_->getOption<scalar>("primalMinResTolDiff");
-    if (primalMinRes_ / tol > tolMax)
+    if (DAUtility::primalMaxInitRes_ / tol > tolMax)
     {
         Info << "********************************************" << endl;
-        Info << "Primal min residual " << primalMinRes_ << endl
+        Info << "Primal min residual " << DAUtility::primalMaxInitRes_ << endl
              << "did not satisfy the prescribed tolerance "
              << tol << endl;
         Info << "Primal solution failed!" << endl;

@@ -454,11 +454,8 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverNuTilda = solve(nuTildaEqn);
-        if (printToScreen)
-        {
-            Info << "nuTilda Initial residual: " << solverNuTilda.initialResidual() << endl
-                 << "          Final residual: " << solverNuTilda.finalResidual() << endl;
-        }
+
+        DAUtility::primalResidualControl(solverNuTilda, printToScreen, "nuTilda");
 
         DAUtility::boundVar(allOptions_, nuTilda_, printToScreen);
         nuTilda_.correctBoundaryConditions();

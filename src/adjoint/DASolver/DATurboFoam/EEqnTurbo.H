@@ -19,7 +19,7 @@
     // and final residuals
     SolverPerformance<scalar> solverE = EEqn.solve();
 
-    this->primalResidualControl<scalar>(solverE, printToScreen, printInterval, "he");
+    DAUtility::primalResidualControl(solverE, printToScreen, "he");
 
     // bound he
     DAUtility::boundVar(allOptions, he, printToScreen);

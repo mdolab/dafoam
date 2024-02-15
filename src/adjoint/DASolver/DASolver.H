@@ -139,19 +139,8 @@ protected:
     /// the derivative value computed by the forward mode primal solution.
     HashTable<PetscScalar> forwardADDerivVal_;
 
-    /// the maximal residual for primal solution
-    scalar primalMinRes_ = 1e10;
-
     /// the solution time for the previous primal solution
     scalar prevPrimalSolTime_ = -1e10;
-
-    /// setup maximal residual control and print the residual as needed
-    template<class classType>
-    void primalResidualControl(
-        const SolverPerformance<classType>& solverP,
-        const label printToScreen,
-        const label printInterval,
-        const word varName);
 
     label isPrintTime(
         const Time& runTime,
@@ -1285,28 +1274,6 @@ public:
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-template<class classType>
-void DASolver::primalResidualControl(
-    const SolverPerformance<classType>& solverP,
-    const label printToScreen,
-    const label printInterval,
-    const word varName)
-{
-    /*
-    Description:
-        Setup maximal residual control and print the residual as needed
-    */
-    if (mag(solverP.initialResidual()) < primalMinRes_)
-    {
-        primalMinRes_ = mag(solverP.initialResidual());
-    }
-    if (printToScreen)
-    {
-        Info << varName << " Initial residual: " << solverP.initialResidual() << endl
-             << varName << "   Final residual: " << solverP.finalResidual() << endl;
-    }
-}
 
 template<class classType>
 label DASolver::validateField(const classType& field)

@@ -704,8 +704,8 @@ class DAOPTION(object):
         }
 
         ## number of minimal primal iterations. The primal has to run this many iterations, even the primal residual
-        ## has reduced below the tolerance. The default is a negative value (always satisfied).
-        self.primalMinIters = -1
+        ## has reduced below the tolerance. The default is 1: the primal has to run for at least one iteration
+        self.primalMinIters = 1
 
         ## tensorflow related functions
         self.tensorflow = {
