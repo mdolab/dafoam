@@ -110,17 +110,28 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
-        "CLDIFF": {
+        "CMZ": {
             "part1": {
-                "type": "force",
+                "type": "moment",
                 "source": "patchToFace",
                 "patches": ["wing"],
-                "directionMode": "normalToFlow",
-                "alphaName": "alpha",
-                "scale": 1.0 / (0.5 * U0 * U0 * A0),
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.25, 0.0, 0.05],
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),
+                "addToAdjoint": False
+            }
+        },
+        "CMZDIFF": {
+            "part1": {
+                "type": "moment",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.25, 0.0, 0.05],
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),
                 "addToAdjoint": True,
                 "calcRefDiffSquare": True,
-                "ref": 0.6
+                "ref": 0.1
             }
         },
     },

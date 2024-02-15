@@ -3029,6 +3029,21 @@ class PYDAFOAM(object):
                 else:
                     raise Error("directionMode not valid!")
 
+        nParallelToFlows = 0
+        nNormalToFlows = 0
+        for objFuncName in objFuncDict:
+            for objFuncPart in objFuncDict[objFuncName]:
+                if objFuncDict[objFuncName][objFuncPart]["type"] == "force":
+                    if objFuncDict[objFuncName][objFuncPart]["directionMode"] == "parallelToFlow":
+                        nParallelToFlows += 1
+                    if objFuncDict[objFuncName][objFuncPart]["directionMode"] == "normalToFlow":
+                        nNormalToFlows += 1
+
+        if nParallelToFlows != 1 or nNormalToFlows != 1:
+            raise Error(
+                "calcdFdAOAAnalytical supports only one pair of force: one with normalToFlow and the other with parallelToFlow"
+            )
+
         # if it is a forceObj, use the analytical approach to calculate dFdAOA, otherwise set it to zero
         if isForceObj == 1:
             # loop over all objectives again to find the neededMode
