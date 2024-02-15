@@ -219,6 +219,11 @@ void DAObjFuncLocation::calcObjFunc(
                                           << abort(FatalError);
     }
 
+    if (calcRefDiffSquare_)
+    {
+        objFuncValue = (objFuncValue - ref_) * (objFuncValue - ref_);
+    }
+
     return;
 }
 

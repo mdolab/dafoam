@@ -110,6 +110,19 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+        "CLDIFF": {
+            "part1": {
+                "type": "force",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "directionMode": "normalToFlow",
+                "alphaName": "alpha",
+                "scale": 1.0 / (0.5 * U0 * U0 * A0),
+                "addToAdjoint": True,
+                "calcRefDiffSquare": True,
+                "ref": 0.6
+            }
+        },
     },
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3, "ACTD": 1.0e-3},

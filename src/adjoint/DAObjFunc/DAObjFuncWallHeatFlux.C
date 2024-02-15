@@ -246,6 +246,11 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
     // need to reduce the sum of force across all processors
     reduce(objFuncValue, sumOp<scalar>());
 
+    if (calcRefDiffSquare_)
+    {
+        objFuncValue = (objFuncValue - ref_) * (objFuncValue - ref_);
+    }
+
     return;
 }
 
