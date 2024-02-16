@@ -59,7 +59,7 @@ DAObjFunc::DAObjFunc(
     calcRefDiffSquare_ = objFuncDict_.lookupOrDefault<label>("calcRefDiffSquare", 0);
     if (calcRefDiffSquare_)
     {
-        objFuncDict_.readEntry<scalar>("ref", ref_);
+        objFuncDict_.readEntry<scalarList>("ref", ref_);
     }
 }
 
@@ -316,6 +316,29 @@ scalar DAObjFunc::getObjFuncValue()
 
     // return
     return objFuncValue_;
+}
+
+void DAObjFunc::calcRefDiffSquare(scalar& objFuncValue)
+{
+    /*
+    Description:
+        Call the variable difference with respect to a given reference and take a square of it.
+        This can be used in FIML. This function is for calcRefDiffSquare_ == 1
+    */
+
+    if (calcRefDiffSquare_)
+    {
+        if (ref_.size() == 1)
+        {
+            objFuncValue = (objFuncValue - ref_) * (objFuncValue - ref_);
+        }
+        else
+        {
+            label idxI = runTime.timeIndex() - 1;
+            objFuncValue = (objFuncValue - ref_[idxI]) * (objFuncValue - ref_[idxI]);
+        }
+    }
+
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
