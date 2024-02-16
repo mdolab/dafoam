@@ -2,6 +2,8 @@ Dictionary Key: CD
 @value  0.02043001230171681 1e-08 1e-10
 Dictionary Key: CL
 @value   0.4874216250833033 1e-08 1e-10
+Dictionary Key: CMZDIFF
+@value   0.0115816476130927 1e-08 1e-10
 Dictionary Key: COP
 @value   0.2298218575123644 1e-08 1e-10
 Dictionary Key: R1
@@ -30,6 +32,15 @@ Dictionary Key: shapey
 @value    1.418731716621286 1e-05 1e-07
 Dictionary Key: twist
 @value  0.09008667655578639 1e-05 1e-07
+Dictionary Key: CMZDIFF
+Dictionary Key: alpha
+@value 0.0005090113344677443 1e-05 1e-07
+Dictionary Key: shapey
+@value -0.001151982015258751 1e-05 1e-07
+@value -0.03924921702616808 1e-05 1e-07
+@value  -0.1132153003029267 1e-05 1e-07
+Dictionary Key: twist
+@value 0.0004899695826971005 1e-05 1e-07
 Dictionary Key: COP
 Dictionary Key: alpha
 @value -0.002070288134429892 1e-05 1e-07

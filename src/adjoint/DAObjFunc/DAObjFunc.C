@@ -55,6 +55,12 @@ DAObjFunc::DAObjFunc(
     {
         objFuncCellValues_[idxI] = 0.0;
     }
+
+    calcRefDiffSquare_ = objFuncDict_.lookupOrDefault<label>("calcRefDiffSquare", 0);
+    if (calcRefDiffSquare_)
+    {
+        objFuncDict_.readEntry<scalar>("ref", ref_);
+    }
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //

@@ -43,6 +43,17 @@ daOptions = {
         "transport:nu": 1.5e-5,
     },
     "objFunc": {
+        "CD": {
+            "part1": {
+                "type": "force",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "directionMode": "parallelToFlow",
+                "alphaName": "aoa",
+                "scale": 1.0 / (0.5 * U0 * U0 * A0),
+                "addToAdjoint": True,
+            }
+        },
         "CL": {
             "part1": {
                 "type": "force",

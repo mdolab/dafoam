@@ -167,6 +167,11 @@ void DAObjFuncVariableVolSum::calcObjFunc(
 
     objFuncValue /= totalVol;
 
+    if (calcRefDiffSquare_)
+    {
+        objFuncValue = (objFuncValue - ref_) * (objFuncValue - ref_);
+    }
+
     return;
 }
 

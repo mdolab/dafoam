@@ -92,6 +92,13 @@ protected:
     /// the connectivity information for the objective function
     List<List<word>> objFuncConInfo_;
 
+    /// whether to calculate (obj-ref)^2
+    label calcRefDiffSquare_;
+
+    /// if calcRefDiffSquare_ is True, set the reference value
+    scalar ref_;
+
+
 public:
     /// Runtime type information
     TypeName("DAObjFunc");

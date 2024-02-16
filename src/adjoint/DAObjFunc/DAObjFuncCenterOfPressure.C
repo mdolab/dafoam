@@ -128,6 +128,11 @@ void DAObjFuncCenterOfPressure::calcObjFunc(
 
     objFuncValue = scale_ * (weightedPressure / totalPressure + (center_ & axis_));
 
+    if (calcRefDiffSquare_)
+    {
+        objFuncValue = (objFuncValue - ref_) * (objFuncValue - ref_);
+    }
+
     return;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

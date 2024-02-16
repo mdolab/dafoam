@@ -4,6 +4,6 @@ Dictionary Key: CL
 Dictionary Key: alpha
 @value    0.435012393483863 0.0001 1e-06
 Dictionary Key: aoa
-@value  0.09767145516644697 0.0001 1e-06
+@value  0.0973750318897765 0.0001 1e-06
 Dictionary Key: twist
 @value  0.09790920083964022 0.0001 1e-06

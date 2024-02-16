@@ -121,6 +121,11 @@ void DAObjFuncVonMisesStressKS::calcObjFunc(
 
     objFuncValue = log(objValTmp) / coeffKS_;
 
+    if (calcRefDiffSquare_)
+    {
+        objFuncValue = (objFuncValue - ref_) * (objFuncValue - ref_);
+    }
+
     return;
 }
 

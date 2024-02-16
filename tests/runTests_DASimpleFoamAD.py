@@ -110,6 +110,30 @@ aeroOptions = {
                 "addToAdjoint": True,
             }
         },
+        "CMZ": {
+            "part1": {
+                "type": "moment",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.25, 0.0, 0.05],
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),
+                "addToAdjoint": False
+            }
+        },
+        "CMZDIFF": {
+            "part1": {
+                "type": "moment",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.25, 0.0, 0.05],
+                "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),
+                "addToAdjoint": True,
+                "calcRefDiffSquare": True,
+                "ref": 0.1
+            }
+        },
     },
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
     "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3, "ACTD": 1.0e-3},
