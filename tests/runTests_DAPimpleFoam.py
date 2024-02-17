@@ -95,6 +95,19 @@ daOptions = {
                 "addToAdjoint": False,
             }
         },
+        "CMZVAR": {
+            "part1": {
+                "type": "moment",
+                "source": "patchToFace",
+                "patches": ["wing"],
+                "axis": [0.0, 0.0, 1.0],
+                "center": [0.25, 0.0, 0.05],
+                "scale": 1.0,
+                "addToAdjoint": True,
+                "calcRefDiffSquare": True,
+                "ref": [0.1, 0.05, 0.04, 0.02, 0.02, 0.01, 0.0, -0.01, -0.01, -0.02]
+            }
+        }
     },
     "adjStateOrdering": "cell",
     "adjEqnOption": {
@@ -266,6 +279,9 @@ else:
 
     parameterNormU = np.linalg.norm(funcsSens["CD"]["parameter"])
     funcsSens["CD"]["parameter"] = parameterNormU
+
+    parameterNormM = np.linalg.norm(funcsSens["CMZVAR"]["parameter"])
+    funcsSens["CMZVAR"]["parameter"] = parameterNormM
 
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)
