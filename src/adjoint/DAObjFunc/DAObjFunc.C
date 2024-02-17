@@ -330,11 +330,11 @@ void DAObjFunc::calcRefDiffSquare(scalar& objFuncValue)
     {
         if (ref_.size() == 1)
         {
-            objFuncValue = (objFuncValue - ref_) * (objFuncValue - ref_);
+            objFuncValue = (objFuncValue - ref_[0]) * (objFuncValue - ref_[0]);
         }
         else
         {
-            label idxI = runTime.timeIndex() - 1;
+            label idxI = mesh_.time().timeIndex() - 1;
             objFuncValue = (objFuncValue - ref_[idxI]) * (objFuncValue - ref_[idxI]);
         }
     }
