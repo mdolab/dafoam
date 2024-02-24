@@ -4,7 +4,7 @@
     Version : v3
 
     Description:
-        Extract time-series data for unsteady simulations
+        Extract time-series data at a given probe point for unsteady simulations
 
 \*---------------------------------------------------------------------------*/
 
@@ -40,6 +40,11 @@ int main(int argc, char* argv[])
         "outputName",
         "VarTimeSeries",
         "name of the output file (optional)");
+
+    argList::addOption(
+        "deltaT",
+        "-1",
+        "Use user-prescribed deltaT to extract time series, otherwise, use the deltaT in controlDict");
 
 #include "setRootCase.H"
 #include "createTime.H"
@@ -101,6 +106,13 @@ int main(int argc, char* argv[])
 
     scalar endTime = runTime.endTime().value();
     scalar deltaT = runTime.deltaT().value();
+
+    if (args.optionFound("deltaT"))
+    {
+        deltaT = readScalar(args.optionLookup("deltaT")());
+    }
+    Info << "Extracting " << varName << " time series" << endl;
+
     label nSteps = round(endTime / deltaT);
 
     for (label i = 0; i < nSteps; i++)
