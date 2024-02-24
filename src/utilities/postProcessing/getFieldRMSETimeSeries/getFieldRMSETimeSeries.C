@@ -4,7 +4,7 @@
     Version : v3
 
     Description:
-        Extract time-series data at a given probe point for unsteady simulations
+        Extract time-series for field RMSE for unsteady simulations
 
 \*---------------------------------------------------------------------------*/
 

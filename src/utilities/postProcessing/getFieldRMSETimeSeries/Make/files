@@ -1,0 +1,3 @@
+getFieldRMSETimeSeries.C
+
+EXE = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedBins/getFieldRMSETimeSeries
