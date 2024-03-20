@@ -877,6 +877,12 @@ public:
         DASolverPtr_->updateBoundaryConditions(fieldName, fieldType);
     }
 
+    /// update the boundary conditions for all states and intermediate variables
+    void updateStateBoundaryConditions()
+    {
+        DASolverPtr_->updateStateBoundaryConditions();
+    }
+
     /// Calculate the mean, max, and norm2 for all residuals and print it to screen
     void calcPrimalResidualStatistics(const word mode)
     {

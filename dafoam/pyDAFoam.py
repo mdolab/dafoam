@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "3.1.1"
+__version__ = "3.1.2"
 
 import subprocess
 import os
@@ -911,7 +911,7 @@ class PYDAFOAM(object):
 
         self.solverRegistry = {
             "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam", "DAPimpleFoam", "DAPimpleDyMFoam"],
-            "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam"],
+            "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam", "DARhoPimpleFoam"],
             "Solid": ["DASolidDisplacementFoam", "DALaplacianFoam", "DAHeatTransferFoam", "DAScalarTransportFoam"],
         }
 
@@ -2257,6 +2257,7 @@ class PYDAFOAM(object):
 
         # NOTE: this step is critical because we need to compute the residual for
         # self.solverAD once to get the proper oldTime level for unsteady adjoint
+        self.solverAD.updateStateBoundaryConditions()
         self.solverAD.calcPrimalResidualStatistics("calc".encode())
 
         # call the internal design var function to update DASolver parameters
