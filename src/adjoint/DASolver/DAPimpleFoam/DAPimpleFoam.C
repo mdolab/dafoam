@@ -156,7 +156,6 @@ label DAPimpleFoam::solvePrimal(
 
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
-    label timeInstanceI = 0;
     label pimplePrintToScreen = 0;
 
     // reset the unsteady obj func to zeros
