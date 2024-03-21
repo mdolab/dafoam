@@ -104,7 +104,7 @@ models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Compressible.C
 models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionCompressible.C
 models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionCompressible.C
 models/kOmegaFieldInversionOmega/makekOmegaFieldInversionOmegaCompressible.C
-
+models/pimpleControlDF/pimpleControlDF.C
 
 models/MRFDF/MRFZoneDF.C
 models/MRFDF/MRFZoneListDF.C
