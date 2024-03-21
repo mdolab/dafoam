@@ -657,11 +657,6 @@ class DAOPTION(object):
 
         ## The sensitivity map will be saved to disk during optimization for the given design variable
         ## names in the list. Currently only support design variable type FFD and Field
-        ## The surface sensitivity map is separated from the primal solution because they only have surface mesh.
-        ## They will be saved to folders such as 1e-11, 2e-11, 3e-11, etc,
-        ## When loading in paraview, you need to uncheck the "internalMesh", and check "allWalls" on the left panel
-        ## If your design variable is of field type, the sensitivity map will be saved along with the primal
-        ## solution because they share the same mesh. The sensitivity files read sens_objFuncName_designVarName
         ## NOTE: this function only supports useAD->mode:reverse
         ## Example:
         ##     "writeSensMap" : ["shapex", "shapey"]
@@ -2024,7 +2019,7 @@ class PYDAFOAM(object):
                 dFdXsFlatten = dFdXs.flatten()
                 XsFlatten = Xs.flatten()
                 size = len(dFdXsFlatten)
-                timeName = float(self.nSolveAdjoints) / 1e8
+                timeName = float(self.nSolveAdjoints) / 1e4
                 name = "sens_" + objFuncName + "_" + designVarName
                 self.solver.writeSensMapSurface(name, dFdXsFlatten, XsFlatten, size, timeName)
             # assign the total derivative to self.adjTotalDeriv
@@ -2080,7 +2075,7 @@ class PYDAFOAM(object):
 
         # check if we need to save the sensitivity maps
         if designVarName in self.getOption("writeSensMap"):
-            timeName = float(self.nSolveAdjoints) / 1e8
+            timeName = float(self.nSolveAdjoints) / 1e4
             dFdFieldArray = self.vec2Array(totalDeriv)
             name = "sens_" + objFuncName + "_" + designVarName
             self.solver.writeSensMapField(name, dFdFieldArray, fieldType, timeName)
@@ -3240,7 +3235,7 @@ class PYDAFOAM(object):
     def renameSolution(self, solIndex):
         """
         Rename the primal solution folder to specific format for post-processing. The renamed time has the
-        format like 1e-8, 2e-8, etc. One can load these intermediate shapes and fields and
+        format like 0.0001, 0.0002, etc. One can load these intermediate shapes and fields and
         plot them in paraview.
         The way it is implemented is that we sort the solution folder and consider the largest time folder
         as the solution folder and rename it
@@ -3259,12 +3254,12 @@ class PYDAFOAM(object):
 
         latestTime = self.solver.getLatestTime()
 
-        if latestTime < 1e-4:
-            Info("Latest solution time %g less than 1e-4, not renamed." % latestTime)
+        if latestTime < 1.0:
+            Info("Latest solution time %g less than 1, not renamed." % latestTime)
             renamed = False
             return latestTime, renamed
 
-        distTime = "%g" % (solIndex / 1e8)
+        distTime = "%g" % (solIndex / 1e4)
         targetTime = "%g" % latestTime
 
         src = os.path.join(checkPath, targetTime)
