@@ -9137,47 +9137,49 @@ void DASolver::writeAdjStates(
 
             state.write();
         }
-    }
 
-    forAll(additionalOutput, idxI)
-    {
-        word varName = additionalOutput[idxI];
-
-        if (varName == "None")
+        // also write additional states
+        forAll(additionalOutput, idxI)
         {
-            continue;
+            word varName = additionalOutput[idxI];
+
+            if (varName == "None")
+            {
+                continue;
+            }
+
+            if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+            {
+                volScalarField& var =
+                    const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(varName));
+
+                var.write();
+            }
+            else if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+            {
+                volVectorField& var =
+                    const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(varName));
+
+                var.write();
+            }
+            else if (meshPtr_->thisDb().foundObject<surfaceScalarField>(varName))
+            {
+                surfaceScalarField& var =
+                    const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(varName));
+
+                var.write();
+            }
+            else
+            {
+                Info << "Warning! The prescribed additionalOutput " << varName << " not found in the db! Ignoring it.." << endl;
+            }
         }
 
-        if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+        if (writeMesh)
         {
-            volScalarField& var =
-                const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(varName));
-
-            var.write();
+            pointIOField points = meshPtr_->thisDb().lookupObject<pointIOField>("points");
+            points.write();
         }
-        else if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
-        {
-            volVectorField& var =
-                const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(varName));
-
-            var.write();
-        }
-        else if (meshPtr_->thisDb().foundObject<surfaceScalarField>(varName))
-        {
-            surfaceScalarField& var =
-                const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(varName));
-
-            var.write();
-        }
-        else
-        {
-            Info << "Warning! The prescribed additionalOutput " << varName << " not found in the db! Ignoring it.." << endl;
-        }
-    }
-
-    if (writeMesh)
-    {
-        meshPtr_->write();
     }
 }
 
