@@ -63,7 +63,7 @@ daOptions = {
         "active": True,
         "modelType": "neuralNetwork",
         "inputNames": ["VoS", "PoD", "chiSA", "pGradStream", "PSoSS", "SCurv", "UOrth"],
-        "outputName": "betaFI",
+        "outputName": "betaFINuTilda",
         "hiddenLayerNeurons": [5, 5],
         "inputShift": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         "inputScale": [1.0, 0.00001, 0.01, 1.0, 1.0, 1.0, 1.0],

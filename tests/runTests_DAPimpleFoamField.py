@@ -122,7 +122,7 @@ daOptions = {
         "phi": 1.0,
     },
     "designVar": {
-        "beta": {"designVarType": "Field", "fieldName": "betaFI", "fieldType": "scalar"},
+        "beta": {"designVarType": "Field", "fieldName": "betaFINuTilda", "fieldType": "scalar"},
     },
 }
 
@@ -154,11 +154,11 @@ DASolver.setEvalFuncs(evalFuncs)
 
 def betaFieldInversion(val, geo):
     for idxI, v in enumerate(val):
-        DASolver.setFieldValue4GlobalCellI(b"betaFI", v, idxI)
-        DASolver.updateBoundaryConditions(b"betaFI", b"scalar")
+        DASolver.setFieldValue4GlobalCellI(b"betaFINuTilda", v, idxI)
+        DASolver.updateBoundaryConditions(b"betaFINuTilda", b"scalar")
 
 
-beta0 = DASolver.getOFField("betaFI", "scalar", False)
+beta0 = DASolver.getOFField("betaFINuTilda", "scalar", False)
 DVGeo.addGlobalDV("beta", value=beta0, func=betaFieldInversion, lower=1e-5, upper=10.0, scale=1.0)
 
 # =============================================================================
