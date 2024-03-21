@@ -9204,6 +9204,10 @@ void DASolver::readStateVars(
     Description:
         Read the state variables from the disk and assign the value to the prescribe time level.
         NOTE: we use == to assign both internal and boundary fields!
+        We always read oldTimes for volStates, no matter if the oldTimes are actually needed.
+        This is not the case for phi. We only read phi oldTime if needed.
+        This is to save memory because most of the time, we don't need phi.oldTime(); we do not
+        include the ddtCorr term.
     
     Inputs:
         
@@ -9231,50 +9235,45 @@ void DASolver::readStateVars(
         volVectorField& state =
             const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
 
-        label maxOldTimes = state.nOldTimes();
+        volVectorField stateRead(
+            IOobject(
+                stateName,
+                timeName,
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh);
 
-        if (maxOldTimes >= oldTimeLevel)
+        if (oldTimeLevel == 0)
         {
-            volVectorField stateRead(
-                IOobject(
-                    stateName,
-                    timeName,
-                    mesh,
-                    IOobject::MUST_READ,
-                    IOobject::NO_WRITE),
-                mesh);
-
-            if (oldTimeLevel == 0)
+            state == stateRead;
+        }
+        else if (oldTimeLevel == 1)
+        {
+            state.oldTime() == stateRead;
+        }
+        else if (oldTimeLevel == 2)
+        {
+            if (timeVal < 0)
             {
-                state == stateRead;
-            }
-            else if (oldTimeLevel == 1)
-            {
-                state.oldTime() == stateRead;
-            }
-            else if (oldTimeLevel == 2)
-            {
-                if (timeVal < 0)
-                {
-                    volVectorField state0Read(
-                        IOobject(
-                            stateName + "_0",
-                            timeName,
-                            mesh,
-                            IOobject::READ_IF_PRESENT,
-                            IOobject::NO_WRITE),
-                        stateRead);
-                    state.oldTime().oldTime() == state0Read;
-                }
-                else
-                {
-                    state.oldTime().oldTime() == stateRead;
-                }
+                volVectorField state0Read(
+                    IOobject(
+                        stateName + "_0",
+                        timeName,
+                        mesh,
+                        IOobject::READ_IF_PRESENT,
+                        IOobject::NO_WRITE),
+                    stateRead);
+                state.oldTime().oldTime() == state0Read;
             }
             else
             {
-                FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
+                state.oldTime().oldTime() == stateRead;
             }
+        }
+        else
+        {
+            FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
         }
     }
 
@@ -9284,51 +9283,45 @@ void DASolver::readStateVars(
         volScalarField& state =
             const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        label maxOldTimes = state.nOldTimes();
+        volScalarField stateRead(
+            IOobject(
+                stateName,
+                timeName,
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh);
 
-        if (maxOldTimes >= oldTimeLevel)
+        if (oldTimeLevel == 0)
         {
-
-            volScalarField stateRead(
-                IOobject(
-                    stateName,
-                    timeName,
-                    mesh,
-                    IOobject::MUST_READ,
-                    IOobject::NO_WRITE),
-                mesh);
-
-            if (oldTimeLevel == 0)
+            state == stateRead;
+        }
+        else if (oldTimeLevel == 1)
+        {
+            state.oldTime() == stateRead;
+        }
+        else if (oldTimeLevel == 2)
+        {
+            if (timeVal < 0)
             {
-                state == stateRead;
-            }
-            else if (oldTimeLevel == 1)
-            {
-                state.oldTime() == stateRead;
-            }
-            else if (oldTimeLevel == 2)
-            {
-                if (timeVal < 0)
-                {
-                    volScalarField state0Read(
-                        IOobject(
-                            stateName + "_0",
-                            timeName,
-                            mesh,
-                            IOobject::READ_IF_PRESENT,
-                            IOobject::NO_WRITE),
-                        stateRead);
-                    state.oldTime().oldTime() == state0Read;
-                }
-                else
-                {
-                    state.oldTime().oldTime() == stateRead;
-                }
+                volScalarField state0Read(
+                    IOobject(
+                        stateName + "_0",
+                        timeName,
+                        mesh,
+                        IOobject::READ_IF_PRESENT,
+                        IOobject::NO_WRITE),
+                    stateRead);
+                state.oldTime().oldTime() == state0Read;
             }
             else
             {
-                FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
+                state.oldTime().oldTime() == stateRead;
             }
+        }
+        else
+        {
+            FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
         }
     }
 
@@ -9338,51 +9331,45 @@ void DASolver::readStateVars(
         volScalarField& state =
             const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
 
-        label maxOldTimes = state.nOldTimes();
+        volScalarField stateRead(
+            IOobject(
+                stateName,
+                timeName,
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE),
+            mesh);
 
-        if (maxOldTimes >= oldTimeLevel)
+        if (oldTimeLevel == 0)
         {
-
-            volScalarField stateRead(
-                IOobject(
-                    stateName,
-                    timeName,
-                    mesh,
-                    IOobject::MUST_READ,
-                    IOobject::NO_WRITE),
-                mesh);
-
-            if (oldTimeLevel == 0)
+            state == stateRead;
+        }
+        else if (oldTimeLevel == 1)
+        {
+            state.oldTime() == stateRead;
+        }
+        else if (oldTimeLevel == 2)
+        {
+            if (timeVal < 0)
             {
-                state == stateRead;
-            }
-            else if (oldTimeLevel == 1)
-            {
-                state.oldTime() == stateRead;
-            }
-            else if (oldTimeLevel == 2)
-            {
-                if (timeVal < 0)
-                {
-                    volScalarField state0Read(
-                        IOobject(
-                            stateName + "_0",
-                            timeName,
-                            mesh,
-                            IOobject::READ_IF_PRESENT,
-                            IOobject::NO_WRITE),
-                        stateRead);
-                    state.oldTime().oldTime() == state0Read;
-                }
-                else
-                {
-                    state.oldTime().oldTime() == stateRead;
-                }
+                volScalarField state0Read(
+                    IOobject(
+                        stateName + "_0",
+                        timeName,
+                        mesh,
+                        IOobject::READ_IF_PRESENT,
+                        IOobject::NO_WRITE),
+                    stateRead);
+                state.oldTime().oldTime() == state0Read;
             }
             else
             {
-                FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
+                state.oldTime().oldTime() == stateRead;
             }
+        }
+        else
+        {
+            FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
         }
     }
 

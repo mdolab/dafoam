@@ -4,7 +4,8 @@
     Version : v3
 
     This class is modified from OpenFOAM's source code
-    applications/solvers/incompressible/pimpleFoam
+    applications/solvers/compressible/rhoPimpleFoam
+    NOTE: we use the pimpleFoam implementation from OF-2.4.x
 
     OpenFOAM: The Open Source CFD Toolbox
 
@@ -27,47 +28,52 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAPimpleFoam.H"
+#include "DARhoPimpleFoam.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAPimpleFoam, 0);
-addToRunTimeSelectionTable(DASolver, DAPimpleFoam, dictionary);
+defineTypeNameAndDebug(DARhoPimpleFoam, 0);
+addToRunTimeSelectionTable(DASolver, DARhoPimpleFoam, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAPimpleFoam::DAPimpleFoam(
+DARhoPimpleFoam::DARhoPimpleFoam(
     char* argsAll,
     PyObject* pyOptions)
     : DASolver(argsAll, pyOptions),
       pimplePtr_(nullptr),
+      pThermoPtr_(nullptr),
       pPtr_(nullptr),
+      rhoPtr_(nullptr),
       UPtr_(nullptr),
       phiPtr_(nullptr),
-      laminarTransportPtr_(nullptr),
+      dpdtPtr_(nullptr),
+      KPtr_(nullptr),
       turbulencePtr_(nullptr),
       daTurbulenceModelPtr_(nullptr),
       daFvSourcePtr_(nullptr),
-      fvSourcePtr_(nullptr)
+      fvSourcePtr_(nullptr),
+      fvSourceEnergyPtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-void DAPimpleFoam::initSolver()
+void DARhoPimpleFoam::initSolver()
 {
     /*
     Description:
         Initialize variables for DASolver
     */
 
-    Info << "Initializing fields for DAPimpleFoam" << endl;
+    Info << "Initializing fields for DARhoPimpleFoam" << endl;
     Time& runTime = runTimePtr_();
     fvMesh& mesh = meshPtr_();
+    argList& args = argsPtr_();
 #include "createPimpleControlPython.H"
-#include "createFieldsPimple.H"
-#include "createAdjointIncompressible.H"
+#include "createFieldsRhoPimple.H"
+#include "createAdjointCompressible.H"
     // initialize checkMesh
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
@@ -75,17 +81,16 @@ void DAPimpleFoam::initSolver()
 
     this->setDAObjFuncList();
 
-    // initialize fvSource and the source term
+    // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)
     {
         hasFvSource_ = 1;
-        Info << "Computing fvSource" << endl;
+        Info << "Initializing DASource" << endl;
         word sourceName = allOptions.subDict("fvSource").toc()[0];
         word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
         daFvSourcePtr_.reset(DAFvSource::New(
             fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
-        daFvSourcePtr_->calcFvSource(fvSource);
     }
 
     // reduceIO does not write mesh, but if there is a FFD variable, set writeMesh to 1
@@ -101,7 +106,7 @@ void DAPimpleFoam::initSolver()
     }
 }
 
-label DAPimpleFoam::solvePrimal(
+label DARhoPimpleFoam::solvePrimal(
     const Vec xvVec,
     Vec wVec)
 {
@@ -116,7 +121,7 @@ label DAPimpleFoam::solvePrimal(
         wVec: state variable vector
     */
 
-#include "createRefsPimple.H"
+#include "createRefsRhoPimple.H"
 
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
@@ -148,12 +153,6 @@ label DAPimpleFoam::solvePrimal(
     // if the forwardModeAD is active, we need to set the seed here
 #include "setForwardADSeeds.H"
 
-    // We need to set the mesh moving to false, otherwise we will get V0 not found error.
-    // Need to dig into this issue later
-    // NOTE: we have commented this out. Setting mesh.moving(false) has been done
-    // right after mesh.movePoints() calls.
-    //mesh.moving(false);
-
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label pimplePrintToScreen = 0;
@@ -179,9 +178,9 @@ label DAPimpleFoam::solvePrimal(
     // main loop
     label regModelFail = 0;
     label fail = 0;
+
     for (label iter = 1; iter <= nInstances; iter++)
     {
-
         ++runTime;
 
         printToScreen = this->isPrintTime(runTime, printInterval);
@@ -191,9 +190,15 @@ label DAPimpleFoam::solvePrimal(
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
 
+        if (pimple.nCorrPIMPLE() <= 1)
+        {
+#include "rhoEqnRhoPimple.H"
+        }
+
         // --- Pressure-velocity PIMPLE corrector loop
         while (pimple.loop())
         {
+
             if (pimple.finalIter() && printToScreen)
             {
                 pimplePrintToScreen = 1;
@@ -203,18 +208,18 @@ label DAPimpleFoam::solvePrimal(
                 pimplePrintToScreen = 0;
             }
 
-#include "UEqnPimple.H"
-
+            // Pressure-velocity SIMPLE corrector
+#include "UEqnRhoPimple.H"
+#include "EEqnRhoPimple.H"
             // --- Pressure corrector loop
             while (pimple.correct())
             {
-#include "pEqnPimple.H"
+#include "pEqnRhoPimple.H"
             }
 
             // update the output field value at each iteration, if the regression model is active
             fail = daRegressionPtr_->compute();
 
-            laminarTransport.correct();
             daTurbulenceModelPtr_->correct(pimplePrintToScreen);
         }
 
@@ -233,15 +238,9 @@ label DAPimpleFoam::solvePrimal(
         if (printToScreen)
         {
 #include "CourantNo.H"
-
             daTurbulenceModelPtr_->printYPlus();
 
             this->printAllObjFuncs();
-
-            if (daOptionPtr_->getOption<label>("debug"))
-            {
-                this->calcPrimalResidualStatistics("print");
-            }
 
             daRegressionPtr_->printInputInfo();
 
@@ -260,7 +259,7 @@ label DAPimpleFoam::solvePrimal(
         }
     }
 
-    if (regModelFail > 0)
+    if (regModelFail != 0)
     {
         return 1;
     }

@@ -130,6 +130,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void setFieldValue4GlobalCellI(char *, double, int, int)
         void setFieldValue4LocalCellI(char *, double, int, int)
         void updateBoundaryConditions(char *, char *)
+        void updateStateBoundaryConditions()
         void calcPrimalResidualStatistics(char *)
         double getForwardADDerivVal(char *)
         void calcResidualVec(PetscVec)
@@ -591,6 +592,9 @@ cdef class pyDASolvers:
     
     def updateBoundaryConditions(self, fieldName, fieldType):
         self._thisptr.updateBoundaryConditions(fieldName, fieldType)
+    
+    def updateStateBoundaryConditions(self):
+        self._thisptr.updateStateBoundaryConditions()
     
     def calcPrimalResidualStatistics(self, mode):
         self._thisptr.calcPrimalResidualStatistics(mode)
