@@ -239,10 +239,14 @@ void DAResidualRhoPimpleFoam::updateIntermediateVariables()
     // psi = 1/T/R
     // see src/thermophysicalModels/specie/equationOfState/perfectGas/perfectGasI.H
     psi_ = 1.0 / T_ / R;
+    psi_.oldTime() = 1.0 / T_.oldTime() / R;
+    psi_.oldTime().oldTime() = 1.0 / T_.oldTime().oldTime() / R;
 
     // rho = psi*p
     // see src/thermophysicalModels/basic/psiThermo/psiThermo.C
     rho_ = psi_ * p_;
+    rho_.oldTime() = psi_.oldTime() * p_.oldTime();
+    rho_.oldTime().oldTime() = psi_.oldTime().oldTime() * p_.oldTime().oldTime();
 
     // **************** NOTE ****************
     // need to relax rho to be consistent with the primal solver
@@ -272,14 +276,21 @@ void DAResidualRhoPimpleFoam::updateIntermediateVariables()
     if (he_.name() == "e")
     {
         he_ = Cp * T_ - T_ * R;
+        he_.oldTime() = Cp * T_.oldTime() - T_.oldTime() * R;
+        he_.oldTime().oldTime() = Cp * T_.oldTime().oldTime() - T_.oldTime().oldTime() * R;
     }
     else
     {
         he_ = Cp * T_;
+        he_.oldTime() = Cp * T_.oldTime();
+        he_.oldTime().oldTime() = Cp * T_.oldTime().oldTime();
     }
     he_.correctBoundaryConditions();
 
     K_ = 0.5 * magSqr(U_);
+    K_.oldTime() = 0.5 * magSqr(U_.oldTime());
+    K_.oldTime().oldTime() = 0.5 * magSqr(U_.oldTime().oldTime());
+
     dpdt_ = fvc::ddt(p_);
 
     // NOTE: alphat is updated in the correctNut function in DATurbulenceModel child classes
