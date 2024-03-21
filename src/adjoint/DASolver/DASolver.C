@@ -9043,77 +9043,52 @@ void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
 #endif
 }
 
-void DASolver::disableStateAutoWrite()
+/*
+void DASolver::disableStateAutoWrite(const wordList& noWriteVars)
 {
-    /*
-    Description:
-        set state variables to NO_WRITE to reduce the file IO load
-    */
 
-    // volVector states
-    forAll(stateInfo_["volVectorStates"], idxI)
+
+    forAll(noWriteVars, idxI)
     {
-        const word stateName = stateInfo_["volVectorStates"][idxI];
-        volVectorField& state =
-            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+        word varName = noWriteVars[idxI];
 
-        state.writeOpt() = IOobject::NO_WRITE;
-    }
+        if (varName == "None")
+        {
+            continue;
+        }
 
-    // volScalar states
-    forAll(stateInfo_["volScalarStates"], idxI)
-    {
-        const word stateName = stateInfo_["volScalarStates"][idxI];
-        volScalarField& state =
-            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+        if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
+        {
+            volScalarField& var =
+                const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(varName));
 
-        state.writeOpt() = IOobject::NO_WRITE;
-    }
+            var.writeOpt() = IOobject::NO_WRITE;
+        }
+        else if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
+        {
+            volVectorField& var =
+                const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(varName));
 
-    // model states
-    forAll(stateInfo_["modelStates"], idxI)
-    {
-        const word stateName = stateInfo_["modelStates"][idxI];
-        volScalarField& state =
-            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+            var.writeOpt() = IOobject::NO_WRITE;
+        }
+        else if (meshPtr_->thisDb().foundObject<surfaceScalarField>(varName))
+        {
+            surfaceScalarField& var =
+                const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(varName));
 
-        state.writeOpt() = IOobject::NO_WRITE;
-    }
-
-    // surfaceScalar states
-    forAll(stateInfo_["surfaceScalarStates"], idxI)
-    {
-        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
-        surfaceScalarField& state =
-            const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
-
-        state.writeOpt() = IOobject::NO_WRITE;
-    }
-
-    // some potential extra variables
-    if (meshPtr_->thisDb().foundObject<volScalarField>("nut"))
-    {
-        volScalarField& nut =
-            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("nut"));
-        nut.writeOpt() = IOobject::NO_WRITE;
-    }
-
-    if (meshPtr_->thisDb().foundObject<volScalarField>("betaFI"))
-    {
-        volScalarField& betaFI =
-            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("betaFI"));
-        betaFI.writeOpt() = IOobject::NO_WRITE;
-    }
-
-    if (meshPtr_->thisDb().foundObject<volVectorField>("fvSource"))
-    {
-        volVectorField& fvSource =
-            const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>("fvSource"));
-        fvSource.writeOpt() = IOobject::NO_WRITE;
+            var.writeOpt() = IOobject::NO_WRITE;
+        }
+        else
+        {
+            Info << "Warning! The prescribed reduceIOVars " << varName << " not found in the db!" << endl;
+        }
     }
 }
+*/
 
-void DASolver::writeAdjStates(const label writeMesh)
+void DASolver::writeAdjStates(
+    const label writeMesh,
+    const wordList& additionalOutput)
 {
     /*
     Description:
@@ -9164,29 +9139,39 @@ void DASolver::writeAdjStates(const label writeMesh)
         }
     }
 
-    scalar endTime = runTimePtr_->endTime().value();
-    scalar deltaT = runTimePtr_->deltaT().value();
-    label nInstances = round(endTime / deltaT);
-
-    // write these extra suppressed variables for the last time step
-    if (runTimePtr_->timeIndex() == nInstances)
+    forAll(additionalOutput, idxI)
     {
-        if (meshPtr_->thisDb().foundObject<volScalarField>("nut"))
+        word varName = additionalOutput[idxI];
+
+        if (varName == "None")
         {
-            const volScalarField& nut = meshPtr_->thisDb().lookupObject<volScalarField>("nut");
-            nut.write();
+            continue;
         }
 
-        if (meshPtr_->thisDb().foundObject<volScalarField>("betaFI"))
+        if (meshPtr_->thisDb().foundObject<volScalarField>(varName))
         {
-            const volScalarField& betaFI = meshPtr_->thisDb().lookupObject<volScalarField>("betaFI");
-            betaFI.write();
-        }
+            volScalarField& var =
+                const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(varName));
 
-        if (meshPtr_->thisDb().foundObject<volVectorField>("fvSource"))
+            var.write();
+        }
+        else if (meshPtr_->thisDb().foundObject<volVectorField>(varName))
         {
-            const volVectorField& fvSource = meshPtr_->thisDb().lookupObject<volVectorField>("fvSource");
-            fvSource.write();
+            volVectorField& var =
+                const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(varName));
+
+            var.write();
+        }
+        else if (meshPtr_->thisDb().foundObject<surfaceScalarField>(varName))
+        {
+            surfaceScalarField& var =
+                const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(varName));
+
+            var.write();
+        }
+        else
+        {
+            Info << "Warning! The prescribed additionalOutput " << varName << " not found in the db! Ignoring it.." << endl;
         }
     }
 
