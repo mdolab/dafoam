@@ -119,6 +119,7 @@ case $argm in
     runTests DARhoSimpleFoam
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
+    runTests DARhoPimpleFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
       runTests DARhoSimpleFoamMRFAD
       runTests DARhoSimpleFoamAD
@@ -185,6 +186,7 @@ case $argm in
     runTests DARhoSimpleFoam
     runTests DARhoSimpleFoamUBend
     runTests DARhoSimpleCFoam
+    runTests DARhoPimpleFoam
     if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
       runTests DARhoSimpleFoamMRFAD
       runTests DARhoSimpleFoamAD
