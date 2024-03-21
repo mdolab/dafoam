@@ -162,10 +162,10 @@ label DARhoPimpleFoam::solvePrimal(
 
     // we need to reduce the number of files written to the disk to minimize the file IO load
     label reduceIO = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("reduceIO");
+    wordList additionalOutput;
     if (reduceIO)
     {
-        // set all states and vars to NO_WRITE
-        this->disableStateAutoWrite();
+        daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").readEntry<wordList>("additionalOutput", additionalOutput);
     }
 
     scalar endTime = runTime.endTime().value();
@@ -249,9 +249,9 @@ label DARhoPimpleFoam::solvePrimal(
                  << nl << endl;
         }
 
-        if (reduceIO)
+        if (reduceIO && iter < nInstances)
         {
-            this->writeAdjStates(reduceIOWriteMesh_);
+            this->writeAdjStates(reduceIOWriteMesh_, additionalOutput);
         }
         else
         {

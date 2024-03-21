@@ -1207,11 +1207,10 @@ public:
         DAUtility::pyCalcBetaJacVecProd = jacVecProd;
     }
 
-    /// set state variables to NO_WRITE
-    void disableStateAutoWrite();
-
     /// write state variables that are NO_WRITE to disk
-    void writeAdjStates(const label writeMesh);
+    void writeAdjStates(
+        const label writeMesh,
+        const wordList& additionalOutput);
 
     /// return the elapsed clock time for testing speed
     scalar getElapsedClockTime()

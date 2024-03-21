@@ -97,7 +97,8 @@ protected:
     //@}
 
     /// beta field for field inversion
-    volScalarField betaFI_;
+    volScalarField betaFIK_;
+    volScalarField betaFIOmega_;
 
     /// cell-center omega values near the wall, this is to fix the issue that the
     /// omegaWallFunction will try to modify omega values for the cells near walls

@@ -100,15 +100,25 @@ DAkOmega::DAkOmega(
           dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      betaFI_(
+      betaFIK_(
           IOobject(
-              "betaFI",
+              "betaFIK",
               mesh.time().timeName(),
               mesh,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
           mesh,
-          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          dimensionedScalar("betaFIK", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          "zeroGradient"),
+      betaFIOmega_(
+          IOobject(
+              "betaFIOmega",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("betaFIOmega", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           "zeroGradient")
 {
 
@@ -563,7 +573,7 @@ void DAkOmega::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, omega_)
             + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
             - fvm::laplacian(phase_ * rho_ * DomegaEff(), omega_)
-        == gamma_ * phase_ * rho_ * G * omega_ / k_ * betaFI_
+        == gamma_ * phase_ * rho_ * G * omega_ / k_ * betaFIOmega_
             - fvm::SuSp(scalar(2.0 / 3.0) * gamma_ * phase_ * rho_ * divU, omega_)
             - fvm::Sp(beta_ * phase_ * rho_ * omega_, omega_));
 
@@ -597,7 +607,7 @@ void DAkOmega::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, k_)
             + fvm::div(phaseRhoPhi_, k_, divKScheme)
             - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-        == phase_ * rho_ * G
+        == phase_ * rho_ * G * betaFIK_
             - fvm::SuSp((2.0 / 3.0) * phase_ * rho_ * divU, k_)
             - fvm::Sp(Cmu_ * phase_ * rho_ * omega_, k_));
 
@@ -666,7 +676,7 @@ void DAkOmega::getFvMatrixFields(
             fvm::ddt(phase_, rho_, omega_)
                 + fvm::div(phaseRhoPhi_, omega_, "div(pc)")
                 - fvm::laplacian(phase_ * rho_ * DomegaEff(), omega_)
-            == gamma_ * phase_ * rho_ * G * omega_ / k_ * betaFI_
+            == gamma_ * phase_ * rho_ * G * omega_ / k_ * betaFIOmega_
                 - fvm::SuSp(scalar(2.0 / 3.0) * gamma_ * phase_ * rho_ * divU, omega_)
                 - fvm::Sp(beta_ * phase_ * rho_ * omega_, omega_));
 
@@ -686,7 +696,7 @@ void DAkOmega::getFvMatrixFields(
             fvm::ddt(phase_, rho_, k_)
                 + fvm::div(phaseRhoPhi_, k_, "div(pc)")
                 - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-            == phase_ * rho_ * G
+            == phase_ * rho_ * G * betaFIK_
                 - fvm::SuSp((2.0 / 3.0) * phase_ * rho_ * divU, k_)
                 - fvm::Sp(Cmu_ * phase_ * rho_ * omega_, k_));
 

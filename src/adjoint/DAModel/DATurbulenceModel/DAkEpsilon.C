@@ -103,15 +103,25 @@ DAkEpsilon::DAkEpsilon(
           dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      betaFI_(
+      betaFIK_(
           IOobject(
-              "betaFI",
+              "betaFIK",
               mesh.time().timeName(),
               mesh,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
           mesh,
-          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          dimensionedScalar("betaFIK", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          "zeroGradient"),
+      betaFIEpsilon_(
+          IOobject(
+              "betaFIEpsilon",
+              mesh.time().timeName(),
+              mesh,
+              IOobject::READ_IF_PRESENT,
+              IOobject::AUTO_WRITE),
+          mesh,
+          dimensionedScalar("betaFIEpsilon", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           "zeroGradient")
 {
 
@@ -556,7 +566,7 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, epsilon_)
             + fvm::div(phaseRhoPhi_, epsilon_, divEpsilonScheme)
             - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
-        == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFI_()
+        == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFIEpsilon_()
             - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
             - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
             + epsilonSource());
@@ -592,7 +602,7 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, k_)
             + fvm::div(phaseRhoPhi_, k_, divKScheme)
             - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-        == phase_() * rho_() * G
+        == phase_() * rho_() * G * betaFIK_()
             - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
             - fvm::Sp(phase_() * rho_() * epsilon_() / k_(), k_)
             + kSource());
@@ -664,7 +674,7 @@ void DAkEpsilon::getFvMatrixFields(
             fvm::ddt(phase_, rho_, epsilon_)
                 + fvm::div(phaseRhoPhi_, epsilon_, "div(pc)")
                 - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
-            == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFI_()
+            == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFIEpsilon_()
                 - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
                 - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
                 + epsilonSource());
@@ -684,7 +694,7 @@ void DAkEpsilon::getFvMatrixFields(
             fvm::ddt(phase_, rho_, k_)
                 + fvm::div(phaseRhoPhi_, k_, "div(pc)")
                 - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-            == phase_() * rho_() * G
+            == phase_() * rho_() * G * betaFIK_()
                 - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
                 - fvm::Sp(phase_() * rho_() * epsilon_() / k_(), k_)
                 + kSource());

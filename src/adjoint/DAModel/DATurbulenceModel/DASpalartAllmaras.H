@@ -91,7 +91,7 @@ protected:
     const volScalarField& y_;
 
     /// beta field for field inversion
-    volScalarField betaFI_;
+    volScalarField betaFINuTilda_;
 
     /// whether to solve for turb states
     label solveTurbState_ = 0;

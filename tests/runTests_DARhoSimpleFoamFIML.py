@@ -62,7 +62,7 @@ aeroOptions = {
         "active": True,
         "modelType": "neuralNetwork",
         "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
-        "outputName": "betaFI",
+        "outputName": "betaFIOmega",
         "hiddenLayerNeurons": [10, 10],
         "inputShift": [0.0, 0.0, 0.0, 0.0],
         "inputScale": [1.0, 1.0, 0.0001, 1.0],
