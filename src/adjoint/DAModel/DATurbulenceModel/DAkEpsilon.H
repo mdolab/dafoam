@@ -90,7 +90,8 @@ protected:
     //@}
 
     /// beta field for field inversion
-    volScalarField betaFI_;
+    volScalarField betaFIK_;
+    volScalarField betaFIEpsilon_;
 
     /// cell-center epsilon values near the wall, this is to fix the issue that the
     /// epsilonWallFunction will try to modify epsilon values for the cells near walls
