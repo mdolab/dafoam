@@ -17,7 +17,7 @@ from pygeo import geo_utils
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/WingProp")
+os.chdir("./reg_test_files-main/WingProp")
 
 if gcomm.rank == 0:
     os.system("rm -rf */processor*")

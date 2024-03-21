@@ -8,7 +8,7 @@ from dafoam import PYDAFOAM
 import os
 from testFuncs import *
 
-os.chdir("./input/NACA0012DynamicMesh")
+os.chdir("./reg_test_files-main/NACA0012DynamicMesh")
 
 replace_text_in_file("system/controlDict", "endTime         0.01;", "endTime         0.001;")
 

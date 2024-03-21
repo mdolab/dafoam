@@ -21,7 +21,7 @@ if len(sys.argv) != 1:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/UBendDuct")
+os.chdir("./reg_test_files-main/UBendDuct")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")

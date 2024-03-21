@@ -5,4 +5,4 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-rm -rf input __pycache__
+rm -rf reg_test_files-main __pycache__

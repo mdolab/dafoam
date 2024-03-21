@@ -21,7 +21,7 @@ if len(sys.argv) != 1:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/NACA0012FieldInversion")
+os.chdir("./reg_test_files-main/NACA0012FieldInversion")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
