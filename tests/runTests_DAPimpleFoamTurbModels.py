@@ -19,7 +19,7 @@ petsc4py.init(sys.argv)
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/NACA0012Unsteady")
+os.chdir("./reg_test_files-main/NACA0012Unsteady")
 
 funcs = {}
 

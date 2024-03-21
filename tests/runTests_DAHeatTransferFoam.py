@@ -15,7 +15,7 @@ from testFuncs import *
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/ChannelConjugateHeat/thermal")
+os.chdir("./reg_test_files-main/ChannelConjugateHeat/thermal")
 
 aeroOptions = {
     "designSurfaces": ["channel_outer", "channel_inner", "channel_sides"],

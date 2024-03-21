@@ -15,7 +15,7 @@ from testFuncs import *
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./input/pitzDailyScalarTransport")
+os.chdir("./reg_test_files-main/pitzDailyScalarTransport")
 
 TRef = 1.0
 
