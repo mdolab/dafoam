@@ -168,8 +168,8 @@ void DAObjFuncPower::calcObjFunc(
     // need to reduce the sum of force across all processors
     reduce(objFuncValue, sumOp<scalar>());
 
-    // check if we need to calculate refDiffSquare.
-    this->calcRefDiffSquare(objFuncValue);
+    // check if we need to calculate refDiff.
+    this->calcRefDiff(objFuncValue);
 
     return;
 }
