@@ -169,7 +169,7 @@ void DAObjFuncPower::calcObjFunc(
     reduce(objFuncValue, sumOp<scalar>());
 
     // check if we need to calculate refDiff.
-    this->calcRefStd(objFuncValue);
+    this->calcRefVar(objFuncValue);
 
     return;
 }

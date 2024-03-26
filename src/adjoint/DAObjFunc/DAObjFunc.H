@@ -92,10 +92,10 @@ protected:
     /// the connectivity information for the objective function
     List<List<word>> objFuncConInfo_;
 
-    /// whether to calculate sqrt((obj-ref)^2)
-    label calcRefStd_;
+    /// whether to calculate (obj-ref)^2
+    label calcRefVar_;
 
-    /// if calcRefStd_ is True, set the reference value list
+    /// if calcRefVar_ is True, set the reference value list
     scalarList ref_;
 
 public:
@@ -243,8 +243,8 @@ public:
     /// whether to compute reference coefficients for special objFunc treatment such as totalPressureRatio
     label calcRefCoeffs = 1;
 
-    /// calculate the varDiff
-    void calcRefStd(scalar& objFuncValue);
+    /// calculate (var-ref)^2
+    void calcRefVar(scalar& objFuncValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

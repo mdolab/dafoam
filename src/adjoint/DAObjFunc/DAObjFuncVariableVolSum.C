@@ -168,7 +168,7 @@ void DAObjFuncVariableVolSum::calcObjFunc(
     objFuncValue /= totalVol;
 
     // check if we need to calculate refDiff.
-    this->calcRefStd(objFuncValue);
+    this->calcRefVar(objFuncValue);
 
     return;
 }

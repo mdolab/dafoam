@@ -220,7 +220,7 @@ void DAObjFuncLocation::calcObjFunc(
     }
 
     // check if we need to calculate refDiff.
-    this->calcRefStd(objFuncValue);
+    this->calcRefVar(objFuncValue);
 
     return;
 }
