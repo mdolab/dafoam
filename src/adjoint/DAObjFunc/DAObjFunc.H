@@ -93,9 +93,9 @@ protected:
     List<List<word>> objFuncConInfo_;
 
     /// whether to calculate sqrt((obj-ref)^2)
-    label calcRefDiff_;
+    label calcRefStd_;
 
-    /// if calcRefDiff_ is True, set the reference value list
+    /// if calcRefStd_ is True, set the reference value list
     scalarList ref_;
 
 public:
@@ -244,7 +244,7 @@ public:
     label calcRefCoeffs = 1;
 
     /// calculate the varDiff
-    void calcRefDiff(scalar& objFuncValue);
+    void calcRefStd(scalar& objFuncValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

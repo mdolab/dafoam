@@ -220,7 +220,7 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
     objFuncValue = log(objFuncValue) / coeffKS_;
 
     // check if we need to calculate refDiff.
-    this->calcRefDiff(objFuncValue);
+    this->calcRefStd(objFuncValue);
 
     return;
 }

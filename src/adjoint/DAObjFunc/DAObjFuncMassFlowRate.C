@@ -120,7 +120,7 @@ void DAObjFuncMassFlowRate::calcObjFunc(
     reduce(objFuncValue, sumOp<scalar>());
 
     // check if we need to calculate refDiff.
-    this->calcRefDiff(objFuncValue);
+    this->calcRefStd(objFuncValue);
 
     return;
 }

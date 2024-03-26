@@ -56,8 +56,8 @@ DAObjFunc::DAObjFunc(
         objFuncCellValues_[idxI] = 0.0;
     }
 
-    calcRefDiff_ = objFuncDict_.lookupOrDefault<label>("calcRefDiff", 0);
-    if (calcRefDiff_)
+    calcRefStd_ = objFuncDict_.lookupOrDefault<label>("calcRefStd", 0);
+    if (calcRefStd_)
     {
         objFuncDict_.readEntry<scalarList>("ref", ref_);
     }
@@ -318,15 +318,15 @@ scalar DAObjFunc::getObjFuncValue()
     return objFuncValue_;
 }
 
-void DAObjFunc::calcRefDiff(scalar& objFuncValue)
+void DAObjFunc::calcRefStd(scalar& objFuncValue)
 {
     /*
     Description:
         Call the variable difference with respect to a given reference and take a square of it.
-        This can be used in FIML. This function is for calcRefDiff == 1
+        This can be used in FIML. This function is for calcRefStd == 1
     */
 
-    if (calcRefDiff_)
+    if (calcRefStd_)
     {
         if (ref_.size() == 1)
         {
