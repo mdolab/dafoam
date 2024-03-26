@@ -104,7 +104,7 @@ daOptions = {
                 "center": [0.25, 0.0, 0.05],
                 "scale": 1.0,
                 "addToAdjoint": True,
-                "calcRefDiffSquare": True,
+                "calcRefStd": True,
                 "ref": [0.1, 0.05, 0.04, 0.02, 0.02, 0.01, 0.0, -0.01, -0.01, -0.02]
             }
         }
