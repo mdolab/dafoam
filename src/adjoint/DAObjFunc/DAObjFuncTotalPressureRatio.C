@@ -217,8 +217,8 @@ void DAObjFuncTotalPressureRatio::calcObjFunc(
         }
     }
 
-    // check if we need to calculate refDiffSquare.
-    this->calcRefDiffSquare(objFuncValue);
+    // check if we need to calculate refDiff.
+    this->calcRefVar(objFuncValue);
 
     return;
 }

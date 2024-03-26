@@ -93,9 +93,9 @@ protected:
     List<List<word>> objFuncConInfo_;
 
     /// whether to calculate (obj-ref)^2
-    label calcRefDiffSquare_;
+    label calcRefVar_;
 
-    /// if calcRefDiffSquare_ is True, set the reference value list
+    /// if calcRefVar_ is True, set the reference value list
     scalarList ref_;
 
 public:
@@ -243,8 +243,8 @@ public:
     /// whether to compute reference coefficients for special objFunc treatment such as totalPressureRatio
     label calcRefCoeffs = 1;
 
-    /// calculate the varDiffSquare
-    void calcRefDiffSquare(scalar& objFuncValue);
+    /// calculate (var-ref)^2
+    void calcRefVar(scalar& objFuncValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

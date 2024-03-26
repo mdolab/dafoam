@@ -130,7 +130,7 @@ aeroOptions = {
                 "center": [0.25, 0.0, 0.05],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0 * 1.0),
                 "addToAdjoint": True,
-                "calcRefDiffSquare": True,
+                "calcRefVar": True,
                 "ref": [0.1]
             }
         },
