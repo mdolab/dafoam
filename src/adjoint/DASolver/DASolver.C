@@ -9523,6 +9523,295 @@ void DASolver::writeFailedMesh()
     }
 }
 
+void DASolver::initMeanStates()
+{
+    /*
+    Description:
+        Initialize the mean states for DASolver::calcMeanStates
+    */
+
+    useMeanStates_ = daOptionPtr_->getSubDictOption<label>("useMeanStates", "active");
+
+    if (useMeanStates_)
+    {
+        meanStateStart_ = daOptionPtr_->getSubDictOption<scalar>("useMeanStates", "start");
+    }
+    else
+    {
+        return;
+    }
+
+    Info << "useMeanStates activated. Initializing the meanStates...." << endl;
+
+    // set the sizes
+    meanVolScalarStates_.setSize(stateInfo_["volScalarStates"].size());
+    meanVolVectorStates_.setSize(stateInfo_["volVectorStates"].size());
+    meanModelStates_.setSize(stateInfo_["modelStates"].size());
+    meanSurfaceScalarStates_.setSize(stateInfo_["surfaceScalarStates"].size());
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const volVectorField& state = meshPtr_->thisDb().lookupObject<volVectorField>(stateName);
+
+        meanVolVectorStates_.set(
+            idxI,
+            new volVectorField(
+                IOobject(
+                    stateName,
+                    runTimePtr_->timeName(),
+                    meshPtr_(),
+                    IOobject::READ_IF_PRESENT,
+                    IOobject::NO_WRITE),
+                state));
+
+        meanVolVectorStates_[idxI].rename(stateName + "Mean");
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
+
+        meanVolScalarStates_.set(
+            idxI,
+            new volScalarField(
+                IOobject(
+                    stateName,
+                    runTimePtr_->timeName(),
+                    meshPtr_(),
+                    IOobject::READ_IF_PRESENT,
+                    IOobject::NO_WRITE),
+                state));
+
+        meanVolScalarStates_[idxI].rename(stateName + "Mean");
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
+
+        meanModelStates_.set(
+            idxI,
+            new volScalarField(
+                IOobject(
+                    stateName,
+                    runTimePtr_->timeName(),
+                    meshPtr_(),
+                    IOobject::READ_IF_PRESENT,
+                    IOobject::NO_WRITE),
+                state));
+
+        meanModelStates_[idxI].rename(stateName + "Mean");
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
+
+        meanSurfaceScalarStates_.set(
+            idxI,
+            new surfaceScalarField(
+                IOobject(
+                    stateName,
+                    runTimePtr_->timeName(),
+                    meshPtr_(),
+                    IOobject::READ_IF_PRESENT,
+                    IOobject::NO_WRITE),
+                state));
+
+        meanSurfaceScalarStates_[idxI].rename(stateName + "Mean");
+    }
+}
+
+void DASolver::zeroMeanStates()
+{
+    /*
+    Description:
+        Set all the mean states to zeros
+    */
+
+    if (!useMeanStates_)
+    {
+        return;
+    }
+
+    Info << "Zeroing the meanStates...." << endl;
+
+    forAll(meanVolVectorStates_, idxI)
+    {
+        forAll(meanVolVectorStates_[idxI], cellI)
+        {
+            meanVolVectorStates_[idxI][cellI] = vector::zero;
+        }
+    }
+
+    forAll(meanVolScalarStates_, idxI)
+    {
+        forAll(meanVolScalarStates_[idxI], cellI)
+        {
+            meanVolScalarStates_[idxI][cellI] = 0.0;
+        }
+    }
+
+    forAll(meanModelStates_, idxI)
+    {
+        forAll(meanModelStates_[idxI], cellI)
+        {
+            meanModelStates_[idxI][cellI] = 0.0;
+        }
+    }
+
+    forAll(meanSurfaceScalarStates_, idxI)
+    {
+        forAll(meanSurfaceScalarStates_[idxI], faceI)
+        {
+            meanSurfaceScalarStates_[idxI][faceI] = 0.0;
+        }
+
+        forAll(meanSurfaceScalarStates_[idxI].boundaryField(), patchI)
+        {
+            forAll(meanSurfaceScalarStates_[idxI].boundaryField()[patchI], faceI)
+            {
+                meanSurfaceScalarStates_[idxI].boundaryFieldRef()[patchI][faceI] = 0.0;
+            }
+        }
+    }
+}
+
+void DASolver::assignMeanStatesToStates()
+{
+    /*
+    Description:
+        Assigned the calculated meanStates to the primal states and update intermediate vars 
+    */
+
+    if (!useMeanStates_)
+    {
+        return;
+    }
+
+    Info << "Assigning the meanStates to states...." << endl;
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state = const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+
+        state = meanVolVectorStates_[idxI];
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        state = meanVolScalarStates_[idxI];
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        state = meanModelStates_[idxI];
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state = const_cast<surfaceScalarField&>(meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+
+        state == meanSurfaceScalarStates_[idxI];
+    }
+
+    // update state BC and intermedate vars
+    this->updateStateBoundaryConditions();
+}
+
+void DASolver::calcMeanStates()
+{
+    /*
+    Description:
+        Calculate the mean states
+        This is useful for cases when steady-state solvers do not converge very well, e.g., flow
+        separation. In these cases, the flow field and the objective function will oscillate and
+        to get a better flow field and obj func value, we can use step-averaged (mean) states
+    */
+
+    if (!useMeanStates_)
+    {
+        return;
+    }
+
+    // Info << "Calculating the meanStates...." << endl;
+
+    // calculate the average on the fly, i.e., moving average
+    scalar endTime = runTimePtr_->endTime().value();
+    scalar deltaT = runTimePtr_->deltaT().value();
+    label nSteps = round(endTime / deltaT);
+    label startTimeIndex = round(nSteps * meanStateStart_);
+    label timeIndex = runTimePtr_->timeIndex();
+    if (timeIndex >= startTimeIndex)
+    {
+        label n = timeIndex - startTimeIndex + 1;
+        forAll(stateInfo_["volVectorStates"], idxI)
+        {
+            const word stateName = stateInfo_["volVectorStates"][idxI];
+            const volVectorField& state = meshPtr_->thisDb().lookupObject<volVectorField>(stateName);
+            forAll(meanVolVectorStates_[idxI], cellI)
+            {
+                meanVolVectorStates_[idxI][cellI] = (meanVolVectorStates_[idxI][cellI] * (n - 1) + state[cellI]) / n;
+            }
+        }
+
+        forAll(stateInfo_["volScalarStates"], idxI)
+        {
+            const word stateName = stateInfo_["volScalarStates"][idxI];
+            const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
+
+            forAll(meanVolScalarStates_[idxI], cellI)
+            {
+                meanVolScalarStates_[idxI][cellI] = (meanVolScalarStates_[idxI][cellI] * (n - 1) + state[cellI]) / n;
+            }
+        }
+
+        forAll(stateInfo_["modelStates"], idxI)
+        {
+            const word stateName = stateInfo_["modelStates"][idxI];
+            const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
+
+            forAll(meanModelStates_[idxI], cellI)
+            {
+                meanModelStates_[idxI][cellI] = (meanModelStates_[idxI][cellI] * (n - 1) + state[cellI]) / n;
+            }
+        }
+
+        forAll(stateInfo_["surfaceScalarStates"], idxI)
+        {
+            const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+            const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
+
+            forAll(meanSurfaceScalarStates_[idxI], faceI)
+            {
+                meanSurfaceScalarStates_[idxI][faceI] = (meanSurfaceScalarStates_[idxI][faceI] * (n - 1) + state[faceI]) / n;
+            }
+
+            forAll(meanSurfaceScalarStates_[idxI].boundaryField(), patchI)
+            {
+                forAll(meanSurfaceScalarStates_[idxI].boundaryField()[patchI], faceI)
+                {
+                    scalar val = meanSurfaceScalarStates_[idxI].boundaryField()[patchI][faceI];
+                    scalar val1 = state.boundaryField()[patchI][faceI];
+                    meanSurfaceScalarStates_[idxI].boundaryFieldRef()[patchI][faceI] = (val * (n - 1) + val1) / n;
+                }
+            }
+        }
+    }
+}
+
 scalar DASolver::getTimeInstanceObjFunc(
     const label instanceI,
     const word objFuncName)

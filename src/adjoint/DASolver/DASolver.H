@@ -205,6 +205,23 @@ protected:
     /// initial values for validateStates
     HashTable<scalar> initStateVals_;
 
+    /// whether to use mean states for steady-solvers
+    label useMeanStates_ = 0;
+    /// if the meanStates is used, what is the step-averaging start
+    scalar meanStateStart_ = 0.5;
+
+    /// step-averaged scalar states
+    PtrList<volScalarField> meanVolScalarStates_;
+
+    /// step-averaged model states
+    PtrList<volScalarField> meanModelStates_;
+
+    /// step-averaged vector states
+    PtrList<volVectorField> meanVolVectorStates_;
+
+    /// step-averaged surfaceScalar states
+    PtrList<surfaceScalarField> meanSurfaceScalarStates_;
+
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -254,6 +271,18 @@ public:
         const Vec wVec,
         Vec dFdW,
         Vec psi);
+
+    /// calculate the step-averaged mean states for steady solvers
+    void calcMeanStates();
+
+    /// initialize the meanStates if needed
+    void initMeanStates();
+
+    /// zero out the mean states before calculating the meanStates
+    void zeroMeanStates();
+
+    /// assign meanStates to states when the primal is done.
+    void assignMeanStatesToStates();
 
     /// assign primal variables based on the current time instance
     void setTimeInstanceField(const label instanceI);

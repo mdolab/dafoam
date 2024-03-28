@@ -23,6 +23,9 @@ gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/UBendDuct")
 
+replace_text_in_file("system/controlDict", "endTime         500;", "endTime         2000;")
+replace_text_in_file("system/controlDict", "writeInterval   500;", "writeInterval   2000;")
+
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.compressible 0")
@@ -34,7 +37,8 @@ p0 = 101325.0
 # test incompressible solvers
 aeroOptions = {
     "solverName": "DARhoSimpleFoam",
-    "useAD": {"mode": "fd"},
+    "useAD": {"mode": "reverse"},
+    "useMeanStates": {"active": True, "start": 0.5},
     "designSurfaces": ["ubend"],
     "primalMinResTol": 1e-5,
     "primalMinResTolDiff": 1e5,
