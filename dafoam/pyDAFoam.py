@@ -527,6 +527,19 @@ class DAOPTION(object):
             "defaultOutputValue": 0.0,
         }
 
+        ## whether to use averaged states
+        ## This is useful for cases when steady-state solvers do not converge very well, e.g., flow
+        ## separation. In these cases, the flow field and the objective function will oscillate and
+        ## to get a better flow field and obj func value, we can use step-averaged (mean) states
+        ## the start can be from 0 to 1. 0 means we use all time steps for averaging, while 1 means
+        ## we use no time steps for averaging. 0.8 means we use the last 20% of the time step for averaging.
+        ## We usually don't use 0 because the flow will need some spin up time, so using the spin-up
+        ## flow field for meanStates will be slightly inaccurate.
+        self.useMeanStates = {
+            "active": False,
+            "start": 0.5
+        }
+
         # *********************************************************************************************
         # ************************************ Advance Options ****************************************
         # *********************************************************************************************
