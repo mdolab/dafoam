@@ -81,6 +81,9 @@ protected:
     /// neural network activation function
     word activationFunction_;
 
+    /// if the ReLU activation function is used we can prescribe a potentially leaky coefficient
+    scalar leakyCoeff_ = 0.0;
+
     /// the upper bound for the output
     scalar outputUpperBound_;
 

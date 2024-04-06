@@ -49,6 +49,10 @@ DARegression::DARegression(
     {
         regSubDict.readEntry<labelList>("hiddenLayerNeurons", hiddenLayerNeurons_);
         regSubDict.readEntry<word>("activationFunction", activationFunction_);
+        if (activationFunction_ == "ReLU")
+        {
+            leakyCoeff_ = regSubDict.lookupOrDefault<scalar>("leakyCoeff", 0.0);
+        }
     }
 
     // initialize parameters and give it large values
@@ -323,9 +327,16 @@ label DARegression::compute()
                     {
                         layerVals[layerI][neuronI] = (1 - exp(-2 * layerVals[layerI][neuronI])) / (1 + exp(-2 * layerVals[layerI][neuronI]));
                     }
+                    else if (activationFunction_ == "ReLU")
+                    {
+                        if (layerVals[layerI][neuronI] < 0)
+                        {
+                            layerVals[layerI][neuronI] = leakyCoeff_ * layerVals[layerI][neuronI];
+                        }
+                    }
                     else
                     {
-                        FatalErrorIn("") << "activationFunction not valid. Options are: sigmoid and tanh" << abort(FatalError);
+                        FatalErrorIn("") << "activationFunction not valid. Options are: sigmoid, tanh, and ReLU" << abort(FatalError);
                     }
                 }
             }
