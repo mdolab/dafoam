@@ -81,6 +81,9 @@ protected:
     /// neural network activation function
     word activationFunction_;
 
+    /// if the ReLU activation function is used we can prescribe a potentially leaky coefficient
+    scalar leakyCoeff_ = 0.0;
+
     /// the upper bound for the output
     scalar outputUpperBound_;
 
@@ -92,6 +95,9 @@ protected:
 
     /// default output values
     scalar defaultOutputValue_;
+
+    /// number of radial basis function
+    label nRBFs_;
 
 public:
     /// Constructors
