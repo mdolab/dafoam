@@ -96,6 +96,9 @@ protected:
     /// default output values
     scalar defaultOutputValue_;
 
+    /// number of radial basis function
+    label nRBFs_;
+
 public:
     /// Constructors
     DARegression(
