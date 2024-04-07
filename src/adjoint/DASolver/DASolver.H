@@ -209,6 +209,8 @@ protected:
     label useMeanStates_ = 0;
     /// if the meanStates is used, what is the step-averaging start
     scalar meanStateStart_ = 0.5;
+    /// whether we have calculated the meanStates, if not (flow converge before meanStateStart_), we will not use meanStates
+    label meanStatesCalculated_ = 0;
 
     /// step-averaged scalar states
     PtrList<volScalarField> meanVolScalarStates_;
