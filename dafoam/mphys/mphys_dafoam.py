@@ -962,27 +962,27 @@ class DAFoamSolver(ImplicitComponent):
                     # to check if a recompute is needed. In other words, we only recompute the PC for the first obj func
                     # adjoint solution
 
-                    if DASolver.getOption("writeDeformedFFDs"):
-                        if self.DVGeo is None:
-                            raise RuntimeError(
-                                "writeDeformedFFDs is set but no DVGeo object found! Please call add_dvgeo in the run script!"
-                            )
-                        else:
-                            self.DVGeo.writeTecplot("deformedFFDs_%d.dat" % self.solution_counter)
-
-                    if DASolver.getOption("writeDeformedConstraints"):
-                        if self.DVCon is None:
-                            raise RuntimeError(
-                                "writeDeformedConstraints is set but no DVCon object found! Please call add_dvcon in the run script!"
-                            )
-                        else:
-                            self.DVCon.writeTecplot("deformedConstraints_%d.dat" % self.solution_counter)
-
                     solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
 
                     if renamed:
                         # write the deformed FFD for post-processing
-                        # DASolver.writeDeformedFFDs(self.solution_counter)
+                        if DASolver.getOption("writeDeformedFFDs"):
+                            if self.DVGeo is None:
+                                raise RuntimeError(
+                                    "writeDeformedFFDs is set but no DVGeo object found! Please call add_dvgeo in the run script!"
+                                )
+                            else:
+                                self.DVGeo.writeTecplot("deformedFFDs_%d.dat" % self.solution_counter)
+
+                        # write the deformed constraints for post-processing
+                        if DASolver.getOption("writeDeformedConstraints"):
+                            if self.DVCon is None:
+                                raise RuntimeError(
+                                    "writeDeformedConstraints is set but no DVCon object found! Please call add_dvcon in the run script!"
+                                )
+                            else:
+                                self.DVCon.writeTecplot("deformedConstraints_%d.dat" % self.solution_counter)
+
                         # print the solution counter
                         if self.comm.rank == 0:
                             print("Driver total derivatives for iteration: %d" % self.solution_counter)
