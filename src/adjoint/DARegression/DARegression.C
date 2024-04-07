@@ -393,7 +393,7 @@ label DARegression::compute()
                     scalar B = 2 * parameters_[dP * i + 2 * j + 1] * parameters_[dP * i + 2 * j + 1];
                     expCoeff += A / B;
                 }
-                outputVal += parameters_[(dP + 1) * i + dP] * exp(-expCoeff);
+                outputVal += parameters_[dP * i + dP - 1] * exp(-expCoeff);
             }
 
             outputField[cellI] = outputScale_ * (outputVal + outputShift_);
