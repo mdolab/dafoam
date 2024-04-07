@@ -9686,9 +9686,11 @@ void DASolver::assignMeanStatesToStates()
     /*
     Description:
         Assigned the calculated meanStates to the primal states and update intermediate vars 
+        NOTE: if meanStatesCalculated_ == 0, we will not assignMeanStatesToStates at the end of the primal.
+        meanStatesCalculated_ is assigned to 1 if timeIndex >= startTimeIndex in DASolver::calcMeanStates
     */
 
-    if (!useMeanStates_)
+    if (!useMeanStates_ || !meanStatesCalculated_)
     {
         return;
     }
@@ -9729,6 +9731,9 @@ void DASolver::assignMeanStatesToStates()
 
     // update state BC and intermedate vars
     this->updateStateBoundaryConditions();
+
+    // after the meanStates is assigned to states, reset meanStatesCalculated_ for the next primal solution.
+    meanStatesCalculated_ = 0;
 }
 
 void DASolver::calcMeanStates()
@@ -9809,6 +9814,13 @@ void DASolver::calcMeanStates()
                 }
             }
         }
+
+        // if we have caluclate mean states, i.e., timeIndex >= startTimeIndex, set meanStatesCalculated_ = 1
+        // this is to avoid setting a large startTime but the flow somehow converge before the startTime is
+        // triggered. In this case, the meanStates is never calculated and will return the wrong results
+        // if meanStatesCalculated_ == 0, we will not assignMeanStatesToStates at the end of the primal
+        // check DASolver::assignMeanStatesToStates
+        meanStatesCalculated_ = 1;
     }
 }
 
