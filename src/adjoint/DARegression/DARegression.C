@@ -508,19 +508,19 @@ label DARegression::checkOutput(volScalarField& outputField)
     }
     if (isBounded == 1)
     {
-        Info << "************* Warning! output values are bounded between " << outputLowerBound_ << " and " << outputUpperBound_ << endl;
+        Pout << "************* Warning! output values are bounded between " << outputLowerBound_ << " and " << outputUpperBound_ << endl;
         fail = 1;
     }
 
     if (isNaN == 1)
     {
-        Info << "************* Warning! output values have nan and are set to " << defaultOutputValue_ << endl;
+        Pout << "************* Warning! output values have nan and are set to " << defaultOutputValue_ << endl;
         fail = 1;
     }
 
     if (isInf == 1)
     {
-        Info << "************* Warning! output values have inf and are set to " << defaultOutputValue_ << endl;
+        Pout << "************* Warning! output values have inf and are set to " << defaultOutputValue_ << endl;
         fail = 1;
     }
 
