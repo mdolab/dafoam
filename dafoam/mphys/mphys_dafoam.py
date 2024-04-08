@@ -658,7 +658,11 @@ class DAFoamSolver(ImplicitComponent):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
-                self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+                # user can prescribe whether the field var is distributed. Default is True
+                distributed = True
+                if "distributed" in designVariables[dvName]:
+                    distributed = designVariables[dvName]["distributed"]
+                self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "RegPar":
                 nParameters = self.DASolver.solver.getNRegressionParameters()
                 self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
@@ -893,7 +897,15 @@ class DAFoamSolver(ImplicitComponent):
                         DASolver.solverAD.calcdRdFieldTPsiAD(
                             DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
                         )
-                        fieldBar = DASolver.vec2Array(prodVec)
+                        # user can prescribe whether the field var is distributed. Default is True
+                        distributed = True
+                        if "distributed" in designVariables[inputName]:
+                            distributed = designVariables[inputName]["distributed"]
+
+                        if distributed:
+                            fieldBar = DASolver.vec2Array(prodVec)
+                        else:
+                            fieldBar = DASolver.convertMPIVec2SeqArray(prodVec)
                         d_inputs[inputName] += fieldBar
 
                     elif self.dvType[inputName] == "RegPar":
@@ -962,27 +974,27 @@ class DAFoamSolver(ImplicitComponent):
                     # to check if a recompute is needed. In other words, we only recompute the PC for the first obj func
                     # adjoint solution
 
-                    if DASolver.getOption("writeDeformedFFDs"):
-                        if self.DVGeo is None:
-                            raise RuntimeError(
-                                "writeDeformedFFDs is set but no DVGeo object found! Please call add_dvgeo in the run script!"
-                            )
-                        else:
-                            self.DVGeo.writeTecplot("deformedFFDs_%d.dat" % self.solution_counter)
-
-                    if DASolver.getOption("writeDeformedConstraints"):
-                        if self.DVCon is None:
-                            raise RuntimeError(
-                                "writeDeformedConstraints is set but no DVCon object found! Please call add_dvcon in the run script!"
-                            )
-                        else:
-                            self.DVCon.writeTecplot("deformedConstraints_%d.dat" % self.solution_counter)
-
                     solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
 
                     if renamed:
                         # write the deformed FFD for post-processing
-                        # DASolver.writeDeformedFFDs(self.solution_counter)
+                        if DASolver.getOption("writeDeformedFFDs"):
+                            if self.DVGeo is None:
+                                raise RuntimeError(
+                                    "writeDeformedFFDs is set but no DVGeo object found! Please call add_dvgeo in the run script!"
+                                )
+                            else:
+                                self.DVGeo.writeTecplot("deformedFFDs_%d.dat" % self.solution_counter)
+
+                        # write the deformed constraints for post-processing
+                        if DASolver.getOption("writeDeformedConstraints"):
+                            if self.DVCon is None:
+                                raise RuntimeError(
+                                    "writeDeformedConstraints is set but no DVCon object found! Please call add_dvcon in the run script!"
+                                )
+                            else:
+                                self.DVCon.writeTecplot("deformedConstraints_%d.dat" % self.solution_counter)
+
                         # print the solution counter
                         if self.comm.rank == 0:
                             print("Driver total derivatives for iteration: %d" % self.solution_counter)
@@ -1220,7 +1232,11 @@ class DAFoamFunctions(ExplicitComponent):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
-                self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+                # user can prescribe whether the field var is distributed. Default is True
+                distributed = True
+                if "distributed" in designVariables[dvName]:
+                    distributed = designVariables[dvName]["distributed"]
+                self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "RegPar":
                 nParameters = self.DASolver.solver.getNRegressionParameters()
                 self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
@@ -1421,7 +1437,17 @@ class DAFoamFunctions(ExplicitComponent):
                         DASolver.solverAD.calcdFdFieldAD(
                             DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdField
                         )
-                        fieldBar = DASolver.vec2Array(dFdField)
+
+                        # user can prescribe whether the field var is distributed. Default is True
+                        distributed = True
+                        if "distributed" in designVariables[inputName]:
+                            distributed = designVariables[inputName]["distributed"]
+
+                        if distributed:
+                            fieldBar = DASolver.vec2Array(dFdField)
+                        else:
+                            fieldBar = DASolver.convertMPIVec2SeqArray(dFdField)
+
                         d_inputs[inputName] += fieldBar * fBar
 
                     elif self.dvType[inputName] == "RegPar":
