@@ -658,7 +658,11 @@ class DAFoamSolver(ImplicitComponent):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
-                self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+                # user can prescribe whether the field var is distributed. Default is True
+                distributed = True
+                if "distributed" in designVariables[dvName]:
+                    distributed = designVariables[dvName]["distributed"]
+                self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "RegPar":
                 nParameters = self.DASolver.solver.getNRegressionParameters()
                 self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
@@ -893,7 +897,15 @@ class DAFoamSolver(ImplicitComponent):
                         DASolver.solverAD.calcdRdFieldTPsiAD(
                             DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
                         )
-                        fieldBar = DASolver.vec2Array(prodVec)
+                        # user can prescribe whether the field var is distributed. Default is True
+                        distributed = True
+                        if "distributed" in designVariables[inputName]:
+                            distributed = designVariables[inputName]["distributed"]
+
+                        if distributed:
+                            fieldBar = DASolver.vec2Array(prodVec)
+                        else:
+                            fieldBar = DASolver.convertMPIVec2SeqArray(prodVec)
                         d_inputs[inputName] += fieldBar
 
                     elif self.dvType[inputName] == "RegPar":
@@ -1220,7 +1232,11 @@ class DAFoamFunctions(ExplicitComponent):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
-                self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+                # user can prescribe whether the field var is distributed. Default is True
+                distributed = True
+                if "distributed" in designVariables[dvName]:
+                    distributed = designVariables[dvName]["distributed"]
+                self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "RegPar":
                 nParameters = self.DASolver.solver.getNRegressionParameters()
                 self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
@@ -1421,7 +1437,17 @@ class DAFoamFunctions(ExplicitComponent):
                         DASolver.solverAD.calcdFdFieldAD(
                             DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdField
                         )
-                        fieldBar = DASolver.vec2Array(dFdField)
+
+                        # user can prescribe whether the field var is distributed. Default is True
+                        distributed = True
+                        if "distributed" in designVariables[inputName]:
+                            distributed = designVariables[inputName]["distributed"]
+
+                        if distributed:
+                            fieldBar = DASolver.vec2Array(dFdField)
+                        else:
+                            fieldBar = DASolver.convertMPIVec2SeqArray(dFdField)
+
                         d_inputs[inputName] += fieldBar * fBar
 
                     elif self.dvType[inputName] == "RegPar":
