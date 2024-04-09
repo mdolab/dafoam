@@ -42,6 +42,7 @@ aeroOptions = {
     "designSurfaces": ["ubend"],
     "primalMinResTol": 1e-5,
     "primalMinResTolDiff": 1e5,
+    "primalObjStdTol": {"active": True, "objFuncName": "PL", "steps": 500, "tol": 1e-4, "tolDiff": 1e2},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},

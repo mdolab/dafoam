@@ -64,6 +64,22 @@ DASolver::DASolver(
     primalMinResTol_ = daOptionPtr_->getOption<scalar>("primalMinResTol");
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
 
+    // check if the objective function std is used in determining the primal convergence
+    primalObjStdActive_ = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "active");
+    if (primalObjStdActive_)
+    {
+        // if it is active, read in the tolerance and set a large value for the initial std
+        primalObjStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalObjStdTol", "tol");
+        primalObjStd_ = 1e10;
+    }
+    else
+    {
+        // if it is not active, set primalObjStdTol_ > primalObjStd_, such that it will
+        // always pass the condition in DASolver::loop (ignore primalObjStd)
+        primalObjStdTol_ = 1e-5;
+        primalObjStd_ = 0.0;
+    }
+
     Info << "DAOpton initialized " << endl;
 }
 
@@ -116,7 +132,7 @@ label DASolver::loop(Time& runTime)
 {
     /*
     Description:
-        The loop method to increment the runtime. The reason we implent this is
+        The loop method to increment the runtime. The reason we implement this is
         because the runTime.loop() and simple.loop() give us seg fault...
     */
 
@@ -135,12 +151,23 @@ label DASolver::loop(Time& runTime)
         funcObj.execute();
     }
 
-    // check exit condition
-    if (DAUtility::primalMaxInitRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_)
+    // calculate the objective function standard deviation. It will be used in determining if the primal converges
+    this->calcObjStd(runTime);
+
+    // check exit condition, we need to satisfy both the residual and objFunc std condition
+    if (DAUtility::primalMaxInitRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_ && primalObjStd_ < primalObjStdTol_)
     {
         Info << "Time = " << t << endl;
+
         Info << "Minimal residual " << DAUtility::primalMaxInitRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
+
+        if (primalObjStdActive_)
+        {
+            Info << "ObjFunc standard deviation " << primalObjStd_ << " satisfied the prescribed tolerance " << primalObjStdTol_ << endl
+                 << endl;
+        }
+
         this->printAllObjFuncs();
         runTime.writeNow();
         prevPrimalSolTime_ = t;
@@ -157,6 +184,59 @@ label DASolver::loop(Time& runTime)
     {
         ++runTime;
         return 1;
+    }
+}
+
+void DASolver::calcObjStd(Time& runTime)
+{
+    /*
+    Description:
+        calculate the objective function's std, this will be used to stop the primal simulation and also 
+        evaluate whether the primal converges
+    */
+
+    if (!primalObjStdActive_)
+    {
+        return;
+    }
+
+    label steps = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "steps");
+
+    if (runTime.timeIndex() == 1)
+    {
+        primalObjSeries_.clear();
+    }
+
+    word objFuncNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "objFuncName");
+
+    scalar objFunPartSum = 0.0;
+    forAll(daObjFuncPtrList_, idxI)
+    {
+        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
+        word objFuncName = daObjFunc.getObjFuncName();
+        if (objFuncName == objFuncNameWanted)
+        {
+            objFunPartSum += daObjFunc.getObjFuncValue();
+        }
+    }
+    primalObjSeries_.append(objFunPartSum);
+
+    label seriesSize = primalObjSeries_.size();
+
+    if (seriesSize >= steps)
+    {
+        scalar mean = 0;
+        for (label i = seriesSize - 1; i >= seriesSize - steps; i--)
+        {
+            mean += primalObjSeries_[i];
+        }
+        mean /= steps;
+        primalObjStd_ = 0.0;
+        for (label i = seriesSize - 1; i >= seriesSize - steps; i--)
+        {
+            primalObjStd_ += (primalObjSeries_[i] - mean) * (primalObjSeries_[i] - mean);
+        }
+        primalObjStd_ = sqrt(primalObjStd_ / steps);
     }
 }
 
@@ -8481,14 +8561,26 @@ label DASolver::checkResidualTol()
         If yes, return 0 else return 1
     */
 
-    scalar tol = daOptionPtr_->getOption<scalar>("primalMinResTol");
+    // when checking the tolerance, we relax the criteria by tolMax
+
     scalar tolMax = daOptionPtr_->getOption<scalar>("primalMinResTolDiff");
-    if (DAUtility::primalMaxInitRes_ / tol > tolMax)
+    scalar stdTolMax = daOptionPtr_->getSubDictOption<scalar>("primalObjStdTol", "tolDiff");
+    if (DAUtility::primalMaxInitRes_ / primalMinResTol_ > tolMax)
     {
         Info << "********************************************" << endl;
         Info << "Primal min residual " << DAUtility::primalMaxInitRes_ << endl
              << "did not satisfy the prescribed tolerance "
-             << tol << endl;
+             << primalMinResTol_ << endl;
+        Info << "Primal solution failed!" << endl;
+        Info << "********************************************" << endl;
+        return 1;
+    }
+    else if (primalObjStd_ / primalObjStdTol_ > stdTolMax)
+    {
+        Info << "********************************************" << endl;
+        Info << "Primal objFunc standard deviation " << primalObjStd_ << endl
+             << "did not satisfy the prescribed tolerance "
+             << primalObjStdTol_ << endl;
         Info << "Primal solution failed!" << endl;
         Info << "********************************************" << endl;
         return 1;
