@@ -487,7 +487,7 @@ void DASpalartAllmarasFv3FieldInversion::calcResiduals(const dictionary& options
     return;
 }
 
-void DASpalartAllmarasFv3FieldInversion::getTurbProdTerm(getTurbProdTerm& prodTerm) const
+void DASpalartAllmarasFv3FieldInversion::getTurbProdTerm(volScalarField& prodTerm) const
 {
     /*
     Description:
