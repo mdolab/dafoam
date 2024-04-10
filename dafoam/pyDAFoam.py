@@ -74,6 +74,10 @@ class DAOPTION(object):
         ## of magnitude (default) higher than this tolerance, the primal solution will return fail=True
         self.primalMinResTol = 1.0e-8
 
+        ## The convergence tolerance based on the selected objective function's standard deviation
+        ## The standard deviation is calculated based on the last N (default 200) steps of the objective function series
+        self.primalObjStdTol = {"active": False, "objFuncName": "None", "steps": 200, "tol": 1e-5, "tolDiff": 1e2}
+
         ## The boundary condition for primal solution. The keys should include "variable", "patch",
         ## and "value". For turbulence variable, one can also set "useWallFunction" [bool].
         ## Note that setting "primalBC" will overwrite any values defined in the "0" folder.

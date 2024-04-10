@@ -40,8 +40,9 @@ aeroOptions = {
     "useAD": {"mode": "reverse"},
     "useMeanStates": {"active": True, "start": 0.5},
     "designSurfaces": ["ubend"],
-    "primalMinResTol": 1e-5,
+    "primalMinResTol": 1e0,
     "primalMinResTolDiff": 1e5,
+    "primalObjStdTol": {"active": True, "objFuncName": "NU", "steps": 50, "tol": 0.27, "tolDiff": 1e2},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},

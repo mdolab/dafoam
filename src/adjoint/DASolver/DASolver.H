@@ -224,6 +224,19 @@ protected:
     /// step-averaged surfaceScalar states
     PtrList<surfaceScalarField> meanSurfaceScalarStates_;
 
+    /// whether to use the primal's std as the convergence criterion
+    label primalObjStdActive_;
+
+    /// the step series of the primal objective, used if primalObjStdTol->active is True
+    scalarList primalObjSeries_;
+
+    /// the standard deviation of the primal objective, used if primalObjStdTol->active is True
+    scalar primalObjStd_;
+
+    /// the tolerance of the primal objective std, used if primalObjStdTol->active is True
+    scalar primalObjStdTol_;
+
+
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -1294,13 +1307,19 @@ public:
         const word fieldType,
         const double timeName);
 
+    /// get the latest time solution from the case folder.
     scalar getLatestTime()
     {
-        // get the latest time solution from the case folder.
         instantList timeDirs = runTimePtr_->findTimes(runTimePtr_->path(), runTimePtr_->constant());
         scalar latestTime = timeDirs.last().value();
         return latestTime;
     }
+
+    /// initialize the objStd vars
+    void initObjStd();
+
+    /// calculate the objective function's std
+    void calcObjStd(Time& runTime);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
