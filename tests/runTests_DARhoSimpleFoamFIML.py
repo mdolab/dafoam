@@ -99,10 +99,12 @@ aeroOptions = {
     },
 }
 
+
 def regModel(val, DASolver):
     for idxI in range(len(val)):
         val1 = float(val[idxI])
         DASolver.setRegressionParameter(idxI, val1)
+
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
@@ -134,6 +136,53 @@ else:
 
     norm = np.linalg.norm(funcsSens["VAR"]["parameter"])
     funcsSens["VAR"]["parameter"] = norm
+
+    # test RBF regression
+    DASolver.setOption(
+        "regressionModel",
+        {
+            "active": True,
+            "modelType": "radialBasisFunction",
+            "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+            "outputName": "betaFIOmega",
+            "nRBFs": 20,
+            "inputShift": [0.0, 0.0, 0.0, 0.0],
+            "inputScale": [1.0, 1.0, 0.0001, 1.0],
+            "outputShift": 1.0,
+            "outputScale": 1.0,
+            "printInputInfo": True,
+            "defaultOutputValue": 1.0,
+            "writeFeatures": True,
+        },
+    )
+    DASolver.updateDAOption()
+    funcs1 = {}
+    funcs1, fail = optFuncs.calcObjFuncValues(iDV)
+    funcs["VAR_RBF"] = funcs1["VAR"]
+
+    # test ReLU
+    DASolver.setOption(
+        "regressionModel",
+        {
+            "active": True,
+            "modelType": "neuralNetwork",
+            "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+            "outputName": "betaFIOmega",
+            "hiddenLayerNeurons": [10, 10],
+            "inputShift": [0.0, 0.0, 0.0, 0.0],
+            "inputScale": [1.0, 1.0, 0.0001, 1.0],
+            "outputShift": 1.0,
+            "outputScale": 1.0,
+            "activationFunction": "ReLU",
+            "leakyCoeff": 0.1,
+            "printInputInfo": False,
+            "defaultOutputValue": 1.0,
+        },
+    )
+    DASolver.updateDAOption()
+    funcs2 = {}
+    funcs2, fail = optFuncs.calcObjFuncValues(iDV)
+    funcs["VAR_ReLU"] = funcs2["VAR"]
 
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)

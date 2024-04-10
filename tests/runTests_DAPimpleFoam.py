@@ -39,6 +39,7 @@ daOptions = {
         "PCMatPrecomputeInterval": 5,
         "PCMatUpdateInterval": 1,
         "objFuncTimeOperator": "average",
+        "additionalOutput": ["VoS", "PoD", "chiSA", "pGradStream", "PSoSS", "SCurv", "UOrth", "betaFINuTilda"],
     },
     "printIntervalUnsteady": 1,
     "fvSource": {
@@ -71,6 +72,7 @@ daOptions = {
         "outputScale": 1.0,
         "activationFunction": "tanh",
         "printInputInfo": False,
+        "writeFeatures": True,
     },
     "objFunc": {
         "CD": {
