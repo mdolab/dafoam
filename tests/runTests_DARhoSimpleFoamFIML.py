@@ -138,50 +138,54 @@ else:
     funcsSens["VAR"]["parameter"] = norm
 
     # test RBF regression
-    DASolver.setOption(
-        "regressionModel",
-        {
-            "active": True,
-            "modelType": "radialBasisFunction",
-            "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
-            "outputName": "betaFIOmega",
-            "nRBFs": 20,
-            "inputShift": [0.0, 0.0, 0.0, 0.0],
-            "inputScale": [1.0, 1.0, 0.0001, 1.0],
-            "outputShift": 1.0,
-            "outputScale": 1.0,
-            "printInputInfo": True,
-            "defaultOutputValue": 1.0,
-            "writeFeatures": True,
-        },
-    )
-    DASolver.updateDAOption()
+    aeroOptions["regressionModel"] = {
+        "active": True,
+        "modelType": "radialBasisFunction",
+        "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+        "outputName": "betaFIOmega",
+        "nRBFs": 20,
+        "inputShift": [0.0, 0.0, 0.0, 0.0],
+        "inputScale": [1.0, 1.0, 0.0001, 1.0],
+        "outputShift": 1.0,
+        "outputScale": 1.0,
+        "printInputInfo": True,
+        "defaultOutputValue": 1.0,
+        "writeFeatures": True,
+    }
+
+    DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
+    nParameters = DASolver.solver.getNRegressionParameters()
+    parameter0 = np.ones(nParameters) * 0.03
+    DASolver.addInternalDV("parameter", parameter0, regModel, lower=-10, upper=10, scale=100.0)
+    DASolver()
     funcs1 = {}
-    funcs1, fail = optFuncs.calcObjFuncValues(iDV)
+    DASolver.evalFunctions(funcs1, evalFuncs=["VAR"])
     funcs["VAR_RBF"] = funcs1["VAR"]
 
     # test ReLU
-    DASolver.setOption(
-        "regressionModel",
-        {
-            "active": True,
-            "modelType": "neuralNetwork",
-            "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
-            "outputName": "betaFIOmega",
-            "hiddenLayerNeurons": [10, 10],
-            "inputShift": [0.0, 0.0, 0.0, 0.0],
-            "inputScale": [1.0, 1.0, 0.0001, 1.0],
-            "outputShift": 1.0,
-            "outputScale": 1.0,
-            "activationFunction": "ReLU",
-            "leakyCoeff": 0.1,
-            "printInputInfo": False,
-            "defaultOutputValue": 1.0,
-        },
-    )
-    DASolver.updateDAOption()
+    aeroOptions["regressionModel"] = {
+        "active": True,
+        "modelType": "neuralNetwork",
+        "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+        "outputName": "betaFIOmega",
+        "hiddenLayerNeurons": [10, 10],
+        "inputShift": [0.0, 0.0, 0.0, 0.0],
+        "inputScale": [1.0, 1.0, 0.0001, 1.0],
+        "outputShift": 1.0,
+        "outputScale": 1.0,
+        "activationFunction": "ReLU",
+        "leakyCoeff": 0.1,
+        "printInputInfo": False,
+        "defaultOutputValue": 1.0,
+    }
+
+    DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
+    nParameters = DASolver.solver.getNRegressionParameters()
+    parameter0 = np.ones(nParameters) * 0.05
+    DASolver.addInternalDV("parameter", parameter0, regModel, lower=-10, upper=10, scale=100.0)
+    DASolver()
     funcs2 = {}
-    funcs2, fail = optFuncs.calcObjFuncValues(iDV)
+    DASolver.evalFunctions(funcs2, evalFuncs=["VAR"])
     funcs["VAR_ReLU"] = funcs2["VAR"]
 
     if gcomm.rank == 0:
