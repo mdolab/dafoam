@@ -1472,7 +1472,7 @@ void DAkOmegaSSTLM::getFvMatrixFields(
     }
 }
 
-void DAkOmegaSSTLM::getTurbProdOverDestruct(scalarList& PoD) const
+void DAkOmegaSSTLM::getTurbProdOverDestruct(volScalarField& PoD) const
 {
     /*
     Description:
@@ -1501,7 +1501,7 @@ void DAkOmegaSSTLM::getTurbProdOverDestruct(scalarList& PoD) const
     }
 }
 
-void DAkOmegaSSTLM::getTurbConvOverProd(scalarList& CoP) const
+void DAkOmegaSSTLM::getTurbConvOverProd(volScalarField& CoP) const
 {
     /*
     Description:

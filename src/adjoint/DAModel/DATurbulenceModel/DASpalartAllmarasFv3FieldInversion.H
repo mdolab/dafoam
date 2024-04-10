@@ -159,7 +159,7 @@ public:
     virtual void correct(label printToScreen);
 
     /// return the value of the production term from the turbulence model 
-    virtual void getTurbProdTerm(scalarList& prodTerm) const;
+    virtual void getTurbProdTerm(getTurbProdTerm& prodTerm) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

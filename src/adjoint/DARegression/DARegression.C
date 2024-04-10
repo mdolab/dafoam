@@ -43,39 +43,79 @@ DARegression::DARegression(
 
     regSubDict.readEntry<scalar>("defaultOutputValue", defaultOutputValue_);
 
-    active_ = regSubDict.getLabel("active");
+    writeFeatures_ = regSubDict.lookupOrDefault<label>("writeFeatures", 0);
 
-    if (modelType_ == "neuralNetwork")
-    {
-        regSubDict.readEntry<labelList>("hiddenLayerNeurons", hiddenLayerNeurons_);
-        regSubDict.readEntry<word>("activationFunction", activationFunction_);
-        if (activationFunction_ == "ReLU")
-        {
-            leakyCoeff_ = regSubDict.lookupOrDefault<scalar>("leakyCoeff", 0.0);
-        }
-    }
-    else if (modelType_ == "radialBasisFunction")
-    {
-        nRBFs_ = regSubDict.getLabel("nRBFs");
-    }
-    else
-    {
-        FatalErrorIn("") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
-    }
+    active_ = regSubDict.getLabel("active");
 
     // initialize parameters and give it large values
     if (active_)
     {
+        if (modelType_ == "neuralNetwork")
+        {
+            regSubDict.readEntry<labelList>("hiddenLayerNeurons", hiddenLayerNeurons_);
+            regSubDict.readEntry<word>("activationFunction", activationFunction_);
+            if (activationFunction_ == "ReLU")
+            {
+                leakyCoeff_ = regSubDict.lookupOrDefault<scalar>("leakyCoeff", 0.0);
+            }
+        }
+        else if (modelType_ == "radialBasisFunction")
+        {
+            nRBFs_ = regSubDict.getLabel("nRBFs");
+        }
+        else
+        {
+            FatalErrorIn("") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+        }
+
         label nParameters = this->nParameters();
         parameters_.setSize(nParameters);
         forAll(parameters_, idxI)
         {
             parameters_[idxI] = 1e16;
         }
+
+        // initialize the ptr scalarFields
+        features_.setSize(inputNames_.size());
+        forAll(features_, idxI)
+        {
+            word inputName = inputNames_[idxI];
+
+            if (writeFeatures_)
+            {
+                features_.set(
+                    idxI,
+                    new volScalarField(
+                        IOobject(
+                            inputName,
+                            mesh_.time().timeName(),
+                            mesh_,
+                            IOobject::NO_READ,
+                            IOobject::AUTO_WRITE),
+                        mesh_,
+                        dimensionedScalar(inputName, dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+                        "zeroGradient"));
+            }
+            else
+            {
+                features_.set(
+                    idxI,
+                    new volScalarField(
+                        IOobject(
+                            inputName,
+                            mesh_.time().timeName(),
+                            mesh_,
+                            IOobject::NO_READ,
+                            IOobject::NO_WRITE),
+                        mesh_,
+                        dimensionedScalar(inputName, dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+                        "zeroGradient"));
+            }
+        }
     }
 }
 
-void DARegression::calcInput(List<List<scalar>>& inputFields)
+void DARegression::calcInputFeatures()
 {
     /*
     Description:
@@ -84,7 +124,6 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
 
     forAll(inputNames_, idxI)
     {
-        inputFields[idxI].setSize(mesh_.nCells());
         word inputName = inputNames_[idxI];
         if (inputName == "VoS")
         {
@@ -94,18 +133,18 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             const volTensorField& gradU = tgradU();
             volScalarField magOmega = mag(skew(gradU));
             volScalarField magS = mag(symm(gradU));
-            forAll(inputFields[idxI], cellI)
+            forAll(features_[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "PoD")
         {
             // production / destruction
-            daModel_.getTurbProdOverDestruct(inputFields[idxI]);
-            forAll(inputFields[idxI], cellI)
+            daModel_.getTurbProdOverDestruct(features_[idxI]);
+            forAll(features_[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (inputFields[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (features_[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "chiSA")
@@ -114,9 +153,9 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             // the chi() function from SA
             const volScalarField& nuTilda = mesh_.thisDb().lookupObject<volScalarField>("nuTilda");
             volScalarField nu = daModel_.getDATurbulenceModel().nu();
-            forAll(inputFields[idxI], cellI)
+            forAll(features_[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (nuTilda[cellI] / nu[cellI] + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (nuTilda[cellI] / nu[cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
 #endif
         }
@@ -132,9 +171,9 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
                 pG_denominator[cellI] += 1e-16;
             }
             volScalarField pGradAlongStream = (U & pGrad) / pG_denominator;
-            forAll(inputFields[idxI], cellI)
+            forAll(features_[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (pGradAlongStream[cellI] + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (pGradAlongStream[cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "PSoSS")
@@ -147,13 +186,13 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             volVectorField pGrad("gradP", fvc::grad(p));
             vector diagUGrad = vector::zero;
             scalar val = 0;
-            forAll(inputFields[idxI], cellI)
+            forAll(features_[idxI], cellI)
             {
                 diagUGrad[0] = gradU[cellI].xx();
                 diagUGrad[1] = gradU[cellI].yy();
                 diagUGrad[2] = gradU[cellI].zz();
                 val = mag(pGrad[cellI]) / (mag(pGrad[cellI]) + mag(3.0 * cmptAv(U[cellI] & diagUGrad)) + 1e-16);
-                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "SCurv")
@@ -164,10 +203,10 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             const volTensorField& gradU = tgradU();
 
             scalar val = 0;
-            forAll(inputFields[idxI], cellI)
+            forAll(features_[idxI], cellI)
             {
                 val = mag(U[cellI] & gradU[cellI]) / (mag(U[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI]) + 1e-16);
-                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "UOrth")
@@ -178,10 +217,10 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             const volTensorField& gradU = tgradU();
 
             scalar val = 0;
-            forAll(inputFields[idxI], cellI)
+            forAll(features_[idxI], cellI)
             {
                 val = mag(U[cellI] & gradU[cellI] & U[cellI]) / (mag(U[cellI]) * mag(gradU[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI] & U[cellI]) + 1e-16);
-                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "KoU2")
@@ -190,10 +229,10 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
             const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
             scalar val = 0;
-            forAll(inputFields[idxI], cellI)
+            forAll(features_[idxI], cellI)
             {
                 val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + 1e-16);
-                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "ReWall")
@@ -203,19 +242,19 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
             volScalarField nu = daModel_.getDATurbulenceModel().nu();
             scalar val = 0;
-            forAll(inputFields[idxI], cellI)
+            forAll(features_[idxI], cellI)
             {
                 val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
-                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "CoP")
         {
             // convective / production
-            daModel_.getTurbConvOverProd(inputFields[idxI]);
-            forAll(inputFields[idxI], cellI)
+            daModel_.getTurbConvOverProd(features_[idxI]);
+            forAll(features_[idxI], cellI)
             {
-                inputFields[idxI][cellI] = (inputFields[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (features_[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else if (inputName == "TauoK")
@@ -226,10 +265,10 @@ void DARegression::calcInput(List<List<scalar>>& inputFields)
             const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
             volSymmTensorField tau(2.0 / 3.0 * I * k - nut * twoSymm(fvc::grad(U)));
             scalar val = 0;
-            forAll(inputFields[idxI], cellI)
+            forAll(features_[idxI], cellI)
             {
                 val = mag(tau[cellI]) / (k[cellI] + 1e-16);
-                inputFields[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
         }
         else
@@ -252,7 +291,7 @@ label DARegression::compute()
             are the weights and biases. We order them in an 1D array, starting from the first input's weight and biases.
 
         daOption Dict: regressionModel
-            inputNames: a list of volScalarFields prescribed by inputFields
+            inputNames: a list of volScalarFields saved in the features_ pointerList
             hiddenLayerNeurons: number of neurons for each hidden layer. 
             example: {5, 3, 4} means three hidden layers with 5, 3, and 4 neurons.
     
@@ -264,7 +303,8 @@ label DARegression::compute()
         a volScalarField prescribed by outputName
     */
 
-    if (!active_)
+    // if the output variable is not found in the Db, just return and do nothing
+    if (!active_ || !mesh_.thisDb().foundObject<volScalarField>(outputName_))
     {
         return 0;
     }
@@ -277,10 +317,7 @@ label DARegression::compute()
     {
         label nHiddenLayers = hiddenLayerNeurons_.size();
 
-        List<List<scalar>> inputFields;
-        inputFields.setSize(inputNames_.size());
-
-        this->calcInput(inputFields);
+        this->calcInputFeatures();
 
         List<List<scalar>> layerVals;
         layerVals.setSize(nHiddenLayers);
@@ -309,7 +346,7 @@ label DARegression::compute()
                         forAll(inputNames_, neuronJ)
                         {
                             // weighted sum
-                            layerVals[layerI][neuronI] += inputFields[neuronJ][cellI] * parameters_[counterI];
+                            layerVals[layerI][neuronI] += features_[neuronJ][cellI] * parameters_[counterI];
                             counterI++;
                         }
                     }
@@ -371,10 +408,8 @@ label DARegression::compute()
     }
     else if (modelType_ == "radialBasisFunction")
     {
-        List<List<scalar>> inputFields;
-        inputFields.setSize(inputNames_.size());
 
-        this->calcInput(inputFields);
+        this->calcInputFeatures();
 
         label nInputs = inputNames_.size();
 
@@ -389,7 +424,7 @@ label DARegression::compute()
                 scalar expCoeff = 0.0;
                 for (label j = 0; j < nInputs; j++)
                 {
-                    scalar A = (inputFields[j][cellI] - parameters_[dP * i + 2 * j]) * (inputFields[j][cellI] - parameters_[dP * i + 2 * j]);
+                    scalar A = (features_[j][cellI] - parameters_[dP * i + 2 * j]) * (features_[j][cellI] - parameters_[dP * i + 2 * j]);
                     scalar B = 2 * parameters_[dP * i + 2 * j + 1] * parameters_[dP * i + 2 * j + 1];
                     expCoeff += A / B;
                 }

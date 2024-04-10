@@ -707,7 +707,7 @@ void DAkEpsilon::getFvMatrixFields(
     }
 }
 
-void DAkEpsilon::getTurbProdOverDestruct(scalarList& PoD) const
+void DAkEpsilon::getTurbProdOverDestruct(volScalarField& PoD) const
 {
     /*
     Description:
@@ -727,7 +727,7 @@ void DAkEpsilon::getTurbProdOverDestruct(scalarList& PoD) const
     }
 }
 
-void DAkEpsilon::getTurbConvOverProd(scalarList& CoP) const
+void DAkEpsilon::getTurbConvOverProd(volScalarField& CoP) const
 {
     /*
     Description:

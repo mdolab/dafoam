@@ -270,7 +270,7 @@ void DAModel::updateIntermediateVariables()
 
 }
 
-void DAModel::getTurbProdTerm(scalarList& prodTerm) const
+void DAModel::getTurbProdTerm(volScalarField& prodTerm) const
 {
     /*
     Description: 
@@ -292,7 +292,7 @@ void DAModel::getTurbProdTerm(scalarList& prodTerm) const
 
 }
 
-void DAModel::getTurbProdOverDestruct(scalarList& PoD) const
+void DAModel::getTurbProdOverDestruct(volScalarField& PoD) const
 {
     /*
     Description: 
@@ -314,7 +314,7 @@ void DAModel::getTurbProdOverDestruct(scalarList& PoD) const
 
 }
 
-void DAModel::getTurbConvOverProd(scalarList& CoP) const
+void DAModel::getTurbConvOverProd(volScalarField& CoP) const
 {
     /*
     Description: 

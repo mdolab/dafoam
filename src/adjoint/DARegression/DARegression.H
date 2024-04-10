@@ -99,6 +99,12 @@ protected:
     /// number of radial basis function
     label nRBFs_;
 
+    /// a list of scalarField to save the input features
+    PtrList<volScalarField> features_;
+
+    /// whether to write the feature fields to the disk
+    label writeFeatures_ = 0;
+
 public:
     /// Constructors
     DARegression(
@@ -117,7 +123,7 @@ public:
     label compute();
 
     /// calculate the input flow features
-    void calcInput(List<List<scalar>>& input);
+    void calcInputFeatures();
 
     /// get the number of parameters for this regression model
     label nParameters();
@@ -159,16 +165,13 @@ public:
     {
         if (active_ && printInputInfo_)
         {
-            List<List<scalar>> inputFields;
-            inputFields.setSize(inputNames_.size());
-
-            this->calcInput(inputFields);
+            this->calcInputFeatures();
 
             forAll(inputNames_, idxI)
             {
                 word name = inputNames_[idxI];
-                Info << "RegModel input info. " << name << " Min: " << gMin(inputFields[idxI]) << " Max: " << gMax(inputFields[idxI])
-                     << " Avg: " << gAverage(inputFields[idxI]) << " Std: " << sqrt(gSumSqr(inputFields[idxI]) / inputFields[idxI].size()) << endl;
+                Info << "RegModel input info. " << name << " Min: " << gMin(features_[idxI]) << " Max: " << gMax(features_[idxI])
+                     << " Avg: " << gAverage(features_[idxI]) << " Std: " << sqrt(gSumSqr(features_[idxI]) / features_[idxI].size()) << endl;
             }
         }
     }
