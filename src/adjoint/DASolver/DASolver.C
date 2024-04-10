@@ -228,8 +228,17 @@ void DASolver::calcObjStd(Time& runTime)
         is filled at least once, i.e., runTime.timeIndex() >= steps
     */
 
-    if (!primalObjStdActive_ || runTime.timeIndex() < 1)
+    if (!primalObjStdActive_)
     {
+        return;
+    }
+    else if (runTime.timeIndex() < 1)
+    {
+        // if primalObjStd is active and timeIndex = 0, we need to reset primalObjStd_ to a large value
+        // NOTE: we need to reset primalObjStd_ for each primal call!
+        // Because timeIndex == 0, we don't need to compute the objStd, so we can return
+        // we will start computing the ojbStd for timeIndex>=1
+        primalObjStd_ = 999.0;
         return;
     }
 
