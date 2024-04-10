@@ -1315,6 +1315,9 @@ public:
         return latestTime;
     }
 
+    /// initialize the objStd vars
+    void initObjStd();
+
     /// calculate the objective function's std
     void calcObjStd(Time& runTime);
 };

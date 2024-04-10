@@ -64,21 +64,8 @@ DASolver::DASolver(
     primalMinResTol_ = daOptionPtr_->getOption<scalar>("primalMinResTol");
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
 
-    // check if the objective function std is used in determining the primal convergence
-    primalObjStdActive_ = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "active");
-    if (primalObjStdActive_)
-    {
-        // if it is active, read in the tolerance and set a large value for the initial std
-        primalObjStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalObjStdTol", "tol");
-        primalObjStd_ = 1e10;
-    }
-    else
-    {
-        // if it is not active, set primalObjStdTol_ > primalObjStd_, such that it will
-        // always pass the condition in DASolver::loop (ignore primalObjStd)
-        primalObjStdTol_ = 1e-5;
-        primalObjStd_ = 0.0;
-    }
+    // initialize the objStd variables.
+    this->initObjStd();
 
     Info << "DAOpton initialized " << endl;
 }
@@ -187,25 +174,66 @@ label DASolver::loop(Time& runTime)
     }
 }
 
+void DASolver::initObjStd()
+{
+    /*
+    Description:
+        Initialize the objStd variables.
+    */
+
+    // check if the objective function std is used in determining the primal convergence
+    primalObjStdActive_ = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "active");
+    if (primalObjStdActive_)
+    {
+        // if it is active, read in the tolerance and set a large value for the initial std
+        primalObjStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalObjStdTol", "tol");
+        primalObjStd_ = 999.0;
+
+        label steps = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "steps");
+        primalObjSeries_.setSize(steps, 0.0);
+
+        word objFuncNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "objFuncName");
+
+        label objFuncNameFound = 0;
+        const dictionary& objFuncDict = daOptionPtr_->getAllOptions().subDict("objFunc");
+        forAll(objFuncDict.toc(), idxI)
+        {
+            word objFuncName = objFuncDict.toc()[idxI];
+            if (objFuncName == objFuncNameWanted)
+            {
+                objFuncNameFound = 1;
+            }
+        }
+        if (objFuncNameFound == 0)
+        {
+            FatalErrorIn("initObjStd") << "objStd->objFuncName not found! "
+                                       << abort(FatalError);
+        }
+    }
+    else
+    {
+        // if it is not active, set primalObjStdTol_ > primalObjStd_, such that it will
+        // always pass the condition in DASolver::loop (ignore primalObjStd)
+        primalObjStdTol_ = 1e-5;
+        primalObjStd_ = 0.0;
+    }
+}
+
 void DASolver::calcObjStd(Time& runTime)
 {
     /*
     Description:
         calculate the objective function's std, this will be used to stop the primal simulation and also 
-        evaluate whether the primal converges
+        evaluate whether the primal converges. We will start calculating the objStd when primalObjSeries_
+        is filled at least once, i.e., runTime.timeIndex() >= steps
     */
 
-    if (!primalObjStdActive_)
+    if (!primalObjStdActive_ || runTime.timeIndex() < 1)
     {
         return;
     }
 
     label steps = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "steps");
-
-    if (runTime.timeIndex() == 1)
-    {
-        primalObjSeries_.clear();
-    }
 
     word objFuncNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "objFuncName");
 
@@ -219,22 +247,21 @@ void DASolver::calcObjStd(Time& runTime)
             objFunPartSum += daObjFunc.getObjFuncValue();
         }
     }
-    primalObjSeries_.append(objFunPartSum);
+    label seriesI = (runTime.timeIndex() - 1) % steps;
+    primalObjSeries_[seriesI] = objFunPartSum;
 
-    label seriesSize = primalObjSeries_.size();
-
-    if (seriesSize >= steps)
+    if (runTime.timeIndex() >= steps)
     {
         scalar mean = 0;
-        for (label i = seriesSize - 1; i >= seriesSize - steps; i--)
+        forAll(primalObjSeries_, idxI)
         {
-            mean += primalObjSeries_[i];
+            mean += primalObjSeries_[idxI];
         }
         mean /= steps;
         primalObjStd_ = 0.0;
-        for (label i = seriesSize - 1; i >= seriesSize - steps; i--)
+        forAll(primalObjSeries_, idxI)
         {
-            primalObjStd_ += (primalObjSeries_[i] - mean) * (primalObjSeries_[i] - mean);
+            primalObjStd_ += (primalObjSeries_[idxI] - mean) * (primalObjSeries_[idxI] - mean);
         }
         primalObjStd_ = sqrt(primalObjStd_ / steps);
     }
@@ -328,6 +355,14 @@ void DASolver::printAllObjFuncs()
              << "-" << objFuncPart
              << "-" << daObjFunc.getObjFuncType()
              << ": " << objFuncVal;
+        if (primalObjStdActive_)
+        {
+            word objFuncNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "objFuncName");
+            if (objFuncNameWanted == objFuncName)
+            {
+                Info << " Std " << primalObjStd_;
+            }
+        }
         if (timeOperator == "average" || timeOperator == "sum")
         {
             Info << " Unsteady " << timeOperator << " " << unsteadyObjFuncs_[uKey];
