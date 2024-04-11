@@ -1472,7 +1472,7 @@ void DAkOmegaSSTLM::getFvMatrixFields(
     }
 }
 
-void DAkOmegaSSTLM::getTurbProdOverDestruct(scalarList& PoD) const
+void DAkOmegaSSTLM::getTurbProdOverDestruct(volScalarField& PoD) const
 {
     /*
     Description:
@@ -1487,13 +1487,9 @@ void DAkOmegaSSTLM::getTurbProdOverDestruct(scalarList& PoD) const
         (scalar(2) * alphaOmega2_) * (fvc::grad(k_) & fvc::grad(omega_)) / omega_);
 
     volScalarField F1(this->F1(CDkOmega));
-    volScalarField F23(this->F23());
 
-    volScalarField::Internal gamma(this->gamma(F1));
-    volScalarField::Internal beta(this->beta(F1));
-
-    volScalarField::Internal P = phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2());
-    volScalarField::Internal D = phase_() * rho_() * beta * sqr(omega_());
+    volScalarField::Internal P = phase_() * rho_() * Pk(G);
+    volScalarField::Internal D = phase_() * rho_() * epsilonByk(F1, tgradU()) * k_();
 
     forAll(P, cellI)
     {
@@ -1501,7 +1497,7 @@ void DAkOmegaSSTLM::getTurbProdOverDestruct(scalarList& PoD) const
     }
 }
 
-void DAkOmegaSSTLM::getTurbConvOverProd(scalarList& CoP) const
+void DAkOmegaSSTLM::getTurbConvOverProd(volScalarField& CoP) const
 {
     /*
     Description:
@@ -1517,13 +1513,9 @@ void DAkOmegaSSTLM::getTurbConvOverProd(scalarList& CoP) const
         (scalar(2) * alphaOmega2_) * (fvc::grad(k_) & fvc::grad(omega_)) / omega_);
 
     volScalarField F1(this->F1(CDkOmega));
-    volScalarField F23(this->F23());
 
-    volScalarField::Internal gamma(this->gamma(F1));
-    volScalarField::Internal beta(this->beta(F1));
-
-    volScalarField::Internal P = phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2());
-    volScalarField C = fvc::div(phaseRhoPhi_, omega_);
+    volScalarField::Internal P = phase_() * rho_() * Pk(G);
+    volScalarField C = fvc::div(phaseRhoPhi_, k_);
 
     forAll(P, cellI)
     {

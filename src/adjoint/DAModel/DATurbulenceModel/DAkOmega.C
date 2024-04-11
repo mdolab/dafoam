@@ -708,7 +708,7 @@ void DAkOmega::getFvMatrixFields(
     }
 }
 
-void DAkOmega::getTurbProdOverDestruct(scalarList& PoD) const
+void DAkOmega::getTurbProdOverDestruct(volScalarField& PoD) const
 {
     /*
     Description:
@@ -717,8 +717,8 @@ void DAkOmega::getTurbProdOverDestruct(scalarList& PoD) const
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
 
-    volScalarField P = gamma_ * phase_ * rho_ * G * omega_ / k_;
-    volScalarField D = beta_ * phase_ * rho_ * sqr(omega_);
+    volScalarField P = phase_ * rho_ * G;
+    volScalarField D = Cmu_ * phase_ * rho_ * omega_ * k_;
 
     forAll(P, cellI)
     {
@@ -726,7 +726,7 @@ void DAkOmega::getTurbProdOverDestruct(scalarList& PoD) const
     }
 }
 
-void DAkOmega::getTurbConvOverProd(scalarList& CoP) const
+void DAkOmega::getTurbConvOverProd(volScalarField& CoP) const
 {
     /*
     Description:
@@ -736,8 +736,8 @@ void DAkOmega::getTurbConvOverProd(scalarList& CoP) const
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
 
-    volScalarField P = gamma_ * phase_ * rho_ * G * omega_ / k_;
-    volScalarField C = fvc::div(phaseRhoPhi_, omega_);
+    volScalarField P = phase_ * rho_ * G;
+    volScalarField C = fvc::div(phaseRhoPhi_, k_);
 
     forAll(P, cellI)
     {

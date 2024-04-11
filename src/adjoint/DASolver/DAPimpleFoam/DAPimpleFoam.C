@@ -253,10 +253,12 @@ label DAPimpleFoam::solvePrimal(
         if (reduceIO && iter < nInstances)
         {
             this->writeAdjStates(reduceIOWriteMesh_, additionalOutput);
+            daRegressionPtr_->writeFeatures();
         }
         else
         {
             runTime.write();
+            daRegressionPtr_->writeFeatures();
         }
     }
 

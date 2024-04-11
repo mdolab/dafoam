@@ -707,7 +707,7 @@ void DAkEpsilon::getFvMatrixFields(
     }
 }
 
-void DAkEpsilon::getTurbProdOverDestruct(scalarList& PoD) const
+void DAkEpsilon::getTurbProdOverDestruct(volScalarField& PoD) const
 {
     /*
     Description:
@@ -718,8 +718,8 @@ void DAkEpsilon::getTurbProdOverDestruct(scalarList& PoD) const
         "kEpsilon:G",
         nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
 
-    volScalarField::Internal P = C1_ * phase_() * rho_() * G * epsilon_() / k_();
-    volScalarField::Internal D = C2_ * phase_() * rho_() * sqr(epsilon_()) / k_();
+    volScalarField::Internal P = phase_() * rho_() * G;
+    volScalarField::Internal D = phase_() * rho_() * epsilon_();
 
     forAll(P, cellI)
     {
@@ -727,7 +727,7 @@ void DAkEpsilon::getTurbProdOverDestruct(scalarList& PoD) const
     }
 }
 
-void DAkEpsilon::getTurbConvOverProd(scalarList& CoP) const
+void DAkEpsilon::getTurbConvOverProd(volScalarField& CoP) const
 {
     /*
     Description:
@@ -739,8 +739,8 @@ void DAkEpsilon::getTurbConvOverProd(scalarList& CoP) const
         "kEpsilon:G",
         nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
 
-    volScalarField::Internal P = C1_ * phase_() * rho_() * G * epsilon_() / k_();
-    volScalarField C = fvc::div(phaseRhoPhi_, epsilon_);
+    volScalarField::Internal P = phase_() * rho_() * G;
+    volScalarField C = fvc::div(phaseRhoPhi_, k_);
 
     forAll(P, cellI)
     {

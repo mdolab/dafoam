@@ -516,7 +516,7 @@ void DASpalartAllmaras::getFvMatrixFields(
     lower = nuTildaEqn.lower();
 }
 
-void DASpalartAllmaras::getTurbProdOverDestruct(scalarList& PoD) const
+void DASpalartAllmaras::getTurbProdOverDestruct(volScalarField& PoD) const
 {
     /*
     Description:
@@ -537,7 +537,7 @@ void DASpalartAllmaras::getTurbProdOverDestruct(scalarList& PoD) const
     }
 }
 
-void DASpalartAllmaras::getTurbConvOverProd(scalarList& CoP) const
+void DASpalartAllmaras::getTurbConvOverProd(volScalarField& CoP) const
 {
     /*
     Description:

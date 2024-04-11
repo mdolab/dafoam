@@ -71,6 +71,7 @@ aeroOptions = {
         "activationFunction": "tanh",
         "printInputInfo": False,
         "defaultOutputValue": 1.0,
+        "writeFeatures": True,
     },
     "objFunc": {
         "VAR": {
@@ -99,10 +100,12 @@ aeroOptions = {
     },
 }
 
+
 def regModel(val, DASolver):
     for idxI in range(len(val)):
         val1 = float(val[idxI])
         DASolver.setRegressionParameter(idxI, val1)
+
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
@@ -134,6 +137,57 @@ else:
 
     norm = np.linalg.norm(funcsSens["VAR"]["parameter"])
     funcsSens["VAR"]["parameter"] = norm
+
+    # test RBF regression
+    aeroOptions["regressionModel"] = {
+        "active": True,
+        "modelType": "radialBasisFunction",
+        "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+        "outputName": "betaFIOmega",
+        "nRBFs": 20,
+        "inputShift": [0.0, 0.0, 0.0, 0.0],
+        "inputScale": [1.0, 1.0, 0.0001, 1.0],
+        "outputShift": 1.0,
+        "outputScale": 1.0,
+        "printInputInfo": True,
+        "defaultOutputValue": 1.0,
+        "writeFeatures": True,
+    }
+
+    DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
+    nParameters = DASolver.solver.getNRegressionParameters()
+    parameter0 = np.ones(nParameters) * 0.03
+    DASolver.addInternalDV("parameter", parameter0, regModel, lower=-10, upper=10, scale=100.0)
+    DASolver()
+    funcs1 = {}
+    DASolver.evalFunctions(funcs1, evalFuncs=["VAR"])
+    funcs["VAR_RBF"] = funcs1["VAR"]
+
+    # test ReLU
+    aeroOptions["regressionModel"] = {
+        "active": True,
+        "modelType": "neuralNetwork",
+        "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+        "outputName": "betaFIOmega",
+        "hiddenLayerNeurons": [10, 10],
+        "inputShift": [0.0, 0.0, 0.0, 0.0],
+        "inputScale": [1.0, 1.0, 0.0001, 1.0],
+        "outputShift": 1.0,
+        "outputScale": 1.0,
+        "activationFunction": "ReLU",
+        "leakyCoeff": 0.1,
+        "printInputInfo": False,
+        "defaultOutputValue": 1.0,
+    }
+
+    DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
+    nParameters = DASolver.solver.getNRegressionParameters()
+    parameter0 = np.ones(nParameters) * 0.05
+    DASolver.addInternalDV("parameter", parameter0, regModel, lower=-10, upper=10, scale=100.0)
+    DASolver()
+    funcs2 = {}
+    DASolver.evalFunctions(funcs2, evalFuncs=["VAR"])
+    funcs["VAR_ReLU"] = funcs2["VAR"]
 
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)

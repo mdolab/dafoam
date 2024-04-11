@@ -8,6 +8,8 @@ DAOption/DAOption.C
 
 DAModel/DAModel.C
 
+DARegression/DARegression.C
+
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoSolidDisplacementFoam.C
 DAStateInfo/DAStateInfoLaplacianFoam.C

@@ -480,7 +480,7 @@ label DATurbulenceModel::isPrintTime(
     }
 }
 
-void DATurbulenceModel::getTurbProdTerm(scalarList& prodTerm) const
+void DATurbulenceModel::getTurbProdTerm(volScalarField& prodTerm) const
 {
     /*
     Description:
@@ -492,7 +492,7 @@ void DATurbulenceModel::getTurbProdTerm(scalarList& prodTerm) const
         << abort(FatalError);
 }
 
-void DATurbulenceModel::getTurbProdOverDestruct(scalarList& PoD) const
+void DATurbulenceModel::getTurbProdOverDestruct(volScalarField& PoD) const
 {
     /*
     Description:
@@ -504,7 +504,7 @@ void DATurbulenceModel::getTurbProdOverDestruct(scalarList& PoD) const
         << abort(FatalError);
 }
 
-void DATurbulenceModel::getTurbConvOverProd(scalarList& CoP) const
+void DATurbulenceModel::getTurbConvOverProd(volScalarField& CoP) const
 {
     /*
     Description:

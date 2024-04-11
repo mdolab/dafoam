@@ -148,10 +148,10 @@ public:
         scalarField& lower);
     
     /// return the value of the destruction term from the turbulence model
-    virtual void getTurbProdOverDestruct(scalarList& PoD) const;
+    virtual void getTurbProdOverDestruct(volScalarField& PoD) const;
 
     /// return the value of the convective over production term from the turbulence model
-    virtual void getTurbConvOverProd(scalarList& CoP) const;
+    virtual void getTurbConvOverProd(volScalarField& CoP) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
