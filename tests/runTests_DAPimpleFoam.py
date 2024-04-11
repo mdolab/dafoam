@@ -39,7 +39,7 @@ daOptions = {
         "PCMatPrecomputeInterval": 5,
         "PCMatUpdateInterval": 1,
         "objFuncTimeOperator": "average",
-        "additionalOutput": ["VoS", "PoD", "chiSA", "pGradStream", "PSoSS", "SCurv", "UOrth", "betaFINuTilda"],
+        "additionalOutput": ["betaFINuTilda"],
     },
     "printIntervalUnsteady": 1,
     "fvSource": {

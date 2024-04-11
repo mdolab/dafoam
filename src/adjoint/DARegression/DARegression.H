@@ -175,6 +175,18 @@ public:
             }
         }
     }
+
+    /// write the features to the disk
+    void writeFeatures()
+    {
+        if (writeFeatures_)
+        {
+            forAll(features_, idxI)
+            {
+                features_[idxI].write();
+            }
+        }
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

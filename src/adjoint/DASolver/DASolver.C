@@ -159,12 +159,14 @@ label DASolver::loop(Time& runTime)
         runTime.writeNow();
         prevPrimalSolTime_ = t;
         funcObj.end();
+        daRegressionPtr_->writeFeatures();
         return 0;
     }
     else if (t > endTime - 0.5 * deltaT)
     {
         prevPrimalSolTime_ = t;
         funcObj.end();
+        daRegressionPtr_->writeFeatures();
         return 0;
     }
     else

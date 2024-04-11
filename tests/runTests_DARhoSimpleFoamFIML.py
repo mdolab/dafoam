@@ -71,6 +71,7 @@ aeroOptions = {
         "activationFunction": "tanh",
         "printInputInfo": False,
         "defaultOutputValue": 1.0,
+        "writeFeatures": True,
     },
     "objFunc": {
         "VAR": {

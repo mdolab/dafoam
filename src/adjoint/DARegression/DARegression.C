@@ -47,7 +47,7 @@ DARegression::DARegression(
 
     active_ = regSubDict.getLabel("active");
 
-    // initialize parameters and give it large values
+    // initialize parameters
     if (active_)
     {
         if (modelType_ == "neuralNetwork")
@@ -65,14 +65,20 @@ DARegression::DARegression(
         }
         else
         {
-            FatalErrorIn("") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+            FatalErrorIn("DARegression") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+        }
+
+        // check the sizes
+        if (inputNames_.size() != inputShift_.size() || inputNames_.size() != inputScale_.size())
+        {
+            FatalErrorIn("DARegression") << "inputNames has different sizes than inputShift or inputScale" << abort(FatalError);
         }
 
         label nParameters = this->nParameters();
         parameters_.setSize(nParameters);
         forAll(parameters_, idxI)
         {
-            parameters_[idxI] = 1e16;
+            parameters_[idxI] = 0.0;
         }
 
         // initialize the ptr scalarFields
@@ -81,36 +87,17 @@ DARegression::DARegression(
         {
             word inputName = inputNames_[idxI];
 
-            if (writeFeatures_)
-            {
-                features_.set(
-                    idxI,
-                    new volScalarField(
-                        IOobject(
-                            inputName,
-                            mesh_.time().timeName(),
-                            mesh_,
-                            IOobject::NO_READ,
-                            IOobject::AUTO_WRITE),
+            features_.set(
+                idxI,
+                new volScalarField(
+                    IOobject(
+                        inputName,
+                        mesh_.time().timeName(),
                         mesh_,
-                        dimensionedScalar(inputName, dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
-                        "zeroGradient"));
-            }
-            else
-            {
-                features_.set(
-                    idxI,
-                    new volScalarField(
-                        IOobject(
-                            inputName,
-                            mesh_.time().timeName(),
-                            mesh_,
-                            IOobject::NO_READ,
-                            IOobject::NO_WRITE),
-                        mesh_,
-                        dimensionedScalar(inputName, dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
-                        "zeroGradient"));
-            }
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE),
+                    mesh_,
+                    dimensionedScalar(inputName, dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0)));
         }
     }
 }
@@ -137,6 +124,7 @@ void DARegression::calcInputFeatures()
             {
                 features_[idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else if (inputName == "PoD")
         {
@@ -146,6 +134,7 @@ void DARegression::calcInputFeatures()
             {
                 features_[idxI][cellI] = (features_[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else if (inputName == "chiSA")
         {
@@ -157,6 +146,7 @@ void DARegression::calcInputFeatures()
             {
                 features_[idxI][cellI] = (nuTilda[cellI] / nu[cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
 #endif
         }
         else if (inputName == "pGradStream")
@@ -170,11 +160,13 @@ void DARegression::calcInputFeatures()
             {
                 pG_denominator[cellI] += 1e-16;
             }
-            volScalarField pGradAlongStream = (U & pGrad) / pG_denominator;
+            volScalarField::Internal pGradAlongStream = (U() & pGrad()) / pG_denominator();
+
             forAll(features_[idxI], cellI)
             {
                 features_[idxI][cellI] = (pGradAlongStream[cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else if (inputName == "PSoSS")
         {
@@ -194,6 +186,7 @@ void DARegression::calcInputFeatures()
                 val = mag(pGrad[cellI]) / (mag(pGrad[cellI]) + mag(3.0 * cmptAv(U[cellI] & diagUGrad)) + 1e-16);
                 features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else if (inputName == "SCurv")
         {
@@ -208,6 +201,7 @@ void DARegression::calcInputFeatures()
                 val = mag(U[cellI] & gradU[cellI]) / (mag(U[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI]) + 1e-16);
                 features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else if (inputName == "UOrth")
         {
@@ -222,6 +216,7 @@ void DARegression::calcInputFeatures()
                 val = mag(U[cellI] & gradU[cellI] & U[cellI]) / (mag(U[cellI]) * mag(gradU[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI] & U[cellI]) + 1e-16);
                 features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else if (inputName == "KoU2")
         {
@@ -234,6 +229,7 @@ void DARegression::calcInputFeatures()
                 val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + 1e-16);
                 features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else if (inputName == "ReWall")
         {
@@ -247,6 +243,7 @@ void DARegression::calcInputFeatures()
                 val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
                 features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else if (inputName == "CoP")
         {
@@ -256,6 +253,7 @@ void DARegression::calcInputFeatures()
             {
                 features_[idxI][cellI] = (features_[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else if (inputName == "TauoK")
         {
@@ -270,6 +268,7 @@ void DARegression::calcInputFeatures()
                 val = mag(tau[cellI]) / (k[cellI] + 1e-16);
                 features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
+            features_[idxI].correctBoundaryConditions();
         }
         else
         {
