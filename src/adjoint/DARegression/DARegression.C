@@ -233,6 +233,7 @@ void DARegression::calcInputFeatures()
         }
         else if (inputName == "ReWall")
         {
+#ifndef SolidDASolver
             // wall distance based Reynolds number
             const volScalarField& y = mesh_.thisDb().lookupObject<volScalarField>("yWall");
             const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
@@ -244,6 +245,7 @@ void DARegression::calcInputFeatures()
                 features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
             }
             features_[idxI].correctBoundaryConditions();
+#endif
         }
         else if (inputName == "CoP")
         {
