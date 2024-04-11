@@ -102,7 +102,6 @@ void DASimpleFoam::initSolver()
         daFvSourcePtr_.reset(DAFvSource::New(
             fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
     }
-
 }
 
 label DASimpleFoam::solvePrimal(
@@ -185,11 +184,11 @@ label DASimpleFoam::solvePrimal(
 #include "pEqnSimple.H"
         }
 
-        // update the output field value at each iteration, if the regression model is active
-        regModelFail = daRegressionPtr_->compute();
-
         laminarTransport.correct();
         daTurbulenceModelPtr_->correct(printToScreen);
+
+        // update the output field value at each iteration, if the regression model is active
+        regModelFail = daRegressionPtr_->compute();
 
         if (this->validateStates())
         {

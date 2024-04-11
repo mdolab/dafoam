@@ -174,10 +174,10 @@ label DARhoSimpleFoam::solvePrimal(
 #include "EEqnRhoSimple.H"
 #include "pEqnRhoSimple.H"
 
+        daTurbulenceModelPtr_->correct(printToScreen);
+
         // update the output field value at each iteration, if the regression model is active
         regModelFail = daRegressionPtr_->compute();
-
-        daTurbulenceModelPtr_->correct(printToScreen);
 
         if (this->validateStates())
         {
