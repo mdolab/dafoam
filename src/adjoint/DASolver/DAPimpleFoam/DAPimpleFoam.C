@@ -211,11 +211,11 @@ label DAPimpleFoam::solvePrimal(
 #include "pEqnPimple.H"
             }
 
-            // update the output field value at each iteration, if the regression model is active
-            fail = daRegressionPtr_->compute();
-
             laminarTransport.correct();
             daTurbulenceModelPtr_->correct(pimplePrintToScreen);
+
+            // update the output field value at each iteration, if the regression model is active
+            fail = daRegressionPtr_->compute();
         }
 
         regModelFail += fail;

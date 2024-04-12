@@ -165,11 +165,11 @@ label DASimpleTFoam::solvePrimal(
 #include "TEqnSimpleT.H"
         }
 
-        // update the output field value at each iteration, if the regression model is active
-        regModelFail = daRegressionPtr_->compute();
-
         laminarTransport.correct();
         daTurbulenceModelPtr_->correct(printToScreen);
+
+        // update the output field value at each iteration, if the regression model is active
+        regModelFail = daRegressionPtr_->compute();
 
         if (this->validateStates())
         {
