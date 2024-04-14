@@ -1,13 +1,13 @@
 Dictionary Key: VAR
-@value    19.99003057277397 1e-08 1e-10
-Dictionary Key: VAR_RBF
-@value    19.98999618847414 1e-08 1e-10
-Dictionary Key: VAR_ReLU
-@value    19.99092771152761 1e-08 1e-10
+@value    19.98990109204323 1e-08 1e-10
+Dictionary Key: VAR_RBF_ReLU
+@value    19.99022358408163 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10
 Dictionary Key: VAR
-Dictionary Key: parameter
-@value 0.002477420843246395 0.0001 1e-06
+Dictionary Key: parameter1
+@value 0.002543197508377707 0.0001 1e-06
+Dictionary Key: parameter2
+@value 0.005268429858563708 0.0001 1e-06
 Dictionary Key: fail
 @value                    0 0.0001 1e-06

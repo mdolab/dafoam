@@ -60,18 +60,38 @@ aeroOptions = {
     },
     "regressionModel": {
         "active": True,
-        "modelType": "neuralNetwork",
-        "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
-        "outputName": "betaFIOmega",
-        "hiddenLayerNeurons": [10, 10],
-        "inputShift": [0.0, 0.0, 0.0, 0.0],
-        "inputScale": [1.0, 1.0, 0.0001, 1.0],
-        "outputShift": 1.0,
-        "outputScale": 1.0,
-        "activationFunction": "tanh",
-        "printInputInfo": False,
-        "defaultOutputValue": 1.0,
-        "writeFeatures": True,
+        "model1": {
+            "modelType": "neuralNetwork",
+            "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+            "outputName": "betaFIOmega",
+            "hiddenLayerNeurons": [10, 10],
+            "inputShift": [0.0, 0.0, 0.0, 0.0],
+            "inputScale": [10000.0, 0.1, 0.0001, 1.0],
+            "outputShift": 1.0,
+            "outputScale": 1.0,
+            "activationFunction": "tanh",
+            "printInputInfo": True,
+            "defaultOutputValue": 1.0,
+            "writeFeatures": True,
+            "outputUpperBound": 1e2,
+            "outputLowerBound": -1e2,
+        },
+        "model2": {
+            "modelType": "neuralNetwork",
+            "inputNames": ["KoU2", "PSoSS", "PoD", "TauoK"],
+            "outputName": "betaFIK",
+            "hiddenLayerNeurons": [20, 20],
+            "inputShift": [0.0, 0.0, 0.0, 0.0],
+            "inputScale": [10000.0, 1.0, 0.01, 1.0],
+            "outputShift": 1.0,
+            "outputScale": 1.0,
+            "activationFunction": "tanh",
+            "printInputInfo": True,
+            "defaultOutputValue": 1.0,
+            "writeFeatures": True,
+            "outputUpperBound": 1e2,
+            "outputLowerBound": -1e2,
+        },
     },
     "objFunc": {
         "VAR": {
@@ -96,22 +116,34 @@ aeroOptions = {
     "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     # Design variable setup
     "designVar": {
-        "parameter": {"designVarType": "RegPar"},
+        "parameter1": {"designVarType": "RegPar", "modelName": "model1"},
+        "parameter2": {"designVarType": "RegPar", "modelName": "model2"},
     },
 }
 
 
-def regModel(val, DASolver):
+def regModel1(val, DASolver):
     for idxI in range(len(val)):
         val1 = float(val[idxI])
-        DASolver.setRegressionParameter(idxI, val1)
+        DASolver.setRegressionParameter("model1", idxI, val1)
+
+
+def regModel2(val, DASolver):
+    for idxI in range(len(val)):
+        val1 = float(val[idxI])
+        DASolver.setRegressionParameter("model2", idxI, val1)
 
 
 # DAFoam
 DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
-nParameters = DASolver.solver.getNRegressionParameters()
-parameter0 = np.ones(nParameters) * 0.01
-DASolver.addInternalDV("parameter", parameter0, regModel, lower=-10, upper=10, scale=100.0)
+
+nParameters1 = DASolver.getNRegressionParameters("model1")
+parameter01 = np.ones(nParameters1) * 0.01
+DASolver.addInternalDV("parameter1", parameter01, regModel1, lower=-10, upper=10, scale=100.0)
+
+nParameters2 = DASolver.getNRegressionParameters("model2")
+parameter02 = np.ones(nParameters2) * 0.015
+DASolver.addInternalDV("parameter2", parameter02, regModel2, lower=-10, upper=10, scale=100.0)
 # set evalFuncs
 evalFuncs = []
 DASolver.setEvalFuncs(evalFuncs)
@@ -135,59 +167,59 @@ else:
     funcsSens = {}
     funcsSens, fail = optFuncs.calcObjFuncSens(iDV, funcs)
 
-    norm = np.linalg.norm(funcsSens["VAR"]["parameter"])
-    funcsSens["VAR"]["parameter"] = norm
+    norm1 = np.linalg.norm(funcsSens["VAR"]["parameter1"])
+    funcsSens["VAR"]["parameter1"] = norm1
 
-    # test RBF regression
+    norm2 = np.linalg.norm(funcsSens["VAR"]["parameter2"])
+    funcsSens["VAR"]["parameter2"] = norm2
+
+    # test RBF regression and ReLU
     aeroOptions["regressionModel"] = {
         "active": True,
-        "modelType": "radialBasisFunction",
-        "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
-        "outputName": "betaFIOmega",
-        "nRBFs": 20,
-        "inputShift": [0.0, 0.0, 0.0, 0.0],
-        "inputScale": [1.0, 1.0, 0.0001, 1.0],
-        "outputShift": 1.0,
-        "outputScale": 1.0,
-        "printInputInfo": True,
-        "defaultOutputValue": 1.0,
-        "writeFeatures": True,
+        "model1": {
+            "modelType": "radialBasisFunction",
+            "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+            "outputName": "betaFIOmega",
+            "nRBFs": 20,
+            "inputShift": [0.0, 0.0, 0.0, 0.0],
+            "inputScale": [10000.0, 0.1, 0.0001, 1.0],
+            "outputShift": 1.0,
+            "outputScale": 1.0,
+            "printInputInfo": True,
+            "defaultOutputValue": 1.0,
+            "writeFeatures": True,
+            "outputUpperBound": 1e2,
+            "outputLowerBound": -1e2,
+        },
+        "model2": {
+            "modelType": "neuralNetwork",
+            "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+            "outputName": "betaFIOmega",
+            "hiddenLayerNeurons": [10, 10],
+            "inputShift": [0.0, 0.0, 0.0, 0.0],
+            "inputScale": [10000.0, 0.1, 0.0001, 1.0],
+            "outputShift": 1.0,
+            "outputScale": 1.0,
+            "activationFunction": "relu",
+            "leakyCoeff": 0.1,
+            "printInputInfo": False,
+            "defaultOutputValue": 1.0,
+            "outputUpperBound": 1e2,
+            "outputLowerBound": -1e2,
+        },
     }
 
     DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
-    nParameters = DASolver.solver.getNRegressionParameters()
-    parameter0 = np.ones(nParameters) * 0.03
-    DASolver.addInternalDV("parameter", parameter0, regModel, lower=-10, upper=10, scale=100.0)
+    nParameters1 = DASolver.getNRegressionParameters("model1")
+    parameter01 = np.ones(nParameters1) * 0.05
+    DASolver.addInternalDV("parameter1", parameter01, regModel1, lower=-10, upper=10, scale=100.0)
+    nParameters2 = DASolver.getNRegressionParameters("model2")
+    parameter02 = np.ones(nParameters2) * 0.05
+    DASolver.addInternalDV("parameter2", parameter02, regModel2, lower=-10, upper=10, scale=100.0)
     DASolver()
     funcs1 = {}
     DASolver.evalFunctions(funcs1, evalFuncs=["VAR"])
-    funcs["VAR_RBF"] = funcs1["VAR"]
-
-    # test ReLU
-    aeroOptions["regressionModel"] = {
-        "active": True,
-        "modelType": "neuralNetwork",
-        "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
-        "outputName": "betaFIOmega",
-        "hiddenLayerNeurons": [10, 10],
-        "inputShift": [0.0, 0.0, 0.0, 0.0],
-        "inputScale": [1.0, 1.0, 0.0001, 1.0],
-        "outputShift": 1.0,
-        "outputScale": 1.0,
-        "activationFunction": "ReLU",
-        "leakyCoeff": 0.1,
-        "printInputInfo": False,
-        "defaultOutputValue": 1.0,
-    }
-
-    DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
-    nParameters = DASolver.solver.getNRegressionParameters()
-    parameter0 = np.ones(nParameters) * 0.05
-    DASolver.addInternalDV("parameter", parameter0, regModel, lower=-10, upper=10, scale=100.0)
-    DASolver()
-    funcs2 = {}
-    DASolver.evalFunctions(funcs2, evalFuncs=["VAR"])
-    funcs["VAR_ReLU"] = funcs2["VAR"]
+    funcs["VAR_RBF_ReLU"] = funcs1["VAR"]
 
     if gcomm.rank == 0:
         reg_write_dict(funcs, 1e-8, 1e-10)

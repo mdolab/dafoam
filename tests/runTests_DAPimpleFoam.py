@@ -62,17 +62,22 @@ daOptions = {
     },
     "regressionModel": {
         "active": True,
-        "modelType": "neuralNetwork",
-        "inputNames": ["VoS", "PoD", "chiSA", "pGradStream", "PSoSS", "SCurv", "UOrth"],
-        "outputName": "betaFINuTilda",
-        "hiddenLayerNeurons": [5, 5],
-        "inputShift": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        "inputScale": [1.0, 0.00001, 0.01, 1.0, 1.0, 1.0, 1.0],
-        "outputShift": 1.0,
-        "outputScale": 1.0,
-        "activationFunction": "tanh",
-        "printInputInfo": False,
-        "writeFeatures": True,
+        "model1": {
+            "modelType": "neuralNetwork",
+            "inputNames": ["VoS", "PoD", "chiSA", "pGradStream", "PSoSS", "SCurv", "UOrth"],
+            "outputName": "betaFINuTilda",
+            "hiddenLayerNeurons": [5, 5],
+            "inputShift": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "inputScale": [1.0, 0.00001, 0.01, 1.0, 1.0, 1.0, 1.0],
+            "outputShift": 1.0,
+            "outputScale": 1.0,
+            "activationFunction": "tanh",
+            "printInputInfo": True,
+            "writeFeatures": True,
+            "outputUpperBound": 1e2,
+            "outputLowerBound": -1e2,
+            "defaultOutputValue": 1.0,
+        },
     },
     "objFunc": {
         "CD": {
@@ -107,9 +112,9 @@ daOptions = {
                 "scale": 1.0,
                 "addToAdjoint": True,
                 "calcRefVar": True,
-                "ref": [0.1, 0.05, 0.04, 0.02, 0.02, 0.01, 0.0, -0.01, -0.01, -0.02]
+                "ref": [0.1, 0.05, 0.04, 0.02, 0.02, 0.01, 0.0, -0.01, -0.01, -0.02],
             }
-        }
+        },
     },
     "adjStateOrdering": "cell",
     "adjEqnOption": {
@@ -133,7 +138,7 @@ daOptions = {
             "designVarType": "ACTD",
             "comps": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
         },
-        "parameter": {"designVarType": "RegPar"},
+        "parameter": {"designVarType": "RegPar", "modelName": "model1"},
     },
 }
 
@@ -230,7 +235,7 @@ DVGeo.addGlobalDV(
 def regModel(val, geo):
     for idxI in range(len(val)):
         val1 = float(val[idxI])
-        DASolver.setRegressionParameter(idxI, val1)
+        DASolver.setRegressionParameter("model1", idxI, val1)
 
 
 # =============================================================================
@@ -238,7 +243,7 @@ def regModel(val, geo):
 # =============================================================================
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
 
-nParameters = DASolver.solver.getNRegressionParameters()
+nParameters = DASolver.getNRegressionParameters("model1")
 
 parameter0 = np.ones(nParameters) * 0.1
 DASolver.addInternalDV("parameter", parameter0, regModel, lower=-100.0, upper=100.0, scale=1.0)

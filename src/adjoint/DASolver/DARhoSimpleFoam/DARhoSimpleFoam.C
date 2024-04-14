@@ -146,9 +146,6 @@ label DARhoSimpleFoam::solvePrimal(
         }
     }
 
-    // check if the parameters are set in the Python layer
-    daRegressionPtr_->validate();
-
     // if useMeanStates is used, we need to zero meanStates before the primal run
     this->zeroMeanStates();
 

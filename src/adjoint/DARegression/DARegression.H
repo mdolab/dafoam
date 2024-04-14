@@ -48,62 +48,65 @@ protected:
     /// DAModel object
     const DAModel& daModel_;
 
-    /// the type of regression model
-    word modelType_;
-
-    /// a list of words for the inputs
-    wordList inputNames_;
-
-    /// a list of words for the outputs
-    word outputName_;
-
-    /// number of neurons hidden layers of the neural network
-    labelList hiddenLayerNeurons_;
-
-    /// we can shift each input. we always shift before scaling it.
-    scalarList inputShift_;
-
-    /// we can scale each input. we always shift before scaling it.
-    scalarList inputScale_;
-
-    /// we can shift the output. we always shift before scaling it.
-    scalar outputShift_;
-
-    /// we can scale the output. we always shift before scaling it.
-    scalar outputScale_;
-
-    /// the parameters for the regression model
-    scalarList parameters_;
-
     /// whether the regression model is active
     label active_;
 
+    /// name of the regression models
+    wordList modelNames_;
+
+    /// the type of regression model
+    HashTable<word> modelType_;
+
+    /// a list of words for the inputs
+    HashTable<wordList> inputNames_;
+
+    /// a list of words for the outputs
+    HashTable<word> outputName_;
+
+    /// number of neurons hidden layers of the neural network
+    HashTable<labelList> hiddenLayerNeurons_;
+
+    /// we can shift each input. we always shift before scaling it.
+    HashTable<scalarList> inputShift_;
+
+    /// we can scale each input. we always shift before scaling it.
+    HashTable<scalarList> inputScale_;
+
+    /// we can shift the output. we always shift before scaling it.
+    HashTable<scalar> outputShift_;
+
+    /// we can scale the output. we always shift before scaling it.
+    HashTable<scalar> outputScale_;
+
+    /// the parameters for the regression model
+    HashTable<scalarList> parameters_;
+
     /// neural network activation function
-    word activationFunction_;
+    HashTable<word> activationFunction_;
 
     /// if the ReLU activation function is used we can prescribe a potentially leaky coefficient
-    scalar leakyCoeff_ = 0.0;
+    HashTable<scalar> leakyCoeff_;
 
     /// the upper bound for the output
-    scalar outputUpperBound_;
+    HashTable<scalar> outputUpperBound_;
 
     /// the lower bound for the output
-    scalar outputLowerBound_;
+    HashTable<scalar> outputLowerBound_;
 
     /// whether to print the input range info this is used to scale the input
-    label printInputInfo_;
+    HashTable<label> printInputInfo_;
 
     /// default output values
-    scalar defaultOutputValue_;
+    HashTable<scalar> defaultOutputValue_;
 
     /// number of radial basis function
-    label nRBFs_;
+    HashTable<label> nRBFs_;
 
     /// a list of scalarField to save the input features
-    PtrList<volScalarField> features_;
+    HashTable<PtrList<volScalarField>> features_;
 
     /// whether to write the feature fields to the disk
-    label writeFeatures_ = 0;
+    HashTable<label> writeFeatures_;
 
 public:
     /// Constructors
@@ -123,55 +126,45 @@ public:
     label compute();
 
     /// calculate the input flow features
-    void calcInputFeatures();
+    void calcInputFeatures(word modelName);
 
     /// get the number of parameters for this regression model
-    label nParameters();
+    label nParameters(word modelName);
 
     /// get a specific parameter value
-    scalar getParameter(label idxI)
+    scalar getParameter(word modelName, label idxI)
     {
-        return parameters_[idxI];
+        return parameters_[modelName][idxI];
     }
 
     /// set a value to a parameter give an index and a value
-    void setParameter(label idxI, scalar val)
+    void setParameter(word modelName, label idxI, scalar val)
     {
-        parameters_[idxI] = val;
+        parameters_[modelName][idxI] = val;
     }
 
-    /// check if the regression model is initialized properly
-    void validate()
+    /// check if the output values are valid otherwise bound or fix them
+    label checkOutput(word modelName, volScalarField& outputField);
+
+    /// print the input
+    void printInputInfo()
     {
         if (!active_)
         {
             return;
         }
-        else
+        forAll(modelNames_, idxI)
         {
-            scalar testVal = this->getParameter(0);
-            if (fabs(testVal) > 1e15)
+            word modelName = modelNames_[idxI];
+            if (printInputInfo_[modelName])
             {
-                FatalErrorIn("") << "regressionModel is active but the parameter values are not set!" << abort(FatalError);
-            }
-        }
-    }
-
-    /// check if the output values are valid otherwise bound or fix them
-    label checkOutput(volScalarField& outputField);
-
-    /// print the input
-    void printInputInfo()
-    {
-        if (active_ && printInputInfo_)
-        {
-            this->calcInputFeatures();
-
-            forAll(inputNames_, idxI)
-            {
-                word name = inputNames_[idxI];
-                Info << "RegModel input info. " << name << " Min: " << gMin(features_[idxI]) << " Max: " << gMax(features_[idxI])
-                     << " Avg: " << gAverage(features_[idxI]) << " Std: " << sqrt(gSumSqr(features_[idxI]) / features_[idxI].size()) << endl;
+                Info << "RegModel input info for " << modelName << endl;
+                forAll(inputNames_[modelName], idxI)
+                {
+                    word name = inputNames_[modelName][idxI];
+                    Info << name << " Min: " << gMin(features_[modelName][idxI]) << " Max: " << gMax(features_[modelName][idxI])
+                         << " Avg: " << gAverage(features_[modelName][idxI]) << " Std: " << sqrt(gSumSqr(features_[modelName][idxI]) / features_[modelName][idxI].size()) << endl;
+                }
             }
         }
     }
@@ -179,11 +172,19 @@ public:
     /// write the features to the disk
     void writeFeatures()
     {
-        if (writeFeatures_)
+        if (!active_)
         {
-            forAll(features_, idxI)
+            return;
+        }
+        forAll(modelNames_, idxI)
+        {
+            word modelName = modelNames_[idxI];
+            if (writeFeatures_[modelName])
             {
-                features_[idxI].write();
+                forAll(features_[modelName], idxI)
+                {
+                    features_[modelName][idxI].write();
+                }
             }
         }
     }

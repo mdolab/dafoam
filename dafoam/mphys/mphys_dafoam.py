@@ -664,7 +664,8 @@ class DAFoamSolver(ImplicitComponent):
                     distributed = designVariables[dvName]["distributed"]
                 self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "RegPar":
-                nParameters = self.DASolver.solver.getNRegressionParameters()
+                modelName = designVariables[dvName]["modelName"]
+                nParameters = self.DASolver.solver.getNRegressionParameters(modelName.encode())
                 self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
@@ -915,7 +916,11 @@ class DAFoamSolver(ImplicitComponent):
                         product = np.zeros_like(parameters)
                         seeds = d_residuals["%s_states" % self.discipline]
 
-                        DASolver.solverAD.calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, product)
+                        modelName = designVariables[inputName]["modelName"]
+
+                        DASolver.solverAD.calcdRdRegParTPsiAD(
+                            volCoords, states, parameters, seeds, modelName.encode(), product
+                        )
 
                         # reduce to make sure all procs get the same product
                         product = self.comm.allreduce(product, op=MPI.SUM)
@@ -1238,7 +1243,8 @@ class DAFoamFunctions(ExplicitComponent):
                     distributed = designVariables[dvName]["distributed"]
                 self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "RegPar":
-                nParameters = self.DASolver.solver.getNRegressionParameters()
+                modelName = designVariables[dvName]["modelName"]
+                nParameters = self.DASolver.solver.getNRegressionParameters(modelName.encode())
                 self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
@@ -1456,8 +1462,16 @@ class DAFoamFunctions(ExplicitComponent):
                         parameters = inputs[inputName]
                         product = np.zeros_like(parameters)
 
+                        modelName = designVariables[inputName]["modelName"]
+
                         DASolver.solverAD.calcdFdRegParAD(
-                            volCoords, states, parameters, objFuncName.encode(), inputName.encode(), product
+                            volCoords,
+                            states,
+                            parameters,
+                            objFuncName.encode(),
+                            inputName.encode(),
+                            modelName.encode(),
+                            product,
                         )
 
                         d_inputs[inputName] += product * fBar

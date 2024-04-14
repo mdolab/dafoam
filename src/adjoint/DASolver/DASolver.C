@@ -5900,6 +5900,7 @@ void DASolver::calcdFdRegParAD(
     const double* parameters,
     const word objFuncName,
     const word designVarName,
+    const word modelName,
     double* dFdRegPar)
 {
 #ifdef CODI_AD_REVERSE
@@ -5916,12 +5917,14 @@ void DASolver::calcdFdRegParAD(
         objFuncName: the name of the objective function
 
         designVarName: name of the design variable
+
+        modelName: regression model name defined in the regressionModel dict
     
     Output:
         dFdRegPar: dF/dRegPar
     */
 
-    Info << "Calculating dFdRegPar using reverse-mode AD" << endl;
+    Info << "Calculating dFdRegPar using reverse-mode AD: " << modelName << endl;
 
     scalar* volCoordsArray = new scalar[daIndexPtr_->nLocalXv];
     for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
@@ -5935,7 +5938,7 @@ void DASolver::calcdFdRegParAD(
         statesArray[i] = states[i];
     }
 
-    label nParameters = this->getNRegressionParameters();
+    label nParameters = this->getNRegressionParameters(modelName);
     scalar* parametersArray = new scalar[nParameters];
     for (label i = 0; i < nParameters; i++)
     {
@@ -5974,7 +5977,7 @@ void DASolver::calcdFdRegParAD(
         }
         for (label i = 0; i < nParameters; i++)
         {
-            this->setRegressionParameter(i, parametersArray[i]);
+            this->setRegressionParameter(modelName, i, parametersArray[i]);
         }
 
         // update the BC, this func will also call regressionModelCompute
@@ -6026,7 +6029,7 @@ void DASolver::calcdFdRegParAD(
         }
         for (label i = 0; i < nParameters; i++)
         {
-            this->setRegressionParameter(i, parametersArray[i]);
+            this->setRegressionParameter(modelName, i, parametersArray[i]);
         }
 
         this->updateStateBoundaryConditions();
@@ -6160,6 +6163,7 @@ void DASolver::calcdRdRegParTPsiAD(
     const double* states,
     const double* parameters,
     const double* seeds,
+    const word modelName,
     double* product)
 {
 #ifdef CODI_AD_REVERSE
@@ -6176,12 +6180,14 @@ void DASolver::calcdRdRegParTPsiAD(
         parameters: the parameters for the regression model
 
         psi: the vector to multiply dRdXv
+
+        modelName: the regression model name defined in the regressionModel dict
     
     Output:
         prodVec: the matrix-vector products [dR/dRegParameters]^T*Psi
     */
 
-    Info << "Calculating [dRdRegPar]^T * Psi using reverse-mode AD" << endl;
+    Info << "Calculating [dRdRegPar]^T * Psi using reverse-mode AD: " << modelName << endl;
 
     scalar* volCoordsArray = new scalar[daIndexPtr_->nLocalXv];
     for (label i = 0; i < daIndexPtr_->nLocalXv; i++)
@@ -6195,7 +6201,7 @@ void DASolver::calcdRdRegParTPsiAD(
         statesArray[i] = states[i];
     }
 
-    label nParameters = this->getNRegressionParameters();
+    label nParameters = this->getNRegressionParameters(modelName);
     scalar* parametersArray = new scalar[nParameters];
     for (label i = 0; i < nParameters; i++)
     {
@@ -6219,7 +6225,7 @@ void DASolver::calcdRdRegParTPsiAD(
     }
     for (label i = 0; i < nParameters; i++)
     {
-        this->setRegressionParameter(i, parametersArray[i]);
+        this->setRegressionParameter(modelName, i, parametersArray[i]);
     }
 
     // update the BC, this func will also call regressionModelCompute
@@ -6260,7 +6266,7 @@ void DASolver::calcdRdRegParTPsiAD(
     }
     for (label i = 0; i < nParameters; i++)
     {
-        this->setRegressionParameter(i, parametersArray[i]);
+        this->setRegressionParameter(modelName, i, parametersArray[i]);
     }
     this->updateStateBoundaryConditions();
     this->calcResiduals();

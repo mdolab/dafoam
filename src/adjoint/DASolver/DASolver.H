@@ -612,6 +612,7 @@ public:
         const double* parameters,
         const word objFuncName,
         const word designVarName,
+        const word modelName,
         double* dFdRegPar);
 
     /// compute dRdWOld^T*Psi
@@ -1177,30 +1178,30 @@ public:
     }
 
     /// get the number of regression model parameters
-    label getNRegressionParameters()
+    label getNRegressionParameters(word modelName)
     {
 #ifdef SolidDASolver
         return 0;
 #else
-        return daRegressionPtr_->nParameters();
+        return daRegressionPtr_->nParameters(modelName);
 #endif
     }
 
     /// get the regression parameter
-    scalar getRegressionParameter(const label idxI)
+    scalar getRegressionParameter(word modelName, const label idxI)
     {
 #ifdef SolidDASolver
         return 0.0;
 #else
-        return daRegressionPtr_->getParameter(idxI);
+        return daRegressionPtr_->getParameter(modelName, idxI);
 #endif
     }
 
     /// set the regression parameter
-    void setRegressionParameter(const label idxI, scalar val)
+    void setRegressionParameter(word modelName, const label idxI, scalar val)
     {
 #ifndef SolidDASolver
-        daRegressionPtr_->setParameter(idxI, val);
+        daRegressionPtr_->setParameter(modelName, idxI, val);
 #endif
     }
 
@@ -1218,6 +1219,7 @@ public:
         const double* states,
         const double* parameters,
         const double* seeds,
+        const word modelName,
         double* product);
 
     /// update the primal state boundary condition based on the primalBC dict
