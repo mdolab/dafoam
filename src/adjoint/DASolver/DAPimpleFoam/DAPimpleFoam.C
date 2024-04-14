@@ -173,9 +173,6 @@ label DAPimpleFoam::solvePrimal(
     scalar deltaT = runTime.deltaT().value();
     label nInstances = round(endTime / deltaT);
 
-    // check if the parameters are set in the Python layer
-    daRegressionPtr_->validate();
-
     // main loop
     label regModelFail = 0;
     label fail = 0;

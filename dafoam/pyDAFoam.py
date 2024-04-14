@@ -514,21 +514,43 @@ class DAOPTION(object):
         self.useConstrainHbyA = False
 
         ## parameters for regression models
+        ## we support defining multiple regression models. Each regression model can have only one output
+        ## but it can have multiple input features. Refer to src/adjoint/DARegression/DARegression.C for
+        ## a full list of supported input features. There are two supported regression model types:
+        ## neural network and radial basis function. We can shift and scale the inputs and outputs
+        ## we can also prescribe a default output value. The default output will be used in resetting
+        ## when they are nan, inf, or out of the prescribe upper and lower bounds
         self.regressionModel = {
             "active": False,
-            "modelType": "neuralNetwork",
-            "inputNames": ["None"],
-            "outputName": "None",
-            "hiddenLayerNeurons": [0],
-            "inputShift": [0.0],
-            "inputScale": [1.0],
-            "outputShift": 0.0,
-            "outputScale": 1.0,
-            "outputUpperBound": 1e8,
-            "outputLowerBound": -1e8,
-            "activationFunction": "sigmoid",
-            "printInputInfo": True,
-            "defaultOutputValue": 0.0,
+            # "model1": {
+            #    "modelType": "neuralNetwork",
+            #    "inputNames": ["PoD", "VoS", "PSoSS", "chiSA"],
+            #    "outputName": "betaFINuTilda",
+            #    "hiddenLayerNeurons": [20, 20],
+            #    "inputShift": [0.0],
+            #    "inputScale": [1.0],
+            #    "outputShift": 1.0,
+            #    "outputScale": 1.0,
+            #    "outputUpperBound": 1e1,
+            #    "outputLowerBound": -1e1,
+            #    "activationFunction": "sigmoid",  # other options are relu and tanh
+            #    "printInputInfo": True,
+            #    "defaultOutputValue": 1.0,
+            # },
+            # "model2": {
+            #    "modelType": "radialBasisFunction",
+            #    "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
+            #    "outputName": "betaFIOmega",
+            #    "nRBFs": 50,
+            #    "inputShift": [0.0],
+            #    "inputScale": [1.0],
+            #    "outputShift": 1.0,
+            #    "outputScale": 1.0,
+            #    "outputUpperBound": 1e1,
+            #    "outputLowerBound": -1e1,
+            #    "printInputInfo": True,
+            #    "defaultOutputValue": 1.0,
+            # },
         }
 
         ## whether to use averaged states
@@ -539,10 +561,7 @@ class DAOPTION(object):
         ## we use no time steps for averaging. 0.8 means we use the last 20% of the time step for averaging.
         ## We usually don't use 0 because the flow will need some spin up time, so using the spin-up
         ## flow field for meanStates will be slightly inaccurate.
-        self.useMeanStates = {
-            "active": False,
-            "start": 0.5
-        }
+        self.useMeanStates = {"active": False, "start": 0.5}
 
         # *********************************************************************************************
         # ************************************ Advance Options ****************************************
@@ -2181,7 +2200,7 @@ class PYDAFOAM(object):
             else:
                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
 
-    def calcTotalDerivsRegPar(self, objFuncName, designVarName, dFScaling=1.0, accumulateTotal=False):
+    def calcTotalDerivsRegPar(self, objFuncName, designVarName, modelName, dFScaling=1.0, accumulateTotal=False):
 
         nDVs = 0
         parameters = None
@@ -2195,7 +2214,7 @@ class PYDAFOAM(object):
             nDVs = len(self.internalDV[designVarName]["init"])
             parameters = self.internalDV[designVarName]["value"]
 
-        nParameters = self.solver.getNRegressionParameters()
+        nParameters = self.getNRegressionParameters(modelName)
         if nDVs != nParameters:
             raise Error("number of parameters not valid!")
 
@@ -2207,12 +2226,12 @@ class PYDAFOAM(object):
 
         # calc dFdRegPar
         self.solverAD.calcdFdRegParAD(
-            xvArray, wArray, parameters, objFuncName.encode(), designVarName.encode(), dFdRegPar
+            xvArray, wArray, parameters, objFuncName.encode(), designVarName.encode(), modelName.encode(), dFdRegPar
         )
         dFdRegPar *= dFScaling
 
         # calculate dRdFieldT*Psi and save it to totalDeriv
-        self.solverAD.calcdRdRegParTPsiAD(xvArray, wArray, parameters, seedArray, totalDerivArray)
+        self.solverAD.calcdRdRegParTPsiAD(xvArray, wArray, parameters, seedArray, modelName.encode(), totalDerivArray)
         # all reduce because parameters is a global DV
         totalDerivArray = self.comm.allreduce(totalDerivArray, op=MPI.SUM)
 
@@ -2437,7 +2456,8 @@ class PYDAFOAM(object):
                             fieldType = designVarDict[designVarName]["fieldType"]
                             self.calcTotalDerivsField(objFuncName, designVarName, fieldType, dFScaling, True)
                         elif designVarDict[designVarName]["designVarType"] == "RegPar":
-                            self.calcTotalDerivsRegPar(objFuncName, designVarName, dFScaling, True)
+                            modelName = designVarDict[designVarName]["modelName"]
+                            self.calcTotalDerivsRegPar(objFuncName, designVarName, modelName, dFScaling, True)
                         else:
                             raise Error("designVarType not valid!")
 
@@ -2736,7 +2756,8 @@ class PYDAFOAM(object):
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            self.calcTotalDerivsRegPar(objFuncName, designVarName)
+                            modelName = designVarDict[designVarName]["modelName"]
+                            self.calcTotalDerivsRegPar(objFuncName, designVarName, modelName)
                 else:
                     raise Error("For Field design variable type, we only support useAD->mode=reverse")
             else:
@@ -4013,7 +4034,7 @@ class PYDAFOAM(object):
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.setThermal(thermalArray)
 
-    def setRegressionParameter(self, idx, val):
+    def setRegressionParameter(self, modelName, idx, val):
         """
         Update the regression parameters
 
@@ -4026,9 +4047,16 @@ class PYDAFOAM(object):
             the parameter value to set
         """
 
-        self.solver.setRegressionParameter(idx, val)
+        self.solver.setRegressionParameter(modelName.encode(), idx, val)
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.setRegressionParameter(idx, val)
+            self.solverAD.setRegressionParameter(modelName.encode(), idx, val)
+
+    def getNRegressionParameters(self, modelName):
+        """
+        Get the number of regression model parameters
+        """
+        nParameters = self.solver.getNRegressionParameters(modelName.encode())
+        return nParameters
 
     def setFieldValue4GlobalCellI(self, fieldName, val, globalCellI, compI=0):
         """

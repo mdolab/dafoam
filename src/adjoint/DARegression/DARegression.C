@@ -23,95 +23,121 @@ DARegression::DARegression(
       daModel_(daModel)
 {
     dictionary regSubDict = daOption.getAllOptions().subDict("regressionModel");
-    regSubDict.readEntry<word>("modelType", modelType_);
-    regSubDict.readEntry<wordList>("inputNames", inputNames_);
-    regSubDict.readEntry<word>("outputName", outputName_);
-
-    regSubDict.readEntry<scalarList>("inputShift", inputShift_);
-
-    regSubDict.readEntry<scalarList>("inputScale", inputScale_);
-
-    regSubDict.readEntry<scalar>("outputShift", outputShift_);
-
-    regSubDict.readEntry<scalar>("outputScale", outputScale_);
-
-    regSubDict.readEntry<scalar>("outputUpperBound", outputUpperBound_);
-
-    regSubDict.readEntry<scalar>("outputLowerBound", outputLowerBound_);
-
-    regSubDict.readEntry<label>("printInputInfo", printInputInfo_);
-
-    regSubDict.readEntry<scalar>("defaultOutputValue", defaultOutputValue_);
-
-    writeFeatures_ = regSubDict.lookupOrDefault<label>("writeFeatures", 0);
-
     active_ = regSubDict.getLabel("active");
 
     // initialize parameters
     if (active_)
     {
-        if (modelType_ == "neuralNetwork")
+        forAll(regSubDict.toc(), idxI)
         {
-            regSubDict.readEntry<labelList>("hiddenLayerNeurons", hiddenLayerNeurons_);
-            regSubDict.readEntry<word>("activationFunction", activationFunction_);
-            if (activationFunction_ == "ReLU")
+            word key = regSubDict.toc()[idxI];
+            if (key != "active")
             {
-                leakyCoeff_ = regSubDict.lookupOrDefault<scalar>("leakyCoeff", 0.0);
+                modelNames_.append(key);
             }
         }
-        else if (modelType_ == "radialBasisFunction")
-        {
-            nRBFs_ = regSubDict.getLabel("nRBFs");
-        }
-        else
-        {
-            FatalErrorIn("DARegression") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
-        }
 
-        // check the sizes
-        if (inputNames_.size() != inputShift_.size() || inputNames_.size() != inputScale_.size())
+        forAll(modelNames_, idxI)
         {
-            FatalErrorIn("DARegression") << "inputNames has different sizes than inputShift or inputScale" << abort(FatalError);
-        }
+            word modelName = modelNames_[idxI];
+            dictionary modelSubDict = daOption.getAllOptions().subDict("regressionModel").subDict(modelName);
 
-        label nParameters = this->nParameters();
-        parameters_.setSize(nParameters);
-        forAll(parameters_, idxI)
-        {
-            parameters_[idxI] = 0.0;
-        }
+            modelType_.set(modelName, modelSubDict.getWord("modelType"));
 
-        // initialize the ptr scalarFields
-        features_.setSize(inputNames_.size());
-        forAll(features_, idxI)
-        {
-            word inputName = inputNames_[idxI];
+            wordList tempWordList;
+            scalarList tempScalarList;
+            labelList tempLabelList;
 
-            features_.set(
-                idxI,
-                new volScalarField(
-                    IOobject(
-                        inputName,
-                        mesh_.time().timeName(),
+            modelSubDict.readEntry<wordList>("inputNames", tempWordList);
+            inputNames_.set(modelName, tempWordList);
+
+            outputName_.set(modelName, modelSubDict.getWord("outputName"));
+
+            modelSubDict.readEntry<scalarList>("inputShift", tempScalarList);
+            inputShift_.set(modelName, tempScalarList);
+
+            modelSubDict.readEntry<scalarList>("inputScale", tempScalarList);
+            inputScale_.set(modelName, tempScalarList);
+
+            outputShift_.set(modelName, modelSubDict.getScalar("outputShift"));
+
+            outputScale_.set(modelName, modelSubDict.getScalar("outputScale"));
+
+            outputUpperBound_.set(modelName, modelSubDict.getScalar("outputUpperBound"));
+
+            outputLowerBound_.set(modelName, modelSubDict.getScalar("outputLowerBound"));
+
+            defaultOutputValue_.set(modelName, modelSubDict.getScalar("defaultOutputValue"));
+
+            printInputInfo_.set(modelName, modelSubDict.getLabel("printInputInfo"));
+
+            writeFeatures_.set(modelName, modelSubDict.lookupOrDefault<label>("writeFeatures", 0));
+
+            if (modelType_[modelName] == "neuralNetwork")
+            {
+                modelSubDict.readEntry<labelList>("hiddenLayerNeurons", tempLabelList);
+                hiddenLayerNeurons_.set(modelName, tempLabelList);
+                activationFunction_.set(modelName, modelSubDict.getWord("activationFunction"));
+                if (activationFunction_[modelName] == "relu")
+                {
+                    leakyCoeff_.set(modelName, modelSubDict.lookupOrDefault<scalar>("leakyCoeff", 0.0));
+                }
+            }
+            else if (modelType_[modelName] == "radialBasisFunction")
+            {
+                nRBFs_.set(modelName, modelSubDict.getLabel("nRBFs"));
+            }
+            else
+            {
+                FatalErrorIn("DARegression") << "modelType_: " << modelType_[modelName] << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+            }
+
+            // check the sizes
+            if (inputNames_[modelName].size() != inputShift_[modelName].size()
+                || inputNames_[modelName].size() != inputScale_[modelName].size())
+            {
+                FatalErrorIn("DARegression") << "inputNames has different sizes than inputShift or inputScale" << abort(FatalError);
+            }
+
+            label nParameters = this->nParameters(modelName);
+            scalarList parameters(nParameters, 0.0);
+            parameters_.set(modelName, parameters);
+
+            // initialize the ptr scalarFields
+            label nInputs = inputNames_[modelName].size();
+            PtrList<volScalarField> features(nInputs);
+            forAll(inputNames_[modelName], idxI)
+            {
+                word inputName = inputNames_[modelName][idxI];
+                features.set(
+                    idxI,
+                    new volScalarField(
+                        IOobject(
+                            inputName,
+                            mesh_.time().timeName(),
+                            mesh_,
+                            IOobject::NO_READ,
+                            IOobject::NO_WRITE),
                         mesh_,
-                        IOobject::NO_READ,
-                        IOobject::NO_WRITE),
-                    mesh_,
-                    dimensionedScalar(inputName, dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0)));
+                        dimensionedScalar(inputName, dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0)));
+            }
+            features_.set(modelName, features);
         }
     }
 }
 
-void DARegression::calcInputFeatures()
+void DARegression::calcInputFeatures(word modelName)
 {
     /*
     Description:
-        Calculate the input features
+        Calculate the input features. Here features is a unique list for all the regModel's inputNames.
+        This is because two regModel's inputNames can have overlap, so we don't want to compute
+        duplicated features
     */
 
-    forAll(inputNames_, idxI)
+    forAll(features_[modelName], idxI)
     {
-        word inputName = inputNames_[idxI];
+        word inputName = inputNames_[modelName][idxI];
         if (inputName == "VoS")
         {
             // vorticity / strain
@@ -120,21 +146,21 @@ void DARegression::calcInputFeatures()
             const volTensorField& gradU = tgradU();
             volScalarField magOmega = mag(skew(gradU));
             volScalarField magS = mag(symm(gradU));
-            forAll(features_[idxI], cellI)
+            forAll(features_[modelName][idxI], cellI)
             {
-                features_[idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
         }
         else if (inputName == "PoD")
         {
             // production / destruction
-            daModel_.getTurbProdOverDestruct(features_[idxI]);
-            forAll(features_[idxI], cellI)
+            daModel_.getTurbProdOverDestruct(features_[modelName][idxI]);
+            forAll(features_[modelName][idxI], cellI)
             {
-                features_[idxI][cellI] = (features_[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (features_[modelName][idxI][cellI] + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
         }
         else if (inputName == "chiSA")
         {
@@ -142,11 +168,11 @@ void DARegression::calcInputFeatures()
             // the chi() function from SA
             const volScalarField& nuTilda = mesh_.thisDb().lookupObject<volScalarField>("nuTilda");
             volScalarField nu = daModel_.getDATurbulenceModel().nu();
-            forAll(features_[idxI], cellI)
+            forAll(features_[modelName][idxI], cellI)
             {
-                features_[idxI][cellI] = (nuTilda[cellI] / nu[cellI] + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (nuTilda[cellI] / nu[cellI] + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
 #endif
         }
         else if (inputName == "pGradStream")
@@ -162,11 +188,11 @@ void DARegression::calcInputFeatures()
             }
             volScalarField::Internal pGradAlongStream = (U() & pGrad()) / pG_denominator();
 
-            forAll(features_[idxI], cellI)
+            forAll(features_[modelName][idxI], cellI)
             {
-                features_[idxI][cellI] = (pGradAlongStream[cellI] + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (pGradAlongStream[cellI] + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
         }
         else if (inputName == "PSoSS")
         {
@@ -178,15 +204,15 @@ void DARegression::calcInputFeatures()
             volVectorField pGrad("gradP", fvc::grad(p));
             vector diagUGrad = vector::zero;
             scalar val = 0;
-            forAll(features_[idxI], cellI)
+            forAll(features_[modelName][idxI], cellI)
             {
                 diagUGrad[0] = gradU[cellI].xx();
                 diagUGrad[1] = gradU[cellI].yy();
                 diagUGrad[2] = gradU[cellI].zz();
                 val = mag(pGrad[cellI]) / (mag(pGrad[cellI]) + mag(3.0 * cmptAv(U[cellI] & diagUGrad)) + 1e-16);
-                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
         }
         else if (inputName == "SCurv")
         {
@@ -196,12 +222,12 @@ void DARegression::calcInputFeatures()
             const volTensorField& gradU = tgradU();
 
             scalar val = 0;
-            forAll(features_[idxI], cellI)
+            forAll(features_[modelName][idxI], cellI)
             {
                 val = mag(U[cellI] & gradU[cellI]) / (mag(U[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI]) + 1e-16);
-                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
         }
         else if (inputName == "UOrth")
         {
@@ -211,12 +237,12 @@ void DARegression::calcInputFeatures()
             const volTensorField& gradU = tgradU();
 
             scalar val = 0;
-            forAll(features_[idxI], cellI)
+            forAll(features_[modelName][idxI], cellI)
             {
                 val = mag(U[cellI] & gradU[cellI] & U[cellI]) / (mag(U[cellI]) * mag(gradU[cellI] & U[cellI]) + mag(U[cellI] & gradU[cellI] & U[cellI]) + 1e-16);
-                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
         }
         else if (inputName == "KoU2")
         {
@@ -224,12 +250,12 @@ void DARegression::calcInputFeatures()
             const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
             const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
             scalar val = 0;
-            forAll(features_[idxI], cellI)
+            forAll(features_[modelName][idxI], cellI)
             {
                 val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + 1e-16);
-                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
         }
         else if (inputName == "ReWall")
         {
@@ -239,23 +265,23 @@ void DARegression::calcInputFeatures()
             const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
             volScalarField nu = daModel_.getDATurbulenceModel().nu();
             scalar val = 0;
-            forAll(features_[idxI], cellI)
+            forAll(features_[modelName][idxI], cellI)
             {
                 val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
-                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
 #endif
         }
         else if (inputName == "CoP")
         {
             // convective / production
-            daModel_.getTurbConvOverProd(features_[idxI]);
-            forAll(features_[idxI], cellI)
+            daModel_.getTurbConvOverProd(features_[modelName][idxI]);
+            forAll(features_[modelName][idxI], cellI)
             {
-                features_[idxI][cellI] = (features_[idxI][cellI] + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (features_[modelName][idxI][cellI] + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
         }
         else if (inputName == "TauoK")
         {
@@ -265,12 +291,12 @@ void DARegression::calcInputFeatures()
             const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
             volSymmTensorField tau(2.0 / 3.0 * I * k - nut * twoSymm(fvc::grad(U)));
             scalar val = 0;
-            forAll(features_[idxI], cellI)
+            forAll(features_[modelName][idxI], cellI)
             {
                 val = mag(tau[cellI]) / (k[cellI] + 1e-16);
-                features_[idxI][cellI] = (val + inputShift_[idxI]) * inputScale_[idxI];
+                features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
-            features_[idxI].correctBoundaryConditions();
+            features_[modelName][idxI].correctBoundaryConditions();
         }
         else
         {
@@ -304,151 +330,158 @@ label DARegression::compute()
         a volScalarField prescribed by outputName
     */
 
-    // if the output variable is not found in the Db, just return and do nothing
-    if (!active_ || !mesh_.thisDb().foundObject<volScalarField>(outputName_))
+    if (!active_)
     {
         return 0;
     }
 
     label fail = 0;
 
-    volScalarField& outputField = const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>(outputName_));
-
-    if (modelType_ == "neuralNetwork")
+    forAll(modelNames_, idxI)
     {
-        label nHiddenLayers = hiddenLayerNeurons_.size();
+        word modelName = modelNames_[idxI];
 
-        this->calcInputFeatures();
-
-        List<List<scalar>> layerVals;
-        layerVals.setSize(nHiddenLayers);
-        for (label layerI = 0; layerI < nHiddenLayers; layerI++)
+        // if the output variable is not found in the Db, just return and do nothing
+        if (!mesh_.thisDb().foundObject<volScalarField>(outputName_[modelName]))
         {
-            label nNeurons = hiddenLayerNeurons_[layerI];
-            layerVals[layerI].setSize(nNeurons);
+            return 0;
         }
 
-        forAll(mesh_.cells(), cellI)
-        {
-            label counterI = 0;
+        // compute the inputFeature for all inputs
+        this->calcInputFeatures(modelName);
 
+        volScalarField& outputField = const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>(outputName_[modelName]));
+
+        if (modelType_[modelName] == "neuralNetwork")
+        {
+            label nHiddenLayers = hiddenLayerNeurons_[modelName].size();
+            List<List<scalar>> layerVals;
+            layerVals.setSize(nHiddenLayers);
             for (label layerI = 0; layerI < nHiddenLayers; layerI++)
             {
-                label nNeurons = hiddenLayerNeurons_[layerI];
-                forAll(layerVals[layerI], neuronI)
+                label nNeurons = hiddenLayerNeurons_[modelName][layerI];
+                layerVals[layerI].setSize(nNeurons);
+            }
+
+            forAll(mesh_.cells(), cellI)
+            {
+                label counterI = 0;
+
+                for (label layerI = 0; layerI < nHiddenLayers; layerI++)
                 {
-                    layerVals[layerI][neuronI] = 0.0;
+                    label nNeurons = hiddenLayerNeurons_[modelName][layerI];
+                    forAll(layerVals[layerI], neuronI)
+                    {
+                        layerVals[layerI][neuronI] = 0.0;
+                    }
+                    for (label neuronI = 0; neuronI < nNeurons; neuronI++)
+                    {
+                        if (layerI == 0)
+                        {
+                            // for the 1st hidden layer, we use the input layer as the input
+                            forAll(inputNames_[modelName], neuronJ)
+                            {
+                                // weighted sum
+                                layerVals[layerI][neuronI] += features_[modelName][neuronJ][cellI] * parameters_[modelName][counterI];
+                                counterI++;
+                            }
+                        }
+                        else
+                        {
+                            // for the rest of hidden layer, we use the previous hidden layer as the input
+                            forAll(layerVals[layerI - 1], neuronJ)
+                            {
+                                // weighted sum
+                                layerVals[layerI][neuronI] += layerVals[layerI - 1][neuronJ] * parameters_[modelName][counterI];
+                                counterI++;
+                            }
+                        }
+                        // bias
+                        layerVals[layerI][neuronI] += parameters_[modelName][counterI];
+                        counterI++;
+                        // activation function
+                        if (activationFunction_[modelName] == "sigmoid")
+                        {
+                            layerVals[layerI][neuronI] = 1 / (1 + exp(-layerVals[layerI][neuronI]));
+                        }
+                        else if (activationFunction_[modelName] == "tanh")
+                        {
+                            layerVals[layerI][neuronI] = (1 - exp(-2 * layerVals[layerI][neuronI])) / (1 + exp(-2 * layerVals[layerI][neuronI]));
+                        }
+                        else if (activationFunction_[modelName] == "relu")
+                        {
+                            if (layerVals[layerI][neuronI] < 0)
+                            {
+                                layerVals[layerI][neuronI] = leakyCoeff_[modelName] * layerVals[layerI][neuronI];
+                            }
+                        }
+                        else
+                        {
+                            FatalErrorIn("") << "activationFunction not valid. Options are: sigmoid, tanh, and relu" << abort(FatalError);
+                        }
+                    }
                 }
-                for (label neuronI = 0; neuronI < nNeurons; neuronI++)
+                // final output layer, we have only one output
+                scalar outputVal = 0.0;
+                forAll(layerVals[nHiddenLayers - 1], neuronJ)
                 {
-                    if (layerI == 0)
-                    {
-                        // for the 1st hidden layer, we use the input layer as the input
-                        forAll(inputNames_, neuronJ)
-                        {
-                            // weighted sum
-                            layerVals[layerI][neuronI] += features_[neuronJ][cellI] * parameters_[counterI];
-                            counterI++;
-                        }
-                    }
-                    else
-                    {
-                        // for the rest of hidden layer, we use the previous hidden layer as the input
-                        forAll(layerVals[layerI - 1], neuronJ)
-                        {
-                            // weighted sum
-                            layerVals[layerI][neuronI] += layerVals[layerI - 1][neuronJ] * parameters_[counterI];
-                            counterI++;
-                        }
-                    }
-                    // bias
-                    layerVals[layerI][neuronI] += parameters_[counterI];
+                    // weighted sum
+                    outputVal += layerVals[nHiddenLayers - 1][neuronJ] * parameters_[modelName][counterI];
                     counterI++;
-                    // activation function
-                    if (activationFunction_ == "sigmoid")
-                    {
-                        layerVals[layerI][neuronI] = 1 / (1 + exp(-layerVals[layerI][neuronI]));
-                    }
-                    else if (activationFunction_ == "tanh")
-                    {
-                        layerVals[layerI][neuronI] = (1 - exp(-2 * layerVals[layerI][neuronI])) / (1 + exp(-2 * layerVals[layerI][neuronI]));
-                    }
-                    else if (activationFunction_ == "ReLU")
-                    {
-                        if (layerVals[layerI][neuronI] < 0)
-                        {
-                            layerVals[layerI][neuronI] = leakyCoeff_ * layerVals[layerI][neuronI];
-                        }
-                    }
-                    else
-                    {
-                        FatalErrorIn("") << "activationFunction not valid. Options are: sigmoid, tanh, and ReLU" << abort(FatalError);
-                    }
                 }
-            }
-            // final output layer, we have only one output
-            scalar outputVal = 0.0;
-            forAll(layerVals[nHiddenLayers - 1], neuronJ)
-            {
-                // weighted sum
-                outputVal += layerVals[nHiddenLayers - 1][neuronJ] * parameters_[counterI];
-                counterI++;
-            }
-            // bias
-            outputVal += parameters_[counterI];
+                // bias
+                outputVal += parameters_[modelName][counterI];
 
-            // no activation function for the output layer
+                // no activation function for the output layer
 
-            outputField[cellI] = outputScale_ * (outputVal + outputShift_);
+                outputField[cellI] = outputScale_[modelName] * (outputVal + outputShift_[modelName]);
+            }
+
+            // check if the output values are valid otherwise fix/bound them
+            fail += this->checkOutput(modelName, outputField);
+
+            outputField.correctBoundaryConditions();
         }
-
-        // check if the output values are valid otherwise fix/bound them
-        fail = this->checkOutput(outputField);
-
-        outputField.correctBoundaryConditions();
-    }
-    else if (modelType_ == "radialBasisFunction")
-    {
-
-        this->calcInputFeatures();
-
-        label nInputs = inputNames_.size();
-
-        // increment of the parameters for each RBF basis
-        label dP = 2 * nInputs + 1;
-
-        forAll(mesh_.cells(), cellI)
+        else if (modelType_[modelName] == "radialBasisFunction")
         {
-            scalar outputVal = 0.0;
-            for (label i = 0; i < nRBFs_; i++)
+            label nInputs = inputNames_[modelName].size();
+
+            // increment of the parameters for each RBF basis
+            label dP = 2 * nInputs + 1;
+
+            forAll(mesh_.cells(), cellI)
             {
-                scalar expCoeff = 0.0;
-                for (label j = 0; j < nInputs; j++)
+                scalar outputVal = 0.0;
+                for (label i = 0; i < nRBFs_[modelName]; i++)
                 {
-                    scalar A = (features_[j][cellI] - parameters_[dP * i + 2 * j]) * (features_[j][cellI] - parameters_[dP * i + 2 * j]);
-                    scalar B = 2 * parameters_[dP * i + 2 * j + 1] * parameters_[dP * i + 2 * j + 1];
-                    expCoeff += A / B;
+                    scalar expCoeff = 0.0;
+                    for (label j = 0; j < nInputs; j++)
+                    {
+                        scalar A = (features_[modelName][j][cellI] - parameters_[modelName][dP * i + 2 * j]) * (features_[modelName][j][cellI] - parameters_[modelName][dP * i + 2 * j]);
+                        scalar B = 2 * parameters_[modelName][dP * i + 2 * j + 1] * parameters_[modelName][dP * i + 2 * j + 1];
+                        expCoeff += A / B;
+                    }
+                    outputVal += parameters_[modelName][dP * i + dP - 1] * exp(-expCoeff);
                 }
-                outputVal += parameters_[dP * i + dP - 1] * exp(-expCoeff);
+
+                outputField[cellI] = outputScale_[modelName] * (outputVal + outputShift_[modelName]);
             }
 
-            outputField[cellI] = outputScale_ * (outputVal + outputShift_);
+            // check if the output values are valid otherwise fix/bound them
+            fail += this->checkOutput(modelName, outputField);
+
+            outputField.correctBoundaryConditions();
         }
-
-        // check if the output values are valid otherwise fix/bound them
-        fail = this->checkOutput(outputField);
-
-        outputField.correctBoundaryConditions();
-    }
-    else
-    {
-        FatalErrorIn("") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+        else
+        {
+            FatalErrorIn("") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+        }
     }
 
     return fail;
 }
 
-label DARegression::nParameters()
+label DARegression::nParameters(word modelName)
 {
     /*
     Description:
@@ -460,49 +493,49 @@ label DARegression::nParameters()
         FatalErrorIn("") << "nParameters() is called but the regression model is not active!" << abort(FatalError);
     }
 
-    if (modelType_ == "neuralNetwork")
+    if (modelType_[modelName] == "neuralNetwork")
     {
-        label nHiddenLayers = hiddenLayerNeurons_.size();
-        label nInputs = inputNames_.size();
+        label nHiddenLayers = hiddenLayerNeurons_[modelName].size();
+        label nInputs = inputNames_[modelName].size();
 
         // add weights
         // input
-        label nParameters = nInputs * hiddenLayerNeurons_[0];
+        label nParameters = nInputs * hiddenLayerNeurons_[modelName][0];
         // hidden layers
-        for (label layerI = 1; layerI < hiddenLayerNeurons_.size(); layerI++)
+        for (label layerI = 1; layerI < hiddenLayerNeurons_[modelName].size(); layerI++)
         {
-            nParameters += hiddenLayerNeurons_[layerI] * hiddenLayerNeurons_[layerI - 1];
+            nParameters += hiddenLayerNeurons_[modelName][layerI] * hiddenLayerNeurons_[modelName][layerI - 1];
         }
         // output
-        nParameters += hiddenLayerNeurons_[nHiddenLayers - 1] * 1;
+        nParameters += hiddenLayerNeurons_[modelName][nHiddenLayers - 1] * 1;
 
         // add biases
         // add hidden layers
-        for (label layerI = 0; layerI < hiddenLayerNeurons_.size(); layerI++)
+        for (label layerI = 0; layerI < hiddenLayerNeurons_[modelName].size(); layerI++)
         {
-            nParameters += hiddenLayerNeurons_[layerI];
+            nParameters += hiddenLayerNeurons_[modelName][layerI];
         }
         // add output layer
         nParameters += 1;
 
         return nParameters;
     }
-    else if (modelType_ == "radialBasisFunction")
+    else if (modelType_[modelName] == "radialBasisFunction")
     {
-        label nInputs = inputNames_.size();
+        label nInputs = inputNames_[modelName].size();
 
         // each RBF has a weight, nInputs mean, and nInputs std
-        label nParameters = nRBFs_ * (2 * nInputs + 1);
+        label nParameters = nRBFs_[modelName] * (2 * nInputs + 1);
 
         return nParameters;
     }
     else
     {
-        FatalErrorIn("") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+        FatalErrorIn("") << "modelType_: " << modelType_[modelName] << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
     }
 }
 
-label DARegression::checkOutput(volScalarField& outputField)
+label DARegression::checkOutput(word modelName, volScalarField& outputField)
 {
     /*
     Description:
@@ -523,40 +556,40 @@ label DARegression::checkOutput(volScalarField& outputField)
     {
         if (std::isnan(outputField[cellI]))
         {
-            outputField[cellI] = defaultOutputValue_;
+            outputField[cellI] = defaultOutputValue_[modelName];
             isNaN = 1;
         }
         if (std::isinf(outputField[cellI]))
         {
-            outputField[cellI] = defaultOutputValue_;
+            outputField[cellI] = defaultOutputValue_[modelName];
             isInf = 1;
         }
-        if (outputField[cellI] > outputUpperBound_)
+        if (outputField[cellI] > outputUpperBound_[modelName])
         {
-            outputField[cellI] = outputUpperBound_;
+            outputField[cellI] = outputUpperBound_[modelName];
             isBounded = 1;
         }
-        if (outputField[cellI] < outputLowerBound_)
+        if (outputField[cellI] < outputLowerBound_[modelName])
         {
-            outputField[cellI] = outputLowerBound_;
+            outputField[cellI] = outputLowerBound_[modelName];
             isBounded = 1;
         }
     }
     if (isBounded == 1)
     {
-        Pout << "************* Warning! output values are bounded between " << outputLowerBound_ << " and " << outputUpperBound_ << endl;
+        Pout << "************* Warning! output values are bounded between " << outputLowerBound_[modelName] << " and " << outputUpperBound_[modelName] << endl;
         fail = 1;
     }
 
     if (isNaN == 1)
     {
-        Pout << "************* Warning! output values have nan and are set to " << defaultOutputValue_ << endl;
+        Pout << "************* Warning! output values have nan and are set to " << defaultOutputValue_[modelName] << endl;
         fail = 1;
     }
 
     if (isInf == 1)
     {
-        Pout << "************* Warning! output values have inf and are set to " << defaultOutputValue_ << endl;
+        Pout << "************* Warning! output values have inf and are set to " << defaultOutputValue_[modelName] << endl;
         fail = 1;
     }
 

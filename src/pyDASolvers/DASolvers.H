@@ -586,9 +586,9 @@ public:
     }
 
     /// get the number of regression model parameters
-    label getNRegressionParameters()
+    label getNRegressionParameters(word modelName)
     {
-        return DASolverPtr_->getNRegressionParameters();
+        return DASolverPtr_->getNRegressionParameters(modelName);
     }
 
     /// call the compute method of the regression model
@@ -598,10 +598,10 @@ public:
     }
 
     /// set the regression parameter
-    void setRegressionParameter(label idxI, double val)
+    void setRegressionParameter(word modelName, label idxI, double val)
     {
         scalar val1 = val;
-        DASolverPtr_->setRegressionParameter(idxI, val1);
+        DASolverPtr_->setRegressionParameter(modelName, idxI, val1);
     }
 
     /// calculte [dR/dRegParameters]^T * psi
@@ -610,9 +610,10 @@ public:
         const double* states,
         const double* parameters,
         const double* seeds,
+        const word modelName,
         double* product)
     {
-        DASolverPtr_->calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, product);
+        DASolverPtr_->calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, modelName, product);
     }
 
     /// compute dFdRegPar AD
@@ -622,9 +623,10 @@ public:
         const double* parameters,
         const word objFuncName,
         const word designVarName,
+        const word modelName,
         double* dFdRegPar)
     {
-        DASolverPtr_->calcdFdRegParAD(volCoords, states, parameters, objFuncName, designVarName, dFdRegPar);
+        DASolverPtr_->calcdFdRegParAD(volCoords, states, parameters, objFuncName, designVarName, modelName, dFdRegPar);
     }
 
     void calcdRdThermalTPsiAD(

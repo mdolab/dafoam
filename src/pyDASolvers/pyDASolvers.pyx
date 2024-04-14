@@ -75,8 +75,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
         void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdRdThermalTPsiAD(double *, double *, double *, double *, double *)
-        void calcdRdRegParTPsiAD(double *, double *, double *, double *, double *)
-        void calcdFdRegParAD(double *, double *, double *, char *, char *, double *)
+        void calcdRdRegParTPsiAD(double *, double *, double *, double *, char *, double *)
+        void calcdFdRegParAD(double *, double *, double *, char *, char *, char *, double *)
         void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
@@ -105,8 +105,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void getThermal(double *, double *, double *)
         void getThermalAD(char *, double *, double *, double *, double *)
         void setThermal(double *)
-        int getNRegressionParameters()
-        void setRegressionParameter(int, double)
+        int getNRegressionParameters(char *)
+        void setRegressionParameter(char *, int, double)
         void regressionModelCompute()
         void getOFField(char *, char *, PetscVec)
         void getAcousticData(PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, PetscVec, char*)
@@ -481,11 +481,11 @@ cdef class pyDASolvers:
         cdef double *thermal_data = <double*>thermal.data
         self._thisptr.setThermal(thermal_data)
     
-    def getNRegressionParameters(self):
-        return self._thisptr.getNRegressionParameters()
+    def getNRegressionParameters(self, modelName):
+        return self._thisptr.getNRegressionParameters(modelName)
     
-    def setRegressionParameter(self, idx, val):
-        self._thisptr.setRegressionParameter(idx, val)
+    def setRegressionParameter(self, modelName, idx, val):
+        self._thisptr.setRegressionParameter(modelName, idx, val)
     
     def regressionModelCompute(self):
         self._thisptr.regressionModelCompute()
@@ -495,13 +495,14 @@ cdef class pyDASolvers:
             np.ndarray[double, ndim=1, mode="c"] states,
             np.ndarray[double, ndim=1, mode="c"] parameters,
             np.ndarray[double, ndim=1, mode="c"] seeds,
+            modelName,
             np.ndarray[double, ndim=1, mode="c"] product):
         
         assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(parameters) == self.getNRegressionParameters(), "invalid array size!"
+        assert len(parameters) == self.getNRegressionParameters(modelName), "invalid array size!"
         assert len(seeds) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(product) == self.getNRegressionParameters(), "invalid array size!"
+        assert len(product) == self.getNRegressionParameters(modelName), "invalid array size!"
 
         cdef double *volCoords_data = <double*>volCoords.data
         cdef double *states_data = <double*>states.data
@@ -514,6 +515,7 @@ cdef class pyDASolvers:
             states_data, 
             parameters_data, 
             seeds_data, 
+            modelName,
             product_data)
     
     def calcdFdRegParAD(self, 
@@ -522,12 +524,13 @@ cdef class pyDASolvers:
             np.ndarray[double, ndim=1, mode="c"] parameters,
             objFuncName,
             designVarName,
+            modelName,
             np.ndarray[double, ndim=1, mode="c"] dFdRegPar):
         
         assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(parameters) == self.getNRegressionParameters(), "invalid array size!"
-        assert len(dFdRegPar) == self.getNRegressionParameters(), "invalid array size!"
+        assert len(parameters) == self.getNRegressionParameters(modelName), "invalid array size!"
+        assert len(dFdRegPar) == self.getNRegressionParameters(modelName), "invalid array size!"
 
         cdef double *volCoords_data = <double*>volCoords.data
         cdef double *states_data = <double*>states.data
@@ -540,6 +543,7 @@ cdef class pyDASolvers:
             parameters_data, 
             objFuncName,
             designVarName,
+            modelName,
             dFdRegPar_data)
 
     def getAcousticData(self, Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, groupName):
