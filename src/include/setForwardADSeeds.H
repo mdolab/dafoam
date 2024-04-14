@@ -376,13 +376,15 @@ if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
         // for ACTD derivs
         scalar seed = 0.0;
 
+        word modelName = dvSubDict.getWord("modelName");
+
         label seedIndex = daOptionPtr_->getAllOptions().subDict("useAD").getLabel("seedIndex");
 
-        seed = daRegressionPtr_->getParameter(seedIndex);
+        seed = daRegressionPtr_->getParameter(modelName, seedIndex);
 
         seed.setGradient(1.0);
 
-        daRegressionPtr_->setParameter(seedIndex, seed);
+        daRegressionPtr_->setParameter(modelName, seedIndex, seed);
     }
 }
 
