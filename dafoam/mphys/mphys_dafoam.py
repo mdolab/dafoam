@@ -702,7 +702,12 @@ class DAFoamSolver(ImplicitComponent):
     # calculate the residual
     def apply_nonlinear(self, inputs, outputs, residuals):
         DASolver = self.DASolver
-        DASolver.setStates(outputs["%s_states" % self.discipline])
+        # NOTE: we do not pass the states from inputs to the OF layer.
+        # this can cause potential convergence issue because the initial states
+        # in the inputs are set to all ones. So passing this all-ones states
+        # into the OF layer may diverge the primal solver. Here we can always
+        # use the states from the OF layer to compute the residuals.
+        # DASolver.setStates(outputs["%s_states" % self.discipline])
 
         # get flow residuals from DASolver
         residuals["%s_states" % self.discipline] = DASolver.getResiduals()
@@ -1027,6 +1032,9 @@ class DAFoamSolver(ImplicitComponent):
                 # in the next line
                 if not self.DASolver.getOption("adjEqnOption")["useNonZeroInitGuess"]:
                     self.psi.set(0)
+                else:
+                    # if useNonZeroInitGuess is True, we will assign the OM's psi to self.psi
+                    self.psi = DASolver.array2Vec(d_residuals["%s_states" % self.discipline].copy())
 
                 if self.DASolver.getOption("adjEqnOption")["dynAdjustTol"]:
                     # if we want to dynamically adjust the tolerance, call this function. This is mostly used
