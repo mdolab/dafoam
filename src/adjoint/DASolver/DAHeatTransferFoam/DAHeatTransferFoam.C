@@ -22,7 +22,8 @@ DAHeatTransferFoam::DAHeatTransferFoam(
     : DASolver(argsAll, pyOptions),
       TPtr_(nullptr),
       fvSourcePtr_(nullptr),
-      kPtr_(nullptr)
+      kPtr_(nullptr),
+      daFvSourcePtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -45,6 +46,22 @@ void DAHeatTransferFoam::initSolver()
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
     this->setDAObjFuncList();
+
+    // initialize fvSource and compute the source term
+    const dictionary& allOptions = daOptionPtr_->getAllOptions();
+    if (allOptions.subDict("fvSource").toc().size() != 0)
+    {
+        hasFvSource_ = 1;
+        Info << "Initializing DASource" << endl;
+        word sourceName = allOptions.subDict("fvSource").toc()[0];
+        word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
+        daFvSourcePtr_.reset(DAFvSource::New(
+            fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
+        
+        // NOTE: we calculate the fvSource only once
+        volScalarField& fvSource = fvSourcePtr_();
+        daFvSourcePtr_->calcFvSource(fvSource);
+    }
 }
 
 label DAHeatTransferFoam::solvePrimal(
@@ -82,7 +99,7 @@ label DAHeatTransferFoam::solvePrimal(
         return 1;
     }
 
-    label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
+    label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
     // main loop
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel

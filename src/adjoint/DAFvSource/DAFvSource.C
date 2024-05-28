@@ -100,6 +100,19 @@ void DAFvSource::calcFvSource(volVectorField& fvSource)
                      << abort(FatalError);
 }
 
+void DAFvSource::calcFvSource(volScalarField& fvSource)
+{
+    /*
+    Description:
+        Calculate the fvSource term
+        NOTE: this need to be implemented in the child class, if not,
+        print an error!
+    */
+    FatalErrorIn("") << "calcFvSource not implemented " << endl
+                     << " in the child class for " << modelType_
+                     << abort(FatalError);
+}
+
 bool DAFvSource::writeData(Ostream& os) const
 {
     /*

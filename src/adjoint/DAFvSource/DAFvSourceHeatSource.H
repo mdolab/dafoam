@@ -4,15 +4,15 @@
     Version : v3
 
     Description:
-        Child class for DAHeatTransferFoam
+        Child class for HeatSource disk source
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAHeatTransferFoam_H
-#define DAHeatTransferFoam_H
+#ifndef DAFvSourceHeatSource_H
+#define DAFvSourceHeatSource_H
 
-#include "DASolver.H"
 #include "DAFvSource.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -20,51 +20,39 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAHeatTransferFoam Declaration
+      Class DAFvSourceHeatSource Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAHeatTransferFoam
-    : public DASolver
+class DAFvSourceHeatSource
+    : public DAFvSource
 {
 
 protected:
- 
-    /// temperature field pointer
-    autoPtr<volScalarField> TPtr_;
+    /// HashTable that contains lists of cell indices that are within the actuator disk space
+    HashTable<labelList> fvSourceCellIndices_;
 
-    /// heat source
-    autoPtr<volScalarField> fvSourcePtr_;
-
-    /// h pointer
-    autoPtr<dimensionedScalar> kPtr_;
-
-    /// DASource pointer
-    autoPtr<DAFvSource> daFvSourcePtr_;
-
-    /// whether to have fvSource term
-    label hasFvSource_ = 0;
+    /// calculate DAFvSourceHeatSource::fvSourceCellIndices_
+    void calcFvSourceCellIndices(HashTable<labelList>& fvSourceCellIndices);
 
 public:
-    TypeName("DAHeatTransferFoam");
+    TypeName("heatSource");
     // Constructors
 
     //- Construct from components
-    DAHeatTransferFoam(
-        char* argsAll,
-        PyObject* pyOptions);
+    DAFvSourceHeatSource(
+        const word modelType,
+        const fvMesh& mesh,
+        const DAOption& daOption,
+        const DAModel& daModel,
+        const DAIndex& daIndex);
 
     //- Destructor
-    virtual ~DAHeatTransferFoam()
+    virtual ~DAFvSourceHeatSource()
     {
     }
 
-    /// initialize fields and variables
-    virtual void initSolver();
-
-    /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec);
+    /// compute the FvSource term
+    virtual void calcFvSource(volScalarField& fvSource);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

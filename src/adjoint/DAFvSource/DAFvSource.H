@@ -105,6 +105,9 @@ public:
     /// compute the FvSource term
     virtual void calcFvSource(volVectorField& fvSource);
 
+    /// overloaded function for scalar fields
+    virtual void calcFvSource(volScalarField& fvSource);
+
     /// set a new value to the actuator disk design variable
     void setActuatorDVs(
         const word diskName,
