@@ -29,6 +29,7 @@ DAObjFunc/DAObjFuncWallHeatFlux.C
 DAObjFunc/DAObjFuncPatchMean.C
 
 DAFvSource/DAFvSource.C
+DAFvSource/DAFvSourceHeatSource.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C
