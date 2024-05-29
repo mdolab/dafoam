@@ -2379,6 +2379,7 @@ class PYDAFOAM(object):
         self.adjTotalDeriv = self._initializeAdjTotalDeriv()
 
         # loop over all objFunc, calculate dFdW, and solve the adjoint
+        self.adjointFail = 0
         for objFuncName in objFuncDict:
             if objFuncName in self.objFuncNames4Adj:
                 # zero the vecs
@@ -2438,7 +2439,7 @@ class PYDAFOAM(object):
                         self.solver.calcPCMatWithFvMatrix(PCMat)
 
                     # now solve the adjoint eqn
-                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
+                    self.adjointFail += self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
 
                     # loop over all the design vars and accumulate totals
                     for designVarName in designVarDict:
@@ -2469,6 +2470,10 @@ class PYDAFOAM(object):
                         # because dRdW00TPsi will be used 2 steps before
                         self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[objFuncName], dRdW0TPsi)
                         self.solverAD.calcdRdWOldTPsiAD(2, self.adjVectors[objFuncName], dRdW00TPsiBuffer)
+
+                    # if one adjoint solution fails, return immediate without solving for the rest of steps.
+                    if self.adjointFail > 0:
+                        break
 
         self.nSolveAdjoints += 1
 
