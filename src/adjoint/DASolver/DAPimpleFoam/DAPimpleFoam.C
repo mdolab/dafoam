@@ -121,11 +121,15 @@ label DAPimpleFoam::solvePrimal(
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
-    // we need to read in the states from the 0 folder every time we start the primal
-    // here we read in all time levels
     runTime.setTime(0.0, 0);
-    this->readStateVars(0.0, 0);
-    this->readStateVars(0.0, 1);
+    // if readZeroFields, we need to read in the states from the 0 folder every time 
+    // we start the primal here we read in all time levels
+    label readZeroFields = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("readZeroFields");
+    if (readZeroFields)
+    {
+        this->readStateVars(0.0, 0);
+        this->readStateVars(0.0, 1);
+    }
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
