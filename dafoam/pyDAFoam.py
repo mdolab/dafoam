@@ -474,6 +474,7 @@ class DAOPTION(object):
             "PCMatUpdateInterval": 1,
             "reduceIO": True,
             "additionalOutput": ["None"],
+            "readZeroFields": True,
         }
 
         ## At which iteration should we start the averaging of objective functions.
