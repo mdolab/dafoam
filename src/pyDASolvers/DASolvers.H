@@ -225,12 +225,12 @@ public:
     }
 
     /// solve the linear equation
-    void solveLinearEqn(
+    label solveLinearEqn(
         const KSP ksp,
         const Vec rhsVec,
         Vec solVec)
     {
-        DASolverPtr_->solveLinearEqn(ksp, rhsVec, solVec);
+        return DASolverPtr_->solveLinearEqn(ksp, rhsVec, solVec);
     }
 
     /// convert the mpi vec to a seq vec

@@ -52,7 +52,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void createMLRKSP(PetscMat, PetscMat, PetscKSP)
         void createMLRKSPMatrixFree(PetscMat, PetscKSP)
         void updateKSPPCMat(PetscMat, PetscKSP)
-        void solveLinearEqn(PetscKSP, PetscVec, PetscVec)
+        int solveLinearEqn(PetscKSP, PetscVec, PetscVec)
         void calcdRdBC(PetscVec, PetscVec, char *, PetscMat)
         void calcdFdBC(PetscVec, PetscVec, char *, char *, PetscVec)
         void calcdFdBCAD(PetscVec, PetscVec, char *, char *, PetscVec)
@@ -227,7 +227,7 @@ cdef class pyDASolvers:
         self._thisptr.updateKSPPCMat(PCMat.mat, myKSP.ksp)
     
     def solveLinearEqn(self, KSP myKSP, Vec rhsVec, Vec solVec):
-        self._thisptr.solveLinearEqn(myKSP.ksp, rhsVec.vec, solVec.vec)
+        return self._thisptr.solveLinearEqn(myKSP.ksp, rhsVec.vec, solVec.vec)
 
     def calcdRdBC(self, Vec xvVec, Vec wVec, designVarName, Mat dRdBC):
         self._thisptr.calcdRdBC(xvVec.vec, wVec.vec, designVarName, dRdBC.mat)
