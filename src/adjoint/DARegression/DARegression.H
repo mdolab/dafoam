@@ -105,6 +105,12 @@ protected:
     /// a list of scalarField to save the input features
     HashTable<PtrList<volScalarField>> features_;
 
+    /// a flatten feature array for externalTensorFlow model
+    scalar* featuresFlattenArray_;
+
+    /// output field array for externalTensorFlow model
+    scalar* outputFieldArray_;
+
     /// whether to write the feature fields to the disk
     HashTable<label> writeFeatures_;
 
@@ -118,6 +124,8 @@ public:
     /// Destructor
     virtual ~DARegression()
     {
+        delete[] featuresFlattenArray_;
+        delete[] outputFieldArray_;
     }
 
     // Members
@@ -188,6 +196,32 @@ public:
             }
         }
     }
+
+#ifdef CODI_AD_REVERSE
+
+    /// these two functions are for AD external functions
+    static void betaCompute(
+        const double* x,
+        size_t n,
+        double* y,
+        size_t m,
+        codi::ExternalFunctionUserData* d)
+    {
+        DAUtility::pyCalcBetaInterface(x, n, y, m, DAUtility::pyCalcBeta);
+    }
+
+    static void betaJacVecProd(
+        const double* x,
+        double* x_b,
+        size_t n,
+        const double* y,
+        const double* y_b,
+        size_t m,
+        codi::ExternalFunctionUserData* d)
+    {
+        DAUtility::pyCalcBetaJacVecProdInterface(x, x_b, n, y, y_b, m, DAUtility::pyCalcBetaJacVecProd);
+    }
+#endif
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

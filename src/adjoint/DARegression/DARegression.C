@@ -87,9 +87,14 @@ DARegression::DARegression(
             {
                 nRBFs_.set(modelName, modelSubDict.getLabel("nRBFs"));
             }
+            else if (modelType_[modelName] == "externalTensorFlow")
+            {
+                featuresFlattenArray_ = new scalar[mesh_.nCells() * inputNames_[modelName].size()];
+                outputFieldArray_ = new scalar[mesh_.nCells()];
+            }
             else
             {
-                FatalErrorIn("DARegression") << "modelType_: " << modelType_[modelName] << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+                FatalErrorIn("DARegression") << "modelType_: " << modelType_[modelName] << " not supported. Options are: neuralNetwork, radialBasisFunction, and externalTensorFlow" << abort(FatalError);
             }
 
             // check the sizes
@@ -472,9 +477,66 @@ label DARegression::compute()
 
             outputField.correctBoundaryConditions();
         }
+        else if (modelType_[modelName] == "externalTensorFlow")
+        {
+            label nInputs = inputNames_[modelName].size();
+            // NOTE: forward mode not supported..
+#if defined(CODI_AD_REVERSE)
+            // we need to use the external function helper from CoDiPack to propagate the AD
+
+            codi::ExternalFunctionHelper<codi::RealReverse> externalFunc;
+            for (label i = 0; i < mesh_.nCells() * nInputs; i++)
+            {
+                externalFunc.addInput(featuresFlattenArray_[i]);
+            }
+
+            for (label i = 0; i < mesh_.nCells(); i++)
+            {
+                externalFunc.addOutput(outputFieldArray_[i]);
+            }
+
+            externalFunc.callPrimalFunc(DARegression::betaCompute);
+
+            codi::RealReverse::Tape& tape = codi::RealReverse::getTape();
+
+            if (tape.isActive())
+            {
+                externalFunc.addToTape(DARegression::betaJacVecProd);
+            }
+
+            forAll(outputField, cellI)
+            {
+                outputField[cellI] = outputFieldArray_[cellI];
+            }
+
+#elif defined(CODI_AD_FORWARD)
+            // do nothing
+#else
+            label counterI = 0;
+            // loop over all features
+            forAll(features_[modelName], idxI)
+            {
+                // loop over all cells
+                forAll(features_[modelName][idxI], cellI)
+                {
+                    featuresFlattenArray_[counterI] = features_[modelName][idxI][cellI];
+                    counterI++;
+                }
+            }
+
+            // python callback function
+            DAUtility::pyCalcBetaInterface(
+                featuresFlattenArray_, mesh_.nCells() * nInputs, outputFieldArray_, mesh_.nCells(), DAUtility::pyCalcBeta);
+
+            forAll(outputField, cellI)
+            {
+                outputField[cellI] = outputFieldArray_[cellI];
+            }
+#endif
+        }
         else
         {
-            FatalErrorIn("") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+            FatalErrorIn("") << "modelType_: " << modelType_ << " not supported. Options are: neuralNetwork, radialBasisFunction, and externalTensorFlow" << abort(FatalError);
         }
     }
 
