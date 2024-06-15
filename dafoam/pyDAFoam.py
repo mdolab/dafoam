@@ -743,9 +743,9 @@ class DAOPTION(object):
         ## tensorflow related functions
         self.tensorflow = {
             "active": False,
-            "model1": {
-                "batchSize": 1000
-            }
+            #"model1": {
+            #    "predictBatchSize": 1000
+            #}
         }
 
 
