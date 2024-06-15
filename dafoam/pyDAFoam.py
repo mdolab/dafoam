@@ -4494,6 +4494,8 @@ class TensorFlowHelper:
 
     modelName = None
 
+    predictBatchSize = {}
+
     @staticmethod
     def initialize():
         """
