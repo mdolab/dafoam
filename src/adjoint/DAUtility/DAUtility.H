@@ -26,6 +26,7 @@ namespace Foam
 
 typedef void (*pyComputeInterface)(const double*, int, double*, int, void*);
 typedef void (*pyJacVecProdInterface)(const double*, double*, int, const double*, const double*, int, void*);
+typedef void (*pySetCharInterface)(const char*, void*);
 
 /*---------------------------------------------------------------------------*\
                        Class DAUtility Declaration
@@ -131,6 +132,9 @@ public:
 
     static void* pyCalcBetaJacVecProd;
     static pyJacVecProdInterface pyCalcBetaJacVecProdInterface;
+
+    static void* pySetModelName;
+    static pySetCharInterface pySetModelNameInterface;
 
     /// the max initial residual norms for the primal solution for each state
     static scalar primalMaxInitRes_;

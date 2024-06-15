@@ -105,11 +105,24 @@ protected:
     /// a list of scalarField to save the input features
     HashTable<PtrList<volScalarField>> features_;
 
+#if defined(CODI_AD_FORWARD)
+    /// a flatten double feature array for externalTensorFlow model (forward AD)
+    double* featuresFlattenArrayDouble_;
+
+    /// output field double array for externalTensorFlow model (forward AD)
+    double* outputFieldArrayDouble_;
+#else
     /// a flatten feature array for externalTensorFlow model
     scalar* featuresFlattenArray_;
 
     /// output field array for externalTensorFlow model
     scalar* outputFieldArray_;
+#endif
+    /// whether to use external model
+    label useExternalModel_ = 0;
+
+    /// the array size is chosen based on the regModel that has the largest number of inputs (this is important because we support multiple regModels but we don't want to create multiple featuresFlattenArray_)
+    label featuresFlattenArraySize_ = -100;
 
     /// whether to write the feature fields to the disk
     HashTable<label> writeFeatures_;
@@ -124,8 +137,16 @@ public:
     /// Destructor
     virtual ~DARegression()
     {
-        delete[] featuresFlattenArray_;
-        delete[] outputFieldArray_;
+        if (useExternalModel_)
+        {
+#if defined(CODI_AD_FORWARD)
+            delete[] featuresFlattenArrayDouble_;
+            delete[] outputFieldArrayDouble_;
+#else
+            delete[] featuresFlattenArray_;
+            delete[] outputFieldArray_;
+#endif
+        }
     }
 
     // Members

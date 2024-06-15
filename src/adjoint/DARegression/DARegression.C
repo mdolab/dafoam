@@ -89,8 +89,13 @@ DARegression::DARegression(
             }
             else if (modelType_[modelName] == "externalTensorFlow")
             {
-                featuresFlattenArray_ = new scalar[mesh_.nCells() * inputNames_[modelName].size()];
-                outputFieldArray_ = new scalar[mesh_.nCells()];
+                useExternalModel_ = 1;
+                // here the array size is chosen based on the regModel that has the largest number of inputs
+                // this is important because we support multiple regModels but we don't want to create multiple featuresFlattenArray_
+                if (inputNames_[modelName].size() * mesh_.nCells() > featuresFlattenArraySize_)
+                {
+                    featuresFlattenArraySize_ = inputNames_[modelName].size() * mesh_.nCells();
+                }
             }
             else
             {
@@ -127,6 +132,19 @@ DARegression::DARegression(
                         dimensionedScalar(inputName, dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0)));
             }
             features_.set(modelName, features);
+        }
+
+        // if external model is used, initialize space for the features and output arrays
+        if (useExternalModel_)
+        {
+
+#if defined(CODI_AD_FORWARD)
+            featuresFlattenArrayDouble_ = new double[featuresFlattenArraySize_];
+            outputFieldArrayDouble_ = new double[mesh_.nCells()];
+#else
+            featuresFlattenArray_ = new scalar[featuresFlattenArraySize_];
+            outputFieldArray_ = new scalar[mesh_.nCells()];
+#endif
         }
     }
 }
@@ -480,10 +498,31 @@ label DARegression::compute()
         else if (modelType_[modelName] == "externalTensorFlow")
         {
             label nInputs = inputNames_[modelName].size();
+
+            DAUtility::pySetModelNameInterface(modelName.c_str(), DAUtility::pySetModelName);
+
             // NOTE: forward mode not supported..
 #if defined(CODI_AD_REVERSE)
-            // we need to use the external function helper from CoDiPack to propagate the AD
 
+            // assign features_ to featuresFlattenArray_
+            label counterI = 0;
+            // loop over all features
+            forAll(features_[modelName], idxI)
+            {
+                // loop over all cells
+                forAll(features_[modelName][idxI], cellI)
+                {
+                    featuresFlattenArray_[counterI] = features_[modelName][idxI][cellI];
+                    counterI++;
+                }
+            }
+            // assign outputField to outputFieldArray_
+            forAll(outputField, cellI)
+            {
+                outputFieldArray_[cellI] = outputField[cellI];
+            }
+
+            // we need to use the external function helper from CoDiPack to propagate the AD
             codi::ExternalFunctionHelper<codi::RealReverse> externalFunc;
             for (label i = 0; i < mesh_.nCells() * nInputs; i++)
             {
@@ -510,8 +549,35 @@ label DARegression::compute()
             }
 
 #elif defined(CODI_AD_FORWARD)
-            // do nothing
+            // assign features_ to featuresFlattenArrayDouble_
+            label counterI = 0;
+            // loop over all features
+            forAll(features_[modelName], idxI)
+            {
+                // loop over all cells
+                forAll(features_[modelName][idxI], cellI)
+                {
+                    featuresFlattenArrayDouble_[counterI] = features_[modelName][idxI][cellI].value();
+                    counterI++;
+                }
+            }
+            // assign outputField to outputFieldArrayDouble_
+            forAll(outputField, cellI)
+            {
+                outputFieldArrayDouble_[cellI] = outputField[cellI].value();
+            }
+
+            // python callback function
+            DAUtility::pyCalcBetaInterface(
+                featuresFlattenArrayDouble_, mesh_.nCells() * nInputs, outputFieldArrayDouble_, mesh_.nCells(), DAUtility::pyCalcBeta);
+
+            forAll(outputField, cellI)
+            {
+                outputField[cellI] = outputFieldArrayDouble_[cellI];
+            }
+
 #else
+            // assign features_ to featuresFlattenArray_
             label counterI = 0;
             // loop over all features
             forAll(features_[modelName], idxI)
@@ -522,6 +588,11 @@ label DARegression::compute()
                     featuresFlattenArray_[counterI] = features_[modelName][idxI][cellI];
                     counterI++;
                 }
+            }
+            // assign outputField to outputFieldArray_
+            forAll(outputField, cellI)
+            {
+                outputFieldArray_[cellI] = outputField[cellI];
             }
 
             // python callback function
@@ -591,9 +662,13 @@ label DARegression::nParameters(word modelName)
 
         return nParameters;
     }
+    else if (modelType_[modelName] == "externalTensorFlow")
+    {
+        // do nothing
+    }
     else
     {
-        FatalErrorIn("") << "modelType_: " << modelType_[modelName] << " not supported. Options are: neuralNetwork and radialBasisFunction" << abort(FatalError);
+        FatalErrorIn("") << "modelType_: " << modelType_[modelName] << " not supported. Options are: neuralNetwork, radialBasisFunction, and externalTensorFlow" << abort(FatalError);
     }
 }
 

@@ -1244,13 +1244,18 @@ public:
         pyComputeInterface computeInterface,
         void* compute,
         pyJacVecProdInterface jacVecProdInterface,
-        void* jacVecProd)
+        void* jacVecProd,
+        pySetCharInterface setModelNameInterface,
+        void* setModelName)
     {
         DAUtility::pyCalcBetaInterface = computeInterface;
         DAUtility::pyCalcBeta = compute;
 
         DAUtility::pyCalcBetaJacVecProdInterface = jacVecProdInterface;
         DAUtility::pyCalcBetaJacVecProd = jacVecProd;
+
+        DAUtility::pySetModelNameInterface = setModelNameInterface;
+        DAUtility::pySetModelName = setModelName;
     }
 
     /// write state variables that are NO_WRITE to disk
