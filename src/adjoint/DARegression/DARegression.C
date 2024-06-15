@@ -498,6 +498,7 @@ label DARegression::compute()
         else if (modelType_[modelName] == "externalTensorFlow")
         {
             label nInputs = inputNames_[modelName].size();
+            label nCells = mesh_.nCells();
 
             DAUtility::pySetModelNameInterface(modelName.c_str(), DAUtility::pySetModelName);
 
@@ -505,6 +506,8 @@ label DARegression::compute()
 #if defined(CODI_AD_REVERSE)
 
             // assign features_ to featuresFlattenArray_
+            // here featuresFlattenArray_ should be order like this to facilitate Python layer reshape:
+            // [(cell1, feature1), (cell1, feature2), ... (cell2, feature1), (cell2, feature2) ... ]
             label counterI = 0;
             // loop over all features
             forAll(features_[modelName], idxI)
@@ -512,8 +515,8 @@ label DARegression::compute()
                 // loop over all cells
                 forAll(features_[modelName][idxI], cellI)
                 {
+                    counterI = cellI * nCells + idxI;
                     featuresFlattenArray_[counterI] = features_[modelName][idxI][cellI];
-                    counterI++;
                 }
             }
             // assign outputField to outputFieldArray_
@@ -549,7 +552,9 @@ label DARegression::compute()
             }
 
 #elif defined(CODI_AD_FORWARD)
-            // assign features_ to featuresFlattenArrayDouble_
+            // assign features_ to featuresFlattenArray_
+            // here featuresFlattenArray_ should be order like this to facilitate Python layer reshape:
+            // [(cell1, feature1), (cell1, feature2), ... (cell2, feature1), (cell2, feature2) ... ]
             label counterI = 0;
             // loop over all features
             forAll(features_[modelName], idxI)
@@ -557,8 +562,8 @@ label DARegression::compute()
                 // loop over all cells
                 forAll(features_[modelName][idxI], cellI)
                 {
-                    featuresFlattenArrayDouble_[counterI] = features_[modelName][idxI][cellI].value();
-                    counterI++;
+                    counterI = cellI * nCells + idxI;
+                    featuresFlattenArrayDouble_[counterI] = features_[modelName][idxI][cellI].getValue();
                 }
             }
             // assign outputField to outputFieldArrayDouble_
@@ -578,6 +583,8 @@ label DARegression::compute()
 
 #else
             // assign features_ to featuresFlattenArray_
+            // here featuresFlattenArray_ should be order like this to facilitate Python layer reshape:
+            // [(cell1, feature1), (cell1, feature2), ... (cell2, feature1), (cell2, feature2) ... ]
             label counterI = 0;
             // loop over all features
             forAll(features_[modelName], idxI)
@@ -585,8 +592,8 @@ label DARegression::compute()
                 // loop over all cells
                 forAll(features_[modelName][idxI], cellI)
                 {
+                    counterI = cellI * nCells + idxI;
                     featuresFlattenArray_[counterI] = features_[modelName][idxI][cellI];
-                    counterI++;
                 }
             }
             // assign outputField to outputFieldArray_
