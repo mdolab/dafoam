@@ -364,14 +364,14 @@ label DARegression::compute()
     {
         word modelName = modelNames_[idxI];
 
+        // compute the inputFeature for all inputs
+        this->calcInputFeatures(modelName);
+
         // if the output variable is not found in the Db, just return and do nothing
         if (!mesh_.thisDb().foundObject<volScalarField>(outputName_[modelName]))
         {
             return 0;
         }
-
-        // compute the inputFeature for all inputs
-        this->calcInputFeatures(modelName);
 
         volScalarField& outputField = const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>(outputName_[modelName]));
 
