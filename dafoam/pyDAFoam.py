@@ -743,10 +743,9 @@ class DAOPTION(object):
         ## tensorflow related functions
         self.tensorflow = {
             "active": False,
-            "modelName": "model",
-            "nInputs": 1,
-            "nOutputs": 1,
-            "batchSize": 1000,
+            #"model1": {
+            #    "predictBatchSize": 1000
+            #}
         }
 
 
@@ -928,9 +927,9 @@ class PYDAFOAM(object):
             TensorFlowHelper.options = self.getOption("tensorflow")
             TensorFlowHelper.initialize()
             # pass this helper function to the C++ layer
-            self.solver.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd)
+            self.solver.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName)
             if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-                self.solverAD.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd)
+                self.solverAD.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName)
 
         Info("pyDAFoam initialization done!")
 
@@ -4491,7 +4490,13 @@ class TensorFlowHelper:
 
     options = {}
 
-    model = None
+    model = {}
+
+    modelName = None
+
+    predictBatchSize = {}
+
+    nInputs = {}
 
     @staticmethod
     def initialize():
@@ -4499,14 +4504,19 @@ class TensorFlowHelper:
         Initialize parameters and load models
         """
         Info("Initializing the TensorFlowHelper")
-        TensorFlowHelper.modelName = TensorFlowHelper.options["modelName"]
-        TensorFlowHelper.nInputs = TensorFlowHelper.options["nInputs"]
-        TensorFlowHelper.nOutputs = TensorFlowHelper.options["nOutputs"]
-        TensorFlowHelper.batchSize = TensorFlowHelper.options["batchSize"]
-        TensorFlowHelper.model = tf.keras.models.load_model(TensorFlowHelper.modelName)
+        for key in list(TensorFlowHelper.options.keys()):
+            if key != "active":
+                modelName = key
+                TensorFlowHelper.predictBatchSize[modelName] = TensorFlowHelper.options[modelName]["predictBatchSize"]
+                TensorFlowHelper.nInputs[modelName] = TensorFlowHelper.options[modelName]["nInputs"]
+                TensorFlowHelper.model[modelName] = tf.keras.models.load_model(modelName)
 
-        if TensorFlowHelper.nOutputs != 1:
-            raise Error("current version supports nOutputs=1 only!")
+    @staticmethod
+    def setModelName(modelName):
+        """
+        Set the model name from the C++ to Python layer
+        """
+        TensorFlowHelper.modelName = modelName.decode()
 
     @staticmethod
     def predict(inputs, n, outputs, m):
@@ -4514,8 +4524,12 @@ class TensorFlowHelper:
         Calculate the outputs based on the inputs using the saved model
         """
 
-        inputs_tf = np.reshape(inputs, (-1, TensorFlowHelper.nInputs))
-        outputs_tf = TensorFlowHelper.model.predict(inputs_tf, verbose=False, batch_size=TensorFlowHelper.batchSize)
+        modelName = TensorFlowHelper.modelName
+        nInputs = TensorFlowHelper.nInputs[modelName]
+
+        inputs_tf = np.reshape(inputs, (-1, nInputs))
+        batchSize = TensorFlowHelper.predictBatchSize[modelName]
+        outputs_tf = TensorFlowHelper.model[modelName].predict(inputs_tf, verbose=False, batch_size=batchSize)
 
         for i in range(m):
             outputs[i] = outputs_tf[i, 0]
@@ -4526,11 +4540,14 @@ class TensorFlowHelper:
         Calculate the gradients of the outputs wrt the inputs
         """
 
-        inputs_tf = np.reshape(inputs, (-1, TensorFlowHelper.nInputs))
+        modelName = TensorFlowHelper.modelName
+        nInputs = TensorFlowHelper.nInputs[modelName]
+
+        inputs_tf = np.reshape(inputs, (-1, nInputs))
         inputs_tf_var = tf.Variable(inputs_tf, dtype=tf.float32)
 
         with tf.GradientTape() as tape:
-            outputs_tf = TensorFlowHelper.model(inputs_tf_var)
+            outputs_tf = TensorFlowHelper.model[modelName](inputs_tf_var)
 
         gradients_tf = tape.gradient(outputs_tf, inputs_tf_var)
 

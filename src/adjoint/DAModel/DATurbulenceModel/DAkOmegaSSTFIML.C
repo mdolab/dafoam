@@ -885,6 +885,10 @@ void DAkOmegaSSTFIML::calcBetaField()
         inputs_[cI * 9 + 8] = tauRatio_[cI];
     }
 
+    // set the model name in the Python layer
+    word modelName = "model";
+    DAUtility::pySetModelNameInterface(modelName.c_str(), DAUtility::pySetModelName);
+
     // NOTE: forward mode not supported..
 #if defined(CODI_AD_REVERSE)
 

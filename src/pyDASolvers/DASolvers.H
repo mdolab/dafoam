@@ -983,9 +983,12 @@ public:
         pyComputeInterface computeInterface,
         void* compute,
         pyJacVecProdInterface jacVecProdInterface,
-        void* jacVecProd)
+        void* jacVecProd,
+        pySetCharInterface setModelNameInterface,
+        void* setModelName)
     {
-        DASolverPtr_->initTensorFlowFuncs(computeInterface, compute, jacVecProdInterface, jacVecProd);
+        DASolverPtr_->initTensorFlowFuncs(
+            computeInterface, compute, jacVecProdInterface, jacVecProd, setModelNameInterface, setModelName);
     }
 
     /// write the sensitivity map for all wall surfaces

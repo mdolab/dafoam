@@ -24,6 +24,7 @@ cdef public api CPointerToPyArray(const double* data, int size) with gil:
 
 ctypedef void (*pyComputeInterface)(const double *, int, double *, int, void *)
 ctypedef void (*pyJacVecProdInterface)(const double *, double *, int, const double *, const double *, int, void *)
+ctypedef void (*pySetCharInterface)(const char *, void *)
 
 cdef void pyCalcBetaCallBack(const double* inputs, int n, double* outputs, int m, void *func):
     inputs_data = CPointerToPyArray(inputs, n)
@@ -36,6 +37,9 @@ cdef void pyCalcBetaJacVecProdCallBack(const double* inputs, double* inputs_b, i
     outputs_data = CPointerToPyArray(outputs, m)
     outputs_b_data = CPointerToPyArray(outputs_b, m)
     (<object>func)(inputs_data, inputs_b_data, n, outputs_data, outputs_b_data, m)
+
+cdef void pySetModelNameCallBack(const char* modelName, void *func):
+    (<object>func)(modelName)
 
 # declare cpp functions
 cdef extern from "DASolvers.H" namespace "Foam":
@@ -141,7 +145,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdForceProfiledXvWAD(char *, char *, char *, PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdForcedStateTPsiAD(char *, PetscVec, PetscVec, PetscVec, PetscVec)
         int runFPAdj(PetscVec, PetscVec, PetscVec, PetscVec)
-        void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *)
+        void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *, pySetCharInterface, void *)
         void readStateVars(double, int)
         void calcPCMatWithFvMatrix(PetscMat)
         double getEndTime()
@@ -654,8 +658,8 @@ cdef class pyDASolvers:
     def runFPAdj(self, Vec xvVec, Vec wVec, Vec dFdW, Vec psi):
         return self._thisptr.runFPAdj(xvVec.vec, wVec.vec, dFdW.vec, psi.vec)
     
-    def initTensorFlowFuncs(self, compute, jacVecProd):
-        self._thisptr.initTensorFlowFuncs(pyCalcBetaCallBack, <void*>compute, pyCalcBetaJacVecProdCallBack, <void*>jacVecProd)
+    def initTensorFlowFuncs(self, compute, jacVecProd, setModelName):
+        self._thisptr.initTensorFlowFuncs(pyCalcBetaCallBack, <void*>compute, pyCalcBetaJacVecProdCallBack, <void*>jacVecProd, pySetModelNameCallBack, <void*>setModelName)
     
     def writeSensMapSurface(self, 
             name,
