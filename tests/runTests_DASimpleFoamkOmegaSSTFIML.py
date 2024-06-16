@@ -39,7 +39,7 @@ aeroOptions = {
     "solverName": "DASimpleFoam",
     "primalMinResTol": 5e-5,
     "primalMinResTolDiff": 1e4,
-    "tensorflow": {"active": True, "model": {"predictBatchSize": 100}},
+    "tensorflow": {"active": True, "model": {"predictBatchSize": 1000, "nInputs": 9}},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},

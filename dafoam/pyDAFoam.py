@@ -4496,6 +4496,8 @@ class TensorFlowHelper:
 
     predictBatchSize = {}
 
+    nInputs = {}
+
     @staticmethod
     def initialize():
         """
@@ -4506,6 +4508,7 @@ class TensorFlowHelper:
             if key != "active":
                 modelName = key
                 TensorFlowHelper.predictBatchSize[modelName] = TensorFlowHelper.options[modelName]["predictBatchSize"]
+                TensorFlowHelper.nInputs[modelName] = TensorFlowHelper.options[modelName]["nInputs"]
                 TensorFlowHelper.model[modelName] = tf.keras.models.load_model(modelName)
 
     @staticmethod
@@ -4513,7 +4516,7 @@ class TensorFlowHelper:
         """
         Set the model name from the C++ to Python layer
         """
-        TensorFlowHelper.modelName = modelName
+        TensorFlowHelper.modelName = modelName.decode()
 
     @staticmethod
     def predict(inputs, n, outputs, m):
@@ -4521,9 +4524,8 @@ class TensorFlowHelper:
         Calculate the outputs based on the inputs using the saved model
         """
 
-        nInputs = int(n / m)
-
         modelName = TensorFlowHelper.modelName
+        nInputs = TensorFlowHelper.nInputs[modelName]
 
         inputs_tf = np.reshape(inputs, (-1, nInputs))
         batchSize = TensorFlowHelper.predictBatchSize[modelName]
@@ -4538,9 +4540,8 @@ class TensorFlowHelper:
         Calculate the gradients of the outputs wrt the inputs
         """
 
-        nInputs = int(n / m)
-
         modelName = TensorFlowHelper.modelName
+        nInputs = TensorFlowHelper.nInputs[modelName]
 
         inputs_tf = np.reshape(inputs, (-1, nInputs))
         inputs_tf_var = tf.Variable(inputs_tf, dtype=tf.float32)
