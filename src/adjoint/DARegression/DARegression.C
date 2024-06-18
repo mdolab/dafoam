@@ -592,7 +592,7 @@ label DARegression::compute()
                 // loop over all cells
                 forAll(features_[modelName][idxI], cellI)
                 {
-                    counterI = cellI * nCells + idxI;
+                    counterI = cellI * nInputs + idxI;
                     featuresFlattenArray_[counterI] = features_[modelName][idxI][cellI];
                 }
             }
@@ -672,10 +672,12 @@ label DARegression::nParameters(word modelName)
     else if (modelType_[modelName] == "externalTensorFlow")
     {
         // do nothing
+        return 0;
     }
     else
     {
         FatalErrorIn("") << "modelType_: " << modelType_[modelName] << " not supported. Options are: neuralNetwork, radialBasisFunction, and externalTensorFlow" << abort(FatalError);
+        return 0;
     }
 }
 
