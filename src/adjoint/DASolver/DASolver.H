@@ -236,7 +236,6 @@ protected:
     /// the tolerance of the primal objective std, used if primalObjStdTol->active is True
     scalar primalObjStdTol_;
 
-
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -1327,6 +1326,12 @@ public:
 
     /// calculate the objective function's std
     void calcObjStd(Time& runTime);
+
+    /// write the adjoint variables for all states
+    void writeAdjointFields(
+        const word objFunc,
+        const double writeTime,
+        const double* psi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -10384,6 +10384,98 @@ void DASolver::writeSensMapField(
     }
 }
 
+void DASolver::writeAdjointFields(
+    const word objFunc,
+    const double writeTime,
+    const double* psi)
+{
+    /*
+    Description:
+        write the adjoint variables to the disk as OpenFOAM variables so they can be viewed
+        in ParaView
+    
+    Inputs:
+        writeTime: solution time the fields will be saved to
+        psi: the adjoint vector array, computed in the Python layer
+    */
+
+    runTimePtr_->setTime(writeTime, 0);
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const volVectorField& state = meshPtr_->thisDb().lookupObject<volVectorField>(stateName);
+        word varName = "adjoint_" + objFunc + "_" + stateName;
+        volVectorField adjointVar(varName, state);
+        forAll(state, cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                adjointVar[cellI][i] = psi[localIdx];
+            }
+        }
+        adjointVar.correctBoundaryConditions();
+        adjointVar.write();
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
+        word varName = "adjoint_" + objFunc + "_" + stateName;
+        volScalarField adjointVar(varName, state);
+        forAll(state, cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            adjointVar[cellI] = psi[localIdx];
+        }
+        adjointVar.correctBoundaryConditions();
+        adjointVar.write();
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
+        word varName = "adjoint_" + objFunc + "_" + stateName;
+        volScalarField adjointVar(varName, state);
+        forAll(state, cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            adjointVar[cellI] = psi[localIdx];
+        }
+        adjointVar.correctBoundaryConditions();
+        adjointVar.write();
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
+        word varName = "adjoint_" + objFunc + "_" + stateName;
+        surfaceScalarField adjointVar(varName, state);
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                adjointVar[faceI] = psi[localIdx];
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                adjointVar.boundaryFieldRef()[patchIdx][faceIdx] = psi[localIdx];
+            }
+        }
+        adjointVar.write();
+    }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
