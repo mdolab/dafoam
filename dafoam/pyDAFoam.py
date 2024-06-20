@@ -572,6 +572,10 @@ class DAOPTION(object):
         ## used internally, so users should never change this option in the Python layer.
         self.runStatus = "None"
 
+        ## The current objective function name. This variable will be reset in DAFoamFunctions
+        ## Then, we know which objective function is used in solve_linear in DAFoamSolver
+        self.solveLinearObjFuncName = "None"
+
         ## Whether to print all options defined in pyDAFoam to screen before optimization.
         self.printPYDAFOAMOptions = False
 
@@ -706,6 +710,9 @@ class DAOPTION(object):
         ## Whether to write deformed constraints to disk during optimization, i.e., DVCon.writeTecplot
         self.writeDeformedConstraints = False
 
+        ## Whether to write adjoint variables in OpenFOAM field format for post-processing
+        self.writeAdjointFields = False
+
         ## The max number of correctBoundaryConditions calls in the updateOFField function.
         self.maxCorrectBCCalls = 10
 
@@ -743,9 +750,9 @@ class DAOPTION(object):
         ## tensorflow related functions
         self.tensorflow = {
             "active": False,
-            #"model1": {
+            # "model1": {
             #    "predictBatchSize": 1000
-            #}
+            # }
         }
 
 
@@ -927,9 +934,13 @@ class PYDAFOAM(object):
             TensorFlowHelper.options = self.getOption("tensorflow")
             TensorFlowHelper.initialize()
             # pass this helper function to the C++ layer
-            self.solver.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName)
+            self.solver.initTensorFlowFuncs(
+                TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
+            )
             if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-                self.solverAD.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName)
+                self.solverAD.initTensorFlowFuncs(
+                    TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
+                )
 
         Info("pyDAFoam initialization done!")
 
@@ -1328,6 +1339,14 @@ class PYDAFOAM(object):
                 self.DVGeo.writeTecplot("deformedFFD_%d.dat" % self.nSolveAdjoints)
             else:
                 self.DVGeo.writeTecplot("deformedFFD_%d.dat" % counter)
+
+    def writeAdjointFields(self, objFunc, writeTime, psi):
+        """
+        Write the adjoint variables in OpenFOAM field format for post-processing
+        """
+
+        if self.getOption("writeAdjointFields"):
+            self.solver.writeAdjointFields(objFunc, writeTime, psi)
 
     def writeTotalDeriv(self, fileName, sens, evalFuncs):
         """

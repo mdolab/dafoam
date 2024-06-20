@@ -1044,6 +1044,13 @@ class DAFoamSolver(ImplicitComponent):
 
                 # actually solving the adjoint linear equation using Petsc
                 fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
+
+                # optionally write the adjoint vector as OpenFOAM field format for post-processing
+                # update the obj func name for solve_linear later
+                solveLinearObjFuncName = DASolver.getOption("solveLinearObjFuncName")
+                psi_array = DASolver.vec2Array(self.psi)
+                self.DASolver.writeAdjointFields(solveLinearObjFuncName, float(solutionTime), psi_array)
+
             elif adjEqnSolMethod == "fixedPoint":
                 solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
                 if renamed:
@@ -1356,6 +1363,10 @@ class DAFoamFunctions(ExplicitComponent):
 
         if self.comm.rank == 0:
             print("Computing partials for ", list(funcsBar.keys()))
+        
+        # update the obj func name for solve_linear later
+        DASolver.setOption("solveLinearObjFuncName", list(funcsBar.keys())[0])
+        DASolver.updateDAOption()
 
         # loop over all d_inputs keys and compute the partials accordingly
         for objFuncName in list(funcsBar.keys()):

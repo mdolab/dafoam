@@ -991,6 +991,15 @@ public:
             computeInterface, compute, jacVecProdInterface, jacVecProd, setModelNameInterface, setModelName);
     }
 
+    /// write the adjoint variables for all states
+    void writeAdjointFields(
+        const word objFunc,
+        const double writeTime,
+        const double* psi)
+    {
+        DASolverPtr_->writeAdjointFields(objFunc, writeTime, psi);
+    }
+
     /// write the sensitivity map for all wall surfaces
     void writeSensMapSurface(
         const word name,

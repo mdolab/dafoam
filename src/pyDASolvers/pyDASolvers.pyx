@@ -157,6 +157,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void writeSensMapSurface(char *, double *, double *, int, double)
         void writeSensMapField(char *, double *, char *, double)
         double getLatestTime()
+        void writeAdjointFields(char *, double, double *)
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -706,3 +707,12 @@ cdef class pyDASolvers:
     
     def getLatestTime(self):
         return self._thisptr.getLatestTime()
+    
+    def writeAdjointFields(self, objFunc, writeTime, np.ndarray[double, ndim=1, mode="c"] psi):
+        nAdjStates = self.getNLocalAdjointStates()
+
+        assert len(psi) == nAdjStates, "invalid array size!"
+
+        cdef double *psi_data = <double*>psi.data
+
+        return self._thisptr.writeAdjointFields(objFunc.encode(), writeTime, psi_data)
