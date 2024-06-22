@@ -1,8 +1,8 @@
 Dictionary Key: HF_INNER
-@value    189999.9999999991 1e-08 1e-10
+@value    181261.4809205142 1e-08 1e-10
 Dictionary Key: HF_OUTER
-@value   -209999.9999999985 1e-08 1e-10
+@value   -218738.5190794858 1e-08 1e-10
 Dictionary Key: TNormSum
-@value    6400011.348643273 1e-08 1e-10
+@value    6400011.350827799 1e-08 1e-10
 Dictionary Key: fail
 @value                    0 1e-08 1e-10

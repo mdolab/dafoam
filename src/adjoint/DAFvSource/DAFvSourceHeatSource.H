@@ -31,8 +31,13 @@ protected:
     /// HashTable that contains lists of cell indices that are within the actuator disk space
     HashTable<labelList> fvSourceCellIndices_;
 
+    HashTable<scalarList> cylinderP1_;
+    HashTable<scalarList> cylinderP2_;
+    HashTable<scalar> cylinderRadius_;
+    HashTable<scalar> power_;
+
     /// calculate DAFvSourceHeatSource::fvSourceCellIndices_
-    void calcFvSourceCellIndices(HashTable<labelList>& fvSourceCellIndices);
+    void calcFvSourceCellIndices(const word sourceName, HashTable<labelList>& fvSourceCellIndices);
 
 public:
     TypeName("heatSource");
