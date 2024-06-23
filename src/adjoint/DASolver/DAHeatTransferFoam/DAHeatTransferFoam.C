@@ -113,6 +113,12 @@ label DAHeatTransferFoam::solvePrimal(
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
 
+        if (hasFvSource_)
+        {
+            volScalarField& fvSource = fvSourcePtr_();
+            daFvSourcePtr_->calcFvSource(fvSource);
+        }
+
         fvScalarMatrix TEqn(
             fvm::laplacian(k, T)
             + fvSource);
