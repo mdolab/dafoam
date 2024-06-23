@@ -53,11 +53,18 @@ aeroOptions = {
     "fvSource": {
         "source1": {
             "type": "heatSource",
-            "source": "cylinderAnnulusToCell",
-            "p1": [0.0, 0.0, 0.0],
-            "p2": [0.5, 0.0, 0.0],
-            "innerRadius": 0.0,
-            "outerRadius": 10.0,
+            "source": "cylinderToCell",
+            "p1": [0.6, 0.055, 0.025],
+            "p2": [1.0, 0.055, 0.025],
+            "radius": 0.01,
+            "power": 1000.0,
+        },
+        "source2": {
+            "type": "heatSource",
+            "source": "cylinder",
+            "p1": [0.0, 0.055, 0.025],
+            "p2": [0.4, 0.055, 0.025],
+            "radius": 0.005,
             "power": 1000.0,
         },
     },
