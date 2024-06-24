@@ -109,7 +109,6 @@ DAObjFuncLocation::DAObjFuncLocation(
             maxRFaceI_ = maxRFaceI;
         }
     }
-
 }
 
 /// calculate the value of objective function
@@ -185,8 +184,48 @@ void DAObjFuncLocation::calcObjFunc(
         // need to reduce the sum of force across all processors
         reduce(objValTmp, sumOp<scalar>());
 
-        // expSumKS stores sum[exp(coeffKS*x_i)], it will be used to scale dFdW
-        expSumKS = objValTmp;
+        objFuncValue = log(objValTmp) / coeffKS_;
+    }
+    else if (mode_ == "maxInverseRadiusKS")
+    {
+        // this is essentially minimal radius using KS
+
+        // calculate Location
+        scalar objValTmp = 0.0;
+
+        forAll(objFuncFaceSources, idxI)
+        {
+            const label& objFuncFaceI = objFuncFaceSources[idxI];
+            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+            const label patchI = daIndex_.bFacePatchI[bFaceI];
+            const label faceI = daIndex_.bFaceFaceI[bFaceI];
+
+            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center_;
+
+            tensor faceCTensor(tensor::zero);
+            faceCTensor.xx() = faceC.x();
+            faceCTensor.yy() = faceC.y();
+            faceCTensor.zz() = faceC.z();
+
+            vector faceCAxial = faceCTensor & axis_;
+            vector faceCRadial = faceC - faceCAxial;
+
+            scalar radius = mag(faceCRadial);
+            scalar iRadius = 1.0 / (radius + 1e-12);
+
+            objFuncFaceValues[idxI] = exp(coeffKS_ * iRadius);
+
+            objValTmp += objFuncFaceValues[idxI];
+
+            if (objValTmp > 1e200)
+            {
+                FatalErrorIn(" ") << "KS function summation term too large! "
+                                  << "Reduce coeffKS! " << abort(FatalError);
+            }
+        }
+
+        // need to reduce the sum of force across all processors
+        reduce(objValTmp, sumOp<scalar>());
 
         objFuncValue = log(objValTmp) / coeffKS_;
     }
