@@ -422,7 +422,7 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
         }
         else
         {
-            FatalErrorIn("calcFvSourceCells") << "source: " << source0 << " not supported!"
+            FatalErrorIn("calcFvSourceCells") << "source: " << source << " not supported!"
                                               << "Options are: cylinderAnnulusToCell and cylinderAnnulusSmooth!"
                                               << abort(FatalError);
         }
