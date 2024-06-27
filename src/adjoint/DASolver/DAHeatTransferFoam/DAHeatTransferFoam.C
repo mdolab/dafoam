@@ -57,10 +57,6 @@ void DAHeatTransferFoam::initSolver()
         word fvSourceType = allOptions.subDict("fvSource").subDict(sourceName).getWord("type");
         daFvSourcePtr_.reset(DAFvSource::New(
             fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
-        
-        // NOTE: we calculate the fvSource only once
-        volScalarField& fvSource = fvSourcePtr_();
-        daFvSourcePtr_->calcFvSource(fvSource);
     }
 }
 

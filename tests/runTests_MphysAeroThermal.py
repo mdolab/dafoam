@@ -20,7 +20,7 @@ gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/ChannelConjugateHeat")
 if gcomm.rank == 0:
-    os.system("rm -rf 0 processor*")
+    os.system("rm -rf */processor*")
 
 # aero setup
 U0 = 10.0
@@ -178,6 +178,23 @@ daOptionsThermal = {
     },
     "designVar": {
         "shape": {"designVarType": "FFD"},
+        "power": {
+            "designVarType": "HSC",
+            "heatSourceName": "source1",
+            "comps": [6, 7, 8],
+        },
+    },
+    "fvSource": {
+        "source1": {
+            "type": "heatSource",
+            "source": "cylinderSmooth",
+            "center": [0.2, 0.055, 0.025],
+            "axis": [1.0, 0.0, 0.0],
+            "radius": 0.005,
+            "length": 0.4,
+            "power": 10.0,
+            "eps": 0.001,
+        },
     },
 }
 
@@ -188,6 +205,15 @@ meshOptions = {
     # point and normal for the symmetry plane
     "symmetryPlanes": [],
 }
+
+
+def power(val, DASolver):
+    radius = float(val[0])
+    length = float(val[1])
+    power = float(val[2])
+    # only change design variables
+    DASolver.setOption("fvSource", {"source1": {"power": power, "radius": radius, "length": length}})
+    DASolver.updateDAOption()
 
 
 class Top(Multipoint):
@@ -261,15 +287,21 @@ class Top(Multipoint):
         nShapes = self.geometry_aero.nom_addLocalDV(dvName="shape", axis="y", pointSelect=PS)
         nShapes = self.geometry_thermal.nom_addLocalDV(dvName="shape", axis="y", pointSelect=PS)
 
+        self.scenario.coupling.thermal.solver.add_dv_func("power", power)
+        self.scenario.thermal_post.add_dv_func("power", power)
+
         # add the design variables to the dvs component's output
         self.dvs.add_output("shape", val=np.array([0] * nShapes))
+        self.dvs.add_output("power", val=np.array([0.005, 0.4, 0.0]))
         # manually connect the dvs output to the geometry and cruise
         # sa and sst cases share the same shape
         self.connect("shape", "geometry_aero.shape")
         self.connect("shape", "geometry_thermal.shape")
+        self.connect("power", "scenario.power")
 
         # define the design variables to the top level
         self.add_design_var("shape", lower=-1, upper=1, scaler=1.0)
+        self.add_design_var("power", lower=-100.0, upper=100.0, scaler=1.0)
 
         # add objective and constraints to the top level
         self.add_objective("scenario.aero_post.HFH", scaler=1.0)
@@ -292,8 +324,11 @@ if gcomm.rank == 0:
     derivDict = {}
     derivDict["PL"] = {}
     derivDict["PL"]["shape"] = totals[("scenario.aero_post.functionals.PL", "dvs.shape")][0]
+    derivDict["PL"]["power"] = totals[("scenario.aero_post.functionals.PL", "dvs.power")][0]
     derivDict["HFH"] = {}
     derivDict["HFH"]["shape"] = totals[("scenario.aero_post.functionals.HFH", "dvs.shape")][0]
+    derivDict["HFH"]["power"] = totals[("scenario.aero_post.functionals.HFH", "dvs.power")][0]
     derivDict["HF_INNER"] = {}
     derivDict["HF_INNER"]["shape"] = totals[("scenario.thermal_post.functionals.HF_INNER", "dvs.shape")][0]
+    derivDict["HF_INNER"]["power"] = totals[("scenario.thermal_post.functionals.HF_INNER", "dvs.power")][0]
     reg_write_dict(derivDict, 1e-4, 1e-6)

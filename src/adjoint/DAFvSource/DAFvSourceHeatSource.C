@@ -168,9 +168,10 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
         word sourceType = sourceSubDict.getWord("source");
         // NOTE: here power should be in W. We will evenly divide the power by the
         // total volume of the source
-        scalar power = power_[sourceName];
         if (sourceType == "cylinderToCell")
         {
+
+            scalar power = power_[sourceName];
 
             // loop over all cell indices for this source and assign the source term
             // ----- first loop, calculate the total volume
@@ -217,9 +218,7 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
             vector cylinderDirNorm = cylinderDir / mag(cylinderDir);
             scalar eps = cylinderEps_[sourceName];
 
-            scalar totalVolume = constant::mathematical::pi * radius * radius * cylinderLen;
-
-            scalar sourceTotal = 0.0;
+            // first loop, calculate the total volume
             scalar volumeTotal = 0.0;
             forAll(mesh_.cells(), cellI)
             {
@@ -247,9 +246,56 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
                 scalar axialSmoothC = 1.0;
                 scalar radialSmoothC = 1.0;
 
-                if (cellC2AVecALen > cylinderLen / 2.0)
+                scalar halfL = cylinderLen / 2.0;
+
+                if (cellC2AVecALen > halfL)
                 {
-                    scalar d2 = (cellC2AVecALen - cylinderLen / 2.0) * (cellC2AVecALen - cylinderLen / 2.0);
+                    scalar d2 = (cellC2AVecALen - halfL) * (cellC2AVecALen - halfL);
+                    axialSmoothC = exp(-d2 / eps / eps);
+                }
+
+                if (cellC2AVecRLen > radius)
+                {
+                    scalar d2 = (cellC2AVecRLen - radius) * (cellC2AVecRLen - radius);
+                    radialSmoothC = exp(-d2 / eps / eps);
+                }
+                volumeTotal += axialSmoothC * radialSmoothC * mesh_.V()[cellI];
+            }
+            reduce(volumeTotal, sumOp<scalar>());
+
+            // second loop, calculate fvSource
+            scalar sourceTotal = 0.0;
+            forAll(mesh_.cells(), cellI)
+            {
+                // the cell center coordinates of this cellI
+                vector cellC = mesh_.C()[cellI];
+                // cell center to disk center vector
+                vector cellC2AVec = cellC - cylinderCenter;
+                // tmp tensor for calculating the axial/radial components of cellC2AVec
+                tensor cellC2AVecE(tensor::zero);
+                cellC2AVecE.xx() = cellC2AVec.x();
+                cellC2AVecE.yy() = cellC2AVec.y();
+                cellC2AVecE.zz() = cellC2AVec.z();
+
+                // now we need to decompose cellC2AVec into axial and radial components
+                // the axial component of cellC2AVec vector
+                vector cellC2AVecA = cellC2AVecE & cylinderDirNorm;
+                // the radial component of cellC2AVec vector
+                vector cellC2AVecR = cellC2AVec - cellC2AVecA;
+
+                // the magnitude of radial component of cellC2AVecR
+                scalar cellC2AVecRLen = mag(cellC2AVecR);
+                // the magnitude of axial component of cellC2AVecR
+                scalar cellC2AVecALen = mag(cellC2AVecA);
+
+                scalar axialSmoothC = 1.0;
+                scalar radialSmoothC = 1.0;
+
+                scalar halfL = cylinderLen / 2.0;
+
+                if (cellC2AVecALen > halfL)
+                {
+                    scalar d2 = (cellC2AVecALen - halfL) * (cellC2AVecALen - halfL);
                     axialSmoothC = exp(-d2 / eps / eps);
                 }
 
@@ -259,10 +305,11 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
                     radialSmoothC = exp(-d2 / eps / eps);
                 }
 
-                fvSource[cellI] += power / totalVolume * axialSmoothC * radialSmoothC;
-                sourceTotal += power / totalVolume * axialSmoothC * radialSmoothC * mesh_.V()[cellI];
-                volumeTotal += axialSmoothC * radialSmoothC * mesh_.V()[cellI];
+                fvSource[cellI] += power / volumeTotal * axialSmoothC * radialSmoothC;
+                sourceTotal += power / volumeTotal * axialSmoothC * radialSmoothC * mesh_.V()[cellI];
             }
+
+            reduce(sourceTotal, sumOp<scalar>());
 
             if (daOption_.getOption<word>("runStatus") == "solvePrimal")
             {

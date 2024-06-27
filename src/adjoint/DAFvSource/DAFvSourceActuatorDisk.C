@@ -103,21 +103,15 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
 
     dictionary fvSourceSubDict = allOptions.subDict("fvSource");
 
-    word diskName0 = fvSourceSubDict.toc()[0];
-    word source0 = fvSourceSubDict.subDict(diskName0).getWord("source");
-
-    if (source0 == "cylinderAnnulusToCell")
+    forAll(fvSourceSubDict.toc(), idxI)
     {
+        word diskName = fvSourceSubDict.toc()[idxI];
+        dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
+        word source = diskSubDict.getWord("source");
 
-        // loop over all the cell indices for all actuator disks
-        forAll(fvSourceCellIndices_.toc(), idxI)
+        if (source == "cylinderAnnulusToCell")
         {
-
-            // name of this disk
-            word diskName = fvSourceCellIndices_.toc()[idxI];
-
-            // sub dictionary with all parameters for this disk
-            dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
+            // loop over all the cell indices for all actuator disks
 
             // now read in all parameters for this actuator disk
             scalarList point1;
@@ -213,14 +207,8 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 }
             }
         }
-    }
-    else if (source0 == "cylinderAnnulusSmooth")
-    {
-
-        forAll(fvSourceSubDict.toc(), idxI)
+        else if (source == "cylinderAnnulusSmooth")
         {
-            word diskName = fvSourceSubDict.toc()[idxI];
-            dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
 
             vector center = {actuatorDiskDVs_[diskName][0], actuatorDiskDVs_[diskName][1], actuatorDiskDVs_[diskName][2]};
             vector dirNorm = {actuatorDiskDVs_[diskName][3], actuatorDiskDVs_[diskName][4], actuatorDiskDVs_[diskName][5]};
@@ -432,12 +420,12 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                 }
             }
         }
-    }
-    else
-    {
-        FatalErrorIn("calcFvSourceCells") << "source: " << source0 << " not supported!"
-                                          << "Options are: cylinderAnnulusToCell and cylinderAnnulusSmooth!"
-                                          << abort(FatalError);
+        else
+        {
+            FatalErrorIn("calcFvSourceCells") << "source: " << source0 << " not supported!"
+                                              << "Options are: cylinderAnnulusToCell and cylinderAnnulusSmooth!"
+                                              << abort(FatalError);
+        }
     }
 
     fvSource.correctBoundaryConditions();

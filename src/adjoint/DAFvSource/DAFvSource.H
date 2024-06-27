@@ -128,9 +128,25 @@ public:
     /// calculate fvSource based on the latest actuatorDVs
     void updateFvSource()
     {
-        volVectorField& fvSource = const_cast<volVectorField&>(
-            mesh_.thisDb().lookupObject<volVectorField>("fvSource"));
-        this->calcFvSource(fvSource);
+        if (mesh_.thisDb().foundObject<volVectorField>("fvSource"))
+        {
+            volVectorField& fvSource = const_cast<volVectorField&>(
+                mesh_.thisDb().lookupObject<volVectorField>("fvSource"));
+
+            this->calcFvSource(fvSource);
+        }
+        else if (mesh_.thisDb().foundObject<volScalarField>("fvSource"))
+        {
+            volScalarField& fvSource = const_cast<volScalarField&>(
+                mesh_.thisDb().lookupObject<volScalarField>("fvSource"));
+
+            this->calcFvSource(fvSource);
+        }
+        else
+        {
+            FatalErrorIn("") << "fvSource not found! "
+                             << abort(FatalError);
+        }
     }
 
     /// synchronize the values in DAOption and actuatorDiskDVs_

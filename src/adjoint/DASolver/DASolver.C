@@ -7034,7 +7034,7 @@ void DASolver::calcdFdHSCAD(
     }
     else
     {
-        FatalErrorIn("") << "designVarType not supported. Options: ACTD"
+        FatalErrorIn("") << "designVarType not supported. Options: HSC"
                          << abort(FatalError);
     }
 
