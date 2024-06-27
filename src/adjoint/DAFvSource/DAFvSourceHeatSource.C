@@ -24,6 +24,8 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
     const DAIndex& daIndex)
     : DAFvSource(modelType, mesh, daOption, daModel, daIndex)
 {
+    printInterval_ = daOption.getOption<label>("printInterval");
+
     const dictionary& allOptions = daOption_.getAllOptions();
 
     dictionary fvSourceSubDict = allOptions.subDict("fvSource");
@@ -34,17 +36,18 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
         dictionary sourceSubDict = fvSourceSubDict.subDict(sourceName);
         word sourceType = sourceSubDict.getWord("source");
 
-        scalarList p1List;
-        sourceSubDict.readEntry<scalarList>("p1", p1List);
-        cylinderP1_.set(sourceName, p1List);
-        scalarList p2List;
-        sourceSubDict.readEntry<scalarList>("p2", p2List);
-        cylinderP2_.set(sourceName, p2List);
-        cylinderRadius_.set(sourceName, sourceSubDict.getScalar("radius"));
-        power_.set(sourceName, sourceSubDict.getScalar("power"));
-
         if (sourceType == "cylinderToCell")
         {
+            scalarList p1List;
+            sourceSubDict.readEntry<scalarList>("p1", p1List);
+            cylinderP1_.set(sourceName, p1List);
+            scalarList p2List;
+            sourceSubDict.readEntry<scalarList>("p2", p2List);
+            cylinderP2_.set(sourceName, p2List);
+
+            cylinderRadius_.set(sourceName, sourceSubDict.getScalar("radius"));
+            power_.set(sourceName, sourceSubDict.getScalar("power"));
+
             fvSourceCellIndices_.set(sourceName, {});
             // all available source type are in src/meshTools/sets/cellSources
             // Example of IO parameters os in applications/utilities/mesh/manipulation/topoSet
@@ -92,17 +95,26 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
                 Info << "fvSourceCellIndices " << fvSourceCellIndices_ << endl;
             }
         }
-        else if (sourceType == "cylinder")
+        else if (sourceType == "cylinderSmooth")
         {
-            // no need to do special things
+
+            // eps is a smoothing parameter, it should be the local mesh cell size in meters
+            // near the cylinder region
+            cylinderEps_.set(sourceName, sourceSubDict.getScalar("eps"));
         }
         else
         {
             FatalErrorIn("DAFvSourceHeatSource") << "source: " << sourceType << " not supported!"
-                                                 << "Options are: cylinderAnnulusToCell and cylinder!"
+                                                 << "Options are: cylinderAnnulusToCell and cylinderSmooth!"
                                                  << abort(FatalError);
         }
     }
+
+    // now we need to initialize actuatorDiskDVs_ by synchronizing the values
+    // defined in fvSource from DAOption to actuatorDiskDVs_
+    // NOTE: we need to call this function whenever we change the actuator
+    // design variables during optimization
+    this->syncDAOptionToActuatorDVs();
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -156,9 +168,10 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
         word sourceType = sourceSubDict.getWord("source");
         // NOTE: here power should be in W. We will evenly divide the power by the
         // total volume of the source
-        scalar power = power_[sourceName];
         if (sourceType == "cylinderToCell")
         {
+
+            scalar power = power_[sourceName];
 
             // loop over all cell indices for this source and assign the source term
             // ----- first loop, calculate the total volume
@@ -184,20 +197,29 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
 
             reduce(sourceTotal, sumOp<scalar>());
 
-            Info << "Total volume for " << sourceName << ": " << totalV << " m^3" << endl;
-            Info << "Total heat source for " << sourceName << ": " << sourceTotal << " W." << endl;
+            if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+            {
+                if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
+                {
+                    Info << "Total volume for " << sourceName << ": " << totalV << " m^3" << endl;
+                    Info << "Total heat source for " << sourceName << ": " << sourceTotal << " W." << endl;
+                }
+            }
         }
-        else if (sourceType == "cylinder")
+        else if (sourceType == "cylinderSmooth")
         {
-            vector p1 = {cylinderP1_[sourceName][0], cylinderP1_[sourceName][1], cylinderP1_[sourceName][2]};
-            vector p2 = {cylinderP2_[sourceName][0], cylinderP2_[sourceName][1], cylinderP2_[sourceName][2]};
-            vector cylinderCenter = (p1 + p2) / 2.0;
-            vector cylinderDir = p2 - p1;
-            scalar cylinderLen = mag(cylinderDir);
-            vector cylinderDirNorm = cylinderDir / cylinderLen;
-            scalar radius = cylinderRadius_[sourceName];
-            scalar totalVolume = constant::mathematical::pi * radius * radius * cylinderLen;
+            vector cylinderCenter =
+                {actuatorDiskDVs_[sourceName][0], actuatorDiskDVs_[sourceName][1], actuatorDiskDVs_[sourceName][2]};
+            vector cylinderDir =
+                {actuatorDiskDVs_[sourceName][3], actuatorDiskDVs_[sourceName][4], actuatorDiskDVs_[sourceName][5]};
+            scalar radius = actuatorDiskDVs_[sourceName][6];
+            scalar cylinderLen = actuatorDiskDVs_[sourceName][7];
+            scalar power = actuatorDiskDVs_[sourceName][8];
+            vector cylinderDirNorm = cylinderDir / mag(cylinderDir);
+            scalar eps = cylinderEps_[sourceName];
 
+            // first loop, calculate the total volume
+            scalar volumeTotal = 0.0;
             forAll(mesh_.cells(), cellI)
             {
                 // the cell center coordinates of this cellI
@@ -221,16 +243,87 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
                 // the magnitude of axial component of cellC2AVecR
                 scalar cellC2AVecALen = mag(cellC2AVecA);
 
-                if (cellC2AVecRLen <= radius && cellC2AVecALen <= cylinderLen / 2.0)
+                scalar axialSmoothC = 1.0;
+                scalar radialSmoothC = 1.0;
+
+                scalar halfL = cylinderLen / 2.0;
+
+                if (cellC2AVecALen > halfL)
                 {
-                    fvSource[cellI] += power / totalVolume;
+                    scalar d2 = (cellC2AVecALen - halfL) * (cellC2AVecALen - halfL);
+                    axialSmoothC = exp(-d2 / eps / eps);
+                }
+
+                if (cellC2AVecRLen > radius)
+                {
+                    scalar d2 = (cellC2AVecRLen - radius) * (cellC2AVecRLen - radius);
+                    radialSmoothC = exp(-d2 / eps / eps);
+                }
+                volumeTotal += axialSmoothC * radialSmoothC * mesh_.V()[cellI];
+            }
+            reduce(volumeTotal, sumOp<scalar>());
+
+            // second loop, calculate fvSource
+            scalar sourceTotal = 0.0;
+            forAll(mesh_.cells(), cellI)
+            {
+                // the cell center coordinates of this cellI
+                vector cellC = mesh_.C()[cellI];
+                // cell center to disk center vector
+                vector cellC2AVec = cellC - cylinderCenter;
+                // tmp tensor for calculating the axial/radial components of cellC2AVec
+                tensor cellC2AVecE(tensor::zero);
+                cellC2AVecE.xx() = cellC2AVec.x();
+                cellC2AVecE.yy() = cellC2AVec.y();
+                cellC2AVecE.zz() = cellC2AVec.z();
+
+                // now we need to decompose cellC2AVec into axial and radial components
+                // the axial component of cellC2AVec vector
+                vector cellC2AVecA = cellC2AVecE & cylinderDirNorm;
+                // the radial component of cellC2AVec vector
+                vector cellC2AVecR = cellC2AVec - cellC2AVecA;
+
+                // the magnitude of radial component of cellC2AVecR
+                scalar cellC2AVecRLen = mag(cellC2AVecR);
+                // the magnitude of axial component of cellC2AVecR
+                scalar cellC2AVecALen = mag(cellC2AVecA);
+
+                scalar axialSmoothC = 1.0;
+                scalar radialSmoothC = 1.0;
+
+                scalar halfL = cylinderLen / 2.0;
+
+                if (cellC2AVecALen > halfL)
+                {
+                    scalar d2 = (cellC2AVecALen - halfL) * (cellC2AVecALen - halfL);
+                    axialSmoothC = exp(-d2 / eps / eps);
+                }
+
+                if (cellC2AVecRLen > radius)
+                {
+                    scalar d2 = (cellC2AVecRLen - radius) * (cellC2AVecRLen - radius);
+                    radialSmoothC = exp(-d2 / eps / eps);
+                }
+
+                fvSource[cellI] += power / volumeTotal * axialSmoothC * radialSmoothC;
+                sourceTotal += power / volumeTotal * axialSmoothC * radialSmoothC * mesh_.V()[cellI];
+            }
+
+            reduce(sourceTotal, sumOp<scalar>());
+
+            if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+            {
+                if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
+                {
+                    Info << "Total volume for " << sourceName << ": " << volumeTotal << " m^3" << endl;
+                    Info << "Total heat source for " << sourceName << ": " << sourceTotal << " W." << endl;
                 }
             }
         }
         else
         {
             FatalErrorIn("DAFvSourceHeatSource") << "source: " << sourceType << " not supported!"
-                                                 << "Options are: cylinderAnnulusToCell and cylinder!"
+                                                 << "Options are: cylinderAnnulusToCell and cylinderSmooth!"
                                                  << abort(FatalError);
         }
     }

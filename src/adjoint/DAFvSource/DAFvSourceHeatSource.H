@@ -35,9 +35,10 @@ protected:
     HashTable<scalarList> cylinderP2_;
     HashTable<scalar> cylinderRadius_;
     HashTable<scalar> power_;
+    HashTable<scalar> cylinderEps_;
 
-    /// calculate DAFvSourceHeatSource::fvSourceCellIndices_
-    void calcFvSourceCellIndices(const word sourceName, HashTable<labelList>& fvSourceCellIndices);
+    /// print interval for primal and adjoint
+    label printInterval_;
 
 public:
     TypeName("heatSource");

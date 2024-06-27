@@ -65,6 +65,17 @@ DAObjFuncLocation::DAObjFuncLocation(
         center_ = {centerRead[0], centerRead[1], centerRead[2]};
     }
 
+    snapCenter2Cell_ = objFuncDict_.lookupOrDefault<label>("snapCenter2Cell", 0);
+    if (snapCenter2Cell_)
+    {
+        point centerPoint = {center_[0], center_[1], center_[2]};
+        snappedCenterCellI_ = mesh_.findCell(centerPoint);
+        if (snappedCenterCellI_ < 0)
+        {
+            FatalErrorIn(" ") << "can not find cell for center " << centerPoint << abort(FatalError);
+        }
+    }
+
     if (mode_ == "maxRadius")
     {
         // we need to identify the patchI and faceI that has maxR
@@ -158,7 +169,13 @@ void DAObjFuncLocation::calcObjFunc(
             const label patchI = daIndex_.bFacePatchI[bFaceI];
             const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
-            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center_;
+            vector center = center_;
+            if (snapCenter2Cell_)
+            {
+                center = mesh_.C()[snappedCenterCellI_];
+            }
+
+            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center;
 
             tensor faceCTensor(tensor::zero);
             faceCTensor.xx() = faceC.x();
@@ -200,7 +217,13 @@ void DAObjFuncLocation::calcObjFunc(
             const label patchI = daIndex_.bFacePatchI[bFaceI];
             const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
-            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center_;
+            vector center = center_;
+            if (snapCenter2Cell_)
+            {
+                center = mesh_.C()[snappedCenterCellI_];
+            }
+
+            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center;
 
             tensor faceCTensor(tensor::zero);
             faceCTensor.xx() = faceC.x();
@@ -234,7 +257,14 @@ void DAObjFuncLocation::calcObjFunc(
         scalar radius = 0.0;
         if (maxRPatchI_ >= 0 && maxRFaceI_ >= 0)
         {
-            vector faceC = mesh_.Cf().boundaryField()[maxRPatchI_][maxRFaceI_] - center_;
+
+            vector center = center_;
+            if (snapCenter2Cell_)
+            {
+                center = mesh_.C()[snappedCenterCellI_];
+            }
+
+            vector faceC = mesh_.Cf().boundaryField()[maxRPatchI_][maxRFaceI_] - center;
 
             tensor faceCTensor(tensor::zero);
             faceCTensor.xx() = faceC.x();

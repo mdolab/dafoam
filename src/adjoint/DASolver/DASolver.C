@@ -6870,6 +6870,185 @@ void DASolver::calcdFdACTAD(
 #endif
 }
 
+void DASolver::calcdFdHSCAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const word objFuncName,
+    const word designVarName,
+    Vec dFdHSC)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute dFdHSC using reverse-mode AD
+        HSC: heat source with cylinders
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        objFuncName: the name of the objective function
+
+        designVarName: name of the design variable
+    
+    Output:
+        dFdHSC: dF/dHSC
+    */
+
+    Info << "Calculating dFdHSC using reverse-mode AD" << endl;
+
+    VecZeroEntries(dFdHSC);
+
+    label nDVs = 9;
+
+    // first check if the input is valid
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+    word designVarType = dvSubDict.getWord("designVarType");
+    if (designVarType == "HSC")
+    {
+        DAFvSource& fvSource = const_cast<DAFvSource&>(
+            meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
+
+        word heatSourceName = dvSubDict.getWord("heatSourceName");
+        dictionary fvSourceSubDict = daOptionPtr_->getAllOptions().subDict("fvSource");
+        word source = fvSourceSubDict.subDict(heatSourceName).getWord("source");
+        if (source == "cylinderSmooth")
+        {
+            this->updateOFField(wVec);
+            this->updateOFMesh(xvVec);
+
+            // get the subDict for this objective function
+            dictionary objFuncSubDict =
+                daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+
+            // loop over all parts for this objFuncName
+            forAll(objFuncSubDict.toc(), idxJ)
+            {
+                // get the subDict for this part
+                word objFuncPart = objFuncSubDict.toc()[idxJ];
+
+                // get objFunc from daObjFuncPtrList_
+                label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
+                DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
+
+                // get the design variable vals
+                scalarList actDVList(nDVs);
+                for (label i = 0; i < nDVs; i++)
+                {
+                    actDVList[i] = fvSource.getActuatorDVs(heatSourceName, i);
+                }
+
+                // reset tape
+                this->globalADTape_.reset();
+                // activate tape, start recording
+                this->globalADTape_.setActive();
+                // register  the input
+                for (label i = 0; i < nDVs; i++)
+                {
+                    this->globalADTape_.registerInput(actDVList[i]);
+                }
+                // set dv values to fvSource obj for all procs
+                for (label i = 0; i < nDVs; i++)
+                {
+                    fvSource.setActuatorDVs(heatSourceName, i, actDVList[i]);
+                }
+                // the actuatorDVs are updated, now we need to recompute fvSource
+                // this is not needed for the residual partials because fvSource
+                // will be automatically calculated in the UEqn, but for the
+                // obj partials, we need to manually recompute fvSource
+                fvSource.updateFvSource();
+
+                // update all intermediate variables and boundary conditions
+                this->updateStateBoundaryConditions();
+                // compute the objective function
+                scalar fRef = daObjFunc.getObjFuncValue();
+                // register f as the output
+                this->globalADTape_.registerOutput(fRef);
+                // stop recording
+                this->globalADTape_.setPassive();
+
+                // Note: since we used reduced objFunc, we only need to
+                // assign the seed for master proc
+                if (Pstream::master())
+                {
+                    fRef.setGradient(1.0);
+                }
+                // evaluate tape to compute derivative
+                this->globalADTape_.evaluate();
+
+                // assign the computed derivatives from the OpenFOAM variable to dFd*Part
+                Vec dFdHSCPart;
+                VecDuplicate(dFdHSC, &dFdHSCPart);
+                VecZeroEntries(dFdHSCPart);
+
+                for (label i = 0; i < nDVs; i++)
+                {
+                    PetscScalar valIn = actDVList[i].getGradient();
+                    // we need to do ADD_VALUES to get contribution from all procs
+                    VecSetValue(dFdHSCPart, i, valIn, ADD_VALUES);
+                }
+
+                VecAssemblyBegin(dFdHSCPart);
+                VecAssemblyEnd(dFdHSCPart);
+
+                // we need to add dFd*Part to dFd* because we want to sum
+                // all dFd*Part for all parts of this objFuncName.
+                VecAXPY(dFdHSC, 1.0, dFdHSCPart);
+
+                VecDestroy(&dFdHSCPart);
+
+                // need to clear adjoint and tape after the computation is done!
+                this->globalADTape_.clearAdjoints();
+                this->globalADTape_.reset();
+
+                // **********************************************************************************************
+                // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+                // **********************************************************************************************
+
+                for (label i = 0; i < nDVs; i++)
+                {
+                    this->globalADTape_.deactivateValue(actDVList[i]);
+                }
+                for (label i = 0; i < nDVs; i++)
+                {
+                    fvSource.setActuatorDVs(heatSourceName, i, actDVList[i]);
+                }
+                fvSource.updateFvSource();
+                this->updateStateBoundaryConditions();
+                fRef = daObjFunc.getObjFuncValue();
+
+                if (daOptionPtr_->getOption<label>("debug"))
+                {
+                    this->calcPrimalResidualStatistics("print");
+                    Info << objFuncName << ": " << fRef << endl;
+                }
+            }
+        }
+        else
+        {
+            FatalErrorIn("") << "source not supported. Options: cylinderAnnulusSmooth"
+                             << abort(FatalError);
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << "designVarType not supported. Options: HSC"
+                         << abort(FatalError);
+    }
+
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dFdHSC") || writeJacobians.found("all"))
+    {
+        word outputName = "dFdHSC_" + objFuncName + "_" + designVarName;
+        DAUtility::writeVectorBinary(dFdHSC, outputName);
+        DAUtility::writeVectorASCII(dFdHSC, outputName);
+    }
+#endif
+}
+
 void DASolver::calcdRdActTPsiAD(
     const Vec xvVec,
     const Vec wVec,
@@ -6996,6 +7175,137 @@ void DASolver::calcdRdActTPsiAD(
         word outputName = "dRdActTPsi_" + designVarName;
         DAUtility::writeVectorBinary(dRdActTPsi, outputName);
         DAUtility::writeVectorASCII(dRdActTPsi, outputName);
+    }
+#endif
+}
+
+void DASolver::calcdRdHSCTPsiAD(
+    const Vec xvVec,
+    const Vec wVec,
+    const Vec psi,
+    const word designVarName,
+    Vec dRdHSCTPsi)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Compute the matrix-vector products dRdHST^T*Psi using reverse-mode AD
+        HSC = heat source with cylinders
+    
+    Input:
+
+        xvVec: the volume mesh coordinate vector
+
+        wVec: the state variable vector
+
+        psi: the vector to multiply dRdAct
+
+        designVarName: name of the design variable
+    
+    Output:
+        dRdHSCTPsi: the matrix-vector products dRdHSC^T * Psi
+    */
+
+    Info << "Calculating [dRdHSC]^T * Psi using reverse-mode AD" << endl;
+
+    VecZeroEntries(dRdHSCTPsi);
+
+    label nDVs = 9;
+
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
+    word designVarType = dvSubDict.getWord("designVarType");
+    if (designVarType == "HSC")
+    {
+
+        DAFvSource& fvSource = const_cast<DAFvSource&>(
+            meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
+
+        word heatSourceName = dvSubDict.getWord("heatSourceName");
+
+        dictionary fvSourceSubDict = daOptionPtr_->getAllOptions().subDict("fvSource");
+        word source = fvSourceSubDict.subDict(heatSourceName).getWord("source");
+        if (source == "cylinderSmooth")
+        {
+
+            this->updateOFField(wVec);
+            this->updateOFMesh(xvVec);
+
+            scalarList actDVList(nDVs);
+            for (label i = 0; i < nDVs; i++)
+            {
+                actDVList[i] = fvSource.getActuatorDVs(heatSourceName, i);
+            }
+
+            this->globalADTape_.reset();
+            this->globalADTape_.setActive();
+
+            for (label i = 0; i < nDVs; i++)
+            {
+                this->globalADTape_.registerInput(actDVList[i]);
+            }
+
+            // set dv values to fvSource obj for all procs
+            for (label i = 0; i < nDVs; i++)
+            {
+                fvSource.setActuatorDVs(heatSourceName, i, actDVList[i]);
+            }
+
+            // compute residuals
+            this->updateStateBoundaryConditions();
+            this->calcResiduals();
+
+            this->registerResidualOutput4AD();
+            this->globalADTape_.setPassive();
+
+            this->assignVec2ResidualGradient(psi);
+            this->globalADTape_.evaluate();
+
+            for (label i = 0; i < nDVs; i++)
+            {
+                PetscScalar valIn = actDVList[i].getGradient();
+                // we need to do ADD_VALUES to get contribution from all procs
+                VecSetValue(dRdHSCTPsi, i, valIn, ADD_VALUES);
+            }
+
+            VecAssemblyBegin(dRdHSCTPsi);
+            VecAssemblyEnd(dRdHSCTPsi);
+
+            this->globalADTape_.clearAdjoints();
+            this->globalADTape_.reset();
+
+            // **********************************************************************************************
+            // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+            // **********************************************************************************************
+
+            for (label i = 0; i < nDVs; i++)
+            {
+                this->globalADTape_.deactivateValue(actDVList[i]);
+            }
+            for (label i = 0; i < nDVs; i++)
+            {
+                fvSource.setActuatorDVs(heatSourceName, i, actDVList[i]);
+            }
+            this->updateStateBoundaryConditions();
+            this->calcResiduals();
+        }
+        else
+        {
+            FatalErrorIn("") << "source not supported. Options: cylinderSmooth"
+                             << abort(FatalError);
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << "designVarType not supported. Options: ACTD"
+                         << abort(FatalError);
+    }
+    wordList writeJacobians;
+    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
+    if (writeJacobians.found("dRdHSCTPsi") || writeJacobians.found("all"))
+    {
+        word outputName = "dRdHSCTPsi_" + designVarName;
+        DAUtility::writeVectorBinary(dRdHSCTPsi, outputName);
+        DAUtility::writeVectorASCII(dRdHSCTPsi, outputName);
     }
 #endif
 }
