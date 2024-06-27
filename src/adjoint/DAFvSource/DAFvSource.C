@@ -180,6 +180,43 @@ void DAFvSource::syncDAOptionToActuatorDVs()
             }
         }
     }
+    else if (type0 == "heatSource")
+    {
+        word source0 = fvSourceSubDict.subDict(diskName0).getWord("source");
+
+        if (source0 == "cylinderSmooth")
+        {
+            forAll(fvSourceSubDict.toc(), idxI)
+            {
+                word diskName = fvSourceSubDict.toc()[idxI];
+
+                // sub dictionary with all parameters for this disk
+                dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
+
+                // now read in all parameters for this actuator disk
+                scalarList centerList;
+                diskSubDict.readEntry<scalarList>("center", centerList);
+
+                scalarList axisList;
+                diskSubDict.readEntry<scalarList>("axis", axisList);
+
+                // we have 13 design variables for each disk
+                scalarList dvList(9);
+                dvList[0] = centerList[0];
+                dvList[1] = centerList[1];
+                dvList[2] = centerList[2];
+                dvList[3] = axisList[0];
+                dvList[4] = axisList[1];
+                dvList[5] = axisList[2];
+                dvList[6] = diskSubDict.getScalar("radius");
+                dvList[7] = diskSubDict.getScalar("length");
+                dvList[8] = diskSubDict.getScalar("power");
+                
+                // set actuatorDiskDVs_
+                actuatorDiskDVs_.set(diskName, dvList);
+            }
+        }
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

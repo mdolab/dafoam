@@ -581,6 +581,13 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdActTPsi);
+    
+    void calcdRdHSCTPsiAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const Vec psi,
+        const word designVarName,
+        Vec dRdHSCTPsi);
 
     void calcdForcedWAD(
         const Vec xvVec,
@@ -603,6 +610,14 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdACT);
+    
+    /// compute dFdHSC AD
+    void calcdFdHSCAD(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdHSC);
 
     /// compute dFdRegPar AD
     void calcdFdRegParAD(

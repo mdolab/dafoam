@@ -67,10 +67,12 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdForcedXvAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdAcousticsdXvAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdRdActTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
+        void calcdRdHSCTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdForcedWAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void calcdAcousticsdWAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
         void calcdFdACT(PetscVec, PetscVec, char *, char*, char*, PetscVec)
         void calcdFdACTAD(PetscVec, PetscVec, char *, char*, PetscVec)
+        void calcdFdHSCAD(PetscVec, PetscVec, char *, char*, PetscVec)
         void calcdRdAOATPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdRdBCTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
         void calcdFdFFD(PetscVec, PetscVec, char *, char *, PetscVec)
@@ -263,6 +265,9 @@ cdef class pyDASolvers:
 
     def calcdRdActTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdActTPsi):
         self._thisptr.calcdRdActTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdActTPsi.vec)
+    
+    def calcdRdHSCTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdHSCTPsi):
+        self._thisptr.calcdRdHSCTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdHSCTPsi.vec)
 
     def calcdForcedWAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedW):
         self._thisptr.calcdForcedWAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedW.vec)
@@ -272,6 +277,9 @@ cdef class pyDASolvers:
 
     def calcdFdACTAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdACT):
         self._thisptr.calcdFdACTAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdACT.vec)
+    
+    def calcdFdHSCAD(self, Vec xvVec, Vec wVec, objFuncName, designVarName, Vec dFdHSC):
+        self._thisptr.calcdFdHSCAD(xvVec.vec, wVec.vec, objFuncName, designVarName, dFdHSC.vec)
     
     def calcdFdACT(self, Vec xvVec, Vec wVec, objFuncName, designVarName, designVarType, Vec dFdACT):
         self._thisptr.calcdFdACT(xvVec.vec, wVec.vec, objFuncName, designVarName, designVarType, dFdACT.vec)

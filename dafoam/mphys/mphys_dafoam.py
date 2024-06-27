@@ -657,6 +657,11 @@ class DAFoamSolver(ImplicitComponent):
                 if "comps" in list(designVariables[dvName].keys()):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
+            elif dvType == "HSC":  # add heat source parameter variables
+                nHSCVars = 9
+                if "comps" in list(designVariables[dvName].keys()):
+                    nHSCVars = len(designVariables[dvName]["comps"])
+                self.add_input(dvName, distributed=False, shape=nHSCVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
                 # user can prescribe whether the field var is distributed. Default is True
                 distributed = True
@@ -888,6 +893,26 @@ class DAFoamSolver(ImplicitComponent):
                             d_inputs[inputName] += ACTDBarSub
                         else:
                             d_inputs[inputName] += ACTDBar
+                    
+                    # compute [dRdHSC]^T*Psi using reverse mode AD
+                    elif self.dvType[inputName] == "HSC":
+                        prodVec = PETSc.Vec().create(self.comm)
+                        prodVec.setSizes((PETSc.DECIDE, 9), bsize=1)
+                        prodVec.setFromOptions()
+                        DASolver.solverAD.calcdRdHSCTPsiAD(
+                            DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
+                        )
+                        # we will convert the MPI prodVec to seq array for all procs
+                        HSCBar = DASolver.convertMPIVec2SeqArray(prodVec)
+                        if "comps" in list(designVariables[inputName].keys()):
+                            nHSCVars = len(designVariables[inputName]["comps"])
+                            HSCBarSub = np.zeros(nHSCVars, "d")
+                            for i in range(nHSCVars):
+                                comp = designVariables[inputName]["comps"][i]
+                                HSCBarSub[i] = HSCBar[comp]
+                            d_inputs[inputName] += HSCBarSub
+                        else:
+                            d_inputs[inputName] += HSCBar
 
                     # compute dRdFieldT*Psi using reverse mode AD
                     elif self.dvType[inputName] == "Field":
@@ -1251,6 +1276,11 @@ class DAFoamFunctions(ExplicitComponent):
                 if "comps" in list(designVariables[dvName].keys()):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
+            elif dvType == "HSC":  # add heat source parameter variables
+                nHSCVars = 9
+                if "comps" in list(designVariables[dvName].keys()):
+                    nHSCVars = len(designVariables[dvName]["comps"])
+                self.add_input(dvName, distributed=False, shape=nHSCVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
                 # user can prescribe whether the field var is distributed. Default is True
                 distributed = True
@@ -1447,6 +1477,26 @@ class DAFoamFunctions(ExplicitComponent):
                             d_inputs[inputName] += ACTDBarSub * fBar
                         else:
                             d_inputs[inputName] += ACTDBar * fBar
+                    
+                    # compute dFdHSC
+                    elif self.dvType[inputName] == "HSC":
+                        dFdHSC = PETSc.Vec().create(self.comm)
+                        dFdHSC.setSizes((PETSc.DECIDE, 9), bsize=1)
+                        dFdHSC.setFromOptions()
+                        DASolver.solverAD.calcdFdHSCAD(
+                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdHSC
+                        )
+                        # we will convert the MPI dFdHSC to seq array for all procs
+                        HSCBar = DASolver.convertMPIVec2SeqArray(dFdHSC)
+                        if "comps" in list(designVariables[inputName].keys()):
+                            nHSCVars = len(designVariables[inputName]["comps"])
+                            HSCBarSub = np.zeros(nHSCVars, "d")
+                            for i in range(nHSCVars):
+                                comp = designVariables[inputName]["comps"][i]
+                                HSCBarSub[i] = HSCBar[comp]
+                            d_inputs[inputName] += HSCBarSub * fBar
+                        else:
+                            d_inputs[inputName] += HSCBar * fBar
 
                     # compute dFdField
                     elif self.dvType[inputName] == "Field":
