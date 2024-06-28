@@ -79,6 +79,10 @@ public:
         scalarList& objFuncFaceValues,
         scalarList& objFuncCellValues,
         scalar& objFuncValue);
+
+    void findGlobalSnappedCenter(
+        label snappedCenterCellI,
+        vector& center);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

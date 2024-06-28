@@ -59,9 +59,10 @@ aeroOptions = {
                 "patches": ["channel_inner"],
                 "mode": "maxRadiusKS",
                 "axis": [0.0, 1.0, 0.0],
-                "center": [0.5, 0.05, -0.05],
+                "center": [0.505, 0.056, 0.026],
                 "coeffKS": 1.0,
                 "scale": 1.0,
+                "snapCenter2Cell": True,
                 "addToAdjoint": True,
             }
         },
@@ -101,12 +102,13 @@ aeroOptions = {
         "source2": {
             "type": "heatSource",
             "source": "cylinderSmooth",
-            "center": [0.2, 0.055, 0.025],
+            "center": [0.201, 0.056, 0.026],
             "axis": [1.0, 0.0, 0.0],
             "length": 0.4,
             "radius": 0.005,
             "power": 1000.0,
             "eps": 0.001,
+            "snapCenter2Cell": True,
         },
     },
 }

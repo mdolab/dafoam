@@ -26,6 +26,12 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
 {
     printInterval_ = daOption.getOption<label>("printInterval");
 
+    // now we need to initialize actuatorDiskDVs_ by synchronizing the values
+    // defined in fvSource from DAOption to actuatorDiskDVs_
+    // NOTE: we need to call this function whenever we change the actuator
+    // design variables during optimization
+    this->syncDAOptionToActuatorDVs();
+
     const dictionary& allOptions = daOption_.getAllOptions();
 
     dictionary fvSourceSubDict = allOptions.subDict("fvSource");
@@ -101,6 +107,28 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
             // eps is a smoothing parameter, it should be the local mesh cell size in meters
             // near the cylinder region
             cylinderEps_.set(sourceName, sourceSubDict.getScalar("eps"));
+
+            snapCenter2Cell_.set(sourceName, sourceSubDict.lookupOrDefault<label>("snapCenter2Cell", 0));
+            if (snapCenter2Cell_[sourceName])
+            {
+                point centerPoint = {actuatorDiskDVs_[sourceName][0], actuatorDiskDVs_[sourceName][1], actuatorDiskDVs_[sourceName][2]};
+                snappedCenterCellI_.set(sourceName, mesh_.findCell(centerPoint));
+                label foundCellI = 0;
+                if (snappedCenterCellI_[sourceName] >= 0)
+                {
+                    foundCellI = 1;
+                }
+                reduce(foundCellI, sumOp<label>());
+                if (foundCellI != 1)
+                {
+                    FatalErrorIn(" ") << "There should be only one cell found globally while "
+                                      << foundCellI << " was returned."
+                                      << " Please adjust center such that it is located completely"
+                                      << " within a cell in the mesh domain. The center should not "
+                                      << " be outside of the mesh domain or on a mesh face "
+                                      << abort(FatalError);
+                }
+            }
         }
         else
         {
@@ -109,12 +137,6 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
                                                  << abort(FatalError);
         }
     }
-
-    // now we need to initialize actuatorDiskDVs_ by synchronizing the values
-    // defined in fvSource from DAOption to actuatorDiskDVs_
-    // NOTE: we need to call this function whenever we change the actuator
-    // design variables during optimization
-    this->syncDAOptionToActuatorDVs();
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -210,6 +232,11 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
         {
             vector cylinderCenter =
                 {actuatorDiskDVs_[sourceName][0], actuatorDiskDVs_[sourceName][1], actuatorDiskDVs_[sourceName][2]};
+            
+            if (snapCenter2Cell_[sourceName])
+            {
+                this->findGlobalSnappedCenter(snappedCenterCellI_[sourceName], cylinderCenter);
+            }
             vector cylinderDir =
                 {actuatorDiskDVs_[sourceName][3], actuatorDiskDVs_[sourceName][4], actuatorDiskDVs_[sourceName][5]};
             scalar radius = actuatorDiskDVs_[sourceName][6];
