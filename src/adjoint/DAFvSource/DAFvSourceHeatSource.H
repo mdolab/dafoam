@@ -40,6 +40,12 @@ protected:
     /// print interval for primal and adjoint
     label printInterval_;
 
+    /// whether to snap the center to a cell in the mesh if yes the center will move with the mesh
+    HashTable<label> snapCenter2Cell_;
+
+    /// the cell index for the center if snapCenter2Cell_ = 1
+    HashTable<label> snappedCenterCellI_;
+
 public:
     TypeName("heatSource");
     // Constructors

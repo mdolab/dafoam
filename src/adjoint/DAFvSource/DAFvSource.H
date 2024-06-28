@@ -154,6 +154,10 @@ public:
 
     /// virtual function for regIOobject
     bool writeData(Ostream& os) const;
+
+    void findGlobalSnappedCenter(
+        label snappedCenterCellI,
+        vector& center);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
