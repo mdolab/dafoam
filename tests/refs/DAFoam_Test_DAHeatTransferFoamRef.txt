@@ -7,7 +7,7 @@ Dictionary Key: IR1KS
 Dictionary Key: R1
 @value    0.994617581067802 1e-08 1e-10
 Dictionary Key: R1KS
-@value    6.267981796909868 1e-08 1e-10
+@value    6.252992336157548 1e-08 1e-10
 Dictionary Key: TNormSum
 @value     6400011.35124065 1e-08 1e-10
 Dictionary Key: fail
