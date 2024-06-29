@@ -112,7 +112,11 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
             if (snapCenter2Cell_[sourceName])
             {
                 point centerPoint = {actuatorDiskDVs_[sourceName][0], actuatorDiskDVs_[sourceName][1], actuatorDiskDVs_[sourceName][2]};
-                snappedCenterCellI_.set(sourceName, mesh_.findCell(centerPoint));
+
+                // NOTE: we need to call a self-defined findCell func to make it work correctly in ADR
+                label myCellI = DAUtility::myFindCell(mesh_, centerPoint);
+
+                snappedCenterCellI_.set(sourceName, myCellI);
                 label foundCellI = 0;
                 if (snappedCenterCellI_[sourceName] >= 0)
                 {

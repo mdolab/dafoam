@@ -69,7 +69,10 @@ DAObjFuncLocation::DAObjFuncLocation(
     if (snapCenter2Cell_)
     {
         point centerPoint = {center_[0], center_[1], center_[2]};
-        snappedCenterCellI_ = mesh_.findCell(centerPoint);
+
+        // NOTE: we need to call a self-defined findCell func to make it work correctly in ADR
+        snappedCenterCellI_ = DAUtility::myFindCell(mesh_, centerPoint);
+        
         label foundCellI = 0;
         if (snappedCenterCellI_ >= 0)
         {

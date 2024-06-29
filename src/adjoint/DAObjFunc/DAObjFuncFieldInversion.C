@@ -250,7 +250,7 @@ void DAObjFuncFieldInversion::calcObjFunc(
             pRefCoords_[2] = pRefCoords[2];
 
             pRef_ = 0.0;
-            label cellID = mesh_.findCell(pRefCoords_);
+            label cellID = DAUtility::myFindCell(pRefCoords_);
             // only assign pRef if the required cell is found in processor
             if (cellID != -1)
             {

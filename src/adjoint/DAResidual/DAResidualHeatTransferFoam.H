@@ -37,7 +37,7 @@ protected:
 
     autoPtr<dimensionedScalar> kPtr_;
 
-    label hasFvSource_;
+    label hasFvSource_ = 0;
 
 public:
     TypeName("DAHeatTransferFoam");

@@ -207,7 +207,7 @@ DAObjFuncVariance::DAObjFuncVariance(
                     forAll(probePointCoords_, idxI)
                     {
                         point pointCoord = {probePointCoords_[idxI][0], probePointCoords_[idxI][1], probePointCoords_[idxI][2]};
-                        label cellI = mesh_.findCell(pointCoord);
+                        label cellI = DAUtility::myFindCell(pointCoord);
                         if (cellI >= 0)
                         {
                             probeCellIndex_.append(cellI);
@@ -286,7 +286,7 @@ DAObjFuncVariance::DAObjFuncVariance(
                     forAll(probePointCoords_, idxI)
                     {
                         point pointCoord = {probePointCoords_[idxI][0], probePointCoords_[idxI][1], probePointCoords_[idxI][2]};
-                        label cellI = mesh_.findCell(pointCoord);
+                        label cellI = DAUtility::myFindCell(pointCoord);
                         if (cellI >= 0)
                         {
                             probeCellIndex_.append(cellI);
