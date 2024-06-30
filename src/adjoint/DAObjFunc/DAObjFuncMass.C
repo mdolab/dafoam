@@ -38,10 +38,6 @@ DAObjFuncMass::DAObjFuncMass(
     // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
-    // setup the connectivity for mass. It does actually not depends on D
-    // here we set zero level of D as a place holder.
-    objFuncConInfo_ = {{"D"}};
-
     objFuncDict_.readEntry<scalar>("scale", scale_);
 
     rho_ = objFuncDict_.lookupOrDefault<scalar>("rho", -1.0);
