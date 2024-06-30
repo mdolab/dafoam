@@ -44,6 +44,7 @@ DAObjFuncMass::DAObjFuncMass(
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
 
+    rho_ = objFuncDict_.lookupOrDefault<scalar>("rho", -1.0);
 }
 
 /// calculate the value of objective function
@@ -82,15 +83,30 @@ void DAObjFuncMass::calcObjFunc(
     objFuncValue = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
-    const volScalarField& rho = db.lookupObject<volScalarField>("solid:rho");
 
-    // calculate mass
-    forAll(objFuncCellSources, idxI)
+    if (rho_ < 0.0)
     {
-        const label& cellI = objFuncCellSources[idxI];
-        scalar volume = mesh_.V()[cellI];
-        objFuncCellValues[idxI] = scale_ * volume * rho[cellI];
-        objFuncValue += objFuncCellValues[idxI];
+        const volScalarField& rho = db.lookupObject<volScalarField>("solid:rho");
+
+        // calculate mass
+        forAll(objFuncCellSources, idxI)
+        {
+            const label& cellI = objFuncCellSources[idxI];
+            scalar volume = mesh_.V()[cellI];
+            objFuncCellValues[idxI] = scale_ * volume * rho[cellI];
+            objFuncValue += objFuncCellValues[idxI];
+        }
+    }
+    else
+    {
+        // calculate mass
+        forAll(objFuncCellSources, idxI)
+        {
+            const label& cellI = objFuncCellSources[idxI];
+            scalar volume = mesh_.V()[cellI];
+            objFuncCellValues[idxI] = scale_ * volume * rho_;
+            objFuncValue += objFuncCellValues[idxI];
+        }
     }
 
     // need to reduce the sum of force across all processors

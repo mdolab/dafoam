@@ -770,7 +770,7 @@ void DAUtility::primalResidualControl(
     // calculate the initial residual mag and set it to primalResidualNorms_
 
     // for vectors, we need to use the median value for the residual
-    // this is because we often need to run 2D simulations with symmetry 
+    // this is because we often need to run 2D simulations with symmetry
     // BC, so one component of the residual vector, which is related to the symmetry BC,
     // may be high while the other two components' residuals are low.
     // In this case, we can use the median value for the residual vector, which better
@@ -790,6 +790,20 @@ void DAUtility::primalResidualControl(
         Info << varName << " Initial residual: " << solverP.initialResidual() << endl
              << varName << "   Final residual: " << solverP.finalResidual() << endl;
     }
+}
+
+label DAUtility::myFindCell(
+    const primitiveMesh& mesh,
+    const point& point)
+{
+    /*
+    A self-defined findCell function. We will need to cast fvMesh to primitiveMesh
+    and then call primitiveMesh's findCell. For some reasons, the fvMesh's findCell
+    did not work correctly in ADR mode...
+    */
+
+    label cellI = mesh.findCell(point);
+    return cellI;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

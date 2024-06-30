@@ -144,12 +144,16 @@ public:
         const SolverPerformance<scalar>& solverP,
         const label printToScreen,
         const word varName);
-    
+
     /// control when to print the residual and also compute the maxInitRes
     static void primalResidualControl(
         const SolverPerformance<vector>& solverP,
         const label printToScreen,
         const word varName);
+
+    static label myFindCell(
+        const primitiveMesh& mesh,
+        const point& point);
 };
 
 template<class classType>
