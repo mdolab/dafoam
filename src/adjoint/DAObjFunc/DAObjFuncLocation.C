@@ -88,6 +88,9 @@ DAObjFuncLocation::DAObjFuncLocation(
                               << " be outside of the mesh domain or on a mesh face "
                               << abort(FatalError);
         }
+        vector snappedCenter = vector::zero;
+        this->findGlobalSnappedCenter(snappedCenterCellI_, snappedCenter);
+        Info << "snap to center " << snappedCenter << endl;
     }
 
     if (mode_ == "maxRadius")
@@ -199,18 +202,18 @@ void DAObjFuncLocation::calcObjFunc(
         // calculate Location
         scalar objValTmp = 0.0;
 
+        vector center = center_;
+        if (snapCenter2Cell_)
+        {
+            this->findGlobalSnappedCenter(snappedCenterCellI_, center);
+        }
+
         forAll(objFuncFaceSources, idxI)
         {
             const label& objFuncFaceI = objFuncFaceSources[idxI];
             label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
             const label patchI = daIndex_.bFacePatchI[bFaceI];
             const label faceI = daIndex_.bFaceFaceI[bFaceI];
-
-            vector center = center_;
-            if (snapCenter2Cell_)
-            {
-                this->findGlobalSnappedCenter(snappedCenterCellI_, center);
-            }
 
             vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center;
 
@@ -247,18 +250,18 @@ void DAObjFuncLocation::calcObjFunc(
         // calculate Location
         scalar objValTmp = 0.0;
 
+        vector center = center_;
+        if (snapCenter2Cell_)
+        {
+            this->findGlobalSnappedCenter(snappedCenterCellI_, center);
+        }
+
         forAll(objFuncFaceSources, idxI)
         {
             const label& objFuncFaceI = objFuncFaceSources[idxI];
             label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
             const label patchI = daIndex_.bFacePatchI[bFaceI];
             const label faceI = daIndex_.bFaceFaceI[bFaceI];
-
-            vector center = center_;
-            if (snapCenter2Cell_)
-            {
-                this->findGlobalSnappedCenter(snappedCenterCellI_, center);
-            }
 
             vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center;
 
@@ -292,14 +295,15 @@ void DAObjFuncLocation::calcObjFunc(
     else if (mode_ == "maxRadius")
     {
         scalar radius = 0.0;
+
+        vector center = center_;
+        if (snapCenter2Cell_)
+        {
+            this->findGlobalSnappedCenter(snappedCenterCellI_, center);
+        }
+
         if (maxRPatchI_ >= 0 && maxRFaceI_ >= 0)
         {
-
-            vector center = center_;
-            if (snapCenter2Cell_)
-            {
-                this->findGlobalSnappedCenter(snappedCenterCellI_, center);
-            }
 
             vector faceC = mesh_.Cf().boundaryField()[maxRPatchI_][maxRFaceI_] - center;
 

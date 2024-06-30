@@ -121,6 +121,7 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
                 if (snappedCenterCellI_[sourceName] >= 0)
                 {
                     foundCellI = 1;
+                    //Pout << "snap source " << sourceName << " to center " << mesh_.C()[snappedCenterCellI_[sourceName]] << endl;
                 }
                 reduce(foundCellI, sumOp<label>());
                 if (foundCellI != 1)
@@ -132,6 +133,10 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
                                       << " be outside of the mesh domain or on a mesh face "
                                       << abort(FatalError);
                 }
+
+                vector snappedCenter = vector::zero;
+                this->findGlobalSnappedCenter(snappedCenterCellI_[sourceName], snappedCenter);
+                Info << "heat source " << sourceName << " snap to center " << snappedCenter << endl;
             }
         }
         else
@@ -236,7 +241,7 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
         {
             vector cylinderCenter =
                 {actuatorDiskDVs_[sourceName][0], actuatorDiskDVs_[sourceName][1], actuatorDiskDVs_[sourceName][2]};
-            
+
             if (snapCenter2Cell_[sourceName])
             {
                 this->findGlobalSnappedCenter(snappedCenterCellI_[sourceName], cylinderCenter);
