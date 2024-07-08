@@ -10,16 +10,8 @@ DARegDb/DARegDbSinglePhaseTransportModel.C
 DARegDb/DARegDbTurbulenceModelIncompressible.C
 
 DAModel/DATurbulenceModel/DATurbulenceModel.C
-DAModel/DATurbulenceModel/DASpalartAllmaras.C
-DAModel/DATurbulenceModel/DASpalartAllmarasFv3.C
-DAModel/DATurbulenceModel/DASpalartAllmarasFv3FieldInversion.C
-DAModel/DATurbulenceModel/DAkOmegaFieldInversionOmega.C
-DAModel/DATurbulenceModel/DAkOmegaSSTFieldInversion.C
-DAModel/DATurbulenceModel/DAkOmegaSST.C
-DAModel/DATurbulenceModel/DAkOmegaSSTLM.C
-DAModel/DATurbulenceModel/DAkOmegaSSTFIML.C
-DAModel/DATurbulenceModel/DAkOmega.C
-DAModel/DATurbulenceModel/DAkEpsilon.C
+DAModel/DATurbulenceModel/DASpalartAllmarasFieldInversion.C
+DAModel/DATurbulenceModel/DASpalartAllmarasFieldInversionT.C
 DAModel/DATurbulenceModel/DADummyTurbulenceModel.C
 
 DAModel/DARadiationModel/DARadiationModel.C
@@ -31,9 +23,9 @@ DARegression/DARegression.C
 
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoSimpleFoam.C
-DAStateInfo/DAStateInfoPisoFoam.C
-DAStateInfo/DAStateInfoPimpleFoam.C
 DAStateInfo/DAStateInfoSimpleTFoam.C
+DAStateInfo/DAStateInfoMySimpleTFoam.C
+
 
 DAMotion/DAMotion.C
 DAMotion/DAMotionDummy.C
@@ -45,32 +37,16 @@ DAIndex/DAIndex.C
 DAField/DAField.C
 
 DAObjFunc/DAObjFunc.C
-DAObjFunc/DAObjFuncForce.C
-DAObjFunc/DAObjFuncMoment.C
-DAObjFunc/DAObjFuncPower.C
-DAObjFunc/DAObjFuncWallHeatFlux.C
-DAObjFunc/DAObjFuncCenterOfPressure.C
-DAObjFunc/DAObjFuncTotalPressure.C
 DAObjFunc/DAObjFuncFieldInversion.C
-DAObjFunc/DAObjFuncVariableVolSum.C
-DAObjFunc/DAObjFuncMeshQualityKS.C
-DAObjFunc/DAObjFuncPatchMean.C
-DAObjFunc/DAObjFuncMassFlowRate.C
-DAObjFunc/DAObjFuncLocation.C
-DAObjFunc/DAObjFuncVariance.C
 
 DAFvSource/DAFvSource.C
-DAFvSource/DAFvSourceActuatorDisk.C
-DAFvSource/DAFvSourceActuatorPoint.C
-DAFvSource/DAFvSourceActuatorLine.C
-DAFvSource/DAFvSourceUniformPressureGradient.C
+DAFvSource/DAFvSourceScalar.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualDummy.C
 DAResidual/DAResidualSimpleFoam.C
-DAResidual/DAResidualPisoFoam.C
-DAResidual/DAResidualPimpleFoam.C
 DAResidual/DAResidualSimpleTFoam.C
+
 
 DAColoring/DAColoring.C
 
@@ -82,41 +58,21 @@ DAJacCon/DAJacConDummy.C
 DAPartDeriv/DAPartDeriv.C
 DAPartDeriv/DAPartDerivdRdW.C
 DAPartDeriv/DAPartDerivdFdW.C
-DAPartDeriv/DAPartDerivdFdBC.C
-DAPartDeriv/DAPartDerivdRdBC.C
-DAPartDeriv/DAPartDerivdRdFFD.C
-DAPartDeriv/DAPartDerivdFdFFD.C
-DAPartDeriv/DAPartDerivdFdAOA.C
-DAPartDeriv/DAPartDerivdRdAOA.C
-DAPartDeriv/DAPartDerivdRdACTP.C
-DAPartDeriv/DAPartDerivdRdACTD.C
-DAPartDeriv/DAPartDerivdRdACTL.C
-DAPartDeriv/DAPartDerivdFdACTD.C
 
 DALinearEqn/DALinearEqn.C
 
 DASolver/DASolver.C
 DASolver/DASimpleFoam/DASimpleFoam.C
 DASolver/DASimpleTFoam/DASimpleTFoam.C
-DASolver/DAPisoFoam/DAPisoFoam.C
-DASolver/DAPimpleFoam/DAPimpleFoam.C
-DASolver/DAPimpleDyMFoam/DAPimpleDyMFoam.C
 
-boundaryConditions/homTemp/homTempFvPatchScalarField.C
-boundaryConditions/multiFreqVector/multiFreqVectorFvPatchField.C
-boundaryConditions/nutUSpaldingWallFunctionDF/nutUSpaldingWallFunctionFvPatchScalarFieldDF.C
 boundaryConditions/varyingVelocity/varyingVelocityFvPatchVectorField.C
 boundaryConditions/varyingVelocityInletOutlet/varyingVelocityInletOutletFvPatchVectorField.C
 models/dummyTurbulenceModel/makeDummyTurbulenceModelIncompressible.C
-models/SpalartAllmarasFv3/makeSpalartAllmarasFv3Incompressible.C
-models/SpalartAllmarasFv3FieldInversion/makeSpalartAllmarasFv3FieldInversionIncompressible.C
-models/kOmegaSSTFieldInversion/makekOmegaSSTFieldInversionIncompressible.C
-models/kOmegaFieldInversionOmega/makekOmegaFieldInversionOmegaIncompressible.C
-models/kOmegaSSTFIML/makekOmegaSSTFIMLIncompressible.C
+models/SpalartAllmarasFieldInversion/makeSpalartAllmarasFieldInversionIncompressible.C
+models/SpalartAllmarasFieldInversionT/makeSpalartAllmarasFieldInversionIncompressibleT.C
 models/meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
-models/pimpleControlDF/pimpleControlDF.C
 models/MRFDF/MRFZoneDF.C
 models/MRFDF/MRFZoneListDF.C
 models/MRFDF/IOMRFZoneListDF.C
 
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFoamIncompressible$(DF_LIB_SUFFIX)
+LIB = $(DAFOAM_ROOT_PATH_ALT)/OpenFOAM/sharedLibs/libDAFoamIncompressible$(DF_LIB_SUFFIX)
