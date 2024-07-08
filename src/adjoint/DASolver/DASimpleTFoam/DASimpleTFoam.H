@@ -86,6 +86,9 @@ protected:
 
     /// fvSource term 
     autoPtr<volVectorField> fvSourcePtr_;
+    
+    /// fTSource term 
+    autoPtr<volScalarField> fTSourcePtr_;
 
     /// MRF pointer
     autoPtr<IOMRFZoneListDF> MRFPtr_;
