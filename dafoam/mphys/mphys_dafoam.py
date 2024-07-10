@@ -1074,7 +1074,8 @@ class DAFoamSolver(ImplicitComponent):
                 # update the obj func name for solve_linear later
                 solveLinearObjFuncName = DASolver.getOption("solveLinearObjFuncName")
                 psi_array = DASolver.vec2Array(self.psi)
-                self.DASolver.writeAdjointFields(solveLinearObjFuncName, float(solutionTime), psi_array)
+                solTimeFloat = self.solution_counter / 1e4
+                self.DASolver.writeAdjointFields(solveLinearObjFuncName, solTimeFloat, psi_array)
 
             elif adjEqnSolMethod == "fixedPoint":
                 solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
