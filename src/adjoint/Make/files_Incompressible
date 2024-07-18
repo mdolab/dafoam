@@ -11,7 +11,6 @@ DARegDb/DARegDbTurbulenceModelIncompressible.C
 
 DAModel/DATurbulenceModel/DATurbulenceModel.C
 DAModel/DATurbulenceModel/DASpalartAllmarasFieldInversion.C
-DAModel/DATurbulenceModel/DASpalartAllmarasFieldInversionT.C
 DAModel/DATurbulenceModel/DADummyTurbulenceModel.C
 
 DAModel/DARadiationModel/DARadiationModel.C
@@ -24,7 +23,6 @@ DARegression/DARegression.C
 DAStateInfo/DAStateInfo.C
 DAStateInfo/DAStateInfoSimpleFoam.C
 DAStateInfo/DAStateInfoSimpleTFoam.C
-DAStateInfo/DAStateInfoMySimpleTFoam.C
 
 
 DAMotion/DAMotion.C
@@ -69,7 +67,6 @@ boundaryConditions/varyingVelocity/varyingVelocityFvPatchVectorField.C
 boundaryConditions/varyingVelocityInletOutlet/varyingVelocityInletOutletFvPatchVectorField.C
 models/dummyTurbulenceModel/makeDummyTurbulenceModelIncompressible.C
 models/SpalartAllmarasFieldInversion/makeSpalartAllmarasFieldInversionIncompressible.C
-models/SpalartAllmarasFieldInversionT/makeSpalartAllmarasFieldInversionIncompressibleT.C
 models/meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
 models/MRFDF/MRFZoneDF.C
 models/MRFDF/MRFZoneListDF.C
