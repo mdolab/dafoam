@@ -893,7 +893,7 @@ class DAFoamSolver(ImplicitComponent):
                             d_inputs[inputName] += ACTDBarSub
                         else:
                             d_inputs[inputName] += ACTDBar
-                    
+
                     # compute [dRdHSC]^T*Psi using reverse mode AD
                     elif self.dvType[inputName] == "HSC":
                         prodVec = PETSc.Vec().create(self.comm)
@@ -1380,13 +1380,13 @@ class DAFoamFunctions(ExplicitComponent):
 
         funcsBar = {}
 
-        # assign value to funcsBar. NOTE: we only assign seed if d_outputs has
-        # non-zero values!
+        # assign value to funcsBar. NOTE: we assign value to funcsBar even if d_outputs[func_name]
+        # is zero. If it is zero, we will skip the dF calculation.
         if self.funcs is None:
             raise AnalysisError("functions not set! Forgot to call mphys_add_funcs?")
         else:
             for func_name in self.funcs:
-                if func_name in d_outputs and d_outputs[func_name] != 0.0:
+                if func_name in d_outputs:
                     funcsBar[func_name] = d_outputs[func_name][0]
 
         # if self.comm.rank == 0:
@@ -1394,7 +1394,7 @@ class DAFoamFunctions(ExplicitComponent):
 
         if self.comm.rank == 0:
             print("Computing partials for ", list(funcsBar.keys()))
-        
+
         # update the obj func name for solve_linear later
         DASolver.setOption("solveLinearObjFuncName", list(funcsBar.keys())[0])
         DASolver.updateDAOption()
@@ -1403,6 +1403,12 @@ class DAFoamFunctions(ExplicitComponent):
         for objFuncName in list(funcsBar.keys()):
 
             fBar = funcsBar[objFuncName]
+
+            # if fBar is zero, we skip the following calculation and continue to the next loop
+            if fBar == 0.0:
+                if self.comm.rank == 0:
+                    print("fBar is zero for %s, the dF partial calculation is skip" % objFuncName)
+                continue
 
             for inputName in list(d_inputs.keys()):
 
@@ -1478,7 +1484,7 @@ class DAFoamFunctions(ExplicitComponent):
                             d_inputs[inputName] += ACTDBarSub * fBar
                         else:
                             d_inputs[inputName] += ACTDBar * fBar
-                    
+
                     # compute dFdHSC
                     elif self.dvType[inputName] == "HSC":
                         dFdHSC = PETSc.Vec().create(self.comm)
