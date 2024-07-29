@@ -1351,6 +1351,18 @@ class DAFoamFunctions(ExplicitComponent):
     # compute the partial derivatives of functions
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
+        # we first check if all the seeds in d_outputs are zeros. If yes, we return without calculation anything
+        n_non_zero_seeds = 0
+        for func_name in d_outputs:
+            if d_outputs[func_name] != 0.0:
+                n_non_zero_seeds += 1
+        if n_non_zero_seeds == 0:
+            return
+        elif n_non_zero_seeds > 1:
+            if self.comm.rank == 0:
+                print("************* Warning *************")
+                print("More than one non-zero seed found! ", d_outputs)
+
         DASolver = self.DASolver
 
         # set the runStatus, this is useful when the actuator term is activated
@@ -1380,13 +1392,14 @@ class DAFoamFunctions(ExplicitComponent):
 
         funcsBar = {}
 
-        # assign value to funcsBar. NOTE: we assign value to funcsBar even if d_outputs[func_name]
-        # is zero. If it is zero, we will skip the dF calculation.
+        # assign value to funcsBar. NOTE: we only assign seed if d_outputs has
+        # non-zero values! We assume OM will pass only one non-zero seed here
+        # therefore, funcsBar should have only one key
         if self.funcs is None:
             raise AnalysisError("functions not set! Forgot to call mphys_add_funcs?")
         else:
             for func_name in self.funcs:
-                if func_name in d_outputs:
+                if func_name in d_outputs and d_outputs[func_name] != 0.0:
                     funcsBar[func_name] = d_outputs[func_name][0]
 
         # if self.comm.rank == 0:
@@ -1403,12 +1416,6 @@ class DAFoamFunctions(ExplicitComponent):
         for objFuncName in list(funcsBar.keys()):
 
             fBar = funcsBar[objFuncName]
-
-            # if fBar is zero, we skip the following calculation and continue to the next loop
-            if fBar == 0.0:
-                if self.comm.rank == 0:
-                    print("fBar is zero for %s, the dF partial calculation is skip" % objFuncName)
-                continue
 
             for inputName in list(d_inputs.keys()):
 
