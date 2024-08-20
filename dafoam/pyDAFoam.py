@@ -2071,7 +2071,7 @@ class PYDAFOAM(object):
             if designVarName in self.getOption("writeSensMap"):
                 dFdXs = self.mesh.getdXs()
                 dFdXs = self.mapVector(dFdXs, self.allWallsGroup, self.designSurfacesGroup)
-                Xs = self.getSurfaceCoordinates(self.allWallsGroup)
+                Xs = self.getSurfaceCoordinates(self.designSurfacesGroup)
                 dFdXsFlatten = dFdXs.flatten()
                 XsFlatten = Xs.flatten()
                 size = len(dFdXsFlatten)
