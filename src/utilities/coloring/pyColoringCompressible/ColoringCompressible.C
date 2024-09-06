@@ -77,6 +77,12 @@ void ColoringCompressible::run()
     }
 
     // dFdW
+    // skip dFdW coloring for AD mode.
+    word adMode = daOption.getSubDictOption<word>("useAD", "mode");
+    if (adMode == "forward" || adMode == "reverse")
+    {
+        return;
+    }
     const dictionary& allOptions = daOption.getAllOptions();
     dictionary objFuncDict = allOptions.subDict("objFunc");
     // create a dummy DAResidual just for initializing DAObjFunc
