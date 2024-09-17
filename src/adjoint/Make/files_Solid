@@ -28,6 +28,8 @@ DAObjFunc/DAObjFuncMeshQualityKS.C
 DAObjFunc/DAObjFuncWallHeatFlux.C
 DAObjFunc/DAObjFuncPatchMean.C
 DAObjFunc/DAObjFuncLocation.C
+DAObjFunc/DAObjFuncFieldMaxKS.C
+DAObjFunc/DAObjFuncPatchMaxKS.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceHeatSource.C
