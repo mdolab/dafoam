@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     This file is modified from OpenFOAM's source code
     src/finiteVolume/fields/fvPatchFields/basic/fixedValue/fixedValueFvPatchField.C

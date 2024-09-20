@@ -1,6 +1,6 @@
 """
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Cython setup file for wrapping OpenFOAM libraries and solvers.
