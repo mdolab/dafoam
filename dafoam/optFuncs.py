@@ -2,7 +2,7 @@
 """
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
     Common functions for DAFoam optimization setup.

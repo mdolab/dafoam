@@ -3,7 +3,7 @@
 """
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
     The Python interface to DAFoam. It controls the adjoint

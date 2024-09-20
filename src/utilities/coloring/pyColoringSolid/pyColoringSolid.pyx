@@ -4,7 +4,7 @@
 
 '''
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Cython wrapper functions that call OpenFOAM libraries defined
