@@ -5,9 +5,5 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-cd src/adjoint && ./Allclean && cd -
-cd src/pyDASolvers && ./Allclean && cd -
-cd src/utilities/coloring && ./Allclean && cd -
-cd src/utilities/postProcessing && ./Allclean && cd -
-cd src/utilities/preProcessing && ./Allclean && cd -
-cd tests && ./Allclean && cd -
+cd src/adjoint && rm -rf lnInclude && cd -
+cd src/adjoint/DAUtility && wclean && cd -

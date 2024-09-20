@@ -8,15 +8,5 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-if [ -z "$1" ]; then
-  echo "Argument not found. Using the default value: opt"
-  argm="opt"
-else
-  argm="$1"
-fi
-
-cd src/adjoint && ./Allmake $argm && cd -
-cd src/pyDASolvers && ./Allmake $argm && cd -
-cd src/utilities/coloring && ./Allmake $argm && cd -
-cd src/utilities/postProcessing && ./Allmake $argm && cd -
-cd src/utilities/preProcessing && ./Allmake $argm && cd -
+wmakeLnInclude src/adjoint
+cd src/adjoint/DAUtility && wmake && cd -
