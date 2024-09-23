@@ -8,8 +8,5 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-wmakeLnInclude src/adjoint
-cd src/adjoint/DAUtility && wmake && cd -
-cd src/adjoint/DAOption && wmake && cd -
-cd src/pyUnitTests && ./Allmake && cd -
-pip install .
+python setup.py build_ext --inplace
+cp -r *.so ../../dafoam

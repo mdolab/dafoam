@@ -7,3 +7,5 @@ fi
 
 cd src/adjoint && rm -rf lnInclude && cd -
 cd src/adjoint/DAUtility && wclean && cd -
+cd src/adjoint/DAOption && wclean && cd -
+cd src/pyUnitTests && ./Allclean && cd -
