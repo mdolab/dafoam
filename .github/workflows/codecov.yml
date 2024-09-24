@@ -34,7 +34,7 @@ jobs:
         docker exec regtest sed -i 's/-lfiniteVolume$(DF_LIB_SUFFIX)/-lfiniteVolume$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAUtility/Make/options
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && pip install ."
-        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && python runUnitTests_DAOption.py"
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && lcov --capture --directory . --output-file coverage.info && echo dafoamuser | sudo -S cp -r coverage.info ${{env.DOCKER_MOUNT_DIR}}/"
     - name: Upload
       uses: codecov/codecov-action@v4

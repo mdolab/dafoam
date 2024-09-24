@@ -37,14 +37,38 @@ UnitTests::~UnitTests()
 {
 }
 
-void UnitTests::runDAOptionTest1(
-    char* argsAll,
+void UnitTests::runDAUtilityTest1(
+    char* argsAll_,
     PyObject* pyOptions)
 {
-    Info << "Run the tests" << endl;
-    dictionary options;
-    DAUtility::pyDict2OFDict(pyOptions, options);
-    Info << options << endl;
+#include "setArgs.H"
+#include "setRootCase.H"
+#include "createTime.H"
+#include "createMesh.H"
+    Info << "runDAUtilityTest1" << endl;
+    dictionary ofOptions;
+    DAUtility::pyDict2OFDict(pyOptions, ofOptions);
+    
+    IOdictionary ofOptionsIO(
+        IOobject(
+            "test_dict",
+            "misc_files",
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE));
+
+    if (ofOptions != ofOptionsIO.subDict("ofOptions"))
+    {
+        Info << "********* pyDict2OFDict test failed! **********" << endl;
+        Info << "ofOptions" << ofOptions << endl;
+        Info << "ofOptionsIO" << ofOptionsIO.subDict("ofOptions") << endl;
+    }
+    else
+    {
+        Info << "pyDict2OFDict test passed!" << endl;
+    }
+
+    Info << "runDAUtilityTest1 Passed!" << endl;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

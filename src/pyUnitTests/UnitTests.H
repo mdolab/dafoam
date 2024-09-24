@@ -51,7 +51,7 @@ public:
     virtual ~UnitTests();
 
     /// run the test
-    void runDAOptionTest1(
+    void runDAUtilityTest1(
         char* argsAll,
         PyObject* pyOptions);
 };

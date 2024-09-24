@@ -19,7 +19,7 @@
 cdef extern from "UnitTests.H" namespace "Foam":
     cppclass UnitTests:
         UnitTests() except +
-        void runDAOptionTest1(char *, object)
+        void runDAUtilityTest1(char *, object)
     
 # create python wrappers that call cpp functions
 cdef class pyUnitTests:
@@ -43,5 +43,5 @@ cdef class pyUnitTests:
         self._thisptr = new UnitTests()
     
     # wrap all the other member functions in the cpp class
-    def runDAOptionTest1(self, argsAll, pyOptions):
-        self._thisptr.runDAOptionTest1(argsAll, pyOptions)
+    def runDAUtilityTest1(self, argsAll, pyOptions):
+        self._thisptr.runDAUtilityTest1(argsAll, pyOptions)

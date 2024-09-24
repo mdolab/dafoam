@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
 import dafoam
+import os
 from pyUnitTests import pyUnitTests
+
+os.chdir("./reg_test_files-main/ConvergentChannel")
 
 solverArg = "unitTests"
 options = {
@@ -37,4 +40,4 @@ options = {
 }
 
 solver = pyUnitTests()
-solver.runDAOptionTest1(solverArg.encode(), options)
+solver.runDAUtilityTest1(solverArg.encode(), options)
