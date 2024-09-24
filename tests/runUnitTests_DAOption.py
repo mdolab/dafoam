@@ -5,6 +5,7 @@ from pyUnitTests import pyUnitTests
 
 solverArg = "unitTests"
 options = {
+    "key0": [int, 2],
     "key1": 1,
     "key2": 2.5,
     "key3": "test",
@@ -12,7 +13,10 @@ options = {
     "key5": [1, 2],
     "key6": [2.1, 3.2],
     "key7": ["test1", "test2"],
-    "key8": {
+    "key8": [False, True],
+    "key9": [[1, 2], [3, 4]],
+    "key10": [[1.2, 2.1], [3.4, 4.3]],
+    "key11": {
         "subKey1": 1,
         "subKey2": 2.5,
         "subKey3": "test",
