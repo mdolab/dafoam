@@ -34,8 +34,7 @@ jobs:
             args: 'mphys_comp'
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: codecov/codecov-action@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v2
       with:
         python-version: 3.8
@@ -70,6 +69,10 @@ jobs:
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjoint && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src/adjointAD && cp -r ../include ./Make/linux*/DASolver/ && cp -r ../include ./Make/linux*/"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && lcov --capture --directory . --output-file coverage.info && echo dafoamuser | sudo -S cp -r coverage.info ${{env.DOCKER_MOUNT_DIR}}/"
-        curl -Os https://uploader.codecov.io/latest/linux/codecov
-        chmod +x codecov
-        ./codecov
+    - name: Upload reports to CodeCov
+      uses: codecov/codecov-action@v4
+      with:
+        fail_ci_if_error: true 
+        files: ./coverage.info,./coverage.xml
+        token: ${{secrets.CODECOV_TOKEN}}
+        verbose: true
