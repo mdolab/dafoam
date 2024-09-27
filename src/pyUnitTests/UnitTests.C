@@ -42,17 +42,20 @@ void UnitTests::runDAUtilityTest1(
     PyObject* pyOptions)
 {
 #include "setArgs.H"
-#include "setRootCase.H"
+#include "setRootCasePython.H"
 #include "createTime.H"
 #include "createMesh.H"
+
     Info << "runDAUtilityTest1" << endl;
+
+    // test pyDict2OFDict
     dictionary ofOptions;
     DAUtility::pyDict2OFDict(pyOptions, ofOptions);
-    
+
     IOdictionary ofOptionsIO(
         IOobject(
             "test_dict",
-            "misc_files",
+            mesh.time().constant(),
             mesh,
             IOobject::MUST_READ,
             IOobject::NO_WRITE));
@@ -63,9 +66,56 @@ void UnitTests::runDAUtilityTest1(
         Info << "ofOptions" << ofOptions << endl;
         Info << "ofOptionsIO" << ofOptionsIO.subDict("ofOptions") << endl;
     }
-    else
+
+    // test write/readMatrix
+    Mat tmpMat;
+    MatCreate(PETSC_COMM_WORLD, &tmpMat);
+    MatSetSizes(
+        tmpMat,
+        PETSC_DECIDE,
+        PETSC_DECIDE,
+        11,
+        13);
+    MatSetFromOptions(tmpMat);
+    MatSetUp(tmpMat);
+    MatZeroEntries(tmpMat);
+    PetscScalar val = Pstream::myProcNo() * Pstream::myProcNo();
+    MatSetValue(tmpMat, Pstream::myProcNo(), Pstream::myProcNo(), val, INSERT_VALUES);
+    MatAssemblyBegin(tmpMat, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(tmpMat, MAT_FINAL_ASSEMBLY);
+
+    DAUtility::writeMatrixBinary(tmpMat, "tmpMat");
+    DAUtility::writeMatrixASCII(tmpMat, "tmpMat");
+
+    Mat tmpMat1;
+    MatCreate(PETSC_COMM_WORLD, &tmpMat1);
+    DAUtility::readMatrixBinary(tmpMat1, "tmpMat");
+
+    PetscBool equalFlag;
+    MatEqual(tmpMat, tmpMat1, &equalFlag);
+    if (!equalFlag)
     {
-        Info << "pyDict2OFDict test passed!" << endl;
+        Info << "********* read/writeMatrixBinary test failed! **********" << endl;
+    }
+
+    // test write/readVector
+    Vec tmpVec;
+    VecCreate(PETSC_COMM_WORLD, &tmpVec);
+    VecSetSizes(tmpVec, 17, PETSC_DETERMINE);
+    VecSetFromOptions(tmpVec);
+    VecSet(tmpVec, 1.0);
+
+    DAUtility::writeVectorBinary(tmpVec, "tmpVec");
+    DAUtility::writeVectorASCII(tmpVec, "tmpVec");
+
+    Vec tmpVec1;
+    VecCreate(PETSC_COMM_WORLD, &tmpVec1);
+    DAUtility::readVectorBinary(tmpVec1, "tmpVec");
+
+    VecEqual(tmpVec, tmpVec1, &equalFlag);
+    if (!equalFlag)
+    {
+        Info << "********* read/writeVectorBinary test failed! **********" << endl;
     }
 
     Info << "runDAUtilityTest1 Passed!" << endl;

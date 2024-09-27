@@ -1,0 +1,9 @@
+DAModel.C
+DATurbulenceModel/DATurbulenceModel.C
+DATurbulenceModel/DASpalartAllmaras.C
+
+DARadiationModel/DARadiationModel.C
+DARadiationModel/DAP1.C
+
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAModel$(DF_LIB_SUFFIX)

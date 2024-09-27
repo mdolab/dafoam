@@ -41,6 +41,9 @@ private:
     /// Disallow default bitwise assignment
     void operator=(const UnitTests&);
 
+    /// args pointer
+    autoPtr<argList> argsPtr_;
+
 public:
     // Constructors
 

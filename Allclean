@@ -6,6 +6,5 @@ if [ -z "$WM_PROJECT" ]; then
 fi
 
 cd src/adjoint && rm -rf lnInclude && cd -
-cd src/adjoint/DAUtility && wclean && cd -
-cd src/adjoint/DAOption && wclean && cd -
+cd src/adjoint && ./Allclean && cd -
 cd src/pyUnitTests && ./Allclean && cd -

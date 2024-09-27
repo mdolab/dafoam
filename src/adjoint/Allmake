@@ -13,73 +13,10 @@ elif [ "$WM_CODI_AD_MODE" = "CODI_AD_REVERSE" ]; then
   export DF_LIB_SUFFIX="ADR"
 fi
 
-case $1 in
-  "opt")
-    cp Make/files_Incompressible Make/files
-    cp Make/options_Incompressible Make/options
-    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
-      sed -i 's/-std=c++11/-std=c++11 -w/g' Make/options
-    fi
-    wmake -j 4 || exit 1
-    ./Allclean
-    cp Make/files_Compressible Make/files
-    cp Make/options_Compressible Make/options
-    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
-      sed -i 's/-std=c++11/-std=c++11 -w/g' Make/options
-    fi
-    wmake -j 4 || exit 1
-    ./Allclean
-    cp Make/files_Solid Make/files
-    cp Make/options_Solid Make/options
-    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
-      sed -i 's/-std=c++11/-std=c++11 -w/g' Make/options
-    fi
-    wmake -j 4 || exit 1
-    ;;
-  "debug")
-    cp Make/files_Incompressible Make/files
-    cp Make/options_Incompressible Make/options
-    sed -i 's/-std=c++11/-std=c++11 -DFULLDEBUG -g -O0/g' Make/options
-    wmake -j 4 || exit 1
-    ./Allclean
-    cp Make/files_Compressible Make/files
-    cp Make/options_Compressible Make/options
-    sed -i 's/-std=c++11/-std=c++11 -DFULLDEBUG -g -O0/g' Make/options
-    wmake -j 4 || exit 1
-    ./Allclean
-    cp Make/files_Solid Make/files
-    cp Make/options_Solid Make/options
-    sed -i 's/-std=c++11/-std=c++11 -DFULLDEBUG -g -O0/g' Make/options
-    wmake -j 4 || exit 1
-    ;;
-  "incompressible")
-    cp Make/files_Incompressible Make/files
-    cp Make/options_Incompressible Make/options
-    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
-      sed -i 's/-std=c++11/-std=c++11 -w/g' Make/options
-    fi
-    wmake -j 4 || exit 1
-    ;;
-  "compressible")
-    cp Make/files_Compressible Make/files
-    cp Make/options_Compressible Make/options
-    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
-      sed -i 's/-std=c++11/-std=c++11 -w/g' Make/options
-    fi
-    wmake -j 4 || exit 1
-    ;;
-  "solid")
-    cp Make/files_Solid Make/files
-    cp Make/options_Solid Make/options
-    if [ -n "$DAFOAM_NO_WARNINGS" ]; then
-      sed -i 's/-std=c++11/-std=c++11 -w/g' Make/options
-    fi
-    wmake -j 4 || exit 1
-    ;;
-  *)
-    echo "Argument not valid! Options are: opt, debug, incompressible, compressible, or solid"
-    echo "Example: ./Allmake opt"
-    exit 1
-    ;;
-esac
-
+for d in ./*/ ; do 
+  cd "$d"
+  if test -f Make/files ; then
+    wmake -j
+  fi
+  cd ../
+done

@@ -17,7 +17,7 @@ function runUnitTests()
 {
   rm -rf reg_test_files-main
   tar -zxf reg_test_files-main.tar.gz
-  python runUnitTests_${1}.py 
+  mpirun --oversubscribe -np 4 python runUnitTests_${1}.py 
 }
 
 runUnitTests DAUtility

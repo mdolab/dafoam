@@ -9,7 +9,6 @@ if [ -z "$WM_PROJECT" ]; then
 fi
 
 wmakeLnInclude src/adjoint
-cd src/adjoint/DAUtility && wmake && cd -
-cd src/adjoint/DAOption && wmake && cd -
+cd src/adjoint && ./Allmake && cd -
 cd src/pyUnitTests && ./Allmake && cd -
 pip install .

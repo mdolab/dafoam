@@ -1,12 +1,17 @@
 #!/usr/bin/env python
 
 import dafoam
-import os
+import os, subprocess, sys
+from mpi4py import MPI
+import petsc4py
+from petsc4py import PETSc
 from pyUnitTests import pyUnitTests
 
 os.chdir("./reg_test_files-main/ConvergentChannel")
+if MPI.COMM_WORLD.rank == 0:
+    subprocess.call("decomposePar", stdout=sys.stdout, stderr=subprocess.STDOUT, shell=False)
 
-solverArg = "unitTests"
+solverArg = "unitTests -python -parallel"
 options = {
     "key0": [int, 2],
     "key1": 1,
