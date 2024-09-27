@@ -4,12 +4,12 @@
     Version : v4
 
     Description:
-        Compute object functions and their derivatives
+        Compute objective and constraint functions and their derivatives
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFunc_H
-#define DAObjFunc_H
+#ifndef DAFunction_H
+#define DAFunction_H
 
 #include "runTimeSelectionTables.H"
 #include "fvOptions.H"
@@ -18,8 +18,6 @@
 #include "DAIndex.H"
 #include "topoSetSource.H"
 #include "topoSet.H"
-#include "DAField.H"
-#include "DAResidual.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -27,18 +25,18 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                    Class DAObjFunc Declaration
+                    Class DAFunction Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFunc
+class DAFunction
 {
 
 private:
     /// Disallow default bitwise copy construct
-    DAObjFunc(const DAObjFunc&);
+    DAFunction(const DAFunction&);
 
     /// Disallow default bitwise assignment
-    void operator=(const DAObjFunc&);
+    void operator=(const DAFunction&);
 
 protected:
     /// fvMesh
@@ -53,44 +51,29 @@ protected:
     /// DAIndex object
     const DAIndex& daIndex_;
 
-    /// DAResidual object
-    const DAResidual& daResidual_;
-
     /// the name of the objective function
-    word objFuncName_;
+    word functionName_;
 
     /// the part of the objective function
-    word objFuncPart_;
+    word functionPart_;
 
     /// the type of the objective function
-    word objFuncType_;
+    word functionType_;
 
     /// dictionary containing the information for the objective function
-    const dictionary& objFuncDict_;
-
-    /// DAField object
-    DAField daField_;
+    const dictionary& functionDict_;
 
     /// a sorted list of all face sources for the objective function
-    labelList objFuncFaceSources_;
+    labelList faceSources_;
 
     /// a sorted list of all cell sources for the objective function
-    labelList objFuncCellSources_;
-
-    /// value of the obj function on the discrete faces
-    scalarList objFuncFaceValues_;
-
-    /// value of the obj function in the discrete cells
-    scalarList objFuncCellValues_;
+    labelList cellSources_;
 
     /// scale of the objective function
     scalar scale_;
 
     /// the value of the objective function
-    scalar objFuncValue_;
-
-    /// the connectivity information for the objective function
-    List<List<word>> objFuncConInfo_;
+    scalar functionValue_;
 
     /// whether to calculate (obj-ref)^2
     label calcRefVar_;
@@ -100,151 +83,110 @@ protected:
 
 public:
     /// Runtime type information
-    TypeName("DAObjFunc");
+    TypeName("DAFunction");
 
     // Declare run-time constructor selection table
     declareRunTimeSelectionTable(
         autoPtr,
-        DAObjFunc,
+        DAFunction,
         dictionary,
         (
             const fvMesh& mesh,
             const DAOption& daOption,
             const DAModel& daModel,
             const DAIndex& daIndex,
-            const DAResidual& daResidual,
-            const word objFuncName,
-            const word objFuncPart,
-            const dictionary& objFuncDict),
+            const word functionName,
+            const word functionPart,
+            const dictionary& functionDict),
         (
             mesh,
             daOption,
             daModel,
             daIndex,
-            daResidual,
-            objFuncName,
-            objFuncPart,
-            objFuncDict));
+            functionName,
+            functionPart,
+            functionDict));
 
     // Constructors
 
     //- Construct from components
-    DAObjFunc(
+    DAFunction(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName,
+        const word functionPart,
+        const dictionary& functionDict);
 
     // Selectors
 
     //- Return a reference to the selected model
-    static autoPtr<DAObjFunc> New(
+    static autoPtr<DAFunction> New(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName,
+        const word functionPart,
+        const dictionary& functionDict);
 
     //- Destructor
-    virtual ~DAObjFunc()
+    virtual ~DAFunction()
     {
     }
 
     /// clear up members
     void clear()
     {
-        objFuncFaceSources_.clear();
-        objFuncCellSources_.clear();
-        objFuncFaceValues_.clear();
-        objFuncCellValues_.clear();
-        objFuncConInfo_.clear();
+        faceSources_.clear();
+        cellSources_.clear();
     }
 
-    /// calculate DAObjFunc::objFuncFaceSources_ and DAObjFunc::objFuncCellSources_
-    void calcObjFuncSources(
-        labelList& faceSources,
-        labelList& cellSources);
+    /// calculate DAFunction::faceSources_ and DAFunction::cellSources_
+    void calcFunctionSources();
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue) = 0;
+    virtual void calcFunction(scalar& functionValue) = 0;
 
     /// calculate the value of objective function
-    scalar getObjFuncValue();
-
-    /// the master function to compute objective function given the state and point vectors
-    scalar masterFunction(
-        const dictionary& options,
-        const Vec xvVec,
-        const Vec wVec);
+    scalar getFunctionValue();
 
     /// return the name of objective function
-    word getObjFuncName()
+    word getFunctionName()
     {
-        return objFuncName_;
+        return functionName_;
     }
 
     /// return the part of objective function
-    word getObjFuncPart()
+    word getFunctionPart()
     {
-        return objFuncPart_;
+        return functionPart_;
     }
 
     /// return the part of objective function
-    word getObjFuncType()
+    word getFunctionType()
     {
-        return objFuncType_;
+        return functionType_;
     }
 
-    /// return DAObjFunc::objFuncFaceSources_
-    const labelList& getObjFuncFaceSources() const
+    /// return DAFunction::faceSources_
+    const labelList& getFaceSources() const
     {
-        return objFuncFaceSources_;
+        return faceSources_;
     }
 
-    /// return DAObjFunc::objFuncCellSources_
-    const labelList& getObjFuncCellSources() const
+    /// return DAFunction::cellSources_
+    const labelList& getCellSources() const
     {
-        return objFuncCellSources_;
+        return cellSources_;
     }
 
-    /// return DAObjFunc::objFuncFaceValues_
-    const scalarList& getObjFuncFaceValues() const
-    {
-        return objFuncFaceValues_;
-    }
-
-    /// return DAObjFunc::objFuncCellValues_
-    const scalarList& getObjFuncCellValues() const
-    {
-        return objFuncCellValues_;
-    }
-
-    /// return DAObjFunc::objFuncConInfo_
-    const List<List<word>>& getObjFuncConInfo() const
-    {
-        return objFuncConInfo_;
-    }
-
-    /// expSumKS stores sum[exp(coeffKS*x_i)] for KS function which will be used to scale dFdW
-    scalar expSumKS = 1.0;
-
-    /// whether to compute reference coefficients for special objFunc treatment such as totalPressureRatio
+    /// whether to compute reference coefficients for special function treatment such as totalPressureRatio
     label calcRefCoeffs = 1;
 
     /// calculate (var-ref)^2
-    void calcRefVar(scalar& objFuncValue);
+    void calcRefVar(scalar& functionValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

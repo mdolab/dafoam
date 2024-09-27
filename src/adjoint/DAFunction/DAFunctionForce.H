@@ -8,11 +8,12 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncForce_H
-#define DAObjFuncForce_H
+#ifndef DAFunctionForce_H
+#define DAFunctionForce_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
+#include "mixedFvPatchFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -20,11 +21,11 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncForce Declaration
+      Class DAFunctionForce Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncForce
-    : public DAObjFunc
+class DAFunctionForce
+    : public DAFunction
 {
 
 protected:
@@ -54,28 +55,22 @@ public:
     // Constructors
 
     //- Construct from components
-    DAObjFuncForce(
+    DAFunctionForce(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName,
+        const word functionPart,
+        const dictionary& functionDict);
 
     //- Destructor
-    virtual ~DAObjFuncForce()
+    virtual ~DAFunctionForce()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual void calcFunction(scalar& functionValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

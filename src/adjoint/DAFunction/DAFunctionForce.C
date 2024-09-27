@@ -5,50 +5,48 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAObjFuncForce.H"
+#include "DAFunctionForce.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAObjFuncForce, 0);
-addToRunTimeSelectionTable(DAObjFunc, DAObjFuncForce, dictionary);
+defineTypeNameAndDebug(DAFunctionForce, 0);
+addToRunTimeSelectionTable(DAFunction, DAFunctionForce, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAObjFuncForce::DAObjFuncForce(
+DAFunctionForce::DAFunctionForce(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const DAResidual& daResidual,
-    const word objFuncName,
-    const word objFuncPart,
-    const dictionary& objFuncDict)
-    : DAObjFunc(
+    const word functionName,
+    const word functionPart,
+    const dictionary& functionDict)
+    : DAFunction(
         mesh,
         daOption,
         daModel,
         daIndex,
-        daResidual,
-        objFuncName,
-        objFuncPart,
-        objFuncDict),
+        functionName,
+        functionPart,
+        functionDict),
       daTurb_(daModel.getDATurbulenceModel())
 {
 
-    // for computing force, first read in some parameters from objFuncDict_
+    // for computing force, first read in some parameters from functionDict_
     // these parameters are only for force objective
 
     // Assign type, this is common for all objectives
-    objFuncDict_.readEntry<word>("type", objFuncType_);
+    functionDict_.readEntry<word>("type", functionType_);
 
     // we support three direction modes
-    dirMode_ = objFuncDict_.getWord("directionMode");
+    dirMode_ = functionDict_.getWord("directionMode");
     if (dirMode_ == "fixedDirection")
     {
         scalarList dir;
-        objFuncDict_.readEntry<scalarList>("direction", dir);
+        functionDict_.readEntry<scalarList>("direction", dir);
         forceDir_[0] = dir[0];
         forceDir_[1] = dir[1];
         forceDir_[2] = dir[2];
@@ -57,7 +55,7 @@ DAObjFuncForce::DAObjFuncForce(
     {
         // initial value for forceDir_. it will be dynamically adjusted later
         forceDir_ = {1.0, 0.0, 0.0};
-        word alphaName = objFuncDict_.getWord("alphaName");
+        word alphaName = functionDict_.getWord("alphaName");
         dictionary alphaSubDict = daOption_.getAllOptions().subDict("designVar").subDict(alphaName);
         wordList patches;
         alphaSubDict.readEntry<wordList>("patches", patches);
@@ -74,7 +72,7 @@ DAObjFuncForce::DAObjFuncForce(
     else
     {
         FatalErrorIn(" ") << "directionMode for "
-                          << objFuncName << " " << objFuncPart << " not valid!"
+                          << functionName << " " << functionPart << " not valid!"
                           << "Options: fixedDirection, parallelToFlow, normalToFlow."
                           << abort(FatalError);
     }
@@ -82,48 +80,15 @@ DAObjFuncForce::DAObjFuncForce(
     if (fabs(mag(forceDir_) - 1.0) > 1.0e-8)
     {
         FatalErrorIn(" ") << "the magnitude of the direction parameter in "
-                          << objFuncName << " " << objFuncPart << " is not 1.0!"
+                          << functionName << " " << functionPart << " is not 1.0!"
                           << abort(FatalError);
     }
 
-    objFuncDict_.readEntry<scalar>("scale", scale_);
-
-    // setup the connectivity for force, this is needed in Foam::DAJacCondFdW
-    // need to determine the name of pressure because some buoyant OF solver use
-    // p_rgh as pressure
-    word pName = "p";
-    if (mesh_.thisDb().foundObject<volScalarField>("p_rgh"))
-    {
-        pName = "p_rgh";
-    }
-#ifdef IncompressibleFlow
-    // For incompressible flow, it depends on zero level
-    // of U, nut, and p, and one level of U
-    objFuncConInfo_ = {
-        {"U", "nut", pName}, // level 0
-        {"U"}}; // level 1
-#endif
-
-#ifdef CompressibleFlow
-    // For compressible flow, it depends on zero level
-    // of U, nut, T, and p, and one level of U
-    objFuncConInfo_ = {
-        {"U", "nut", "T", pName}, // level 0
-        {"U"}}; // level 1
-#endif
-
-    // now replace nut with the corrected name for the selected turbulence model
-    daModel.correctModelStates(objFuncConInfo_[0]);
-
+    functionDict_.readEntry<scalar>("scale", scale_);
 }
 
 /// calculate the value of objective function
-void DAObjFuncForce::calcObjFunc(
-    const labelList& objFuncFaceSources,
-    const labelList& objFuncCellSources,
-    scalarList& objFuncFaceValues,
-    scalarList& objFuncCellValues,
-    scalar& objFuncValue)
+void DAFunctionForce::calcFunction(scalar& functionValue)
 {
     /*
     Description:
@@ -131,19 +96,8 @@ void DAObjFuncForce::calcObjFunc(
         This code is modified based on:
         src/functionObjects/forcces/forces.C
 
-    Input:
-        objFuncFaceSources: List of face source (index) for this objective
-    
-        objFuncCellSources: List of cell source (index) for this objective
-
     Output:
-        objFuncFaceValues: the discrete value of objective for each face source (index). 
-        This  will be used for computing df/dw in the adjoint.
-    
-        objFuncCellValues: the discrete value of objective on each cell source (index). 
-        This will be used for computing df/dw in the adjoint.
-    
-        objFuncValue: the sum of objective, reduced across all processsors and scaled by "scale"
+        functionValue: the sum of objective, reduced across all processsors and scaled by "scale"
     */
 
     if (dirMode_ != "fixedDirection")
@@ -152,15 +106,10 @@ void DAObjFuncForce::calcObjFunc(
     }
 
     // reload the scale, which may be needed for multipoint optimization
-    objFuncDict_.readEntry<scalar>("scale", scale_);
+    functionDict_.readEntry<scalar>("scale", scale_);
 
-    // initialize faceValues to zero
-    forAll(objFuncFaceValues, idxI)
-    {
-        objFuncFaceValues[idxI] = 0.0;
-    }
     // initialize objFunValue
-    objFuncValue = 0.0;
+    functionValue = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
     const volScalarField& p = db.lookupObject<volScalarField>("p");
@@ -170,11 +119,11 @@ void DAObjFuncForce::calcObjFunc(
     tmp<volSymmTensorField> tdevRhoReff = daTurb_.devRhoReff();
     const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
 
-    // calculate discrete force for each objFuncFace
-    forAll(objFuncFaceSources, idxI)
+    // calculate discrete force for each functionFace
+    forAll(faceSources_, idxI)
     {
-        const label& objFuncFaceI = objFuncFaceSources[idxI];
-        label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+        const label& functionFaceI = faceSources_[idxI];
+        label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
         const label patchI = daIndex_.bFacePatchI[bFaceI];
         const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
@@ -183,21 +132,21 @@ void DAObjFuncForce::calcObjFunc(
         // tangential force
         vector fT(Sfb[patchI][faceI] & devRhoReffb[patchI][faceI]);
         // project the force to forceDir
-        objFuncFaceValues[idxI] = scale_ * ((fN + fT) & forceDir_);
+        scalar faceValue = scale_ * ((fN + fT) & forceDir_);
 
-        objFuncValue += objFuncFaceValues[idxI];
+        functionValue += faceValue;
     }
 
     // need to reduce the sum of force across all processors
-    reduce(objFuncValue, sumOp<scalar>());
+    reduce(functionValue, sumOp<scalar>());
 
     // check if we need to calculate refDiff.
-    this->calcRefVar(objFuncValue);
+    this->calcRefVar(functionValue);
 
     return;
 }
 
-void DAObjFuncForce::updateForceDir(vector& forceDir)
+void DAFunctionForce::updateForceDir(vector& forceDir)
 {
     /*
     Description:

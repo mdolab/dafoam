@@ -5,7 +5,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -14,77 +14,60 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-defineTypeNameAndDebug(DAObjFunc, 0);
-defineRunTimeSelectionTable(DAObjFunc, dictionary);
+defineTypeNameAndDebug(DAFunction, 0);
+defineRunTimeSelectionTable(DAFunction, dictionary);
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAObjFunc::DAObjFunc(
+DAFunction::DAFunction(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const DAResidual& daResidual,
-    const word objFuncName,
-    const word objFuncPart,
-    const dictionary& objFuncDict)
+    const word functionName,
+    const word functionPart,
+    const dictionary& functionDict)
     : mesh_(mesh),
       daOption_(daOption),
       daModel_(daModel),
       daIndex_(daIndex),
-      daResidual_(daResidual),
-      objFuncName_(objFuncName),
-      objFuncPart_(objFuncPart),
-      objFuncDict_(objFuncDict),
-      daField_(mesh, daOption, daModel, daIndex)
+      functionName_(functionName),
+      functionPart_(functionPart),
+      functionDict_(functionDict)
 {
 
     // calcualte the face and cell indices that are associated with this objective
-    this->calcObjFuncSources(objFuncFaceSources_, objFuncCellSources_);
+    this->calcFunctionSources();
 
-    // initialize objFuncFaceValues_ and objFuncCellValues_ and assign zeros
-    // they will be computed later by calling DAObjFunc::calcObjFunc
-    objFuncFaceValues_.setSize(objFuncFaceSources_.size());
-    forAll(objFuncFaceValues_, idxI)
-    {
-        objFuncFaceValues_[idxI] = 0.0;
-    }
-
-    objFuncCellValues_.setSize(objFuncCellSources_.size());
-    forAll(objFuncCellValues_, idxI)
-    {
-        objFuncCellValues_[idxI] = 0.0;
-    }
-
-    calcRefVar_ = objFuncDict_.lookupOrDefault<label>("calcRefVar", 0);
+    // initialize calcRefVar related stuff
+    calcRefVar_ = functionDict_.lookupOrDefault<label>("calcRefVar", 0);
     if (calcRefVar_)
     {
-        objFuncDict_.readEntry<scalarList>("ref", ref_);
+        functionDict_.readEntry<scalarList>("ref", ref_);
     }
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
 
-autoPtr<DAObjFunc> DAObjFunc::New(
+autoPtr<DAFunction> DAFunction::New(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const DAResidual& daResidual,
-    const word objFuncName,
-    const word objFuncPart,
-    const dictionary& objFuncDict)
+    const word functionName,
+    const word functionPart,
+    const dictionary& functionDict)
 {
     // standard setup for runtime selectable classes
 
     // look up the solver name
     word modelType;
-    objFuncDict.readEntry<word>("type", modelType);
+    functionDict.readEntry<word>("type", modelType);
 
     if (daOption.getAllOptions().lookupOrDefault<label>("debug", 0))
     {
-        Info << "Selecting type: " << modelType << " for DAObjFunc. Name: " << objFuncName
-             << " part: " << objFuncPart << endl;
+        Info << "Selecting type: " << modelType << " for DAFunction. Name: " << functionName
+             << " part: " << functionPart << endl;
     }
 
     dictionaryConstructorTable::iterator cstrIter =
@@ -94,41 +77,37 @@ autoPtr<DAObjFunc> DAObjFunc::New(
     if (cstrIter == dictionaryConstructorTablePtr_->end())
     {
         FatalErrorIn(
-            "DAObjFunc::New"
+            "DAFunction::New"
             "("
             "    const fvMesh&,"
             "    const DAOption&,"
             "    const DAModel&,"
             "    const DAIndex&,"
-            "    const DAResidual&,"
             "    const word,"
             "    const word,"
             "    const dictionary&"
             ")")
-            << "Unknown DAObjFunc type "
+            << "Unknown DAFunction type "
             << modelType << nl << nl
-            << "Valid DAObjFunc types:" << endl
+            << "Valid DAFunction types:" << endl
             << dictionaryConstructorTablePtr_->sortedToc()
             << exit(FatalError);
     }
 
     // child class found
-    return autoPtr<DAObjFunc>(
+    return autoPtr<DAFunction>(
         cstrIter()(mesh,
                    daOption,
                    daModel,
                    daIndex,
-                   daResidual,
-                   objFuncName,
-                   objFuncPart,
-                   objFuncDict));
+                   functionName,
+                   functionPart,
+                   functionDict));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void DAObjFunc::calcObjFuncSources(
-    labelList& faceSources,
-    labelList& cellSources)
+void DAFunction::calcFunctionSources()
 {
     /*
     Description:
@@ -139,26 +118,25 @@ void DAObjFunc::calcObjFuncSources(
         are associated with this objective function
 
     Example:
-        A typical objFunc dictionary reads:
+        A typical function dictionary reads:
     
         {
             "type": "force",
             "source": "patchToFace",
             "patches": ["walls", "wallsbump"],
             "scale": 0.5,
-            "addToAdjoint": False
         }
 
-        This information is obtained from DAObjFunc::objFuncDict_
+        This information is obtained from DAFunction::functionDict_
 
     */
 
     // all avaiable source type are in src/meshTools/sets/cellSources
     // Example of IO parameters os in applications/utilities/mesh/manipulation/topoSet
 
-    word objSource;
-    objFuncDict_.readEntry("source", objSource);
-    if (objSource == "patchToFace")
+    word functionSource;
+    functionDict_.readEntry("source", functionSource);
+    if (functionSource == "patchToFace")
     {
         // create a topoSet
         autoPtr<topoSet> currentSet(
@@ -169,7 +147,7 @@ void DAObjFunc::calcObjFuncSources(
                 IOobject::NO_READ));
         // create the source
         autoPtr<topoSetSource> sourceSet(
-            topoSetSource::New(objSource, mesh_, objFuncDict_));
+            topoSetSource::New(functionSource, mesh_, functionDict_));
 
         // add the sourceSet to topoSet
         sourceSet().applyToSet(topoSetSource::NEW, currentSet());
@@ -177,10 +155,10 @@ void DAObjFunc::calcObjFuncSources(
         // this special for loop
         for (const label i : currentSet())
         {
-            faceSources.append(i);
+            faceSources_.append(i);
         }
     }
-    else if (objSource == "boxToCell")
+    else if (functionSource == "boxToCell")
     {
         // create a topoSet
         autoPtr<topoSet> currentSet(
@@ -192,11 +170,11 @@ void DAObjFunc::calcObjFuncSources(
         // we need to change the min and max because they need to
         // be of type point; however, we can't parse point type
         // in pyDict, we need to change them here.
-        dictionary objFuncTmp = objFuncDict_;
+        dictionary functionTmp = functionDict_;
         scalarList boxMin;
         scalarList boxMax;
-        objFuncDict_.readEntry("min", boxMin);
-        objFuncDict_.readEntry("max", boxMax);
+        functionDict_.readEntry("min", boxMin);
+        functionDict_.readEntry("max", boxMax);
 
         point boxMin1;
         point boxMax1;
@@ -207,12 +185,12 @@ void DAObjFunc::calcObjFuncSources(
         boxMax1[1] = boxMax[1];
         boxMax1[2] = boxMax[2];
 
-        objFuncTmp.set("min", boxMin1);
-        objFuncTmp.set("max", boxMax1);
+        functionTmp.set("min", boxMin1);
+        functionTmp.set("max", boxMax1);
 
         // create the source
         autoPtr<topoSetSource> sourceSet(
-            topoSetSource::New(objSource, mesh_, objFuncTmp));
+            topoSetSource::New(functionSource, mesh_, functionTmp));
 
         // add the sourceSet to topoSet
         sourceSet().applyToSet(topoSetSource::NEW, currentSet());
@@ -220,85 +198,30 @@ void DAObjFunc::calcObjFuncSources(
         // this special for loop
         for (const label i : currentSet())
         {
-            cellSources.append(i);
+            cellSources_.append(i);
+        }
+    }
+    else if (functionSource == "allCells")
+    {
+        forAll(mesh_.cells(), cellI)
+        {
+            cellSources_.append(cellI);
         }
     }
     else
     {
-        FatalErrorIn("calcObjFuncSources") << "source: " << objSource << " not supported!"
-                                           << "Options are: patchToFace, boxToCell!"
-                                           << abort(FatalError);
+        FatalErrorIn("calcFunctionSources") << "source: " << functionSource << " not supported!"
+                                            << "Options are: allCells, patchToFace, or boxToCell!"
+                                            << abort(FatalError);
     }
 }
 
-scalar DAObjFunc::masterFunction(
-    const dictionary& options,
-    const Vec xvVec,
-    const Vec wVec)
+scalar DAFunction::getFunctionValue()
 {
     /*
     Description:
-        A master function that takes the volume mesh points and state variable vecs
-        as input, and compute the value of the objective and their discrete values
-        on each face/cell source
-    
-    Input:
-        options.updateState: whether to assign the values in wVec to the state
-        variables of the OpenFOAM fields (e.g., U, p). This will also update boundary conditions
-        and update all intermediate variables that are dependent on the state 
-        variables. 
-
-        options.updateMesh: whether to assign the values in xvVec to the OpenFOAM mesh 
-        coordinates in Foam::fvMesh. This will also call mesh.movePoints() to update
-        all the mesh metrics such as mesh volume, cell centers, mesh surface area, etc.
-
-        xvVec: the volume coordinates vector (flatten)
-
-        wVec: the state variable vector
-    
-    Output:
-        objFuncValue: the reduced objective value
-
-    */
-
-    DAModel& daModel = const_cast<DAModel&>(daModel_);
-    DAResidual& daResidual = const_cast<DAResidual&>(daResidual_);
-
-    label updateState = 0;
-    options.readEntry<label>("updateState", updateState);
-
-    label updateMesh = 0;
-    options.readEntry<label>("updateMesh", updateMesh);
-
-    if (updateMesh)
-    {
-        daField_.pointVec2OFMesh(xvVec);
-    }
-
-    if (updateState)
-    {
-        daField_.stateVec2OFField(wVec);
-
-        // now update intermediate states and boundry conditions
-        daResidual.correctBoundaryConditions();
-        daResidual.updateIntermediateVariables();
-        daModel.correctBoundaryConditions();
-        daModel.updateIntermediateVariables();
-        // if there are special boundary conditions, apply special treatment
-        daField_.specialBCTreatment();
-    }
-
-    scalar objFuncValue = this->getObjFuncValue();
-
-    return objFuncValue;
-}
-
-scalar DAObjFunc::getObjFuncValue()
-{
-    /*
-    Description:
-        Call the calcObjFunc in the child class and return
-        objFuncValue_
+        Call the calcFunction in the child class and return
+        functionValue_
     
         NOTE: This is a interface for external calls where users
         only want compute the objective value based on the existing
@@ -307,18 +230,13 @@ scalar DAObjFunc::getObjFuncValue()
         the objective for each time step.
     */
     // calculate
-    this->calcObjFunc(
-        objFuncFaceSources_,
-        objFuncCellSources_,
-        objFuncFaceValues_,
-        objFuncCellValues_,
-        objFuncValue_);
+    this->calcFunction(functionValue_);
 
     // return
-    return objFuncValue_;
+    return functionValue_;
 }
 
-void DAObjFunc::calcRefVar(scalar& objFuncValue)
+void DAFunction::calcRefVar(scalar& functionValue)
 {
     /*
     Description:
@@ -330,12 +248,12 @@ void DAObjFunc::calcRefVar(scalar& objFuncValue)
     {
         if (ref_.size() == 1)
         {
-            objFuncValue = (objFuncValue - ref_[0]) * (objFuncValue - ref_[0]);
+            functionValue = (functionValue - ref_[0]) * (functionValue - ref_[0]);
         }
         else
         {
             label idxI = mesh_.time().timeIndex() - 1;
-            objFuncValue = (objFuncValue - ref_[idxI]) * (objFuncValue - ref_[idxI]);
+            functionValue = (functionValue - ref_[idxI]) * (functionValue - ref_[idxI]);
         }
     }
 }

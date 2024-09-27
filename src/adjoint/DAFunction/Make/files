@@ -1,0 +1,4 @@
+DAFunction.C
+DAFunctionForce.C
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFunction$(DF_LIB_SUFFIX)
