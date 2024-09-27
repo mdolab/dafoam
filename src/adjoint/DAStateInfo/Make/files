@@ -1,0 +1,4 @@
+DAStateInfo.C
+DAStateInfoSimpleFoam.C
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAStateInfo$(DF_LIB_SUFFIX)

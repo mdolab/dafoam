@@ -187,7 +187,6 @@ void DARegression::calcInputFeatures(word modelName)
         }
         else if (inputName == "chiSA")
         {
-#ifndef SolidDASolver
             // the chi() function from SA
             const volScalarField& nuTilda = mesh_.thisDb().lookupObject<volScalarField>("nuTilda");
             volScalarField nu = daModel_.getDATurbulenceModel().nu();
@@ -196,7 +195,6 @@ void DARegression::calcInputFeatures(word modelName)
                 features_[modelName][idxI][cellI] = (nuTilda[cellI] / nu[cellI] + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
-#endif
         }
         else if (inputName == "pGradStream")
         {
@@ -282,7 +280,6 @@ void DARegression::calcInputFeatures(word modelName)
         }
         else if (inputName == "ReWall")
         {
-#ifndef SolidDASolver
             // wall distance based Reynolds number
             const volScalarField& y = mesh_.thisDb().lookupObject<volScalarField>("yWall");
             const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
@@ -294,7 +291,6 @@ void DARegression::calcInputFeatures(word modelName)
                 features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
-#endif
         }
         else if (inputName == "CoP")
         {

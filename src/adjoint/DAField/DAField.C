@@ -821,7 +821,7 @@ void DAField::specialBCTreatment()
     // *******************************************************************
     // for pressureInletVelocity, the inlet U depends on
     // rho and phi, so we need to call U.correctBoundaryConditions again
-    if (DAUtility::isInList<word>("pressureInletVelocity", specialBCs))
+    if (specialBCs.found("pressureInletVelocity"))
     {
 
         volVectorField& U(const_cast<volVectorField&>(
