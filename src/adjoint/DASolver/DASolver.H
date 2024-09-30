@@ -26,7 +26,7 @@
 #include "DAStateInfo.H"
 #include "DAModel.H"
 #include "DAIndex.H"
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "DAJacCon.H"
 #include "DAColoring.H"
 #include "DAResidual.H"
@@ -85,8 +85,8 @@ protected:
     /// DAField pointer
     autoPtr<DAField> daFieldPtr_;
 
-    /// a list of DAObjFunc pointers
-    UPtrList<DAObjFunc> daObjFuncPtrList_;
+    /// a list of DAFunction pointers
+    UPtrList<DAFunction> daFunctionPtrList_;
 
     /// DACheckMesh object pointer
     autoPtr<DACheckMesh> daCheckMeshPtr_;
@@ -107,7 +107,7 @@ protected:
     HashTable<wordList> stateInfo_;
 
     /// the list of objective function names that requires adjoint solution
-    wordList objFuncNames4Adj_;
+    wordList functionNames4Adj_;
 
     /// the dictionary of adjoint vector (psi) values for all objectives
     dictionary psiVecDict_;
@@ -116,13 +116,13 @@ protected:
     dictionary totalDerivDict_;
 
     /// pointer to the objective function file used in unsteady primal solvers
-    autoPtr<OFstream> objFuncAvgHistFilePtr_;
+    autoPtr<OFstream> functionAvgHistFilePtr_;
 
-    /// number of iterations since the start of objFunc averaging
-    label nItersObjFuncAvg_ = -9999;
+    /// number of iterations since the start of function averaging
+    label nItersFunctionAvg_ = -9999;
 
     /// the averaged objective function values used in unsteady flow
-    scalarList avgObjFuncValues_;
+    scalarList avgFunctionValues_;
 
     /// the preconditioner matrix for the adjoint linear equation solution
     Mat dRdWTPC_;
@@ -170,7 +170,7 @@ protected:
     List<List<scalar>> stateBoundaryAllInstances_;
 
     /// objective function for all instances (unsteady)
-    List<dictionary> objFuncsAllInstances_;
+    List<dictionary> functionsAllInstances_;
 
     /// the runtime value for all instances (unsteady)
     List<scalar> runTimeAllInstances_;
@@ -197,10 +197,10 @@ protected:
     void saveTimeInstanceFieldTimeAccurate(label& timeInstanceI);
 
     /// a hash table that save the unsteady obj funcs, e.g., time-averaged drag
-    HashTable<scalar> unsteadyObjFuncs_;
+    HashTable<scalar> unsteadyFunctions_;
 
     /// a scaling factor related to the unsteady obj func timeOperator e.g., in dFdW calculation
-    scalar unsteadyObjFuncsScaling_;
+    scalar unsteadyFunctionsScaling_;
 
     /// initial values for validateStates
     HashTable<scalar> initStateVals_;
@@ -334,9 +334,9 @@ public:
     }
 
     /// return the value of objective function at the given time instance and name
-    scalar getTimeInstanceObjFunc(
+    scalar getTimeInstanceFunction(
         const label instanceI,
-        const word objFuncName);
+        const word functionName);
 
     /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
     void setTimeInstanceVar(
@@ -373,7 +373,7 @@ public:
     void calcdFdW(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         Vec dFdW);
 
     /// create a multi-level, Richardson KSP object
@@ -424,7 +424,7 @@ public:
     void calcdFdBC(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdBC);
 
@@ -450,7 +450,7 @@ public:
     void calcdFdBCAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdBC);
 
@@ -465,7 +465,7 @@ public:
     void calcdFdAOA(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdAOA);
 
@@ -488,7 +488,7 @@ public:
     void calcdFdFFD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdFFD);
 
@@ -504,7 +504,7 @@ public:
     void calcdFdACT(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         const word designVarType,
         Vec dFdACT);
@@ -521,7 +521,7 @@ public:
     void calcdFdFieldAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdField);
 
@@ -534,7 +534,7 @@ public:
     void calcdFdWAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         Vec dFdW);
 
     void calcdRdThermalTPsiAD(
@@ -571,7 +571,7 @@ public:
     void calcdFdXvAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdXv);
 
@@ -607,7 +607,7 @@ public:
     void calcdFdACTAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdACT);
     
@@ -615,7 +615,7 @@ public:
     void calcdFdHSCAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdHSC);
 
@@ -624,7 +624,7 @@ public:
         const double* volCoords,
         const double* states,
         const double* parameters,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         const word modelName,
         double* dFdRegPar);
@@ -831,36 +831,36 @@ public:
         return meshPtr_->nPoints();
     }
 
-    /// initialize DASolver::daObjFuncPtrList_ one needs to call this before calling printAllObjFuncs
-    void setDAObjFuncList();
+    /// initialize DASolver::daFunctionPtrList_ one needs to call this before calling printAllFunctions
+    void setDAFunctionList();
 
     /// calculate the values of all objective functions and print them to screen
-    void printAllObjFuncs();
+    void printAllFunctions();
 
-    /// reset the unsteady objFunction to zero
-    void initUnsteadyObjFuncs()
+    /// reset the unsteady functiontion to zero
+    void initUnsteadyFunctions()
     {
-        forAll(daObjFuncPtrList_, idxI)
+        forAll(daFunctionPtrList_, idxI)
         {
-            DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-            word objFuncName = daObjFunc.getObjFuncName();
-            word objFuncPart = daObjFunc.getObjFuncPart();
-            word uKey = objFuncName + objFuncPart;
-            unsteadyObjFuncs_[uKey] = 0.0;
+            DAFunction& daFunction = daFunctionPtrList_[idxI];
+            word functionName = daFunction.getFunctionName();
+            word functionPart = daFunction.getFunctionPart();
+            word uKey = functionName + functionPart;
+            unsteadyFunctions_[uKey] = 0.0;
         }
     }
 
-    /// return the index of a give objFuncName in daObjFuncPtrList_
-    label getObjFuncListIndex(
-        const word objFuncName,
-        const word objFuncPart)
+    /// return the index of a give functionName in daFunctionPtrList_
+    label getFunctionListIndex(
+        const word functionName,
+        const word functionPart)
     {
-        forAll(daObjFuncPtrList_, idxI)
+        forAll(daFunctionPtrList_, idxI)
         {
-            DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-            word objFuncName1 = daObjFunc.getObjFuncName();
-            word objFuncPart1 = daObjFunc.getObjFuncPart();
-            if (objFuncPart1 == objFuncPart && objFuncName1 == objFuncName)
+            DAFunction& daFunction = daFunctionPtrList_[idxI];
+            word functionName1 = daFunction.getFunctionName();
+            word functionPart1 = daFunction.getFunctionPart();
+            if (functionPart1 == functionPart && functionName1 == functionName)
             {
                 return idxI;
             }
@@ -868,24 +868,24 @@ public:
     }
 
     /// calculate and save the unsteady objective function
-    void calcUnsteadyObjFuncs();
+    void calcUnsteadyFunctions();
 
-    /// return the unsteady objFunc values
-    scalar getObjFuncValueUnsteady(const word objFuncName);
+    /// return the unsteady function values
+    scalar getFunctionValueUnsteady(const word functionName);
 
     /// get the objective func scaling for unsteady adjoint
-    scalar getObjFuncUnsteadyScaling()
+    scalar getFunctionUnsteadyScaling()
     {
-        return unsteadyObjFuncsScaling_;
+        return unsteadyFunctionsScaling_;
     }
 
     /// get the unsteady adjoint start time index
-    label getUnsteadyObjFuncStartTimeIndex()
+    label getUnsteadyFunctionStartTimeIndex()
     {
         // we assume the adjoint is for deltaT to endTime
         // but users can also prescribed a custom time range
         scalar startTime = this->getRunTime().deltaT().value();
-        scalar startTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "objFuncStartTime");
+        scalar startTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "functionStartTime");
         if (startTimeRead >= 0)
         {
             startTime = startTimeRead;
@@ -895,12 +895,12 @@ public:
     }
 
     /// get the unsteady adjoint end time index
-    label getUnsteadyObjFuncEndTimeIndex()
+    label getUnsteadyFunctionEndTimeIndex()
     {
         // we assume the adjoint is for deltaT to endTime
         // but users can also prescribed a custom time range
         scalar endTime = this->getRunTime().endTime().value();
-        scalar endTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "objFuncEndTime");
+        scalar endTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "functionEndTime");
         if (endTimeRead >= 0)
         {
             endTime = endTimeRead;
@@ -916,7 +916,7 @@ public:
     }
 
     /// return the value of the objective function
-    scalar getObjFuncValue(const word objFuncName);
+    scalar getFunctionValue(const word functionName);
 
     /// return the forces of the desired fluid-structure-interaction patches
     void getForces(
@@ -1186,9 +1186,9 @@ public:
     }
 
     /// get forwardADDerivVal_
-    PetscScalar getForwardADDerivVal(const word objFuncName)
+    PetscScalar getForwardADDerivVal(const word functionName)
     {
-        return forwardADDerivVal_[objFuncName];
+        return forwardADDerivVal_[functionName];
     }
 
     /// get the number of regression model parameters
@@ -1344,7 +1344,7 @@ public:
 
     /// write the adjoint variables for all states
     void writeAdjointFields(
-        const word objFunc,
+        const word function,
         const double writeTime,
         const double* psi);
 };

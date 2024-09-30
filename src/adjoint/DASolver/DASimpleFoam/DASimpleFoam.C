@@ -89,7 +89,7 @@ void DASimpleFoam::initSolver()
 
     daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
-    this->setDAObjFuncList();
+    this->setDAFunctionList();
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -199,7 +199,7 @@ label DASimpleFoam::solvePrimal(
         {
             daTurbulenceModelPtr_->printYPlus();
 
-            this->printAllObjFuncs();
+            this->printAllFunctions();
 
             daRegressionPtr_->printInputInfo();
 

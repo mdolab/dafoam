@@ -1,0 +1,5 @@
+DASolver.C
+DASimpleFoam/DASimpleFoam.C
+
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDASolver$(DF_LIB_SUFFIX)

@@ -1,0 +1,4 @@
+DALinearEqn.C
+
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDALinearEqn$(DF_LIB_SUFFIX)
