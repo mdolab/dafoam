@@ -632,9 +632,17 @@ class DAFoamSolver(ImplicitComponent):
             # NOTE: here we create two duplicated surface center coords, so the size is nFaces * 2
             # one is for transferring near wall temperature, the other is for transferring k/d coefficients
             if self.discipline == "aero":
-                self.add_input("T_convect", distributed=True, shape=2 * nFaces, tags=["mphys_coupling"])
+                # we need to set initial values for T_convect
+                T_convect0 = np.zeros(2 * nFaces)
+                for n in range(nFaces):
+                    T_convect0[n] = 300.0
+                self.add_input("T_convect", distributed=True, val=T_convect0, tags=["mphys_coupling"])
             if self.discipline == "thermal":
-                self.add_input("q_conduct", distributed=True, shape=2 * nFaces, tags=["mphys_coupling"])
+                # we need to set initial values for q_conduct
+                q_conduct0 = np.zeros(2 * nFaces)
+                for n in range(nFaces):
+                    q_conduct0[n] = 300.0
+                self.add_input("q_conduct", distributed=True, val=q_conduct0, tags=["mphys_coupling"])
 
         # now loop over the design variable keys to determine which other variables we need to add
         shapeVarAdded = False
