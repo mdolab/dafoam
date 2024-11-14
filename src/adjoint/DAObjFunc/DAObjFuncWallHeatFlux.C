@@ -74,10 +74,22 @@ DAObjFuncWallHeatFlux::DAObjFuncWallHeatFlux(
            "calculated")
 #endif
 {
+
     // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
     objFuncDict_.readEntry<scalar>("scale", scale_);
+
+    // Heat flux can be calculated by either per unit area or over entire surface. Default value is byUnitArea
+    if (objFuncDict_.found("scheme"))
+    {
+        objFuncDict_.readEntry<word>("scheme", calcMode_);
+    }
+    else
+    {
+        calcMode_ = "byUnitArea";
+    }
+
 
 #ifdef CompressibleFlow
 
@@ -162,17 +174,20 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
         objFuncValue: the sum of objective, reduced across all processors and scaled by "scale"
     */
 
-    // always calculate the area of all the heat flux patches
-    areaSum_ = 0.0;
-    forAll(objFuncFaceSources, idxI)
+    // if calcMode is per unit area then calculate the area of all the heat flux patches
+    if (calcMode_ == "byUnitArea")
     {
-        const label& objFuncFaceI = objFuncFaceSources[idxI];
-        label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
-        const label patchI = daIndex_.bFacePatchI[bFaceI];
-        const label faceI = daIndex_.bFaceFaceI[bFaceI];
-        areaSum_ += mesh_.magSf().boundaryField()[patchI][faceI];
+        areaSum_ = 0.0;
+        forAll(objFuncFaceSources, idxI)
+        {
+            const label& objFuncFaceI = objFuncFaceSources[idxI];
+            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+            const label patchI = daIndex_.bFacePatchI[bFaceI];
+            const label faceI = daIndex_.bFaceFaceI[bFaceI];
+            areaSum_ += mesh_.magSf().boundaryField()[patchI][faceI];
+        }
+        reduce(areaSum_, sumOp<scalar>());
     }
-    reduce(areaSum_, sumOp<scalar>());
 
     // initialize faceValues to zero
     forAll(objFuncFaceValues, idxI)
@@ -238,7 +253,22 @@ void DAObjFuncWallHeatFlux::calcObjFunc(
         const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
         scalar area = mesh_.magSf().boundaryField()[patchI][faceI];
-        objFuncFaceValues[idxI] = scale_ * wallHeatFluxBf[patchI][faceI] * area / areaSum_;
+
+        if (calcMode_ == "byUnitArea")
+        {
+            objFuncFaceValues[idxI] = scale_ * wallHeatFluxBf[patchI][faceI] * area / areaSum_;
+        }
+        else if (calcMode_ == "total")
+        {
+            objFuncFaceValues[idxI] = scale_ * wallHeatFluxBf[patchI][faceI] * area;
+        }
+        else
+        {
+           FatalErrorIn(" ") << "mode for "
+                            << objFuncName_ << " " << objFuncPart_ << " not valid!"
+                            << "Options: byUnitArea (default value), total."
+                            << abort(FatalError);
+        }
 
         objFuncValue += objFuncFaceValues[idxI];
     }
