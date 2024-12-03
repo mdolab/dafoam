@@ -42,12 +42,12 @@ void DAOutputFunction::run(scalarList& output)
         Compute the function value and assign them to the output array
     */
 
-    // jacVecProdOptions should be set in the Python layer, so 
+    // options should be set in the Python layer (dafoam_mphys.py) before call this function, so 
     // here we just use it 
-    dictionary jacVecProdDict =
-        daOption_.getAllOptions().subDict("jacVecProdOptions");
+    dictionary options =
+        daOption_.getAllOptions().subDict("_outputOptions");
     
-    word functionName = jacVecProdDict.getWord("functionName");
+    word functionName = options.getWord("functionName");
 
     dictionary functionSubDict =
         daOption_.getAllOptions().subDict("function").subDict(functionName);

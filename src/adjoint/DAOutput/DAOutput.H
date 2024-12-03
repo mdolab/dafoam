@@ -19,7 +19,6 @@
 #include "DAStateInfo.H"
 #include "DAFunction.H"
 #include "DAResidual.H"
-#include "stringOps.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

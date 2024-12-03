@@ -54,30 +54,13 @@ autoPtr<DAOutput> DAOutput::New(
 {
     // standard setup for runtime selectable classes
 
-    // A word expression for any outputName that has "_", if yes, it is a composite outputName
-    // for example, outputName = "function_CD", then we need to use "function" as the typeName
-    word typeName;
-    wordRe compositeOutputNameExp = {".*_.*", wordRe::REGEX};
-    if (compositeOutputNameExp.match(outputName))
-    {
-        // there is a "_" in the outputName, we need to parse the info and use the 
-        // words before the first "_" as the typeName
-        const auto splitNames = stringOps::split(outputName, "_");
-        typeName = splitNames[0].str();
-    }
-    else
-    {
-        // there is no "_", so outputName is typeName
-        typeName = outputName;
-    }
-
     if (daOption.getAllOptions().lookupOrDefault<label>("debug", 0))
     {
-        Info << "Selecting output: " << typeName << " for DAOutput." << endl;
+        Info << "Selecting output: " << outputName << " for DAOutput." << endl;
     }
 
     dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(typeName);
+        dictionaryConstructorTablePtr_->find(outputName);
 
     // if the solver name is not found in any child class, print an error
     if (cstrIter == dictionaryConstructorTablePtr_->end())
@@ -94,7 +77,7 @@ autoPtr<DAOutput> DAOutput::New(
             "    UPtrList<DAFunction>&"
             ")")
             << "Unknown DAOutput type "
-            << typeName << nl << nl
+            << outputName << nl << nl
             << "Valid DAOutput types:" << endl
             << dictionaryConstructorTablePtr_->sortedToc()
             << exit(FatalError);
@@ -102,7 +85,7 @@ autoPtr<DAOutput> DAOutput::New(
 
     // child class found
     return autoPtr<DAOutput>(
-        cstrIter()(typeName,
+        cstrIter()(outputName,
                    mesh,
                    daOption,
                    daModel,

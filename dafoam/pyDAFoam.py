@@ -304,9 +304,6 @@ class DAOPTION(object):
         ##     }
         self.designVar = {}
 
-        ## Options used for the calcJacTVecProduct function
-        self.jacVecProdOptions = {}
-
         ## List of patch names for the design surface. These patch names need to be of wall type
         ## and shows up in the constant/polyMesh/boundary file
         self.designSurfaces = ["ALL_OPENFOAM_WALL_PATCHES"]
@@ -758,9 +755,19 @@ class DAOPTION(object):
             # }
         }
 
+        ## An internal dict for DAInput options, it will be used to transfer options between mphys_dafoam and OF layers
+        ## Users should not use it in runScript.py
+        self._inputOptions = {}
+
+        ## An internal dict for DAInput options, it will be used to transfer options between mphys_dafoam and OF layers
+        ## Users should not use it in runScript.py
+        self._outputOptions = {
+            "functionName": "None",  # used in DAOutputFunction
+            "isPC": 0,  # used in DAOutputResidual
+        }
+
 
 class PYDAFOAM(object):
-
     """
     Main class for pyDAFoam
 
@@ -3154,7 +3161,6 @@ class PYDAFOAM(object):
 
             self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
-
         self.solver.initSolver()
 
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
@@ -3185,6 +3191,7 @@ class PYDAFOAM(object):
         Info("+--------------------------------------------------------------------------+")
 
         from .pyColoring import pyColoring
+
         solverArg = "Coloring -python " + self.parallelFlag
         solver = pyColoring(solverArg.encode(), self.options)
 

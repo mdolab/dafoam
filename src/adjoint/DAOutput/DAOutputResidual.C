@@ -42,18 +42,18 @@ void DAOutputResidual::run(scalarList& output)
         Compute OF's residual variables and then assign them to the output array
     */
 
-   // jacVecProdOptions should be set in the Python layer, so 
-    // here we just use it 
-    dictionary jacVecProdDict =
-        daOption_.getAllOptions().subDict("jacVecProdOptions");
-    
-    label isPC = jacVecProdDict.getLabel("isPC");
+    // options should be set in the Python layer (dafoam_mphys.py) before call this function, so
+    // here we just use it
+    dictionary options =
+        daOption_.getAllOptions().subDict("_outputOptions");
+
+    label isPC = options.getLabel("isPC");
 
     // calculate the residual
-    dictionary options;
-    options.set("isPC", isPC);
-    daResidual_.calcResiduals(options);
-    daModel_.calcResiduals(options);
+    dictionary resOptions;
+    resOptions.set("isPC", isPC);
+    daResidual_.calcResiduals(resOptions);
+    daModel_.calcResiduals(resOptions);
 
     // assign the calculated residuals to output
     forAll(stateInfo_["volVectorStates"], idxI)
