@@ -15,11 +15,12 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 import os
 import petsc4py
+import numpy
 
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpicxx"
 
-solverName = "pyColoringSolid"
+solverName = "pyColoring"
 
 if os.getenv("WM_CODI_AD_MODE") is None:
     libSuffix = ""
@@ -36,18 +37,25 @@ ext = [
     Extension(
         solverName + libSuffix,
         # All source files, taken from Make/files
-        sources=[
-            "pyColoringSolid.pyx",
-            "ColoringSolid.C",
-        ],
+        sources=["pyColoring.pyx", "Coloring.C"],
         # All include dirs, refer to Make/options in OpenFOAM
         include_dirs=[
             # These are from Make/options:EXE_INC
+            os.getenv("FOAM_SRC") + "/TurbulenceModels/turbulenceModels/lnInclude",
+            os.getenv("FOAM_SRC") + "/TurbulenceModels/incompressible/lnInclude",
+            os.getenv("FOAM_SRC") + "/TurbulenceModels/compressible/lnInclude",
+            os.getenv("FOAM_SRC") + "/transportModels",
+            os.getenv("FOAM_SRC") + "/transportModels/incompressible/singlePhaseTransportModel",
+            os.getenv("FOAM_SRC") + "/transportModels/compressible/lnInclude",
+            os.getenv("FOAM_SRC") + "/thermophysicalModels/basic/lnInclude",
+            os.getenv("FOAM_SRC") + "/thermophysicalModels/radiation/lnInclude",
             os.getenv("FOAM_SRC") + "/finiteVolume/lnInclude",
             os.getenv("FOAM_SRC") + "/meshTools/lnInclude",
             os.getenv("FOAM_SRC") + "/sampling/lnInclude",
             os.getenv("FOAM_SRC") + "/fileFormats/lnInclude",
             os.getenv("FOAM_SRC") + "/surfMesh/lnInclude",
+            os.getenv("FOAM_SRC") + "/dynamicFvMesh/lnInclude",
+            os.getenv("FOAM_SRC") + "/dynamicMesh/lnInclude",
             # These are common for all OpenFOAM executives
             os.getenv("FOAM_SRC") + "/OpenFOAM/lnInclude",
             os.getenv("FOAM_SRC") + "/OSspecific/POSIX/lnInclude",
@@ -59,18 +67,47 @@ ext = [
             # DAFoam include
             os.getenv("PETSC_DIR") + "/include",
             petsc4py.get_include(),
+            numpy.get_include(),
             os.getenv("PETSC_DIR") + "/" + os.getenv("PETSC_ARCH") + "/include",
-            "../../../adjoint/lnInclude",
-            "../../../include",
+            "../../include",
+            "../../adjoint/lnInclude",
+            "./",
         ],
         # These are from Make/options:EXE_LIBS
         libraries=[
+            "turbulenceModels" + libSuffix,
+            "incompressibleTurbulenceModels" + libSuffix,
+            "compressibleTurbulenceModels" + libSuffix,
+            "fluidThermophysicalModels" + libSuffix,
+            "specie" + libSuffix,
+            "incompressibleTransportModels" + libSuffix,
+            "compressibleTransportModels" + libSuffix,
+            "radiationModels" + libSuffix,
             "finiteVolume" + libSuffix,
-            "meshTools" + libSuffix,
             "sampling" + libSuffix,
-            "DAFoamSolid" + libSuffix,
+            "dynamicFvMesh" + libSuffix,
+            "dynamicMesh" + libSuffix,
+            "meshTools" + libSuffix,
+            "fvOptions" + libSuffix,
+            "DAOption" + libSuffix,
+            "DAUtility" + libSuffix,
+            "DACheckMesh" + libSuffix,
+            "DAStateInfo" + libSuffix,
+            "DAFvSource" + libSuffix,
+            "DAModel" + libSuffix,
+            "DAIndex" + libSuffix,
+            "DAFunction" + libSuffix,
+            "DAJacCon" + libSuffix,
+            "DAColoring" + libSuffix,
+            "DAResidual" + libSuffix,
+            "DAField" + libSuffix,
+            "DAPartDeriv" + libSuffix,
+            "DALinearEqn" + libSuffix,
+            "DARegression" + libSuffix,
+            "DAMisc" + libSuffix,
+            "DASolver" + libSuffix,
             "petsc",
-            ],
+        ],
         # These are pathes of linked libraries
         library_dirs=[
             os.getenv("FOAM_LIBBIN"),
@@ -82,8 +119,8 @@ ext = [
         # All other flags for OpenFOAM, users don't need to touch this
         extra_compile_args=[
             "-std=c++11",
+            "-w",
             "-Wno-deprecated-copy",
-            "-DSolidDASolver",
             "-m64",
             "-DOPENFOAM_PLUS=1812",
             "-Dlinux64",
@@ -107,9 +144,10 @@ ext = [
     )
 ]
 
+
 setup(
     name=solverName + libSuffix,
-    packages=[solverName + libSuffix],  # this must be the same as the name above
+    packages=[solverName + libSuffix],
     description="Cython wrapper for OpenFOAM",
     long_description="Cython wrapper for OpenFOAM",
     ext_modules=cythonize(ext, language_level=3),

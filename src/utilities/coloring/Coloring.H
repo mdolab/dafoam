@@ -8,13 +8,11 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef ColoringCompressible_H
-#define ColoringCompressible_H
+#ifndef Coloring_H
+#define Coloring_H
 
 #include <petscksp.h>
 #include "Python.h"
-#include "fluidThermo.H"
-#include "turbulentFluidThermoModel.H"
 #include "argList.H"
 #include "DAUtility.H"
 #include "DACheckMesh.H"
@@ -23,7 +21,7 @@
 #include "DAModel.H"
 #include "DATurbulenceModel.H"
 #include "DAIndex.H"
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "DAJacCon.H"
 #include "DAResidual.H"
 
@@ -33,18 +31,18 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class ColoringCompressible Declaration
+                       Class Coloring Declaration
 \*---------------------------------------------------------------------------*/
 
-class ColoringCompressible
+class Coloring
 {
 
 private:
     /// Disallow default bitwise copy construct
-    ColoringCompressible(const ColoringCompressible&);
+    Coloring(const Coloring&);
 
     /// Disallow default bitwise assignment
-    void operator=(const ColoringCompressible&);
+    void operator=(const Coloring&);
 
     /// all the arguments
     char* argsAll_;
@@ -65,12 +63,12 @@ public:
     // Constructors
 
     /// Construct from components
-    ColoringCompressible(
+    Coloring(
         char* argsAll,
         PyObject* pyOptions);
 
     /// Destructor
-    virtual ~ColoringCompressible();
+    virtual ~Coloring();
 
     /// run
     void run();

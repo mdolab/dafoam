@@ -1,6 +1,6 @@
 
 # distutils: language = c++
-# distutils: sources = ColoringSolid.C
+# distutils: sources = Coloring.C
 
 '''
     DAFoam  : Discrete Adjoint with OpenFOAM
@@ -13,17 +13,17 @@
 '''
 
 # declare cpp functions
-cdef extern from "ColoringSolid.H" namespace "Foam":
-    cppclass ColoringSolid:
-        ColoringSolid(char *, object) except +
+cdef extern from "Coloring.H" namespace "Foam":
+    cppclass Coloring:
+        Coloring(char *, object) except +
         void run()
 
 # create python wrappers that call cpp functions
-cdef class pyColoringSolid:
+cdef class pyColoring:
 
     # define a class pointer for cpp functions
     cdef:
-        ColoringSolid * _thisptr
+        Coloring * _thisptr
 
     # initialize this class pointer with NULL
     def __cinit__(self):
@@ -50,7 +50,7 @@ cdef class pyColoringSolid:
 
         SimpleFoam("SimpleFoam -parallel")
         '''
-        self._thisptr = new ColoringSolid(argsAll, pyOptions)
+        self._thisptr = new Coloring(argsAll, pyOptions)
 
     # wrap all the other member functions in the cpp class
     def run(self):
