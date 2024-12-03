@@ -11,4 +11,5 @@ fi
 wmakeLnInclude src/adjoint
 cd src/adjoint && ./Allmake && cd -
 cd src/pyUnitTests && ./Allmake && cd -
-pip install .
+cd src/pyDASolvers && ./Allmake && cd -
+cd src/utilities/coloring && ./Allmake && cd -
