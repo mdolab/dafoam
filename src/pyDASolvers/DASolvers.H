@@ -61,11 +61,33 @@ public:
     }
 
     /// solve the primal equations
-    label solvePrimal(
-        const Vec xvVec,
-        Vec wVec)
+    label solvePrimal()
     {
-        return DASolverPtr_->solvePrimal(xvVec, wVec);
+        return DASolverPtr_->solvePrimal();
+    }
+
+    /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
+    void calcJacTVecProduct(
+        const word inputName,
+        const int inputSize,
+        const int distributedInput,
+        const double* input,
+        const word outputName,
+        const int outputSize,
+        const int distributedOutput,
+        const double* seed,
+        double* product)
+    {
+        DASolverPtr_->calcJacTVecProduct(
+            inputName,
+            inputSize,
+            distributedInput,
+            input,
+            outputName,
+            outputSize,
+            distributedOutput,
+            seed,
+            product);
     }
 
     /// compute dRdWT
@@ -78,35 +100,25 @@ public:
         DASolverPtr_->calcdRdWT(xvVec, wVec, isPC, dRdWT);
     }
 
-    /// compute dFdW
-    void calcdFdW(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        Vec dFdW)
-    {
-        DASolverPtr_->calcdFdW(xvVec, wVec, objFuncName, dFdW);
-    }
-
     /// compute dFdW using reverse-mode AD
     void calcdFdWAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         Vec dFdW)
     {
-        DASolverPtr_->calcdFdWAD(xvVec, wVec, objFuncName, dFdW);
+        DASolverPtr_->calcdFdWAD(xvVec, wVec, functionName, dFdW);
     }
 
     /// compute dFdXv using reverse-mode AD
     void calcdFdXvAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdXv)
     {
-        DASolverPtr_->calcdFdXvAD(xvVec, wVec, objFuncName, designVarName, dFdXv);
+        DASolverPtr_->calcdFdXvAD(xvVec, wVec, functionName, designVarName, dFdXv);
     }
 
     /// compute dRdXv^T*Psi
@@ -222,11 +234,9 @@ public:
     }
 
     /// initialize matrix free dRdWT
-    void initializedRdWTMatrixFree(
-        const Vec xvVec,
-        const Vec wVec)
+    void initializedRdWTMatrixFree()
     {
-        DASolverPtr_->initializedRdWTMatrixFree(xvVec, wVec);
+        DASolverPtr_->initializedRdWTMatrixFree();
     }
 
     /// destroy matrix free dRdWT
@@ -252,36 +262,15 @@ public:
         DASolverPtr_->convertMPIVec2SeqVec(mpiVec, seqVec);
     }
 
-    /// compute dRdBC
-    void calcdRdBC(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdBC)
-    {
-        DASolverPtr_->calcdRdBC(xvVec, wVec, designVarName, dRdBC);
-    }
-
-    /// compute dFdBC
-    void calcdFdBC(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdBC)
-    {
-        DASolverPtr_->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
-    }
-
     /// compute dFdBCAD
     void calcdFdBCAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdBC)
     {
-        DASolverPtr_->calcdFdBCAD(xvVec, wVec, objFuncName, designVarName, dFdBC);
+        DASolverPtr_->calcdFdBCAD(xvVec, wVec, functionName, designVarName, dFdBC);
     }
 
     /// compute dRdBC^T*Psi
@@ -295,91 +284,26 @@ public:
         DASolverPtr_->calcdRdBCTPsiAD(xvVec, wVec, psi, designVarName, dRdBCTPsi);
     }
 
-    /// compute dRdAOA
-    void calcdRdAOA(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdAOA)
-    {
-        DASolverPtr_->calcdRdAOA(xvVec, wVec, designVarName, dRdAOA);
-    }
-
-    /// compute dFdAOA
-    void calcdFdAOA(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdAOA)
-    {
-        DASolverPtr_->calcdFdAOA(xvVec, wVec, objFuncName, designVarName, dFdAOA);
-    }
-
-    /// compute dRdFFD
-    void calcdRdFFD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdFFD)
-    {
-        DASolverPtr_->calcdRdFFD(xvVec, wVec, designVarName, dRdFFD);
-    }
-
-    /// compute dFdFFD
-    void calcdFdFFD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdFFD)
-    {
-        DASolverPtr_->calcdFdFFD(xvVec, wVec, objFuncName, designVarName, dFdFFD);
-    }
-
-    /// compute dRdACT
-    void calcdRdACT(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        const word designVarType,
-        Mat dRdACT)
-    {
-        DASolverPtr_->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
-    }
-
     /// compute dFdACT
     void calcdFdACTAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdACT)
     {
-        DASolverPtr_->calcdFdACTAD(xvVec, wVec, objFuncName, designVarName, dFdACT);
+        DASolverPtr_->calcdFdACTAD(xvVec, wVec, functionName, designVarName, dFdACT);
     }
 
     /// compute dFdHSC
     void calcdFdHSCAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdHSC)
     {
-        DASolverPtr_->calcdFdHSCAD(xvVec, wVec, objFuncName, designVarName, dFdHSC);
-    }
-
-    /// compute dFdACT
-    void calcdFdACT(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        const word designVarType,
-        Vec dFdACT)
-    {
-        DASolverPtr_->calcdFdACT(xvVec, wVec, objFuncName, designVarName, designVarType, dFdACT);
+        DASolverPtr_->calcdFdHSCAD(xvVec, wVec, functionName, designVarName, dFdHSC);
     }
 
     /// compute dRdField
@@ -397,11 +321,11 @@ public:
     void calcdFdFieldAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdField)
     {
-        DASolverPtr_->calcdFdFieldAD(xvVec, wVec, objFuncName, designVarName, dFdField);
+        DASolverPtr_->calcdFdFieldAD(xvVec, wVec, functionName, designVarName, dFdField);
     }
 
     /// compute dRdWOld^T*Psi
@@ -427,6 +351,40 @@ public:
     void updateOFField(const Vec wVec)
     {
         DASolverPtr_->updateOFField(wVec);
+    }
+
+    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the states array
+    void updateOFField(const double* states)
+    {
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        DASolverPtr_->updateOFField(states);
+#else
+        label localSize = this->getNLocalAdjointStates();
+        scalar* statesArray = new scalar[localSize];
+        for (label i = 0; i < localSize; i++)
+        {
+            statesArray[i] = states[i];
+        }
+        DASolverPtr_->updateOFField(statesArray);
+        delete[] statesArray;
+#endif
+    }
+
+    /// Assign the OpenFOAM field values to the states array
+    void getOFField(double* states)
+    {
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        DASolverPtr_->getOFField(states);
+#else
+        label localSize = this->getNLocalAdjointStates();
+        scalar* statesArray = new scalar[localSize];
+        DASolverPtr_->getOFField(statesArray);
+        for (label i = 0; i < localSize; i++)
+        {
+            states[i] = statesArray[i].value();
+        }
+        delete[] statesArray;
+#endif
     }
 
     /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
@@ -504,24 +462,24 @@ public:
     }
 
     /// return the value of objective
-    double getObjFuncValue(const word objFuncName)
+    double getFunctionValue(const word functionName)
     {
         double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValue(objFuncName));
+        assignValueCheckAD(returnVal, DASolverPtr_->getFunctionValue(functionName));
         return returnVal;
     }
 
-    double getObjFuncValueUnsteady(const word objFuncName)
+    double getFunctionValueUnsteady(const word functionName)
     {
         double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValueUnsteady(objFuncName));
+        assignValueCheckAD(returnVal, DASolverPtr_->getFunctionValueUnsteady(functionName));
         return returnVal;
     }
 
-    double getObjFuncUnsteadyScaling()
+    double getFunctionUnsteadyScaling()
     {
         double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncUnsteadyScaling());
+        assignValueCheckAD(returnVal, DASolverPtr_->getFunctionUnsteadyScaling());
         return returnVal;
     }
 
@@ -643,12 +601,12 @@ public:
         const double* volCoords,
         const double* states,
         const double* parameters,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         const word modelName,
         double* dFdRegPar)
     {
-        DASolverPtr_->calcdFdRegParAD(volCoords, states, parameters, objFuncName, designVarName, modelName, dFdRegPar);
+        DASolverPtr_->calcdFdRegParAD(volCoords, states, parameters, functionName, designVarName, modelName, dFdRegPar);
     }
 
     void calcdRdThermalTPsiAD(
@@ -844,32 +802,32 @@ public:
     }
 
     /// get the unsteady adjoint start time
-    int getUnsteadyObjFuncStartTimeIndex()
+    int getUnsteadyFunctionStartTimeIndex()
     {
 #if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        return DASolverPtr_->getUnsteadyObjFuncStartTimeIndex();
+        return DASolverPtr_->getUnsteadyFunctionStartTimeIndex();
 #endif
-        FatalErrorIn("getUnsteadyObjFuncStartTimeIndex") << "should not call this func in AD mode!"
-                                                         << abort(FatalError);
+        FatalErrorIn("getUnsteadyFunctionStartTimeIndex") << "should not call this func in AD mode!"
+                                                          << abort(FatalError);
     }
 
     /// get the unsteady adjoint end time
-    int getUnsteadyObjFuncEndTimeIndex()
+    int getUnsteadyFunctionEndTimeIndex()
     {
 #if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        return DASolverPtr_->getUnsteadyObjFuncEndTimeIndex();
+        return DASolverPtr_->getUnsteadyFunctionEndTimeIndex();
 #endif
-        FatalErrorIn("getUnsteadyObjFuncEndTimeIndex") << "should not call this func in AD mode!"
-                                                       << abort(FatalError);
+        FatalErrorIn("getUnsteadyFunctionEndTimeIndex") << "should not call this func in AD mode!"
+                                                        << abort(FatalError);
     }
 
     /// return the value of objective function at the given time instance and name
-    double getTimeInstanceObjFunc(
+    double getTimeInstanceFunction(
         const label instanceI,
-        const word objFuncName)
+        const word functionName)
     {
         double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getTimeInstanceObjFunc(instanceI, objFuncName));
+        assignValueCheckAD(returnVal, DASolverPtr_->getTimeInstanceFunction(instanceI, functionName));
         return returnVal;
     }
 
@@ -914,9 +872,9 @@ public:
     }
 
     /// get forwardADDerivVal_
-    PetscScalar getForwardADDerivVal(const word objFuncName)
+    PetscScalar getForwardADDerivVal(const word functionName)
     {
-        return DASolverPtr_->getForwardADDerivVal(objFuncName);
+        return DASolverPtr_->getForwardADDerivVal(functionName);
     }
 
     /// calculate the residual and assign it to the resVec vector
@@ -1015,11 +973,11 @@ public:
 
     /// write the adjoint variables for all states
     void writeAdjointFields(
-        const word objFunc,
+        const word function,
         const double writeTime,
         const double* psi)
     {
-        DASolverPtr_->writeAdjointFields(objFunc, writeTime, psi);
+        DASolverPtr_->writeAdjointFields(function, writeTime, psi);
     }
 
     /// write the sensitivity map for all wall surfaces
