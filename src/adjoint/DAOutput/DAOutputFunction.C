@@ -1,0 +1,76 @@
+/*---------------------------------------------------------------------------*\
+
+    DAFoam  : Discrete Adjoint with OpenFOAM
+    Version : v4
+
+\*---------------------------------------------------------------------------*/
+
+#include "DAOutputFunction.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+namespace Foam
+{
+
+defineTypeNameAndDebug(DAOutputFunction, 0);
+addToRunTimeSelectionTable(DAOutput, DAOutputFunction, dictionary);
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+DAOutputFunction::DAOutputFunction(
+    const word outputName,
+    fvMesh& mesh,
+    const DAOption& daOption,
+    DAModel& daModel,
+    const DAIndex& daIndex,
+    DAResidual& daResidual,
+    UPtrList<DAFunction>& daFunctionList)
+    : DAOutput(
+        outputName,
+        mesh,
+        daOption,
+        daModel,
+        daIndex,
+        daResidual,
+        daFunctionList)
+{
+}
+
+void DAOutputFunction::run(scalarList& output)
+{
+    /*
+    Description:
+        Compute the function value and assign them to the output array
+    */
+
+    // jacVecProdOptions should be set in the Python layer, so 
+    // here we just use it 
+    dictionary jacVecProdDict =
+        daOption_.getAllOptions().subDict("jacVecProdOptions");
+    
+    word functionName = jacVecProdDict.getWord("functionName");
+
+    dictionary functionSubDict =
+        daOption_.getAllOptions().subDict("function").subDict(functionName);
+
+    // loop over all parts for this functionName
+    scalar fVal = 0.0;
+    forAll(functionSubDict.toc(), idxJ)
+    {
+        // get the subDict for this part
+        word functionPart = functionSubDict.toc()[idxJ];
+
+        // get function from daFunctionList_
+        label objIndx = this->getFunctionListIndex(functionName, functionPart, daFunctionList_);
+        DAFunction& daFunction = daFunctionList_[objIndx];
+
+        // compute the objective function
+        fVal += daFunction.getFunctionValue();
+    }
+    output[0] = fVal;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
+
+// ************************************************************************* //
