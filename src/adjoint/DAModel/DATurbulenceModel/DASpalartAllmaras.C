@@ -382,7 +382,7 @@ void DASpalartAllmaras::addModelResidualCon(HashTable<List<List<word>>>& allCon)
     }
 }
 
-void DASpalartAllmaras::correct(label printToScreen)
+void DASpalartAllmaras::correct(label printToScreen, const scalar& primalMaxRes)
 {
     /*
     Descroption:
@@ -397,6 +397,7 @@ void DASpalartAllmaras::correct(label printToScreen)
     solveTurbState_ = 1;
     dictionary dummyOptions;
     dummyOptions.set("printToScreen", printToScreen);
+    dummyOptions.set("primalMaxRes", primalMaxRes);
     this->calcResiduals(dummyOptions);
     // after it, we reset solveTurbState_ = 0 such that calcResiduals will not
     // update nuTilda when calling from the adjoint class, i.e., solveAdjoint from DASolver.
@@ -457,12 +458,13 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
     if (solveTurbState_)
     {
         label printToScreen = options.getLabel("printToScreen");
+        scalar primalMaxRes = options.getScalar("primalMaxRes");
 
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverNuTilda = solve(nuTildaEqn);
 
-        DAUtility::primalResidualControl(solverNuTilda, printToScreen, "nuTilda");
+        DAUtility::primalResidualControl(solverNuTilda, printToScreen, "nuTilda", primalMaxRes);
 
         DAUtility::boundVar(allOptions_, nuTilda_, printToScreen);
         nuTilda_.correctBoundaryConditions();

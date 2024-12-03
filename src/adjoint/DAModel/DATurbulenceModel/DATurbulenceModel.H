@@ -182,7 +182,7 @@ public:
     virtual void calcResiduals(const dictionary& options) = 0;
 
     /// solve the residual equations and update the state
-    virtual void correct(label printToScreen) = 0;
+    virtual void correct(label printToScreen, const scalar& primalMaxRes) = 0;
 
     /// return the value of the production term from the turbulence model
     virtual void getTurbProdTerm(volScalarField& prodTerm) const;

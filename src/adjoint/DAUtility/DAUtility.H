@@ -123,20 +123,19 @@ public:
     static void* pySetModelName;
     static pySetCharInterface pySetModelNameInterface;
 
-    /// the max initial residual norms for the primal solution for each state
-    static scalar primalMaxInitRes_;
-
     /// control when to print the residual and also compute the maxInitRes
     static void primalResidualControl(
         const SolverPerformance<scalar>& solverP,
         const label printToScreen,
-        const word varName);
+        const word varName,
+        scalar& primalMaxRes);
 
     /// control when to print the residual and also compute the maxInitRes
     static void primalResidualControl(
         const SolverPerformance<vector>& solverP,
         const label printToScreen,
-        const word varName);
+        const word varName,
+        scalar& primalMaxRes);
 
     static label myFindCell(
         const primitiveMesh& mesh,
