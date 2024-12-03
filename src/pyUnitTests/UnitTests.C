@@ -23,8 +23,6 @@ pyJacVecProdInterface Foam::DAUtility::pyCalcBetaJacVecProdInterface = NULL;
 void* Foam::DAUtility::pySetModelName = NULL;
 pySetCharInterface Foam::DAUtility::pySetModelNameInterface = NULL;
 
-scalar Foam::DAUtility::primalMaxInitRes_ = -1e16;
-
 namespace Foam
 {
 

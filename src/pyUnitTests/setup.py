@@ -50,6 +50,10 @@ ext = [
             os.getenv("FOAM_SRC") + "/OpenFOAM/lnInclude",
             os.getenv("FOAM_SRC") + "/OSspecific/POSIX/lnInclude",
             os.getenv("FOAM_LIBBIN"),
+            # CoDiPack and MeDiPack
+            os.getenv("FOAM_SRC") + "/codipack/include",
+            os.getenv("FOAM_SRC") + "/medipack/include",
+            os.getenv("FOAM_SRC") + "/medipack/src",
             # DAFoam include
             os.getenv("PETSC_DIR") + "/include",
             petsc4py.get_include(),
@@ -80,6 +84,7 @@ ext = [
         # All other flags for OpenFOAM, users don't need to touch this
         extra_compile_args=[
             "-std=c++11",
+            "-w",
             "-Wno-deprecated-copy",
             "-m64",
             "-DOPENFOAM_PLUS=1812",
@@ -97,6 +102,7 @@ ext = [
             "-ftemplate-depth-100",
             "-fPIC",
             "-c",
+            "-D" + codiADMode,
         ],
         # Extra link flags for OpenFOAM, users don't need to touch this
         extra_link_args=["-Xlinker", "--add-needed", "-Xlinker", "--no-as-needed"],
