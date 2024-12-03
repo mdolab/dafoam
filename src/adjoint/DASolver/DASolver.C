@@ -22,8 +22,6 @@ pyJacVecProdInterface Foam::DAUtility::pyCalcBetaJacVecProdInterface = NULL;
 void* Foam::DAUtility::pySetModelName = NULL;
 pySetCharInterface Foam::DAUtility::pySetModelNameInterface = NULL;
 
-scalar Foam::DAUtility::primalMaxInitRes_ = -1e16;
-
 namespace Foam
 {
 
@@ -118,7 +116,9 @@ autoPtr<DASolver> DASolver::New(
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-label DASolver::loop(Time& runTime)
+label DASolver::loop(
+    Time& runTime,
+    const scalar& primalMaxRes)
 {
     /*
     Description:
@@ -145,11 +145,11 @@ label DASolver::loop(Time& runTime)
     this->calcObjStd(runTime);
 
     // check exit condition, we need to satisfy both the residual and function std condition
-    if (DAUtility::primalMaxInitRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_ && primalObjStd_ < primalObjStdTol_)
+    if (primalMaxRes < primalMinResTol_ && runTime.timeIndex() > primalMinIters_ && primalObjStd_ < primalObjStdTol_)
     {
         Info << "Time = " << t << endl;
 
-        Info << "Minimal residual " << DAUtility::primalMaxInitRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
+        Info << "Minimal residual " << primalMaxRes << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
 
         if (primalObjStdActive_)
@@ -291,8 +291,8 @@ void DASolver::calcUnsteadyFunctions()
     if (daFunctionPtrList_.size() == 0)
     {
         FatalErrorIn("calcUnsteadyFunctions") << "daFunctionPtrList_.size() ==0... "
-                                             << "Forgot to call setDAFunctionList?"
-                                             << abort(FatalError);
+                                              << "Forgot to call setDAFunctionList?"
+                                              << abort(FatalError);
     }
 
     word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "functionTimeOperator");
@@ -350,8 +350,8 @@ void DASolver::printAllFunctions()
     if (daFunctionPtrList_.size() == 0)
     {
         FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
-                                         << "Forgot to call setDAFunctionList?"
-                                         << abort(FatalError);
+                                          << "Forgot to call setDAFunctionList?"
+                                          << abort(FatalError);
     }
 
     word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "functionTimeOperator");
@@ -416,8 +416,8 @@ scalar DASolver::getFunctionValueUnsteady(const word functionName)
     if (daFunctionPtrList_.size() == 0)
     {
         FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
-                                         << "Forgot to call setDAFunctionList?"
-                                         << abort(FatalError);
+                                          << "Forgot to call setDAFunctionList?"
+                                          << abort(FatalError);
     }
 
     scalar functionValue = 0.0;
@@ -455,8 +455,8 @@ scalar DASolver::getFunctionValue(const word functionName)
     if (daFunctionPtrList_.size() == 0)
     {
         FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
-                                         << "Forgot to call setDAFunctionList?"
-                                         << abort(FatalError);
+                                          << "Forgot to call setDAFunctionList?"
+                                          << abort(FatalError);
     }
 
     scalar functionValue = 0.0;
@@ -592,7 +592,7 @@ void DASolver::setDAFunctionList()
         else
         {
             FatalErrorIn("setDAFunctionList") << "timeOperator not valid! Options are None, average, or sum"
-                                             << abort(FatalError);
+                                              << abort(FatalError);
         }
     }
 }
@@ -3515,7 +3515,6 @@ void DASolver::calcdRdWT(
     daJacCon.clear();
 }
 
-
 void DASolver::setBCToOFVars(
     const dictionary& dvSubDict,
     const scalar& BC)
@@ -4561,9 +4560,7 @@ void DASolver::updateOFMesh(const scalar* volCoords)
     daFieldPtr_->point2OFMesh(volCoords);
 }
 
-void DASolver::initializedRdWTMatrixFree(
-    const Vec xvVec,
-    const Vec wVec)
+void DASolver::initializedRdWTMatrixFree()
 {
 #ifdef CODI_AD_REVERSE
     /*
@@ -4575,8 +4572,8 @@ void DASolver::initializedRdWTMatrixFree(
     // this is needed because the self.solverAD object in the Python layer
     // never run the primal solution, so the wVec and xvVec is not always
     // update to date
-    this->updateOFField(wVec);
-    this->updateOFMesh(xvVec);
+    //this->updateOFField(wVec);
+    //this->updateOFMesh(xvVec);
 
     if (daOptionPtr_->getOption<label>("debug"))
     {
@@ -4676,6 +4673,141 @@ void DASolver::initializeGlobalADTape4dRdWT()
     this->globalADTape_.setPassive();
 
     // Now the tape is ready to use in the matrix-free GMRES solution
+#endif
+}
+
+void DASolver::calcJacTVecProduct(
+    const word inputName,
+    const int inputSize,
+    const int distributedInput,
+    const double* input,
+    const word outputName,
+    const int outputSize,
+    const int distributedOutput,
+    const double* seed,
+    double* product)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate the Jacobian-matrix-transposed and vector product for [dOutput/dInput]^T * psi
+    
+    Input:
+        inputName: name of the input
+
+        outputName: name of the output
+
+        input: the actual value of the input array
+
+        psi: the vector for the mat-vec product
+    
+    Output:
+        product: the mat-vec product
+    */
+
+    // initialize the input and output objects
+    autoPtr<DAInput> daInput(
+        DAInput::New(
+            inputName,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_()));
+
+    autoPtr<DAOutput> daOutput(
+        DAOutput::New(
+            outputName,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            daFunctionPtrList_));
+
+    // create input and output lists
+    scalarList inputList(inputSize, 0.0);
+    scalarList outputList(outputSize, 0.0);
+
+    // assign the input array to the input list.
+    // Note: we need to use scalarList for AD
+    forAll(inputList, idxI)
+    {
+        inputList[idxI] = input[idxI];
+    }
+
+    // reset tape
+    this->globalADTape_.reset();
+    // activate tape, start recording
+    this->globalADTape_.setActive();
+    // register input
+    forAll(inputList, idxI)
+    {
+        this->globalADTape_.registerInput(inputList[idxI]);
+    }
+    // call daInput->run to assign inputList to OF variables
+    daInput->run(inputList);
+    // update all intermediate variables and boundary conditions
+    this->updateStateBoundaryConditions();
+    // call daOutput->run to compute OF output variables and assign them to outputList
+    daOutput->run(outputList);
+    // register output
+    forAll(outputList, idxI)
+    {
+        this->globalADTape_.registerOutput(outputList[idxI]);
+    }
+    // stop recording
+    this->globalADTape_.setPassive();
+    // assign the seed to the outputList's gradient
+    forAll(outputList, idxI)
+    {
+        // if the output is in serial (e.g., function), we need to assign the seed to 
+        // only the master processor. This is because the serial output already called
+        // a reduce in the daOutput->run function.
+        if (distributedOutput)
+        {
+            // output is distributed, assign seed to all procs
+            outputList[idxI].setGradient(seed[idxI]);
+        }
+        else
+        {
+            // output is in serial, assign seed to the master proc only
+            if (Pstream::master())
+            {
+                outputList[idxI].setGradient(seed[idxI]);
+            }
+        }
+    }
+    // evaluate tape to compute derivative
+    this->globalADTape_.evaluate();
+    // get the matrix-vector product=[dOutput/dInput]^T*seed from the inputList
+    // and assign it to the product array
+    forAll(inputList, idxI)
+    {
+        product[idxI] = inputList[idxI].getGradient();
+        // if the input is in serial (e.g., angle of attack), we need to reduce the product and
+        // make sure the product is consistent among all processors
+        if (!distributedInput)
+        {
+            reduce(product[idxI], sumOp<double>());
+        }
+    }
+
+    // need to clear adjoint and tape after the computation is done!
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    // clean up OF vars's AD seeds by deactivating the inputs (set its gradients to zeros)
+    // and calculate the output one more time. This will propagate the zero seeds
+    // to all the intermediate variables and reset their gradient to zeros
+    // NOTE: cleaning up the seeds is critical; otherwise, it will create AD conflict
+    forAll(inputList, idxI)
+    {
+        this->globalADTape_.deactivateValue(inputList[idxI]);
+    }
+    daInput->run(inputList);
+    this->updateStateBoundaryConditions();
+    daOutput->run(outputList);
+
 #endif
 }
 
@@ -7961,7 +8093,7 @@ void DASolver::setFFD2XvSeedVec(Vec vecIn)
     VecCopy(vecIn, FFD2XvSeedVec_);
 }
 
-label DASolver::checkResidualTol()
+label DASolver::checkResidualTol(const scalar& primalMaxRes)
 {
     /*
     Description:
@@ -7973,10 +8105,10 @@ label DASolver::checkResidualTol()
 
     scalar tolMax = daOptionPtr_->getOption<scalar>("primalMinResTolDiff");
     scalar stdTolMax = daOptionPtr_->getSubDictOption<scalar>("primalObjStdTol", "tolDiff");
-    if (DAUtility::primalMaxInitRes_ / primalMinResTol_ > tolMax)
+    if (primalMaxRes / primalMinResTol_ > tolMax)
     {
         Info << "********************************************" << endl;
-        Info << "Primal min residual " << DAUtility::primalMaxInitRes_ << endl
+        Info << "Primal min residual " << primalMaxRes << endl
              << "did not satisfy the prescribed tolerance "
              << primalMinResTol_ << endl;
         Info << "Primal solution failed!" << endl;

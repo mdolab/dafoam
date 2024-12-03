@@ -37,6 +37,8 @@
 #include "volPointInterpolation.H"
 #include "IOMRFZoneListDF.H"
 #include "interpolateSplineXY.H"
+#include "DAInput.H"
+#include "DAOutput.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -147,7 +149,7 @@ protected:
         const label printInterval) const;
 
     /// check whether the min residual in primal satisfy the prescribed tolerance
-    label checkResidualTol();
+    label checkResidualTol(const scalar& primalMaxRes);
 
     /// reduce the connectivity level for Jacobian connectivity mat
     void reduceStateResConLevel(
@@ -245,9 +247,8 @@ public:
         autoPtr,
         DASolver,
         dictionary,
-        (
-            char* argsAll,
-            PyObject* pyOptions),
+        (char* argsAll,
+         PyObject* pyOptions),
         (argsAll, pyOptions));
 
     // Constructors
@@ -275,9 +276,7 @@ public:
     virtual void initSolver() = 0;
 
     /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec) = 0;
+    virtual label solvePrimal() = 0;
 
     /// solve the adjoint equation using the fixed-point iteration method
     virtual label runFPAdj(
@@ -330,6 +329,7 @@ public:
         {
             FatalErrorIn("") << "ddtScheme " << ddtSchemeName << " not supported! Options: steadyState, Euler, or backward"
                              << abort(FatalError);
+            return -1;
         }
     }
 
@@ -369,13 +369,6 @@ public:
         const Vec psi,
         Vec dRdWTPsi);
 
-    /// compute dFdW
-    void calcdFdW(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        Vec dFdW);
-
     /// create a multi-level, Richardson KSP object
     void createMLRKSP(
         const Mat jacMat,
@@ -405,28 +398,19 @@ public:
     void updateOFMesh(const Vec xvVec);
 
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state array
-    void updateOFField(const scalar* volCoords);
+    void updateOFField(const scalar* states);
 
     /// Update the OpenFoam mesh point coordinates based on the volume point coords array
-    void updateOFMesh(const scalar* states);
+    void updateOFMesh(const scalar* volCoords);
+
+    /// assign the state variables from OpenFoam layer to the states array
+    void getOFField(scalar* states)
+    {
+        daFieldPtr_->ofField2State(states);
+    }
 
     /// reset the seeds (gradient to zeros) for all OpenFOAM variables
     void resetOFSeeds();
-
-    /// compute dRdBC
-    void calcdRdBC(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdBC);
-
-    /// compute dFdBC
-    void calcdFdBC(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdBC);
 
     /// assign the BC val to OF var
     void setBCToOFVars(
@@ -437,6 +421,18 @@ public:
     void getBCFromOFVars(
         const dictionary& dvSubDict,
         scalar& BC);
+
+    /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
+    void calcJacTVecProduct(
+        const word inputName,
+        const int inputSize,
+        const int distributedInput,
+        const double* input,
+        const word outputName,
+        const int outputSize,
+        const int distributedOutput,
+        const double* seed,
+        double* product);
 
     /// compute dRdBCAD
     void calcdRdBCTPsiAD(
@@ -454,21 +450,6 @@ public:
         const word designVarName,
         Vec dFdBC);
 
-    /// compute dRdAOA
-    void calcdRdAOA(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdAOA);
-
-    /// compute dFdAOA
-    void calcdFdAOA(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdAOA);
-
     /// compute dRdAOAAD
     void calcdRdAOATPsiAD(
         const Vec xvVec,
@@ -476,38 +457,6 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdAOATPsi);
-
-    /// compute dRdFFD
-    void calcdRdFFD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdFFD);
-
-    /// compute dFdFFD
-    void calcdFdFFD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdFFD);
-
-    /// compute dRdACT
-    void calcdRdACT(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        const word designVarType,
-        Mat dRdACT);
-
-    /// compute dFdACT
-    void calcdFdACT(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        const word designVarType,
-        Vec dFdACT);
 
     /// compute dRdField^T*Psi
     void calcdRdFieldTPsiAD(
@@ -581,7 +530,7 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdActTPsi);
-    
+
     void calcdRdHSCTPsiAD(
         const Vec xvVec,
         const Vec wVec,
@@ -610,7 +559,7 @@ public:
         const word functionName,
         const word designVarName,
         Vec dFdACT);
-    
+
     /// compute dFdHSC AD
     void calcdFdHSCAD(
         const Vec xvVec,
@@ -645,9 +594,7 @@ public:
         Vec vecY);
 
     /// initialize matrix free dRdWT
-    void initializedRdWTMatrixFree(
-        const Vec xvVec,
-        const Vec wVec);
+    void initializedRdWTMatrixFree();
 
     /// destroy the matrix free dRdWT
     void destroydRdWTMatrixFree();
@@ -707,7 +654,9 @@ public:
     void initializeGlobalADTape4dRdWT();
 
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
-    label loop(Time& runTime);
+    label loop(
+        Time& runTime,
+        const scalar& primalMaxRes);
 
     /// basically, we call DAIndex::getGlobalXvIndex
     label getGlobalXvIndex(
