@@ -582,7 +582,7 @@ class DAFoamSolver(ImplicitComponent):
         # by default, we will not have a separate optionDict attached to this
         # solver. But if we do multipoint optimization, we need to use the
         # optionDict for each point because each point may have different
-        # objFunc and primalBC options
+        # function and primalBC options
         self.optionDict = None
 
         # Initialize the design variable functions, e.g., aoa, actuator
@@ -595,7 +595,7 @@ class DAFoamSolver(ImplicitComponent):
         self.DVCon = None
 
         # initialize the dRdWT matrix-free matrix in DASolver
-        DASolver.solverAD.initializedRdWTMatrixFree(DASolver.xvVec, DASolver.wVec)
+        DASolver.solverAD.initializedRdWTMatrixFree()
 
         # create the adjoint vector
         self.psi = self.DASolver.wVec.duplicate()
@@ -757,12 +757,16 @@ class DAFoamSolver(ImplicitComponent):
             DASolver.evalFunctions(funcs, evalFuncs=self.evalFuncs)
 
             # assign the computed flow states to outputs
-            outputs["%s_states" % self.discipline] = DASolver.getStates()
+            states = DASolver.getStates()
+            outputs["%s_states" % self.discipline] = states
 
             # if the primal solution fail, we return analysisError and let the optimizer handle it
             fail = funcs["fail"]
             if fail:
                 raise AnalysisError("Primal solution failed!")
+
+            # set states
+            DASolver.setStates(states)
 
     def linearize(self, inputs, outputs, residuals):
         # NOTE: we do not do any computation in this function, just print some information
@@ -1072,10 +1076,10 @@ class DAFoamSolver(ImplicitComponent):
 
                 # optionally write the adjoint vector as OpenFOAM field format for post-processing
                 # update the obj func name for solve_linear later
-                solveLinearObjFuncName = DASolver.getOption("solveLinearObjFuncName")
+                solveLinearFunctionName = DASolver.getOption("solveLinearFunctionName")
                 psi_array = DASolver.vec2Array(self.psi)
                 solTimeFloat = self.solution_counter / 1e4
-                self.DASolver.writeAdjointFields(solveLinearObjFuncName, solTimeFloat, psi_array)
+                self.DASolver.writeAdjointFields(solveLinearFunctionName, solTimeFloat, psi_array)
 
             elif adjEqnSolMethod == "fixedPoint":
                 solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
@@ -1298,13 +1302,13 @@ class DAFoamFunctions(ExplicitComponent):
     def mphys_add_funcs(self):
         # add the function names to this component, called from runScript.py
 
-        # it is called objFunc in DAOptions but it contains both objective and constraint functions
-        objFuncs = self.DASolver.getOption("objFunc")
+        # it is called function in DAOptions but it contains both objective and constraint functions
+        functions = self.DASolver.getOption("function")
 
         self.funcs = []
 
-        for objFunc in objFuncs:
-            self.funcs.append(objFunc)
+        for function in functions:
+            self.funcs.append(function)
 
         # loop over the functions here and create the output
         for f_name in self.funcs:
@@ -1409,13 +1413,13 @@ class DAFoamFunctions(ExplicitComponent):
             print("Computing partials for ", list(funcsBar.keys()))
 
         # update the obj func name for solve_linear later
-        DASolver.setOption("solveLinearObjFuncName", list(funcsBar.keys())[0])
+        DASolver.setOption("solveLinearFunctionName", list(funcsBar.keys())[0])
         DASolver.updateDAOption()
 
         # loop over all d_inputs keys and compute the partials accordingly
-        for objFuncName in list(funcsBar.keys()):
+        for functionName in list(funcsBar.keys()):
 
-            fBar = funcsBar[objFuncName]
+            fBar = funcsBar[functionName]
 
             for inputName in list(d_inputs.keys()):
 
@@ -1423,7 +1427,7 @@ class DAFoamFunctions(ExplicitComponent):
                 if inputName == "%s_states" % self.discipline:
                     dFdW = DASolver.wVec.duplicate()
                     dFdW.zeroEntries()
-                    DASolver.solverAD.calcdFdWAD(DASolver.xvVec, DASolver.wVec, objFuncName.encode(), dFdW)
+                    DASolver.solverAD.calcdFdWAD(DASolver.xvVec, DASolver.wVec, functionName.encode(), dFdW)
                     wBar = DASolver.vec2Array(dFdW)
                     d_inputs["%s_states" % self.discipline] += wBar * fBar
 
@@ -1432,7 +1436,7 @@ class DAFoamFunctions(ExplicitComponent):
                     dFdXv = DASolver.xvVec.duplicate()
                     dFdXv.zeroEntries()
                     DASolver.solverAD.calcdFdXvAD(
-                        DASolver.xvVec, DASolver.wVec, objFuncName.encode(), "dummy".encode(), dFdXv
+                        DASolver.xvVec, DASolver.wVec, functionName.encode(), "dummy".encode(), dFdXv
                     )
                     xVBar = DASolver.vec2Array(dFdXv)
                     d_inputs["%s_vol_coords" % self.discipline] += xVBar * fBar
@@ -1444,7 +1448,7 @@ class DAFoamFunctions(ExplicitComponent):
                         dFdAOA = PETSc.Vec().create(self.comm)
                         dFdAOA.setSizes((PETSc.DECIDE, 1), bsize=1)
                         dFdAOA.setFromOptions()
-                        DASolver.calcdFdAOAAnalytical(objFuncName, dFdAOA)
+                        DASolver.calcdFdAOAAnalytical(functionName, dFdAOA)
 
                         # The aoaBar variable will be length 1 on the root proc, but length 0 an all slave procs.
                         # The value on the root proc must be broadcast across all procs.
@@ -1461,7 +1465,7 @@ class DAFoamFunctions(ExplicitComponent):
                         dFdBC.setSizes((PETSc.DECIDE, 1), bsize=1)
                         dFdBC.setFromOptions()
                         DASolver.solverAD.calcdFdBCAD(
-                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdBC
+                            DASolver.xvVec, DASolver.wVec, functionName.encode(), inputName.encode(), dFdBC
                         )
                         # The BCBar variable will be length 1 on the root proc, but length 0 an all slave procs.
                         # The value on the root proc must be broadcast across all procs.
@@ -1478,7 +1482,7 @@ class DAFoamFunctions(ExplicitComponent):
                         dFdACTD.setSizes((PETSc.DECIDE, 13), bsize=1)
                         dFdACTD.setFromOptions()
                         DASolver.solverAD.calcdFdACTAD(
-                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdACTD
+                            DASolver.xvVec, DASolver.wVec, functionName.encode(), inputName.encode(), dFdACTD
                         )
                         # we will convert the MPI dFdACTD to seq array for all procs
                         ACTDBar = DASolver.convertMPIVec2SeqArray(dFdACTD)
@@ -1498,7 +1502,7 @@ class DAFoamFunctions(ExplicitComponent):
                         dFdHSC.setSizes((PETSc.DECIDE, 9), bsize=1)
                         dFdHSC.setFromOptions()
                         DASolver.solverAD.calcdFdHSCAD(
-                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdHSC
+                            DASolver.xvVec, DASolver.wVec, functionName.encode(), inputName.encode(), dFdHSC
                         )
                         # we will convert the MPI dFdHSC to seq array for all procs
                         HSCBar = DASolver.convertMPIVec2SeqArray(dFdHSC)
@@ -1524,7 +1528,7 @@ class DAFoamFunctions(ExplicitComponent):
                         dFdField.setSizes((nLocalSize, PETSc.DECIDE), bsize=1)
                         dFdField.setFromOptions()
                         DASolver.solverAD.calcdFdFieldAD(
-                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdField
+                            DASolver.xvVec, DASolver.wVec, functionName.encode(), inputName.encode(), dFdField
                         )
 
                         # user can prescribe whether the field var is distributed. Default is True
@@ -1551,7 +1555,7 @@ class DAFoamFunctions(ExplicitComponent):
                             volCoords,
                             states,
                             parameters,
-                            objFuncName.encode(),
+                            functionName.encode(),
                             inputName.encode(),
                             modelName.encode(),
                             product,
