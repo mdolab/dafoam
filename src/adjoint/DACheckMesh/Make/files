@@ -2,4 +2,4 @@ DACheckMesh.C
 checkGeometry.C
 checkTools.C
 
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDACheckMesh
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDACheckMesh$(DF_LIB_SUFFIX)
