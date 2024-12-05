@@ -48,7 +48,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initSolver()
         int solvePrimal()
         void calcJacTVecProduct(char *, int, int, double *, char *, int, int, double *, double *)
-        void calcdRdWT(PetscVec, PetscVec, int, PetscMat)
+        void calcdRdWT(int, PetscMat)
         void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree()
         void destroydRdWTMatrixFree()
@@ -79,7 +79,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
         void updateOFField(PetscVec)
-        void updateOFField(double *)
+        void updateOFFieldArray(double *)
         void getOFField(double *)
         void updateOFMesh(PetscVec)
         void setdXvdFFDMat(PetscMat)
@@ -220,18 +220,18 @@ cdef class pyDASolvers:
         cdef double *product_data = <double*>product.data
 
         self._thisptr.calcJacTVecProduct(
-            inputName,
+            inputName.encode(),
             inputSize,
             distributedInput,
             inputs_data,
-            outputName,
+            outputName.encode(),
             outputSize,
             distributedOutput,
             seeds_data, 
             product_data)
     
-    def calcdRdWT(self, Vec xvVec, Vec wVec, isPC, Mat dRdWT):
-        self._thisptr.calcdRdWT(xvVec.vec, wVec.vec, isPC, dRdWT.mat)
+    def calcdRdWT(self, isPC, Mat dRdWT):
+        self._thisptr.calcdRdWT(isPC, dRdWT.mat)
     
     def calcdRdWTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdWTPsi):
         self._thisptr.calcdRdWTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdWTPsi.vec)
@@ -340,10 +340,10 @@ cdef class pyDASolvers:
     def updateOFField(self, Vec wVec):
         self._thisptr.updateOFField(wVec.vec)
     
-    def updateOFField(self, np.ndarray[double, ndim=1, mode="c"] states):
+    def updateOFFieldArray(self, np.ndarray[double, ndim=1, mode="c"] states):
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
         cdef double *states_data = <double*>states.data
-        self._thisptr.updateOFField(states_data)
+        self._thisptr.updateOFFieldArray(states_data)
     
     def getOFField(self, np.ndarray[double, ndim=1, mode="c"] states):
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"

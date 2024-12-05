@@ -4154,6 +4154,12 @@ class PYDAFOAM(object):
         Get number of local adjoint states
         """
         return self.solver.getNLocalAdjointStates()
+    
+    def getNLocalPoints(self):
+        """
+        Get number of local points
+        """
+        return self.solver.getNLocalPoints()
 
     def getDVsCons(self):
         """
@@ -4212,6 +4218,17 @@ class PYDAFOAM(object):
             residuals[iRel] = resVec[i]
 
         return residuals
+    
+    def setVolCoords(self, volCoords):
+        """
+        Set the volCoords to the OpenFOAM's mesh coordinate
+        """
+
+        self.solver.updateOFMeshArray(volCoords)
+        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
+            self.solverAD.updateOFMeshArray(volCoords)
+
+        return
 
     def setStates(self, states):
         """
@@ -4233,9 +4250,9 @@ class PYDAFOAM(object):
             self.solverAD.updateOFField(self.wVec)
         """
 
-        self.solver.updateOFField(states)
+        self.solver.updateOFFieldArray(states)
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.updateOFField(states)
+            self.solverAD.updateOFFieldArray(states)
 
         return
 

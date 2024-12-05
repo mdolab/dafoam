@@ -92,12 +92,10 @@ public:
 
     /// compute dRdWT
     void calcdRdWT(
-        const Vec xvVec,
-        const Vec wVec,
         const label isPC,
         Mat dRdWT)
     {
-        DASolverPtr_->calcdRdWT(xvVec, wVec, isPC, dRdWT);
+        DASolverPtr_->calcdRdWT(isPC, dRdWT);
     }
 
     /// compute dFdW using reverse-mode AD
@@ -354,7 +352,7 @@ public:
     }
 
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the states array
-    void updateOFField(const double* states)
+    void updateOFFieldArray(const double* states)
     {
 #if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
         DASolverPtr_->updateOFField(states);
@@ -391,6 +389,23 @@ public:
     void updateOFMesh(const Vec xvVec)
     {
         DASolverPtr_->updateOFMesh(xvVec);
+    }
+
+    /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
+    void updateOFMeshArray(const double* volCoords)
+    {
+#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+        DASolverPtr_->updateOFMesh(volCoords);
+#else
+        label localSize = this->getNLocalPoints() * 3;
+        scalar* volCoordsArray = new scalar[localSize];
+        for (label i = 0; i < localSize; i++)
+        {
+            volCoordsArray[i] = volCoords[i];
+        }
+        DASolverPtr_->updateOFMesh(volCoordsArray);
+        delete[] volCoordsArray;
+#endif
     }
 
     /// basically, we call DAIndex::getGlobalXvIndex

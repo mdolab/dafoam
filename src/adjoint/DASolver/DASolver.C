@@ -3382,8 +3382,6 @@ void DASolver::calcPrimalResidualStatistics(
 }
 
 void DASolver::calcdRdWT(
-    const Vec xvVec,
-    const Vec wVec,
     const label isPC,
     Mat dRdWT)
 {
@@ -3393,9 +3391,6 @@ void DASolver::calcdRdWT(
         PC means preconditioner matrix
     
     Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
 
         isPC: isPC=1 computes dRdWTPC, isPC=0 computes dRdWT
     
@@ -3404,6 +3399,20 @@ void DASolver::calcdRdWT(
         NOTE: You need to call MatCreate for the dRdWT matrix before calling this function.
         No need to call MatSetSize etc because they will be done in this function
     */
+
+    // create the state and volCoord vecs from the OF fields
+    Vec wVec, xvVec;
+    VecCreate(PETSC_COMM_WORLD, &wVec);
+    VecSetSizes(wVec, daIndexPtr_->nLocalAdjointStates, PETSC_DECIDE);
+    VecSetFromOptions(wVec);
+
+    label nXvs = daIndexPtr_->nLocalPoints * 3;
+    VecCreate(PETSC_COMM_WORLD, &xvVec);
+    VecSetSizes(xvVec, nXvs, PETSC_DECIDE);
+    VecSetFromOptions(xvVec);
+
+    daFieldPtr_->ofField2StateVec(wVec);
+    daFieldPtr_->ofMesh2PointVec(xvVec);
 
     word matName;
     if (isPC == 0)
@@ -4676,6 +4685,118 @@ void DASolver::initializeGlobalADTape4dRdWT()
 #endif
 }
 
+void DASolver::normalizeJacTVecProduct(
+    const word inputName,
+    double* product)
+{
+
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Normalize the jacobian vector product that has states as the input such as dFdW and dRdW
+    
+    Input/Output:
+
+        inputName: 
+        name of the input for the Jacobian, we normalize the product only if inputName=stateVar
+
+        product: 
+        jacobian vector product to be normalized. vecY = vecY * scalingFactor
+        the scalingFactor depends on states.
+        This is needed for the matrix-vector products in matrix-free adjoint
+
+    */
+
+    if (inputName == "stateVar")
+    {
+
+        dictionary normStateDict = daOptionPtr_->getAllOptions().subDict("normalizeStates");
+
+        forAll(stateInfo_["volVectorStates"], idxI)
+        {
+            const word stateName = stateInfo_["volVectorStates"][idxI];
+            // if normalized state not defined, skip
+            if (normStateDict.found(stateName))
+            {
+                scalar scalingFactor = normStateDict.getScalar(stateName);
+
+                forAll(meshPtr_->cells(), cellI)
+                {
+                    for (label i = 0; i < 3; i++)
+                    {
+                        label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                        product[localIdx] *= scalingFactor.getValue();
+                    }
+                }
+            }
+        }
+
+        forAll(stateInfo_["volScalarStates"], idxI)
+        {
+            const word stateName = stateInfo_["volScalarStates"][idxI];
+            // if normalized state not defined, skip
+            if (normStateDict.found(stateName))
+            {
+                scalar scalingFactor = normStateDict.getScalar(stateName);
+
+                forAll(meshPtr_->cells(), cellI)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                    product[localIdx] *= scalingFactor.getValue();
+                }
+            }
+        }
+
+        forAll(stateInfo_["modelStates"], idxI)
+        {
+            const word stateName = stateInfo_["modelStates"][idxI];
+            // if normalized state not defined, skip
+            if (normStateDict.found(stateName))
+            {
+
+                scalar scalingFactor = normStateDict.getScalar(stateName);
+
+                forAll(meshPtr_->cells(), cellI)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                    product[localIdx] *= scalingFactor.getValue();
+                }
+            }
+        }
+
+        forAll(stateInfo_["surfaceScalarStates"], idxI)
+        {
+            const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+            // if normalized state not defined, skip
+            if (normStateDict.found(stateName))
+            {
+                scalar scalingFactor = normStateDict.getScalar(stateName);
+
+                forAll(meshPtr_->faces(), faceI)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+                    if (faceI < daIndexPtr_->nLocalInternalFaces)
+                    {
+                        scalar meshSf = meshPtr_->magSf()[faceI];
+                        product[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+                    }
+                    else
+                    {
+                        label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                        label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                        label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                        scalar meshSf = meshPtr_->magSf().boundaryField()[patchIdx][faceIdx];
+                        product[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+                    }
+                }
+            }
+        }
+    }
+
+#endif
+}
+
 void DASolver::calcJacTVecProduct(
     const word inputName,
     const int inputSize,
@@ -4760,7 +4881,7 @@ void DASolver::calcJacTVecProduct(
     // assign the seed to the outputList's gradient
     forAll(outputList, idxI)
     {
-        // if the output is in serial (e.g., function), we need to assign the seed to 
+        // if the output is in serial (e.g., function), we need to assign the seed to
         // only the master processor. This is because the serial output already called
         // a reduce in the daOutput->run function.
         if (distributedOutput)
@@ -4791,6 +4912,9 @@ void DASolver::calcJacTVecProduct(
             reduce(product[idxI], sumOp<double>());
         }
     }
+
+    // we need to normalize the jacobian vector product if inputName == stateVar
+    this->normalizeJacTVecProduct(inputName, product);
 
     // need to clear adjoint and tape after the computation is done!
     this->globalADTape_.clearAdjoints();

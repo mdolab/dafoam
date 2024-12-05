@@ -351,8 +351,6 @@ public:
 
     /// compute dRdWT
     void calcdRdWT(
-        const Vec xvVec,
-        const Vec wVec,
         const label isPC,
         Mat dRdWT);
 
@@ -649,6 +647,11 @@ public:
 
     /// normalize the reverse-mode AD derivatives stored in vecY
     void normalizeGradientVec(Vec vecY);
+
+    /// normalize the jacobian vector product that has states as the input such as dFdW and dRdW
+    void normalizeJacTVecProduct(
+        const word inputName,
+        double* product);
 
     /// initialize the CoDiPack reverse-mode AD global tape for computing dRdWT*psi
     void initializeGlobalADTape4dRdWT();
