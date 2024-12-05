@@ -19,11 +19,9 @@ DAModel::DAModel(
     : mesh_(mesh),
       daOption_(daOption)
 {
-#ifndef SolidDASolver
     // check whether we have registered any physical models
     hasTurbulenceModel_ = mesh.thisDb().foundObject<DATurbulenceModel>("DATurbulenceModel");
     hasRadiationModel_ = mesh.thisDb().foundObject<DARadiationModel>("DARadiationModel");
-#endif
 }
 
 DAModel::~DAModel()
@@ -53,7 +51,6 @@ void DAModel::correctModelStates(wordList& modelStates) const
         supposed to set modelStates={"G"}
     */
 
-#ifndef SolidDASolver
     // correct turbulence
     if (hasTurbulenceModel_)
     {
@@ -67,7 +64,6 @@ void DAModel::correctModelStates(wordList& modelStates) const
     {
         // correct nothing because we should have register G for modelStates
     }
-#endif
 }
 
 void DAModel::correctStateResidualModelCon(List<List<word>>& stateCon) const
@@ -107,7 +103,6 @@ void DAModel::correctStateResidualModelCon(List<List<word>>& stateCon) const
         related to grad(U), k, and omega in SST!
     */
 
-#ifndef SolidDASolver
     // correct turbulence model states
     if (hasTurbulenceModel_)
     {
@@ -121,7 +116,6 @@ void DAModel::correctStateResidualModelCon(List<List<word>>& stateCon) const
     {
         // correct nothing because we should have register G for modelStates
     }
-#endif
 }
 
 void DAModel::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
@@ -162,7 +156,6 @@ void DAModel::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
 
     */
 
-#ifndef SolidDASolver
     // add turbulence model state residuals
     if (hasTurbulenceModel_)
     {
@@ -178,10 +171,8 @@ void DAModel::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
             mesh_.thisDb().lookupObject<DARadiationModel>("DARadiationModel");
         daRadiation.addModelResidualCon(allCon);
     }
-#endif
 }
 
-#ifndef SolidDASolver
 const DATurbulenceModel& DAModel::getDATurbulenceModel() const
 {
     /*
@@ -195,7 +186,6 @@ const DATurbulenceModel& DAModel::getDATurbulenceModel() const
     }
     return mesh_.thisDb().lookupObject<DATurbulenceModel>("DATurbulenceModel");
 }
-#endif
 
 void DAModel::calcResiduals(const dictionary& options)
 {
@@ -208,7 +198,6 @@ void DAModel::calcResiduals(const dictionary& options)
         See the child classes in Foam::DATurbulenceModel for details
     */
 
-#ifndef SolidDASolver
     if (hasTurbulenceModel_)
     {
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(
@@ -220,8 +209,6 @@ void DAModel::calcResiduals(const dictionary& options)
     {
         // not implemented
     }
-#endif
-
 }
 
 void DAModel::correctBoundaryConditions()
@@ -232,7 +219,6 @@ void DAModel::correctBoundaryConditions()
         in Foam::DATurbulenceModel for details
     */
 
-#ifndef SolidDASolver
     if (hasTurbulenceModel_)
     {
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(
@@ -243,8 +229,6 @@ void DAModel::correctBoundaryConditions()
     if (hasRadiationModel_)
     {
     }
-#endif
-
 }
 
 void DAModel::updateIntermediateVariables()
@@ -255,7 +239,6 @@ void DAModel::updateIntermediateVariables()
         Check the child classes in Foam::DATurbulenceModel for details
     */
 
-#ifndef SolidDASolver
     if (hasTurbulenceModel_)
     {
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(
@@ -266,8 +249,6 @@ void DAModel::updateIntermediateVariables()
     if (hasRadiationModel_)
     {
     }
-#endif
-
 }
 
 void DAModel::getTurbProdTerm(volScalarField& prodTerm) const
@@ -277,7 +258,6 @@ void DAModel::getTurbProdTerm(volScalarField& prodTerm) const
         Return the value of the production term from the turbulence model 
     */
 
-#ifndef SolidDASolver
     if (hasTurbulenceModel_)
     {
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(
@@ -288,8 +268,6 @@ void DAModel::getTurbProdTerm(volScalarField& prodTerm) const
     if (hasRadiationModel_)
     {
     }
-#endif
-
 }
 
 void DAModel::getTurbProdOverDestruct(volScalarField& PoD) const
@@ -299,7 +277,6 @@ void DAModel::getTurbProdOverDestruct(volScalarField& PoD) const
         Return the value of the production/destruction term from the turbulence model 
     */
 
-#ifndef SolidDASolver
     if (hasTurbulenceModel_)
     {
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(
@@ -310,8 +287,6 @@ void DAModel::getTurbProdOverDestruct(volScalarField& PoD) const
     if (hasRadiationModel_)
     {
     }
-#endif
-
 }
 
 void DAModel::getTurbConvOverProd(volScalarField& CoP) const
@@ -321,7 +296,6 @@ void DAModel::getTurbConvOverProd(volScalarField& CoP) const
         return the value of the convective over production term from the turbulence model
     */
 
-#ifndef SolidDASolver
     if (hasTurbulenceModel_)
     {
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(
@@ -332,26 +306,7 @@ void DAModel::getTurbConvOverProd(volScalarField& CoP) const
     if (hasRadiationModel_)
     {
     }
-#endif
-
 }
-
-#ifdef CompressibleFlow
-const fluidThermo& DAModel::getThermo() const
-{
-    /*
-    Description: 
-        Return the fluidThermo object. Only for compressible flow
-    */
-    if (!hasTurbulenceModel_)
-    {
-        FatalErrorIn("DATurbulence not found!") << abort(FatalError);
-    }
-
-    const DATurbulenceModel& daTurb = mesh_.thisDb().lookupObject<DATurbulenceModel>("DATurbulenceModel");
-    return daTurb.getThermo();
-}
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

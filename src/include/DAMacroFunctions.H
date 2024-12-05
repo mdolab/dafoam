@@ -25,17 +25,17 @@
         const_cast<fieldType&>(                  \
             db.lookupObject<fieldType>(stateResName)));
 
-#define normalizeResiduals(resName)                                                                \
-    if (!DAUtility::isInList<word>(#resName, daOption_.getOption<wordList>("normalizeResiduals"))) \
-    {                                                                                              \
-        forAll(resName##_, cellI)                                                                  \
-        {                                                                                          \
-            resName##_[cellI] *= mesh_.V()[cellI];                                                 \
-        }                                                                                          \
+#define normalizeResiduals(resName)                                          \
+    if (daOption_.getOption<wordList>("normalizeResiduals").found(#resName)) \
+    {                                                                        \
+        forAll(resName##_, cellI)                                            \
+        {                                                                    \
+            resName##_[cellI] *= mesh_.V()[cellI];                           \
+        }                                                                    \
     }
 
 #define normalizePhiResiduals(resName)                                                                        \
-    if (DAUtility::isInList<word>(#resName, daOption_.getOption<wordList>("normalizeResiduals")))             \
+    if (daOption_.getOption<wordList>("normalizeResiduals").found(#resName))                                  \
     {                                                                                                         \
         forAll(resName##_, faceI)                                                                             \
         {                                                                                                     \

@@ -22,8 +22,6 @@ pyJacVecProdInterface Foam::DAUtility::pyCalcBetaJacVecProdInterface = NULL;
 void* Foam::DAUtility::pySetModelName = NULL;
 pySetCharInterface Foam::DAUtility::pySetModelNameInterface = NULL;
 
-scalar Foam::DAUtility::primalMaxInitRes_ = -1e16;
-
 namespace Foam
 {
 
@@ -118,7 +116,9 @@ autoPtr<DASolver> DASolver::New(
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-label DASolver::loop(Time& runTime)
+label DASolver::loop(
+    Time& runTime,
+    const scalar& primalMaxRes)
 {
     /*
     Description:
@@ -144,21 +144,21 @@ label DASolver::loop(Time& runTime)
     // calculate the objective function standard deviation. It will be used in determining if the primal converges
     this->calcObjStd(runTime);
 
-    // check exit condition, we need to satisfy both the residual and objFunc std condition
-    if (DAUtility::primalMaxInitRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_ && primalObjStd_ < primalObjStdTol_)
+    // check exit condition, we need to satisfy both the residual and function std condition
+    if (primalMaxRes < primalMinResTol_ && runTime.timeIndex() > primalMinIters_ && primalObjStd_ < primalObjStdTol_)
     {
         Info << "Time = " << t << endl;
 
-        Info << "Minimal residual " << DAUtility::primalMaxInitRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
+        Info << "Minimal residual " << primalMaxRes << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
 
         if (primalObjStdActive_)
         {
-            Info << "ObjFunc standard deviation " << primalObjStd_ << " satisfied the prescribed tolerance " << primalObjStdTol_ << endl
+            Info << "Function standard deviation " << primalObjStd_ << " satisfied the prescribed tolerance " << primalObjStdTol_ << endl
                  << endl;
         }
 
-        this->printAllObjFuncs();
+        this->printAllFunctions();
         runTime.writeNow();
         prevPrimalSolTime_ = t;
         funcObj.end();
@@ -197,21 +197,21 @@ void DASolver::initObjStd()
         label steps = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "steps");
         primalObjSeries_.setSize(steps, 0.0);
 
-        word objFuncNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "objFuncName");
+        word functionNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "functionName");
 
-        label objFuncNameFound = 0;
-        const dictionary& objFuncDict = daOptionPtr_->getAllOptions().subDict("objFunc");
-        forAll(objFuncDict.toc(), idxI)
+        label functionNameFound = 0;
+        const dictionary& functionDict = daOptionPtr_->getAllOptions().subDict("function");
+        forAll(functionDict.toc(), idxI)
         {
-            word objFuncName = objFuncDict.toc()[idxI];
-            if (objFuncName == objFuncNameWanted)
+            word functionName = functionDict.toc()[idxI];
+            if (functionName == functionNameWanted)
             {
-                objFuncNameFound = 1;
+                functionNameFound = 1;
             }
         }
-        if (objFuncNameFound == 0)
+        if (functionNameFound == 0)
         {
-            FatalErrorIn("initObjStd") << "objStd->objFuncName not found! "
+            FatalErrorIn("initObjStd") << "objStd->functionName not found! "
                                        << abort(FatalError);
         }
     }
@@ -249,16 +249,16 @@ void DASolver::calcObjStd(Time& runTime)
 
     label steps = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "steps");
 
-    word objFuncNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "objFuncName");
+    word functionNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "functionName");
 
     scalar objFunPartSum = 0.0;
-    forAll(daObjFuncPtrList_, idxI)
+    forAll(daFunctionPtrList_, idxI)
     {
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-        word objFuncName = daObjFunc.getObjFuncName();
-        if (objFuncName == objFuncNameWanted)
+        DAFunction& daFunction = daFunctionPtrList_[idxI];
+        word functionName = daFunction.getFunctionName();
+        if (functionName == functionNameWanted)
         {
-            objFunPartSum += daObjFunc.getObjFuncValue();
+            objFunPartSum += daFunction.getFunctionValue();
         }
     }
     label seriesI = (runTime.timeIndex() - 1) % steps;
@@ -281,120 +281,118 @@ void DASolver::calcObjStd(Time& runTime)
     }
 }
 
-void DASolver::calcUnsteadyObjFuncs()
+void DASolver::calcUnsteadyFunctions()
 {
     /*
     Description:
         Calculate unsteady objective function, e.g., the time average obj func
     */
 
-    if (daObjFuncPtrList_.size() == 0)
+    if (daFunctionPtrList_.size() == 0)
     {
-        FatalErrorIn("calcUnsteadyObjFuncs") << "daObjFuncPtrList_.size() ==0... "
-                                             << "Forgot to call setDAObjFuncList?"
-                                             << abort(FatalError);
+        FatalErrorIn("calcUnsteadyFunctions") << "daFunctionPtrList_.size() ==0... "
+                                              << "Forgot to call setDAFunctionList?"
+                                              << abort(FatalError);
     }
 
-    scalar objFuncValue = 0.0;
+    word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "functionTimeOperator");
 
-    word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "objFuncTimeOperator");
-
-    forAll(daObjFuncPtrList_, idxI)
+    forAll(daFunctionPtrList_, idxI)
     {
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-        word objFuncName = daObjFunc.getObjFuncName();
-        word objFuncPart = daObjFunc.getObjFuncPart();
-        word uKey = objFuncName + objFuncPart;
+        DAFunction& daFunction = daFunctionPtrList_[idxI];
+        word functionName = daFunction.getFunctionName();
+        word functionPart = daFunction.getFunctionPart();
+        word uKey = functionName + functionPart;
         if (timeOperator == "None")
         {
-            FatalErrorIn("") << "calcUnsteadyObjFuncs is called but the timeOperator is not set!!! Options are: average or sum"
+            FatalErrorIn("") << "calcUnsteadyFunctions is called but the timeOperator is not set!!! Options are: average or sum"
                              << abort(FatalError);
         }
         else if (timeOperator == "sum")
         {
-            label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
-            label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
+            label startTimeIndex = this->getUnsteadyFunctionStartTimeIndex();
+            label endTimeIndex = this->getUnsteadyFunctionEndTimeIndex();
             label timeIndex = runTimePtr_->timeIndex();
             if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
             {
-                unsteadyObjFuncs_[uKey] += daObjFunc.getObjFuncValue();
+                unsteadyFunctions_[uKey] += daFunction.getFunctionValue();
             }
         }
         else if (timeOperator == "average")
         {
             // calculate the average on the fly, i.e., moving average
-            label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
-            label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
+            label startTimeIndex = this->getUnsteadyFunctionStartTimeIndex();
+            label endTimeIndex = this->getUnsteadyFunctionEndTimeIndex();
             label timeIndex = runTimePtr_->timeIndex();
             if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
             {
                 label n = timeIndex - startTimeIndex + 1;
-                scalar objFuncVal = daObjFunc.getObjFuncValue();
-                unsteadyObjFuncs_[uKey] = (unsteadyObjFuncs_[uKey] * (n - 1) + objFuncVal) / n;
+                scalar functionVal = daFunction.getFunctionValue();
+                unsteadyFunctions_[uKey] = (unsteadyFunctions_[uKey] * (n - 1) + functionVal) / n;
             }
         }
         else
         {
-            FatalErrorIn("") << "calcUnsteadyObjFuncs is called but the timeOperator is not set!!! Options are: average or sum"
+            FatalErrorIn("") << "calcUnsteadyFunctions is called but the timeOperator is not set!!! Options are: average or sum"
                              << abort(FatalError);
         }
     }
 }
 
-void DASolver::printAllObjFuncs()
+void DASolver::printAllFunctions()
 {
     /*
     Description:
         Calculate the values of all objective functions and print them to screen
-        NOTE: we need to call DASolver::setDAObjFuncList before calling this function!
+        NOTE: we need to call DASolver::setDAFunctionList before calling this function!
     */
 
-    if (daObjFuncPtrList_.size() == 0)
+    if (daFunctionPtrList_.size() == 0)
     {
-        FatalErrorIn("printAllObjFuncs") << "daObjFuncPtrList_.size() ==0... "
-                                         << "Forgot to call setDAObjFuncList?"
-                                         << abort(FatalError);
+        FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
+                                          << "Forgot to call setDAFunctionList?"
+                                          << abort(FatalError);
     }
 
-    word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "objFuncTimeOperator");
+    word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "functionTimeOperator");
 
-    forAll(daObjFuncPtrList_, idxI)
+    forAll(daFunctionPtrList_, idxI)
     {
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-        word objFuncName = daObjFunc.getObjFuncName();
-        word objFuncPart = daObjFunc.getObjFuncPart();
-        word uKey = objFuncName + objFuncPart;
-        scalar objFuncVal = daObjFunc.getObjFuncValue();
-        Info << objFuncName
-             << "-" << objFuncPart
-             << "-" << daObjFunc.getObjFuncType()
-             << ": " << objFuncVal;
+        DAFunction& daFunction = daFunctionPtrList_[idxI];
+        word functionName = daFunction.getFunctionName();
+        word functionPart = daFunction.getFunctionPart();
+        word uKey = functionName + functionPart;
+        scalar functionVal = daFunction.getFunctionValue();
+        Info << functionName
+             << "-" << functionPart
+             << "-" << daFunction.getFunctionType()
+             << ": " << functionVal;
         if (primalObjStdActive_)
         {
-            word objFuncNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "objFuncName");
-            if (objFuncNameWanted == objFuncName)
+            word functionNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "functionName");
+            if (functionNameWanted == functionName)
             {
                 Info << " Std " << primalObjStd_;
             }
         }
         if (timeOperator == "average" || timeOperator == "sum")
         {
-            Info << " Unsteady " << timeOperator << " " << unsteadyObjFuncs_[uKey];
+            Info << " Unsteady " << timeOperator << " " << unsteadyFunctions_[uKey];
         }
 #ifdef CODI_AD_FORWARD
 
         // if the forwardModeAD is active,, we need to get the total derivatives here
         if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
         {
-            Info << " ForwardAD Deriv: " << objFuncVal.getGradient();
+            Info << " ForwardAD Deriv: " << functionVal.getGradient();
 
             // assign the forward mode AD derivative to forwardADDerivVal_
             // such that we can get this value later
-            forwardADDerivVal_.set(objFuncName, objFuncVal.getGradient());
+            forwardADDerivVal_.set(functionName, functionVal.getGradient());
 
             if (daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode") == "timeAccurate")
             {
-                Info << " Unsteady Deriv: " << unsteadyObjFuncs_[uKey].getGradient();
+                Info << " Unsteady Deriv: " << unsteadyFunctions_[uKey].getGradient();
             }
         }
 #endif
@@ -402,96 +400,96 @@ void DASolver::printAllObjFuncs()
     }
 }
 
-scalar DASolver::getObjFuncValueUnsteady(const word objFuncName)
+scalar DASolver::getFunctionValueUnsteady(const word functionName)
 {
     /*
     Description:
         Return the value of the objective function for unsteady cases
-        NOTE: we will sum up all the parts in objFuncName
+        NOTE: we will sum up all the parts in functionName
 
     Input:
-        objFuncName: the name of the objective function
+        functionName: the name of the objective function
 
     Output:
-        objFuncValue: the value of the objective
+        functionValue: the value of the objective
     */
-    if (daObjFuncPtrList_.size() == 0)
+    if (daFunctionPtrList_.size() == 0)
     {
-        FatalErrorIn("printAllObjFuncs") << "daObjFuncPtrList_.size() ==0... "
-                                         << "Forgot to call setDAObjFuncList?"
-                                         << abort(FatalError);
+        FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
+                                          << "Forgot to call setDAFunctionList?"
+                                          << abort(FatalError);
     }
 
-    scalar objFuncValue = 0.0;
+    scalar functionValue = 0.0;
 
-    forAll(daObjFuncPtrList_, idxI)
+    forAll(daFunctionPtrList_, idxI)
     {
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-        word objFuncNameI = daObjFunc.getObjFuncName();
-        word objFuncPart = daObjFunc.getObjFuncPart();
-        word uKey = objFuncNameI + objFuncPart;
+        DAFunction& daFunction = daFunctionPtrList_[idxI];
+        word functionNameI = daFunction.getFunctionName();
+        word functionPart = daFunction.getFunctionPart();
+        word uKey = functionNameI + functionPart;
 
-        if (objFuncNameI == objFuncName)
+        if (functionNameI == functionName)
         {
-            objFuncValue += unsteadyObjFuncs_[uKey];
+            functionValue += unsteadyFunctions_[uKey];
         }
     }
 
-    return objFuncValue;
+    return functionValue;
 }
 
-scalar DASolver::getObjFuncValue(const word objFuncName)
+scalar DASolver::getFunctionValue(const word functionName)
 {
     /*
     Description:
         Return the value of the objective function.
-        NOTE: we will sum up all the parts in objFuncName
+        NOTE: we will sum up all the parts in functionName
 
     Input:
-        objFuncName: the name of the objective function
+        functionName: the name of the objective function
 
     Output:
-        objFuncValue: the value of the objective
+        functionValue: the value of the objective
     */
 
-    if (daObjFuncPtrList_.size() == 0)
+    if (daFunctionPtrList_.size() == 0)
     {
-        FatalErrorIn("printAllObjFuncs") << "daObjFuncPtrList_.size() ==0... "
-                                         << "Forgot to call setDAObjFuncList?"
-                                         << abort(FatalError);
+        FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
+                                          << "Forgot to call setDAFunctionList?"
+                                          << abort(FatalError);
     }
 
-    scalar objFuncValue = 0.0;
+    scalar functionValue = 0.0;
 
-    forAll(daObjFuncPtrList_, idxI)
+    forAll(daFunctionPtrList_, idxI)
     {
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-        if (daObjFunc.getObjFuncName() == objFuncName)
+        DAFunction& daFunction = daFunctionPtrList_[idxI];
+        if (daFunction.getFunctionName() == functionName)
         {
-            objFuncValue += daObjFunc.getObjFuncValue();
+            functionValue += daFunction.getFunctionValue();
         }
     }
 
-    return objFuncValue;
+    return functionValue;
 }
 
-void DASolver::setDAObjFuncList()
+void DASolver::setDAFunctionList()
 {
     /*
     Description:
-        Set up the objective function list such that we can call printAllObjFuncs and getObjFuncValue
+        Set up the objective function list such that we can call printAllFunctions and getFunctionValue
         NOTE: this function needs to be called before calculating any objective functions
 
     Example:
-        A typical objFunc dictionary looks like this:
+        A typical function dictionary looks like this:
     
-        "objFunc": 
+        "function": 
         {
             "func1": 
             {
                 "part1": 
                 {
-                    "objFuncName": "force",
+                    "functionName": "force",
                     "source": "patchToFace",
                     "patches": ["walls", "wallsbump"],
                     "scale": 0.5,
@@ -499,7 +497,7 @@ void DASolver::setDAObjFuncList()
                 },
                 "part2": 
                 {
-                    "objFuncName": "force",
+                    "functionName": "force",
                     "source": "patchToFace",
                     "patches": ["wallsbump", "frontandback"],
                     "scale": 0.5,
@@ -510,7 +508,7 @@ void DASolver::setDAObjFuncList()
             {
                 "part1": 
                 {
-                    "objFuncName": "force",
+                    "functionName": "force",
                     "source": "patchToFace",
                     "patches": ["walls", "wallsbump", "frontandback"],
                     "scale": 1.0,
@@ -522,80 +520,79 @@ void DASolver::setDAObjFuncList()
 
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
 
-    const dictionary& objFuncDict = allOptions.subDict("objFunc");
+    const dictionary& functionDict = allOptions.subDict("function");
 
-    // loop over all objFuncs and parts and calc the number of
-    // DAObjFunc instances we need
-    label nObjFuncInstances = 0;
-    forAll(objFuncDict.toc(), idxI)
+    // loop over all functions and parts and calc the number of
+    // DAFunction instances we need
+    label nFunctionInstances = 0;
+    forAll(functionDict.toc(), idxI)
     {
-        word objFunI = objFuncDict.toc()[idxI];
-        const dictionary& objFuncSubDict = objFuncDict.subDict(objFunI);
-        forAll(objFuncSubDict.toc(), idxJ)
+        word objFunI = functionDict.toc()[idxI];
+        const dictionary& functionSubDict = functionDict.subDict(objFunI);
+        forAll(functionSubDict.toc(), idxJ)
         {
-            nObjFuncInstances++;
+            nFunctionInstances++;
         }
     }
 
-    daObjFuncPtrList_.setSize(nObjFuncInstances);
+    daFunctionPtrList_.setSize(nFunctionInstances);
 
     // we need to repeat the loop to initialize the
-    // DAObjFunc instances
-    label objFuncInstanceI = 0;
-    forAll(objFuncDict.toc(), idxI)
+    // DAFunction instances
+    label functionInstanceI = 0;
+    forAll(functionDict.toc(), idxI)
     {
-        word objFunI = objFuncDict.toc()[idxI];
-        const dictionary& objFuncSubDict = objFuncDict.subDict(objFunI);
-        forAll(objFuncSubDict.toc(), idxJ)
+        word objFunI = functionDict.toc()[idxI];
+        const dictionary& functionSubDict = functionDict.subDict(objFunI);
+        forAll(functionSubDict.toc(), idxJ)
         {
 
-            word objPart = objFuncSubDict.toc()[idxJ];
-            const dictionary& objFuncSubDictPart = objFuncSubDict.subDict(objPart);
+            word objPart = functionSubDict.toc()[idxJ];
+            const dictionary& functionSubDictPart = functionSubDict.subDict(objPart);
 
             fvMesh& mesh = meshPtr_();
 
-            daObjFuncPtrList_.set(
-                objFuncInstanceI,
-                DAObjFunc::New(
+            daFunctionPtrList_.set(
+                functionInstanceI,
+                DAFunction::New(
                     mesh,
                     daOptionPtr_(),
                     daModelPtr_(),
                     daIndexPtr_(),
-                    daResidualPtr_(),
                     objFunI,
                     objPart,
-                    objFuncSubDictPart)
+                    functionSubDictPart)
                     .ptr());
 
-            objFuncInstanceI++;
+            functionInstanceI++;
         }
     }
 
-    // here we also initialize the unsteadyObjFuncs hashtable
-    forAll(daObjFuncPtrList_, idxI)
+    // here we also initialize the unsteadyFunctions hashtable
+    forAll(daFunctionPtrList_, idxI)
     {
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-        word objFuncName = daObjFunc.getObjFuncName();
-        word objFuncPart = daObjFunc.getObjFuncPart();
-        word uKey = objFuncName + objFuncPart;
-        unsteadyObjFuncs_.set(uKey, 0.0);
+        DAFunction& daFunction = daFunctionPtrList_[idxI];
+        word functionName = daFunction.getFunctionName();
+        word functionPart = daFunction.getFunctionPart();
+        word uKey = functionName + functionPart;
+        unsteadyFunctions_.set(uKey, 0.0);
 
-        word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "objFuncTimeOperator");
+        word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "functionTimeOperator");
         if (timeOperator == "None" || timeOperator == "sum")
         {
-            unsteadyObjFuncsScaling_ = 1.0;
+            unsteadyFunctionsScaling_ = 1.0;
         }
         else if (timeOperator == "average")
         {
-            label startTimeIndex = this->getUnsteadyObjFuncStartTimeIndex();
-            label endTimeIndex = this->getUnsteadyObjFuncEndTimeIndex();
+            label startTimeIndex = this->getUnsteadyFunctionStartTimeIndex();
+            label endTimeIndex = this->getUnsteadyFunctionEndTimeIndex();
             label nInstances = endTimeIndex - startTimeIndex + 1;
-            unsteadyObjFuncsScaling_ = 1.0 / nInstances;
+            unsteadyFunctionsScaling_ = 1.0 / nInstances;
         }
         else
         {
-            FatalErrorIn("setDAObjFuncList") << "timeOperator not valid! Options are None, average, or sum"
-                                             << abort(FatalError);
+            FatalErrorIn("setDAFunctionList") << "timeOperator not valid! Options are None, average, or sum"
+                                              << abort(FatalError);
         }
     }
 }
@@ -924,8 +921,8 @@ void DASolver::setThermal(scalar* thermal)
     DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
     volScalarField alphaEff = daTurb.alphaEff();
     // compressible flow, H = alphaEff * dHE/dz
-    fluidThermo& thermo = const_cast<fluidThermo&>(daModelPtr_->getThermo());
-    volScalarField& he = thermo.he();
+    const fluidThermo& thermo = meshPtr_->thisDb().lookupObject<fluidThermo>("thermophysicalProperties");
+    const volScalarField& he = thermo.he();
 
     const IOdictionary& thermoDict = meshPtr_->thisDb().lookupObject<IOdictionary>("thermophysicalProperties");
     dictionary mixSubDict = thermoDict.subDict("mixture");
@@ -1101,8 +1098,8 @@ void DASolver::getThermal(
     DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
     volScalarField alphaEff = daTurb.alphaEff();
     // compressible flow, H = alphaEff * dHE/dz
-    fluidThermo& thermo = const_cast<fluidThermo&>(daModelPtr_->getThermo());
-    volScalarField& he = thermo.he();
+    const fluidThermo& thermo = meshPtr_->thisDb().lookupObject<fluidThermo>("thermophysicalProperties");
+    const volScalarField& he = thermo.he();
 
     const IOdictionary& thermoDict = meshPtr_->thisDb().lookupObject<IOdictionary>("thermophysicalProperties");
     dictionary mixSubDict = thermoDict.subDict("mixture");
@@ -3385,8 +3382,6 @@ void DASolver::calcPrimalResidualStatistics(
 }
 
 void DASolver::calcdRdWT(
-    const Vec xvVec,
-    const Vec wVec,
     const label isPC,
     Mat dRdWT)
 {
@@ -3396,9 +3391,6 @@ void DASolver::calcdRdWT(
         PC means preconditioner matrix
     
     Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
 
         isPC: isPC=1 computes dRdWTPC, isPC=0 computes dRdWT
     
@@ -3407,6 +3399,20 @@ void DASolver::calcdRdWT(
         NOTE: You need to call MatCreate for the dRdWT matrix before calling this function.
         No need to call MatSetSize etc because they will be done in this function
     */
+
+    // create the state and volCoord vecs from the OF fields
+    Vec wVec, xvVec;
+    VecCreate(PETSC_COMM_WORLD, &wVec);
+    VecSetSizes(wVec, daIndexPtr_->nLocalAdjointStates, PETSC_DECIDE);
+    VecSetFromOptions(wVec);
+
+    label nXvs = daIndexPtr_->nLocalPoints * 3;
+    VecCreate(PETSC_COMM_WORLD, &xvVec);
+    VecSetSizes(xvVec, nXvs, PETSC_DECIDE);
+    VecSetFromOptions(xvVec);
+
+    daFieldPtr_->ofField2StateVec(wVec);
+    daFieldPtr_->ofMesh2PointVec(xvVec);
 
     word matName;
     if (isPC == 0)
@@ -3433,12 +3439,12 @@ void DASolver::calcdRdWT(
 
     // initialize DAJacCon object
     word modelType = "dRdW";
-    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
+    DAJacCon daJacCon(
         modelType,
         meshPtr_(),
         daOptionPtr_(),
         daModelPtr_(),
-        daIndexPtr_()));
+        daIndexPtr_());
 
     dictionary options;
     const HashTable<List<List<word>>>& stateResConInfo = daStateInfoPtr_->getStateResConInfo();
@@ -3460,27 +3466,27 @@ void DASolver::calcdRdWT(
 
     // need to first setup preallocation vectors for the dRdWCon matrix
     // because directly initializing the dRdWCon matrix will use too much memory
-    daJacCon->setupJacConPreallocation(options);
+    daJacCon.setupJacConPreallocation(options);
 
     // now we can initialize dRdWCon
-    daJacCon->initializeJacCon(options);
+    daJacCon.initializeJacCon(options);
 
     // setup dRdWCon
-    daJacCon->setupJacCon(options);
+    daJacCon.setupJacCon(options);
     Info << "dRdWCon Created. " << runTimePtr_->elapsedClockTime() << " s" << endl;
 
     // read the coloring
-    daJacCon->readJacConColoring();
+    daJacCon.readJacConColoring();
 
     // initialize partDeriv object
-    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
+    DAPartDeriv daPartDeriv(
         modelType,
         meshPtr_(),
         daOptionPtr_(),
         daModelPtr_(),
         daIndexPtr_(),
-        daJacCon(),
-        daResidualPtr_()));
+        daJacCon,
+        daResidualPtr_());
 
     // we want transposed dRdW
     dictionary options1;
@@ -3497,10 +3503,10 @@ void DASolver::calcdRdWT(
     }
 
     // initialize dRdWT matrix
-    daPartDeriv->initializePartDerivMat(options1, dRdWT);
+    daPartDeriv.initializePartDerivMat(options1, dRdWT);
 
     // calculate dRdWT
-    daPartDeriv->calcPartDerivMat(options1, xvVec, wVec, dRdWT);
+    daPartDeriv.calcPartDerivMat(options1, xvVec, wVec, dRdWT);
 
     if (daOptionPtr_->getOption<label>("debug"))
     {
@@ -3515,440 +3521,7 @@ void DASolver::calcdRdWT(
     }
 
     // clear up
-    daJacCon->clear();
-}
-
-void DASolver::calcdFdW(
-    const Vec xvVec,
-    const Vec wVec,
-    const word objFuncName,
-    Vec dFdW)
-{
-    /*
-    Description:
-        This function computes partials derivatives dFdW
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        objFuncName: name of the objective function F
-    
-    Output:
-        dFdW: the partial derivative vector dF/dW
-        NOTE: You need to fully initialize the dFdW vec before calliing this function,
-        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
-    */
-
-    VecZeroEntries(dFdW);
-
-    // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
-
-    // loop over all parts for this objFuncName
-    forAll(objFuncSubDict.toc(), idxJ)
-    {
-        // get the subDict for this part
-        word objFuncPart = objFuncSubDict.toc()[idxJ];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-
-        // NOTE: dFdW is a matrix here and it has nObjFuncCellSources+nObjFuncFaceSources rows
-        Mat dFdWMat;
-        MatCreate(PETSC_COMM_WORLD, &dFdWMat);
-
-        // initialize DAJacCon object
-        word modelType = "dFdW";
-        autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_()));
-
-        // initialize objFunc to get objFuncCellSources and objFuncFaceSources
-        // get objFunc from daObjFuncPtrList_
-        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
-
-        // setup options for daJacCondFdW computation
-        dictionary options;
-        const List<List<word>>& objFuncConInfo = daObjFunc.getObjFuncConInfo();
-        const labelList& objFuncFaceSources = daObjFunc.getObjFuncFaceSources();
-        const labelList& objFuncCellSources = daObjFunc.getObjFuncCellSources();
-        options.set("objFuncConInfo", objFuncConInfo);
-        options.set("objFuncFaceSources", objFuncFaceSources);
-        options.set("objFuncCellSources", objFuncCellSources);
-        options.set("objFuncName", objFuncName);
-        options.set("objFuncPart", objFuncPart);
-        options.set("objFuncSubDictPart", objFuncSubDictPart);
-
-        // now we can initilaize dFdWCon
-        daJacCon->initializeJacCon(options);
-
-        // setup dFdWCon
-        daJacCon->setupJacCon(options);
-        Info << "dFdWCon Created. " << meshPtr_->time().elapsedClockTime() << " s" << endl;
-
-        // read the coloring
-        word postFix = "_" + objFuncName + "_" + objFuncPart;
-        daJacCon->readJacConColoring(postFix);
-
-        // initialize DAPartDeriv to computing dFdW
-        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daJacCon(),
-            daResidualPtr_()));
-
-        // initialize dFdWMat
-        daPartDeriv->initializePartDerivMat(options, dFdWMat);
-
-        // compute it
-        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdWMat);
-
-        // now we need to add all the rows of dFdW together to get dFdWPart
-        // NOTE: dFdW is a matrix with nObjFuncCellSources+nObjFuncFaceSources rows
-        // and nLocalAdjStates columns. So we can do dFdWPart = oneVec*dFdW
-        Vec dFdWPart, oneVec;
-        label objGeoSize = objFuncFaceSources.size() + objFuncCellSources.size();
-        VecCreate(PETSC_COMM_WORLD, &oneVec);
-        VecSetSizes(oneVec, objGeoSize, PETSC_DETERMINE);
-        VecSetFromOptions(oneVec);
-        // assign one to all elements
-        VecSet(oneVec, 1.0);
-        VecDuplicate(wVec, &dFdWPart);
-        VecZeroEntries(dFdWPart);
-        // dFdWPart = oneVec*dFdW
-        MatMultTranspose(dFdWMat, oneVec, dFdWPart);
-
-        // we need to add dFdWPart to dFdW because we want to sum all dFdWPart
-        // for all parts of this objFuncName. When solving the adjoint equation, we use
-        // dFdW
-        VecAXPY(dFdW, 1.0, dFdWPart);
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-
-        MatDestroy(&dFdWMat);
-        VecDestroy(&dFdWPart);
-        VecDestroy(&oneVec);
-
-        // clear up
-        daJacCon->clear();
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdW") || writeJacobians.found("all"))
-    {
-        word outputName = "dFdW_" + objFuncName;
-        DAUtility::writeVectorBinary(dFdW, outputName);
-        DAUtility::writeVectorASCII(dFdW, outputName);
-    }
-}
-
-void DASolver::calcdRdBC(
-    const Vec xvVec,
-    const Vec wVec,
-    const word designVarName,
-    Mat dRdBC)
-{
-    /*
-    Description:
-        This function computes partials derivatives dRdBC
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        designVarName: the name of the design variable
-    
-    Output:
-        dRdBC: the partial derivative matrix dR/dBC
-        NOTE: You need to call MatCreate for the dRdBC matrix before calling this function.
-        No need to call MatSetSize etc because they will be done in this function
-    */
-
-    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
-
-    // get the subDict for this dvName
-    dictionary dvSubDict = designVarDict.subDict(designVarName);
-
-    // get info from dvSubDict. This needs to be defined in the pyDAFoam
-    // name of the variable for changing the boundary condition
-    word varName = dvSubDict.getWord("variable");
-    // name of the boundary patch
-    wordList patches;
-    dvSubDict.readEntry<wordList>("patches", patches);
-    // the compoent of a vector variable, ignore when it is a scalar
-    label comp = dvSubDict.getLabel("comp");
-
-    // no coloring is need for BC, so we create a dummy DAJacCon
-    word dummyType = "dummy";
-    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-        dummyType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_()));
-
-    // ********************** compute dRdBC **********************
-
-    // create DAPartDeriv object
-    word modelType = "dRdBC";
-    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-        modelType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_(),
-        daJacCon(),
-        daResidualPtr_()));
-
-    // setup options to compute dRdBC
-    dictionary options;
-    options.set("variable", varName);
-    options.set("patches", patches);
-    options.set("comp", comp);
-    options.set("isPC", 0);
-
-    // initialize the dRdBC matrix
-    daPartDeriv->initializePartDerivMat(options, dRdBC);
-
-    // compute it using brute force finite-difference
-    daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdBC);
-
-    if (daOptionPtr_->getOption<label>("debug"))
-    {
-        this->calcPrimalResidualStatistics("print");
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdBC") || writeJacobians.found("all"))
-    {
-        word outputName = "dRdBC_" + designVarName;
-        DAUtility::writeMatrixBinary(dRdBC, outputName);
-        DAUtility::writeMatrixASCII(dRdBC, outputName);
-    }
-}
-
-void DASolver::calcdFdBC(
-    const Vec xvVec,
-    const Vec wVec,
-    const word objFuncName,
-    const word designVarName,
-    Vec dFdBC)
-{
-    /*
-    Description:
-        This function computes partials derivatives dFdW
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        objFuncName: name of the objective function F
-
-        designVarName: the name of the design variable
-    
-    Output:
-        dFdBC: the partial derivative vector dF/dBC
-        NOTE: You need to fully initialize the dFdBC vec before calliing this function,
-        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
-    */
-
-    VecZeroEntries(dFdBC);
-
-    // no coloring is need for BC, so we create a dummy DAJacCon
-    word dummyType = "dummy";
-    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-        dummyType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_()));
-
-    // get the subDict for this dvName
-    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
-
-    // get info from dvSubDict. This needs to be defined in the pyDAFoam
-    // name of the variable for changing the boundary condition
-    word varName = dvSubDict.getWord("variable");
-    // name of the boundary patch
-    wordList patches;
-    dvSubDict.readEntry<wordList>("patches", patches);
-    // the compoent of a vector variable, ignore when it is a scalar
-    label comp = dvSubDict.getLabel("comp");
-
-    // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
-
-    // loop over all parts of this objFuncName
-    forAll(objFuncSubDict.toc(), idxK)
-    {
-        word objFuncPart = objFuncSubDict.toc()[idxK];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-
-        Mat dFdBCMat;
-        MatCreate(PETSC_COMM_WORLD, &dFdBCMat);
-
-        // initialize DAPartDeriv for dFdBC
-        word modelType = "dFdBC";
-        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daJacCon(),
-            daResidualPtr_()));
-
-        // initialize options
-        dictionary options;
-        options.set("objFuncName", objFuncName);
-        options.set("objFuncPart", objFuncPart);
-        options.set("objFuncSubDictPart", objFuncSubDictPart);
-        options.set("variable", varName);
-        options.set("patches", patches);
-        options.set("comp", comp);
-
-        // initialize dFdBC
-        daPartDeriv->initializePartDerivMat(options, dFdBCMat);
-
-        // calculate it
-        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdBCMat);
-
-        // now we need to add all the rows of dFdBCMat together to get dFdBC
-        // NOTE: dFdBCMat is a 1 by 1 matrix but we just do a matrix-vector product
-        // to convert dFdBCMat from a matrix to a vector
-        Vec dFdBCPart, oneVec;
-        VecDuplicate(dFdBC, &oneVec);
-        VecSet(oneVec, 1.0);
-        VecDuplicate(dFdBC, &dFdBCPart);
-        VecZeroEntries(dFdBCPart);
-        // dFdBCPart = dFdBCMat * oneVec
-        MatMult(dFdBCMat, oneVec, dFdBCPart);
-
-        // we need to add dFdBCPart to dFdBC because we want to sum
-        // all parts of this objFuncName.
-        VecAXPY(dFdBC, 1.0, dFdBCPart);
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-
-        // clear up
-        MatDestroy(&dFdBCMat);
-        VecDestroy(&dFdBCPart);
-        VecDestroy(&oneVec);
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdBC") || writeJacobians.found("all"))
-    {
-        word outputName = "dFdBC_" + designVarName;
-        DAUtility::writeVectorBinary(dFdBC, outputName);
-        DAUtility::writeVectorASCII(dFdBC, outputName);
-    }
-}
-
-void DASolver::calcdRdAOA(
-    const Vec xvVec,
-    const Vec wVec,
-    const word designVarName,
-    Mat dRdAOA)
-{
-    /*
-    Description:
-        This function computes partials derivatives dRdAOA
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        designVarName: the name of the design variable
-    
-    Output:
-        dRdAOA: the partial derivative matrix dR/dAOA
-        NOTE: You need to call MatCreate for the dRdAOA matrix before calling this function.
-        No need to call MatSetSize etc because they will be done in this function
-    */
-
-    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
-
-    // get the subDict for this dvName
-    dictionary dvSubDict = designVarDict.subDict(designVarName);
-
-    // get info from dvSubDict. This needs to be defined in the pyDAFoam
-    // name of the boundary patch
-    wordList patches;
-    dvSubDict.readEntry<wordList>("patches", patches);
-    // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
-    word flowAxis = dvSubDict.getWord("flowAxis");
-    word normalAxis = dvSubDict.getWord("normalAxis");
-
-    // no coloring is need for BC, so we create a dummy DAJacCon
-    word dummyType = "dummy";
-    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-        dummyType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_()));
-
-    // ********************** compute dRdAOA **********************
-
-    // create DAPartDeriv object
-    word modelType = "dRdAOA";
-    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-        modelType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_(),
-        daJacCon(),
-        daResidualPtr_()));
-
-    // setup options to compute dRdAOA
-    dictionary options;
-    options.set("patches", patches);
-    options.set("flowAxis", flowAxis);
-    options.set("normalAxis", normalAxis);
-    options.set("isPC", 0);
-
-    // initialize the dRdAOA matrix
-    daPartDeriv->initializePartDerivMat(options, dRdAOA);
-
-    // compute it using brute force finite-difference
-    daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdAOA);
-
-    if (daOptionPtr_->getOption<label>("debug"))
-    {
-        this->calcPrimalResidualStatistics("print");
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdAOA") || writeJacobians.found("all"))
-    {
-        word outputName = "dRdAOA_" + designVarName;
-        DAUtility::writeMatrixBinary(dRdAOA, outputName);
-        DAUtility::writeMatrixASCII(dRdAOA, outputName);
-    }
+    daJacCon.clear();
 }
 
 void DASolver::setBCToOFVars(
@@ -4259,7 +3832,7 @@ void DASolver::calcdRdBCTPsiAD(
 void DASolver::calcdFdBCAD(
     const Vec xvVec,
     const Vec wVec,
-    const word objFuncName,
+    const word functionName,
     const word designVarName,
     Vec dFdBC)
 {
@@ -4271,7 +3844,7 @@ void DASolver::calcdFdBCAD(
     Input:
         xvVec: the volume mesh coordinate vector
         wVec: the state variable vector
-        objFuncName: name of the objective function F
+        functionName: name of the objective function F
         designVarName: the name of the design variable
     
     Output:
@@ -4325,16 +3898,16 @@ void DASolver::calcdFdBCAD(
     }
 
     // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
-    // loop over all parts of this objFuncName
-    forAll(objFuncSubDict.toc(), idxK)
+    dictionary functionSubDict =
+        daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
+    // loop over all parts of this functionName
+    forAll(functionSubDict.toc(), idxK)
     {
-        word objFuncPart = objFuncSubDict.toc()[idxK];
+        word functionPart = functionSubDict.toc()[idxK];
 
-        // get objFunc from daObjFuncPtrList_
-        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
+        // get function from daFunctionPtrList_
+        label objIndx = this->getFunctionListIndex(functionName, functionPart);
+        DAFunction& daFunction = daFunctionPtrList_[objIndx];
 
         // reset tape
         this->globalADTape_.reset();
@@ -4371,12 +3944,12 @@ void DASolver::calcdFdBCAD(
         // update all intermediate variables and boundary conditions
         this->updateStateBoundaryConditions();
         // compute the objective function
-        scalar fRef = daObjFunc.getObjFuncValue();
+        scalar fRef = daFunction.getFunctionValue();
         // register f as the output
         this->globalADTape_.registerOutput(fRef);
         // stop recording
         this->globalADTape_.setPassive();
-        // Note: since we used reduced objFunc, we only need to
+        // Note: since we used reduced function, we only need to
         // assign the seed for master proc
         if (Pstream::master())
         {
@@ -4396,7 +3969,7 @@ void DASolver::calcdFdBCAD(
         VecAssemblyEnd(dFdBCPart);
 
         // we need to add dFdBCPart to dFdBC because we want to sum
-        // all dFdBCPart for all parts of this objFuncName.
+        // all dFdBCPart for all parts of this functionName.
         VecAXPY(dFdBC, 1.0, dFdBCPart);
 
         VecDestroy(&dFdBCPart);
@@ -4433,13 +4006,13 @@ void DASolver::calcdFdBCAD(
             this->setBCToOFVars(dvSubDict, BC);
         }
         this->updateStateBoundaryConditions();
-        fRef = daObjFunc.getObjFuncValue();
+        fRef = daFunction.getFunctionValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
             Info << "In calcdFdBCAD" << endl;
             this->calcPrimalResidualStatistics("print");
-            Info << objFuncName << ": " << fRef << endl;
+            Info << functionName << ": " << fRef << endl;
         }
     }
 
@@ -4447,135 +4020,11 @@ void DASolver::calcdFdBCAD(
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
     if (writeJacobians.found("dFdBC") || writeJacobians.found("all"))
     {
-        word outputName = "dFdBC_" + designVarName + "_" + objFuncName;
+        word outputName = "dFdBC_" + designVarName + "_" + functionName;
         DAUtility::writeVectorBinary(dFdBC, outputName);
         DAUtility::writeVectorASCII(dFdBC, outputName);
     }
 #endif
-}
-
-void DASolver::calcdFdAOA(
-    const Vec xvVec,
-    const Vec wVec,
-    const word objFuncName,
-    const word designVarName,
-    Vec dFdAOA)
-{
-    /*
-    Description:
-        This function computes partials derivatives dFdAOA
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        objFuncName: name of the objective function F
-
-        designVarName: the name of the design variable
-    
-    Output:
-        dFdAOA: the partial derivative vector dF/dAOA
-        NOTE: You need to fully initialize the dFdAOA vec before calliing this function,
-        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
-    */
-
-    VecZeroEntries(dFdAOA);
-
-    dictionary designVarDict = daOptionPtr_->getAllOptions().subDict("designVar");
-
-    // get the subDict for this dvName
-    dictionary dvSubDict = designVarDict.subDict(designVarName);
-
-    // get info from dvSubDict. This needs to be defined in the pyDAFoam
-    // name of the boundary patch
-    wordList patches;
-    dvSubDict.readEntry<wordList>("patches", patches);
-    // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
-    word flowAxis = dvSubDict.getWord("flowAxis");
-    word normalAxis = dvSubDict.getWord("normalAxis");
-
-    // no coloring is need for BC, so we create a dummy DAJacCon
-    word dummyType = "dummy";
-    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-        dummyType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_()));
-
-    // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
-
-    // loop over all parts of this objFuncName
-    forAll(objFuncSubDict.toc(), idxK)
-    {
-        word objFuncPart = objFuncSubDict.toc()[idxK];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-
-        Mat dFdAOAMat;
-        MatCreate(PETSC_COMM_WORLD, &dFdAOAMat);
-
-        // initialize DAPartDeriv for dFdAOAMat
-        word modelType = "dFdAOA";
-        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daJacCon(),
-            daResidualPtr_()));
-
-        // initialize options
-        dictionary options;
-        options.set("objFuncName", objFuncName);
-        options.set("objFuncPart", objFuncPart);
-        options.set("objFuncSubDictPart", objFuncSubDictPart);
-        options.set("patches", patches);
-        options.set("flowAxis", flowAxis);
-        options.set("normalAxis", normalAxis);
-
-        // initialize dFdAOA
-        daPartDeriv->initializePartDerivMat(options, dFdAOAMat);
-
-        // calculate it
-        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdAOAMat);
-
-        // NOTE: dFdAOAMat is a 1 by 1 matrix but we just do a matrix-vector product
-        // to convert dFdAOAMat from a matrix to a vector
-        Vec dFdAOAPart, oneVec;
-        VecDuplicate(dFdAOA, &oneVec);
-        VecSet(oneVec, 1.0);
-        VecDuplicate(dFdAOA, &dFdAOAPart);
-        VecZeroEntries(dFdAOAPart);
-        // dFdAOAPart = dFdAOAMat * oneVec
-        MatMult(dFdAOAMat, oneVec, dFdAOAPart);
-
-        // we need to add dFdAOAVec to dFdAOAVecAllParts because we want to sum
-        // all dFdAOAVec for all parts of this objFuncName.
-        VecAXPY(dFdAOA, 1.0, dFdAOAPart);
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-
-        // clear up
-        MatDestroy(&dFdAOAMat);
-        VecDestroy(&dFdAOAPart);
-        VecDestroy(&oneVec);
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdAOA") || writeJacobians.found("all"))
-    {
-        word outputName = "dFdAOA_" + designVarName;
-        DAUtility::writeVectorBinary(dFdAOA, outputName);
-        DAUtility::writeVectorASCII(dFdAOA, outputName);
-    }
 }
 
 void DASolver::calcdRdAOATPsiAD(
@@ -4787,408 +4236,10 @@ void DASolver::calcdRdAOATPsiAD(
 #endif
 }
 
-void DASolver::calcdRdFFD(
-    const Vec xvVec,
-    const Vec wVec,
-    const word designVarName,
-    Mat dRdFFD)
-{
-    /*
-    Description:
-        This function computes partials derivatives dRdFFD
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        designVarName: the name of the design variable
-    
-    Output:
-        dRdFFD: the partial derivative matrix dR/dFFD
-        NOTE: You need to call MatCreate for the dRdFFD matrix before calling this function.
-        No need to call MatSetSize etc because they will be done in this function
-    */
-
-    // get the size of dXvdFFDMat_, nCols will be the number of FFD points
-    // for this design variable
-    // NOTE: dXvdFFDMat_ needs to be assigned by calling DASolver::setdXvdFFDMat in
-    // the python layer
-    label nDesignVars = -9999;
-    MatGetSize(dXvdFFDMat_, NULL, &nDesignVars);
-
-    // no coloring is need for FFD, so we create a dummy DAJacCon
-    word dummyType = "dummy";
-    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-        dummyType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_()));
-
-    // create DAPartDeriv object
-    word modelType = "dRdFFD";
-    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-        modelType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_(),
-        daJacCon(),
-        daResidualPtr_()));
-
-    // setup options
-    dictionary options;
-    options.set("nDesignVars", nDesignVars);
-    options.set("isPC", 0);
-
-    // for FFD, we need to first assign dXvdFFDMat to daPartDeriv
-    daPartDeriv->setdXvdFFDMat(dXvdFFDMat_);
-
-    // initialize the dRdFFD matrix
-    daPartDeriv->initializePartDerivMat(options, dRdFFD);
-
-    // compute it using brute force finite-difference
-    daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdFFD);
-
-    if (daOptionPtr_->getOption<label>("debug"))
-    {
-        this->calcPrimalResidualStatistics("print");
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdFFD") || writeJacobians.found("all"))
-    {
-        word outputName = "dRdFFD_" + designVarName;
-        DAUtility::writeMatrixBinary(dRdFFD, outputName);
-        DAUtility::writeMatrixASCII(dRdFFD, outputName);
-    }
-
-    // clear up dXvdFFD Mat in daPartDeriv
-    daPartDeriv->clear();
-}
-
-void DASolver::calcdFdFFD(
-    const Vec xvVec,
-    const Vec wVec,
-    const word objFuncName,
-    const word designVarName,
-    Vec dFdFFD)
-{
-    /*
-    Description:
-        This function computes partials derivatives dFdFFD
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        objFuncName: name of the objective function F
-
-        designVarName: the name of the design variable
-    
-    Output:
-        dFdFFD: the partial derivative vector dF/dFFD
-        NOTE: You need to fully initialize the dFdFFD vec before calliing this function,
-        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
-    */
-
-    VecZeroEntries(dFdFFD);
-
-    // get the size of dXvdFFDMat_, nCols will be the number of FFD points
-    // for this design variable
-    // NOTE: dXvdFFDMat_ needs to be assigned by calling DASolver::setdXvdFFDMat in
-    // the python layer
-    label nDesignVars = -9999;
-    MatGetSize(dXvdFFDMat_, NULL, &nDesignVars);
-
-    // no coloring is need for FFD, so we create a dummy DAJacCon
-    word dummyType = "dummy";
-    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-        dummyType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_()));
-
-    // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
-
-    // loop over all parts of this objFuncName
-    forAll(objFuncSubDict.toc(), idxK)
-    {
-        word objFuncPart = objFuncSubDict.toc()[idxK];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-
-        Mat dFdFFDMat;
-        MatCreate(PETSC_COMM_WORLD, &dFdFFDMat);
-
-        // initialize DAPartDeriv for dFdFFD
-        word modelType = "dFdFFD";
-        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daJacCon(),
-            daResidualPtr_()));
-
-        // initialize options
-        dictionary options;
-        options.set("objFuncName", objFuncName);
-        options.set("objFuncPart", objFuncPart);
-        options.set("objFuncSubDictPart", objFuncSubDictPart);
-        options.set("nDesignVars", nDesignVars);
-
-        // for FFD, we need to first assign dXvdFFDMat to daPartDeriv
-        daPartDeriv->setdXvdFFDMat(dXvdFFDMat_);
-
-        // initialize dFdFFD
-        daPartDeriv->initializePartDerivMat(options, dFdFFDMat);
-
-        // calculate it
-        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdFFDMat);
-
-        // now we need to convert the dFdFFD mat to dFdFFDPart
-        // NOTE: dFdFFDMat is a 1 by nDesignVars matrix but dFdFFDPart is
-        // a nDesignVars by 1 vector, we need to do
-        // dFdFFDPart = (dFdFFDMat)^T * oneVec
-        Vec dFdFFDPart, oneVec;
-        VecCreate(PETSC_COMM_WORLD, &oneVec);
-        VecSetSizes(oneVec, PETSC_DETERMINE, 1);
-        VecSetFromOptions(oneVec);
-        VecSet(oneVec, 1.0);
-        VecDuplicate(dFdFFD, &dFdFFDPart);
-        VecZeroEntries(dFdFFDPart);
-        // dFdFFDVec = oneVec*dFdFFD
-        MatMultTranspose(dFdFFDMat, oneVec, dFdFFDPart);
-
-        // we need to add dFdFFDPart to dFdFFD because we want to sum
-        // all dFdFFDPart for all parts of this objFuncName.
-        VecAXPY(dFdFFD, 1.0, dFdFFDPart);
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-
-        MatDestroy(&dFdFFDMat);
-        VecDestroy(&dFdFFDPart);
-        VecDestroy(&oneVec);
-
-        // clear up dXvdFFD Mat in daPartDeriv
-        daPartDeriv->clear();
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdFFD") || writeJacobians.found("all"))
-    {
-        word outputName = "dFdFFD_" + designVarName;
-        DAUtility::writeVectorBinary(dFdFFD, outputName);
-        DAUtility::writeVectorASCII(dFdFFD, outputName);
-    }
-}
-
-void DASolver::calcdRdACT(
-    const Vec xvVec,
-    const Vec wVec,
-    const word designVarName,
-    const word designVarType,
-    Mat dRdACT)
-{
-    /*
-    Description:
-        This function computes partials derivatives dRdACT
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        designVarName: the name of the design variable
-
-        designVarType: the type of the design variable: ACTP, ACTL, ACTD
-    
-    Output:
-        dRdACT: the partial derivative matrix dR/dACT
-        NOTE: You need to call MatCreate for the dRdACT matrix before calling this function.
-        No need to call MatSetSize etc because they will be done in this function
-    */
-
-    // get the subDict for this dvName
-    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
-    word actuatorName = dvSubDict.getWord("actuatorName");
-
-    // no coloring is need for actuator, so we create a dummy DAJacCon
-    word dummyType = "dummy";
-    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-        dummyType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_()));
-
-    // create DAPartDeriv object
-    word modelType = "dRd" + designVarType;
-    autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-        modelType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_(),
-        daJacCon(),
-        daResidualPtr_()));
-
-    // setup options to compute dRdACT*
-    dictionary options;
-    options.set("actuatorName", actuatorName);
-    options.set("isPC", 0);
-
-    // initialize the dRdACT* matrix
-    daPartDeriv->initializePartDerivMat(options, dRdACT);
-
-    // compute it using brute force finite-difference
-    daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dRdACT);
-
-    if (daOptionPtr_->getOption<label>("debug"))
-    {
-        this->calcPrimalResidualStatistics("print");
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdACT") || writeJacobians.found("all"))
-    {
-        word outputName = "dRd" + designVarType + "_" + designVarName;
-        DAUtility::writeMatrixBinary(dRdACT, outputName);
-        DAUtility::writeMatrixASCII(dRdACT, outputName);
-    }
-}
-
-void DASolver::calcdFdACT(
-    const Vec xvVec,
-    const Vec wVec,
-    const word objFuncName,
-    const word designVarName,
-    const word designVarType,
-    Vec dFdACT)
-{
-    /*
-    Description:
-        This function computes partials derivatives dFdW
-    
-    Input:
-        xvVec: the volume mesh coordinate vector
-
-        wVec: the state variable vector
-
-        objFuncName: name of the objective function F
-
-        designVarName: the name of the design variable
-    
-    Output:
-        dFdACT: the partial derivative vector dF/dACT
-        NOTE: You need to fully initialize the dFdACT vec before calliing this function,
-        i.e., VecCreate, VecSetSize, VecSetFromOptions etc. Or call VeDuplicate
-    */
-
-    VecZeroEntries(dFdACT);
-
-    if (designVarType != "ACTD")
-    {
-        return;
-    }
-
-    // no coloring is need for ACT, so we create a dummy DAJacCon
-    word dummyType = "dummy";
-    autoPtr<DAJacCon> daJacCon(DAJacCon::New(
-        dummyType,
-        meshPtr_(),
-        daOptionPtr_(),
-        daModelPtr_(),
-        daIndexPtr_()));
-
-    // get the subDict for this dvName
-    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
-    word actuatorName = dvSubDict.getWord("actuatorName");
-
-    // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
-
-    // loop over all parts of this objFuncName
-    forAll(objFuncSubDict.toc(), idxK)
-    {
-        word objFuncPart = objFuncSubDict.toc()[idxK];
-        dictionary objFuncSubDictPart = objFuncSubDict.subDict(objFuncPart);
-
-        Mat dFdACTMat;
-        MatCreate(PETSC_COMM_WORLD, &dFdACTMat);
-
-        // initialize DAPartDeriv for dFdACT
-        word modelType = "dFd" + designVarType;
-        autoPtr<DAPartDeriv> daPartDeriv(DAPartDeriv::New(
-            modelType,
-            meshPtr_(),
-            daOptionPtr_(),
-            daModelPtr_(),
-            daIndexPtr_(),
-            daJacCon(),
-            daResidualPtr_()));
-
-        // initialize options
-        dictionary options;
-        options.set("objFuncName", objFuncName);
-        options.set("objFuncPart", objFuncPart);
-        options.set("objFuncSubDictPart", objFuncSubDictPart);
-        options.set("actuatorName", actuatorName);
-
-        // initialize dFdACT
-        daPartDeriv->initializePartDerivMat(options, dFdACTMat);
-
-        // calculate it
-        daPartDeriv->calcPartDerivMat(options, xvVec, wVec, dFdACTMat);
-
-        // now we need to extract the dFdACT from dFdACTMatrix
-        // NOTE: dFdACTMat is a nACTDVs by 1 matrix
-        Vec dFdACTPart;
-        VecDuplicate(dFdACT, &dFdACTPart);
-        VecZeroEntries(dFdACTPart);
-        MatGetColumnVector(dFdACTMat, dFdACTPart, 0);
-
-        // we need to add dFdACTPart to dFdACT because we want to sum
-        // all parts of this objFuncName.
-        VecAXPY(dFdACT, 1.0, dFdACTPart);
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-
-        // clear up
-        MatDestroy(&dFdACTMat);
-        VecDestroy(&dFdACTPart);
-    }
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dFdACT") || writeJacobians.found("all"))
-    {
-        word outputName = "dFdACT_" + designVarName;
-        DAUtility::writeVectorBinary(dFdACT, outputName);
-        DAUtility::writeVectorASCII(dFdACT, outputName);
-    }
-}
-
 void DASolver::calcdFdFieldAD(
     const Vec xvVec,
     const Vec wVec,
-    const word objFuncName,
+    const word functionName,
     const word designVarName,
     Vec dFdField)
 {
@@ -5202,7 +4253,7 @@ void DASolver::calcdFdFieldAD(
 
         wVec: the state variable vector
 
-        objFuncName: name of the objective function F
+        functionName: name of the objective function F
 
         designVarName: the name of the design variable
     
@@ -5223,22 +4274,22 @@ void DASolver::calcdFdFieldAD(
     this->updateOFMesh(xvVec);
 
     // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+    dictionary functionSubDict =
+        daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
 
     dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("designVar").subDict(designVarName);
 
     word fieldName = dvSubDict.getWord("fieldName");
     word fieldType = dvSubDict.getWord("fieldType");
 
-    // loop over all parts of this objFuncName
-    forAll(objFuncSubDict.toc(), idxK)
+    // loop over all parts of this functionName
+    forAll(functionSubDict.toc(), idxK)
     {
-        word objFuncPart = objFuncSubDict.toc()[idxK];
+        word functionPart = functionSubDict.toc()[idxK];
 
-        // get objFunc from daObjFuncPtrList_
-        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
+        // get function from daFunctionPtrList_
+        label objIndx = this->getFunctionListIndex(functionName, functionPart);
+        DAFunction& daFunction = daFunctionPtrList_[objIndx];
 
         // reset tape
         this->globalADTape_.reset();
@@ -5250,13 +4301,13 @@ void DASolver::calcdFdFieldAD(
         // update all intermediate variables and boundary conditions
         this->updateStateBoundaryConditions();
         // compute the objective function
-        scalar fRef = daObjFunc.getObjFuncValue();
+        scalar fRef = daFunction.getFunctionValue();
         // register f as the output
         this->globalADTape_.registerOutput(fRef);
         // stop recording
         this->globalADTape_.setPassive();
 
-        // Note: since we used reduced objFunc, we only need to
+        // Note: since we used reduced function, we only need to
         // assign the seed for master proc
         if (Pstream::master())
         {
@@ -5272,7 +4323,7 @@ void DASolver::calcdFdFieldAD(
         this->assignFieldGradient2Vec(fieldName, fieldType, dFdFieldPart);
 
         // we need to add dFdFieldPart to dFdField because we want to sum
-        // all dFdFieldPart for all parts of this objFuncName.
+        // all dFdFieldPart for all parts of this functionName.
         VecAXPY(dFdField, 1.0, dFdFieldPart);
 
         // need to clear adjoint and tape after the computation is done!
@@ -5286,13 +4337,13 @@ void DASolver::calcdFdFieldAD(
         this->deactivateFieldVariableInput4AD(fieldName, fieldType);
         this->updateBoundaryConditions(fieldName, fieldType);
         this->updateStateBoundaryConditions();
-        fRef = daObjFunc.getObjFuncValue();
+        fRef = daFunction.getFunctionValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
             Info << "In calcdFdFieldAD" << endl;
             this->calcPrimalResidualStatistics("print");
-            Info << objFuncName << ": " << fRef << endl;
+            Info << functionName << ": " << fRef << endl;
         }
 
         VecDestroy(&dFdFieldPart);
@@ -5518,9 +4569,7 @@ void DASolver::updateOFMesh(const scalar* volCoords)
     daFieldPtr_->point2OFMesh(volCoords);
 }
 
-void DASolver::initializedRdWTMatrixFree(
-    const Vec xvVec,
-    const Vec wVec)
+void DASolver::initializedRdWTMatrixFree()
 {
 #ifdef CODI_AD_REVERSE
     /*
@@ -5532,8 +4581,8 @@ void DASolver::initializedRdWTMatrixFree(
     // this is needed because the self.solverAD object in the Python layer
     // never run the primal solution, so the wVec and xvVec is not always
     // update to date
-    this->updateOFField(wVec);
-    this->updateOFMesh(xvVec);
+    //this->updateOFField(wVec);
+    //this->updateOFMesh(xvVec);
 
     if (daOptionPtr_->getOption<label>("debug"))
     {
@@ -5636,10 +4685,260 @@ void DASolver::initializeGlobalADTape4dRdWT()
 #endif
 }
 
+void DASolver::normalizeJacTVecProduct(
+    const word inputName,
+    double* product)
+{
+
+#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+    /*
+    Description:
+        Normalize the jacobian vector product that has states as the input such as dFdW and dRdW
+    
+    Input/Output:
+
+        inputName: 
+        name of the input for the Jacobian, we normalize the product only if inputName=stateVar
+
+        product: 
+        jacobian vector product to be normalized. vecY = vecY * scalingFactor
+        the scalingFactor depends on states.
+        This is needed for the matrix-vector products in matrix-free adjoint
+
+    */
+
+    if (inputName == "stateVar")
+    {
+
+        dictionary normStateDict = daOptionPtr_->getAllOptions().subDict("normalizeStates");
+
+        forAll(stateInfo_["volVectorStates"], idxI)
+        {
+            const word stateName = stateInfo_["volVectorStates"][idxI];
+            // if normalized state not defined, skip
+            if (normStateDict.found(stateName))
+            {
+                scalar scalingFactor = normStateDict.getScalar(stateName);
+
+                forAll(meshPtr_->cells(), cellI)
+                {
+                    for (label i = 0; i < 3; i++)
+                    {
+                        label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                        product[localIdx] *= scalingFactor.getValue();
+                    }
+                }
+            }
+        }
+
+        forAll(stateInfo_["volScalarStates"], idxI)
+        {
+            const word stateName = stateInfo_["volScalarStates"][idxI];
+            // if normalized state not defined, skip
+            if (normStateDict.found(stateName))
+            {
+                scalar scalingFactor = normStateDict.getScalar(stateName);
+
+                forAll(meshPtr_->cells(), cellI)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                    product[localIdx] *= scalingFactor.getValue();
+                }
+            }
+        }
+
+        forAll(stateInfo_["modelStates"], idxI)
+        {
+            const word stateName = stateInfo_["modelStates"][idxI];
+            // if normalized state not defined, skip
+            if (normStateDict.found(stateName))
+            {
+
+                scalar scalingFactor = normStateDict.getScalar(stateName);
+
+                forAll(meshPtr_->cells(), cellI)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                    product[localIdx] *= scalingFactor.getValue();
+                }
+            }
+        }
+
+        forAll(stateInfo_["surfaceScalarStates"], idxI)
+        {
+            const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+            // if normalized state not defined, skip
+            if (normStateDict.found(stateName))
+            {
+                scalar scalingFactor = normStateDict.getScalar(stateName);
+
+                forAll(meshPtr_->faces(), faceI)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+                    if (faceI < daIndexPtr_->nLocalInternalFaces)
+                    {
+                        scalar meshSf = meshPtr_->magSf()[faceI];
+                        product[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+                    }
+                    else
+                    {
+                        label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                        label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                        label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                        scalar meshSf = meshPtr_->magSf().boundaryField()[patchIdx][faceIdx];
+                        product[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+                    }
+                }
+            }
+        }
+    }
+
+#endif
+}
+
+void DASolver::calcJacTVecProduct(
+    const word inputName,
+    const int inputSize,
+    const int distributedInput,
+    const double* input,
+    const word outputName,
+    const int outputSize,
+    const int distributedOutput,
+    const double* seed,
+    double* product)
+{
+#ifdef CODI_AD_REVERSE
+    /*
+    Description:
+        Calculate the Jacobian-matrix-transposed and vector product for [dOutput/dInput]^T * psi
+    
+    Input:
+        inputName: name of the input
+
+        outputName: name of the output
+
+        input: the actual value of the input array
+
+        psi: the vector for the mat-vec product
+    
+    Output:
+        product: the mat-vec product
+    */
+
+    // initialize the input and output objects
+    autoPtr<DAInput> daInput(
+        DAInput::New(
+            inputName,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_()));
+
+    autoPtr<DAOutput> daOutput(
+        DAOutput::New(
+            outputName,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            daFunctionPtrList_));
+
+    // create input and output lists
+    scalarList inputList(inputSize, 0.0);
+    scalarList outputList(outputSize, 0.0);
+
+    // assign the input array to the input list.
+    // Note: we need to use scalarList for AD
+    forAll(inputList, idxI)
+    {
+        inputList[idxI] = input[idxI];
+    }
+
+    // reset tape
+    this->globalADTape_.reset();
+    // activate tape, start recording
+    this->globalADTape_.setActive();
+    // register input
+    forAll(inputList, idxI)
+    {
+        this->globalADTape_.registerInput(inputList[idxI]);
+    }
+    // call daInput->run to assign inputList to OF variables
+    daInput->run(inputList);
+    // update all intermediate variables and boundary conditions
+    this->updateStateBoundaryConditions();
+    // call daOutput->run to compute OF output variables and assign them to outputList
+    daOutput->run(outputList);
+    // register output
+    forAll(outputList, idxI)
+    {
+        this->globalADTape_.registerOutput(outputList[idxI]);
+    }
+    // stop recording
+    this->globalADTape_.setPassive();
+    // assign the seed to the outputList's gradient
+    forAll(outputList, idxI)
+    {
+        // if the output is in serial (e.g., function), we need to assign the seed to
+        // only the master processor. This is because the serial output already called
+        // a reduce in the daOutput->run function.
+        if (distributedOutput)
+        {
+            // output is distributed, assign seed to all procs
+            outputList[idxI].setGradient(seed[idxI]);
+        }
+        else
+        {
+            // output is in serial, assign seed to the master proc only
+            if (Pstream::master())
+            {
+                outputList[idxI].setGradient(seed[idxI]);
+            }
+        }
+    }
+    // evaluate tape to compute derivative
+    this->globalADTape_.evaluate();
+    // get the matrix-vector product=[dOutput/dInput]^T*seed from the inputList
+    // and assign it to the product array
+    forAll(inputList, idxI)
+    {
+        product[idxI] = inputList[idxI].getGradient();
+        // if the input is in serial (e.g., angle of attack), we need to reduce the product and
+        // make sure the product is consistent among all processors
+        if (!distributedInput)
+        {
+            reduce(product[idxI], sumOp<double>());
+        }
+    }
+
+    // we need to normalize the jacobian vector product if inputName == stateVar
+    this->normalizeJacTVecProduct(inputName, product);
+
+    // need to clear adjoint and tape after the computation is done!
+    this->globalADTape_.clearAdjoints();
+    this->globalADTape_.reset();
+
+    // clean up OF vars's AD seeds by deactivating the inputs (set its gradients to zeros)
+    // and calculate the output one more time. This will propagate the zero seeds
+    // to all the intermediate variables and reset their gradient to zeros
+    // NOTE: cleaning up the seeds is critical; otherwise, it will create AD conflict
+    forAll(inputList, idxI)
+    {
+        this->globalADTape_.deactivateValue(inputList[idxI]);
+    }
+    daInput->run(inputList);
+    this->updateStateBoundaryConditions();
+    daOutput->run(outputList);
+
+#endif
+}
+
 void DASolver::calcdFdWAD(
     const Vec xvVec,
     const Vec wVec,
-    const word objFuncName,
+    const word functionName,
     Vec dFdW)
 {
 #ifdef CODI_AD_REVERSE
@@ -5652,7 +4951,7 @@ void DASolver::calcdFdWAD(
 
         wVec: the state variable vector
 
-        objFuncName: name of the objective function F
+        functionName: name of the objective function F
     
     Output:
         dFdW: the partial derivative vector dF/dW
@@ -5671,18 +4970,18 @@ void DASolver::calcdFdWAD(
     this->updateOFMesh(xvVec);
 
     // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+    dictionary functionSubDict =
+        daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
 
-    // loop over all parts for this objFuncName
-    forAll(objFuncSubDict.toc(), idxJ)
+    // loop over all parts for this functionName
+    forAll(functionSubDict.toc(), idxJ)
     {
         // get the subDict for this part
-        word objFuncPart = objFuncSubDict.toc()[idxJ];
+        word functionPart = functionSubDict.toc()[idxJ];
 
-        // get objFunc from daObjFuncPtrList_
-        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
+        // get function from daFunctionPtrList_
+        label objIndx = this->getFunctionListIndex(functionName, functionPart);
+        DAFunction& daFunction = daFunctionPtrList_[objIndx];
 
         // reset tape
         this->globalADTape_.reset();
@@ -5693,13 +4992,13 @@ void DASolver::calcdFdWAD(
         // update all intermediate variables and boundary conditions
         this->updateStateBoundaryConditions();
         // compute the objective function
-        scalar fRef = daObjFunc.getObjFuncValue();
+        scalar fRef = daFunction.getFunctionValue();
         // register f as the output
         this->globalADTape_.registerOutput(fRef);
         // stop recording
         this->globalADTape_.setPassive();
 
-        // Note: since we used reduced objFunc, we only need to
+        // Note: since we used reduced function, we only need to
         // assign the seed for master proc
         if (Pstream::master())
         {
@@ -5715,7 +5014,7 @@ void DASolver::calcdFdWAD(
         this->assignStateGradient2Vec(dFdWPart);
 
         // we need to add dFdWPart to dFdW because we want to sum
-        // all dFdWPart for all parts of this objFuncName.
+        // all dFdWPart for all parts of this functionName.
         VecAXPY(dFdW, 1.0, dFdWPart);
 
         // need to clear adjoint and tape after the computation is done!
@@ -5728,13 +5027,13 @@ void DASolver::calcdFdWAD(
 
         this->deactivateStateVariableInput4AD();
         this->updateStateBoundaryConditions();
-        fRef = daObjFunc.getObjFuncValue();
+        fRef = daFunction.getFunctionValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
             Info << "In calcdFdWAD" << endl;
             this->calcPrimalResidualStatistics("print");
-            Info << objFuncName << ": " << fRef << endl;
+            Info << functionName << ": " << fRef << endl;
         }
 
         VecDestroy(&dFdWPart);
@@ -5747,7 +5046,7 @@ void DASolver::calcdFdWAD(
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
     if (writeJacobians.found("dFdW") || writeJacobians.found("all"))
     {
-        word outputName = "dFdW_" + objFuncName;
+        word outputName = "dFdW_" + functionName;
         DAUtility::writeVectorBinary(dFdW, outputName);
         DAUtility::writeVectorASCII(dFdW, outputName);
     }
@@ -5758,7 +5057,7 @@ void DASolver::calcdFdWAD(
 void DASolver::calcdFdXvAD(
     const Vec xvVec,
     const Vec wVec,
-    const word objFuncName,
+    const word functionName,
     const word designVarName,
     Vec dFdXv)
 {
@@ -5773,7 +5072,7 @@ void DASolver::calcdFdXvAD(
 
         wVec: the state variable vector
 
-        objFuncName: the name of the objective function
+        functionName: the name of the objective function
 
         designVarName: name of the design variable
     
@@ -5789,18 +5088,18 @@ void DASolver::calcdFdXvAD(
     this->updateOFMesh(xvVec);
 
     // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+    dictionary functionSubDict =
+        daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
 
-    // loop over all parts for this objFuncName
-    forAll(objFuncSubDict.toc(), idxJ)
+    // loop over all parts for this functionName
+    forAll(functionSubDict.toc(), idxJ)
     {
         // get the subDict for this part
-        word objFuncPart = objFuncSubDict.toc()[idxJ];
+        word functionPart = functionSubDict.toc()[idxJ];
 
-        // get objFunc from daObjFuncPtrList_
-        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
+        // get function from daFunctionPtrList_
+        label objIndx = this->getFunctionListIndex(functionName, functionPart);
+        DAFunction& daFunction = daFunctionPtrList_[objIndx];
 
         pointField meshPoints = meshPtr_->points();
 
@@ -5821,13 +5120,13 @@ void DASolver::calcdFdXvAD(
         // update all intermediate variables and boundary conditions
         this->updateStateBoundaryConditions();
         // compute the objective function
-        scalar fRef = daObjFunc.getObjFuncValue();
+        scalar fRef = daFunction.getFunctionValue();
         // register f as the output
         this->globalADTape_.registerOutput(fRef);
         // stop recording
         this->globalADTape_.setPassive();
 
-        // Note: since we used reduced objFunc, we only need to
+        // Note: since we used reduced function, we only need to
         // assign the seed for master proc
         if (Pstream::master())
         {
@@ -5854,7 +5153,7 @@ void DASolver::calcdFdXvAD(
         VecAssemblyEnd(dFdXvPart);
 
         // we need to add dFd*Part to dFd* because we want to sum
-        // all dFd*Part for all parts of this objFuncName.
+        // all dFd*Part for all parts of this functionName.
         VecAXPY(dFdXv, 1.0, dFdXvPart);
 
         VecDestroy(&dFdXvPart);
@@ -5877,12 +5176,12 @@ void DASolver::calcdFdXvAD(
         meshPtr_->movePoints(meshPoints);
         meshPtr_->moving(false);
         this->updateStateBoundaryConditions();
-        fRef = daObjFunc.getObjFuncValue();
+        fRef = daFunction.getFunctionValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
             this->calcPrimalResidualStatistics("print");
-            Info << objFuncName << ": " << fRef << endl;
+            Info << functionName << ": " << fRef << endl;
         }
     }
 
@@ -5890,7 +5189,7 @@ void DASolver::calcdFdXvAD(
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
     if (writeJacobians.found("dFdXv") || writeJacobians.found("all"))
     {
-        word outputName = "dFdXv_" + objFuncName + "_" + designVarName;
+        word outputName = "dFdXv_" + functionName + "_" + designVarName;
         DAUtility::writeVectorBinary(dFdXv, outputName);
         DAUtility::writeVectorASCII(dFdXv, outputName);
     }
@@ -5901,7 +5200,7 @@ void DASolver::calcdFdRegParAD(
     const double* volCoords,
     const double* states,
     const double* parameters,
-    const word objFuncName,
+    const word functionName,
     const word designVarName,
     const word modelName,
     double* dFdRegPar)
@@ -5917,7 +5216,7 @@ void DASolver::calcdFdRegParAD(
 
         wVec: the state variable vector
 
-        objFuncName: the name of the objective function
+        functionName: the name of the objective function
 
         designVarName: name of the design variable
 
@@ -5949,25 +5248,25 @@ void DASolver::calcdFdRegParAD(
         // NOTE: we also zero out the dFdRegPar array
         dFdRegPar[i] = 0;
     }
-    // for each objFunc part
+    // for each function part
     scalarList dFdRegParPart(nParameters, 0.0);
 
     this->updateOFMesh(volCoordsArray);
     this->updateOFField(statesArray);
 
     // get the subDict for this objective function
-    dictionary objFuncSubDict =
-        daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+    dictionary functionSubDict =
+        daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
 
-    // loop over all parts for this objFuncName
-    forAll(objFuncSubDict.toc(), idxJ)
+    // loop over all parts for this functionName
+    forAll(functionSubDict.toc(), idxJ)
     {
         // get the subDict for this part
-        word objFuncPart = objFuncSubDict.toc()[idxJ];
+        word functionPart = functionSubDict.toc()[idxJ];
 
-        // get objFunc from daObjFuncPtrList_
-        label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
-        DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
+        // get function from daFunctionPtrList_
+        label objIndx = this->getFunctionListIndex(functionName, functionPart);
+        DAFunction& daFunction = daFunctionPtrList_[objIndx];
 
         // reset tape
         this->globalADTape_.reset();
@@ -5987,13 +5286,13 @@ void DASolver::calcdFdRegParAD(
         this->updateStateBoundaryConditions();
 
         // compute the objective function
-        scalar fRef = daObjFunc.getObjFuncValue();
+        scalar fRef = daFunction.getFunctionValue();
         // register f as the output
         this->globalADTape_.registerOutput(fRef);
         // stop recording
         this->globalADTape_.setPassive();
 
-        // Note: since we used reduced objFunc, we only need to
+        // Note: since we used reduced function, we only need to
         // assign the seed for master proc
         if (Pstream::master())
         {
@@ -6014,7 +5313,7 @@ void DASolver::calcdFdRegParAD(
             reduce(dFdRegParPart[i], sumOp<scalar>());
 
             // we need to add dFd*Part to dFd* because we want to sum
-            // all dFd*Part for all parts of this objFuncName.
+            // all dFd*Part for all parts of this functionName.
             dFdRegPar[i] += dFdRegParPart[i].getValue();
         }
 
@@ -6036,12 +5335,12 @@ void DASolver::calcdFdRegParAD(
         }
 
         this->updateStateBoundaryConditions();
-        fRef = daObjFunc.getObjFuncValue();
+        fRef = daFunction.getFunctionValue();
 
         if (daOptionPtr_->getOption<label>("debug"))
         {
             this->calcPrimalResidualStatistics("print");
-            Info << objFuncName << ": " << fRef << endl;
+            Info << functionName << ": " << fRef << endl;
         }
     }
 
@@ -6695,7 +5994,7 @@ void DASolver::calcdRdFieldTPsiAD(
 void DASolver::calcdFdACTAD(
     const Vec xvVec,
     const Vec wVec,
-    const word objFuncName,
+    const word functionName,
     const word designVarName,
     Vec dFdACT)
 {
@@ -6710,7 +6009,7 @@ void DASolver::calcdFdACTAD(
 
         wVec: the state variable vector
 
-        objFuncName: the name of the objective function
+        functionName: the name of the objective function
 
         designVarName: name of the design variable
     
@@ -6741,18 +6040,18 @@ void DASolver::calcdFdACTAD(
             this->updateOFMesh(xvVec);
 
             // get the subDict for this objective function
-            dictionary objFuncSubDict =
-                daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+            dictionary functionSubDict =
+                daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
 
-            // loop over all parts for this objFuncName
-            forAll(objFuncSubDict.toc(), idxJ)
+            // loop over all parts for this functionName
+            forAll(functionSubDict.toc(), idxJ)
             {
                 // get the subDict for this part
-                word objFuncPart = objFuncSubDict.toc()[idxJ];
+                word functionPart = functionSubDict.toc()[idxJ];
 
-                // get objFunc from daObjFuncPtrList_
-                label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
-                DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
+                // get function from daFunctionPtrList_
+                label objIndx = this->getFunctionListIndex(functionName, functionPart);
+                DAFunction& daFunction = daFunctionPtrList_[objIndx];
 
                 // get the design variable vals
                 scalarList actDVList(nActDVs);
@@ -6784,13 +6083,13 @@ void DASolver::calcdFdACTAD(
                 // update all intermediate variables and boundary conditions
                 this->updateStateBoundaryConditions();
                 // compute the objective function
-                scalar fRef = daObjFunc.getObjFuncValue();
+                scalar fRef = daFunction.getFunctionValue();
                 // register f as the output
                 this->globalADTape_.registerOutput(fRef);
                 // stop recording
                 this->globalADTape_.setPassive();
 
-                // Note: since we used reduced objFunc, we only need to
+                // Note: since we used reduced function, we only need to
                 // assign the seed for master proc
                 if (Pstream::master())
                 {
@@ -6815,7 +6114,7 @@ void DASolver::calcdFdACTAD(
                 VecAssemblyEnd(dFdACTPart);
 
                 // we need to add dFd*Part to dFd* because we want to sum
-                // all dFd*Part for all parts of this objFuncName.
+                // all dFd*Part for all parts of this functionName.
                 VecAXPY(dFdACT, 1.0, dFdACTPart);
 
                 VecDestroy(&dFdACTPart);
@@ -6838,12 +6137,12 @@ void DASolver::calcdFdACTAD(
                 }
                 fvSource.updateFvSource();
                 this->updateStateBoundaryConditions();
-                fRef = daObjFunc.getObjFuncValue();
+                fRef = daFunction.getFunctionValue();
 
                 if (daOptionPtr_->getOption<label>("debug"))
                 {
                     this->calcPrimalResidualStatistics("print");
-                    Info << objFuncName << ": " << fRef << endl;
+                    Info << functionName << ": " << fRef << endl;
                 }
             }
         }
@@ -6863,7 +6162,7 @@ void DASolver::calcdFdACTAD(
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
     if (writeJacobians.found("dFdACT") || writeJacobians.found("all"))
     {
-        word outputName = "dFdACT_" + objFuncName + "_" + designVarName;
+        word outputName = "dFdACT_" + functionName + "_" + designVarName;
         DAUtility::writeVectorBinary(dFdACT, outputName);
         DAUtility::writeVectorASCII(dFdACT, outputName);
     }
@@ -6873,7 +6172,7 @@ void DASolver::calcdFdACTAD(
 void DASolver::calcdFdHSCAD(
     const Vec xvVec,
     const Vec wVec,
-    const word objFuncName,
+    const word functionName,
     const word designVarName,
     Vec dFdHSC)
 {
@@ -6889,7 +6188,7 @@ void DASolver::calcdFdHSCAD(
 
         wVec: the state variable vector
 
-        objFuncName: the name of the objective function
+        functionName: the name of the objective function
 
         designVarName: name of the design variable
     
@@ -6920,18 +6219,18 @@ void DASolver::calcdFdHSCAD(
             this->updateOFMesh(xvVec);
 
             // get the subDict for this objective function
-            dictionary objFuncSubDict =
-                daOptionPtr_->getAllOptions().subDict("objFunc").subDict(objFuncName);
+            dictionary functionSubDict =
+                daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
 
-            // loop over all parts for this objFuncName
-            forAll(objFuncSubDict.toc(), idxJ)
+            // loop over all parts for this functionName
+            forAll(functionSubDict.toc(), idxJ)
             {
                 // get the subDict for this part
-                word objFuncPart = objFuncSubDict.toc()[idxJ];
+                word functionPart = functionSubDict.toc()[idxJ];
 
-                // get objFunc from daObjFuncPtrList_
-                label objIndx = this->getObjFuncListIndex(objFuncName, objFuncPart);
-                DAObjFunc& daObjFunc = daObjFuncPtrList_[objIndx];
+                // get function from daFunctionPtrList_
+                label objIndx = this->getFunctionListIndex(functionName, functionPart);
+                DAFunction& daFunction = daFunctionPtrList_[objIndx];
 
                 // get the design variable vals
                 scalarList actDVList(nDVs);
@@ -6963,13 +6262,13 @@ void DASolver::calcdFdHSCAD(
                 // update all intermediate variables and boundary conditions
                 this->updateStateBoundaryConditions();
                 // compute the objective function
-                scalar fRef = daObjFunc.getObjFuncValue();
+                scalar fRef = daFunction.getFunctionValue();
                 // register f as the output
                 this->globalADTape_.registerOutput(fRef);
                 // stop recording
                 this->globalADTape_.setPassive();
 
-                // Note: since we used reduced objFunc, we only need to
+                // Note: since we used reduced function, we only need to
                 // assign the seed for master proc
                 if (Pstream::master())
                 {
@@ -6994,7 +6293,7 @@ void DASolver::calcdFdHSCAD(
                 VecAssemblyEnd(dFdHSCPart);
 
                 // we need to add dFd*Part to dFd* because we want to sum
-                // all dFd*Part for all parts of this objFuncName.
+                // all dFd*Part for all parts of this functionName.
                 VecAXPY(dFdHSC, 1.0, dFdHSCPart);
 
                 VecDestroy(&dFdHSCPart);
@@ -7017,12 +6316,12 @@ void DASolver::calcdFdHSCAD(
                 }
                 fvSource.updateFvSource();
                 this->updateStateBoundaryConditions();
-                fRef = daObjFunc.getObjFuncValue();
+                fRef = daFunction.getFunctionValue();
 
                 if (daOptionPtr_->getOption<label>("debug"))
                 {
                     this->calcPrimalResidualStatistics("print");
-                    Info << objFuncName << ": " << fRef << endl;
+                    Info << functionName << ": " << fRef << endl;
                 }
             }
         }
@@ -7042,7 +6341,7 @@ void DASolver::calcdFdHSCAD(
     daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
     if (writeJacobians.found("dFdHSC") || writeJacobians.found("all"))
     {
-        word outputName = "dFdHSC_" + objFuncName + "_" + designVarName;
+        word outputName = "dFdHSC_" + functionName + "_" + designVarName;
         DAUtility::writeVectorBinary(dFdHSC, outputName);
         DAUtility::writeVectorASCII(dFdHSC, outputName);
     }
@@ -8918,7 +8217,7 @@ void DASolver::setFFD2XvSeedVec(Vec vecIn)
     VecCopy(vecIn, FFD2XvSeedVec_);
 }
 
-label DASolver::checkResidualTol()
+label DASolver::checkResidualTol(const scalar& primalMaxRes)
 {
     /*
     Description:
@@ -8930,10 +8229,10 @@ label DASolver::checkResidualTol()
 
     scalar tolMax = daOptionPtr_->getOption<scalar>("primalMinResTolDiff");
     scalar stdTolMax = daOptionPtr_->getSubDictOption<scalar>("primalObjStdTol", "tolDiff");
-    if (DAUtility::primalMaxInitRes_ / primalMinResTol_ > tolMax)
+    if (primalMaxRes / primalMinResTol_ > tolMax)
     {
         Info << "********************************************" << endl;
-        Info << "Primal min residual " << DAUtility::primalMaxInitRes_ << endl
+        Info << "Primal min residual " << primalMaxRes << endl
              << "did not satisfy the prescribed tolerance "
              << primalMinResTol_ << endl;
         Info << "Primal solution failed!" << endl;
@@ -8943,7 +8242,7 @@ label DASolver::checkResidualTol()
     else if (primalObjStd_ / primalObjStdTol_ > stdTolMax)
     {
         Info << "********************************************" << endl;
-        Info << "Primal objFunc standard deviation " << primalObjStd_ << endl
+        Info << "Primal function standard deviation " << primalObjStd_ << endl
              << "did not satisfy the prescribed tolerance "
              << primalObjStdTol_ << endl;
         Info << "Primal solution failed!" << endl;
@@ -9283,11 +8582,11 @@ void DASolver::saveTimeInstanceFieldHybrid(label& timeInstanceI)
             stateBoundaryAllInstances_[timeInstanceI]);
 
         // save objective functions
-        forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
+        forAll(daOptionPtr_->getAllOptions().subDict("function").toc(), idxI)
         {
-            word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
-            scalar objFuncVal = this->getObjFuncValue(objFuncName);
-            objFuncsAllInstances_[timeInstanceI].set(objFuncName, objFuncVal);
+            word functionName = daOptionPtr_->getAllOptions().subDict("function").toc()[idxI];
+            scalar functionVal = this->getFunctionValue(functionName);
+            functionsAllInstances_[timeInstanceI].set(functionName, functionVal);
         }
 
         // save runTime
@@ -9317,11 +8616,11 @@ void DASolver::saveTimeInstanceFieldTimeAccurate(label& timeInstanceI)
         stateBoundaryAllInstances_[timeInstanceI]);
 
     // save objective functions
-    forAll(daOptionPtr_->getAllOptions().subDict("objFunc").toc(), idxI)
+    forAll(daOptionPtr_->getAllOptions().subDict("function").toc(), idxI)
     {
-        word objFuncName = daOptionPtr_->getAllOptions().subDict("objFunc").toc()[idxI];
-        scalar objFuncVal = this->getObjFuncValue(objFuncName);
-        objFuncsAllInstances_[timeInstanceI].set(objFuncName, objFuncVal);
+        word functionName = daOptionPtr_->getAllOptions().subDict("function").toc()[idxI];
+        scalar functionVal = this->getFunctionValue(functionName);
+        functionsAllInstances_[timeInstanceI].set(functionName, functionVal);
     }
 
     // save runTime
@@ -10281,16 +9580,16 @@ void DASolver::calcMeanStates()
     }
 }
 
-scalar DASolver::getTimeInstanceObjFunc(
+scalar DASolver::getTimeInstanceFunction(
     const label instanceI,
-    const word objFuncName)
+    const word functionName)
 {
     /*
     Description:
         Return the value of objective function at the given time instance and name
     */
 
-    return objFuncsAllInstances_[instanceI].getScalar(objFuncName);
+    return functionsAllInstances_[instanceI].getScalar(functionName);
 }
 
 void DASolver::setPrimalBoundaryConditions(const label printInfo)
@@ -10695,7 +9994,7 @@ void DASolver::writeSensMapField(
 }
 
 void DASolver::writeAdjointFields(
-    const word objFunc,
+    const word function,
     const double writeTime,
     const double* psi)
 {
@@ -10715,7 +10014,7 @@ void DASolver::writeAdjointFields(
     {
         const word stateName = stateInfo_["volVectorStates"][idxI];
         const volVectorField& state = meshPtr_->thisDb().lookupObject<volVectorField>(stateName);
-        word varName = "adjoint_" + objFunc + "_" + stateName;
+        word varName = "adjoint_" + function + "_" + stateName;
         volVectorField adjointVar(varName, state);
         forAll(state, cellI)
         {
@@ -10733,7 +10032,7 @@ void DASolver::writeAdjointFields(
     {
         const word stateName = stateInfo_["volScalarStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        word varName = "adjoint_" + objFunc + "_" + stateName;
+        word varName = "adjoint_" + function + "_" + stateName;
         volScalarField adjointVar(varName, state);
         forAll(state, cellI)
         {
@@ -10748,7 +10047,7 @@ void DASolver::writeAdjointFields(
     {
         const word stateName = stateInfo_["modelStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        word varName = "adjoint_" + objFunc + "_" + stateName;
+        word varName = "adjoint_" + function + "_" + stateName;
         volScalarField adjointVar(varName, state);
         forAll(state, cellI)
         {
@@ -10763,7 +10062,7 @@ void DASolver::writeAdjointFields(
     {
         const word stateName = stateInfo_["surfaceScalarStates"][idxI];
         const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
-        word varName = "adjoint_" + objFunc + "_" + stateName;
+        word varName = "adjoint_" + function + "_" + stateName;
         surfaceScalarField adjointVar(varName, state);
 
         forAll(meshPtr_->faces(), faceI)

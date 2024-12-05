@@ -26,7 +26,7 @@
 #include "DAStateInfo.H"
 #include "DAModel.H"
 #include "DAIndex.H"
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "DAJacCon.H"
 #include "DAColoring.H"
 #include "DAResidual.H"
@@ -37,6 +37,8 @@
 #include "volPointInterpolation.H"
 #include "IOMRFZoneListDF.H"
 #include "interpolateSplineXY.H"
+#include "DAInput.H"
+#include "DAOutput.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -85,8 +87,8 @@ protected:
     /// DAField pointer
     autoPtr<DAField> daFieldPtr_;
 
-    /// a list of DAObjFunc pointers
-    UPtrList<DAObjFunc> daObjFuncPtrList_;
+    /// a list of DAFunction pointers
+    UPtrList<DAFunction> daFunctionPtrList_;
 
     /// DACheckMesh object pointer
     autoPtr<DACheckMesh> daCheckMeshPtr_;
@@ -107,7 +109,7 @@ protected:
     HashTable<wordList> stateInfo_;
 
     /// the list of objective function names that requires adjoint solution
-    wordList objFuncNames4Adj_;
+    wordList functionNames4Adj_;
 
     /// the dictionary of adjoint vector (psi) values for all objectives
     dictionary psiVecDict_;
@@ -116,13 +118,13 @@ protected:
     dictionary totalDerivDict_;
 
     /// pointer to the objective function file used in unsteady primal solvers
-    autoPtr<OFstream> objFuncAvgHistFilePtr_;
+    autoPtr<OFstream> functionAvgHistFilePtr_;
 
-    /// number of iterations since the start of objFunc averaging
-    label nItersObjFuncAvg_ = -9999;
+    /// number of iterations since the start of function averaging
+    label nItersFunctionAvg_ = -9999;
 
     /// the averaged objective function values used in unsteady flow
-    scalarList avgObjFuncValues_;
+    scalarList avgFunctionValues_;
 
     /// the preconditioner matrix for the adjoint linear equation solution
     Mat dRdWTPC_;
@@ -147,7 +149,7 @@ protected:
         const label printInterval) const;
 
     /// check whether the min residual in primal satisfy the prescribed tolerance
-    label checkResidualTol();
+    label checkResidualTol(const scalar& primalMaxRes);
 
     /// reduce the connectivity level for Jacobian connectivity mat
     void reduceStateResConLevel(
@@ -170,7 +172,7 @@ protected:
     List<List<scalar>> stateBoundaryAllInstances_;
 
     /// objective function for all instances (unsteady)
-    List<dictionary> objFuncsAllInstances_;
+    List<dictionary> functionsAllInstances_;
 
     /// the runtime value for all instances (unsteady)
     List<scalar> runTimeAllInstances_;
@@ -197,10 +199,10 @@ protected:
     void saveTimeInstanceFieldTimeAccurate(label& timeInstanceI);
 
     /// a hash table that save the unsteady obj funcs, e.g., time-averaged drag
-    HashTable<scalar> unsteadyObjFuncs_;
+    HashTable<scalar> unsteadyFunctions_;
 
     /// a scaling factor related to the unsteady obj func timeOperator e.g., in dFdW calculation
-    scalar unsteadyObjFuncsScaling_;
+    scalar unsteadyFunctionsScaling_;
 
     /// initial values for validateStates
     HashTable<scalar> initStateVals_;
@@ -245,9 +247,8 @@ public:
         autoPtr,
         DASolver,
         dictionary,
-        (
-            char* argsAll,
-            PyObject* pyOptions),
+        (char* argsAll,
+         PyObject* pyOptions),
         (argsAll, pyOptions));
 
     // Constructors
@@ -275,9 +276,7 @@ public:
     virtual void initSolver() = 0;
 
     /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec) = 0;
+    virtual label solvePrimal() = 0;
 
     /// solve the adjoint equation using the fixed-point iteration method
     virtual label runFPAdj(
@@ -330,13 +329,14 @@ public:
         {
             FatalErrorIn("") << "ddtScheme " << ddtSchemeName << " not supported! Options: steadyState, Euler, or backward"
                              << abort(FatalError);
+            return -1;
         }
     }
 
     /// return the value of objective function at the given time instance and name
-    scalar getTimeInstanceObjFunc(
+    scalar getTimeInstanceFunction(
         const label instanceI,
-        const word objFuncName);
+        const word functionName);
 
     /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
     void setTimeInstanceVar(
@@ -351,8 +351,6 @@ public:
 
     /// compute dRdWT
     void calcdRdWT(
-        const Vec xvVec,
-        const Vec wVec,
         const label isPC,
         Mat dRdWT);
 
@@ -368,13 +366,6 @@ public:
         const label isInit,
         const Vec psi,
         Vec dRdWTPsi);
-
-    /// compute dFdW
-    void calcdFdW(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        Vec dFdW);
 
     /// create a multi-level, Richardson KSP object
     void createMLRKSP(
@@ -405,28 +396,19 @@ public:
     void updateOFMesh(const Vec xvVec);
 
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state array
-    void updateOFField(const scalar* volCoords);
+    void updateOFField(const scalar* states);
 
     /// Update the OpenFoam mesh point coordinates based on the volume point coords array
-    void updateOFMesh(const scalar* states);
+    void updateOFMesh(const scalar* volCoords);
+
+    /// assign the state variables from OpenFoam layer to the states array
+    void getOFField(scalar* states)
+    {
+        daFieldPtr_->ofField2State(states);
+    }
 
     /// reset the seeds (gradient to zeros) for all OpenFOAM variables
     void resetOFSeeds();
-
-    /// compute dRdBC
-    void calcdRdBC(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdBC);
-
-    /// compute dFdBC
-    void calcdFdBC(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdBC);
 
     /// assign the BC val to OF var
     void setBCToOFVars(
@@ -437,6 +419,18 @@ public:
     void getBCFromOFVars(
         const dictionary& dvSubDict,
         scalar& BC);
+
+    /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
+    void calcJacTVecProduct(
+        const word inputName,
+        const int inputSize,
+        const int distributedInput,
+        const double* input,
+        const word outputName,
+        const int outputSize,
+        const int distributedOutput,
+        const double* seed,
+        double* product);
 
     /// compute dRdBCAD
     void calcdRdBCTPsiAD(
@@ -450,24 +444,9 @@ public:
     void calcdFdBCAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdBC);
-
-    /// compute dRdAOA
-    void calcdRdAOA(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdAOA);
-
-    /// compute dFdAOA
-    void calcdFdAOA(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdAOA);
 
     /// compute dRdAOAAD
     void calcdRdAOATPsiAD(
@@ -476,38 +455,6 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdAOATPsi);
-
-    /// compute dRdFFD
-    void calcdRdFFD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdFFD);
-
-    /// compute dFdFFD
-    void calcdFdFFD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdFFD);
-
-    /// compute dRdACT
-    void calcdRdACT(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        const word designVarType,
-        Mat dRdACT);
-
-    /// compute dFdACT
-    void calcdFdACT(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        const word designVarType,
-        Vec dFdACT);
 
     /// compute dRdField^T*Psi
     void calcdRdFieldTPsiAD(
@@ -521,7 +468,7 @@ public:
     void calcdFdFieldAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdField);
 
@@ -534,7 +481,7 @@ public:
     void calcdFdWAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         Vec dFdW);
 
     void calcdRdThermalTPsiAD(
@@ -571,7 +518,7 @@ public:
     void calcdFdXvAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdXv);
 
@@ -581,7 +528,7 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdActTPsi);
-    
+
     void calcdRdHSCTPsiAD(
         const Vec xvVec,
         const Vec wVec,
@@ -607,15 +554,15 @@ public:
     void calcdFdACTAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdACT);
-    
+
     /// compute dFdHSC AD
     void calcdFdHSCAD(
         const Vec xvVec,
         const Vec wVec,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         Vec dFdHSC);
 
@@ -624,7 +571,7 @@ public:
         const double* volCoords,
         const double* states,
         const double* parameters,
-        const word objFuncName,
+        const word functionName,
         const word designVarName,
         const word modelName,
         double* dFdRegPar);
@@ -645,9 +592,7 @@ public:
         Vec vecY);
 
     /// initialize matrix free dRdWT
-    void initializedRdWTMatrixFree(
-        const Vec xvVec,
-        const Vec wVec);
+    void initializedRdWTMatrixFree();
 
     /// destroy the matrix free dRdWT
     void destroydRdWTMatrixFree();
@@ -703,11 +648,18 @@ public:
     /// normalize the reverse-mode AD derivatives stored in vecY
     void normalizeGradientVec(Vec vecY);
 
+    /// normalize the jacobian vector product that has states as the input such as dFdW and dRdW
+    void normalizeJacTVecProduct(
+        const word inputName,
+        double* product);
+
     /// initialize the CoDiPack reverse-mode AD global tape for computing dRdWT*psi
     void initializeGlobalADTape4dRdWT();
 
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
-    label loop(Time& runTime);
+    label loop(
+        Time& runTime,
+        const scalar& primalMaxRes);
 
     /// basically, we call DAIndex::getGlobalXvIndex
     label getGlobalXvIndex(
@@ -831,36 +783,36 @@ public:
         return meshPtr_->nPoints();
     }
 
-    /// initialize DASolver::daObjFuncPtrList_ one needs to call this before calling printAllObjFuncs
-    void setDAObjFuncList();
+    /// initialize DASolver::daFunctionPtrList_ one needs to call this before calling printAllFunctions
+    void setDAFunctionList();
 
     /// calculate the values of all objective functions and print them to screen
-    void printAllObjFuncs();
+    void printAllFunctions();
 
-    /// reset the unsteady objFunction to zero
-    void initUnsteadyObjFuncs()
+    /// reset the unsteady functiontion to zero
+    void initUnsteadyFunctions()
     {
-        forAll(daObjFuncPtrList_, idxI)
+        forAll(daFunctionPtrList_, idxI)
         {
-            DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-            word objFuncName = daObjFunc.getObjFuncName();
-            word objFuncPart = daObjFunc.getObjFuncPart();
-            word uKey = objFuncName + objFuncPart;
-            unsteadyObjFuncs_[uKey] = 0.0;
+            DAFunction& daFunction = daFunctionPtrList_[idxI];
+            word functionName = daFunction.getFunctionName();
+            word functionPart = daFunction.getFunctionPart();
+            word uKey = functionName + functionPart;
+            unsteadyFunctions_[uKey] = 0.0;
         }
     }
 
-    /// return the index of a give objFuncName in daObjFuncPtrList_
-    label getObjFuncListIndex(
-        const word objFuncName,
-        const word objFuncPart)
+    /// return the index of a give functionName in daFunctionPtrList_
+    label getFunctionListIndex(
+        const word functionName,
+        const word functionPart)
     {
-        forAll(daObjFuncPtrList_, idxI)
+        forAll(daFunctionPtrList_, idxI)
         {
-            DAObjFunc& daObjFunc = daObjFuncPtrList_[idxI];
-            word objFuncName1 = daObjFunc.getObjFuncName();
-            word objFuncPart1 = daObjFunc.getObjFuncPart();
-            if (objFuncPart1 == objFuncPart && objFuncName1 == objFuncName)
+            DAFunction& daFunction = daFunctionPtrList_[idxI];
+            word functionName1 = daFunction.getFunctionName();
+            word functionPart1 = daFunction.getFunctionPart();
+            if (functionPart1 == functionPart && functionName1 == functionName)
             {
                 return idxI;
             }
@@ -868,24 +820,24 @@ public:
     }
 
     /// calculate and save the unsteady objective function
-    void calcUnsteadyObjFuncs();
+    void calcUnsteadyFunctions();
 
-    /// return the unsteady objFunc values
-    scalar getObjFuncValueUnsteady(const word objFuncName);
+    /// return the unsteady function values
+    scalar getFunctionValueUnsteady(const word functionName);
 
     /// get the objective func scaling for unsteady adjoint
-    scalar getObjFuncUnsteadyScaling()
+    scalar getFunctionUnsteadyScaling()
     {
-        return unsteadyObjFuncsScaling_;
+        return unsteadyFunctionsScaling_;
     }
 
     /// get the unsteady adjoint start time index
-    label getUnsteadyObjFuncStartTimeIndex()
+    label getUnsteadyFunctionStartTimeIndex()
     {
         // we assume the adjoint is for deltaT to endTime
         // but users can also prescribed a custom time range
         scalar startTime = this->getRunTime().deltaT().value();
-        scalar startTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "objFuncStartTime");
+        scalar startTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "functionStartTime");
         if (startTimeRead >= 0)
         {
             startTime = startTimeRead;
@@ -895,12 +847,12 @@ public:
     }
 
     /// get the unsteady adjoint end time index
-    label getUnsteadyObjFuncEndTimeIndex()
+    label getUnsteadyFunctionEndTimeIndex()
     {
         // we assume the adjoint is for deltaT to endTime
         // but users can also prescribed a custom time range
         scalar endTime = this->getRunTime().endTime().value();
-        scalar endTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "objFuncEndTime");
+        scalar endTimeRead = daOptionPtr_->getSubDictOption<scalar>("unsteadyAdjoint", "functionEndTime");
         if (endTimeRead >= 0)
         {
             endTime = endTimeRead;
@@ -916,7 +868,7 @@ public:
     }
 
     /// return the value of the objective function
-    scalar getObjFuncValue(const word objFuncName);
+    scalar getFunctionValue(const word functionName);
 
     /// return the forces of the desired fluid-structure-interaction patches
     void getForces(
@@ -1186,9 +1138,9 @@ public:
     }
 
     /// get forwardADDerivVal_
-    PetscScalar getForwardADDerivVal(const word objFuncName)
+    PetscScalar getForwardADDerivVal(const word functionName)
     {
-        return forwardADDerivVal_[objFuncName];
+        return forwardADDerivVal_[functionName];
     }
 
     /// get the number of regression model parameters
@@ -1344,7 +1296,7 @@ public:
 
     /// write the adjoint variables for all states
     void writeAdjointFields(
-        const word objFunc,
+        const word function,
         const double writeTime,
         const double* psi);
 };

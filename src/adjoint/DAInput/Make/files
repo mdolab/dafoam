@@ -1,0 +1,5 @@
+DAInput.C
+DAInputVolCoord.C
+DAInputStateVar.C
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAInput$(DF_LIB_SUFFIX)

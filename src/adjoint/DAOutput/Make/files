@@ -1,0 +1,5 @@
+DAOutput.C
+DAOutputResidual.C
+DAOutputFunction.C
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAOutput$(DF_LIB_SUFFIX)

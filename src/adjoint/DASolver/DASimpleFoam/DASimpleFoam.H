@@ -139,9 +139,7 @@ public:
     virtual void initSolver();
 
     /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec);
+    virtual label solvePrimal();
 
     /// solve the adjoint equation using the fixed-point iteration method
     virtual label runFPAdj(

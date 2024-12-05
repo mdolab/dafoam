@@ -8,7 +8,7 @@ if (hasFvSource_)
 }
 
 tmp<fvVectorMatrix> tUEqn(
-    fvm::div(phi, U, divUScheme)
+    fvm::div(phi, U)
     + fvm::Sp(alphaPorosity, U)
     + MRF.DDt(U)
     + turbulencePtr_->divDevReff(U)
@@ -26,7 +26,7 @@ if (simple.momentumPredictor())
     // and final residuals
     SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
-    DAUtility::primalResidualControl(solverU, printToScreen, "U");
+    DAUtility::primalResidualControl(solverU, printToScreen, "U", primalMaxRes);
 
     fvOptions.correct(U);
 }

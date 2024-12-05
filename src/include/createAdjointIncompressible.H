@@ -7,10 +7,6 @@
 
 // adjoint
 
-// need to register laminarTransport and turbulence to mesh
-DARegDbSinglePhaseTransportModel regDbTransport(mesh, laminarTransport);
-DARegDbTurbulenceModelIncompressible regDbTurbulence(mesh, turbulencePtr_());
-
 // read the RAS model from constant/turbulenceProperties
 const word turbModelName(
     IOdictionary(

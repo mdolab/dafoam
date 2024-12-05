@@ -89,12 +89,7 @@ DASpalartAllmaras::DASpalartAllmaras(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           mesh,
-#ifdef CompressibleFlow
-          dimensionedScalar("nuTildaRes", dimensionSet(1, -1, -2, 0, 0, 0, 0), 0.0),
-#endif
-#ifdef IncompressibleFlow
-          dimensionedScalar("nuTildaRes", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
-#endif
+          dimensionedScalar("nuTildaRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall")),
       betaFINuTilda_(
@@ -108,6 +103,16 @@ DASpalartAllmaras::DASpalartAllmaras(
           dimensionedScalar("betaFINuTilda", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           "zeroGradient")
 {
+    // we need to reset the nuTildaRes's dimension based on the model type
+    if (turbModelType_ == "incompressible")
+    {
+        nuTildaRes_.dimensions().reset(dimensionSet(0, 2, -2, 0, 0, 0, 0));
+    }
+
+    if (turbModelType_ == "compressible")
+    {
+        nuTildaRes_.dimensions().reset(dimensionSet(1, -1, -2, 0, 0, 0, 0));
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -354,28 +359,30 @@ void DASpalartAllmaras::addModelResidualCon(HashTable<List<List<word>>>& allCon)
     }
 
     // NOTE: for compressible flow, it depends on rho so we need to add T and p
-#ifdef IncompressibleFlow
-    allCon.set(
-        "nuTildaRes",
-        {
-            {"U", "nuTilda", "phi"}, // lv0
-            {"U", "nuTilda"}, // lv1
-            {"nuTilda"} // lv2
-        });
-#endif
+    if (turbModelType_ == "incompressible")
+    {
+        allCon.set(
+            "nuTildaRes",
+            {
+                {"U", "nuTilda", "phi"}, // lv0
+                {"U", "nuTilda"}, // lv1
+                {"nuTilda"} // lv2
+            });
+    }
 
-#ifdef CompressibleFlow
-    allCon.set(
-        "nuTildaRes",
-        {
-            {"U", "T", pName, "nuTilda", "phi"}, // lv0
-            {"U", "T", pName, "nuTilda"}, // lv1
-            {"T", pName, "nuTilda"} // lv2
-        });
-#endif
+    if (turbModelType_ == "compressible")
+    {
+        allCon.set(
+            "nuTildaRes",
+            {
+                {"U", "T", pName, "nuTilda", "phi"}, // lv0
+                {"U", "T", pName, "nuTilda"}, // lv1
+                {"T", pName, "nuTilda"} // lv2
+            });
+    }
 }
 
-void DASpalartAllmaras::correct(label printToScreen)
+void DASpalartAllmaras::correct(label printToScreen, const scalar& primalMaxRes)
 {
     /*
     Descroption:
@@ -390,6 +397,7 @@ void DASpalartAllmaras::correct(label printToScreen)
     solveTurbState_ = 1;
     dictionary dummyOptions;
     dummyOptions.set("printToScreen", printToScreen);
+    dummyOptions.set("primalMaxRes", primalMaxRes);
     this->calcResiduals(dummyOptions);
     // after it, we reset solveTurbState_ = 0 such that calcResiduals will not
     // update nuTilda when calling from the adjoint class, i.e., solveAdjoint from DASolver.
@@ -438,24 +446,25 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
     const volScalarField Stilda(this->Stilda(chi, fv1));
 
     tmp<fvScalarMatrix> nuTildaEqn(
-        fvm::ddt(phase_, rho_, nuTilda_)
+        fvm::ddt(phase_, this->rho(), nuTilda_)
             + fvm::div(phaseRhoPhi_, nuTilda_, divNuTildaScheme)
-            - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
-            - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFINuTilda_
-            - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
+            - fvm::laplacian(phase_ * this->rho() * DnuTildaEff(), nuTilda_)
+            - Cb2_ / sigmaNut_ * phase_ * this->rho() * magSqr(fvc::grad(nuTilda_))
+        == Cb1_ * phase_ * this->rho() * Stilda * nuTilda_ * betaFINuTilda_
+            - fvm::Sp(Cw1_ * phase_ * this->rho() * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.ref().relax();
 
     if (solveTurbState_)
     {
         label printToScreen = options.getLabel("printToScreen");
+        scalar primalMaxRes = options.getScalar("primalMaxRes");
 
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverNuTilda = solve(nuTildaEqn);
 
-        DAUtility::primalResidualControl(solverNuTilda, printToScreen, "nuTilda");
+        DAUtility::primalResidualControl(solverNuTilda, printToScreen, "nuTilda", primalMaxRes);
 
         DAUtility::boundVar(allOptions_, nuTilda_, printToScreen);
         nuTilda_.correctBoundaryConditions();
@@ -502,12 +511,12 @@ void DASpalartAllmaras::getFvMatrixFields(
     const volScalarField Stilda(this->Stilda(chi, fv1));
 
     fvScalarMatrix nuTildaEqn(
-        fvm::ddt(phase_, rho_, nuTilda_)
+        fvm::ddt(phase_, this->rho(), nuTilda_)
             + fvm::div(phaseRhoPhi_, nuTilda_, "div(pc)")
-            - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
-            - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFINuTilda_
-            - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
+            - fvm::laplacian(phase_ * this->rho() * DnuTildaEff(), nuTilda_)
+            - Cb2_ / sigmaNut_ * phase_ * this->rho() * magSqr(fvc::grad(nuTilda_))
+        == Cb1_ * phase_ * this->rho() * Stilda * nuTilda_ * betaFINuTilda_
+            - fvm::Sp(Cw1_ * phase_ * this->rho() * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.relax();
 
@@ -528,8 +537,8 @@ void DASpalartAllmaras::getTurbProdOverDestruct(volScalarField& PoD) const
 
     const volScalarField Stilda(this->Stilda(chi, fv1));
 
-    volScalarField P = Cb1_ * phase_ * rho_ * Stilda * nuTilda_;
-    volScalarField D = Cw1_ * phase_ * rho_ * fw(Stilda) * sqr(nuTilda_ / y_);
+    volScalarField P = Cb1_ * phase_ * this->rho() * Stilda * nuTilda_;
+    volScalarField D = Cw1_ * phase_ * this->rho() * fw(Stilda) * sqr(nuTilda_ / y_);
 
     forAll(P, cellI)
     {
@@ -549,7 +558,7 @@ void DASpalartAllmaras::getTurbConvOverProd(volScalarField& CoP) const
 
     const volScalarField Stilda(this->Stilda(chi, fv1));
 
-    volScalarField P = Cb1_ * phase_ * rho_ * Stilda * nuTilda_;
+    volScalarField P = Cb1_ * phase_ * this->rho() * Stilda * nuTilda_;
     volScalarField C = fvc::div(phaseRhoPhi_, nuTilda_);
 
     forAll(P, cellI)

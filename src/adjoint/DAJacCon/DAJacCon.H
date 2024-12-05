@@ -19,8 +19,9 @@
 #include "DAModel.H"
 #include "DAStateInfo.H"
 #include "syncTools.H"
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "DAColoring.H"
+#include "DAField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -83,6 +84,14 @@ protected:
 
     /// number of jacCon colors
     label nJacConColors_;
+
+    /// \name on- and off-diagonal preallocation sizes for each row of dRdW, dRdWT, and dRdXv
+    //@{
+    Vec dRdWTPreallocOn_;
+    Vec dRdWTPreallocOff_;
+    Vec dRdWPreallocOn_;
+    Vec dRdWPreallocOff_;
+    //@}
 
     /// initialize state boundary connection
     void initializeStateBoundaryCon();
@@ -189,40 +198,31 @@ protected:
         const label idxI,
         const label comp = -1);
 
+    /// initialize petsc vectors
+    void initializePetscVecs();
+
+    /// compute preallocation vectors
+    void allocateJacobianConnections(
+        Vec preallocOnProc,
+        Vec preallocOffProc,
+        Vec preallocOnProcT,
+        Vec preallocOffProcT,
+        Mat connections,
+        const label row);
+
+    /// compute preallocation vectors
+    void preallocateJacobianMatrix(
+        Mat dRMat,
+        const Vec preallocOnProc,
+        const Vec preallocOffProc) const;
+
+    void setupdRdWCon(
+        const HashTable<List<List<word>>>& stateResConInfo,
+        const label isPrealloc);
+
 public:
-    /// Runtime type information
-    TypeName("DAJacCon");
-
-    // Declare run-time constructor selection table
-    declareRunTimeSelectionTable(
-        autoPtr,
-        DAJacCon,
-        dictionary,
-        (const word modelType,
-         const fvMesh& mesh,
-         const DAOption& daOption,
-         const DAModel& daModel,
-         const DAIndex& daIndex),
-        (modelType,
-         mesh,
-         daOption,
-         daModel,
-         daIndex));
-
     // Constructors
-
-    //- Construct from components
     DAJacCon(
-        const word modelType,
-        const fvMesh& mesh,
-        const DAOption& daOption,
-        const DAModel& daModel,
-        const DAIndex& daIndex);
-
-    // Selectors
-
-    //- Return a reference to the selected model
-    static autoPtr<DAJacCon> New(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption,
@@ -237,16 +237,16 @@ public:
     // Member functions
 
     /// clear members in parent and child objects
-    virtual void clear() = 0;
+    void clear();
 
     /// calculate the preallocation vector for initializing the JacCon mat, if necessary
-    virtual void setupJacConPreallocation(const dictionary& options);
+    void setupJacConPreallocation(const dictionary& options);
 
     /// initialize the state Jacobian connectivity matrix
-    virtual void initializeJacCon(const dictionary& options) = 0;
+    void initializeJacCon(const dictionary& options);
 
     /// assign 1 to all non-zero elements for the Jacobian connecitivyt matrix
-    virtual void setupJacCon(const dictionary& options) = 0;
+    void setupJacCon(const dictionary& options);
 
     /// get the number of JacCon colors
     label getNJacConColors() const
@@ -255,7 +255,7 @@ public:
     }
 
     /// preallocate dRdW matrix using the preallocVec
-    virtual void preallocatedRdW(
+    void preallocatedRdW(
         Mat dRMat,
         const label transposed) const;
 
@@ -278,12 +278,6 @@ public:
     void calcColoredColumns(
         const label colorI,
         Vec coloredColumn) const;
-
-    /// assign values for the objective function vector based on the face and cell value lists
-    virtual void setObjFuncVec(
-        scalarList objFuncFaceValues,
-        scalarList objFuncCellValues,
-        Vec objFuncVec) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
