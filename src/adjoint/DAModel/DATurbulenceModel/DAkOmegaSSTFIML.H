@@ -78,7 +78,7 @@ protected:
     scalar* inputs_ = new scalar[mesh_.nCells() * 9];
     scalar* outputs_ = new scalar[mesh_.nCells()];
 
-#ifdef CODI_AD_FORWARD
+#ifdef CODI_ADF
     double* inputsDouble_ = new double[mesh_.nCells() * 9];
     double* outputsDouble_ = new double[mesh_.nCells()];
 #endif
@@ -237,7 +237,7 @@ public:
     {
         delete[] inputs_;
         delete[] outputs_;
-#ifdef CODI_AD_FORWARD
+#ifdef CODI_ADF
         delete[] inputsDouble_;
         delete[] outputsDouble_;
 #endif
@@ -278,7 +278,7 @@ public:
     /// specially treatment to correct epsilon BC
     void correctOmegaBoundaryConditions();
 
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
 
     /// these two functions are for AD external functions
     static void betaCompute(

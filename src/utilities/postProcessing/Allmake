@@ -5,14 +5,16 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-if [ "$WM_CODI_AD_MODE" = "CODI_AD_FORWARD" ]; then
-  exit 0
-elif [ "$WM_CODI_AD_MODE" = "CODI_AD_REVERSE" ]; then
-  exit 0
+if [ "$WM_CODI_AD_LIB_POSTFIX" = "ADR" ]; then
+  echo "ADR mode found. Skip the postProcessing build"
+elif [ "$WM_CODI_AD_LIB_POSTFIX" = "ADF" ]; then
+  echo "ADF mode found. Skip the postProcessing build"
+else
+  for d in ./*/ ; do 
+    cd "$d" 
+    wmake
+    cd ../
+  done
 fi
 
-for d in ./*/ ; do 
-  cd "$d" 
-  wmake
-  cd ../
-done
+

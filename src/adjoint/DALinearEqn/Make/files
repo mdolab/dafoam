@@ -1,4 +1,4 @@
 DALinearEqn.C
 
 
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDALinearEqn$(DF_LIB_SUFFIX)
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDALinearEqn$(WM_CODI_AD_LIB_POSTFIX)

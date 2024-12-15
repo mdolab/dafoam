@@ -1,15 +1,24 @@
 EXE_INC = \
-    -std=c++11 -w \
+    -std=c++11 \
     -Wno-old-style-cast \
     -Wno-conversion-null \
     -Wno-deprecated-copy \
+    -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude \
+    -I$(LIB_SRC)/TurbulenceModels/compressible/lnInclude \
+    -I$(LIB_SRC)/TurbulenceModels/incompressible/lnInclude \
+    -I$(LIB_SRC)/transportModels \
+    -I$(LIB_SRC)/transportModels/incompressible/singlePhaseTransportModel \
+    -I$(LIB_SRC)/transportModels/compressible/lnInclude \
+    -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
+    -I$(LIB_SRC)/thermophysicalModels/radiation/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/cfdTools \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/fileFormats/lnInclude \
-    -I$(LIB_SRC)/sampling/lnInclude \
     -I$(LIB_SRC)/surfMesh/lnInclude \
-    -I$(LIB_SRC)/OpenFOAM/lnInclude \
     -I../lnInclude \
+    -I../../include \
     -I$(PETSC_DIR)/include \
     -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
     -I$(MPI_ARCH_PATH)/include \
@@ -18,12 +27,20 @@ EXE_INC = \
     
 
 LIB_LIBS = \
-    -lOpenFOAM$(DF_LIB_SUFFIX) \
-    -lfiniteVolume$(DF_LIB_SUFFIX) \
-    -lmeshTools$(DF_LIB_SUFFIX) \
-    -lsampling$(DF_LIB_SUFFIX) \
+    -lcompressibleTransportModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lincompressibleTransportModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lfluidThermophysicalModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lspecie$(WM_CODI_AD_LIB_POSTFIX) \
+    -lturbulenceModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lcompressibleTurbulenceModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lincompressibleTurbulenceModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lradiationModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) \
+    -lsampling$(WM_CODI_AD_LIB_POSTFIX) \
+    -lmeshTools$(WM_CODI_AD_LIB_POSTFIX) \
+    -lfvOptions$(WM_CODI_AD_LIB_POSTFIX) \
     -L$(PETSC_LIB) -lpetsc \
     -L$(MPI_ARCH_PATH)/lib \
     -L$(MPI_ARCH_PATH)/lib64 \
     $(shell python3-config --ldflags) \
-    -fno-lto 
+    -fno-lto

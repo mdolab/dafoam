@@ -6,7 +6,7 @@ env:
   REPO_NAME: 'dafoam'
   DOCKER_WORKING_DIR: '/home/dafoamuser/dafoam/$REPO_NAME'
   DOCKER_MOUNT_DIR: '/home/dafoamuser/mount/$REPO_NAME'
-  DOCKER_TAG: 'latest'
+  DOCKER_TAG: 'v4'
   DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
 
 jobs:
@@ -29,9 +29,9 @@ jobs:
         docker run -i -d -u dafoamuser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
         docker exec -i regtest /bin/bash -c "rm -rf ${{env.DOCKER_WORKING_DIR}} && cp -r ${{env.DOCKER_MOUNT_DIR}} ${{env.DOCKER_WORKING_DIR}}"
         docker exec regtest sed -i 's/-std=c++11/-std=c++11 -fprofile-arcs -ftest-coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAOption/Make/options
-        docker exec regtest sed -i 's/-lfiniteVolume$(DF_LIB_SUFFIX)/-lfiniteVolume$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAOption/Make/options
+        docker exec regtest sed -i 's/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX)/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAOption/Make/options
         docker exec regtest sed -i 's/-std=c++11/-std=c++11 -fprofile-arcs -ftest-coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAUtility/Make/options
-        docker exec regtest sed -i 's/-lfiniteVolume$(DF_LIB_SUFFIX)/-lfiniteVolume$(DF_LIB_SUFFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAUtility/Make/options
+        docker exec regtest sed -i 's/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX)/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAUtility/Make/options
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && pip install ."
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun"

@@ -8,14 +8,6 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-if [ -z "$WM_CODI_AD_MODE" ]; then
-  export DF_LIB_SUFFIX=""
-elif [ "$WM_CODI_AD_MODE" = "CODI_AD_FORWARD" ]; then
-  export DF_LIB_SUFFIX="ADF"
-elif [ "$WM_CODI_AD_MODE" = "CODI_AD_REVERSE" ]; then
-  export DF_LIB_SUFFIX="ADR"
-fi
-
 for d in ./*/ ; do 
   cd "$d"
   if test -f Make/files ; then

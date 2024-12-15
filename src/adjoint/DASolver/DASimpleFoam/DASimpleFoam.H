@@ -101,7 +101,7 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
     /// tape positions for consistent fixed-point adjoint
     using Position = typename codi::RealReverse::Tape::Position;
     Position adjResStart_;

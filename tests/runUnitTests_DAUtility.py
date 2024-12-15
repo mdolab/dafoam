@@ -5,7 +5,7 @@ import os, subprocess, sys
 from mpi4py import MPI
 import petsc4py
 from petsc4py import PETSc
-from pyUnitTests import pyUnitTests
+from dafoam.libs.pyUnitTests import pyUnitTests
 
 os.chdir("./reg_test_files-main/ConvergentChannel")
 if MPI.COMM_WORLD.rank == 0:

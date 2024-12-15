@@ -1,3 +1,3 @@
 DAJacCon.C
 
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAJacCon$(DF_LIB_SUFFIX)
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAJacCon$(WM_CODI_AD_LIB_POSTFIX)
