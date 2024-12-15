@@ -105,7 +105,7 @@ protected:
     /// a list of scalarField to save the input features
     HashTable<PtrList<volScalarField>> features_;
 
-#if defined(CODI_AD_FORWARD)
+#if defined(CODI_ADF)
     /// a flatten double feature array for externalTensorFlow model (forward AD)
     double* featuresFlattenArrayDouble_;
 
@@ -139,7 +139,7 @@ public:
     {
         if (useExternalModel_)
         {
-#if defined(CODI_AD_FORWARD)
+#if defined(CODI_ADF)
             delete[] featuresFlattenArrayDouble_;
             delete[] outputFieldArrayDouble_;
 #else
@@ -218,7 +218,7 @@ public:
         }
     }
 
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
 
     /// these two functions are for AD external functions
     static void betaCompute(

@@ -1456,7 +1456,7 @@ class DAFoamFunctions(ExplicitComponent):
                     product = np.zeros(localAdjSize)
                     jacInput = inputs["%s_states" % self.discipline]
                     DASolver.solverAD.calcJacTVecProduct(
-                        "stateVar", localAdjSize, 1, jacInput, "function", 1, 1, seed, product
+                        "stateVar", localAdjSize, 1, jacInput, "function", 1, 0, seed, product
                     )
                     d_inputs["%s_states" % self.discipline] += product
 
@@ -1466,7 +1466,7 @@ class DAFoamFunctions(ExplicitComponent):
                     product = np.zeros(localXvSize)
                     jacInput = inputs["%s_vol_coords" % self.discipline]
                     DASolver.solverAD.calcJacTVecProduct(
-                        "volCoord", localXvSize, 1, jacInput, "function", 1, 1, seed, product
+                        "volCoord", localXvSize, 1, jacInput, "function", 1, 0, seed, product
                     )
                     d_inputs["%s_vol_coords" % self.discipline] += product
 

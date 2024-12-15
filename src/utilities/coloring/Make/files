@@ -1,0 +1,4 @@
+Coloring.C
+pyColoring.cpp
+
+LIB = pyColoring$(WM_CODI_AD_LIB_POSTFIX)

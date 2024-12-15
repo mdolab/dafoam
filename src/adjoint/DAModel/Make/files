@@ -6,4 +6,4 @@ DARadiationModel/DARadiationModel.C
 DARadiationModel/DAP1.C
 
 
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAModel$(DF_LIB_SUFFIX)
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAModel$(WM_CODI_AD_LIB_POSTFIX)

@@ -1,4 +1,4 @@
 DAResidual.C
 DAResidualSimpleFoam.C
 
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAResidual$(DF_LIB_SUFFIX)
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAResidual$(WM_CODI_AD_LIB_POSTFIX)

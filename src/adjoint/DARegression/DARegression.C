@@ -138,7 +138,7 @@ DARegression::DARegression(
         if (useExternalModel_)
         {
 
-#if defined(CODI_AD_FORWARD)
+#if defined(CODI_ADF)
             featuresFlattenArrayDouble_ = new double[featuresFlattenArraySize_];
             outputFieldArrayDouble_ = new double[mesh_.nCells()];
 #else
@@ -499,7 +499,7 @@ label DARegression::compute()
             DAUtility::pySetModelNameInterface(modelName.c_str(), DAUtility::pySetModelName);
 
             // NOTE: forward mode not supported..
-#if defined(CODI_AD_REVERSE)
+#if defined(CODI_ADR)
 
             // assign features_ to featuresFlattenArray_
             // here featuresFlattenArray_ should be order like this to facilitate Python layer reshape:
@@ -547,7 +547,7 @@ label DARegression::compute()
                 outputField[cellI] = outputFieldArray_[cellI];
             }
 
-#elif defined(CODI_AD_FORWARD)
+#elif defined(CODI_ADF)
             // assign features_ to featuresFlattenArray_
             // here featuresFlattenArray_ should be order like this to facilitate Python layer reshape:
             // [(cell1, feature1), (cell1, feature2), ... (cell2, feature1), (cell2, feature2) ... ]

@@ -1,9 +1,8 @@
 EXE_INC = \
-    -std=c++11 -w \
+    -std=c++11 \
     -Wno-old-style-cast \
     -Wno-conversion-null \
     -Wno-deprecated-copy \
-    -DCompressibleFlow \
     -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude \
     -I$(LIB_SRC)/TurbulenceModels/compressible/lnInclude \
     -I$(LIB_SRC)/TurbulenceModels/incompressible/lnInclude \
@@ -28,18 +27,18 @@ EXE_INC = \
     
 
 LIB_LIBS = \
-    -lcompressibleTransportModels$(DF_LIB_SUFFIX) \
-    -lincompressibleTransportModels$(DF_LIB_SUFFIX) \
-    -lfluidThermophysicalModels$(DF_LIB_SUFFIX) \
-    -lspecie$(DF_LIB_SUFFIX) \
-    -lturbulenceModels$(DF_LIB_SUFFIX) \
-    -lcompressibleTurbulenceModels$(DF_LIB_SUFFIX) \
-    -lincompressibleTurbulenceModels$(DF_LIB_SUFFIX) \
-    -lradiationModels$(DF_LIB_SUFFIX) \
-    -lfiniteVolume$(DF_LIB_SUFFIX) \
-    -lsampling$(DF_LIB_SUFFIX) \
-    -lmeshTools$(DF_LIB_SUFFIX) \
-    -lfvOptions$(DF_LIB_SUFFIX) \
+    -lcompressibleTransportModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lincompressibleTransportModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lfluidThermophysicalModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lspecie$(WM_CODI_AD_LIB_POSTFIX) \
+    -lturbulenceModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lcompressibleTurbulenceModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lincompressibleTurbulenceModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lradiationModels$(WM_CODI_AD_LIB_POSTFIX) \
+    -lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) \
+    -lsampling$(WM_CODI_AD_LIB_POSTFIX) \
+    -lmeshTools$(WM_CODI_AD_LIB_POSTFIX) \
+    -lfvOptions$(WM_CODI_AD_LIB_POSTFIX) \
     -L$(PETSC_LIB) -lpetsc \
     -L$(MPI_ARCH_PATH)/lib \
     -L$(MPI_ARCH_PATH)/lib64 \
