@@ -890,7 +890,7 @@ void DAkOmegaSSTFIML::calcBetaField()
     DAUtility::pySetModelNameInterface(modelName.c_str(), DAUtility::pySetModelName);
 
     // NOTE: forward mode not supported..
-#if defined(CODI_AD_REVERSE)
+#if defined(CODI_ADR)
 
     // we need to use the external function helper from CoDiPack to propagate the AD
 
@@ -919,7 +919,7 @@ void DAkOmegaSSTFIML::calcBetaField()
         betaFieldInversionML_[cellI] = outputs_[cellI];
     }
 
-#elif defined(CODI_AD_FORWARD)
+#elif defined(CODI_ADF)
 
     for (label i = 0; i < n; i++)
     {

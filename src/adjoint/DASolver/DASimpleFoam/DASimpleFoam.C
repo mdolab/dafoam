@@ -169,7 +169,7 @@ label DASimpleFoam::runFPAdj(
     // Otherwise, adjConv = 1
     label adjConv = 1;
 
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
     /*
     Description:
         Solve the adjoint using the fixed-point iteration method
@@ -894,7 +894,7 @@ void DASimpleFoam::vec2Fields(
     surfaceScalarField& phiField,
     volScalarField& nuTildaField)
 {
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
     PetscScalar* cVecArray;
     if (mode == "vec2Field")
     {
@@ -1231,7 +1231,7 @@ void DASimpleFoam::calcAdjointResidual(
     volScalarField& adjNuTildaRes,
     label& cnt)
 {
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
     volVectorField& U = const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>("U"));
     volScalarField& p = const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("p"));
     volScalarField& nuTilda = const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("nuTilda"));

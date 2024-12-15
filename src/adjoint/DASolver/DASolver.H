@@ -1241,7 +1241,7 @@ public:
         return runTimePtr_->elapsedCpuTime();
     }
 
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
 
     /// global tape for reverse-mode AD
     codi::RealReverse::Tape& globalADTape_;

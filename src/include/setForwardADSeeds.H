@@ -5,7 +5,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifdef CODI_AD_FORWARD
+#ifdef CODI_ADF
 
 Info << endl
      << "Forward-Mode AD is activated, setting the AD seeds..." << endl;
