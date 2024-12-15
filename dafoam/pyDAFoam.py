@@ -3145,19 +3145,19 @@ class PYDAFOAM(object):
         solverName = self.getOption("solverName")
         solverArg = solverName + " -python " + self.parallelFlag
 
-        from .pyDASolver import pyDASolvers
+        from .libs.pyDASolvers import pyDASolvers
 
         self.solver = pyDASolvers(solverArg.encode(), self.options)
 
         if self.getOption("useAD")["mode"] == "forward":
 
-            from .pyDASolverADF import pyDASolvers as pyDASolversAD
+            from .libs.ADF.pyDASolvers import pyDASolvers as pyDASolversAD
 
             self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
         elif self.getOption("useAD")["mode"] == "reverse":
 
-            from .pyDASolverADR import pyDASolvers as pyDASolversAD
+            from .libs.ADR.pyDASolvers import pyDASolvers as pyDASolversAD
 
             self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
@@ -3190,7 +3190,7 @@ class PYDAFOAM(object):
         Info("|                       Running Coloring Solver                            |")
         Info("+--------------------------------------------------------------------------+")
 
-        from .pyColoring import pyColoring
+        from .libs.pyColoring import pyColoring
 
         solverArg = "Coloring -python " + self.parallelFlag
         solver = pyColoring(solverArg.encode(), self.options)
