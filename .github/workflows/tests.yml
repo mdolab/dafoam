@@ -31,5 +31,5 @@ jobs:
         docker run -i -d -u dafoamuser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
         docker exec -i regtest /bin/bash -c "rm -rf ${{env.DOCKER_WORKING_DIR}} && cp -r ${{env.DOCKER_MOUNT_DIR}} ${{env.DOCKER_WORKING_DIR}}"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
-        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake && pip install ."
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake && pip install ."
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun"
