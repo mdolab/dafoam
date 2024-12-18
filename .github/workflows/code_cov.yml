@@ -13,14 +13,6 @@ jobs:
   code_coverage:
     runs-on: ubuntu-20.04
     name: Codecov
-    strategy:
-      fail-fast: false
-      matrix: 
-        testConfig: [incompressible]
-        include:
-          - testConfig: incompressible
-            args: 'incompressible'
-
     steps:
     - uses: actions/checkout@main
     - name: Create the docker container and run the tests
@@ -33,7 +25,7 @@ jobs:
         docker exec regtest sed -i 's/-std=c++11/-std=c++11 -fprofile-arcs -ftest-coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAUtility/Make/options
         docker exec regtest sed -i 's/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX)/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAUtility/Make/options
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
-        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && pip install ."
+                docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake && pip install ."
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && lcov --capture --directory . --output-file coverage.info && echo dafoamuser | sudo -S cp -r coverage.info ${{env.DOCKER_MOUNT_DIR}}/"
     - name: Upload
