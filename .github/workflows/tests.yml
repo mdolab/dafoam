@@ -16,13 +16,6 @@ jobs:
   reg_tests:
     runs-on: ubuntu-20.04
     name: Tests
-    strategy:
-      fail-fast: false
-      matrix: 
-        testConfig: [incompressible]
-        include:
-          - testConfig: incompressible
-            args: 'incompressible'
     steps:
     - uses: actions/checkout@v3
     - name: Create the docker container and run the tests

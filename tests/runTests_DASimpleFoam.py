@@ -1,83 +1,57 @@
 #!/usr/bin/env python
 """
-Run Python tests for DASimpleFoam
+Run Python tests for optimization integration
 """
 
 from mpi4py import MPI
-from dafoam import PYDAFOAM, optFuncs
-import sys
 import os
-from pygeo import *
-from pyspline import *
-from idwarp import *
-from pyoptsparse import Optimization, OPT
 import numpy as np
 from testFuncs import *
 
-calcFDSens = 0
-if len(sys.argv) != 1:
-    if sys.argv[1] == "calcFDSens":
-        calcFDSens = 1
+import openmdao.api as om
+from mphys.multipoint import Multipoint
+from dafoam.mphys import DAFoamBuilder, OptFuncs
+from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from pygeo.mphys import OM_DVGEOCOMP
 
 gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/NACA0012")
-
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.incompressible 0")
     os.system("cp -r system.incompressible system")
-    os.system("cp -r constant/turbulenceProperties.sst constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
+    replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
+# aero setup
 U0 = 10.0
 p0 = 0.0
-k0 = 0.18
-omega0 = 1225.0
 A0 = 0.1
-alpha0 = 5.0
+twist0 = 3.0
 LRef = 1.0
+nuTilda0 = 4.5e-5
 
-# test incompressible solvers
-aeroOptions = {
-    "solverName": "DASimpleFoam",
-    "useAD": {"mode": "fd"},
+daOptions = {
     "designSurfaces": ["wing"],
-    "primalMinResTol": 1e-12,
-    "writeJacobians": ["all"],
+    "solverName": "DASimpleFoam",
+    "primalMinResTol": 1.0e-12,
+    "primalMinResTolDiff": 1e4,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
-        "k0": {"variable": "k", "patches": ["inout"], "value": [k0]},
-        "omega0": {"variable": "omega", "patches": ["inout"], "value": [omega0]},
-        "useWallFunction": False,
+        "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
+        "useWallFunction": True,
         "transport:nu": 1.5e-5,
     },
-    "fvSource": {
-        "disk1": {
-            "type": "actuatorDisk",
-            "source": "cylinderAnnulusSmooth",
-            "center": [-0.55, 0.0, 0.05],
-            "direction": [1.0, 0.0, 0.0],
-            "innerRadius": 0.01,
-            "outerRadius": 0.4,
-            "rotDir": "right",
-            "scale": 100.0,
-            "POD": 0.0,
-            "eps": 0.1,  # eps should be of cell size
-            "expM": 1.0,
-            "expN": 0.5,
-            "adjustThrust": 0,
-            "targetThrust": 1.0,
-        },
-    },
-    "objFunc": {
+    "function": {
         "CD": {
             "part1": {
                 "type": "force",
                 "source": "patchToFace",
                 "patches": ["wing"],
-                "directionMode": "parallelToFlow",
-                "alphaName": "alpha",
+                "directionMode": "fixedDirection",
+                "direction": [1.0, 0.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
@@ -87,66 +61,26 @@ aeroOptions = {
                 "type": "force",
                 "source": "patchToFace",
                 "patches": ["wing"],
-                "directionMode": "normalToFlow",
-                "alphaName": "alpha",
+                "directionMode": "fixedDirection",
+                "direction": [0.0, 1.0, 0.0],
                 "scale": 1.0 / (0.5 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
         },
-        "CMZ": {
-            "part1": {
-                "type": "moment",
-                "source": "patchToFace",
-                "patches": ["wing"],
-                "axis": [0.0, 0.0, 1.0],
-                "center": [0.25, 0.0, 0.05],
-                "scale": 1.0 / (0.5 * U0 * U0 * A0 * LRef),
-                "addToAdjoint": True,
-            }
-        },
-        "THRUST": {
-            "part1": {
-                "type": "variableVolSum",
-                "source": "boxToCell",
-                "min": [-50.0, -50.0, -50.0],
-                "max": [50.0, 50.0, 50.0],
-                "varName": "fvSource",
-                "varType": "vector",
-                "component": 0,
-                "isSquare": 0,
-                "divByTotalVol": 0,
-                "scale": 1.0,
-                "addToAdjoint": True,
-            },
-        },
-        "VOL": {
-            "part1": {
-                "type": "variableVolSum",
-                "source": "boxToCell",
-                "min": [-50.0, -50.0, -50.0],
-                "max": [50.0, 50.0, 50.0],
-                "varName": "p",
-                "varType": "scalar",
-                "component": 0,
-                "isSquare": 1,
-                "divByTotalVol": 0,
-                "scale": 1.0,
-                "addToAdjoint": True,
-            },
-        },
     },
-    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "k": k0, "omega": omega0, "phi": 1.0},
-    "adjPartDerivFDStep": {"State": 1e-6, "FFD": 1e-3, "ACTD": 1.0e-3},
-    "adjEqnOption": {"gmresRelTol": 1.0e-10, "gmresAbsTol": 1.0e-15, "pcFillLevel": 1, "jacMatReOrdering": "natural"},
-    # Design variable setup
+    "adjEqnOption": {
+        "gmresRelTol": 1.0e-12,
+        "pcFillLevel": 1,
+        "jacMatReOrdering": "rcm",
+        "dynAdjustTol": False
+    },
+    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
     "designVar": {
-        "shapey": {"designVarType": "FFD"},
-        "alpha": {"designVarType": "AOA", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
-        "actuator": {"actuatorName": "disk1", "designVarType": "ACTD", "comps": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]},
+        "twist": {"designVarType": "FFD"},
+        "shape": {"designVarType": "FFD"},
     },
 }
 
-# mesh warping parameters, users need to manually specify the symmetry plane
 meshOptions = {
     "gridFile": os.getcwd(),
     "fileType": "OpenFOAM",
@@ -154,117 +88,101 @@ meshOptions = {
     "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], [[0.0, 0.0, 0.1], [0.0, 0.0, 1.0]]],
 }
 
-# DVGeo
-FFDFile = "./FFD/wingFFD.xyz"
-DVGeo = DVGeometry(FFDFile)
 
-# nTwists is the number of FFD points in the spanwise direction
-nTwists = DVGeo.addRefAxis("bodyAxis", xFraction=0.25, alignIndex="k")
+class Top(Multipoint):
+    def setup(self):
+        dafoam_builder = DAFoamBuilder(daOptions, meshOptions, scenario="aerodynamic")
+        dafoam_builder.initialize(self.comm)
+
+        ################################################################################
+        # MPHY setup
+        ################################################################################
+
+        # ivc to keep the top level DVs
+        self.add_subsystem("dvs", om.IndepVarComp(), promotes=["*"])
+
+        # create the mesh and cruise scenario because we only have one analysis point
+        self.add_subsystem("mesh", dafoam_builder.get_mesh_coordinate_subsystem())
+
+        # add the geometry component, we dont need a builder because we do it here.
+        self.add_subsystem("geometry", OM_DVGEOCOMP(file="FFD/wingFFD.xyz", type="ffd"))
+
+        self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
+
+        self.connect("mesh.x_aero0", "geometry.x_aero_in")
+        self.connect("geometry.x_aero0", "cruise.x_aero")
+
+        self.add_subsystem("LoD", om.ExecComp("val=CL/CD"))
+
+    def configure(self):
+
+        self.cruise.aero_post.mphys_add_funcs()
+
+        # create geometric DV setup
+        points = self.mesh.mphys_get_surface_mesh()
+
+        # add pointset
+        self.geometry.nom_add_discipline_coords("aero", points)
+
+        # geometry setup
+
+        pts = self.geometry.DVGeo.getLocalIndex(0)
+        dir_y = np.array([0.0, 1.0, 0.0])
+        shapes = []
+        shapes.append({pts[2, 1, 0]: dir_y, pts[2, 1, 1]: dir_y})
+        self.geometry.nom_addShapeFunctionDV(dvName="shape", shapes=shapes)
+
+        self.geometry.nom_addRefAxis(name="wingAxis", xFraction=0.25, alignIndex="k")
+
+        # Set up global design variables. We dont change the root twist
+        def twist(val, geo):
+            for i in range(2):
+                geo.rot_z["wingAxis"].coef[i] = -val[0]
+
+        self.geometry.nom_addGlobalDV(dvName="twist", value=np.ones(1) * twist0, func=twist)
+
+        # add the design variables to the dvs component's output
+        self.dvs.add_output("twist", val=np.ones(1) * twist0)
+        self.dvs.add_output("shape", val=np.zeros(1))
+        # manually connect the dvs output to the geometry and cruise
+        self.connect("twist", "geometry.twist")
+        self.connect("shape", "geometry.shape")
+
+        # define the design variables to the top level
+        self.add_design_var("twist", lower=-10.0, upper=10.0, scaler=1.0)
+        self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
+
+        # add constraints and the objective
+        self.connect("cruise.aero_post.CD", "LoD.CD")
+        self.connect("cruise.aero_post.CL", "LoD.CL")
+        self.add_objective("LoD.val", scaler=1.0)
+        self.add_constraint("cruise.aero_post.CL", equals=0.3)
 
 
-def alpha(val, DASolver):
-    aoa = val[0] * np.pi / 180.0
-    inletU = [float(U0 * np.cos(aoa)), float(U0 * np.sin(aoa)), 0]
-    DASolver.setOption("primalBC", {"U0": {"variable": "U", "patches": ["inout"], "value": inletU}})
-    DASolver.updateDAOption()
+prob = om.Problem()
+prob.model = Top()
 
+prob.setup(mode="rev")
+om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-def actuator(val, geo):
-    actX = float(val[0])
-    actY = float(val[1])
-    actZ = float(val[2])
-    actDirx = float(val[3])
-    actDiry = float(val[4])
-    actDirz = float(val[5])
-    actR1 = float(val[6])
-    actR2 = float(val[7])
-    actScale = float(val[8])
-    actPOD = float(val[9])
-    actExpM = float(val[10])
-    actExpN = float(val[11])
-    T = float(val[12])
-    DASolver.setOption(
-        "fvSource",
-        {
-            "disk1": {
-                "type": "actuatorDisk",
-                "source": "cylinderAnnulusSmooth",
-                "center": [actX, actY, actZ],
-                "direction": [actDirx, actDiry, actDirz],
-                "innerRadius": actR1,
-                "outerRadius": actR2,
-                "rotDir": "right",
-                "scale": actScale,
-                "POD": actPOD,
-                "eps": 0.1,  # eps should be of cell size
-                "expM": actExpM,
-                "expN": actExpN,
-                "adjustThrust": 0,
-                "targetThrust": T,
-            },
-        },
-    )
-    DASolver.updateDAOption()
+optFuncs = OptFuncs(daOptions, prob)
 
-
-# select points
-pts = DVGeo.getLocalIndex(0)
-indexList = pts[1:4, 1, 0].flatten()
-PS = geo_utils.PointSelect("list", indexList)
-DVGeo.addLocalDV("shapey", lower=-1.0, upper=1.0, axis="y", scale=1.0, pointSelect=PS)
-# actuator
-DVGeo.addGlobalDV(
-    "actuator",
-    value=[-0.55, 0.0, 0.05, 1.0, 0.0, 0.0, 0.01, 0.4, 100.0, 0.0, 1.0, 0.5, 1.0],
-    func=actuator,
-    lower=-100.0,
-    upper=100.0,
-    scale=1.0,
+# verify the total derivatives against the finite-difference
+prob.run_model()
+results = prob.check_totals(
+    of=["LoD.val", "cruise.aero_post.CL"], wrt=["twist", "shape"], compact_print=True, step=1e-3, form="central", step_calc="abs"
 )
 
-# DAFoam
-DASolver = PYDAFOAM(options=aeroOptions, comm=gcomm)
-DASolver.addInternalDV("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0)
-DASolver.setDVGeo(DVGeo)
-mesh = USMesh(options=meshOptions, comm=gcomm)
-DASolver.printFamilyList()
-DASolver.setMesh(mesh)
-# set evalFuncs
-evalFuncs = []
-DASolver.setEvalFuncs(evalFuncs)
-
-# DVCon
-DVCon = DVConstraints()
-DVCon.setDVGeo(DVGeo)
-[p0, v1, v2] = DASolver.getTriangulatedMeshSurface(groupName=DASolver.designSurfacesGroup)
-surf = [p0, v1, v2]
-DVCon.setSurface(surf)
-
-# optFuncs
-optFuncs.DASolver = DASolver
-optFuncs.DVGeo = DVGeo
-optFuncs.DVCon = DVCon
-optFuncs.evalFuncs = evalFuncs
-optFuncs.gcomm = gcomm
-
-# Run
-if calcFDSens == 1:
-    optFuncs.calcFDSens(objFun=optFuncs.calcObjFuncValues, fileName="sensFD.txt")
-else:
-    DASolver.runColoring()
-    xDV = DVGeo.getValues()
-    iDV = DASolver.getInternalDVDict()
-    allDV = {**xDV, **iDV}
-    funcs = {}
-    funcs, fail = optFuncs.calcObjFuncValues(allDV)
-    # test getForces
-    forces = DASolver.getForces()
-    fNorm = np.linalg.norm(forces.flatten())
-    fNormSum = gcomm.allreduce(fNorm, op=MPI.SUM)
-    funcs["forces"] = fNormSum
-    
-    funcsSens = {}
-    funcsSens, fail = optFuncs.calcObjFuncSens(allDV, funcs)
-    if gcomm.rank == 0:
-        reg_write_dict(funcs, 1e-8, 1e-10)
-        reg_write_dict(funcsSens, 1e-4, 1e-6)
+if gcomm.rank == 0:
+    funcDict = {}
+    funcDict["CD"] = prob.get_val("cruise.aero_post.CD")
+    funcDict["CL"] = prob.get_val("cruise.aero_post.CL")
+    derivDict = {}
+    derivDict["LoD"] = {}
+    derivDict["LoD"]["shape"] = results[("LoD.val", "shape")]["J_fwd"][0]
+    derivDict["LoD"]["twist"] = results[("LoD.val", "twist")]["J_fwd"][0]
+    derivDict["CL"] = {}
+    derivDict["CL"]["shape"] = results[("cruise.aero_post.CL", "shape")]["J_fwd"][0]
+    derivDict["CL"]["twist"] = results[("cruise.aero_post.CL", "twist")]["J_fwd"][0]
+    reg_write_dict(funcDict, 1e-10, 1e-12)
+    reg_write_dict(derivDict, 1e-8, 1e-12)

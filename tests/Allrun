@@ -13,11 +13,12 @@ else
   wget https://github.com/DAFoam/reg_test_files/archive/refs/heads/main.tar.gz -O reg_test_files-main.tar.gz --no-check-certificate
 fi
 
-function runUnitTests() 
+function runTests() 
 {
   rm -rf reg_test_files-main
   tar -zxf reg_test_files-main.tar.gz
-  mpirun --oversubscribe -np 4 python runUnitTests_${1}.py 
+  mpirun --oversubscribe -np 4 python runTests_${1}.py 
 }
 
-runUnitTests DAUtility
+runTests DAUtility
+runTests DASimpleFoam
