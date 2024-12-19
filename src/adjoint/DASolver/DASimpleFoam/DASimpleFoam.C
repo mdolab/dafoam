@@ -69,7 +69,7 @@ void DASimpleFoam::initSolver()
     fvMesh& mesh = meshPtr_();
 #include "createSimpleControlPython.H"
 #include "createFieldsSimple.H"
-#include "createAdjointIncompressible.H"
+#include "createAdjoint.H"
     // initialize checkMesh
     daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
@@ -109,16 +109,11 @@ label DASimpleFoam::solvePrimal()
     Info << "\nStarting time loop\n"
          << endl;
 
-    label printInterval = daOptionPtr_->getOption<label>("printInterval");
-    label printToScreen = 0;
-    scalar primalMaxRes = 0.0;
-    while (this->loop(runTime, primalMaxRes)) // using simple.loop() will have seg fault in parallel
+    
+    while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        primalMaxRes = -1e10;
 
-        printToScreen = this->isPrintTime(runTime, printInterval);
-
-        if (printToScreen)
+        if (printToScreen_)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
@@ -132,9 +127,9 @@ label DASimpleFoam::solvePrimal()
         }
 
         laminarTransport.correct();
-        daTurbulenceModelPtr_->correct(printToScreen, primalMaxRes);
+        daTurbulenceModelPtr_->correct(printToScreen_, primalMaxRes_);
 
-        if (printToScreen)
+        if (printToScreen_)
         {
             daTurbulenceModelPtr_->printYPlus();
 
@@ -154,7 +149,7 @@ label DASimpleFoam::solvePrimal()
     Info << "End\n"
          << endl;
 
-    return this->checkResidualTol(primalMaxRes);
+    return this->checkResidualTol(primalMaxRes_);
 }
 
 // ************ the following are functions for consistent fixed-point adjoint
