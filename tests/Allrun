@@ -13,12 +13,12 @@ else
   wget https://github.com/DAFoam/reg_test_files/archive/refs/heads/main.tar.gz -O reg_test_files-main.tar.gz --no-check-certificate
 fi
 
-function runTests() 
+function runRegTests() 
 {
   rm -rf reg_test_files-main DAFoam_Test_${1}.txt
   tar -zxf reg_test_files-main.tar.gz
   if [ -z "$DF_CHECK_COVERAGE" ]; then
-    mpirun --oversubscribe -np 4 python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    mpirun --oversubscribe -np 4 python runRegTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
       echo "${1}: Failed!"
       exit 1
@@ -34,7 +34,7 @@ function runTests()
       echo "${1}: Success!"
     fi
   elif [ "$DF_CHECK_COVERAGE" = "1" ]; then
-    mpirun --oversubscribe -np 4 coverage run runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    mpirun --oversubscribe -np 4 coverage run runRegTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
       echo "${1}: Failed!"
       exit 1
@@ -46,6 +46,35 @@ function runTests()
   fi
 }
 
+function runUnitTests()
+{
+  rm -rf reg_test_files-main DAFoam_Test_${1}.txt
+  tar -zxf reg_test_files-main.tar.gz
+  mpirun --oversubscribe -np 4 python runUnitTests_${1}.py
+}
 
-runTests DAUtility
-runTests DASimpleFoam
+# Find all files matching the regression test script pattern
+for file in runRegTests_*.py; do
+  # Check if the file exists to avoid wildcard issues
+  if [[ -f "$file" ]]; then
+    # Extract the part between "runRegTests_" and ".py"
+    extracted_name="${file#runRegTests_}"
+    extracted_name="${extracted_name%.py}"
+    
+    # run the regression tests
+    runRegTests "$extracted_name"
+  fi
+done
+
+# Find all files matching the unit test script pattern
+for file in runUnitTests_*.py; do
+  # Check if the file exists to avoid wildcard issues
+  if [[ -f "$file" ]]; then
+    # Extract the part between "runUnitTests_" and ".py"
+    extracted_name="${file#runUnitTests_}"
+    extracted_name="${extracted_name%.py}"
+    
+    # run the regression tests
+    runUnitTests "$extracted_name"
+  fi
+done
