@@ -756,9 +756,20 @@ class DAFoamSolver(ImplicitComponent):
                     DASolver.setThermal(q_conduct)
                 else:
                     raise AnalysisError("discipline not valid!")
+            
+            # before running the primal, we need to check if the mesh
+            # quality is good
+            meshOK = DASolver.solver.checkMesh()
 
             # solve the flow with the current design variable
-            DASolver()
+            # if the mesh is not OK, do not run the primal
+            if meshOK:
+                DASolver()
+            else:
+                DASolver.primalFail = 1
+
+            # after solving the primal, we need to print its residual info
+            DASolver.solver.calcPrimalResidualStatistics("print".encode())
 
             # get the objective functions
             funcs = {}

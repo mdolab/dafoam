@@ -8,19 +8,13 @@ env:
   DOCKER_MOUNT_DIR: '/home/dafoamuser/mount/$REPO_NAME'
   DOCKER_TAG: 'v4'
   DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
+  DOCKER_OF_ADF_BASHRC: '/home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADF/etc/bashrc'
+  DOCKER_OF_ADR_BASHRC: '/home/dafoamuser/dafoam/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc'
 
 jobs:
   code_coverage:
     runs-on: ubuntu-20.04
     name: Codecov
-    strategy:
-      fail-fast: false
-      matrix: 
-        testConfig: [incompressible]
-        include:
-          - testConfig: incompressible
-            args: 'incompressible'
-
     steps:
     - uses: actions/checkout@main
     - name: Create the docker container and run the tests
@@ -28,13 +22,11 @@ jobs:
         docker pull dafoam/opt-packages:${{env.DOCKER_TAG}}
         docker run -i -d -u dafoamuser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
         docker exec -i regtest /bin/bash -c "rm -rf ${{env.DOCKER_WORKING_DIR}} && cp -r ${{env.DOCKER_MOUNT_DIR}} ${{env.DOCKER_WORKING_DIR}}"
-        docker exec regtest sed -i 's/-std=c++11/-std=c++11 -fprofile-arcs -ftest-coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAOption/Make/options
-        docker exec regtest sed -i 's/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX)/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAOption/Make/options
-        docker exec regtest sed -i 's/-std=c++11/-std=c++11 -fprofile-arcs -ftest-coverage/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAUtility/Make/options
-        docker exec regtest sed -i 's/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX)/-lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) -lgcov/g' ${{env.DOCKER_WORKING_DIR}}/src/adjoint/DAUtility/Make/options
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/src && . ./.add_coverage_flag.sh"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
-        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && pip install ."
-        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun"
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && . ${{env.DOCKER_OF_ADR_BASHRC}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake 2> log && pip install ."
+        docker exec -i -e DF_CHECK_COVERAGE=1 regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun"
+        docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && coverage combine && coverage xml && echo dafoamuser | sudo -S cp -r coverage.xml ${{env.DOCKER_MOUNT_DIR}}/"
         docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && lcov --capture --directory . --output-file coverage.info && echo dafoamuser | sudo -S cp -r coverage.info ${{env.DOCKER_MOUNT_DIR}}/"
     - name: Upload
       uses: codecov/codecov-action@v4
