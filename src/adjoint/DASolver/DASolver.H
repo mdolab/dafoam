@@ -189,6 +189,15 @@ protected:
     /// primal residual tolerance
     scalar primalMinResTol_ = 0.0;
 
+    /// primal maximal residual computed from all the governing equations
+    scalar primalMaxRes_ = 0.0;
+
+    /// whether to print primal information to the screen
+    label printToScreen_ = 0;
+
+    /// how frequent do you want to print the primal info default is every 100 steps  
+    label printInterval_ = 100;
+
     /// primal min number of iterations
     label primalMinIters_ = -1;
 
@@ -657,9 +666,7 @@ public:
     void initializeGlobalADTape4dRdWT();
 
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
-    label loop(
-        Time& runTime,
-        const scalar& primalMaxRes);
+    label loop(Time& runTime);
 
     /// basically, we call DAIndex::getGlobalXvIndex
     label getGlobalXvIndex(
