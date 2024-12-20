@@ -64,6 +64,7 @@ DASolver::DASolver(
 
     primalMinResTol_ = daOptionPtr_->getOption<scalar>("primalMinResTol");
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
+    printInterval_ = daOptionPtr_->getOption<label>("printInterval");
 
     // initialize the objStd variables.
     this->initObjStd();
@@ -116,9 +117,7 @@ autoPtr<DASolver> DASolver::New(
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-label DASolver::loop(
-    Time& runTime,
-    const scalar& primalMaxRes)
+label DASolver::loop(Time& runTime)
 {
     /*
     Description:
@@ -145,11 +144,11 @@ label DASolver::loop(
     this->calcObjStd(runTime);
 
     // check exit condition, we need to satisfy both the residual and function std condition
-    if (primalMaxRes < primalMinResTol_ && runTime.timeIndex() > primalMinIters_ && primalObjStd_ < primalObjStdTol_)
+    if (primalMaxRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_ && primalObjStd_ < primalObjStdTol_)
     {
         Info << "Time = " << t << endl;
 
-        Info << "Minimal residual " << primalMaxRes << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
+        Info << "Minimal residual " << primalMaxRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
 
         if (primalObjStdActive_)
@@ -175,6 +174,9 @@ label DASolver::loop(
     else
     {
         ++runTime;
+        // initialize primalMaxRes_ with a small value for this iteration
+        primalMaxRes_ = -1e10;
+        printToScreen_ = this->isPrintTime(runTime, printInterval_);
         return 1;
     }
 }
