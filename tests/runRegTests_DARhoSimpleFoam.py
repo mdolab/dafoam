@@ -19,30 +19,31 @@ gcomm = MPI.COMM_WORLD
 os.chdir("./reg_test_files-main/NACA0012")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor* *.bin")
-    os.system("cp -r 0.incompressible 0")
-    os.system("cp -r system.incompressible/* system/")
+    os.system("cp -r 0.compressible 0")
+    os.system("cp -r system.subsonic/* system/")
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
-U0 = 10.0
-p0 = 0.0
+U0 = 100.0
+p0 = 101325.0
+T0 = 300.0
 A0 = 0.1
-twist0 = 3.0
+twist0 = 2.0
 LRef = 1.0
 nuTilda0 = 4.5e-5
 
 daOptions = {
     "designSurfaces": ["wing"],
-    "solverName": "DASimpleFoam",
-    "primalMinResTol": 1.0e-12,
+    "solverName": "DARhoSimpleFoam",
+    "primalMinResTol": 1.0e-11,
     "primalMinResTolDiff": 1e4,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
+        "T0": {"variable": "T", "patches": ["inout"], "value": [T0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
         "useWallFunction": True,
-        "transport:nu": 1.5e-5,
     },
     "function": {
         "CD": {
@@ -69,15 +70,14 @@ daOptions = {
         },
     },
     "adjEqnOption": {
-        "gmresRelTol": 1.0e-12,
+        "gmresRelTol": 1.0e-11,
         "pcFillLevel": 1,
         "jacMatReOrdering": "rcm",
         "dynAdjustTol": False
     },
-    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
+    "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "T": T0, "nuTilda": 1e-3},
     "designVar": {
         "twist": {"designVarType": "FFD"},
-        "shape": {"designVarType": "FFD"},
     },
 }
 
@@ -125,13 +125,6 @@ class Top(Multipoint):
         self.geometry.nom_add_discipline_coords("aero", points)
 
         # geometry setup
-
-        pts = self.geometry.DVGeo.getLocalIndex(0)
-        dir_y = np.array([0.0, 1.0, 0.0])
-        shapes = []
-        shapes.append({pts[2, 1, 0]: dir_y, pts[2, 1, 1]: dir_y})
-        self.geometry.nom_addShapeFunctionDV(dvName="shape", shapes=shapes)
-
         self.geometry.nom_addRefAxis(name="wingAxis", xFraction=0.25, alignIndex="k")
 
         # Set up global design variables. We dont change the root twist
@@ -143,19 +136,14 @@ class Top(Multipoint):
 
         # add the design variables to the dvs component's output
         self.dvs.add_output("twist", val=np.ones(1) * twist0)
-        self.dvs.add_output("shape", val=np.zeros(1))
         # manually connect the dvs output to the geometry and cruise
         self.connect("twist", "geometry.twist")
-        self.connect("shape", "geometry.shape")
 
         # define the design variables to the top level
         self.add_design_var("twist", lower=-10.0, upper=10.0, scaler=1.0)
-        self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
 
         # add constraints and the objective
-        self.connect("cruise.aero_post.CD", "LoD.CD")
-        self.connect("cruise.aero_post.CL", "LoD.CL")
-        self.add_objective("LoD.val", scaler=1.0)
+        self.add_objective("cruise.aero_post.CD", scaler=1.0)
         self.add_constraint("cruise.aero_post.CL", equals=0.3)
 
 
@@ -170,7 +158,7 @@ optFuncs = OptFuncs(daOptions, prob)
 # verify the total derivatives against the finite-difference
 prob.run_model()
 results = prob.check_totals(
-    of=["LoD.val", "cruise.aero_post.CL"], wrt=["twist", "shape"], compact_print=True, step=1e-3, form="central", step_calc="abs"
+    of=["cruise.aero_post.CD", "cruise.aero_post.CL"], wrt=["twist"], compact_print=True, step=1e-3, form="central", step_calc="abs"
 )
 
 if gcomm.rank == 0:
@@ -178,11 +166,9 @@ if gcomm.rank == 0:
     funcDict["CD"] = prob.get_val("cruise.aero_post.CD")
     funcDict["CL"] = prob.get_val("cruise.aero_post.CL")
     derivDict = {}
-    derivDict["LoD"] = {}
-    derivDict["LoD"]["shape"] = results[("LoD.val", "shape")]["J_fwd"][0]
-    derivDict["LoD"]["twist"] = results[("LoD.val", "twist")]["J_fwd"][0]
+    derivDict["CD"] = {}
+    derivDict["CD"]["twist"] = results[("cruise.aero_post.CD", "twist")]["J_fwd"][0]
     derivDict["CL"] = {}
-    derivDict["CL"]["shape"] = results[("cruise.aero_post.CL", "shape")]["J_fwd"][0]
     derivDict["CL"]["twist"] = results[("cruise.aero_post.CL", "twist")]["J_fwd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)

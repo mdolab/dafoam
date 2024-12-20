@@ -8,7 +8,7 @@ if (hasFvSource_)
 }
 
 tmp<fvVectorMatrix> tUEqn(
-    fvm::div(phi, U, divUScheme)
+    fvm::div(phi, U)
     + MRF.DDt(rho, U)
     + turbulencePtr_->divDevRhoReff(U)
     - fvSource
@@ -23,9 +23,9 @@ fvOptions.constrain(UEqn);
 // and final residuals
 SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
-DAUtility::primalResidualControl(solverU, printToScreen, "U");
+DAUtility::primalResidualControl(solverU, printToScreen_, "U", primalMaxRes_);
 
 fvOptions.correct(U);
 
 // bound U
-DAUtility::boundVar(allOptions, U, printToScreen);
+DAUtility::boundVar(allOptions, U, printToScreen_);
