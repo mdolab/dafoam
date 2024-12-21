@@ -707,6 +707,43 @@ class DAFoamSolver(ImplicitComponent):
                 self.DASolver.setOption(key, optionDict[key])
             self.DASolver.updateDAOption()
 
+    def calcFFD2XvSeeds(self):
+        # Calculate the FFD2XvSeed array:
+        # Given a FFD seed xDvDot, run pyGeo and IDWarp and propagate the seed to Xv seed xVDot:
+        #     xSDot = \\frac{dX_{S}}{dX_{DV}}\\xDvDot
+        #     xVDot = \\frac{dX_{V}}{dX_{S}}\\xSDot
+
+        # Then, we assign this vector to FFD2XvSeed in the mphys_dafoam
+        # This will be used in forward mode AD runs
+
+        DASolver = self.DASolver
+
+        if self.DVGeo is None:
+            raise RuntimeError("calcFFD2XvSeeds is call but no DVGeo object found! Call add_dvgeo in the run script!")
+
+        dvName = DASolver.getOption("useAD")["dvName"]
+        seedIndex = DASolver.getOption("useAD")["seedIndex"]
+        # create xDVDot vec and initialize it with zeros
+        xDV = self.DVGeo.getValues()
+
+        # create a copy of xDV and set the seed to 1.0
+        # the dv and index depends on dvName and seedIndex
+        xDvDot = {}
+        for key in list(xDV.keys()):
+            xDvDot[key] = np.zeros_like(xDV[key])
+        xDvDot[dvName][seedIndex] = 1.0
+
+        # get the original surf coords
+        xSDot0 = np.zeros_like(DASolver.xs0)
+        xSDot0 = DASolver.mapVector(xSDot0, DASolver.allSurfacesGroup, DASolver.designSurfacesGroup)
+
+        # get xSDot
+        xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName="x_%s0" % self.discipline).reshape(xSDot0.shape)
+        # get xVDot
+        xVDot = DASolver.mesh.warpDerivFwd(xSDot)
+
+        return xVDot
+
     # calculate the residual
     def apply_nonlinear(self, inputs, outputs, residuals):
         DASolver = self.DASolver
@@ -756,7 +793,7 @@ class DAFoamSolver(ImplicitComponent):
                     DASolver.setThermal(q_conduct)
                 else:
                     raise AnalysisError("discipline not valid!")
-            
+
             # before running the primal, we need to check if the mesh
             # quality is good
             meshOK = DASolver.solver.checkMesh()
@@ -764,6 +801,15 @@ class DAFoamSolver(ImplicitComponent):
             # solve the flow with the current design variable
             # if the mesh is not OK, do not run the primal
             if meshOK:
+                # if it is forward mode, we set the AD forward seeds before calling the primal
+                if DASolver.getOption("useAD")["mode"] == "forward":
+                    dvName = DASolver.getOption("useAD")["dvName"]
+                    dvType = DASolver.getOption("designVar")[dvName]["designVarType"]
+                    if dvType == "FFD":
+                        seeds = self.calcFFD2XvSeeds()
+                        DASolver.solverAD.setInputSeedForwardAD("volCoord", len(volCoords), volCoords, seeds)
+                    else:
+                        raise RuntimeError("dvType not supported for forwardAD")
                 DASolver()
             else:
                 DASolver.primalFail = 1

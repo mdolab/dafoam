@@ -976,45 +976,6 @@ class PYDAFOAM(object):
         # update the mesh coordinates if DVGeo is set
         # add point set and update the mesh based on the DV values
 
-        if self.DVGeo is not None:
-
-            # if the point set is not in DVGeo add it first
-            if self.ptSetName not in self.DVGeo.points:
-
-                xs0 = self.mapVector(self.xs0, self.allSurfacesGroup, self.designSurfacesGroup)
-
-                self.DVGeo.addPointSet(xs0, self.ptSetName)
-                self.pointsSet = True
-
-            # set the surface coords xs
-            Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(self.ptSetName)))
-            if not self.DVGeo.pointSetUpToDate(self.ptSetName):
-                Info("Updating DVGeo PointSet....")
-                xs = self.DVGeo.update(self.ptSetName, config=None)
-
-                # if we have surface geometry/mesh displacement computed by the structural solver,
-                # add the displace mesh here.
-                if self.surfGeoDisp is not None:
-                    xs += self.surfGeoDisp
-
-                self.setSurfaceCoordinates(xs, self.designSurfacesGroup)
-                Info("DVGeo PointSet UpToDate: " + str(self.DVGeo.pointSetUpToDate(self.ptSetName)))
-
-                # warp the mesh to get the new volume coordinates
-                Info("Warping the volume mesh....")
-                self.mesh.warpMesh()
-
-                xvNew = self.mesh.getSolverGrid()
-                self.xvFlatten2XvVec(xvNew, self.xvVec)
-
-            # if it is forward AD mode and we are computing the Xv derivatives
-            # call calcFFD2XvSeedVec
-            if self.getOption("useAD")["mode"] == "forward":
-                dvName = self.getOption("useAD")["dvName"]
-                dvType = self.getOption("designVar")[dvName]["designVarType"]
-                if dvType == "FFD":
-                    self.calcFFD2XvSeedVec()
-
         # now call the internal design var function to update DASolver parameters
         self.runInternalDVFunc()
 
