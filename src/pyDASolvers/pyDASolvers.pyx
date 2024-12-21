@@ -48,6 +48,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initSolver()
         int solvePrimal()
         void calcJacTVecProduct(char *, int, int, double *, char *, int, int, double *, double *)
+        void setInputSeedForwardAD(char *, int, double *, double *)
         void calcdRdWT(int, PetscMat)
         void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree()
@@ -200,12 +201,30 @@ cdef class pyDASolvers:
     def solvePrimal(self):
         return self._thisptr.solvePrimal()
     
+    def setInputSeedForwardAD(self,
+            inputType,
+            inputSize,
+            np.ndarray[double, ndim=1, mode="c"] inputs,
+            np.ndarray[double, ndim=1, mode="c"] seeds):
+        
+        assert len(inputs) == inputSize, "invalid input array size!"
+        assert len(seeds) == inputSize, "invalid seed array size!"
+
+        cdef double *inputs_data = <double*>inputs.data
+        cdef double *seeds_data = <double*>seeds.data
+
+        self._thisptr.setInputSeedForwardAD(
+            inputType.encode(),
+            inputSize,
+            inputs_data,
+            seeds_data)
+    
     def calcJacTVecProduct(self,
-            inputName,
+            inputType,
             inputSize,
             distributedInput,
             np.ndarray[double, ndim=1, mode="c"] inputs,
-            outputName,
+            outputType,
             outputSize,
             distributedOutput,
             np.ndarray[double, ndim=1, mode="c"] seeds,
@@ -220,11 +239,11 @@ cdef class pyDASolvers:
         cdef double *product_data = <double*>product.data
 
         self._thisptr.calcJacTVecProduct(
-            inputName.encode(),
+            inputType.encode(),
             inputSize,
             distributedInput,
             inputs_data,
-            outputName.encode(),
+            outputType.encode(),
             outputSize,
             distributedOutput,
             seeds_data, 

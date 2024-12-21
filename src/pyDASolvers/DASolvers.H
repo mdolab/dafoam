@@ -68,26 +68,40 @@ public:
 
     /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
     void calcJacTVecProduct(
-        const word inputName,
+        const word inputType,
         const int inputSize,
         const int distributedInput,
         const double* input,
-        const word outputName,
+        const word outputType,
         const int outputSize,
         const int distributedOutput,
         const double* seed,
         double* product)
     {
         DASolverPtr_->calcJacTVecProduct(
-            inputName,
+            inputType,
             inputSize,
             distributedInput,
             input,
-            outputName,
+            outputType,
             outputSize,
             distributedOutput,
             seed,
             product);
+    }
+
+    void setInputSeedForwardAD(
+        const word inputType,
+        const int inputSize,
+        const double* input,
+        const double* seed
+    )
+    {
+        DASolverPtr_->setInputSeedForwardAD(
+            inputType,
+            inputSize,
+            input,
+            seed);
     }
 
     /// compute dRdWT

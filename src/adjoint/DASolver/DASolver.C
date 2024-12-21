@@ -4799,12 +4799,47 @@ void DASolver::normalizeJacTVecProduct(
 #endif
 }
 
+void DASolver::setInputSeedForwardAD(
+    const word inputType,
+    const int inputSize,
+    const double* input,
+    const double* seed)
+{
+    /*
+    Description:
+        Set seeds for forward mode AD using the DAInput class
+    */
+#ifdef CODI_ADF
+    // initialize the input and output objects
+    autoPtr<DAInput> daInput(
+        DAInput::New(
+            inputType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_()));
+    
+    scalarList inputList(inputSize, 0.0);
+
+    // assign the input array to the input list and the seed to its gradient()
+    // Note: we need to use scalarList for AD
+    forAll(inputList, idxI)
+    {
+        inputList[idxI] = input[idxI];
+        inputList[idxI].gradient() = seed[idxI];
+    }
+
+    // call daInput->run to assign inputList to OF variables
+    daInput->run(inputList);
+#endif
+}
+
 void DASolver::calcJacTVecProduct(
-    const word inputName,
+    const word inputType,
     const int inputSize,
     const int distributedInput,
     const double* input,
-    const word outputName,
+    const word outputType,
     const int outputSize,
     const int distributedOutput,
     const double* seed,
@@ -4816,22 +4851,30 @@ void DASolver::calcJacTVecProduct(
         Calculate the Jacobian-matrix-transposed and vector product for [dOutput/dInput]^T * psi
     
     Input:
-        inputName: name of the input
+        inputType: type of the input. This should be consistent with the child class names in DAInput
 
-        outputName: name of the output
+        inputSize: size of the input array
+
+        distributedInput: whether the input is distributed across processors in parallel. For example, the state variable is a distributed input, while the angle of attack is not a distributed input
 
         input: the actual value of the input array
 
-        psi: the vector for the mat-vec product
+        outputType: type of the output. This should be consistent with the child class names in DAOutput
+
+        outputSize: size of the output array
+
+        distributedInput: whether the output is distributed across processors in parallel. For example, residual is a distributed output, while the function (drag and lift) is not a distributed output
+
+        seed: the seed array
     
     Output:
-        product: the mat-vec product
+        product: the mat-vec product array
     */
 
     // initialize the input and output objects
     autoPtr<DAInput> daInput(
         DAInput::New(
-            inputName,
+            inputType,
             meshPtr_(),
             daOptionPtr_(),
             daModelPtr_(),
@@ -4839,7 +4882,7 @@ void DASolver::calcJacTVecProduct(
 
     autoPtr<DAOutput> daOutput(
         DAOutput::New(
-            outputName,
+            outputType,
             meshPtr_(),
             daOptionPtr_(),
             daModelPtr_(),
@@ -4915,8 +4958,8 @@ void DASolver::calcJacTVecProduct(
         }
     }
 
-    // we need to normalize the jacobian vector product if inputName == stateVar
-    this->normalizeJacTVecProduct(inputName, product);
+    // we need to normalize the jacobian vector product if inputType == stateVar
+    this->normalizeJacTVecProduct(inputType, product);
 
     // need to clear adjoint and tape after the computation is done!
     this->globalADTape_.clearAdjoints();
