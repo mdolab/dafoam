@@ -755,17 +755,6 @@ class DAOPTION(object):
             # }
         }
 
-        ## An internal dict for DAInput options, it will be used to transfer options between mphys_dafoam and OF layers
-        ## Users should not use it in runScript.py
-        self._inputOptions = {}
-
-        ## An internal dict for DAInput options, it will be used to transfer options between mphys_dafoam and OF layers
-        ## Users should not use it in runScript.py
-        self._outputOptions = {
-            "functionName": "None",  # used in DAOutputFunction
-            "isPC": 0,  # used in DAOutputResidual
-        }
-
 
 class PYDAFOAM(object):
     """
@@ -4115,7 +4104,7 @@ class PYDAFOAM(object):
         Get number of local adjoint states
         """
         return self.solver.getNLocalAdjointStates()
-    
+
     def getNLocalPoints(self):
         """
         Get number of local points
@@ -4179,7 +4168,7 @@ class PYDAFOAM(object):
             residuals[iRel] = resVec[i]
 
         return residuals
-    
+
     def setVolCoords(self, volCoords):
         """
         Set the volCoords to the OpenFOAM's mesh coordinate

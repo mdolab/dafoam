@@ -66,12 +66,28 @@ public:
         return DASolverPtr_->solvePrimal();
     }
 
+    label getInputSize(
+        const word inputName,
+        const word inputType)
+    {
+        return DASolverPtr_->getInputSize(inputName, inputType);
+    }
+
+    label getOutputSize(
+        const word outputName,
+        const word outputType)
+    {
+        return DASolverPtr_->getOutputSize(outputName, outputType);
+    }
+
     /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
     void calcJacTVecProduct(
+        const word inputName,
         const word inputType,
         const int inputSize,
         const int distributedInput,
         const double* input,
+        const word outputName,
         const word outputType,
         const int outputSize,
         const int distributedOutput,
@@ -79,10 +95,12 @@ public:
         double* product)
     {
         DASolverPtr_->calcJacTVecProduct(
+            inputName,
             inputType,
             inputSize,
             distributedInput,
             input,
+            outputName,
             outputType,
             outputSize,
             distributedOutput,
@@ -91,13 +109,14 @@ public:
     }
 
     void setInputSeedForwardAD(
+        const word inputName,
         const word inputType,
         const int inputSize,
         const double* input,
-        const double* seed
-    )
+        const double* seed)
     {
         DASolverPtr_->setInputSeedForwardAD(
+            inputName,
             inputType,
             inputSize,
             input,

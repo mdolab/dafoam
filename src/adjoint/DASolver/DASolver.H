@@ -195,7 +195,7 @@ protected:
     /// whether to print primal information to the screen
     label printToScreen_ = 0;
 
-    /// how frequent do you want to print the primal info default is every 100 steps  
+    /// how frequent do you want to print the primal info default is every 100 steps
     label printInterval_ = 100;
 
     /// primal min number of iterations
@@ -429,24 +429,36 @@ public:
         const dictionary& dvSubDict,
         scalar& BC);
 
+    /// get the array size of an input type
+    label getInputSize(
+        const word inputName,
+        const word inputType);
+
+    /// get the array size of an output type
+    label getOutputSize(
+        const word outputName,
+        const word outputType);
+
     /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
     void calcJacTVecProduct(
+        const word inputName,
         const word inputType,
         const int inputSize,
         const int distributedInput,
         const double* input,
+        const word outputName,
         const word outputType,
         const int outputSize,
         const int distributedOutput,
         const double* seed,
         double* product);
-    
+
     void setInputSeedForwardAD(
+        const word inputName,
         const word inputType,
         const int inputSize,
         const double* input,
-        const double* seed
-    );
+        const double* seed);
 
     /// compute dRdBCAD
     void calcdRdBCTPsiAD(

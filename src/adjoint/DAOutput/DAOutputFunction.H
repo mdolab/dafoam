@@ -36,6 +36,7 @@ public:
     //- Construct from components
     DAOutputFunction(
         const word outputName,
+        const word outputType,
         fvMesh& mesh,
         const DAOption& daOption,
         DAModel& daModel,
@@ -67,6 +68,11 @@ public:
     }
 
     virtual void run(scalarList& output);
+
+    virtual label size()
+    {
+        return 1;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

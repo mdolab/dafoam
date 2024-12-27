@@ -18,12 +18,14 @@ addToRunTimeSelectionTable(DAInput, DAInputVolCoord, dictionary);
 
 DAInputVolCoord::DAInputVolCoord(
     const word inputName,
+    const word inputType,
     fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex)
     : DAInput(
         inputName,
+        inputType,
         mesh,
         daOption,
         daModel,

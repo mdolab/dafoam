@@ -18,6 +18,7 @@ addToRunTimeSelectionTable(DAOutput, DAOutputFunction, dictionary);
 
 DAOutputFunction::DAOutputFunction(
     const word outputName,
+    const word outputType,
     fvMesh& mesh,
     const DAOption& daOption,
     DAModel& daModel,
@@ -26,6 +27,7 @@ DAOutputFunction::DAOutputFunction(
     UPtrList<DAFunction>& daFunctionList)
     : DAOutput(
         outputName,
+        outputType,
         mesh,
         daOption,
         daModel,
@@ -42,15 +44,8 @@ void DAOutputFunction::run(scalarList& output)
         Compute the function value and assign them to the output array
     */
 
-    // options should be set in the Python layer (dafoam_mphys.py) before call this function, so 
-    // here we just use it 
-    dictionary options =
-        daOption_.getAllOptions().subDict("_outputOptions");
-    
-    word functionName = options.getWord("functionName");
-
     dictionary functionSubDict =
-        daOption_.getAllOptions().subDict("function").subDict(functionName);
+        daOption_.getAllOptions().subDict("function").subDict(outputName_);
 
     // loop over all parts for this functionName
     scalar fVal = 0.0;
@@ -60,7 +55,7 @@ void DAOutputFunction::run(scalarList& output)
         word functionPart = functionSubDict.toc()[idxJ];
 
         // get function from daFunctionList_
-        label objIndx = this->getFunctionListIndex(functionName, functionPart, daFunctionList_);
+        label objIndx = this->getFunctionListIndex(outputName_, functionPart, daFunctionList_);
         DAFunction& daFunction = daFunctionList_[objIndx];
 
         // compute the objective function

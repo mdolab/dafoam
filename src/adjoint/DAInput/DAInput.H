@@ -41,6 +41,9 @@ protected:
     /// name of the input
     const word inputName_;
 
+    /// type of the input
+    const word inputType_;
+
     /// fvMesh
     fvMesh& mesh_;
 
@@ -67,12 +70,14 @@ public:
         dictionary,
         (
             const word inputName,
+            const word inputType,
             fvMesh& mesh,
             const DAOption& daOption,
             const DAModel& daModel,
             const DAIndex& daIndex),
         (
             inputName,
+            inputType,
             mesh,
             daOption,
             daModel,
@@ -83,6 +88,7 @@ public:
     //- Construct from components
     DAInput(
         const word inputName,
+        const word inputType,
         fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
@@ -93,6 +99,7 @@ public:
     //- Return a reference to the selected model
     static autoPtr<DAInput> New(
         const word inputName,
+        const word inputType,
         fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
@@ -104,6 +111,8 @@ public:
     }
 
     virtual void run(const scalarList& input) = 0;
+
+    virtual label size() = 0;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -47,8 +47,10 @@ cdef extern from "DASolvers.H" namespace "Foam":
         DASolvers(char *, object) except +
         void initSolver()
         int solvePrimal()
-        void calcJacTVecProduct(char *, int, int, double *, char *, int, int, double *, double *)
-        void setInputSeedForwardAD(char *, int, double *, double *)
+        void calcJacTVecProduct(char *, char *, int, int, double *, char *, char *, int, int, double *, double *)
+        int getInputSize(char *, char *)
+        int getOutputSize(char *, char *)
+        void setInputSeedForwardAD(char *, char *, int, double *, double *)
         void calcdRdWT(int, PetscMat)
         void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree()
@@ -202,6 +204,7 @@ cdef class pyDASolvers:
         return self._thisptr.solvePrimal()
     
     def setInputSeedForwardAD(self,
+            inputName,
             inputType,
             inputSize,
             np.ndarray[double, ndim=1, mode="c"] inputs,
@@ -214,16 +217,25 @@ cdef class pyDASolvers:
         cdef double *seeds_data = <double*>seeds.data
 
         self._thisptr.setInputSeedForwardAD(
+            inputName.encode(),
             inputType.encode(),
             inputSize,
             inputs_data,
             seeds_data)
     
+    def getInputSize(self, inputName, inputType):
+        return self._thisptr.getInputSize(inputName.encode(), inputType.encode())
+    
+    def getOutputSize(self, outputName, outputType):
+        return self._thisptr.getOutputSize(outputName.encode(), outputType.encode())
+    
     def calcJacTVecProduct(self,
+            inputName,
             inputType,
             inputSize,
             distributedInput,
             np.ndarray[double, ndim=1, mode="c"] inputs,
+            outputName,
             outputType,
             outputSize,
             distributedOutput,
@@ -239,10 +251,12 @@ cdef class pyDASolvers:
         cdef double *product_data = <double*>product.data
 
         self._thisptr.calcJacTVecProduct(
+            inputName.encode(),
             inputType.encode(),
             inputSize,
             distributedInput,
             inputs_data,
+            outputName.encode(),
             outputType.encode(),
             outputSize,
             distributedOutput,
