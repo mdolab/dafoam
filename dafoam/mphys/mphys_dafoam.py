@@ -1576,21 +1576,22 @@ class DAFoamFunctions(ExplicitComponent):
                 else:
                     # compute dFdAOA
                     if self.dvType[inputName] == "patchVelocity":
-                        dFdAOA = PETSc.Vec().create(self.comm)
-                        dFdAOA.setSizes((PETSc.DECIDE, 2), bsize=1)
-                        dFdAOA.setFromOptions()
-                        dFdAOA.set(0.0)
-                        #DASolver.calcdFdAOAAnalytical(functionName, dFdAOA)
-                        # aoaBar = DASolver.vec2Array(dFdAOA)
-
-                        # The aoaBar variable will be length 1 on the root proc, but length 0 an all slave procs.
-                        # The value on the root proc must be broadcast across all procs.
-                        #if self.comm.rank == 0:
-                        #    aoaBar = DASolver.vec2Array(dFdAOA)[0] * fBar
-                        #else:
-                        #    aoaBar = 0.0
-
-                        # d_inputs[inputName] += DASolver.vec2Array(dFdAOA)
+                        product = np.zeros(2)
+                        jacInput = inputs[inputName]
+                        DASolver.solverAD.calcJacTVecProduct(
+                            inputName,
+                            "patchVelocity",
+                            2,
+                            0,
+                            jacInput,
+                            functionName,
+                            "function",
+                            1,
+                            0,
+                            seed,
+                            product,
+                        )
+                        d_inputs[inputName] += product
 
                     # compute dFdBC
                     elif self.dvType[inputName] == "BC":
