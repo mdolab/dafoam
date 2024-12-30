@@ -32,6 +32,15 @@ protected:
     /// the direction of the force
     vector forceDir_;
 
+    /// if dynamically adjusting the angle what mode to use
+    word dirMode_;
+
+    /// flowAxisIndex_ for the alpha design variable with tan(U_normal/U_flow)
+    label flowAxisIndex_;
+
+    /// normalAxisIndex_ for the alpha design variable with tan(U_normal/U_flow)
+    label normalAxisIndex_;
+
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;
 

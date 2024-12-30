@@ -37,6 +37,8 @@ daFieldPtr_.reset(new DAField(mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()
 
 daResidualPtr_.reset(DAResidual::New(solverName, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
 
+daGlobalVarPtr_.reset(new DAGlobalVar(mesh));
+
 // calculate the initial (default) value for validate state func
 this->getInitStateVals(initStateVals_);
 

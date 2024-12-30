@@ -40,6 +40,13 @@ void DAInputPatchVelocity::run(const scalarList& input)
         Assign the input array to OF's state variables
     */
 
+    // NOTE: we need to first update DAGlobalVar::patchVelocity here, so that daFunction-force
+    // can use it to compute the force direction.
+    DAGlobalVar& globalVar =
+        const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+    globalVar.patchVelocity[0] = input[0];
+    globalVar.patchVelocity[1] = input[1];
+
     wordList patchNames;
     dictionary aoaSubDict = daOption_.getAllOptions().subDict("designVar").subDict(inputName_);
     aoaSubDict.readEntry<wordList>("patches", patchNames);
@@ -90,6 +97,7 @@ void DAInputPatchVelocity::run(const scalarList& input)
             }
         }
     }
+    U.correctBoundaryConditions();
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

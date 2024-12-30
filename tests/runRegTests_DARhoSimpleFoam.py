@@ -77,7 +77,7 @@ daOptions = {
     },
     "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "T": T0, "nuTilda": 1e-3},
     "designVar": {
-        "twist": {"designVarType": "FFD"},
+        "aero_vol_coords": {"designVarType": "volCoord"},
     },
 }
 
@@ -153,7 +153,7 @@ prob.model = Top()
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-optFuncs = OptFuncs(daOptions, prob)
+# optFuncs = OptFuncs(daOptions, prob)
 
 # verify the total derivatives against the finite-difference
 prob.run_model()

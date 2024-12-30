@@ -823,6 +823,9 @@ class PYDAFOAM(object):
         # initialize the pySolvers
         self.solverInitialized = 0
         self._initSolver()
+        
+        # set the primal boundary condition after initializing the solver
+        self.setPrimalBoundaryConditions()
 
         # initialize the number of primal and adjoint calls
         self.nSolvePrimals = 1
@@ -966,13 +969,27 @@ class PYDAFOAM(object):
         # add point set and update the mesh based on the DV values
 
         # now call the internal design var function to update DASolver parameters
-        self.runInternalDVFunc()
+        # self.runInternalDVFunc()
 
         # update the primal boundary condition right before calling solvePrimal
-        self.setPrimalBoundaryConditions()
+        # self.setPrimalBoundaryConditions()
 
-        # solve the primal to get new state variables
-        self.solvePrimal()
+        Info("Running Primal Solver %03d" % self.nSolvePrimals)
+
+        self.deletePrevPrimalSolTime()
+
+        # self.primalFail: if the primal solution fails, assigns 1, otherwise 0
+        self.primalFail = 0
+        if self.getOption("useAD")["mode"] == "forward":
+            self.primalFail = self.solverAD.solvePrimal()
+        else:
+            self.primalFail = self.solver.solvePrimal()
+
+        if self.getOption("writeMinorIterations"):
+            self.renameSolution(self.nSolvePrimals)
+            self.writeDeformedFFDs(self.nSolvePrimals)
+
+        self.nSolvePrimals += 1
 
         return
 
@@ -1923,21 +1940,7 @@ class PYDAFOAM(object):
         self.primalFail: if the primal solution fails, assigns 1, otherwise 0
         """
 
-        Info("Running Primal Solver %03d" % self.nSolvePrimals)
-
-        self.deletePrevPrimalSolTime()
-
-        self.primalFail = 0
-        if self.getOption("useAD")["mode"] == "forward":
-            self.primalFail = self.solverAD.solvePrimal()
-        else:
-            self.primalFail = self.solver.solvePrimal()
-
-        if self.getOption("writeMinorIterations"):
-            self.renameSolution(self.nSolvePrimals)
-            self.writeDeformedFFDs(self.nSolvePrimals)
-
-        self.nSolvePrimals += 1
+        
 
         return
 

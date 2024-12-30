@@ -643,7 +643,7 @@ class DAFoamSolver(ImplicitComponent):
         shapeVarAdded = False
         for dvName in list(designVariables.keys()):
             dvType = self.dvType[dvName]
-            if dvType == "FFD":  # add shape variables
+            if dvType == "volCoord":  # add shape variables
                 if shapeVarAdded is False:  # we add the shape variable only once
                     # NOTE: for shape variables, we add dafoam_vol_coords as the input name
                     # the specific name for this shape variable will be added in the geometry component (DVGeo)
@@ -757,6 +757,29 @@ class DAFoamSolver(ImplicitComponent):
         # get flow residuals from DASolver
         residuals["%s_states" % self.discipline] = DASolver.getResiduals()
 
+    def set_solver_input(self, inputs):
+        """
+        Set solver input. If it is forward mode, we also set the seeds
+        """
+        DASolver = self.DASolver
+        inputDict = DASolver.getOption("designVar")
+
+        for inputName in list(inputDict.keys()):
+            inputType = inputDict[inputName]["designVarType"]
+            input = inputs[inputName]
+            inputSize = len(input)
+            seeds = np.zeros(inputSize)
+            if DASolver.getOption("useAD")["mode"] == "forward":
+                if inputName == DASolver.getOption("useAD")["dvName"]:
+                    if inputType == "volCoord":
+                        seeds = self.calcFFD2XvSeeds()
+                    else:
+                        seedIndex = DASolver.getOption("useAD")["seedIndex"]
+                        seeds[seedIndex] = 1.0
+            # here we need to update the solver input for both solver and solverAD
+            DASolver.solver.setSolverInput(inputName, inputType, inputSize, input, seeds)
+            DASolver.solverAD.setSolverInput(inputName, inputType, inputSize, input, seeds)
+
     # solve the flow
     def solve_nonlinear(self, inputs, outputs):
 
@@ -769,30 +792,31 @@ class DAFoamSolver(ImplicitComponent):
 
             # first we assign the volume coordinates from the inputs dict
             # to the OF layer (deform the mesh)
-            volCoords = inputs["%s_vol_coords" % self.discipline]
-            DASolver.setVolCoords(volCoords)
+            # TODO. This is duplicated with setSolverInput
+            #volCoords = inputs["%s_vol_coords" % self.discipline]
+            # DASolver.setVolCoords(volCoords)
 
             # assign the optionDict to the solver
             self.apply_options(self.optionDict)
 
             # now call the dv_funcs to update the design variables
-            for dvName in self.dv_funcs:
-                func = self.dv_funcs[dvName]
-                dvVal = inputs[dvName]
-                func(dvVal, DASolver)
+            #for dvName in self.dv_funcs:
+            #    func = self.dv_funcs[dvName]
+            #    dvVal = inputs[dvName]
+            #    func(dvVal, DASolver)
 
-            DASolver.updateDAOption()
+            #DASolver.updateDAOption()
 
-            couplingInfo = DASolver.getOption("couplingInfo")
-            if couplingInfo["aerothermal"]["active"]:
-                if self.discipline == "aero":
-                    T_convect = inputs["T_convect"]
-                    DASolver.setThermal(T_convect)
-                elif self.discipline == "thermal":
-                    q_conduct = inputs["q_conduct"]
-                    DASolver.setThermal(q_conduct)
-                else:
-                    raise AnalysisError("discipline not valid!")
+            #couplingInfo = DASolver.getOption("couplingInfo")
+            #if couplingInfo["aerothermal"]["active"]:
+            #    if self.discipline == "aero":
+            #        T_convect = inputs["T_convect"]
+            #        DASolver.setThermal(T_convect)
+            #    elif self.discipline == "thermal":
+            #        q_conduct = inputs["q_conduct"]
+            #        DASolver.setThermal(q_conduct)
+            #    else:
+            #        raise AnalysisError("discipline not valid!")
 
             # before running the primal, we need to check if the mesh
             # quality is good
@@ -801,20 +825,7 @@ class DAFoamSolver(ImplicitComponent):
             # solve the flow with the current design variable
             # if the mesh is not OK, do not run the primal
             if meshOK:
-                # if it is forward mode, we set the AD forward seeds before calling the primal
-                if DASolver.getOption("useAD")["mode"] == "forward":
-                    dvName = DASolver.getOption("useAD")["dvName"]
-                    seedIndex = DASolver.getOption("useAD")["seedIndex"]
-                    dvType = DASolver.getOption("designVar")[dvName]["designVarType"]
-                    if dvType == "FFD":
-                        seeds = self.calcFFD2XvSeeds()
-                        DASolver.solverAD.setInputSeedForwardAD(dvName, "volCoord", len(volCoords), volCoords, seeds)
-                    elif dvType == "patchVelocity":
-                        seeds = np.zeros(2)
-                        seeds[seedIndex] = 1.0
-                        DASolver.solverAD.setInputSeedForwardAD(dvName, "patchVelocity", 2, inputs[dvName], seeds)
-                    else:
-                        raise RuntimeError("dvType not supported for forwardAD")
+                self.set_solver_input(inputs)
                 DASolver()
             else:
                 DASolver.primalFail = 1
@@ -1367,7 +1378,7 @@ class DAFoamFunctions(ExplicitComponent):
         shapeVarAdded = False
         for dvName in list(designVariables.keys()):
             dvType = self.dvType[dvName]
-            if dvType == "FFD":  # add shape variables
+            if dvType == "volCoord":  # add shape variables
                 if shapeVarAdded is False:  # we add the shape variable only once
                     # NOTE: for shape variables, we add dafoam_vol_coords as the input name
                     # the specific name for this shape variable will be added in the geometry component (DVGeo)

@@ -47,7 +47,8 @@ DASolver::DASolver(
       daCheckMeshPtr_(nullptr),
       daLinearEqnPtr_(nullptr),
       daResidualPtr_(nullptr),
-      daRegressionPtr_(nullptr)
+      daRegressionPtr_(nullptr),
+      daGlobalVarPtr_(nullptr)
 #ifdef CODI_ADR
       ,
       globalADTape_(codi::RealReverse::getTape())
@@ -4799,7 +4800,7 @@ void DASolver::normalizeJacTVecProduct(
 #endif
 }
 
-void DASolver::setInputSeedForwardAD(
+void DASolver::setSolverInput(
     const word inputName,
     const word inputType,
     const int inputSize,
@@ -4810,7 +4811,7 @@ void DASolver::setInputSeedForwardAD(
     Description:
         Set seeds for forward mode AD using the DAInput class
     */
-#ifdef CODI_ADF
+
     // initialize the input and output objects
     autoPtr<DAInput> daInput(
         DAInput::New(
@@ -4828,12 +4829,13 @@ void DASolver::setInputSeedForwardAD(
     forAll(inputList, idxI)
     {
         inputList[idxI] = input[idxI];
+#ifdef CODI_ADF
         inputList[idxI].gradient() = seed[idxI];
+#endif
     }
 
     // call daInput->run to assign inputList to OF variables
     daInput->run(inputList);
-#endif
 }
 
 label DASolver::getInputSize(

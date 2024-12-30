@@ -50,7 +50,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcJacTVecProduct(char *, char *, int, int, double *, char *, char *, int, int, double *, double *)
         int getInputSize(char *, char *)
         int getOutputSize(char *, char *)
-        void setInputSeedForwardAD(char *, char *, int, double *, double *)
+        void setSolverInput(char *, char *, int, double *, double *)
         void calcdRdWT(int, PetscMat)
         void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree()
@@ -203,7 +203,7 @@ cdef class pyDASolvers:
     def solvePrimal(self):
         return self._thisptr.solvePrimal()
     
-    def setInputSeedForwardAD(self,
+    def setSolverInput(self,
             inputName,
             inputType,
             inputSize,
@@ -216,7 +216,7 @@ cdef class pyDASolvers:
         cdef double *inputs_data = <double*>inputs.data
         cdef double *seeds_data = <double*>seeds.data
 
-        self._thisptr.setInputSeedForwardAD(
+        self._thisptr.setSolverInput(
             inputName.encode(),
             inputType.encode(),
             inputSize,

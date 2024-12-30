@@ -39,6 +39,7 @@
 #include "interpolateSplineXY.H"
 #include "DAInput.H"
 #include "DAOutput.H"
+#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -104,6 +105,9 @@ protected:
 
     /// DARegression pointer
     autoPtr<DARegression> daRegressionPtr_;
+
+    /// DAGlobalVar pointer
+    autoPtr<DAGlobalVar> daGlobalVarPtr_;
 
     /// the stateInfo_ list from DAStateInfo object
     HashTable<wordList> stateInfo_;
@@ -453,7 +457,7 @@ public:
         const double* seed,
         double* product);
 
-    void setInputSeedForwardAD(
+    void setSolverInput(
         const word inputName,
         const word inputType,
         const int inputSize,

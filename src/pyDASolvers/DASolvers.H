@@ -108,14 +108,14 @@ public:
             product);
     }
 
-    void setInputSeedForwardAD(
+    void setSolverInput(
         const word inputName,
         const word inputType,
         const int inputSize,
         const double* input,
         const double* seed)
     {
-        DASolverPtr_->setInputSeedForwardAD(
+        DASolverPtr_->setSolverInput(
             inputName,
             inputType,
             inputSize,

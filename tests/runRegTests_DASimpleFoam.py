@@ -50,8 +50,8 @@ daOptions = {
                 "type": "force",
                 "source": "patchToFace",
                 "patches": ["wing"],
-                "directionMode": "fixedDirection",
-                "direction": [1.0, 0.0, 0.0],
+                "directionMode": "parallelToFlow",
+                "patchVelocityInputName": "patchV",
                 "scale": 1.0 / (0.5 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
@@ -61,23 +61,18 @@ daOptions = {
                 "type": "force",
                 "source": "patchToFace",
                 "patches": ["wing"],
-                "directionMode": "fixedDirection",
-                "direction": [0.0, 1.0, 0.0],
+                "directionMode": "normalToFlow",
+                "patchVelocityInputName": "patchV",
                 "scale": 1.0 / (0.5 * U0 * U0 * A0),
                 "addToAdjoint": True,
             }
         },
     },
-    "adjEqnOption": {
-        "gmresRelTol": 1.0e-12,
-        "pcFillLevel": 1,
-        "jacMatReOrdering": "rcm",
-        "dynAdjustTol": False
-    },
+    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm", "dynAdjustTol": False},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
     "designVar": {
-        "twist": {"designVarType": "FFD"},
-        "shape": {"designVarType": "FFD"},
+        "aero_vol_coords": {"designVarType": "volCoord"},
+        "patchV": {"designVarType": "patchVelocity", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
     },
 }
 
@@ -132,25 +127,16 @@ class Top(Multipoint):
         shapes.append({pts[2, 1, 0]: dir_y, pts[2, 1, 1]: dir_y})
         self.geometry.nom_addShapeFunctionDV(dvName="shape", shapes=shapes)
 
-        self.geometry.nom_addRefAxis(name="wingAxis", xFraction=0.25, alignIndex="k")
-
-        # Set up global design variables. We dont change the root twist
-        def twist(val, geo):
-            for i in range(2):
-                geo.rot_z["wingAxis"].coef[i] = -val[0]
-
-        self.geometry.nom_addGlobalDV(dvName="twist", value=np.ones(1) * twist0, func=twist)
-
         # add the design variables to the dvs component's output
-        self.dvs.add_output("twist", val=np.ones(1) * twist0)
         self.dvs.add_output("shape", val=np.zeros(1))
+        self.dvs.add_output("patchV", val=np.array([10.0, 3.0]))
         # manually connect the dvs output to the geometry and cruise
-        self.connect("twist", "geometry.twist")
         self.connect("shape", "geometry.shape")
+        self.connect("patchV", "cruise.patchV")
 
         # define the design variables to the top level
-        self.add_design_var("twist", lower=-10.0, upper=10.0, scaler=1.0)
         self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
+        self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0)
 
         # add constraints and the objective
         self.connect("cruise.aero_post.CD", "LoD.CD")
@@ -165,12 +151,17 @@ prob.model = Top()
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-optFuncs = OptFuncs(daOptions, prob)
+# optFuncs = OptFuncs(daOptions, prob)
 
 # verify the total derivatives against the finite-difference
 prob.run_model()
 results = prob.check_totals(
-    of=["LoD.val", "cruise.aero_post.CL"], wrt=["twist", "shape"], compact_print=True, step=1e-3, form="central", step_calc="abs"
+    of=["LoD.val", "cruise.aero_post.CL"],
+    wrt=["patchV", "shape"],
+    compact_print=True,
+    step=1e-3,
+    form="central",
+    step_calc="abs",
 )
 
 if gcomm.rank == 0:
@@ -180,9 +171,9 @@ if gcomm.rank == 0:
     derivDict = {}
     derivDict["LoD"] = {}
     derivDict["LoD"]["shape"] = results[("LoD.val", "shape")]["J_fwd"][0]
-    derivDict["LoD"]["twist"] = results[("LoD.val", "twist")]["J_fwd"][0]
+    derivDict["LoD"]["patchV"] = results[("LoD.val", "patchV")]["J_fwd"][0]
     derivDict["CL"] = {}
     derivDict["CL"]["shape"] = results[("cruise.aero_post.CL", "shape")]["J_fwd"][0]
-    derivDict["CL"]["twist"] = results[("cruise.aero_post.CL", "twist")]["J_fwd"][0]
+    derivDict["CL"]["patchV"] = results[("cruise.aero_post.CL", "patchV")]["J_fwd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
