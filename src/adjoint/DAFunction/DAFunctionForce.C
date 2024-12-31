@@ -56,7 +56,7 @@ DAFunctionForce::DAFunctionForce(
         // initial value for forceDir_. it will be dynamically adjusted later
         forceDir_ = {1.0, 0.0, 0.0};
         word patchVelocityInputName = functionDict_.getWord("patchVelocityInputName");
-        dictionary patchVSubDict = daOption_.getAllOptions().subDict("designVar").subDict(patchVelocityInputName);
+        dictionary patchVSubDict = daOption_.getAllOptions().subDict("solverInput").subDict(patchVelocityInputName);
         HashTable<label> axisIndices;
         axisIndices.set("x", 0);
         axisIndices.set("y", 1);

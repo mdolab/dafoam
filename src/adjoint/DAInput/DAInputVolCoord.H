@@ -53,6 +53,11 @@ public:
     {
         return daIndex_.nLocalXv;
     }
+
+    virtual label distributed()
+    {
+        return 1;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

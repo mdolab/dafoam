@@ -113,6 +113,8 @@ public:
     virtual void run(const scalarList& input) = 0;
 
     virtual label size() = 0;
+
+    virtual label distributed() = 0;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

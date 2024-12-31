@@ -73,6 +73,11 @@ public:
     {
         return 1;
     }
+
+    virtual label distributed()
+    {
+        return 0;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

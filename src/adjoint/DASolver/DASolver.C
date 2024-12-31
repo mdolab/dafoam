@@ -4872,6 +4872,40 @@ label DASolver::getOutputSize(
     return daOutput->size();
 }
 
+label DASolver::getInputDistributed(
+    const word inputName,
+    const word inputType)
+{
+    autoPtr<DAInput> daInput(
+        DAInput::New(
+            inputName,
+            inputType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_()));
+
+    return daInput->distributed();
+}
+
+label DASolver::getOutputDistributed(
+    const word outputName,
+    const word outputType)
+{
+    autoPtr<DAOutput> daOutput(
+        DAOutput::New(
+            outputName,
+            outputType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            daFunctionPtrList_));
+
+    return daOutput->distributed();
+}
+
 void DASolver::calcJacTVecProduct(
     const word inputName,
     const word inputType,

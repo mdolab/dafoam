@@ -50,6 +50,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcJacTVecProduct(char *, char *, int, int, double *, char *, char *, int, int, double *, double *)
         int getInputSize(char *, char *)
         int getOutputSize(char *, char *)
+        int getInputDistributed(char *, char *)
+        int getOutputDistributed(char *, char *)
         void setSolverInput(char *, char *, int, double *, double *)
         void setRunStatus(char *)
         void calcdRdWT(int, PetscMat)
@@ -229,6 +231,12 @@ cdef class pyDASolvers:
     
     def getOutputSize(self, outputName, outputType):
         return self._thisptr.getOutputSize(outputName.encode(), outputType.encode())
+    
+    def getInputDistributed(self, inputName, inputType):
+        return self._thisptr.getInputDistributed(inputName.encode(), inputType.encode())
+    
+    def getOutputDistributed(self, outputName, outputType):
+        return self._thisptr.getOutputDistributed(outputName.encode(), outputType.encode())
     
     def calcJacTVecProduct(self,
             inputName,

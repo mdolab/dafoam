@@ -54,6 +54,11 @@ public:
         // [UMag, AoA]
         return 2;
     }
+
+    virtual label distributed()
+    {
+        return 0;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

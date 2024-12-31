@@ -48,8 +48,8 @@ void DAInputPatchVelocity::run(const scalarList& input)
     globalVar.patchVelocity[1] = input[1];
 
     wordList patchNames;
-    dictionary aoaSubDict = daOption_.getAllOptions().subDict("designVar").subDict(inputName_);
-    aoaSubDict.readEntry<wordList>("patches", patchNames);
+    dictionary patchVSubDict = daOption_.getAllOptions().subDict("solverInput").subDict(inputName_);
+    patchVSubDict.readEntry<wordList>("patches", patchNames);
 
 #ifndef CODI_ADR
     Info << "DAInputPatchVelocity. " << endl;
@@ -57,8 +57,8 @@ void DAInputPatchVelocity::run(const scalarList& input)
 #endif
 
     // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
-    word flowAxis = aoaSubDict.getWord("flowAxis");
-    word normalAxis = aoaSubDict.getWord("normalAxis");
+    word flowAxis = patchVSubDict.getWord("flowAxis");
+    word normalAxis = patchVSubDict.getWord("normalAxis");
     scalar UMag = input[0];
 
     HashTable<label> axisIndices;

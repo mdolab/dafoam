@@ -76,8 +76,8 @@ daOptions = {
         "dynAdjustTol": False
     },
     "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "T": T0, "nuTilda": 1e-3},
-    "designVar": {
-        "aero_vol_coords": {"designVarType": "volCoord"},
+    "solverInput": {
+        "aero_vol_coords": {"type": "volCoord"},
     },
 }
 

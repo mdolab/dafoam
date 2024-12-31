@@ -281,28 +281,27 @@ class DAOPTION(object):
         ##    },
         self.function = {}
 
-        ## Design variable information. Different type of design variables require different keys
-        ## For alpha, we need to prescribe a list of far field patch names from which the angle of
+        ## Solver input information. Different type of design variables require different keys
+        ## For patchVelocity, we need to set a list of far field patch names from which the angle of
         ## attack is computed, this is usually a far field patch. Also, we need to prescribe
         ## flow and normal axies, and alpha = atan( U_normal / U_flow ) at patches
         ## Example
-        ##     designVar = {
-        ##         "shapey" : {"designVarType": "FFD"},
-        ##         "twist": {"designVarType": "FFD"},
-        ##         "alpha" = {
-        ##             "designVarType": "AOA",
+        ##     solverInput = {
+        ##         "aero_vol_coords" : {"type": "volCoord"},
+        ##         "patchV" = {
+        ##             "type": "patchVelocity",
         ##             "patches": ["farField"],
         ##             "flowAxis": "x",
         ##             "normalAxis": "y"
         ##         },
         ##         "ux0" = {
-        ##             "designVarType": "BC",
+        ##             "type": "patchVariable",
         ##             "patches": ["inlet"],
         ##             "variable": "U",
         ##             "comp": 0
         ##         },
         ##     }
-        self.designVar = {}
+        self.solverInput = {}
 
         ## List of patch names for the design surface. These patch names need to be of wall type
         ## and shows up in the constant/polyMesh/boundary file
@@ -1062,7 +1061,7 @@ class PYDAFOAM(object):
             An empty dict that contains total derivative of objective function with respect design variables
         """
 
-        designVarDict = self.getOption("designVar")
+        designVarDict = self.getOption("solverInput")
         functionDict = self.getOption("function")
 
         adjTotalDeriv = {}
@@ -2353,7 +2352,7 @@ class PYDAFOAM(object):
         self.solverAD.createMLRKSPMatrixFree(PCMat, ksp)
 
         functionDict = self.getOption("function")
-        designVarDict = self.getOption("designVar")
+        designVarDict = self.getOption("solverInput")
 
         # init the dFdW vec
         wSize = self.solver.getNLocalAdjointStates()
@@ -2569,7 +2568,7 @@ class PYDAFOAM(object):
         # ************ Now compute the total derivatives **********************
         Info("Computing total derivatives....")
 
-        designVarDict = self.getOption("designVar")
+        designVarDict = self.getOption("solverInput")
         for designVarName in designVarDict:
             Info("Computing total derivatives for %s" % designVarName)
             ###################### BC: boundary condition as design variable ###################

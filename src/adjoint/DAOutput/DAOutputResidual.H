@@ -55,6 +55,11 @@ public:
     {
         return daIndex_.nLocalAdjointStates;
     }
+
+    virtual label distributed()
+    {
+        return 1;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

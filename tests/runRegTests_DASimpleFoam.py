@@ -70,9 +70,9 @@ daOptions = {
     },
     "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm", "dynAdjustTol": False},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
-    "designVar": {
-        "aero_vol_coords": {"designVarType": "volCoord"},
-        "patchV": {"designVarType": "patchVelocity", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+    "solverInput": {
+        "aero_vol_coords": {"type": "volCoord"},
+        "patchV": {"type": "patchVelocity", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
     },
 }
 

@@ -442,6 +442,16 @@ public:
     label getOutputSize(
         const word outputName,
         const word outputType);
+    
+    /// get whether the input is distributed among processors
+    label getInputDistributed(
+        const word inputName,
+        const word inputType);
+    
+    /// get whether the output is distributed among processors
+    label getOutputDistributed(
+        const word outputName,
+        const word outputType);
 
     /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
     void calcJacTVecProduct(

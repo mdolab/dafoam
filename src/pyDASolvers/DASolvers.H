@@ -80,6 +80,20 @@ public:
         return DASolverPtr_->getOutputSize(outputName, outputType);
     }
 
+    label getInputDistributed(
+        const word inputName,
+        const word inputType)
+    {
+        return DASolverPtr_->getInputDistributed(inputName, inputType);
+    }
+
+    label getOutputDistributed(
+        const word outputName,
+        const word outputType)
+    {
+        return DASolverPtr_->getOutputDistributed(outputName, outputType);
+    }
+
     /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
     void calcJacTVecProduct(
         const word inputName,

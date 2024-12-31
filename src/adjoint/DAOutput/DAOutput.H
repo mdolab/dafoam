@@ -127,6 +127,8 @@ public:
     virtual void run(scalarList& output) = 0;
 
     virtual label size() = 0;
+
+    virtual label distributed() = 0;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
