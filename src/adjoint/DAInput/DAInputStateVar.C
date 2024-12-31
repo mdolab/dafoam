@@ -40,6 +40,11 @@ void DAInputStateVar::run(const scalarList& input)
         Assign the input array to OF's state variables
     */
 
+#ifndef CODI_ADR
+    Info << "DAInputStateVar. " << endl;
+    Info << "Setting state variables. " << endl;
+#endif
+
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         const word stateName = stateInfo_["volVectorStates"][idxI];

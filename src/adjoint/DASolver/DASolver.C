@@ -4915,6 +4915,8 @@ void DASolver::calcJacTVecProduct(
         product: the mat-vec product array
     */
 
+    Info << "Computing d[" << outputName << "]/d[" << inputName << "]^T * psi" << endl;
+
     // initialize the input and output objects
     autoPtr<DAInput> daInput(
         DAInput::New(

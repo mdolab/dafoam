@@ -40,6 +40,11 @@ void DAInputVolCoord::run(const scalarList& input)
         Assign the input array to the OF's volume coordinates and call movePoints
     */
 
+#ifndef CODI_ADR
+    Info << "DAInputVolCoord. " << endl;
+    Info << "Setting volume coordinates. " << endl;
+#endif
+
     pointField meshPoints = mesh_.points();
 
     label counterI = 0;

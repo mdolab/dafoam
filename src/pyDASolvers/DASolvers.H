@@ -123,6 +123,11 @@ public:
             seed);
     }
 
+    void setRunStatus(const word status)
+    {
+        DASolverPtr_->setRunStatus(status);
+    }
+
     /// compute dRdWT
     void calcdRdWT(
         const label isPC,

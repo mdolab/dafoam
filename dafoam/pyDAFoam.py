@@ -992,6 +992,14 @@ class PYDAFOAM(object):
         self.nSolvePrimals += 1
 
         return
+    
+    def setRunStatus(self, status):
+        """
+        Set the DAGlobalVar.runStatus value
+        """
+
+        self.solver.setRunStatus(status)
+        self.solverAD.setRunStatus(status)
 
     def _getDefOptions(self):
         """

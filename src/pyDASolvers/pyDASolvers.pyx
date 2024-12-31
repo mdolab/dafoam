@@ -51,6 +51,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getInputSize(char *, char *)
         int getOutputSize(char *, char *)
         void setSolverInput(char *, char *, int, double *, double *)
+        void setRunStatus(char *)
         void calcdRdWT(int, PetscMat)
         void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree()
@@ -262,6 +263,9 @@ cdef class pyDASolvers:
             distributedOutput,
             seeds_data, 
             product_data)
+    
+    def setRunStatus(self, status):
+        self._thisptr.setRunStatus(status.encode())
     
     def calcdRdWT(self, isPC, Mat dRdWT):
         self._thisptr.calcdRdWT(isPC, dRdWT.mat)

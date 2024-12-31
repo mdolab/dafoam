@@ -51,6 +51,11 @@ void DAInputPatchVelocity::run(const scalarList& input)
     dictionary aoaSubDict = daOption_.getAllOptions().subDict("designVar").subDict(inputName_);
     aoaSubDict.readEntry<wordList>("patches", patchNames);
 
+#ifndef CODI_ADR
+    Info << "DAInputPatchVelocity. " << endl;
+    Info << "Setting UMag = " << input[0] << " AoA = " << input[1] << " degs at " << patchNames << endl;
+#endif
+
     // the streamwise axis of aoa, aoa = tan( U_normal/U_flow )
     word flowAxis = aoaSubDict.getWord("flowAxis");
     word normalAxis = aoaSubDict.getWord("normalAxis");

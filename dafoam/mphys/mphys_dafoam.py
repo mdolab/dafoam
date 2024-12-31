@@ -788,7 +788,7 @@ class DAFoamSolver(ImplicitComponent):
             DASolver = self.DASolver
 
             # set the runStatus, this is useful when the actuator term is activated
-            DASolver.setOption("runStatus", "solvePrimal")
+            DASolver.setRunStatus("primal")
 
             # first we assign the volume coordinates from the inputs dict
             # to the OF layer (deform the mesh)
@@ -849,6 +849,9 @@ class DAFoamSolver(ImplicitComponent):
             # set states
             DASolver.setStates(states)
 
+            # reset the runStatus to adjoint
+            DASolver.setRunStatus("adjoint")
+
     def linearize(self, inputs, outputs, residuals):
         # NOTE: we do not do any computation in this function, just print some information
 
@@ -871,6 +874,7 @@ class DAFoamSolver(ImplicitComponent):
         DASolver = self.DASolver
 
         stateName = "%s_states" % self.discipline
+        residualName = "%s_residuals" % self.discipline
         volCoordName = "%s_vol_coords" % self.discipline
 
         # assign the optionDict to the solver
@@ -906,12 +910,12 @@ class DAFoamSolver(ImplicitComponent):
                 product = np.zeros(localAdjSize)
                 jacInput = outputs[stateName]
                 DASolver.solverAD.calcJacTVecProduct(
-                    "dummyName",
+                    stateName,
                     "stateVar",
                     localAdjSize,
                     1,
                     jacInput,
-                    "dummyName",
+                    residualName,
                     "residual",
                     localAdjSize,
                     1,
@@ -927,12 +931,12 @@ class DAFoamSolver(ImplicitComponent):
                     product = np.zeros(localXvSize)
                     jacInput = inputs[volCoordName]
                     DASolver.solverAD.calcJacTVecProduct(
-                        "dummyName",
+                        volCoordName,
                         "volCoord",
                         localXvSize,
                         1,
                         jacInput,
-                        "dummyName",
+                        residualName,
                         "residual",
                         localAdjSize,
                         1,
@@ -967,7 +971,7 @@ class DAFoamSolver(ImplicitComponent):
                             2,
                             0,
                             jacInput,
-                            "dummyName",
+                            residualName,
                             "residual",
                             localAdjSize,
                             1,
@@ -1489,6 +1493,9 @@ class DAFoamFunctions(ExplicitComponent):
 
         designVariables = DASolver.getOption("designVar")
 
+        stateName = "%s_states" % self.discipline
+        volCoordName = "%s_vol_coords" % self.discipline
+
         # assign the optionDict to the solver
         self.apply_options(self.optionDict)
         # now call the dv_funcs to update the design variables
@@ -1496,7 +1503,7 @@ class DAFoamFunctions(ExplicitComponent):
             func = self.dv_funcs[dvName]
             dvVal = inputs[dvName]
             func(dvVal, DASolver)
-        DASolver.setStates(inputs["%s_states" % self.discipline])
+        DASolver.setStates(inputs[stateName])
 
         # we do not support forward mode AD
         if mode == "fwd":
@@ -1544,12 +1551,12 @@ class DAFoamFunctions(ExplicitComponent):
             for inputName in list(d_inputs.keys()):
 
                 # compute dFdW * fBar
-                if inputName == "%s_states" % self.discipline:
+                if inputName == stateName:
 
                     product = np.zeros(localAdjSize)
-                    jacInput = inputs["%s_states" % self.discipline]
+                    jacInput = inputs[stateName]
                     DASolver.solverAD.calcJacTVecProduct(
-                        "dummyName",
+                        stateName,
                         "stateVar",
                         localAdjSize,
                         1,
@@ -1561,15 +1568,15 @@ class DAFoamFunctions(ExplicitComponent):
                         seed,
                         product,
                     )
-                    d_inputs["%s_states" % self.discipline] += product
+                    d_inputs[stateName] += product
 
                 # compute dFdX * fBar
-                elif inputName == "%s_vol_coords" % self.discipline:
+                elif inputName == volCoordName:
 
                     product = np.zeros(localXvSize)
-                    jacInput = inputs["%s_vol_coords" % self.discipline]
+                    jacInput = inputs[volCoordName]
                     DASolver.solverAD.calcJacTVecProduct(
-                        "dummyName",
+                        volCoordName,
                         "volCoord",
                         localXvSize,
                         1,
@@ -1581,7 +1588,7 @@ class DAFoamFunctions(ExplicitComponent):
                         seed,
                         product,
                     )
-                    d_inputs["%s_vol_coords" % self.discipline] += product
+                    d_inputs[volCoordName] += product
 
                 # now we deal with general input input names
                 else:
@@ -1690,7 +1697,7 @@ class DAFoamFunctions(ExplicitComponent):
 
                     elif self.dvType[inputName] == "RegPar":
                         volCoords = DASolver.vec2Array(DASolver.xvVec)
-                        states = inputs["%s_states" % self.discipline]
+                        states = inputs[stateName]
                         parameters = inputs[inputName]
                         product = np.zeros_like(parameters)
 

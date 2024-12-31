@@ -613,6 +613,11 @@ public:
         const label oldTimeLevel,
         const Vec psi,
         Vec dRdWOldTPsi);
+    
+    void setRunStatus(const word status)
+    {
+        daGlobalVarPtr_().runStatus = status;
+    }
 
     /// return the coupling patch list if any scenario is active on couplingInfo dict otherwise return design surface
     void getCouplingPatchList(wordList& patchList, word groupName = "NONE");

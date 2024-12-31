@@ -57,6 +57,9 @@ public:
 
     /// patch velocity list [UMag, AOA] AoA is in degrees
     scalarList patchVelocity = {0.0, 0.0};
+
+    /// the runStatus can be either primal or adjoint. Other classes can use this info
+    word runStatus = "primal";
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
