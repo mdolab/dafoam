@@ -47,13 +47,12 @@ cdef extern from "DASolvers.H" namespace "Foam":
         DASolvers(char *, object) except +
         void initSolver()
         int solvePrimal()
-        void calcJacTVecProduct(char *, char *, int, int, double *, char *, char *, int, int, double *, double *)
+        void calcJacTVecProduct(char *, char *, int, double *, char *, char *, int, double *, double *)
         int getInputSize(char *, char *)
         int getOutputSize(char *, char *)
         int getInputDistributed(char *, char *)
         int getOutputDistributed(char *, char *)
         void setSolverInput(char *, char *, int, double *, double *)
-        void setRunStatus(char *)
         void calcdRdWT(int, PetscMat)
         void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree()
@@ -242,12 +241,10 @@ cdef class pyDASolvers:
             inputName,
             inputType,
             inputSize,
-            distributedInput,
             np.ndarray[double, ndim=1, mode="c"] inputs,
             outputName,
             outputType,
             outputSize,
-            distributedOutput,
             np.ndarray[double, ndim=1, mode="c"] seeds,
             np.ndarray[double, ndim=1, mode="c"] product):
         
@@ -263,17 +260,12 @@ cdef class pyDASolvers:
             inputName.encode(),
             inputType.encode(),
             inputSize,
-            distributedInput,
             inputs_data,
             outputName.encode(),
             outputType.encode(),
             outputSize,
-            distributedOutput,
             seeds_data, 
             product_data)
-    
-    def setRunStatus(self, status):
-        self._thisptr.setRunStatus(status.encode())
     
     def calcdRdWT(self, isPC, Mat dRdWT):
         self._thisptr.calcdRdWT(isPC, dRdWT.mat)

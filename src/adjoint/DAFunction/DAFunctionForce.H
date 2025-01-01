@@ -14,6 +14,7 @@
 #include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 #include "mixedFvPatchFields.H"
+#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

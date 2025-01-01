@@ -458,12 +458,10 @@ public:
         const word inputName,
         const word inputType,
         const int inputSize,
-        const int distributedInput,
         const double* input,
         const word outputName,
         const word outputType,
         const int outputSize,
-        const int distributedOutput,
         const double* seed,
         double* product);
 
@@ -623,11 +621,6 @@ public:
         const label oldTimeLevel,
         const Vec psi,
         Vec dRdWOldTPsi);
-    
-    void setRunStatus(const word status)
-    {
-        daGlobalVarPtr_().runStatus = status;
-    }
 
     /// return the coupling patch list if any scenario is active on couplingInfo dict otherwise return design surface
     void getCouplingPatchList(wordList& patchList, word groupName = "NONE");

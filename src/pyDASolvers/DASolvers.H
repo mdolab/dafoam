@@ -99,12 +99,10 @@ public:
         const word inputName,
         const word inputType,
         const int inputSize,
-        const int distributedInput,
         const double* input,
         const word outputName,
         const word outputType,
         const int outputSize,
-        const int distributedOutput,
         const double* seed,
         double* product)
     {
@@ -112,12 +110,10 @@ public:
             inputName,
             inputType,
             inputSize,
-            distributedInput,
             input,
             outputName,
             outputType,
             outputSize,
-            distributedOutput,
             seed,
             product);
     }
@@ -135,11 +131,6 @@ public:
             inputSize,
             input,
             seed);
-    }
-
-    void setRunStatus(const word status)
-    {
-        DASolverPtr_->setRunStatus(status);
     }
 
     /// compute dRdWT

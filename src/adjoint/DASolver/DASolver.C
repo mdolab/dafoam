@@ -4910,12 +4910,10 @@ void DASolver::calcJacTVecProduct(
     const word inputName,
     const word inputType,
     const int inputSize,
-    const int distributedInput,
     const double* input,
     const word outputName,
     const word outputType,
     const int outputSize,
-    const int distributedOutput,
     const double* seed,
     double* product)
 {
@@ -4931,8 +4929,6 @@ void DASolver::calcJacTVecProduct(
 
         inputSize: size of the input array
 
-        distributedInput: whether the input is distributed across processors in parallel. For example, the state variable is a distributed input, while the angle of attack is not a distributed input
-
         input: the actual value of the input array
 
         outputName: name of the output.
@@ -4940,8 +4936,6 @@ void DASolver::calcJacTVecProduct(
         outputType: type of the output. This should be consistent with the child class type in DAOutput
 
         outputSize: size of the output array
-
-        distributedInput: whether the output is distributed across processors in parallel. For example, residual is a distributed output, while the function (drag and lift) is not a distributed output
 
         seed: the seed array
     
@@ -5011,7 +5005,7 @@ void DASolver::calcJacTVecProduct(
         // if the output is in serial (e.g., function), we need to assign the seed to
         // only the master processor. This is because the serial output already called
         // a reduce in the daOutput->run function.
-        if (distributedOutput)
+        if (daOutput().distributed())
         {
             // output is distributed, assign seed to all procs
             outputList[idxI].setGradient(seed[idxI]);
@@ -5034,7 +5028,7 @@ void DASolver::calcJacTVecProduct(
         product[idxI] = inputList[idxI].getGradient();
         // if the input is in serial (e.g., angle of attack), we need to reduce the product and
         // make sure the product is consistent among all processors
-        if (!distributedInput)
+        if (!daInput().distributed())
         {
             reduce(product[idxI], sumOp<double>());
         }

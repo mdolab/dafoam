@@ -767,7 +767,6 @@ class DAFoamSolver(ImplicitComponent):
         DASolver.setStates(outputs[self.stateName])
 
         localAdjSize = DASolver.getNLocalAdjointStates()
-        localXvSize = DASolver.getNLocalPoints() * 3
 
         if self.stateName in d_residuals:
 
@@ -782,12 +781,10 @@ class DAFoamSolver(ImplicitComponent):
                     self.stateName,
                     "stateVar",
                     localAdjSize,
-                    1,
                     jacInput,
                     self.residualName,
                     "residual",
                     localAdjSize,
-                    1,
                     seed,
                     product,
                 )
@@ -798,61 +795,20 @@ class DAFoamSolver(ImplicitComponent):
             for inputName in list(inputDict.keys()):
                 inputType = inputDict[inputName]["type"]
                 inputSize = DASolver.solver.getInputSize(inputName, inputType)
-                inputDistributed = DASolver.solver.getInputDistributed(inputName, inputType)
                 product = np.zeros(inputSize)
                 jacInput = inputs[inputName]
                 DASolver.solverAD.calcJacTVecProduct(
                     inputName,
                     inputType,
                     inputSize,
-                    inputDistributed,
                     jacInput,
                     self.residualName,
                     "residual",
                     localAdjSize,
-                    1,
                     seed,
                     product,
                 )
                 d_inputs[inputName] += product
-
-                ## this computes [dRdXv]^T*Psi using reverse mode AD
-                # if inputType == self.volCoordName:
-                #    product = np.zeros(localXvSize)
-                #    jacInput = inputs[self.volCoordName]
-                #    DASolver.solverAD.calcJacTVecProduct(
-                #        self.volCoordName,
-                #        "volCoord",
-                #        localXvSize,
-                #        1,
-                #        jacInput,
-                #        self.residualName,
-                #        "residual",
-                #        localAdjSize,
-                #        1,
-                #        seed,
-                #        product,
-                #    )
-                #    d_inputs[self.volCoordName] += product
-                # elif inputType == "patchVelocity":
-                #    product = np.zeros(2)
-                #    jacInput = inputs[inputName]
-                #    DASolver.solverAD.calcJacTVecProduct(
-                #        inputName,
-                #        "patchVelocity",
-                #        2,
-                #        0,
-                #        jacInput,
-                #        self.residualName,
-                #        "residual",
-                #        localAdjSize,
-                #        1,
-                #        seed,
-                #        product,
-                #    )
-                #    d_inputs[inputName] += product
-                # else:
-                #    raise AnalysisError("inputType %s not supported! " % inputType)
 
     def solve_linear(self, d_outputs, d_residuals, mode):
         # solve the adjoint equation [dRdW]^T * Psi = dFdW
@@ -1218,12 +1174,10 @@ class DAFoamFunctions(ExplicitComponent):
                         self.stateName,
                         "stateVar",
                         localAdjSize,
-                        1,
                         jacInput,
                         functionName,
                         "function",
                         1,
-                        0,
                         seed,
                         product,
                     )
@@ -1231,19 +1185,16 @@ class DAFoamFunctions(ExplicitComponent):
                 else:
                     inputType = inputDict[inputName]["type"]
                     inputSize = DASolver.solver.getInputSize(inputName, inputType)
-                    inputDistributed = DASolver.solver.getInputDistributed(inputName, inputType)
                     product = np.zeros(inputSize)
                     jacInput = inputs[inputName]
                     DASolver.solverAD.calcJacTVecProduct(
                         inputName,
                         inputType,
                         inputSize,
-                        inputDistributed,
                         jacInput,
                         functionName,
                         "function",
                         1,
-                        0,
                         seed,
                         product,
                     )
@@ -2111,7 +2062,8 @@ class DAFoamPropNodes(ExplicitComponent):
 
 class DAFoamActuator(ExplicitComponent):
     """
-    Component that updates actuator disk definition variables when actuator disks are displaced in an aerostructural case.
+    Component that updates actuator disk definition variables when actuator disks
+    are displaced in an aerostructural case.
     """
 
     def initialize(self):
