@@ -253,6 +253,11 @@ public:
     /// print the min max and mean yPlus to screen
     void printYPlus() const;
 
+    word getTurbModelType() const
+    {
+        return turbModelType_;
+    }
+
     label isPrintTime(
         const Time& runTime,
         const label printInterval) const;

@@ -70,12 +70,21 @@ void DARhoSimpleCFoam::initSolver()
 #include "createSimpleControlPython.H"
 #include "createFieldsRhoSimpleC.H"
 #include "createAdjoint.H"
-    // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
-    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+    // read the RAS model from constant/turbulenceProperties
+    const word turbModelName(
+        IOdictionary(
+            IOobject(
+                "turbulenceProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false))
+            .subDict("RAS")
+            .lookup("RASModel"));
+    daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
 
-    this->setDAFunctionList();
 }
 
 label DARhoSimpleCFoam::solvePrimal()

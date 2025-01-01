@@ -9,12 +9,12 @@ TPtr_.reset(
             IOobject::AUTO_WRITE),
         mesh));
 
-Info << "Reading transportProperties\n"
+Info << "Reading solidProperties\n"
      << endl;
 
-IOdictionary transportProperties(
+IOdictionary solidProperties(
     IOobject(
-        "transportProperties",
+        "solidProperties",
         runTime.constant(),
         mesh,
         IOobject::MUST_READ,
@@ -26,7 +26,7 @@ kPtr_.reset(
     new dimensionedScalar(
         "k",
         dimPower / dimLength / dimTemperature,
-        transportProperties));
+        solidProperties));
 
 // heat source unit: W/(m^3)
 Info << "Creating source term. " << endl;

@@ -39,13 +39,7 @@ void DAHeatTransferFoam::initSolver()
     Time& runTime = runTimePtr_();
     fvMesh& mesh = meshPtr_();
 #include "createFieldsHeatTransfer.H"
-#include "createAdjointSolid.H"
-    // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
-
-    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
-
-    this->setDAObjFuncList();
+#include "createAdjoint.H"
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -60,9 +54,7 @@ void DAHeatTransferFoam::initSolver()
     }
 }
 
-label DAHeatTransferFoam::solvePrimal(
-    const Vec xvVec,
-    Vec wVec)
+label DAHeatTransferFoam::solvePrimal()
 {
     /*
     Description:
@@ -77,34 +69,14 @@ label DAHeatTransferFoam::solvePrimal(
 
 #include "createRefsHeatTransfer.H"
 
-    // change the run status
-    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
-
     Info << "\nCalculating temperature distribution\n"
          << endl;
 
-    // deform the mesh based on the xvVec
-    this->pointVec2OFMesh(xvVec);
-
-    // check mesh quality
-    label meshOK = this->checkMesh();
-
-    if (!meshOK)
-    {
-        this->writeFailedMesh();
-        return 1;
-    }
-
-    label printInterval = daOptionPtr_->getOption<label>("printInterval");
-    label printToScreen = 0;
     // main loop
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        DAUtility::primalMaxInitRes_ = -1e16;
 
-        printToScreen = this->isPrintTime(runTime, printInterval);
-
-        if (printToScreen)
+        if (printToScreen_)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
@@ -122,20 +94,12 @@ label DAHeatTransferFoam::solvePrimal(
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverT = TEqn.solve();
-        DAUtility::primalResidualControl(solverT, printToScreen, "T");
+        DAUtility::primalResidualControl(solverT, printToScreen_, "T", primalMaxRes_);
 
-        if (this->validateStates())
-        {
-            // write data to files and quit
-            runTime.writeNow();
-            mesh.write();
-            return 1;
-        }
-
-        if (printToScreen)
+        if (printToScreen_)
         {
 
-            this->printAllObjFuncs();
+            this->printAllFunctions();
 
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
@@ -144,11 +108,6 @@ label DAHeatTransferFoam::solvePrimal(
 
         runTime.write();
     }
-
-    this->calcPrimalResidualStatistics("print");
-
-    // primal converged, assign the OpenFoam fields to the state vec wVec
-    this->ofField2StateVec(wVec);
 
     // write the mesh to files
     mesh.write();
