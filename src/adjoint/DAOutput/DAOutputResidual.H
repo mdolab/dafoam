@@ -36,6 +36,7 @@ public:
     //- Construct from components
     DAOutputResidual(
         const word outputName,
+        const word outputType,
         fvMesh& mesh,
         const DAOption& daOption,
         DAModel& daModel,
@@ -49,6 +50,16 @@ public:
     }
 
     virtual void run(scalarList& output);
+
+    virtual label size()
+    {
+        return daIndex_.nLocalAdjointStates;
+    }
+
+    virtual label distributed()
+    {
+        return 1;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

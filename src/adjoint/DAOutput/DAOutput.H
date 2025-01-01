@@ -43,6 +43,9 @@ protected:
     /// name of the output
     const word outputName_;
 
+    /// type of the output
+    const word outputType_;
+
     /// fvMesh
     fvMesh& mesh_;
 
@@ -73,6 +76,7 @@ public:
         dictionary,
         (
             const word outputName,
+            const word outputType,
             fvMesh& mesh,
             const DAOption& daOption,
             DAModel& daModel,
@@ -81,6 +85,7 @@ public:
             UPtrList<DAFunction>& daFunctionList),
         (
             outputName,
+            outputType,
             mesh,
             daOption,
             daModel,
@@ -93,6 +98,7 @@ public:
     //- Construct from components
     DAOutput(
         const word outputName,
+        const word outputType,
         fvMesh& mesh,
         const DAOption& daOption,
         DAModel& daModel,
@@ -105,6 +111,7 @@ public:
     //- Return a reference to the selected model
     static autoPtr<DAOutput> New(
         const word outputName,
+        const word outputType,
         fvMesh& mesh,
         const DAOption& daOption,
         DAModel& daModel,
@@ -118,6 +125,10 @@ public:
     }
 
     virtual void run(scalarList& output) = 0;
+
+    virtual label size() = 0;
+
+    virtual label distributed() = 0;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

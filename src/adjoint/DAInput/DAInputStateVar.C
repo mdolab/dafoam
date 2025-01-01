@@ -18,12 +18,14 @@ addToRunTimeSelectionTable(DAInput, DAInputStateVar, dictionary);
 
 DAInputStateVar::DAInputStateVar(
     const word inputName,
+    const word inputType,
     fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex)
     : DAInput(
         inputName,
+        inputType,
         mesh,
         daOption,
         daModel,
@@ -37,6 +39,11 @@ void DAInputStateVar::run(const scalarList& input)
     Description:
         Assign the input array to OF's state variables
     */
+
+#ifndef CODI_ADR
+    Info << "DAInputStateVar. " << endl;
+    Info << "Setting state variables. " << endl;
+#endif
 
     forAll(stateInfo_["volVectorStates"], idxI)
     {

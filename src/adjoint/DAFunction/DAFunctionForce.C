@@ -55,17 +55,14 @@ DAFunctionForce::DAFunctionForce(
     {
         // initial value for forceDir_. it will be dynamically adjusted later
         forceDir_ = {1.0, 0.0, 0.0};
-        word alphaName = functionDict_.getWord("alphaName");
-        dictionary alphaSubDict = daOption_.getAllOptions().subDict("designVar").subDict(alphaName);
-        wordList patches;
-        alphaSubDict.readEntry<wordList>("patches", patches);
-        inoutRefPatchName_ = patches[0];
+        word patchVelocityInputName = functionDict_.getWord("patchVelocityInputName");
+        dictionary patchVSubDict = daOption_.getAllOptions().subDict("solverInput").subDict(patchVelocityInputName);
         HashTable<label> axisIndices;
         axisIndices.set("x", 0);
         axisIndices.set("y", 1);
         axisIndices.set("z", 2);
-        word flowAxis = alphaSubDict.getWord("flowAxis");
-        word normalAxis = alphaSubDict.getWord("normalAxis");
+        word flowAxis = patchVSubDict.getWord("flowAxis");
+        word normalAxis = patchVSubDict.getWord("normalAxis");
         flowAxisIndex_ = axisIndices[flowAxis];
         normalAxisIndex_ = axisIndices[normalAxis];
     }
@@ -76,7 +73,7 @@ DAFunctionForce::DAFunctionForce(
                           << "Options: fixedDirection, parallelToFlow, normalToFlow."
                           << abort(FatalError);
     }
-
+    
     if (fabs(mag(forceDir_) - 1.0) > 1.0e-8)
     {
         FatalErrorIn(" ") << "the magnitude of the direction parameter in "
@@ -100,13 +97,30 @@ void DAFunctionForce::calcFunction(scalar& functionValue)
         functionValue: the sum of objective, reduced across all processsors and scaled by "scale"
     */
 
+    // dynamically update the force direction,  if either parallelToFlow or normalToFlow is active.
     if (dirMode_ != "fixedDirection")
     {
-        this->updateForceDir(forceDir_);
-    }
+        // we need to read the velocity magnitude and aoa
+        // from DAGlobalVar::patchVelocity. NOTE: DAGlobalVar::patchVelocity is already set
+        // by DAInputPatchVelocity
+        DAGlobalVar& globalVar =
+            const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+        scalar aoaDeg = globalVar.patchVelocity[1];
+        scalar aoaRad = aoaDeg * constant::mathematical::pi / 180.0;
 
-    // reload the scale, which may be needed for multipoint optimization
-    functionDict_.readEntry<scalar>("scale", scale_);
+        scalar compA = cos(aoaRad);
+        scalar compB = sin(aoaRad);
+        if (dirMode_ == "parallelToFlow")
+        {
+            forceDir_[flowAxisIndex_] = compA;
+            forceDir_[normalAxisIndex_] = compB;
+        }
+        else if (dirMode_ == "normalToFlow")
+        {
+            forceDir_[flowAxisIndex_] = -compB;
+            forceDir_[normalAxisIndex_] = compA;
+        }
+    }
 
     // initialize objFunValue
     functionValue = 0.0;
@@ -144,109 +158,6 @@ void DAFunctionForce::calcFunction(scalar& functionValue)
     this->calcRefVar(functionValue);
 
     return;
-}
-
-void DAFunctionForce::updateForceDir(vector& forceDir)
-{
-    /*
-    Description:
-        Dynamically adjust the force direction based on the flow direction from
-        far field
-        NOTE: we have special implementation for forward mode AD because
-        we need to progagate the aoa seed to here. The problem of the regular
-        treatment is that we use reduce(flowDir[0], maxOp<scalar>()); to get the
-        flowDir for thoese processors that have no inout patches, this reduce
-        function will lose track of AD seeds for aoa.
-
-    Output:
-        forceDir: the force direction vector
-    */
-
-    if (DAUtility::angleOfAttackRadForwardAD > -999.0)
-    {
-        // DAUtility::angleOfAttackRadForwardAD is set, this is dF/dAOA forwardMode
-        // derivative, use special treatment here
-
-        scalar compA = cos(DAUtility::angleOfAttackRadForwardAD);
-        scalar compB = sin(DAUtility::angleOfAttackRadForwardAD);
-
-        if (dirMode_ == "parallelToFlow")
-        {
-            forceDir[flowAxisIndex_] = compA;
-            forceDir[normalAxisIndex_] = compB;
-        }
-        else if (dirMode_ == "normalToFlow")
-        {
-            forceDir[flowAxisIndex_] = -compB;
-            forceDir[normalAxisIndex_] = compA;
-        }
-        else
-        {
-            FatalErrorIn(" ") << "directionMode not valid!"
-                              << "Options: parallelToFlow, normalToFlow."
-                              << abort(FatalError);
-        }
-    }
-    else
-    {
-        // DAUtility::angleOfAttackRadForwardAD is not set, usual regular forceDir computation
-
-        label patchI = mesh_.boundaryMesh().findPatchID(inoutRefPatchName_);
-
-        volVectorField& U =
-            const_cast<volVectorField&>(mesh_.thisDb().lookupObject<volVectorField>("U"));
-
-        vector flowDir = {-1e16, -1e16, -1e16};
-
-        // for decomposed domain, don't set BC if the patch is empty
-        if (mesh_.boundaryMesh()[patchI].size() > 0)
-        {
-            if (U.boundaryField()[patchI].type() == "fixedValue")
-            {
-                flowDir = U.boundaryField()[patchI][0];
-                flowDir = flowDir / mag(flowDir);
-            }
-            else if (U.boundaryField()[patchI].type() == "inletOutlet")
-            {
-                // perturb inletValue
-                mixedFvPatchField<vector>& inletOutletPatch =
-                    refCast<mixedFvPatchField<vector>>(U.boundaryFieldRef()[patchI]);
-                flowDir = inletOutletPatch.refValue()[0];
-                flowDir = flowDir / mag(flowDir);
-            }
-            else
-            {
-                FatalErrorIn("") << "boundaryType: " << U.boundaryField()[patchI].type()
-                                 << " not supported!"
-                                 << "Available options are: fixedValue, inletOutlet"
-                                 << abort(FatalError);
-            }
-        }
-
-        // need to reduce the sum of force across all processors, this is because some of
-        // the processor might not own the inoutRefPatchName_ so their flowDir will be -1e16, but
-        // when calling the following reduce function, they will get the correct flowDir
-        // computed by other processors
-        reduce(flowDir[0], maxOp<scalar>());
-        reduce(flowDir[1], maxOp<scalar>());
-        reduce(flowDir[2], maxOp<scalar>());
-
-        if (dirMode_ == "parallelToFlow")
-        {
-            forceDir = flowDir;
-        }
-        else if (dirMode_ == "normalToFlow")
-        {
-            forceDir[flowAxisIndex_] = -flowDir[normalAxisIndex_];
-            forceDir[normalAxisIndex_] = flowDir[flowAxisIndex_];
-        }
-        else
-        {
-            FatalErrorIn(" ") << "directionMode not valid!"
-                              << "Options: parallelToFlow, normalToFlow."
-                              << abort(FatalError);
-        }
-    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

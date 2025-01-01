@@ -21,6 +21,7 @@ defineRunTimeSelectionTable(DAOutput, dictionary);
 
 DAOutput::DAOutput(
     const word outputName,
+    const word outputType,
     fvMesh& mesh,
     const DAOption& daOption,
     DAModel& daModel,
@@ -28,6 +29,7 @@ DAOutput::DAOutput(
     DAResidual& daResidual,
     UPtrList<DAFunction>& daFunctionList)
     : outputName_(outputName),
+      outputType_(outputType),
       mesh_(mesh),
       daOption_(daOption),
       daModel_(daModel),
@@ -45,6 +47,7 @@ DAOutput::DAOutput(
 
 autoPtr<DAOutput> DAOutput::New(
     const word outputName,
+    const word outputType,
     fvMesh& mesh,
     const DAOption& daOption,
     DAModel& daModel,
@@ -56,11 +59,11 @@ autoPtr<DAOutput> DAOutput::New(
 
     if (daOption.getAllOptions().lookupOrDefault<label>("debug", 0))
     {
-        Info << "Selecting output: " << outputName << " for DAOutput." << endl;
+        Info << "Selecting output: " << outputType << " for DAOutput." << endl;
     }
 
     dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(outputName);
+        dictionaryConstructorTablePtr_->find(outputType);
 
     // if the solver name is not found in any child class, print an error
     if (cstrIter == dictionaryConstructorTablePtr_->end())
@@ -77,7 +80,7 @@ autoPtr<DAOutput> DAOutput::New(
             "    UPtrList<DAFunction>&"
             ")")
             << "Unknown DAOutput type "
-            << outputName << nl << nl
+            << outputType << nl << nl
             << "Valid DAOutput types:" << endl
             << dictionaryConstructorTablePtr_->sortedToc()
             << exit(FatalError);
@@ -86,6 +89,7 @@ autoPtr<DAOutput> DAOutput::New(
     // child class found
     return autoPtr<DAOutput>(
         cstrIter()(outputName,
+                   outputType,
                    mesh,
                    daOption,
                    daModel,

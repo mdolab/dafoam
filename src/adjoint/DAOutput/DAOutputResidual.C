@@ -18,6 +18,7 @@ addToRunTimeSelectionTable(DAOutput, DAOutputResidual, dictionary);
 
 DAOutputResidual::DAOutputResidual(
     const word outputName,
+    const word outputType,
     fvMesh& mesh,
     const DAOption& daOption,
     DAModel& daModel,
@@ -26,6 +27,7 @@ DAOutputResidual::DAOutputResidual(
     UPtrList<DAFunction>& daFunctionList)
     : DAOutput(
         outputName,
+        outputType,
         mesh,
         daOption,
         daModel,
@@ -42,12 +44,7 @@ void DAOutputResidual::run(scalarList& output)
         Compute OF's residual variables and then assign them to the output array
     */
 
-    // options should be set in the Python layer (dafoam_mphys.py) before call this function, so
-    // here we just use it
-    dictionary options =
-        daOption_.getAllOptions().subDict("_outputOptions");
-
-    label isPC = options.getLabel("isPC");
+    label isPC = 0;
 
     // calculate the residual
     dictionary resOptions;

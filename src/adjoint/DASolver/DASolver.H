@@ -39,6 +39,7 @@
 #include "interpolateSplineXY.H"
 #include "DAInput.H"
 #include "DAOutput.H"
+#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -104,6 +105,9 @@ protected:
 
     /// DARegression pointer
     autoPtr<DARegression> daRegressionPtr_;
+
+    /// DAGlobalVar pointer
+    autoPtr<DAGlobalVar> daGlobalVarPtr_;
 
     /// the stateInfo_ list from DAStateInfo object
     HashTable<wordList> stateInfo_;
@@ -195,7 +199,7 @@ protected:
     /// whether to print primal information to the screen
     label printToScreen_ = 0;
 
-    /// how frequent do you want to print the primal info default is every 100 steps  
+    /// how frequent do you want to print the primal info default is every 100 steps
     label printInterval_ = 100;
 
     /// primal min number of iterations
@@ -429,24 +433,46 @@ public:
         const dictionary& dvSubDict,
         scalar& BC);
 
+    /// get the array size of an input type
+    label getInputSize(
+        const word inputName,
+        const word inputType);
+
+    /// get the array size of an output type
+    label getOutputSize(
+        const word outputName,
+        const word outputType);
+    
+    /// get whether the input is distributed among processors
+    label getInputDistributed(
+        const word inputName,
+        const word inputType);
+    
+    /// get whether the output is distributed among processors
+    label getOutputDistributed(
+        const word outputName,
+        const word outputType);
+
     /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
     void calcJacTVecProduct(
+        const word inputName,
         const word inputType,
         const int inputSize,
         const int distributedInput,
         const double* input,
+        const word outputName,
         const word outputType,
         const int outputSize,
         const int distributedOutput,
         const double* seed,
         double* product);
-    
-    void setInputSeedForwardAD(
+
+    void setSolverInput(
+        const word inputName,
         const word inputType,
         const int inputSize,
         const double* input,
-        const double* seed
-    );
+        const double* seed);
 
     /// compute dRdBCAD
     void calcdRdBCTPsiAD(
@@ -597,6 +623,11 @@ public:
         const label oldTimeLevel,
         const Vec psi,
         Vec dRdWOldTPsi);
+    
+    void setRunStatus(const word status)
+    {
+        daGlobalVarPtr_().runStatus = status;
+    }
 
     /// return the coupling patch list if any scenario is active on couplingInfo dict otherwise return design surface
     void getCouplingPatchList(wordList& patchList, word groupName = "NONE");

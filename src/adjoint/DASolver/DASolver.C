@@ -47,7 +47,8 @@ DASolver::DASolver(
       daCheckMeshPtr_(nullptr),
       daLinearEqnPtr_(nullptr),
       daResidualPtr_(nullptr),
-      daRegressionPtr_(nullptr)
+      daRegressionPtr_(nullptr),
+      daGlobalVarPtr_(nullptr)
 #ifdef CODI_ADR
       ,
       globalADTape_(codi::RealReverse::getTape())
@@ -4799,7 +4800,8 @@ void DASolver::normalizeJacTVecProduct(
 #endif
 }
 
-void DASolver::setInputSeedForwardAD(
+void DASolver::setSolverInput(
+    const word inputName,
     const word inputType,
     const int inputSize,
     const double* input,
@@ -4809,16 +4811,17 @@ void DASolver::setInputSeedForwardAD(
     Description:
         Set seeds for forward mode AD using the DAInput class
     */
-#ifdef CODI_ADF
+
     // initialize the input and output objects
     autoPtr<DAInput> daInput(
         DAInput::New(
+            inputName,
             inputType,
             meshPtr_(),
             daOptionPtr_(),
             daModelPtr_(),
             daIndexPtr_()));
-    
+
     scalarList inputList(inputSize, 0.0);
 
     // assign the input array to the input list and the seed to its gradient()
@@ -4826,19 +4829,90 @@ void DASolver::setInputSeedForwardAD(
     forAll(inputList, idxI)
     {
         inputList[idxI] = input[idxI];
+#ifdef CODI_ADF
         inputList[idxI].gradient() = seed[idxI];
+#endif
     }
 
     // call daInput->run to assign inputList to OF variables
     daInput->run(inputList);
-#endif
+}
+
+label DASolver::getInputSize(
+    const word inputName,
+    const word inputType)
+{
+    autoPtr<DAInput> daInput(
+        DAInput::New(
+            inputName,
+            inputType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_()));
+
+    return daInput->size();
+}
+
+label DASolver::getOutputSize(
+    const word outputName,
+    const word outputType)
+{
+    autoPtr<DAOutput> daOutput(
+        DAOutput::New(
+            outputName,
+            outputType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            daFunctionPtrList_));
+
+    return daOutput->size();
+}
+
+label DASolver::getInputDistributed(
+    const word inputName,
+    const word inputType)
+{
+    autoPtr<DAInput> daInput(
+        DAInput::New(
+            inputName,
+            inputType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_()));
+
+    return daInput->distributed();
+}
+
+label DASolver::getOutputDistributed(
+    const word outputName,
+    const word outputType)
+{
+    autoPtr<DAOutput> daOutput(
+        DAOutput::New(
+            outputName,
+            outputType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            daFunctionPtrList_));
+
+    return daOutput->distributed();
 }
 
 void DASolver::calcJacTVecProduct(
+    const word inputName,
     const word inputType,
     const int inputSize,
     const int distributedInput,
     const double* input,
+    const word outputName,
     const word outputType,
     const int outputSize,
     const int distributedOutput,
@@ -4851,7 +4925,9 @@ void DASolver::calcJacTVecProduct(
         Calculate the Jacobian-matrix-transposed and vector product for [dOutput/dInput]^T * psi
     
     Input:
-        inputType: type of the input. This should be consistent with the child class names in DAInput
+        inputName: name of the input. This is usually defined in solverInputs
+
+        inputType: type of the input. This should be consistent with the child class type in DAInput
 
         inputSize: size of the input array
 
@@ -4859,7 +4935,9 @@ void DASolver::calcJacTVecProduct(
 
         input: the actual value of the input array
 
-        outputType: type of the output. This should be consistent with the child class names in DAOutput
+        outputName: name of the output.
+
+        outputType: type of the output. This should be consistent with the child class type in DAOutput
 
         outputSize: size of the output array
 
@@ -4871,9 +4949,12 @@ void DASolver::calcJacTVecProduct(
         product: the mat-vec product array
     */
 
+    Info << "Computing d[" << outputName << "]/d[" << inputName << "]^T * psi" << endl;
+
     // initialize the input and output objects
     autoPtr<DAInput> daInput(
         DAInput::New(
+            inputName,
             inputType,
             meshPtr_(),
             daOptionPtr_(),
@@ -4882,6 +4963,7 @@ void DASolver::calcJacTVecProduct(
 
     autoPtr<DAOutput> daOutput(
         DAOutput::New(
+            outputName,
             outputType,
             meshPtr_(),
             daOptionPtr_(),

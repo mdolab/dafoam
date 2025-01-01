@@ -21,11 +21,13 @@ defineRunTimeSelectionTable(DAInput, dictionary);
 
 DAInput::DAInput(
     const word inputName,
+    const word inputType,
     fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex)
     : inputName_(inputName),
+      inputType_(inputType),
       mesh_(mesh),
       daOption_(daOption),
       daModel_(daModel),
@@ -41,6 +43,7 @@ DAInput::DAInput(
 
 autoPtr<DAInput> DAInput::New(
     const word inputName,
+    const word inputType,
     fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
@@ -50,11 +53,11 @@ autoPtr<DAInput> DAInput::New(
 
     if (daOption.getAllOptions().lookupOrDefault<label>("debug", 0))
     {
-        Info << "Selecting input: " << inputName << " for DAInput." << endl;
+        Info << "Selecting input: " << inputType << " for DAInput." << endl;
     }
 
     dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(inputName);
+        dictionaryConstructorTablePtr_->find(inputType);
 
     // if the solver name is not found in any child class, print an error
     if (cstrIter == dictionaryConstructorTablePtr_->end())
@@ -69,7 +72,7 @@ autoPtr<DAInput> DAInput::New(
             "    const DAIndex&"
             ")")
             << "Unknown DAInput type "
-            << inputName << nl << nl
+            << inputType << nl << nl
             << "Valid DAInput types:" << endl
             << dictionaryConstructorTablePtr_->sortedToc()
             << exit(FatalError);
@@ -78,6 +81,7 @@ autoPtr<DAInput> DAInput::New(
     // child class found
     return autoPtr<DAInput>(
         cstrIter()(inputName,
+                   inputType,
                    mesh,
                    daOption,
                    daModel,

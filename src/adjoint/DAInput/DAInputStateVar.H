@@ -36,6 +36,7 @@ public:
     //- Construct from components
     DAInputStateVar(
         const word inputName,
+        const word inputType,
         fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
@@ -47,6 +48,16 @@ public:
     }
 
     virtual void run(const scalarList& input);
+
+    virtual label size()
+    {
+        return daIndex_.nLocalAdjointStates;
+    }
+
+    virtual label distributed()
+    {
+        return 1;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -281,28 +281,27 @@ class DAOPTION(object):
         ##    },
         self.function = {}
 
-        ## Design variable information. Different type of design variables require different keys
-        ## For alpha, we need to prescribe a list of far field patch names from which the angle of
+        ## Solver input information. Different type of design variables require different keys
+        ## For patchVelocity, we need to set a list of far field patch names from which the angle of
         ## attack is computed, this is usually a far field patch. Also, we need to prescribe
         ## flow and normal axies, and alpha = atan( U_normal / U_flow ) at patches
         ## Example
-        ##     designVar = {
-        ##         "shapey" : {"designVarType": "FFD"},
-        ##         "twist": {"designVarType": "FFD"},
-        ##         "alpha" = {
-        ##             "designVarType": "AOA",
+        ##     solverInput = {
+        ##         "aero_vol_coords" : {"type": "volCoord"},
+        ##         "patchV" = {
+        ##             "type": "patchVelocity",
         ##             "patches": ["farField"],
         ##             "flowAxis": "x",
         ##             "normalAxis": "y"
         ##         },
         ##         "ux0" = {
-        ##             "designVarType": "BC",
+        ##             "type": "patchVariable",
         ##             "patches": ["inlet"],
         ##             "variable": "U",
         ##             "comp": 0
         ##         },
         ##     }
-        self.designVar = {}
+        self.solverInput = {}
 
         ## List of patch names for the design surface. These patch names need to be of wall type
         ## and shows up in the constant/polyMesh/boundary file
@@ -755,17 +754,6 @@ class DAOPTION(object):
             # }
         }
 
-        ## An internal dict for DAInput options, it will be used to transfer options between mphys_dafoam and OF layers
-        ## Users should not use it in runScript.py
-        self._inputOptions = {}
-
-        ## An internal dict for DAInput options, it will be used to transfer options between mphys_dafoam and OF layers
-        ## Users should not use it in runScript.py
-        self._outputOptions = {
-            "functionName": "None",  # used in DAOutputFunction
-            "isPC": 0,  # used in DAOutputResidual
-        }
-
 
 class PYDAFOAM(object):
     """
@@ -834,6 +822,9 @@ class PYDAFOAM(object):
         # initialize the pySolvers
         self.solverInitialized = 0
         self._initSolver()
+        
+        # set the primal boundary condition after initializing the solver
+        self.setPrimalBoundaryConditions()
 
         # initialize the number of primal and adjoint calls
         self.nSolvePrimals = 1
@@ -977,15 +968,37 @@ class PYDAFOAM(object):
         # add point set and update the mesh based on the DV values
 
         # now call the internal design var function to update DASolver parameters
-        self.runInternalDVFunc()
+        # self.runInternalDVFunc()
 
         # update the primal boundary condition right before calling solvePrimal
-        self.setPrimalBoundaryConditions()
+        # self.setPrimalBoundaryConditions()
 
-        # solve the primal to get new state variables
-        self.solvePrimal()
+        Info("Running Primal Solver %03d" % self.nSolvePrimals)
+
+        self.deletePrevPrimalSolTime()
+
+        # self.primalFail: if the primal solution fails, assigns 1, otherwise 0
+        self.primalFail = 0
+        if self.getOption("useAD")["mode"] == "forward":
+            self.primalFail = self.solverAD.solvePrimal()
+        else:
+            self.primalFail = self.solver.solvePrimal()
+
+        if self.getOption("writeMinorIterations"):
+            self.renameSolution(self.nSolvePrimals)
+            self.writeDeformedFFDs(self.nSolvePrimals)
+
+        self.nSolvePrimals += 1
 
         return
+    
+    def setRunStatus(self, status):
+        """
+        Set the DAGlobalVar.runStatus value
+        """
+
+        self.solver.setRunStatus(status)
+        self.solverAD.setRunStatus(status)
 
     def _getDefOptions(self):
         """
@@ -1048,7 +1061,7 @@ class PYDAFOAM(object):
             An empty dict that contains total derivative of objective function with respect design variables
         """
 
-        designVarDict = self.getOption("designVar")
+        designVarDict = self.getOption("solverInput")
         functionDict = self.getOption("function")
 
         adjTotalDeriv = {}
@@ -1934,21 +1947,7 @@ class PYDAFOAM(object):
         self.primalFail: if the primal solution fails, assigns 1, otherwise 0
         """
 
-        Info("Running Primal Solver %03d" % self.nSolvePrimals)
-
-        self.deletePrevPrimalSolTime()
-
-        self.primalFail = 0
-        if self.getOption("useAD")["mode"] == "forward":
-            self.primalFail = self.solverAD.solvePrimal()
-        else:
-            self.primalFail = self.solver.solvePrimal()
-
-        if self.getOption("writeMinorIterations"):
-            self.renameSolution(self.nSolvePrimals)
-            self.writeDeformedFFDs(self.nSolvePrimals)
-
-        self.nSolvePrimals += 1
+        
 
         return
 
@@ -2353,7 +2352,7 @@ class PYDAFOAM(object):
         self.solverAD.createMLRKSPMatrixFree(PCMat, ksp)
 
         functionDict = self.getOption("function")
-        designVarDict = self.getOption("designVar")
+        designVarDict = self.getOption("solverInput")
 
         # init the dFdW vec
         wSize = self.solver.getNLocalAdjointStates()
@@ -2569,7 +2568,7 @@ class PYDAFOAM(object):
         # ************ Now compute the total derivatives **********************
         Info("Computing total derivatives....")
 
-        designVarDict = self.getOption("designVar")
+        designVarDict = self.getOption("solverInput")
         for designVarName in designVarDict:
             Info("Computing total derivatives for %s" % designVarName)
             ###################### BC: boundary condition as design variable ###################
@@ -4115,7 +4114,7 @@ class PYDAFOAM(object):
         Get number of local adjoint states
         """
         return self.solver.getNLocalAdjointStates()
-    
+
     def getNLocalPoints(self):
         """
         Get number of local points
@@ -4179,7 +4178,7 @@ class PYDAFOAM(object):
             residuals[iRel] = resVec[i]
 
         return residuals
-    
+
     def setVolCoords(self, volCoords):
         """
         Set the volCoords to the OpenFOAM's mesh coordinate

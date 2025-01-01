@@ -4,12 +4,12 @@
     Version : v4
 
     Description:
-        Child class for volume coordinate input
+        Child class for state variable input
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAInputVolCoord_H
-#define DAInputVolCoord_H
+#ifndef DAInputPatchVelocity_H
+#define DAInputPatchVelocity_H
 
 #include "DAInput.H"
 #include "addToRunTimeSelectionTable.H"
@@ -21,20 +21,20 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAInputVolCoord Declaration
+      Class DAInputPatchVelocity Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAInputVolCoord
+class DAInputPatchVelocity
     : public DAInput
 {
 
 protected:
 public:
-    TypeName("volCoord");
+    TypeName("patchVelocity");
     // Constructors
 
     //- Construct from components
-    DAInputVolCoord(
+    DAInputPatchVelocity(
         const word inputName,
         const word inputType,
         fvMesh& mesh,
@@ -43,7 +43,7 @@ public:
         const DAIndex& daIndex);
 
     //- Destructor
-    virtual ~DAInputVolCoord()
+    virtual ~DAInputPatchVelocity()
     {
     }
 
@@ -51,12 +51,13 @@ public:
 
     virtual label size()
     {
-        return daIndex_.nLocalXv;
+        // [UMag, AoA]
+        return 2;
     }
 
     virtual label distributed()
     {
-        return 1;
+        return 0;
     }
 };
 

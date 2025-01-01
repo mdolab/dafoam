@@ -18,12 +18,14 @@ addToRunTimeSelectionTable(DAInput, DAInputVolCoord, dictionary);
 
 DAInputVolCoord::DAInputVolCoord(
     const word inputName,
+    const word inputType,
     fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex)
     : DAInput(
         inputName,
+        inputType,
         mesh,
         daOption,
         daModel,
@@ -37,6 +39,11 @@ void DAInputVolCoord::run(const scalarList& input)
     Description:
         Assign the input array to the OF's volume coordinates and call movePoints
     */
+
+#ifndef CODI_ADR
+    Info << "DAInputVolCoord. " << endl;
+    Info << "Setting volume coordinates. " << endl;
+#endif
 
     pointField meshPoints = mesh_.points();
 

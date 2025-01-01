@@ -17,14 +17,12 @@ EXE_INC = \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/fileFormats/lnInclude \
     -I$(LIB_SRC)/surfMesh/lnInclude \
-    -I../../adjoint/lnInclude \
+    -I../lnInclude \
     -I../../include \
     -I$(PETSC_DIR)/include \
     -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
     -I$(MPI_ARCH_PATH)/include \
     -I$(MPI_ARCH_PATH)/include64 \
-    $(shell python3 -c "import numpy; print('-I' + numpy.get_include())") \
-    $(shell python3 -c "import petsc4py; print('-I' + petsc4py.get_include())") \
     $(shell python3-config --includes) 
     
 
@@ -41,29 +39,8 @@ LIB_LIBS = \
     -lsampling$(WM_CODI_AD_LIB_POSTFIX) \
     -lmeshTools$(WM_CODI_AD_LIB_POSTFIX) \
     -lfvOptions$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAOption$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAUtility$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDACheckMesh$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAStateInfo$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAFvSource$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAModel$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAIndex$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAFunction$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAJacCon$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAColoring$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAResidual$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAField$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAPartDeriv$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDALinearEqn$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDARegression$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAMisc$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAInput$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAOutput$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDAGlobalVar$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDASolver$(WM_CODI_AD_LIB_POSTFIX) \
     -L$(PETSC_LIB) -lpetsc \
     -L$(MPI_ARCH_PATH)/lib \
     -L$(MPI_ARCH_PATH)/lib64 \
-    -L$(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs \
     $(shell python3-config --ldflags) \
     -fno-lto
