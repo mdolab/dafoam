@@ -73,7 +73,7 @@ void DARhoSimpleFoam::initSolver()
     argList& args = argsPtr_();
 #include "createSimpleControlPython.H"
 #include "createFieldsRhoSimple.H"
-#include "createAdjoint.H"
+
     // read the RAS model from constant/turbulenceProperties
     const word turbModelName(
         IOdictionary(
@@ -87,6 +87,8 @@ void DARhoSimpleFoam::initSolver()
             .subDict("RAS")
             .lookup("RASModel"));
     daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
+
+#include "createAdjoint.H"
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();

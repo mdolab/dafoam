@@ -69,7 +69,6 @@ void DARhoSimpleCFoam::initSolver()
     argList& args = argsPtr_();
 #include "createSimpleControlPython.H"
 #include "createFieldsRhoSimpleC.H"
-#include "createAdjoint.H"
 
     // read the RAS model from constant/turbulenceProperties
     const word turbModelName(
@@ -85,6 +84,7 @@ void DARhoSimpleCFoam::initSolver()
             .lookup("RASModel"));
     daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
 
+#include "createAdjoint.H"
 }
 
 label DARhoSimpleCFoam::solvePrimal()

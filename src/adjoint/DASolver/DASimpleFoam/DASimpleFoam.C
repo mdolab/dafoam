@@ -69,7 +69,6 @@ void DASimpleFoam::initSolver()
     fvMesh& mesh = meshPtr_();
 #include "createSimpleControlPython.H"
 #include "createFieldsSimple.H"
-#include "createAdjoint.H"
 
     // read the RAS model from constant/turbulenceProperties
     const word turbModelName(
@@ -84,6 +83,8 @@ void DASimpleFoam::initSolver()
             .subDict("RAS")
             .lookup("RASModel"));
     daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
+
+#include "createAdjoint.H"
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
