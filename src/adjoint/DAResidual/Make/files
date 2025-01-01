@@ -1,5 +1,6 @@
 DAResidual.C
 DAResidualSimpleFoam.C
 DAResidualRhoSimpleFoam.C
+DAResidualRhoSimpleCFoam.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAResidual$(WM_CODI_AD_LIB_POSTFIX)

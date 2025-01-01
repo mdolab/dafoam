@@ -1,5 +1,6 @@
 DAStateInfo.C
 DAStateInfoSimpleFoam.C
 DAStateInfoRhoSimpleFoam.C
+DAStateInfoRhoSimpleCFoam.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAStateInfo$(WM_CODI_AD_LIB_POSTFIX)

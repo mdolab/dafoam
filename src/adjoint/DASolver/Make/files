@@ -1,5 +1,6 @@
 DASolver.C
 DASimpleFoam/DASimpleFoam.C
 DARhoSimpleFoam/DARhoSimpleFoam.C
+DARhoSimpleCFoam/DARhoSimpleCFoam.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDASolver$(WM_CODI_AD_LIB_POSTFIX)

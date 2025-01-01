@@ -104,9 +104,6 @@ label DARhoSimpleFoam::solvePrimal()
 #include "createRefsRhoSimple.H"
 #include "createFvOptions.H"
 
-    // change the run status
-    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
-
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
 
