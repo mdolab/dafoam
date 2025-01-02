@@ -1,5 +1,6 @@
 DASolver.C
 DASimpleFoam/DASimpleFoam.C
+DASimpleTFoam/DASimpleTFoam.C
 DARhoSimpleFoam/DARhoSimpleFoam.C
 DARhoSimpleCFoam/DARhoSimpleCFoam.C
 DAHeatTransferFoam/DAHeatTransferFoam.C

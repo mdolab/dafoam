@@ -1,5 +1,6 @@
 DAResidual.C
 DAResidualSimpleFoam.C
+DAResidualSimpleTFoam.C
 DAResidualRhoSimpleFoam.C
 DAResidualRhoSimpleCFoam.C
 DAResidualHeatTransferFoam.C

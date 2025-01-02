@@ -73,13 +73,22 @@ void DASimpleTFoam::initSolver()
     fvMesh& mesh = meshPtr_();
 #include "createSimpleControlPython.H"
 #include "createFieldsSimpleT.H"
-#include "createAdjointIncompressible.H"
-    // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
-    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+    // read the RAS model from constant/turbulenceProperties
+    const word turbModelName(
+        IOdictionary(
+            IOobject(
+                "turbulenceProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false))
+            .subDict("RAS")
+            .lookup("RASModel"));
+    daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
 
-    this->setDAObjFuncList();
+#include "createAdjoint.H"
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -94,26 +103,15 @@ void DASimpleTFoam::initSolver()
     }
 }
 
-label DASimpleTFoam::solvePrimal(
-    const Vec xvVec,
-    Vec wVec)
+label DASimpleTFoam::solvePrimal()
 {
     /*
     Description:
         Call the primal solver to get converged state variables
-
-    Input:
-        xvVec: a vector that contains all volume mesh coordinates
-
-    Output:
-        wVec: state variable vector
     */
 
 #include "createRefsSimpleT.H"
 #include "createFvOptions.H"
-
-    // change the run status
-    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
@@ -121,34 +119,10 @@ label DASimpleTFoam::solvePrimal(
     Info << "\nStarting time loop\n"
          << endl;
 
-    // deform the mesh based on the xvVec
-    this->pointVec2OFMesh(xvVec);
-
-    // check mesh quality
-    label meshOK = this->checkMesh();
-
-    if (!meshOK)
-    {
-        this->writeFailedMesh();
-        return 1;
-    }
-
-    // if the forwardModeAD is active, we need to set the seed here
-#include "setForwardADSeeds.H"
-
-    // if useMeanStates is used, we need to zero meanStates before the primal run
-    this->zeroMeanStates();
-
-    label printInterval = daOptionPtr_->getOption<label>("printInterval");
-    label printToScreen = 0;
-    label regModelFail = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        DAUtility::primalMaxInitRes_ = -1e16;
 
-        printToScreen = this->isPrintTime(runTime, printInterval);
-
-        if (printToScreen)
+        if (printToScreen_)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
@@ -163,50 +137,21 @@ label DASimpleTFoam::solvePrimal(
         }
 
         laminarTransport.correct();
-        daTurbulenceModelPtr_->correct(printToScreen);
+        daTurbulenceModelPtr_->correct(printToScreen_, primalMaxRes_);
 
-        // update the output field value at each iteration, if the regression model is active
-        regModelFail = daRegressionPtr_->compute();
-
-        if (this->validateStates())
-        {
-            // write data to files and quit
-            runTime.writeNow();
-            mesh.write();
-            return 1;
-        }
-
-        if (printToScreen)
+        if (printToScreen_)
         {
             daTurbulenceModelPtr_->printYPlus();
 
-            this->printAllObjFuncs();
-
-            daRegressionPtr_->printInputInfo();
+            this->printAllFunctions();
 
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
                  << nl << endl;
         }
 
-        // if useMeanStates is used, we need to calculate the meanStates
-        this->calcMeanStates();
-
         runTime.write();
     }
-
-    if (regModelFail != 0)
-    {
-        return 1;
-    }
-
-    // if useMeanStates is used, we need to assign meanStates to states right after the case converges
-    this->assignMeanStatesToStates();
-
-    this->calcPrimalResidualStatistics("print");
-
-    // primal converged, assign the OpenFoam fields to the state vec wVec
-    this->ofField2StateVec(wVec);
 
     // write the mesh to files
     mesh.write();
@@ -214,7 +159,7 @@ label DASimpleTFoam::solvePrimal(
     Info << "End\n"
          << endl;
 
-    return this->checkResidualTol();
+    return this->checkResidualTol(primalMaxRes_);
 }
 
 } // End namespace Foam

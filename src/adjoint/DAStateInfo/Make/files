@@ -1,5 +1,6 @@
 DAStateInfo.C
 DAStateInfoSimpleFoam.C
+DAStateInfoSimpleTFoam.C
 DAStateInfoRhoSimpleFoam.C
 DAStateInfoRhoSimpleCFoam.C
 DAStateInfoHeatTransferFoam.C

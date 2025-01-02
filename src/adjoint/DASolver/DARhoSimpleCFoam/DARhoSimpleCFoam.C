@@ -92,12 +92,6 @@ label DARhoSimpleCFoam::solvePrimal()
     /*
     Description:
         Call the primal solver to get converged state variables
-
-    Input:
-        xvVec: a vector that contains all volume mesh coordinates
-
-    Output:
-        wVec: state variable vector
     */
 
 #include "createRefsRhoSimpleC.H"
