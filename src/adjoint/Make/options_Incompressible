@@ -22,8 +22,7 @@ EXE_INC = \
     -I../include \
     -I$(PETSC_DIR)/include \
     -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
-    -I$(MPI_ARCH_PATH)/include \
-    -I$(MPI_ARCH_PATH)/include64 \
+    $(shell mpicc -show | grep -o '\-I[^ ]*') \
     $(shell python3-config --includes) 
     
 
@@ -41,7 +40,6 @@ LIB_LIBS = \
     -ldynamicMesh$(DF_LIB_SUFFIX) \
     -lfvOptions$(DF_LIB_SUFFIX) \
     -L$(PETSC_LIB) -lpetsc \
-    -L$(MPI_ARCH_PATH)/lib \
-    -L$(MPI_ARCH_PATH)/lib64 \
+    $(shell mpicc -show | grep -o '\-L[^ ]*') \
     $(shell python3-config --ldflags) \
     -fno-lto 
