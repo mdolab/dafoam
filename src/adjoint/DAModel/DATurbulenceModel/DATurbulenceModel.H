@@ -223,6 +223,9 @@ public:
     /// get the density field
     tmp<volScalarField> rho() const;
 
+    /// return the dimension of rho
+    dimensionSet rhoDimensions() const;
+
     /// get the phase field
     tmp<volScalarField> phase()
     {

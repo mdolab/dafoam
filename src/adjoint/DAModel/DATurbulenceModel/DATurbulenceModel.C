@@ -316,6 +316,26 @@ tmp<volScalarField> DATurbulenceModel::rho() const
     }
 }
 
+/// return the dimension of rho
+dimensionSet DATurbulenceModel::rhoDimensions() const
+{
+    if (turbModelType_ == "incompressible")
+    {
+        return rhoOne_.dimensions();
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        const volScalarField& rho = mesh_.thisDb().lookupObject<volScalarField>("rho");
+        return rho.dimensions();
+    }
+    else
+    {
+        FatalErrorIn("alphaEff") << "turbModelType_ not valid!" << abort(FatalError);
+        // a dummy return
+        return rhoOne_.dimensions();
+    }
+}
+
 tmp<volScalarField> DATurbulenceModel::alpha() const
 {
     /*

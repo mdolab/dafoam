@@ -133,6 +133,12 @@ public:
             seed);
     }
 
+    /// run the coloring solver
+    void runColoring()
+    {
+        DASolverPtr_->runColoring();
+    }
+
     /// compute dRdWT
     void calcdRdWT(
         const label isPC,

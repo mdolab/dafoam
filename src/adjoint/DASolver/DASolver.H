@@ -452,6 +452,9 @@ public:
     label getOutputDistributed(
         const word outputName,
         const word outputType);
+    
+    /// run the coloring solver
+    void runColoring();
 
     /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
     void calcJacTVecProduct(

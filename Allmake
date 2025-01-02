@@ -13,7 +13,6 @@ function makeDAFoam()
   cd src/adjoint && ./Allmake && cd -
   cd src/pyUnitTests && ./Allmake && cd -
   cd src/pyDASolvers && ./Allmake && cd -
-  cd src/utilities/coloring && ./Allmake && cd -
   # disable the -e flag
   set +e
 }

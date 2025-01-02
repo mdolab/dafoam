@@ -3140,27 +3140,6 @@ class PYDAFOAM(object):
 
         return
 
-    def runColoring(self):
-        """
-        Run coloring solver
-        """
-
-        Info("\n")
-        Info("+--------------------------------------------------------------------------+")
-        Info("|                       Running Coloring Solver                            |")
-        Info("+--------------------------------------------------------------------------+")
-
-        from .libs.pyColoring import pyColoring
-
-        solverArg = "Coloring -python " + self.parallelFlag
-        solver = pyColoring(solverArg.encode(), self.options)
-
-        solver.run()
-
-        solver = None
-
-        return
-
     def runDecomposePar(self):
         """
         Run decomposePar to parallel run

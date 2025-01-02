@@ -1,6 +1,7 @@
 DAModel.C
 DATurbulenceModel/DATurbulenceModel.C
 DATurbulenceModel/DASpalartAllmaras.C
+DATurbulenceModel/DAkOmegaSST.C
 
 DARadiationModel/DARadiationModel.C
 DARadiationModel/DAP1.C

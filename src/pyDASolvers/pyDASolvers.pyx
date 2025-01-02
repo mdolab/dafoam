@@ -47,6 +47,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         DASolvers(char *, object) except +
         void initSolver()
         int solvePrimal()
+        void runColoring()
         void calcJacTVecProduct(char *, char *, int, double *, char *, char *, int, double *, double *)
         int getInputSize(char *, char *)
         int getOutputSize(char *, char *)
@@ -204,6 +205,9 @@ cdef class pyDASolvers:
 
     def solvePrimal(self):
         return self._thisptr.solvePrimal()
+    
+    def runColoring(self):
+        self._thisptr.runColoring()
     
     def setSolverInput(self,
             inputName,

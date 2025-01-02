@@ -3195,6 +3195,44 @@ void DASolver::reduceStateResConLevel(
     //Info<<stateResConInfo<<endl;
 }
 
+/// run the coloring solver
+void DASolver::runColoring()
+{
+    /*
+    Description:
+        Run the coloring for dRdW and save them as dRdWColoring_n.bin where n is the number
+        of processors
+    */
+
+    DAJacCon daJacCon("dRdW", meshPtr_(), daOptionPtr_(), daModelPtr_(), daIndexPtr_());
+
+    if (!daJacCon.coloringExists())
+    {
+        dictionary options;
+        const HashTable<List<List<word>>>& stateResConInfo = daStateInfoPtr_->getStateResConInfo();
+        options.set("stateResConInfo", stateResConInfo);
+
+        // need to first setup preallocation vectors for the dRdWCon matrix
+        // because directly initializing the dRdWCon matrix will use too much memory
+        daJacCon.setupJacConPreallocation(options);
+
+        // now we can initilaize dRdWCon
+        daJacCon.initializeJacCon(options);
+
+        // setup dRdWCon
+        daJacCon.setupJacCon(options);
+        Info << "dRdWCon Created. " << meshPtr_->time().elapsedClockTime() << " s" << endl;
+
+        // compute the coloring
+        Info << "Calculating dRdW Coloring... " << meshPtr_->time().elapsedClockTime() << " s" << endl;
+        daJacCon.calcJacConColoring();
+        Info << "Calculating dRdW Coloring... Completed! " << meshPtr_->time().elapsedClockTime() << " s" << endl;
+
+        // clean up
+        daJacCon.clear();
+    }
+}
+
 void DASolver::calcPrimalResidualStatistics(
     const word mode,
     const label writeRes)

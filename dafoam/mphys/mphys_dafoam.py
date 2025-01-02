@@ -740,6 +740,10 @@ class DAFoamSolver(ImplicitComponent):
             # set states
             DASolver.setStates(states)
 
+            # We also need to just calculate the residual for the AD mode to initialize vars like URes
+            # We do not print the residual for AD, though
+            DASolver.solverAD.calcPrimalResidualStatistics("calc".encode())
+
     def linearize(self, inputs, outputs, residuals):
         # NOTE: we do not do any computation in this function, just print some information
 
@@ -836,7 +840,7 @@ class DAFoamSolver(ImplicitComponent):
 
             # run coloring
             if self.DASolver.getOption("adjUseColoring") and self.runColoring:
-                self.DASolver.runColoring()
+                self.DASolver.solver.runColoring()
                 self.runColoring = False
 
             if adjEqnSolMethod == "Krylov":
