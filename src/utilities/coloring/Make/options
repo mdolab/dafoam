@@ -21,8 +21,7 @@ EXE_INC = \
     -I../../include \
     -I$(PETSC_DIR)/include \
     -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
-    -I$(MPI_ARCH_PATH)/include \
-    -I$(MPI_ARCH_PATH)/include64 \
+    $(shell mpicc -show | grep -o '\-I[^ ]*') \
     $(shell python3 -c "import numpy; print('-I' + numpy.get_include())") \
     $(shell python3 -c "import petsc4py; print('-I' + petsc4py.get_include())") \
     $(shell python3-config --includes) 
@@ -62,8 +61,7 @@ LIB_LIBS = \
     -lDAGlobalVar$(WM_CODI_AD_LIB_POSTFIX) \
     -lDASolver$(WM_CODI_AD_LIB_POSTFIX) \
     -L$(PETSC_LIB) -lpetsc \
-    -L$(MPI_ARCH_PATH)/lib \
-    -L$(MPI_ARCH_PATH)/lib64 \
     -L$(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs \
+    $(shell mpicc -show | grep -o '\-L[^ ]*') \
     $(shell python3-config --ldflags) \
     -fno-lto
