@@ -606,10 +606,6 @@ class DAFoamSolver(ImplicitComponent):
         else:
             self.runColoring = True
 
-        # determine which function to compute the adjoint
-        self.evalFuncs = []
-        DASolver.setEvalFuncs(self.evalFuncs)
-
         # setup input and output for the solver
         # we need to add states as outputs for all cases
         local_state_size = DASolver.getNLocalAdjointStates()
@@ -667,17 +663,16 @@ class DAFoamSolver(ImplicitComponent):
         return xVDot
 
     # calculate the residual
-    def apply_nonlinear(self, inputs, outputs, residuals):
-        DASolver = self.DASolver
-        # NOTE: we do not pass the states from inputs to the OF layer.
-        # this can cause potential convergence issue because the initial states
-        # in the inputs are set to all ones. So passing this all-ones states
-        # into the OF layer may diverge the primal solver. Here we can always
-        # use the states from the OF layer to compute the residuals.
-        # DASolver.setStates(outputs["%s_states" % self.discipline])
-
-        # get flow residuals from DASolver
-        residuals[self.stateName] = DASolver.getResiduals()
+    # def apply_nonlinear(self, inputs, outputs, residuals):
+    #     DASolver = self.DASolver
+    #     # NOTE: we do not pass the states from inputs to the OF layer.
+    #     # this can cause potential convergence issue because the initial states
+    #     # in the inputs are set to all ones. So passing this all-ones states
+    #     # into the OF layer may diverge the primal solver. Here we can always
+    #     # use the states from the OF layer to compute the residuals.
+    #     # DASolver.setStates(outputs["%s_states" % self.discipline])
+    #     # get flow residuals from DASolver
+    #     residuals[self.stateName] = DASolver.getResiduals()
 
     def set_solver_input(self, inputs):
         """
@@ -726,7 +721,7 @@ class DAFoamSolver(ImplicitComponent):
 
             # get the objective functions
             funcs = {}
-            DASolver.evalFunctions(funcs, evalFuncs=self.evalFuncs)
+            DASolver.evalFunctions(funcs)
 
             # assign the computed flow states to outputs
             states = DASolver.getStates()
@@ -1109,20 +1104,11 @@ class DAFoamFunctions(ExplicitComponent):
             inputDistributed = DASolver.solver.getInputDistributed(inputName, inputType)
             self.add_input(inputName, distributed=inputDistributed, shape=inputSize, tags=["mphys_coupling"])
 
-    def mphys_add_funcs(self):
-        # add the function names to this component, called from runScript.py
-
-        # it is called function in DAOptions but it contains both objective and constraint functions
+        # add outputs
         functions = self.DASolver.getOption("function")
-
-        self.funcs = []
-
-        for function in functions:
-            self.funcs.append(function)
-
         # loop over the functions here and create the output
-        for f_name in self.funcs:
-            self.add_output(f_name, distributed=False, shape=1, units=None, tags=["mphys_result"])
+        for f_name in list(functions.keys()):
+            self.add_output(f_name, distributed=False, shape=1, units=None)
 
     # get the objective function from DASolver
     def compute(self, inputs, outputs):
@@ -1132,12 +1118,9 @@ class DAFoamFunctions(ExplicitComponent):
         DASolver.setStates(inputs[self.stateName])
 
         funcs = {}
-
-        if self.funcs is not None:
-            DASolver.evalFunctions(funcs, evalFuncs=self.funcs)
-            for f_name in self.funcs:
-                if f_name in funcs:
-                    outputs[f_name] = funcs[f_name]
+        DASolver.evalFunctions(funcs)
+        for f_name in list(outputs.keys()):
+            outputs[f_name] = funcs[f_name]
 
     # compute the partial derivatives of functions
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
@@ -1237,8 +1220,6 @@ class DAFoamWarper(ExplicitComponent):
         DASolver.setSurfaceCoordinates(x_a, DASolver.designSurfacesGroup)
         DASolver.mesh.warpMesh()
         solverGrid = DASolver.mesh.getSolverGrid()
-        # actually change the mesh in the C++ layer by setting xvVec
-        DASolver.xvFlatten2XvVec(solverGrid, DASolver.xvVec)
         outputs["%s_vol_coords" % self.discipline] = solverGrid
 
     # compute the mesh warping products in IDWarp
