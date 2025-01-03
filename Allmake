@@ -11,6 +11,7 @@ function makeDAFoam()
   set -e
   wmakeLnInclude src/adjoint
   cd src/adjoint && ./Allmake && cd -
+  cd src/newTurbModels && ./Allmake && cd -
   cd src/pyUnitTests && ./Allmake && cd -
   cd src/pyDASolvers && ./Allmake && cd -
   # disable the -e flag
@@ -40,3 +41,5 @@ fi
 . $DAFOAM_ROOT_PATH/loadDAFoam.sh
 
 pip install .
+
+ls dafoam/libs/*.so && echo " " && echo "*** Build Successful! ***" && echo " "
