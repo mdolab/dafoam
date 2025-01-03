@@ -47,9 +47,7 @@ public:
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const word functionName,
-        const word functionPart,
-        const dictionary& functionDict);
+        const word functionName);
 
     //- Destructor
     virtual ~DAFunctionMoment()

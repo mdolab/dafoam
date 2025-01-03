@@ -21,25 +21,18 @@ DAFunctionMoment::DAFunctionMoment(
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const word functionName,
-    const word functionPart,
-    const dictionary& functionDict)
+    const word functionName)
     : DAFunction(
         mesh,
         daOption,
         daModel,
         daIndex,
-        functionName,
-        functionPart,
-        functionDict),
+        functionName),
       daTurb_(daModel.getDATurbulenceModel())
 {
 
     // for computing moment, first read in some parameters from functionDict_
     // these parameters are only for moment objective
-
-    // Assign type, this is common for all objectives
-    functionDict_.readEntry<word>("type", functionType_);
 
     scalarList dir;
     functionDict_.readEntry<scalarList>("axis", dir);
@@ -50,7 +43,7 @@ DAFunctionMoment::DAFunctionMoment(
     if (fabs(mag(momentDir_) - 1.0) > 1.0e-4)
     {
         FatalErrorIn(" ") << "the magnitude of the axis parameter in "
-                          << functionName << " " << functionPart << " is not 1.0!"
+                          << functionName << " is not 1.0!"
                           << abort(FatalError);
     }
 
@@ -59,8 +52,6 @@ DAFunctionMoment::DAFunctionMoment(
     momentCenter_[0] = center[0];
     momentCenter_[1] = center[1];
     momentCenter_[2] = center[2];
-
-    functionDict_.readEntry<scalar>("scale", scale_);
 
 }
 

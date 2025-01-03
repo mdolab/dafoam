@@ -21,17 +21,13 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const word functionName,
-    const word functionPart,
-    const dictionary& functionDict)
+    const word functionName)
     : DAFunction(
         mesh,
         daOption,
         daModel,
         daIndex,
-        functionName,
-        functionPart,
-        functionDict),
+        functionName),
       wallHeatFlux_(
           IOobject(
               "wallHeatFlux",
@@ -43,10 +39,6 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
           dimensionedScalar("wallHeatFlux", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           "calculated")
 {
-    // Assign type, this is common for all objectives
-    functionDict_.readEntry<word>("type", functionType_);
-
-    functionDict_.readEntry<scalar>("scale", scale_);
 
     if (mesh_.thisDb().foundObject<DATurbulenceModel>("DATurbulenceModel"))
     {

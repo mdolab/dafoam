@@ -21,24 +21,16 @@ DAFunctionTotalPressure::DAFunctionTotalPressure(
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const word functionName,
-    const word functionPart,
-    const dictionary& functionDict)
+    const word functionName)
     : DAFunction(
         mesh,
         daOption,
         daModel,
         daIndex,
-        functionName,
-        functionPart,
-        functionDict),
+        functionName),
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
       rho_(daTurb_.rho())
 {
-    // Assign type, this is common for all objectives
-    functionDict_.readEntry<word>("type", functionType_);
-
-    functionDict_.readEntry<scalar>("scale", scale_);
 }
 
 /// calculate the value of objective function

@@ -44,23 +44,14 @@ void DAOutputFunction::run(scalarList& output)
         Compute the function value and assign them to the output array
     */
 
-    dictionary functionSubDict =
-        daOption_.getAllOptions().subDict("function").subDict(outputName_);
+    word functionName = outputName_;
 
-    // loop over all parts for this functionName
-    scalar fVal = 0.0;
-    forAll(functionSubDict.toc(), idxJ)
-    {
-        // get the subDict for this part
-        word functionPart = functionSubDict.toc()[idxJ];
+    label idxI = this->getFunctionListIndex(functionName, daFunctionList_);
+    DAFunction& daFunction = daFunctionList_[idxI];
 
-        // get function from daFunctionList_
-        label objIndx = this->getFunctionListIndex(outputName_, functionPart, daFunctionList_);
-        DAFunction& daFunction = daFunctionList_[objIndx];
+    // compute the objective function
+    scalar fVal = daFunction.getFunctionValue();
 
-        // compute the objective function
-        fVal += daFunction.getFunctionValue();
-    }
     output[0] = fVal;
 }
 

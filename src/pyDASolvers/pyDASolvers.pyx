@@ -58,29 +58,10 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdWTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
         void initializedRdWTMatrixFree()
         void destroydRdWTMatrixFree()
-        void calcdFdWAD(PetscVec, PetscVec, char *, PetscVec)
         void createMLRKSP(PetscMat, PetscMat, PetscKSP)
         void createMLRKSPMatrixFree(PetscMat, PetscKSP)
         void updateKSPPCMat(PetscMat, PetscKSP)
         int solveLinearEqn(PetscKSP, PetscVec, PetscVec)
-        void calcdFdBCAD(PetscVec, PetscVec, char *, char *, PetscVec)
-        void calcdRdXvTPsiAD(PetscVec, PetscVec, PetscVec, PetscVec)
-        void calcdForcedXvAD(PetscVec, PetscVec, PetscVec, PetscVec)
-        void calcdAcousticsdXvAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
-        void calcdRdActTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
-        void calcdRdHSCTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
-        void calcdForcedWAD(PetscVec, PetscVec, PetscVec, PetscVec)
-        void calcdAcousticsdWAD(PetscVec, PetscVec, PetscVec, PetscVec, char*, char*)
-        void calcdFdACTAD(PetscVec, PetscVec, char *, char*, PetscVec)
-        void calcdFdHSCAD(PetscVec, PetscVec, char *, char*, PetscVec)
-        void calcdRdAOATPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
-        void calcdRdBCTPsiAD(PetscVec, PetscVec, PetscVec, char*, PetscVec)
-        void calcdFdXvAD(PetscVec, PetscVec, char *, char*, PetscVec)
-        void calcdRdFieldTPsiAD(PetscVec, PetscVec, PetscVec, char *, PetscVec)
-        void calcdFdFieldAD(PetscVec, PetscVec, char *, char *, PetscVec)
-        void calcdRdThermalTPsiAD(double *, double *, double *, double *, double *)
-        void calcdRdRegParTPsiAD(double *, double *, double *, double *, char *, double *)
-        void calcdFdRegParAD(double *, double *, double *, char *, char *, char *, double *)
         void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
@@ -277,14 +258,14 @@ cdef class pyDASolvers:
     def calcdRdWTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdWTPsi):
         self._thisptr.calcdRdWTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdWTPsi.vec)
     
+    def calcdRdWOldTPsiAD(self, oldTimeLevel, Vec psi, Vec dRdWOldTPsi):
+        self._thisptr.calcdRdWOldTPsiAD(oldTimeLevel, psi.vec, dRdWOldTPsi.vec)
+    
     def initializedRdWTMatrixFree(self):
         self._thisptr.initializedRdWTMatrixFree()
     
     def destroydRdWTMatrixFree(self):
         self._thisptr.destroydRdWTMatrixFree()
-    
-    def calcdFdWAD(self, Vec xvVec, Vec wVec, functionName, Vec dFdW):
-        self._thisptr.calcdFdWAD(xvVec.vec, wVec.vec, functionName, dFdW.vec)
     
     def createMLRKSP(self, Mat jacMat, Mat jacPCMat, KSP myKSP):
         self._thisptr.createMLRKSP(jacMat.mat, jacPCMat.mat, myKSP.ksp)
@@ -297,80 +278,6 @@ cdef class pyDASolvers:
     
     def solveLinearEqn(self, KSP myKSP, Vec rhsVec, Vec solVec):
         return self._thisptr.solveLinearEqn(myKSP.ksp, rhsVec.vec, solVec.vec)
-    
-    def calcdFdBCAD(self, Vec xvVec, Vec wVec, functionName, designVarName, Vec dFdBC):
-        self._thisptr.calcdFdBCAD(xvVec.vec, wVec.vec, functionName, designVarName, dFdBC.vec)
-    
-    def calcdRdXvTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdXvTPsi):
-        self._thisptr.calcdRdXvTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdXvTPsi.vec)
-
-    def calcdForcedXvAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedXv):
-        self._thisptr.calcdForcedXvAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedXv.vec)
-
-    def calcdAcousticsdXvAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dAcoudXv, varName, groupName):
-        self._thisptr.calcdAcousticsdXvAD(xvVec.vec, wVec.vec, fBarVec.vec, dAcoudXv.vec, varName, groupName)
-
-    def calcdRdActTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdActTPsi):
-        self._thisptr.calcdRdActTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdActTPsi.vec)
-    
-    def calcdRdHSCTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdHSCTPsi):
-        self._thisptr.calcdRdHSCTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdHSCTPsi.vec)
-
-    def calcdForcedWAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dForcedW):
-        self._thisptr.calcdForcedWAD(xvVec.vec, wVec.vec, fBarVec.vec, dForcedW.vec)
-
-    def calcdAcousticsdWAD(self, Vec xvVec, Vec wVec, Vec fBarVec, Vec dAcoudW, varName, groupName):
-        self._thisptr.calcdAcousticsdWAD(xvVec.vec, wVec.vec, fBarVec.vec, dAcoudW.vec, varName, groupName) 
-
-    def calcdFdACTAD(self, Vec xvVec, Vec wVec, functionName, designVarName, Vec dFdACT):
-        self._thisptr.calcdFdACTAD(xvVec.vec, wVec.vec, functionName, designVarName, dFdACT.vec)
-    
-    def calcdFdHSCAD(self, Vec xvVec, Vec wVec, functionName, designVarName, Vec dFdHSC):
-        self._thisptr.calcdFdHSCAD(xvVec.vec, wVec.vec, functionName, designVarName, dFdHSC.vec)
-    
-    def calcdRdAOATPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdAOATPsi):
-        self._thisptr.calcdRdAOATPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdAOATPsi.vec)
-    
-    def calcdRdBCTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, designVarName, Vec dRdBCTPsi):
-        self._thisptr.calcdRdBCTPsiAD(xvVec.vec, wVec.vec, psi.vec, designVarName, dRdBCTPsi.vec)
-
-    def calcdFdXvAD(self, Vec xvVec, Vec wVec, functionName, designVarName, Vec dFdXv):
-        self._thisptr.calcdFdXvAD(xvVec.vec, wVec.vec, functionName, designVarName, dFdXv.vec)
-
-    def calcdRdFieldTPsiAD(self, Vec xvVec, Vec wVec, Vec psiVec, designVarName, Vec dRdFieldTPsi):
-        self._thisptr.calcdRdFieldTPsiAD(xvVec.vec, wVec.vec, psiVec.vec, designVarName, dRdFieldTPsi.vec)
-
-    def calcdFdFieldAD(self, Vec xvVec, Vec wVec, functionName, designVarName, Vec dFdField):
-        self._thisptr.calcdFdFieldAD(xvVec.vec, wVec.vec, functionName, designVarName, dFdField.vec)
-
-    def calcdRdThermalTPsiAD(self, 
-            np.ndarray[double, ndim=1, mode="c"] volCoords,
-            np.ndarray[double, ndim=1, mode="c"] states,
-            np.ndarray[double, ndim=1, mode="c"] thermal,
-            np.ndarray[double, ndim=1, mode="c"] seeds,
-            np.ndarray[double, ndim=1, mode="c"] product):
-        
-        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
-        assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(thermal) == self.getNCouplingFaces() * 2, "invalid array size!"
-        assert len(seeds) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(product) == self.getNCouplingFaces() * 2, "invalid array size!"
-
-        cdef double *volCoords_data = <double*>volCoords.data
-        cdef double *states_data = <double*>states.data
-        cdef double *thermal_data = <double*>thermal.data
-        cdef double *seeds_data = <double*>seeds.data
-        cdef double *product_data = <double*>product.data
-
-        self._thisptr.calcdRdThermalTPsiAD(
-            volCoords_data, 
-            states_data, 
-            thermal_data, 
-            seeds_data, 
-            product_data)
-    
-    def calcdRdWOldTPsiAD(self, oldTimeLevel, Vec psi, Vec dRdWOldTPsi):
-        self._thisptr.calcdRdWOldTPsiAD(oldTimeLevel, psi.vec, dRdWOldTPsi.vec)
 
     def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
         self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
@@ -550,62 +457,6 @@ cdef class pyDASolvers:
     
     def regressionModelCompute(self):
         self._thisptr.regressionModelCompute()
-    
-    def calcdRdRegParTPsiAD(self, 
-            np.ndarray[double, ndim=1, mode="c"] volCoords,
-            np.ndarray[double, ndim=1, mode="c"] states,
-            np.ndarray[double, ndim=1, mode="c"] parameters,
-            np.ndarray[double, ndim=1, mode="c"] seeds,
-            modelName,
-            np.ndarray[double, ndim=1, mode="c"] product):
-        
-        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
-        assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(parameters) == self.getNRegressionParameters(modelName), "invalid array size!"
-        assert len(seeds) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(product) == self.getNRegressionParameters(modelName), "invalid array size!"
-
-        cdef double *volCoords_data = <double*>volCoords.data
-        cdef double *states_data = <double*>states.data
-        cdef double *parameters_data = <double*>parameters.data
-        cdef double *seeds_data = <double*>seeds.data
-        cdef double *product_data = <double*>product.data
-
-        self._thisptr.calcdRdRegParTPsiAD(
-            volCoords_data, 
-            states_data, 
-            parameters_data, 
-            seeds_data, 
-            modelName,
-            product_data)
-    
-    def calcdFdRegParAD(self, 
-            np.ndarray[double, ndim=1, mode="c"] volCoords,
-            np.ndarray[double, ndim=1, mode="c"] states,
-            np.ndarray[double, ndim=1, mode="c"] parameters,
-            functionName,
-            designVarName,
-            modelName,
-            np.ndarray[double, ndim=1, mode="c"] dFdRegPar):
-        
-        assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
-        assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
-        assert len(parameters) == self.getNRegressionParameters(modelName), "invalid array size!"
-        assert len(dFdRegPar) == self.getNRegressionParameters(modelName), "invalid array size!"
-
-        cdef double *volCoords_data = <double*>volCoords.data
-        cdef double *states_data = <double*>states.data
-        cdef double *parameters_data = <double*>parameters.data
-        cdef double *dFdRegPar_data = <double*>dFdRegPar.data
-
-        self._thisptr.calcdFdRegParAD(
-            volCoords_data, 
-            states_data, 
-            parameters_data, 
-            functionName,
-            designVarName,
-            modelName,
-            dFdRegPar_data)
 
     def getAcousticData(self, Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, groupName):
         self._thisptr.getAcousticData(x.vec, y.vec, z.vec, nX.vec, nY.vec, nZ.vec, a.vec, fX.vec, fY.vec, fZ.vec, groupName)

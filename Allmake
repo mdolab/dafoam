@@ -42,4 +42,4 @@ fi
 
 pip install .
 
-ls dafoam/libs/*.so && echo " " && echo "*** Build Successful! ***" && echo " "
+ls -R dafoam/libs && echo " " && echo "*** Build Successful! ***" && echo " "

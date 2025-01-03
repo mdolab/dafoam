@@ -24,17 +24,18 @@ DAFunction::DAFunction(
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const word functionName,
-    const word functionPart,
-    const dictionary& functionDict)
+    const word functionName)
     : mesh_(mesh),
       daOption_(daOption),
       daModel_(daModel),
       daIndex_(daIndex),
-      functionName_(functionName),
-      functionPart_(functionPart),
-      functionDict_(functionDict)
+      functionName_(functionName)
 {
+    functionDict_ = daOption.getAllOptions().subDict("function").subDict(functionName);
+
+    // Assign type and scale, this is common for all objectives
+    functionDict_.readEntry<word>("type", functionType_);
+    functionDict_.readEntry<scalar>("scale", scale_);
 
     // calcualte the face and cell indices that are associated with this objective
     this->calcFunctionSources();
@@ -54,11 +55,11 @@ autoPtr<DAFunction> DAFunction::New(
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const word functionName,
-    const word functionPart,
-    const dictionary& functionDict)
+    const word functionName)
 {
     // standard setup for runtime selectable classes
+
+    dictionary functionDict = daOption.getAllOptions().subDict("function").subDict(functionName);
 
     // look up the solver name
     word modelType;
@@ -66,8 +67,7 @@ autoPtr<DAFunction> DAFunction::New(
 
     if (daOption.getAllOptions().lookupOrDefault<label>("debug", 0))
     {
-        Info << "Selecting type: " << modelType << " for DAFunction. Name: " << functionName
-             << " part: " << functionPart << endl;
+        Info << "Selecting type: " << modelType << " for DAFunction. Name: " << functionName << endl;
     }
 
     dictionaryConstructorTable::iterator cstrIter =
@@ -84,8 +84,6 @@ autoPtr<DAFunction> DAFunction::New(
             "    const DAModel&,"
             "    const DAIndex&,"
             "    const word,"
-            "    const word,"
-            "    const dictionary&"
             ")")
             << "Unknown DAFunction type "
             << modelType << nl << nl
@@ -100,9 +98,7 @@ autoPtr<DAFunction> DAFunction::New(
                    daOption,
                    daModel,
                    daIndex,
-                   functionName,
-                   functionPart,
-                   functionDict));
+                   functionName));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

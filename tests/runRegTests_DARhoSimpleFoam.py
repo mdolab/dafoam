@@ -47,34 +47,23 @@ daOptions = {
     },
     "function": {
         "CD": {
-            "part1": {
-                "type": "force",
-                "source": "patchToFace",
-                "patches": ["wing"],
-                "directionMode": "fixedDirection",
-                "direction": [1.0, 0.0, 0.0],
-                "scale": 1.0 / (0.5 * U0 * U0 * A0),
-                "addToAdjoint": True,
-            }
+            "type": "force",
+            "source": "patchToFace",
+            "patches": ["wing"],
+            "directionMode": "fixedDirection",
+            "direction": [1.0, 0.0, 0.0],
+            "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
         "CL": {
-            "part1": {
-                "type": "force",
-                "source": "patchToFace",
-                "patches": ["wing"],
-                "directionMode": "fixedDirection",
-                "direction": [0.0, 1.0, 0.0],
-                "scale": 1.0 / (0.5 * U0 * U0 * A0),
-                "addToAdjoint": True,
-            }
+            "type": "force",
+            "source": "patchToFace",
+            "patches": ["wing"],
+            "directionMode": "fixedDirection",
+            "direction": [0.0, 1.0, 0.0],
+            "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
     },
-    "adjEqnOption": {
-        "gmresRelTol": 1.0e-11,
-        "pcFillLevel": 1,
-        "jacMatReOrdering": "rcm",
-        "dynAdjustTol": False
-    },
+    "adjEqnOption": {"gmresRelTol": 1.0e-11, "pcFillLevel": 1, "jacMatReOrdering": "rcm", "dynAdjustTol": False},
     "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "T": T0, "nuTilda": 1e-3},
     "solverInput": {
         "aero_vol_coords": {"type": "volCoord"},
@@ -116,8 +105,6 @@ class Top(Multipoint):
 
     def configure(self):
 
-        self.cruise.aero_post.mphys_add_funcs()
-
         # create geometric DV setup
         points = self.mesh.mphys_get_surface_mesh()
 
@@ -158,7 +145,12 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 # verify the total derivatives against the finite-difference
 prob.run_model()
 results = prob.check_totals(
-    of=["cruise.aero_post.CD", "cruise.aero_post.CL"], wrt=["twist"], compact_print=True, step=1e-3, form="central", step_calc="abs"
+    of=["cruise.aero_post.CD", "cruise.aero_post.CL"],
+    wrt=["twist"],
+    compact_print=True,
+    step=1e-3,
+    form="central",
+    step_calc="abs",
 )
 
 if gcomm.rank == 0:
