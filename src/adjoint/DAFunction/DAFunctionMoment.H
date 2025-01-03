@@ -8,10 +8,10 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncMoment_H
-#define DAObjFuncMoment_H
+#ifndef DAFunctionMoment_H
+#define DAFunctionMoment_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,11 +20,11 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncMoment Declaration
+      Class DAFunctionMoment Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncMoment
-    : public DAObjFunc
+class DAFunctionMoment
+    : public DAFunction
 {
 
 protected:
@@ -42,28 +42,22 @@ public:
     // Constructors
 
     //- Construct from components
-    DAObjFuncMoment(
+    DAFunctionMoment(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName,
+        const word functionPart,
+        const dictionary& functionDict);
 
     //- Destructor
-    virtual ~DAObjFuncMoment()
+    virtual ~DAFunctionMoment()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual void calcFunction(scalar& functionValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

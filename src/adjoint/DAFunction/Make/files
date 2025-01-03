@@ -1,5 +1,6 @@
 DAFunction.C
 DAFunctionForce.C
+DAFunctionMoment.C
 DAFunctionWallHeatFlux.C
 DAFunctionTotalPressure.C
 
