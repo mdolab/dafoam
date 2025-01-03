@@ -99,12 +99,10 @@ public:
         const word inputName,
         const word inputType,
         const int inputSize,
-        const int distributedInput,
         const double* input,
         const word outputName,
         const word outputType,
         const int outputSize,
-        const int distributedOutput,
         const double* seed,
         double* product)
     {
@@ -112,12 +110,10 @@ public:
             inputName,
             inputType,
             inputSize,
-            distributedInput,
             input,
             outputName,
             outputType,
             outputSize,
-            distributedOutput,
             seed,
             product);
     }
@@ -137,9 +133,10 @@ public:
             seed);
     }
 
-    void setRunStatus(const word status)
+    /// run the coloring solver
+    void runColoring()
     {
-        DASolverPtr_->setRunStatus(status);
+        DASolverPtr_->runColoring();
     }
 
     /// compute dRdWT
@@ -148,114 +145,6 @@ public:
         Mat dRdWT)
     {
         DASolverPtr_->calcdRdWT(isPC, dRdWT);
-    }
-
-    /// compute dFdW using reverse-mode AD
-    void calcdFdWAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        Vec dFdW)
-    {
-        DASolverPtr_->calcdFdWAD(xvVec, wVec, functionName, dFdW);
-    }
-
-    /// compute dFdXv using reverse-mode AD
-    void calcdFdXvAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdXv)
-    {
-        DASolverPtr_->calcdFdXvAD(xvVec, wVec, functionName, designVarName, dFdXv);
-    }
-
-    /// compute dRdXv^T*Psi
-    void calcdRdXvTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        Vec dRdXvTPsi)
-    {
-        DASolverPtr_->calcdRdXvTPsiAD(xvVec, wVec, psi, dRdXvTPsi);
-    }
-
-    /// compute dForcedXv
-    void calcdForcedXvAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dForcedW)
-    {
-        DASolverPtr_->calcdForcedXvAD(xvVec, wVec, fBarVec, dForcedW);
-    }
-
-    /// compute dAcoudXv
-    void calcdAcousticsdXvAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dAcoudW,
-        word varName,
-        word groupName)
-    {
-        DASolverPtr_->calcdAcousticsdXvAD(xvVec, wVec, fBarVec, dAcoudW, varName, groupName);
-    }
-
-    /// compute dRdAct^T*Psi
-    void calcdRdActTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdActTPsi)
-    {
-        DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
-    }
-
-    /// compute dRdHSC^T*Psi
-    void calcdRdHSCTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdHSCTPsi)
-    {
-        DASolverPtr_->calcdRdHSCTPsiAD(xvVec, wVec, psi, designVarName, dRdHSCTPsi);
-    }
-
-    /// compute dForcedW
-    void calcdForcedWAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dForcedW)
-    {
-        DASolverPtr_->calcdForcedWAD(xvVec, wVec, fBarVec, dForcedW);
-    }
-
-    /// compute dAcoudW
-    void calcdAcousticsdWAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dAcoudW,
-        word varName,
-        word groupName)
-    {
-        DASolverPtr_->calcdAcousticsdWAD(xvVec, wVec, fBarVec, dAcoudW, varName, groupName);
-    }
-
-    /// compute dRdAOA^T*Psi
-    void calcdRdAOATPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdAOATPsi)
-    {
-        DASolverPtr_->calcdRdAOATPsiAD(xvVec, wVec, psi, designVarName, dRdAOATPsi);
     }
 
     /// create the multi-level Richardson KSP for solving linear equation
@@ -310,72 +199,6 @@ public:
         Vec seqVec)
     {
         DASolverPtr_->convertMPIVec2SeqVec(mpiVec, seqVec);
-    }
-
-    /// compute dFdBCAD
-    void calcdFdBCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdBC)
-    {
-        DASolverPtr_->calcdFdBCAD(xvVec, wVec, functionName, designVarName, dFdBC);
-    }
-
-    /// compute dRdBC^T*Psi
-    void calcdRdBCTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdBCTPsi)
-    {
-        DASolverPtr_->calcdRdBCTPsiAD(xvVec, wVec, psi, designVarName, dRdBCTPsi);
-    }
-
-    /// compute dFdACT
-    void calcdFdACTAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdACT)
-    {
-        DASolverPtr_->calcdFdACTAD(xvVec, wVec, functionName, designVarName, dFdACT);
-    }
-
-    /// compute dFdHSC
-    void calcdFdHSCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdHSC)
-    {
-        DASolverPtr_->calcdFdHSCAD(xvVec, wVec, functionName, designVarName, dFdHSC);
-    }
-
-    /// compute dRdField
-    void calcdRdFieldTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdFieldTPsi)
-    {
-        DASolverPtr_->calcdRdFieldTPsiAD(xvVec, wVec, psi, designVarName, dRdFieldTPsi);
-    }
-
-    /// compute dFdField
-    void calcdFdFieldAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdField)
-    {
-        DASolverPtr_->calcdFdFieldAD(xvVec, wVec, functionName, designVarName, dFdField);
     }
 
     /// compute dRdWOld^T*Psi
@@ -649,41 +472,6 @@ public:
     {
         scalar val1 = val;
         DASolverPtr_->setRegressionParameter(modelName, idxI, val1);
-    }
-
-    /// calculte [dR/dRegParameters]^T * psi
-    void calcdRdRegParTPsiAD(
-        const double* volCoords,
-        const double* states,
-        const double* parameters,
-        const double* seeds,
-        const word modelName,
-        double* product)
-    {
-        DASolverPtr_->calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, modelName, product);
-    }
-
-    /// compute dFdRegPar AD
-    void calcdFdRegParAD(
-        const double* volCoords,
-        const double* states,
-        const double* parameters,
-        const word functionName,
-        const word designVarName,
-        const word modelName,
-        double* dFdRegPar)
-    {
-        DASolverPtr_->calcdFdRegParAD(volCoords, states, parameters, functionName, designVarName, modelName, dFdRegPar);
-    }
-
-    void calcdRdThermalTPsiAD(
-        const double* volCoords,
-        const double* states,
-        const double* thermal,
-        const double* seeds,
-        double* product)
-    {
-        DASolverPtr_->calcdRdThermalTPsiAD(volCoords, states, thermal, seeds, product);
     }
 
     /// get a variable from OF layer

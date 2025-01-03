@@ -1,10 +1,10 @@
 Dictionary Key: CD
-@value   0.0139069043904323 1e-10 1e-12
+@value 0.007480043685569537 1e-10 1e-12
 Dictionary Key: CL
-@value   0.2551422843394988 1e-10 1e-12
+@value   0.2191086912905504 1e-10 1e-12
 Dictionary Key: CD
 Dictionary Key: twist
-@value 0.001053063900009023 1e-08 1e-12
+@value 0.001709907533917986 1e-08 1e-12
 Dictionary Key: CL
 Dictionary Key: twist
-@value   0.1261578915912536 1e-08 1e-12
+@value   0.1497633960443783 1e-08 1e-12

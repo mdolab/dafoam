@@ -1,0 +1,5 @@
+makeSpalartAllmarasFv3Incompressible.C
+makeDummyTurbulenceModelIncompressible.C
+
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDANewTurbModelsIncompressible$(WM_CODI_AD_LIB_POSTFIX)

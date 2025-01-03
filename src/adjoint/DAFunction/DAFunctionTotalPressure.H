@@ -8,10 +8,10 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncTotalPressure_H
-#define DAObjFuncTotalPressure_H
+#ifndef DAFunctionTotalPressure_H
+#define DAFunctionTotalPressure_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,11 +20,11 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncTotalPressure Declaration
+      Class DAFunctionTotalPressure Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncTotalPressure
-    : public DAObjFunc
+class DAFunctionTotalPressure
+    : public DAFunction
 {
 
 protected:
@@ -43,28 +43,20 @@ public:
     // Constructors
 
     //- Construct from components
-    DAObjFuncTotalPressure(
+    DAFunctionTotalPressure(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncTotalPressure()
+    virtual ~DAFunctionTotalPressure()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual void calcFunction(scalar& functionValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

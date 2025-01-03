@@ -73,13 +73,22 @@ void DARhoSimpleFoam::initSolver()
     argList& args = argsPtr_();
 #include "createSimpleControlPython.H"
 #include "createFieldsRhoSimple.H"
+
+    // read the RAS model from constant/turbulenceProperties
+    const word turbModelName(
+        IOdictionary(
+            IOobject(
+                "turbulenceProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false))
+            .subDict("RAS")
+            .lookup("RASModel"));
+    daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
+
 #include "createAdjoint.H"
-    // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
-
-    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
-
-    this->setDAFunctionList();
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -103,9 +112,6 @@ label DARhoSimpleFoam::solvePrimal()
 
 #include "createRefsRhoSimple.H"
 #include "createFvOptions.H"
-
-    // change the run status
-    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();

@@ -340,9 +340,6 @@ class DAOPTION(object):
         ## Aero-propulsive options
         self.aeroPropulsive = {}
 
-        ## An option to run the primal only; no adjoint or optimization will be run
-        self.primalOnly = False
-
         # *********************************************************************************************
         # ****************************** Intermediate Options *****************************************
         # *********************************************************************************************
@@ -575,9 +572,6 @@ class DAOPTION(object):
         ## Then, we know which objective function is used in solve_linear in DAFoamSolver
         self.solveLinearFunctionName = "None"
 
-        ## Whether to print all options defined in pyDAFoam to screen before optimization.
-        self.printPYDAFOAMOptions = False
-
         ## Whether to print all DAOption defined in the C++ layer to screen before optimization.
         self.printDAOptions = True
 
@@ -806,23 +800,13 @@ class PYDAFOAM(object):
         # Use double data type: 'd'
         self.dtype = "d"
 
-        # write all the setup files
-        self._writeOFCaseFiles()
-
-        # initialize point set name
-        self.ptSetName = self.getPointSetName()
-
-        # Remind the user of all the DAFoam options:
-        if self.getOption("printPYDAFOAMOptions"):
-            self._printCurrentOptions()
-
         # run decomposePar for parallel runs
         self.runDecomposePar()
 
         # initialize the pySolvers
         self.solverInitialized = 0
         self._initSolver()
-        
+
         # set the primal boundary condition after initializing the solver
         self.setPrimalBoundaryConditions()
 
@@ -834,23 +818,11 @@ class PYDAFOAM(object):
         self.primalFail = 0
         self.adjointFail = 0
 
-        # if the primalOnly flag is on, init xvVec and wVec and return
-        if self.getOption("primalOnly"):
-            self.xvVec = None
-            self.wVec = None
-            return
-
         # initialize mesh information and read grids
         self._readMeshInfo()
 
         # check if the combination of options is valid.
         self._checkOptions()
-
-        # initialize the mesh point vector xvVec
-        self._initializeMeshPointVec()
-
-        # initialize state variable vector self.wVec
-        self._initializeStateVec()
 
         # get the reduced point connectivities for the base patches in the mesh
         self._computeBasicFamilyInfo()
@@ -896,19 +868,11 @@ class PYDAFOAM(object):
         # By Default we don't have an external mesh object or a
         # geometric manipulation object
         self.mesh = None
-        self.DVGeo = None
 
         # functionValuePreIter stores the objective function value from the previous
         # iteration. When the primal solution fails, the evalFunctions function will read
         # value from self.functionValuePreIter
         self.functionValuePrevIter = {}
-
-        # compute the objective function names for which we solve the adjoint equation
-        self.functionNames4Adj = self._calcFunctionNames4Adj()
-
-        # dictionary to save the total derivative vectors
-        # NOTE: this function need to be called after initializing self.functionNames4Adj
-        self.adjTotalDeriv = self._initializeAdjTotalDeriv()
 
         # preconditioner matrix
         self.dRdWTPC = None
@@ -916,20 +880,8 @@ class PYDAFOAM(object):
         # a KSP object which may be used outside of the pyDAFoam class
         self.ksp = None
 
-        # the surface geometry/mesh displacement computed by the structural solver
-        # this is used in FSI. Here self.surfGeoDisp is a N by 3 numpy array
-        # that stores the displacement vector for each surface mesh point. The order of
-        # is same as the surface point return by self.getSurfaceCoordinates
-        self.surfGeoDisp = None
-
-        # initialize the adjoint vector dict
-        self.adjVectors = self._initializeAdjVectors()
-
         # initialize the dRdWTPC dict for unsteady adjoint
         self.dRdWTPCUnsteady = None
-
-        # initialize the user defined internal dvs dict
-        self.internalDV = {}
 
         if self.getOption("tensorflow")["active"]:
             TensorFlowHelper.options = self.getOption("tensorflow")
@@ -991,14 +943,6 @@ class PYDAFOAM(object):
         self.nSolvePrimals += 1
 
         return
-    
-    def setRunStatus(self, status):
-        """
-        Set the DAGlobalVar.runStatus value
-        """
-
-        self.solver.setRunStatus(status)
-        self.solverAD.setRunStatus(status)
 
     def _getDefOptions(self):
         """
@@ -1022,82 +966,6 @@ class PYDAFOAM(object):
             defOpts[key] = [type(value), value]
 
         return defOpts
-
-    def _initializeAdjVectors(self):
-        """
-        Initialize the adjoint vector dict
-
-        Returns
-        -------
-
-        adjAdjVectors : dict
-            A dict that contains adjoint vectors, stored in Petsc format
-        """
-
-        wSize = self.solver.getNLocalAdjointStates()
-
-        functionDict = self.getOption("function")
-
-        adjVectors = {}
-        for functionName in functionDict:
-            if functionName in self.functionNames4Adj:
-                psi = PETSc.Vec().create(PETSc.COMM_WORLD)
-                psi.setSizes((wSize, PETSc.DECIDE), bsize=1)
-                psi.setFromOptions()
-                psi.zeroEntries()
-                adjVectors[functionName] = psi
-
-        return adjVectors
-
-    def _initializeAdjTotalDeriv(self):
-        """
-        Initialize the adjoint total derivative dict
-        NOTE: this function need to be called after initializing self.functionNames4Adj
-
-        Returns
-        -------
-
-        adjTotalDeriv : dict
-            An empty dict that contains total derivative of objective function with respect design variables
-        """
-
-        designVarDict = self.getOption("solverInput")
-        functionDict = self.getOption("function")
-
-        adjTotalDeriv = {}
-        for functionName in functionDict:
-            if functionName in self.functionNames4Adj:
-                adjTotalDeriv[functionName] = {}
-                for designVarName in designVarDict:
-                    adjTotalDeriv[functionName][designVarName] = None
-
-        return adjTotalDeriv
-
-    def _calcFunctionNames4Adj(self):
-        """
-        Compute the objective function names for which we solve the adjoint equation
-
-        Returns
-        -------
-
-        functionNames4Adj : list
-            A list of objective function names we will solve the adjoint for
-        """
-
-        functionList = []
-        functionDict = self.getOption("function")
-        for functionName in functionDict:
-            functionSubDict = functionDict[functionName]
-            for functionPart in functionSubDict:
-                functionSubDictPart = functionSubDict[functionPart]
-                if functionSubDictPart["addToAdjoint"] is True:
-                    if functionName not in functionList:
-                        functionList.append(functionName)
-                elif functionSubDictPart["addToAdjoint"] is False:
-                    pass
-                else:
-                    raise Error("addToAdjoint can be either True or False")
-        return functionList
 
     def _checkOptions(self):
         """
@@ -1185,133 +1053,11 @@ class PYDAFOAM(object):
 
         # check other combinations...
 
-    def saveMultiPointField(self, indexMP):
-        """
-        Save the state variable vector to self.wVecMPList
-        """
-
-        Istart, Iend = self.wVec.getOwnershipRange()
-        for i in range(Istart, Iend):
-            self.wVecMPList[indexMP][i] = self.wVec[i]
-
-        self.wVecMPList[indexMP].assemblyBegin()
-        self.wVecMPList[indexMP].assemblyEnd()
-
-        return
-
-    def setMultiPointField(self, indexMP):
-        """
-        Set the state variable vector based on self.wVecMPList
-        """
-
-        Istart, Iend = self.wVec.getOwnershipRange()
-        for i in range(Istart, Iend):
-            self.wVec[i] = self.wVecMPList[indexMP][i]
-
-        self.wVec.assemblyBegin()
-        self.wVec.assemblyEnd()
-
-        return
-
     def calcPrimalResidualStatistics(self, mode):
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.calcPrimalResidualStatistics(mode.encode())
         else:
             self.solver.calcPrimalResidualStatistics(mode.encode())
-
-    def setTimeInstanceField(self, instanceI):
-        """
-        Set the OpenFOAM state variables based on instance index
-        """
-
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            solver = self.solverAD
-        else:
-            solver = self.solver
-
-        solver.setTimeInstanceField(instanceI)
-        # NOTE: we need to set the OF field to wVec vector here!
-        # this is because we will assign self.wVec to the solveAdjoint function later
-        solver.ofField2StateVec(self.wVec)
-
-        return
-
-    def initTimeInstanceMats(self):
-
-        nLocalAdjointStates = self.solver.getNLocalAdjointStates()
-        nLocalAdjointBoundaryStates = self.solver.getNLocalAdjointBoundaryStates()
-        nTimeInstances = -99999
-        adjMode = self.getOption("unsteadyAdjoint")["mode"]
-        if adjMode == "hybrid":
-            nTimeInstances = self.getOption("unsteadyAdjoint")["nTimeInstances"]
-
-        self.stateMat = PETSc.Mat().create(PETSc.COMM_WORLD)
-        self.stateMat.setSizes(((nLocalAdjointStates, None), (None, nTimeInstances)))
-        self.stateMat.setFromOptions()
-        self.stateMat.setPreallocationNNZ((nTimeInstances, nTimeInstances))
-        self.stateMat.setUp()
-
-        self.stateBCMat = PETSc.Mat().create(PETSc.COMM_WORLD)
-        self.stateBCMat.setSizes(((nLocalAdjointBoundaryStates, None), (None, nTimeInstances)))
-        self.stateBCMat.setFromOptions()
-        self.stateBCMat.setPreallocationNNZ((nTimeInstances, nTimeInstances))
-        self.stateBCMat.setUp()
-
-        self.timeVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
-        self.timeIdxVec = PETSc.Vec().createSeq(nTimeInstances, bsize=1, comm=PETSc.COMM_SELF)
-
-    def setTimeInstanceVar(self, mode):
-
-        if mode == "list2Mat":
-            self.solver.setTimeInstanceVar(mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec)
-        elif mode == "mat2List":
-            if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-                self.solverAD.setTimeInstanceVar(
-                    mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
-                )
-            else:
-                self.solver.setTimeInstanceVar(
-                    mode.encode(), self.stateMat, self.stateBCMat, self.timeVec, self.timeIdxVec
-                )
-        else:
-            raise Error("mode can only be either mat2List or list2Mat!")
-
-    def writeDesignVariable(self, fileName, xDV):
-        """
-        Write the design variable history to files in the json format
-        """
-        # Write the design variable history to files
-        if self.comm.rank == 0:
-            if self.nSolveAdjoints == 1:
-                f = open(fileName, "w")
-            else:
-                f = open(fileName, "a")
-            # write design variables
-            f.write('\n"Optimization_Iteration_%03d":\n' % self.nSolveAdjoints)
-            f.write("{\n")
-            nDVNames = len(xDV)
-            dvNameCounter = 0
-            for dvName in sorted(xDV):
-                f.write('    "%s": ' % dvName)
-                try:
-                    nDVs = len(xDV[dvName])
-                    f.write("[ ")
-                    for i in range(nDVs):
-                        if i < nDVs - 1:
-                            f.write("%20.15e, " % xDV[dvName][i])
-                        else:
-                            f.write("%20.15e " % xDV[dvName][i])
-                    f.write("]")
-                except Exception:
-                    f.write(" %20.15e" % xDV[dvName])
-                # check whether to add a comma
-                dvNameCounter = dvNameCounter + 1
-                if dvNameCounter < nDVNames:
-                    f.write(",\n")
-                else:
-                    f.write("\n")
-            f.write("},\n")
-            f.close()
 
     def writeDeformedFFDs(self, counter=None):
         """
@@ -1381,20 +1127,7 @@ class PYDAFOAM(object):
             f.write("},\n")
             f.close()
 
-    def getTimeInstanceFunction(self, instanceI, functionName):
-        """
-        Return the value of objective function at the given time instance and name
-        """
-
-        return self.solver.getTimeInstanceFunction(instanceI, functionName.encode())
-
-    def getForwardADDerivVal(self, functionName):
-        """
-        Return the derivative value computed by forward mode AD primal solution
-        """
-        return self.solverAD.getForwardADDerivVal(functionName.encode())
-
-    def evalFunctions(self, funcs, evalFuncs=None, ignoreMissing=False):
+    def evalFunctions(self, funcs):
         """
         Evaluate the desired functions given in iterable object,
         'evalFuncs' and add them to the dictionary 'funcs'. The keys
@@ -1416,24 +1149,17 @@ class PYDAFOAM(object):
         funcs : dict
             Dictionary into which the functions are saved.
 
-        evalFuncs : iterable object containing strings
-          If not None, use these functions to evaluate.
-
-        ignoreMissing : bool
-            Flag to suppress checking for a valid function. Please use
-            this option with caution.
-
         Examples
         --------
         >>> funcs = {}
         >>> CFDsolver()
-        >>> CFDsolver.evalFunctions(funcs, ['CD', 'CL'])
+        >>> CFDsolver.evalFunctions(funcs
         >>> funcs
         >>> # Result will look like:
-        >>> # {'CD':0.501, 'CL':0.02750}
+        >>> # {'CD':0.501, 'CL':0.02750, 'fail': False}
         """
 
-        for funcName in evalFuncs:
+        for funcName in list(self.getOption("function").keys()):
             if self.primalFail:
                 if len(self.functionValuePrevIter) == 0:
                     raise Error("Primal solution failed for the baseline design!")
@@ -1459,7 +1185,7 @@ class PYDAFOAM(object):
 
         return
 
-    def evalFunctionsUnsteady(self, funcs, evalFuncs=None, ignoreMissing=False):
+    def evalFunctionsUnsteady(self, funcs):
         """
         This is the unsteady version of evalFunctions()
 
@@ -1468,24 +1194,17 @@ class PYDAFOAM(object):
         funcs : dict
             Dictionary into which the functions are saved.
 
-        evalFuncs : iterable object containing strings
-          If not None, use these functions to evaluate.
-
-        ignoreMissing : bool
-            Flag to suppress checking for a valid function. Please use
-            this option with caution.
-
         Examples
         --------
         >>> funcs = {}
         >>> CFDsolver()
-        >>> CFDsolver.evalFunctionsUnsteady(funcs, ['CD', 'CL'])
+        >>> CFDsolver.evalFunctionsUnsteady(funcs)
         >>> funcs
         >>> # Result will look like:
-        >>> # {'CD':0.501, 'CL':0.02750}
+        >>> # {'CD':0.501, 'CL':0.02750, 'fail': False}
         """
 
-        for funcName in evalFuncs:
+        for funcName in list(self.getOption("function").keys()):
             if self.primalFail:
                 if len(self.functionValuePrevIter) == 0:
                     raise Error("Primal solution failed for the baseline design!")
@@ -1507,139 +1226,6 @@ class PYDAFOAM(object):
             funcs["fail"] = False
 
         return
-
-    def evalFunctionsSens(self, funcsSens, evalFuncs=None):
-        """
-        Evaluate the sensitivity of the desired functions given in
-        iterable object,'evalFuncs' and add them to the dictionary
-        'funcSens'.
-
-        Parameters
-        ----------
-        funcSens : dict
-        Dictionary into which the function derivatives are saved.
-
-        evalFuncs : iterable object containing strings
-            The functions the user wants the derivatives of
-
-        Examples
-        --------
-        >>> funcSens = {}
-        >>> CFDsolver.evalFunctionsSens(funcSens, ['CD', 'CL'])
-        """
-
-        for funcName in evalFuncs:
-            funcsSens[funcName] = {}
-
-        if self.DVGeo is not None:
-
-            dvs = self.DVGeo.getValues()
-
-            for funcName in evalFuncs:
-                for dvName in dvs:
-                    nDVs = len(dvs[dvName])
-                    funcsSens[funcName][dvName] = np.zeros(nDVs, self.dtype)
-                    for i in range(nDVs):
-                        funcsSens[funcName][dvName][i] = self.adjTotalDeriv[funcName][dvName][i]
-
-        for funcName in evalFuncs:
-            for dvName in self.internalDV:
-                nDVs = len(self.internalDV[dvName]["init"])
-                funcsSens[funcName][dvName] = np.zeros(nDVs, self.dtype)
-                for i in range(nDVs):
-                    funcsSens[funcName][dvName][i] = self.adjTotalDeriv[funcName][dvName][i]
-
-        if self.adjointFail:
-            funcsSens["fail"] = True
-        else:
-            funcsSens["fail"] = False
-
-        return
-
-    def setDVGeo(self, DVGeo):
-        """
-        Set the DVGeometry object that will manipulate 'geometry' in
-        this object. Note that <SOLVER> does not **strictly** need a
-        DVGeometry object, but if optimization with geometric
-        changes is desired, then it is required.
-        Parameters
-        ----------
-        dvGeo : A DVGeometry object.
-            Object responsible for manipulating the constraints that
-            this object is responsible for.
-        Examples
-        --------
-        >>> CFDsolver = <SOLVER>(comm=comm, options=CFDoptions)
-        >>> CFDsolver.setDVGeo(DVGeo)
-        """
-
-        self.DVGeo = DVGeo
-
-    def setInternalDesignVars(self, xDVs):
-        """
-        Set the internal design variables.
-        """
-
-        for dvName in self.internalDV:
-            for i in range(len(self.internalDV[dvName]["value"])):
-                self.internalDV[dvName]["value"][i] = xDVs[dvName][i]
-
-    def getInternalDVDict(self):
-        """
-        Get the internal design variable values
-        """
-        internalDVDict = {}
-        for dvName in self.internalDV:
-            internalDVDict[dvName] = self.internalDV[dvName]["value"]
-
-        return internalDVDict
-
-    def addInternalDV(self, dvName, dvInit, dvFunc, lower, upper, scale):
-        """
-        Add design variable.
-
-        Inputs:
-            dvName: [str] Name of of the design variable
-            dvInit: [array] Initial values for the design variables
-            fvFunc: [function] A function that define how to apply the change
-                     based on the design variable values. The form of this func
-                     is dvFunc(dvVal, DASolver)
-            lower/upper [scalar] The lower/upper bound of the DV
-            scale [scalar] The scaling factor for the DV
-        """
-        self.internalDV[dvName] = {}
-        self.internalDV[dvName]["init"] = dvInit
-        self.internalDV[dvName]["func"] = dvFunc
-        self.internalDV[dvName]["lower"] = lower
-        self.internalDV[dvName]["upper"] = upper
-        self.internalDV[dvName]["scale"] = scale
-        nInternalDVs = len(dvInit)
-        self.internalDV[dvName]["value"] = np.zeros(nInternalDVs)
-        for i in range(nInternalDVs):
-            self.internalDV[dvName]["value"][i] = self.internalDV[dvName]["init"][i]
-
-    def runInternalDVFunc(self):
-        """
-        call the design variable function
-        """
-        for dvName in self.internalDV:
-            Info("Calling internal design variable functioins %s" % dvName)
-            func = self.internalDV[dvName]["func"]
-            dvVal = self.internalDV[dvName]["value"]
-            func(dvVal, self)
-
-    def addVariablesPyOpt(self, optProb):
-        """
-        Add the design variable for optProb. This is similar to the
-        function in DVGeo
-        """
-        for dvName in self.internalDV:
-            dvInit = self.internalDV[dvName]["init"]
-            lower = self.internalDV[dvName]["lower"]
-            upper = self.internalDV[dvName]["upper"]
-            scale = self.internalDV[dvName]["scale"]
-            nDVs = len(dvInit)
-            optProb.addVarGroup(dvName, nDVs, "c", value=dvInit, lower=lower, upper=upper, scale=scale)
 
     def addFamilyGroup(self, groupName, families):
         """
@@ -1699,15 +1285,6 @@ class PYDAFOAM(object):
         conn, faceSizes = self.getSurfaceConnectivity(self.allWallsGroup)
         pts = self.getSurfaceCoordinates(self.allWallsGroup)
         self.mesh.setSurfaceDefinition(pts, conn, faceSizes)
-
-    def setEvalFuncs(self, evalFuncs):
-        functions = self.getOption("function")
-        for funcName in functions:
-            for funcPart in functions[funcName]:
-                if functions[funcName][funcPart]["addToAdjoint"] is True:
-                    if funcName not in evalFuncs:
-                        evalFuncs.append(funcName)
-        return
 
     def getSurfaceConnectivity(self, groupName=None):
         """
@@ -1903,10 +1480,6 @@ class PYDAFOAM(object):
 
         return
 
-    def _writeOFCaseFiles(self):
-
-        return
-
     def writePetscVecMat(self, name, vecMat, mode="Binary"):
         """
         Write Petsc vectors or matrices
@@ -1932,25 +1505,6 @@ class PYDAFOAM(object):
         viewer = PETSc.Viewer().createBinary(name + ".bin", comm=PETSc.COMM_WORLD)
         vecMat.load(viewer)
 
-    def solvePrimal(self):
-        """
-        Run primal solver to compute state variables and objectives
-
-        Input:
-        ------
-        xvVec: vector that contains all the mesh point coordinates
-
-        Output:
-        -------
-        wVec: vector that contains all the state variables
-
-        self.primalFail: if the primal solution fails, assigns 1, otherwise 0
-        """
-
-        
-
-        return
-
     def readStateVars(self, timeVal, deltaT):
         """
         Read the state variables in to OpenFOAM's state fields
@@ -1974,272 +1528,6 @@ class PYDAFOAM(object):
         # is update to date for unsteady adjoint
         self.solver.ofField2StateVec(self.wVec)
 
-    def calcTotalDerivsBC(self, functionName, designVarName, dFScaling=1.0, accumulateTotal=False):
-
-        nDVs = 1
-        # calculate dFdBC
-        dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
-        dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-        dFdBC.setFromOptions()
-        self.solverAD.calcdFdBCAD(self.xvVec, self.wVec, functionName.encode(), designVarName.encode(), dFdBC)
-        dFdBC.scale(dFScaling)
-
-        # Calculate dRBCT^Psi
-        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-        totalDeriv.setFromOptions()
-        self.solverAD.calcdRdBCTPsiAD(
-            self.xvVec, self.wVec, self.adjVectors[functionName], designVarName.encode(), totalDeriv
-        )
-
-        # totalDeriv = dFdBC - dRdBCT*psi
-        totalDeriv.scale(-1.0)
-        totalDeriv.axpy(1.0, dFdBC)
-        # assign the total derivative to self.adjTotalDeriv
-
-        # we need to convert the parallel vec to seq vec
-        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-
-        if self.adjTotalDeriv[functionName][designVarName] is None:
-            self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-
-        for i in range(nDVs):
-            if accumulateTotal is True:
-                self.adjTotalDeriv[functionName][designVarName][i] += totalDerivSeq[i]
-            else:
-                self.adjTotalDeriv[functionName][designVarName][i] = totalDerivSeq[i]
-
-    def calcTotalDerivsFFD(self, functionName, designVarName, dFScaling=1.0, accumulateTotal=False):
-
-        try:
-            nDVs = len(self.DVGeo.getValues()[designVarName])
-        except Exception:
-            nDVs = 1
-        xvSize = len(self.xv) * 3
-
-        # Calculate dFdXv
-        dFdXv = PETSc.Vec().create(PETSc.COMM_WORLD)
-        dFdXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
-        dFdXv.setFromOptions()
-        self.solverAD.calcdFdXvAD(self.xvVec, self.wVec, functionName.encode(), designVarName.encode(), dFdXv)
-        dFdXv.scale(dFScaling)
-
-        # Calculate dRXvT^Psi
-        totalDerivXv = PETSc.Vec().create(PETSc.COMM_WORLD)
-        totalDerivXv.setSizes((xvSize, PETSc.DECIDE), bsize=1)
-        totalDerivXv.setFromOptions()
-        self.solverAD.calcdRdXvTPsiAD(self.xvVec, self.wVec, self.adjVectors[functionName], totalDerivXv)
-
-        # totalDeriv = dFdXv - dRdXvT*psi
-        totalDerivXv.scale(-1.0)
-        totalDerivXv.axpy(1.0, dFdXv)
-
-        if self.DVGeo is not None and self.DVGeo.getNDV() > 0:
-            dFdFFD = self.mapdXvTodFFD(totalDerivXv)
-            # check if we need to write the sens map
-            if designVarName in self.getOption("writeSensMap"):
-                dFdXs = self.mesh.getdXs()
-                dFdXs = self.mapVector(dFdXs, self.allWallsGroup, self.designSurfacesGroup)
-                Xs = self.getSurfaceCoordinates(self.designSurfacesGroup)
-                dFdXsFlatten = dFdXs.flatten()
-                XsFlatten = Xs.flatten()
-                size = len(dFdXsFlatten)
-                timeName = float(self.nSolveAdjoints) / 1e4
-                name = "sens_" + functionName + "_" + designVarName
-                self.solver.writeSensMapSurface(name, dFdXsFlatten, XsFlatten, size, timeName)
-            # assign the total derivative to self.adjTotalDeriv
-            if self.adjTotalDeriv[functionName][designVarName] is None:
-                self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-
-            for i in range(nDVs):
-                if accumulateTotal is True:
-                    self.adjTotalDeriv[functionName][designVarName][i] += dFdFFD[designVarName][0][i]
-                else:
-                    self.adjTotalDeriv[functionName][designVarName][i] = dFdFFD[designVarName][0][i]
-
-    def calcTotalDerivsField(self, functionName, designVarName, fieldType, dFScaling=1.0, accumulateTotal=False):
-
-        nDVs = 0
-        if self.DVGeo is not None:
-            xDV = self.DVGeo.getValues()
-            if designVarName in xDV:
-                nDVs = len(xDV[designVarName])
-        elif designVarName in self.internalDV:
-            nDVs = len(self.internalDV[designVarName]["init"])
-        else:
-            raise Error("design variable %s not found..." % designVarName)
-
-        if fieldType == "scalar":
-            fieldComp = 1
-        elif fieldType == "vector":
-            fieldComp = 3
-        else:
-            raise Error("fieldType not valid!")
-        nLocalCells = self.solver.getNLocalCells()
-
-        # calculate dFdField
-        dFdField = PETSc.Vec().create(PETSc.COMM_WORLD)
-        dFdField.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
-        dFdField.setFromOptions()
-        self.solverAD.calcdFdFieldAD(self.xvVec, self.wVec, functionName.encode(), designVarName.encode(), dFdField)
-
-        dFdField.scale(dFScaling)
-
-        # call the total deriv
-        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-        totalDeriv.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
-        totalDeriv.setFromOptions()
-        # calculate dRdFieldT*Psi and save it to totalDeriv
-        self.solverAD.calcdRdFieldTPsiAD(
-            self.xvVec, self.wVec, self.adjVectors[functionName], designVarName.encode(), totalDeriv
-        )
-
-        # totalDeriv = dFdField - dRdFieldT*psi
-        totalDeriv.scale(-1.0)
-        totalDeriv.axpy(1.0, dFdField)
-
-        # check if we need to save the sensitivity maps
-        if designVarName in self.getOption("writeSensMap"):
-            timeName = float(self.nSolveAdjoints) / 1e4
-            dFdFieldArray = self.vec2Array(totalDeriv)
-            name = "sens_" + functionName + "_" + designVarName
-            self.solver.writeSensMapField(name, dFdFieldArray, fieldType, timeName)
-
-        # assign the total derivative to self.adjTotalDeriv
-        if self.adjTotalDeriv[functionName][designVarName] is None:
-            self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-
-        # we need to convert the parallel vec to seq vec
-        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-
-        for i in range(nDVs):
-            if accumulateTotal is True:
-                self.adjTotalDeriv[functionName][designVarName][i] += totalDerivSeq[i]
-            else:
-                self.adjTotalDeriv[functionName][designVarName][i] = totalDerivSeq[i]
-
-    def calcTotalDerivsAOA(self, functionName, designVarName, dFScaling=1.0, accumulateTotal=False):
-
-        nDVs = 1
-        # calculate dFdAOA
-        dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
-        dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-        dFdAOA.setFromOptions()
-        self.calcdFdAOAAnalytical(functionName, dFdAOA)
-        dFdAOA.scale(dFScaling)
-
-        # Calculate dRAOAT^Psi
-        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-        totalDeriv.setFromOptions()
-        self.solverAD.calcdRdAOATPsiAD(
-            self.xvVec, self.wVec, self.adjVectors[functionName], designVarName.encode(), totalDeriv
-        )
-        # totalDeriv = dFdAOA - dRdAOAT*psi
-        totalDeriv.scale(-1.0)
-        totalDeriv.axpy(1.0, dFdAOA)
-        # assign the total derivative to self.adjTotalDeriv
-        if self.adjTotalDeriv[functionName][designVarName] is None:
-            self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-        # we need to convert the parallel vec to seq vec
-        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-        for i in range(nDVs):
-            if accumulateTotal is True:
-                self.adjTotalDeriv[functionName][designVarName][i] += totalDerivSeq[i]
-            else:
-                self.adjTotalDeriv[functionName][designVarName][i] = totalDerivSeq[i]
-
-    def calcTotalDerivsACT(self, functionName, designVarName, designVarType, dFScaling=1.0, accumulateTotal=False):
-
-        nDVTable = {"ACTP": 9, "ACTD": 13, "ACTL": 11}
-        nDVs = nDVTable[designVarType]
-
-        # calculate dFdACT
-        dFdACT = PETSc.Vec().create(PETSc.COMM_WORLD)
-        dFdACT.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-        dFdACT.setFromOptions()
-        self.solverAD.calcdFdACTAD(self.xvVec, self.wVec, functionName.encode(), designVarName.encode(), dFdACT)
-        dFdACT.scale(dFScaling)
-
-        # call the total deriv
-        totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-        totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-        totalDeriv.setFromOptions()
-        # calculate dRdActT*Psi and save it to totalDeriv
-        self.solverAD.calcdRdActTPsiAD(
-            self.xvVec, self.wVec, self.adjVectors[functionName], designVarName.encode(), totalDeriv
-        )
-
-        # totalDeriv = dFdAct - dRdActT*psi
-        totalDeriv.scale(-1.0)
-        totalDeriv.axpy(1.0, dFdACT)
-
-        # assign the total derivative to self.adjTotalDeriv
-        if self.adjTotalDeriv[functionName][designVarName] is None:
-            self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-        # we need to convert the parallel vec to seq vec
-        totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-        self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-        for i in range(nDVs):
-            if accumulateTotal is True:
-                self.adjTotalDeriv[functionName][designVarName][i] += totalDerivSeq[i]
-            else:
-                self.adjTotalDeriv[functionName][designVarName][i] = totalDerivSeq[i]
-
-    def calcTotalDerivsRegPar(self, functionName, designVarName, modelName, dFScaling=1.0, accumulateTotal=False):
-
-        nDVs = 0
-        parameters = None
-        if self.DVGeo is not None:
-            xDV = self.DVGeo.getValues()
-            if designVarName in xDV:
-                nDVs = len(xDV[designVarName])
-                parameters = xDV[designVarName].copy(order="C")
-
-        if designVarName in self.internalDV:
-            nDVs = len(self.internalDV[designVarName]["init"])
-            parameters = self.internalDV[designVarName]["value"]
-
-        nParameters = self.getNRegressionParameters(modelName)
-        if nDVs != nParameters:
-            raise Error("number of parameters not valid!")
-
-        xvArray = self.vec2Array(self.xvVec)
-        wArray = self.vec2Array(self.wVec)
-        seedArray = self.vec2Array(self.adjVectors[functionName])
-        totalDerivArray = np.zeros(nDVs)
-        dFdRegPar = np.zeros(nDVs)
-
-        # calc dFdRegPar
-        self.solverAD.calcdFdRegParAD(
-            xvArray, wArray, parameters, functionName.encode(), designVarName.encode(), modelName.encode(), dFdRegPar
-        )
-        dFdRegPar *= dFScaling
-
-        # calculate dRdFieldT*Psi and save it to totalDeriv
-        self.solverAD.calcdRdRegParTPsiAD(xvArray, wArray, parameters, seedArray, modelName.encode(), totalDerivArray)
-        # all reduce because parameters is a global DV
-        totalDerivArray = self.comm.allreduce(totalDerivArray, op=MPI.SUM)
-
-        # totalDeriv = dFdRegPar - dRdRegParT*psi
-        totalDerivArray = dFdRegPar - totalDerivArray
-
-        # assign the total derivative to self.adjTotalDeriv
-        if self.adjTotalDeriv[functionName][designVarName] is None:
-            self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-
-        # NOTE: totalDerivArray is already in Seq because we have called all reduce in dFdRegPar
-        # and after calcdRdRegParTPsiAD
-
-        for i in range(nDVs):
-            if accumulateTotal is True:
-                self.adjTotalDeriv[functionName][designVarName][i] += totalDerivArray[i]
-            else:
-                self.adjTotalDeriv[functionName][designVarName][i] = totalDerivArray[i]
-
     def solveAdjointUnsteady(self):
         """
         Run adjoint solver to compute the total derivs for unsteady solvers
@@ -2257,6 +1545,8 @@ class PYDAFOAM(object):
         self.adjTotalDeriv: the dict contains all the total derivative vectors
 
         self.adjointFail: if the adjoint solution fails, assigns 1, otherwise 0
+        """
+
         """
 
         if self.getOption("useAD")["mode"] != "reverse":
@@ -2465,6 +1755,7 @@ class PYDAFOAM(object):
                         break
 
         self.nSolveAdjoints += 1
+        """
 
     def solveAdjoint(self):
         """
@@ -2493,6 +1784,7 @@ class PYDAFOAM(object):
         viewerW(self.wVec)
         """
 
+        """
         if self.getOption("useAD")["mode"] == "forward":
             raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
 
@@ -2762,40 +2054,10 @@ class PYDAFOAM(object):
         # we destroy dRdWTPC only when we need to recompute it next time
         if (self.nSolveAdjoints - 1) % adjPCLag == 0:
             self.dRdWTPC.destroy()
+        
+        """
 
         return
-
-    def mapdXvTodFFD(self, totalDerivXv):
-        """
-        Map the Xv derivative (volume derivative) to the FFD derivatives (design variables)
-        Essentially, we first map the Xv (volume) to Xs (surface) using IDWarp, then, we
-        further map Xs (surface) to FFD using pyGeo
-
-        Input:
-        ------
-        totalDerivXv: total derivative dFdXv vector
-
-        Output:
-        ------
-        dFdFFD: the mapped total derivative with respect to FFD variables
-        """
-
-        xvSize = len(self.xv) * 3
-
-        dFdXvTotalArray = np.zeros(xvSize, self.dtype)
-
-        Istart, Iend = totalDerivXv.getOwnershipRange()
-
-        for idxI in range(Istart, Iend):
-            idxRel = idxI - Istart
-            dFdXvTotalArray[idxRel] = totalDerivXv[idxI]
-
-        self.mesh.warpDeriv(dFdXvTotalArray)
-        dFdXs = self.mesh.getdXs()
-        dFdXs = self.mapVector(dFdXs, self.allWallsGroup, self.designSurfacesGroup)
-        dFdFFD = self.DVGeo.totalSensitivity(dFdXs, ptSetName=self.ptSetName, comm=self.comm)
-
-        return dFdFFD
 
     def getForces(self, groupName=None):
         """
@@ -3010,90 +2272,6 @@ class PYDAFOAM(object):
 
         return field
 
-    def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
-        """
-        Compute total derivative
-
-        Input:
-        ------
-        dRdX, dFdX, and psi
-
-        Output:
-        ------
-        totalDeriv = dFdX - [dRdX]^T * psi
-        """
-
-        dRdX.multTranspose(psi, totalDeriv)
-        totalDeriv.scale(-1.0)
-        totalDeriv.axpy(1.0, dFdX)
-
-    def calcdFdAOAAnalytical(self, functionName, dFdAOA):
-        """
-        This function computes partials derivatives dFdAlpha with alpha being the angle of attack (AOA)
-        We use the analytical method:
-        CD = Fx * cos(alpha) + Fy * sin(alpha)
-        CL = - Fx * sin(alpha) + Fy * cos(alpha)
-        So:
-        dCD/dAlpha = - Fx * sin(alpha) + Fy * cos(alpha) = CL
-        dCL/dAlpha = - Fx * cos(alpha) - Fy * sin(alpha) = - CD
-        NOTE: we need to convert the unit from radian to degree
-        """
-
-        functionDict = self.getOption("function")
-
-        # find the neededMode of this objective function and also find out if it is a force objective
-        neededMode = "None"
-        isForceObj = 0
-        for functionPart in functionDict[functionName]:
-            if functionDict[functionName][functionPart]["type"] == "force":
-                isForceObj = 1
-                if functionDict[functionName][functionPart]["directionMode"] == "fixedDirection":
-                    raise Error("AOA derivative does not support directionMode=fixedDirection!")
-                elif functionDict[functionName][functionPart]["directionMode"] == "parallelToFlow":
-                    neededMode = "normalToFlow"
-                    break
-                elif functionDict[functionName][functionPart]["directionMode"] == "normalToFlow":
-                    neededMode = "parallelToFlow"
-                    break
-                else:
-                    raise Error("directionMode not valid!")
-
-        # if it is a forceObj, use the analytical approach to calculate dFdAOA, otherwise set it to zero
-        if isForceObj == 1:
-            # First, we need to check if a pair of lift and drag forces
-            # is defined. If not, return an error.
-            nParallelToFlows = 0
-            nNormalToFlows = 0
-            for functionName in functionDict:
-                for functionPart in functionDict[functionName]:
-                    if functionDict[functionName][functionPart]["type"] == "force":
-                        if functionDict[functionName][functionPart]["directionMode"] == "parallelToFlow":
-                            nParallelToFlows += 1
-                        if functionDict[functionName][functionPart]["directionMode"] == "normalToFlow":
-                            nNormalToFlows += 1
-
-            if nParallelToFlows != 1 or nNormalToFlows != 1:
-                raise Error(
-                    "calcdFdAOAAnalytical supports only one pair of force: one with normalToFlow and the other with parallelToFlow"
-                )
-
-            # loop over all objectives again to find the neededMode
-            # Note that if the neededMode == "parallelToFlow", we need to add a minus sign
-            for functionNameNeeded in functionDict:
-                for functionPart in functionDict[functionNameNeeded]:
-                    if functionDict[functionNameNeeded][functionPart]["type"] == "force":
-                        if functionDict[functionNameNeeded][functionPart]["directionMode"] == neededMode:
-                            val = self.solver.getFunctionValue(functionNameNeeded.encode())
-                            if neededMode == "parallelToFlow":
-                                dFdAOA[0] = -val * np.pi / 180.0
-                            elif neededMode == "normalToFlow":
-                                dFdAOA[0] = val * np.pi / 180.0
-                            dFdAOA.assemblyBegin()
-                            dFdAOA.assemblyEnd()
-                            break
-        else:
-            dFdAOA.zeroEntries()
-
     def _initSolver(self):
         """
         Initialize the solvers. This needs to be called before calling any runs
@@ -3122,42 +2300,15 @@ class PYDAFOAM(object):
             self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
 
         self.solver.initSolver()
-
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.initSolver()
+        self.solverAD.initSolver()
 
         if self.getOption("printDAOptions"):
             self.solver.printAllOptions()
 
-        adjMode = self.getOption("unsteadyAdjoint")["mode"]
-        if adjMode == "hybrid":
-            self.initTimeInstanceMats()
-
         Info("Init solver done! ElapsedClockTime %f s" % self.solver.getElapsedClockTime())
-        Info("Init solver done!. ElapsedCpuTime %f s" % self.solver.getElapsedCpuTime())
+        Info("Init solver done! ElapsedCpuTime %f s" % self.solver.getElapsedCpuTime())
 
         self.solverInitialized = 1
-
-        return
-
-    def runColoring(self):
-        """
-        Run coloring solver
-        """
-
-        Info("\n")
-        Info("+--------------------------------------------------------------------------+")
-        Info("|                       Running Coloring Solver                            |")
-        Info("+--------------------------------------------------------------------------+")
-
-        from .libs.pyColoring import pyColoring
-
-        solverArg = "Coloring -python " + self.parallelFlag
-        solver = pyColoring(solverArg.encode(), self.options)
-
-        solver.run()
-
-        solver = None
 
         return
 
@@ -3252,149 +2403,6 @@ class PYDAFOAM(object):
 
         renamed = True
         return distTime, renamed
-
-    def calcFFD2XvSeedVec(self):
-        """
-        Calculate the FFD2XvSeedVec vector:
-        Given a FFD seed xDvDot, run pyGeo and IDWarp and propagate the seed to Xv seed xVDot:
-            xSDot = \\frac{dX_{S}}{dX_{DV}}\\xDvDot
-            xVDot = \\frac{dX_{V}}{dX_{S}}\\xSDot
-
-        Then, we assign this vector to FFD2XvSeedVec in DASolver
-        This will be used in forward mode AD runs
-        """
-
-        if self.DVGeo is None:
-            raise Error("DVGeo not set!")
-
-        dvName = self.getOption("useAD")["dvName"]
-        seedIndex = self.getOption("useAD")["seedIndex"]
-        # create xDVDot vec and initialize it with zeros
-        xDV = self.DVGeo.getValues()
-
-        # create a copy of xDV and set the seed to 1.0
-        # the dv and index depends on dvName and seedIndex
-        xDvDot = {}
-        for key in list(xDV.keys()):
-            xDvDot[key] = np.zeros_like(xDV[key], dtype=self.dtype)
-        xDvDot[dvName][seedIndex] = 1.0
-
-        # get the original surf coords
-        xSDot0 = np.zeros_like(self.xs0, self.dtype)
-        xSDot0 = self.mapVector(xSDot0, self.allSurfacesGroup, self.designSurfacesGroup)
-
-        # get xSDot
-        xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName=self.ptSetName).reshape(xSDot0.shape)
-        # get xVDot
-        xVDot = self.mesh.warpDerivFwd(xSDot)
-
-        seedVec = self.xvVec.duplicate()
-        seedVec.zeroEntries()
-        Istart, Iend = seedVec.getOwnershipRange()
-
-        # assign xVDot to seedVec
-        for idx in range(Istart, Iend):
-            idxRel = idx - Istart
-            seedVec[idx] = xVDot[idxRel]
-
-        seedVec.assemblyBegin()
-        seedVec.assemblyEnd()
-
-        self.solverAD.setFFD2XvSeedVec(seedVec)
-
-    def setdXvdFFDMat(self, designVarName, deltaVPointThreshold=1.0e-16):
-        """
-        Perturb each design variable and save the delta volume point coordinates
-        to a mat, this will be used to calculate dRdFFD and dFdFFD in DAFoam
-
-        Parameters
-        ----------
-        deltaVPointThreshold: float
-            A threshold, any delta volume coordinates smaller than this value will be ignored
-
-        """
-
-        if self.DVGeo is None:
-            raise Error("DVGeo not set!")
-
-        # Get the FFD size
-        nDVs = -9999
-        xDV = self.DVGeo.getValues()
-        nDVs = len(xDV[designVarName])
-
-        # get the unperturbed point coordinates
-        oldVolPoints = self.mesh.getSolverGrid()
-        # get the size of xv, it is the number of points * 3
-        nXvs = len(oldVolPoints)
-        # get eps
-        epsFFD = self.getOption("adjPartDerivFDStep")["FFD"]
-
-        Info("Calculating the dXvdFFD matrix with epsFFD: " + str(epsFFD))
-
-        dXvdFFDMat = PETSc.Mat().create(PETSc.COMM_WORLD)
-        dXvdFFDMat.setSizes(((nXvs, None), (None, nDVs)))
-        dXvdFFDMat.setFromOptions()
-        dXvdFFDMat.setPreallocationNNZ((nDVs, nDVs))
-        dXvdFFDMat.setUp()
-        Istart, Iend = dXvdFFDMat.getOwnershipRange()
-
-        # for each DV, perturb epsFFD and save the delta vol point coordinates
-        for i in range(nDVs):
-            # perturb
-            xDV[designVarName][i] += epsFFD
-            # set the dv to DVGeo
-            self.DVGeo.setDesignVars(xDV)
-            # update the vol points according to the new DV values
-            self.updateVolumePoints()
-            # get the new vol points
-            newVolPoints = self.mesh.getSolverGrid()
-            # assign the delta vol coords to the mat
-            for idx in range(Istart, Iend):
-                idxRel = idx - Istart
-                deltaVal = newVolPoints[idxRel] - oldVolPoints[idxRel]
-                if abs(deltaVal) > deltaVPointThreshold:  # a threshold
-                    dXvdFFDMat[idx, i] = deltaVal
-            # reset the perturbation of the dv
-            xDV[designVarName][i] -= epsFFD
-
-        # reset the volume mesh coordinates
-        self.DVGeo.setDesignVars(xDV)
-        self.updateVolumePoints()
-
-        # assemble
-        dXvdFFDMat.assemblyBegin()
-        dXvdFFDMat.assemblyEnd()
-
-        # viewer = PETSc.Viewer().createASCII("dXvdFFDMat_%s_%s.dat" % (designVarName, self.comm.size), "w")
-        # viewer(dXvdFFDMat)
-
-        self.solver.setdXvdFFDMat(dXvdFFDMat)
-
-        dXvdFFDMat.destroy()
-
-        return nDVs
-
-    def updateVolumePoints(self):
-        """
-        Update the vol mesh point coordinates based on the current values of design variables
-        """
-
-        # update the CFD Coordinates
-        if self.DVGeo is not None:
-            if self.ptSetName not in self.DVGeo.points:
-                xs0 = self.mapVector(self.xs0, self.allSurfacesGroup, self.designSurfacesGroup)
-                self.DVGeo.addPointSet(xs0, self.ptSetName)
-                self.pointsSet = True
-
-            # set the surface coords
-            if not self.DVGeo.pointSetUpToDate(self.ptSetName):
-                coords = self.DVGeo.update(self.ptSetName, config=None)
-                self.setSurfaceCoordinates(coords, self.designSurfacesGroup)
-
-            # warp the mesh
-            self.mesh.warpMesh()
-
-        return
 
     def _readMeshInfo(self):
         """
@@ -3585,12 +2593,6 @@ class PYDAFOAM(object):
 
         return
 
-    def getPointSetName(self):
-        """
-        Take the apName and return the mangled point set name.
-        """
-        return "openFoamCoords"
-
     def getSolverMeshIndices(self):
         """
         Get the list of indices to pass to the mesh object for the
@@ -3697,86 +2699,6 @@ class PYDAFOAM(object):
                 vec2counter += npts
 
         return vec2
-
-    def _initializeMeshPointVec(self):
-        """
-        Initialize the mesh point vec: xvVec
-        """
-
-        xvSize = len(self.xv) * 3
-        self.xvVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        self.xvVec.setSizes((xvSize, PETSc.DECIDE), bsize=1)
-        self.xvVec.setFromOptions()
-
-        self.xv2XvVec(self.xv, self.xvVec)
-
-        # viewer = PETSc.Viewer().createASCII("xvVec", comm=PETSc.COMM_WORLD)
-        # viewer(self.xvVec)
-
-        return
-
-    def _initializeStateVec(self):
-        """
-        Initialize state variable vector
-        """
-
-        wSize = self.solver.getNLocalAdjointStates()
-        self.wVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        self.wVec.setSizes((wSize, PETSc.DECIDE), bsize=1)
-        self.wVec.setFromOptions()
-
-        self.solver.ofField2StateVec(self.wVec)
-
-        # viewer = PETSc.Viewer().createASCII("wVec", comm=PETSc.COMM_WORLD)
-        # viewer(self.wVec)
-
-        # if it is a multipoint case, initialize self.wVecMPList
-        if self.getOption("multiPoint") is True:
-            nMultiPoints = self.getOption("nMultiPoints")
-            self.wVecMPList = [None] * self.getOption("nMultiPoints")
-            for i in range(nMultiPoints):
-                self.wVecMPList[i] = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-                self.wVecMPList[i].setSizes((wSize, PETSc.DECIDE), bsize=1)
-                self.wVecMPList[i].setFromOptions()
-
-        return
-
-    def xv2XvVec(self, xv, xvVec):
-        """
-        Convert a Nx3 mesh point numpy array to a Petsc xvVec
-        """
-
-        xSize = len(xv)
-
-        for i in range(xSize):
-            for j in range(3):
-                globalIdx = self.solver.getGlobalXvIndex(i, j)
-                xvVec[globalIdx] = xv[i][j]
-
-        xvVec.assemblyBegin()
-        xvVec.assemblyEnd()
-
-        return
-
-    def xvFlatten2XvVec(self, xv, xvVec):
-        """
-        Convert a 3Nx1 mesh point numpy array to a Petsc xvVec
-        """
-
-        xSize = len(xv)
-        xSize = int(xSize // 3)
-
-        counterI = 0
-        for i in range(xSize):
-            for j in range(3):
-                globalIdx = self.solver.getGlobalXvIndex(i, j)
-                xvVec[globalIdx] = xv[counterI]
-                counterI += 1
-
-        xvVec.assemblyBegin()
-        xvVec.assemblyEnd()
-
-        return
 
     # base case files
     def _readOFGrid(self, caseDir):
@@ -3994,69 +2916,6 @@ class PYDAFOAM(object):
         nParameters = self.solver.getNRegressionParameters(modelName.encode())
         return nParameters
 
-    def setFieldValue4GlobalCellI(self, fieldName, val, globalCellI, compI=0):
-        """
-        Set the field value based on the global cellI. This is usually
-        used if the state variables are design variables, e.g., betaSA
-        The reason to use global cell index, instead of local one, is
-        because this index is usually provided by the optimizer. Optimizer
-        uses global cell index as the design variable
-
-        Parameters
-        ----------
-        fieldName : str
-           Name of the flow field to set, e.g., U, p, nuTilda
-        val : float
-           The value to set
-        globalCellI : int
-           The global cell index to set the value
-        compI : int
-           The component index to set the value (for vectorField only)
-
-        """
-
-        self.solver.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI)
-
-    def setFieldValue4LocalCellI(self, fieldName, val, localCellI, compI=0):
-        """
-        Set the field value based on the local cellI.
-
-        Parameters
-        ----------
-        fieldName : str
-           Name of the flow field to set, e.g., U, p, nuTilda
-        val : float
-           The value to set
-        localCellI : int
-           The global cell index to set the value
-        compI : int
-           The component index to set the value (for vectorField only)
-
-        """
-
-        self.solver.setFieldValue4LocalCellI(fieldName, val, localCellI, compI)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.setFieldValue4LocalCellI(fieldName, val, localCellI, compI)
-
-    def updateBoundaryConditions(self, fieldName, fieldType):
-        """
-        Update the boundary condition for a field
-
-        Parameters
-        ----------
-        fieldName : str
-           Name of the flow field to update, e.g., U, p, nuTilda
-        fieldType : str
-           Type of the flow field: scalar or vector
-
-        """
-
-        self.solver.updateBoundaryConditions(fieldName, fieldType)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.updateBoundaryConditions(fieldName, fieldType)
-
     def getOption(self, name):
         """
         Get a value from options
@@ -4121,38 +2980,9 @@ class PYDAFOAM(object):
         """
         return self.solver.getNLocalPoints()
 
-    def getDVsCons(self):
-        """
-        Return the list of design variable names
-        NOTE: constraints are not implemented yet
-        """
-        DVNames = []
-        DVSizes = []
-        if self.DVGeo is None:
-            return None
-        else:
-            DVs = self.DVGeo.getValues()
-            for dvName in DVs:
-                try:
-                    size = len(DVs[dvName])
-                except Exception:
-                    size = 1
-                DVNames.append(dvName)
-                DVSizes.append(size)
-            return DVNames, DVSizes
-
     def getStates(self):
         """
         Return the adjoint state array owns by this processor
-        """
-
-        """
-        nLocalStateSize = self.solver.getNLocalAdjointStates()
-        states = np.zeros(nLocalStateSize, self.dtype)
-        Istart, Iend = self.wVec.getOwnershipRange()
-        for i in range(Istart, Iend):
-            iRel = i - Istart
-            states[iRel] = self.wVec[i]
         """
 
         nLocalStateSize = self.solver.getNLocalAdjointStates()
@@ -4161,77 +2991,14 @@ class PYDAFOAM(object):
 
         return states
 
-    def getResiduals(self):
-        """
-        Return the residual array owns by this processor
-        """
-        nLocalStateSize = self.solver.getNLocalAdjointStates()
-        residuals = np.zeros(nLocalStateSize, self.dtype)
-        resVec = self.wVec.duplicate()
-        resVec.zeroEntries()
-
-        self.solver.calcResidualVec(resVec)
-
-        Istart, Iend = resVec.getOwnershipRange()
-        for i in range(Istart, Iend):
-            iRel = i - Istart
-            residuals[iRel] = resVec[i]
-
-        return residuals
-
-    def setVolCoords(self, volCoords):
-        """
-        Set the volCoords to the OpenFOAM's mesh coordinate
-        """
-
-        self.solver.updateOFMeshArray(volCoords)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.updateOFMeshArray(volCoords)
-
-        return
-
     def setStates(self, states):
         """
         Set the state to the OpenFOAM field
         """
 
-        """
-        Istart, Iend = self.wVec.getOwnershipRange()
-        for i in range(Istart, Iend):
-            iRel = i - Istart
-            self.wVec[i] = states[iRel]
-
-        self.wVec.assemblyBegin()
-        self.wVec.assemblyEnd()
-
-        self.solver.updateOFField(self.wVec)
-
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.updateOFField(self.wVec)
-        """
-
         self.solver.updateOFFieldArray(states)
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.updateOFFieldArray(states)
-
-        return
-
-    def setVolCoords(self, vol_coords):
-        """
-        Set the vol_coords to the OpenFOAM field
-        """
-        Istart, Iend = self.xvVec.getOwnershipRange()
-        for i in range(Istart, Iend):
-            iRel = i - Istart
-            self.xvVec[i] = vol_coords[iRel]
-
-        self.xvVec.assemblyBegin()
-        self.xvVec.assemblyEnd()
-
-        self.solver.updateOFMesh(self.xvVec)
-
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.updateOFMesh(self.xvVec)
 
         return
 
@@ -4310,21 +3077,6 @@ class PYDAFOAM(object):
         for i in range(size):
             array1[i] = vec[i]
         return array1
-
-    def _printCurrentOptions(self):
-        """
-        Prints a nicely formatted dictionary of all the current solver
-        options to the stdout on the root processor
-        """
-
-        Info("+---------------------------------------+")
-        Info("|         All DAFoam Options:           |")
-        Info("+---------------------------------------+")
-        # Need to assemble a temporary dictionary
-        tmpDict = {}
-        for key in self.options:
-            tmpDict[key] = self.getOption(key)
-        Info(tmpDict)
 
     def _getImmutableOptions(self):
         """

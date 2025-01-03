@@ -24,10 +24,10 @@ if (simple.momentumPredictor())
     // and final residuals
     SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
-    DAUtility::primalResidualControl(solverU, printToScreen, "U");
+    DAUtility::primalResidualControl(solverU, printToScreen_, "U", primalMaxRes_);
 
     fvOptions.correct(U);
 }
 
 // bound U
-DAUtility::boundVar(allOptions, U, printToScreen);
+DAUtility::boundVar(allOptions, U, printToScreen_);

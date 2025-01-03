@@ -16,7 +16,6 @@
 #include "fvOptions.H"
 #include "Python.h"
 #include "DAUtility.H"
-#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

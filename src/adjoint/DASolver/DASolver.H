@@ -452,18 +452,19 @@ public:
     label getOutputDistributed(
         const word outputName,
         const word outputType);
+    
+    /// run the coloring solver
+    void runColoring();
 
     /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
     void calcJacTVecProduct(
         const word inputName,
         const word inputType,
         const int inputSize,
-        const int distributedInput,
         const double* input,
         const word outputName,
         const word outputType,
         const int outputSize,
-        const int distributedOutput,
         const double* seed,
         double* product);
 
@@ -474,160 +475,16 @@ public:
         const double* input,
         const double* seed);
 
-    /// compute dRdBCAD
-    void calcdRdBCTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdBCTPsi);
-
-    /// compute dFdBCAD
-    void calcdFdBCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdBC);
-
-    /// compute dRdAOAAD
-    void calcdRdAOATPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdAOATPsi);
-
-    /// compute dRdField^T*Psi
-    void calcdRdFieldTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdFieldTPsi);
-
-    /// compute dFdField
-    void calcdFdFieldAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdField);
-
     /// create a multi-level, Richardson KSP object with matrix-free Jacobians
     void createMLRKSPMatrixFree(
         const Mat jacPCMat,
         KSP ksp);
-
-    /// compute dFdW using AD
-    void calcdFdWAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        Vec dFdW);
-
-    void calcdRdThermalTPsiAD(
-        const double* volCoords,
-        const double* states,
-        const double* thermal,
-        const double* seeds,
-        double* product);
-
-    /// compute dRdXv^T*Psi
-    void calcdRdXvTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        Vec dRdXvTPsi);
-
-    /// compute dForcedXv
-    void calcdForcedXvAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dForcedXv);
-
-    /// compute dAcoudXv
-    void calcdAcousticsdXvAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dForcedXv,
-        word varName,
-        word groupName);
-
-    /// compute dFdXv AD
-    void calcdFdXvAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdXv);
-
-    void calcdRdActTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdActTPsi);
-
-    void calcdRdHSCTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdHSCTPsi);
-
-    void calcdForcedWAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dForcedW);
-
-    void calcdAcousticsdWAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dForcedW,
-        word varName,
-        word groupName);
-
-    /// compute dFdACT AD
-    void calcdFdACTAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdACT);
-
-    /// compute dFdHSC AD
-    void calcdFdHSCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word functionName,
-        const word designVarName,
-        Vec dFdHSC);
-
-    /// compute dFdRegPar AD
-    void calcdFdRegParAD(
-        const double* volCoords,
-        const double* states,
-        const double* parameters,
-        const word functionName,
-        const word designVarName,
-        const word modelName,
-        double* dFdRegPar);
 
     /// compute dRdWOld^T*Psi
     void calcdRdWOldTPsiAD(
         const label oldTimeLevel,
         const Vec psi,
         Vec dRdWOldTPsi);
-    
-    void setRunStatus(const word status)
-    {
-        daGlobalVarPtr_().runStatus = status;
-    }
 
     /// return the coupling patch list if any scenario is active on couplingInfo dict otherwise return design surface
     void getCouplingPatchList(wordList& patchList, word groupName = "NONE");
@@ -834,30 +691,25 @@ public:
     /// calculate the values of all objective functions and print them to screen
     void printAllFunctions();
 
-    /// reset the unsteady functiontion to zero
+    /// reset the unsteady function to zero
     void initUnsteadyFunctions()
     {
         forAll(daFunctionPtrList_, idxI)
         {
             DAFunction& daFunction = daFunctionPtrList_[idxI];
             word functionName = daFunction.getFunctionName();
-            word functionPart = daFunction.getFunctionPart();
-            word uKey = functionName + functionPart;
-            unsteadyFunctions_[uKey] = 0.0;
+            unsteadyFunctions_[functionName] = 0.0;
         }
     }
 
     /// return the index of a give functionName in daFunctionPtrList_
-    label getFunctionListIndex(
-        const word functionName,
-        const word functionPart)
+    label getFunctionListIndex(const word functionName)
     {
         forAll(daFunctionPtrList_, idxI)
         {
             DAFunction& daFunction = daFunctionPtrList_[idxI];
             word functionName1 = daFunction.getFunctionName();
-            word functionPart1 = daFunction.getFunctionPart();
-            if (functionPart1 == functionPart && functionName1 == functionName)
+            if (functionName1 == functionName)
             {
                 return idxI;
             }
@@ -1223,15 +1075,6 @@ public:
         daRegressionPtr_->compute();
 #endif
     }
-
-    /// calculte [dR/dRegParameters]^T * psi
-    void calcdRdRegParTPsiAD(
-        const double* volCoords,
-        const double* states,
-        const double* parameters,
-        const double* seeds,
-        const word modelName,
-        double* product);
 
     /// update the primal state boundary condition based on the primalBC dict
     void setPrimalBoundaryConditions(const label printInfo = 1);

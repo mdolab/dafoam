@@ -54,14 +54,11 @@ protected:
     /// the name of the objective function
     word functionName_;
 
-    /// the part of the objective function
-    word functionPart_;
-
     /// the type of the objective function
     word functionType_;
 
     /// dictionary containing the information for the objective function
-    const dictionary& functionDict_;
+    dictionary functionDict_;
 
     /// a sorted list of all face sources for the objective function
     labelList faceSources_;
@@ -95,17 +92,13 @@ public:
             const DAOption& daOption,
             const DAModel& daModel,
             const DAIndex& daIndex,
-            const word functionName,
-            const word functionPart,
-            const dictionary& functionDict),
+            const word functionName),
         (
             mesh,
             daOption,
             daModel,
             daIndex,
-            functionName,
-            functionPart,
-            functionDict));
+            functionName));
 
     // Constructors
 
@@ -115,9 +108,7 @@ public:
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const word functionName,
-        const word functionPart,
-        const dictionary& functionDict);
+        const word functionName);
 
     // Selectors
 
@@ -127,9 +118,7 @@ public:
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const word functionName,
-        const word functionPart,
-        const dictionary& functionDict);
+        const word functionName);
 
     //- Destructor
     virtual ~DAFunction()
@@ -156,12 +145,6 @@ public:
     word getFunctionName()
     {
         return functionName_;
-    }
-
-    /// return the part of objective function
-    word getFunctionPart()
-    {
-        return functionPart_;
     }
 
     /// return the part of objective function

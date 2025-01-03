@@ -46,26 +46,20 @@ daOptions = {
     },
     "function": {
         "CD": {
-            "part1": {
-                "type": "force",
-                "source": "patchToFace",
-                "patches": ["wing"],
-                "directionMode": "parallelToFlow",
-                "patchVelocityInputName": "patchV",
-                "scale": 1.0 / (0.5 * U0 * U0 * A0),
-                "addToAdjoint": True,
-            }
+            "type": "force",
+            "source": "patchToFace",
+            "patches": ["wing"],
+            "directionMode": "parallelToFlow",
+            "patchVelocityInputName": "patchV",
+            "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
         "CL": {
-            "part1": {
-                "type": "force",
-                "source": "patchToFace",
-                "patches": ["wing"],
-                "directionMode": "normalToFlow",
-                "patchVelocityInputName": "patchV",
-                "scale": 1.0 / (0.5 * U0 * U0 * A0),
-                "addToAdjoint": True,
-            }
+            "type": "force",
+            "source": "patchToFace",
+            "patches": ["wing"],
+            "directionMode": "normalToFlow",
+            "patchVelocityInputName": "patchV",
+            "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
     },
     "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm", "dynAdjustTol": False},
@@ -110,8 +104,6 @@ class Top(Multipoint):
         self.add_subsystem("LoD", om.ExecComp("val=CL/CD"))
 
     def configure(self):
-
-        self.cruise.aero_post.mphys_add_funcs()
 
         # create geometric DV setup
         points = self.mesh.mphys_get_surface_mesh()

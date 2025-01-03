@@ -4,14 +4,14 @@
     Version : v4
 
     Description:
-        Child class for moment
+        Child class for heat flux
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncMoment_H
-#define DAObjFuncMoment_H
+#ifndef DAFunctionWallHeatFlux_H
+#define DAFunctionWallHeatFlux_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,50 +20,46 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncMoment Declaration
+      Class DAFunctionWallHeatFlux Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncMoment
-    : public DAObjFunc
+class DAFunctionWallHeatFlux
+    : public DAFunction
 {
 
 protected:
-    /// the direction of the moment
-    vector momentDir_;
 
-    /// the center of rotation for moment
-    vector momentCenter_;
+    /// Cp used in incompressible heatFlux calculation
+    scalar Cp_ = -9999.0;
 
-    /// DATurbulenceModel object
-    const DATurbulenceModel& daTurb_;
+    /// thermal conductivity for solid heatFlux calculation
+    scalar k_ = -9999.0;
+
+    /// wall heat flux field
+    volScalarField wallHeatFlux_;
+
+    /// the area of all heat flux patches
+    scalar areaSum_ = -9999.0;
 
 public:
-    TypeName("moment");
+    TypeName("wallHeatFlux");
     // Constructors
 
     //- Construct from components
-    DAObjFuncMoment(
+    DAFunctionWallHeatFlux(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncMoment()
+    virtual ~DAFunctionWallHeatFlux()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual void calcFunction(scalar& functionValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

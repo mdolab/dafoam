@@ -21,25 +21,18 @@ DAFunctionForce::DAFunctionForce(
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const word functionName,
-    const word functionPart,
-    const dictionary& functionDict)
+    const word functionName)
     : DAFunction(
         mesh,
         daOption,
         daModel,
         daIndex,
-        functionName,
-        functionPart,
-        functionDict),
+        functionName),
       daTurb_(daModel.getDATurbulenceModel())
 {
 
     // for computing force, first read in some parameters from functionDict_
     // these parameters are only for force objective
-
-    // Assign type, this is common for all objectives
-    functionDict_.readEntry<word>("type", functionType_);
 
     // we support three direction modes
     dirMode_ = functionDict_.getWord("directionMode");
@@ -69,7 +62,7 @@ DAFunctionForce::DAFunctionForce(
     else
     {
         FatalErrorIn(" ") << "directionMode for "
-                          << functionName << " " << functionPart << " not valid!"
+                          << functionName << " not valid!"
                           << "Options: fixedDirection, parallelToFlow, normalToFlow."
                           << abort(FatalError);
     }
@@ -77,11 +70,10 @@ DAFunctionForce::DAFunctionForce(
     if (fabs(mag(forceDir_) - 1.0) > 1.0e-8)
     {
         FatalErrorIn(" ") << "the magnitude of the direction parameter in "
-                          << functionName << " " << functionPart << " is not 1.0!"
+                          << functionName << " is not 1.0!"
                           << abort(FatalError);
     }
 
-    functionDict_.readEntry<scalar>("scale", scale_);
 }
 
 /// calculate the value of objective function
