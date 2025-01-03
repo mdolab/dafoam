@@ -1167,7 +1167,7 @@ class DAFoamFunctions(ExplicitComponent):
 
             # if the seed is zero, do not compute
             if abs(seed) < 1e-14:
-                pass
+                continue
 
             for inputName in list(d_inputs.keys()):
                 # compute dFdW * seed
