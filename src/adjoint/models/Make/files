@@ -2,5 +2,6 @@ MRFDF/MRFZoneDF.C
 MRFDF/MRFZoneListDF.C
 MRFDF/IOMRFZoneListDF.C
 meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
+pimpleControlDF/pimpleControlDF.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAMisc$(WM_CODI_AD_LIB_POSTFIX)

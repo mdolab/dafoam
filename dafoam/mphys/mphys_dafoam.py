@@ -2267,3 +2267,98 @@ class OptFuncs(object):
                 dvName = designVars[i]
                 comp = designVarsComp[i]
                 self.om_prob.set_val(dvName, dv1[i], indices=comp)
+
+
+class DAFoamSolverUnsteady(ExplicitComponent):
+
+    def initialize(self):
+        self.options.declare("solver_options")
+        self.options.declare("mesh_options", default=None)
+        self.options.declare("run_directory", default="")
+
+    def setup(self):
+        self.run_directory = self.options["run_directory"]
+        self.solver_options = self.options["solver_options"]
+        self.mesh_options = self.options["mesh_options"]
+
+        with cd(self.run_directory):
+            # initialize the PYDAFOAM class, defined in pyDAFoam.py
+            self.DASolver = PYDAFOAM(options=self.solver_options, comm=self.comm)
+            if self.mesh_options is not None:
+                # always set the mesh
+                mesh = USMesh(options=self.mesh_options, comm=self.comm)
+                self.DASolver.setMesh(mesh)  # add the design surface family group
+                self.DASolver.printFamilyList()
+
+        DASolver = self.DASolver
+
+        solverInputs = DASolver.getOption("solverInput")
+        for inputName in list(solverInputs.keys()):
+            inputType = solverInputs[inputName]["type"]
+            inputSize = DASolver.solver.getInputSize(inputName, inputType)
+            inputDistributed = DASolver.solver.getInputDistributed(inputName, inputType)
+            self.add_input(inputName, distributed=inputDistributed, shape=inputSize)
+
+        functions = DASolver.getOption("function")
+        for functionName in list(functions.keys()):
+            self.add_output(functionName, distributed=0, shape=1)
+
+    def compute(self, inputs, outputs):
+
+        with cd(self.run_directory):
+
+            DASolver = self.DASolver
+
+            # before running the primal, we need to check if the mesh
+            # quality is good
+            meshOK = DASolver.solver.checkMesh()
+
+            # solve the flow with the current design variable
+            # if the mesh is not OK, do not run the primal
+            if meshOK:
+                self.set_solver_input(inputs)
+                DASolver()
+            else:
+                DASolver.primalFail = 1
+
+            # get the objective functions
+            funcs = {}
+            DASolver.evalFunctionsUnsteady(funcs)
+
+            for funcName in list(outputs.keys()):
+                outputs[funcName] = funcs[funcName]
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+        if mode == "fwd":
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
+    
+    def set_solver_input(self, inputs):
+        """
+        Set solver input. If it is forward mode, we also set the seeds
+        """
+        DASolver = self.DASolver
+        inputDict = DASolver.getOption("solverInput")
+
+        for inputName in list(inputDict.keys()):
+            inputType = inputDict[inputName]["type"]
+            input = inputs[inputName]
+            inputSize = len(input)
+            seeds = np.zeros(inputSize)
+            if DASolver.getOption("useAD")["mode"] == "forward":
+                if inputName == DASolver.getOption("useAD")["dvName"]:
+                    if inputType == "volCoord":
+                        # TODO. add it back
+                        pass
+                        #seeds = self.calcFFD2XvSeeds()
+                    else:
+                        seedIndex = DASolver.getOption("useAD")["seedIndex"]
+                        seeds[seedIndex] = 1.0
+            # here we need to update the solver input for both solver and solverAD
+            DASolver.solver.setSolverInput(inputName, inputType, inputSize, input, seeds)
+            DASolver.solverAD.setSolverInput(inputName, inputType, inputSize, input, seeds)
