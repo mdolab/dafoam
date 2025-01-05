@@ -1,4 +1,4 @@
 Dictionary Key: CD
-@value   0.0698721305841218 1e-10 1e-12
+@value  0.06993452066125641 1e-10 1e-12
 Dictionary Key: CL
-@value -0.01631095499454364 1e-10 1e-12
+@value -0.01626924362913265 1e-10 1e-12
