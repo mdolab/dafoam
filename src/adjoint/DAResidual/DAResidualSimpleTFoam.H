@@ -50,6 +50,9 @@ protected:
 
     /// fvSource term
     volVectorField& fvSource_;
+    
+    /// fTSource term
+    volScalarField& fTSource_;
 
     /// fvOptions term
     fv::options& fvOptions_;
