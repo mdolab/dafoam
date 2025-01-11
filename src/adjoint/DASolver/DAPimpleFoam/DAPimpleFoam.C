@@ -119,20 +119,6 @@ label DAPimpleFoam::solvePrimal()
 
 #include "createRefsPimple.H"
 
-    // always initialize the runTime with zeros because this func will be called 
-    // multiple times during optimization
-    runTime.setTime(0.0, 0);
-
-    // if readZeroFields, we need to read in the states from the 0 folder every time
-    // we start the primal here we read in all time levels. If readZeroFields is not set,
-    // we will use the latest flow fields (from a previous primal call) as the init conditions
-    label readZeroFields = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("readZeroFields");
-    if (readZeroFields)
-    {
-        this->readStateVars(0.0, 0);
-        this->readStateVars(0.0, 1);
-    }
-
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
 
@@ -161,7 +147,7 @@ label DAPimpleFoam::solvePrimal()
     {
         ++runTime;
 
-        printToScreen_ = this->isPrintTime(runTime, printInterval_);
+        printToScreen_ = this->isPrintTime(runTime, printIntervalUnsteady_);
 
         if (printToScreen_)
         {

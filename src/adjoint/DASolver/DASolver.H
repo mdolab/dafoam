@@ -205,6 +205,9 @@ protected:
     /// primal min number of iterations
     label primalMinIters_ = -1;
 
+    /// how frequent do you want to print the primal info default is every 100 steps
+    label printIntervalUnsteady_ = 1;
+
     /// save primal variable to time instance list for hybrid adjoint (unsteady)
     void saveTimeInstanceFieldHybrid(label& timeInstanceI);
 
@@ -483,8 +486,8 @@ public:
     /// compute dRdWOld^T*Psi
     void calcdRdWOldTPsiAD(
         const label oldTimeLevel,
-        const Vec psi,
-        Vec dRdWOldTPsi);
+        const double* psi,
+        double* dRdWOldTPsi);
 
     /// return the coupling patch list if any scenario is active on couplingInfo dict otherwise return design surface
     void getCouplingPatchList(wordList& patchList, word groupName = "NONE");
@@ -530,6 +533,9 @@ public:
     void assignVec2ResidualGradient(Vec vecX);
 
     /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
+    void assignVec2ResidualGradient(const double* vecX);
+
+    /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
     void assignSeeds2ResidualGradient(const double* seeds);
 
     /// assign the reverse-mode AD input seeds from fBarVec to the force vectors in OpenFOAM
@@ -542,6 +548,11 @@ public:
     void assignStateGradient2Vec(
         Vec vecY,
         const label oldTimeLevel = 0);
+    
+    /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
+    void assignStateGradient2Vec(
+        double* vecY,
+        const label oldTimeLevel = 0);
 
     /// set the reverse-mode AD derivatives from the field variables in OpenFOAM to vecY
     void assignFieldGradient2Vec(
@@ -551,6 +562,9 @@ public:
 
     /// normalize the reverse-mode AD derivatives stored in vecY
     void normalizeGradientVec(Vec vecY);
+
+    /// normalize the reverse-mode AD derivatives stored in vecY
+    void normalizeGradientVec(double* vecY);
 
     /// normalize the jacobian vector product that has states as the input such as dFdW and dRdW
     void normalizeJacTVecProduct(

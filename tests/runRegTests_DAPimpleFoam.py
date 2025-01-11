@@ -17,47 +17,44 @@ from pygeo.mphys import OM_DVGEOCOMP
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/NACA0012Unsteady")
+os.chdir("./reg_test_files-main/Ramp")
 if gcomm.rank == 0:
     os.system("rm -rf processor* *.bin")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
 U0 = 10.0
-p0 = 0.0
-A0 = 0.1
-nuTilda0 = 4.5e-5
 
 daOptions = {
-    "designSurfaces": ["wing"],
+    "designSurfaces": ["bot"],
     "solverName": "DAPimpleFoam",
     "primalBC": {
-        "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
-        "useWallFunction": True,
+        # "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
+        "useWallFunction": False,
     },
     "unsteadyAdjoint": {
         "mode": "timeAccurate",
         "PCMatPrecomputeInterval": 5,
         "PCMatUpdateInterval": 1,
         "functionTimeOperator": "average",
+        "readZeroFields": True,
     },
-    "printInterval": 1,
     "function": {
         "CD": {
             "type": "force",
             "source": "patchToFace",
-            "patches": ["wing"],
-            "directionMode": "parallelToFlow",
-            "patchVelocityInputName": "patchV",
-            "scale": 1.0 / (0.5 * U0 * U0 * A0),
+            "patches": ["bot"],
+            "directionMode": "fixedDirection",
+            "direction": [1.0, 0.0, 0.0],
+            "scale": 1.0,
         },
         "CL": {
             "type": "force",
             "source": "patchToFace",
-            "patches": ["wing"],
-            "directionMode": "normalToFlow",
-            "patchVelocityInputName": "patchV",
-            "scale": 1.0 / (0.5 * U0 * U0 * A0),
+            "patches": ["bot"],
+            "directionMode": "fixedDirection",
+            "direction": [0.0, 1.0, 0.0],
+            "scale": 1.0,
         },
     },
     "adjStateOrdering": "cell",
@@ -65,7 +62,7 @@ daOptions = {
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
     "solverInput": {
         # "aero_vol_coords": {"type": "volCoord"},
-        "patchV": {"type": "patchVelocity", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+        "patchV": {"type": "patchVelocity", "patches": ["inlet"], "flowAxis": "x", "normalAxis": "y"},
     },
 }
 
@@ -89,14 +86,14 @@ class Top(Group):
     def configure(self):
 
         # add the design variables to the dvs component's output
-        self.dvs.add_output("patchV", val=np.array([10.0, 20.0]))
+        self.dvs.add_output("patchV", val=np.array([10.0, 0.0]))
 
         # define the design variables to the top level
-        self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0)
+        self.add_design_var("patchV", indices=[0], lower=-50.0, upper=50.0, scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("CD", scaler=1.0)
-        self.add_constraint("CL", equals=0.3)
+        # self.add_constraint("CL", equals=0.3)
 
 
 prob = om.Problem()
@@ -109,9 +106,19 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
 # verify the total derivatives against the finite-difference
 prob.run_model()
-
+results = prob.check_totals(
+    of=["CD"],
+    wrt=["patchV"],
+    compact_print=True,
+    step=1e-1,
+    form="central",
+    step_calc="abs",
+)
 if gcomm.rank == 0:
     funcDict = {}
     funcDict["CD"] = prob.get_val("CD")
-    funcDict["CL"] = prob.get_val("CL")
+    derivDict = {}
+    derivDict["CD"] = {}
+    derivDict["CD"]["patchV"] = results[("CD", "patchV")]["J_fwd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
+    reg_write_dict(derivDict, 1e-8, 1e-12)

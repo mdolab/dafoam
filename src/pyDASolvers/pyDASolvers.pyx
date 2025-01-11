@@ -62,7 +62,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void createMLRKSPMatrixFree(PetscMat, PetscKSP)
         void updateKSPPCMat(PetscMat, PetscKSP)
         int solveLinearEqn(PetscKSP, PetscVec, PetscVec)
-        void calcdRdWOldTPsiAD(int, PetscVec, PetscVec)
+        void calcdRdWOldTPsiAD(int, double *, double *)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void syncDAOptionToActuatorDVs()
         void updateOFField(PetscVec)
@@ -258,8 +258,18 @@ cdef class pyDASolvers:
     def calcdRdWTPsiAD(self, Vec xvVec, Vec wVec, Vec psi, Vec dRdWTPsi):
         self._thisptr.calcdRdWTPsiAD(xvVec.vec, wVec.vec, psi.vec, dRdWTPsi.vec)
     
-    def calcdRdWOldTPsiAD(self, oldTimeLevel, Vec psi, Vec dRdWOldTPsi):
-        self._thisptr.calcdRdWOldTPsiAD(oldTimeLevel, psi.vec, dRdWOldTPsi.vec)
+    def calcdRdWOldTPsiAD(self, 
+        oldTimeLevel, 
+        np.ndarray[double, ndim=1, mode="c"] psi, 
+        np.ndarray[double, ndim=1, mode="c"] dRdWOldTPsi):
+
+        assert len(psi) == self.getNLocalAdjointStates(), "invalid input array size!"
+        assert len(dRdWOldTPsi) == self.getNLocalAdjointStates(), "invalid seed array size!"
+
+        cdef double *psi_data = <double*>psi.data
+        cdef double *dRdWOldTPsi_data = <double*>dRdWOldTPsi.data
+
+        self._thisptr.calcdRdWOldTPsiAD(oldTimeLevel, psi_data, dRdWOldTPsi_data)
     
     def initializedRdWTMatrixFree(self):
         self._thisptr.initializedRdWTMatrixFree()
