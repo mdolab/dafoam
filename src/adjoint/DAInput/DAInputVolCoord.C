@@ -57,6 +57,9 @@ void DAInputVolCoord::run(const scalarList& input)
         }
     }
     mesh_.movePoints(meshPoints);
+    // set this to false to avoid V0 not found error
+    // TODO. We need to change this for dynamic mesh cases
+    mesh_.moving(false);
 
     return;
 }

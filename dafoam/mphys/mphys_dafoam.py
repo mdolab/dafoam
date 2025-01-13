@@ -1089,7 +1089,7 @@ class DAFoamFunctions(ExplicitComponent):
             seed = d_outputs[functionName]
 
             # if the seed is zero, do not compute
-            if abs(seed) < 1e-14:
+            if abs(seed) < 1e-12:
                 continue
 
             for inputName in list(d_inputs.keys()):
@@ -2209,7 +2209,7 @@ class OptFuncs(object):
                 self.om_prob.set_val(dvName, dv1[i], indices=comp)
 
 
-class DAFoamSolverUnsteady(ExplicitComponent):
+class DAFoamBuilderUnsteady(Group):
 
     def initialize(self):
         self.options.declare("solver_options")
@@ -2231,6 +2231,34 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 mesh = USMesh(options=self.mesh_options, comm=self.comm)
                 self.DASolver.setMesh(mesh)  # add the design surface family group
                 self.DASolver.printFamilyList()
+
+            self.x_a0 = self.DASolver.getSurfaceCoordinates(self.DASolver.designSurfacesGroup).flatten(order="C")
+
+        # if we have volume coords as the input, add the warper comp here
+        solverInputs = self.DASolver.getOption("solverInput")
+        for inputName in list(solverInputs.keys()):
+            inputType = solverInputs[inputName]["type"]
+            if inputType == "volCoord":
+                self.add_subsystem("warper", DAFoamWarper(solver=self.DASolver), promotes=["*"])
+
+        # add the solver comp
+        self.add_subsystem("solver", DAFoamSolverUnsteady(solver=self.DASolver, dvgeo=self.DVGeo), promotes=["*"])
+
+    def get_surface_mesh(self):
+        return self.x_a0
+
+
+class DAFoamSolverUnsteady(ExplicitComponent):
+
+    def initialize(self):
+        self.options.declare("solver")
+        self.options.declare("dvgeo", default=None)
+        self.options.declare("run_directory", default="")
+
+    def setup(self):
+        self.DVGeo = self.options["dvgeo"]
+        self.DASolver = self.options["solver"]
+        self.run_directory = self.options["run_directory"]
 
         DASolver = self.DASolver
 
@@ -2499,7 +2527,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     # calculate dFdX
                     inputType = solverInputs[inputName]["type"]
                     input1 = inputs[inputName]
-                    inputSize = len(input1)
+                    inputSize = DASolver.solver.getInputSize(inputName, inputType)
                     dFdX = np.zeros(inputSize)
                     DASolver.solverAD.calcJacTVecProduct(
                         inputName,
@@ -2512,6 +2540,8 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                         seed,
                         dFdX,
                     )
+                    # we need to scale the dFdX for unsteady adjoint too
+                    dFdX = dFdX * dFScaling
 
                     # calculate dRdX^T * psi
                     dRdXTPsi = np.zeros(inputSize)
@@ -2540,4 +2570,5 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     DASolver.solverAD.calcdRdWOldTPsiAD(1, psiArray, dRdW0TPsi)
                     DASolver.solverAD.calcdRdWOldTPsiAD(2, psiArray, dRdW00TPsiBuffer)
 
-            d_inputs[inputName] += totals[inputName]
+            for inputName in list(inputs.keys()):
+                d_inputs[inputName] += totals[inputName]

@@ -11,7 +11,7 @@ from testFuncs import *
 import openmdao.api as om
 from openmdao.api import Group
 from mphys.multipoint import Multipoint
-from dafoam.mphys.mphys_dafoam import DAFoamSolverUnsteady
+from dafoam.mphys.mphys_dafoam import DAFoamBuilderUnsteady
 from mphys.scenario_aerodynamic import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 
@@ -61,7 +61,7 @@ daOptions = {
     "adjEqnOption": {"gmresRelTol": 1.0e-8, "pcFillLevel": 1, "jacMatReOrdering": "natural", "dynAdjustTol": False},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
     "solverInput": {
-        # "aero_vol_coords": {"type": "volCoord"},
+        "aero_vol_coords": {"type": "volCoord"},
         "patchV": {"type": "patchVelocity", "patches": ["inlet"], "flowAxis": "x", "normalAxis": "y"},
     },
 }
@@ -70,7 +70,7 @@ meshOptions = {
     "gridFile": os.getcwd(),
     "fileType": "OpenFOAM",
     # point and normal for the symmetry plane
-    "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], [[0.0, 0.0, 0.1], [0.0, 0.0, 1.0]]],
+    "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], [[0.0, 0.0, 0.05], [0.0, 0.0, 1.0]]],
 }
 
 
@@ -79,17 +79,38 @@ class Top(Group):
 
         self.add_subsystem("dvs", om.IndepVarComp(), promotes=["*"])
 
+        # add the geometry component, we dont need a builder because we do it here.
+        self.add_subsystem("geometry", OM_DVGEOCOMP(file="FFD/FFD.xyz", type="ffd"), promotes=["*"])
+
         self.add_subsystem(
-            "cruise", DAFoamSolverUnsteady(solver_options=daOptions, mesh_options=meshOptions), promotes=["*"]
+            "cruise", DAFoamBuilderUnsteady(solver_options=daOptions, mesh_options=meshOptions), promotes=["*"]
         )
+
+        self.connect("x_aero0", "x_aero")
 
     def configure(self):
 
+        # create geometric DV setup
+        points = self.cruise.get_surface_mesh()
+
+        # add pointset
+        self.geometry.nom_add_discipline_coords("aero", points)
+
+        # geometry setup
+        pts = self.geometry.DVGeo.getLocalIndex(0)
+        dir_y = np.array([0.0, 1.0, 0.0])
+        shapes = []
+        shapes.append({pts[2, 0, 0]: dir_y, pts[2, 0, 1]: dir_y})
+        self.geometry.nom_addShapeFunctionDV(dvName="shape", shapes=shapes)
+
         # add the design variables to the dvs component's output
         self.dvs.add_output("patchV", val=np.array([10.0, 0.0]))
+        self.dvs.add_output("shape", val=np.zeros(1))
+        self.dvs.add_output("x_aero_in", val=points, distributed=True)
 
         # define the design variables to the top level
         self.add_design_var("patchV", indices=[0], lower=-50.0, upper=50.0, scaler=1.0)
+        self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("CD", scaler=1.0)
@@ -108,9 +129,9 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 prob.run_model()
 results = prob.check_totals(
     of=["CD"],
-    wrt=["patchV"],
+    wrt=["patchV", "shape"],
     compact_print=True,
-    step=1e-1,
+    step=1e-2,
     form="central",
     step_calc="abs",
 )
@@ -120,5 +141,6 @@ if gcomm.rank == 0:
     derivDict = {}
     derivDict["CD"] = {}
     derivDict["CD"]["patchV"] = results[("CD", "patchV")]["J_fwd"][0]
+    derivDict["CD"]["shape"] = results[("CD", "shape")]["J_fwd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
