@@ -625,43 +625,6 @@ class DAFoamSolver(ImplicitComponent):
     def add_dvcon(self, DVCon):
         self.DVCon = DVCon
 
-    def calcFFD2XvSeeds(self):
-        # Calculate the FFD2XvSeed array:
-        # Given a FFD seed xDvDot, run pyGeo and IDWarp and propagate the seed to Xv seed xVDot:
-        #     xSDot = \\frac{dX_{S}}{dX_{DV}}\\xDvDot
-        #     xVDot = \\frac{dX_{V}}{dX_{S}}\\xSDot
-
-        # Then, we assign this vector to FFD2XvSeed in the mphys_dafoam
-        # This will be used in forward mode AD runs
-
-        DASolver = self.DASolver
-
-        if self.DVGeo is None:
-            raise RuntimeError("calcFFD2XvSeeds is call but no DVGeo object found! Call add_dvgeo in the run script!")
-
-        dvName = DASolver.getOption("useAD")["dvName"]
-        seedIndex = DASolver.getOption("useAD")["seedIndex"]
-        # create xDVDot vec and initialize it with zeros
-        xDV = self.DVGeo.getValues()
-
-        # create a copy of xDV and set the seed to 1.0
-        # the dv and index depends on dvName and seedIndex
-        xDvDot = {}
-        for key in list(xDV.keys()):
-            xDvDot[key] = np.zeros_like(xDV[key])
-        xDvDot[dvName][seedIndex] = 1.0
-
-        # get the original surf coords
-        xSDot0 = np.zeros_like(DASolver.xs0)
-        xSDot0 = DASolver.mapVector(xSDot0, DASolver.allSurfacesGroup, DASolver.designSurfacesGroup)
-
-        # get xSDot
-        xSDot = self.DVGeo.totalSensitivityProd(xDvDot, ptSetName="x_%s0" % self.discipline).reshape(xSDot0.shape)
-        # get xVDot
-        xVDot = DASolver.mesh.warpDerivFwd(xSDot)
-
-        return xVDot
-
     # calculate the residual
     # def apply_nonlinear(self, inputs, outputs, residuals):
     #     DASolver = self.DASolver
@@ -673,29 +636,6 @@ class DAFoamSolver(ImplicitComponent):
     #     # DASolver.setStates(outputs["%s_states" % self.discipline])
     #     # get flow residuals from DASolver
     #     residuals[self.stateName] = DASolver.getResiduals()
-
-    def set_solver_input(self, inputs):
-        """
-        Set solver input. If it is forward mode, we also set the seeds
-        """
-        DASolver = self.DASolver
-        inputDict = DASolver.getOption("solverInput")
-
-        for inputName in list(inputDict.keys()):
-            inputType = inputDict[inputName]["type"]
-            input = inputs[inputName]
-            inputSize = len(input)
-            seeds = np.zeros(inputSize)
-            if DASolver.getOption("useAD")["mode"] == "forward":
-                if inputName == DASolver.getOption("useAD")["dvName"]:
-                    if inputType == "volCoord":
-                        seeds = self.calcFFD2XvSeeds()
-                    else:
-                        seedIndex = DASolver.getOption("useAD")["seedIndex"]
-                        seeds[seedIndex] = 1.0
-            # here we need to update the solver input for both solver and solverAD
-            DASolver.solver.setSolverInput(inputName, inputType, inputSize, input, seeds)
-            DASolver.solverAD.setSolverInput(inputName, inputType, inputSize, input, seeds)
 
     # solve the flow
     def solve_nonlinear(self, inputs, outputs):
@@ -711,7 +651,7 @@ class DAFoamSolver(ImplicitComponent):
             # solve the flow with the current design variable
             # if the mesh is not OK, do not run the primal
             if meshOK:
-                self.set_solver_input(inputs)
+                DASolver.set_solver_input(inputs, self.DVGeo)
                 DASolver()
             else:
                 DASolver.primalFail = 1
@@ -1149,7 +1089,7 @@ class DAFoamFunctions(ExplicitComponent):
             seed = d_outputs[functionName]
 
             # if the seed is zero, do not compute
-            if abs(seed) < 1e-14:
+            if abs(seed) < 1e-12:
                 continue
 
             for inputName in list(d_inputs.keys()):
@@ -2267,3 +2207,368 @@ class OptFuncs(object):
                 dvName = designVars[i]
                 comp = designVarsComp[i]
                 self.om_prob.set_val(dvName, dv1[i], indices=comp)
+
+
+class DAFoamBuilderUnsteady(Group):
+
+    def initialize(self):
+        self.options.declare("solver_options")
+        self.options.declare("mesh_options", default=None)
+        self.options.declare("run_directory", default="")
+
+    def setup(self):
+        self.run_directory = self.options["run_directory"]
+        self.solver_options = self.options["solver_options"]
+        self.mesh_options = self.options["mesh_options"]
+
+        with cd(self.run_directory):
+            # initialize the PYDAFOAM class, defined in pyDAFoam.py
+            self.DASolver = PYDAFOAM(options=self.solver_options, comm=self.comm)
+            if self.mesh_options is not None:
+                # always set the mesh
+                mesh = USMesh(options=self.mesh_options, comm=self.comm)
+                self.DASolver.setMesh(mesh)  # add the design surface family group
+                self.DASolver.printFamilyList()
+
+            self.x_a0 = self.DASolver.getSurfaceCoordinates(self.DASolver.designSurfacesGroup).flatten(order="C")
+
+        # if we have volume coords as the input, add the warper comp here
+        solverInputs = self.DASolver.getOption("solverInput")
+        for inputName in list(solverInputs.keys()):
+            inputType = solverInputs[inputName]["type"]
+            if inputType == "volCoord":
+                self.add_subsystem("warper", DAFoamWarper(solver=self.DASolver), promotes=["*"])
+
+        # add the solver comp
+        self.add_subsystem("solver", DAFoamSolverUnsteady(solver=self.DASolver), promotes=["*"])
+
+    def get_surface_mesh(self):
+        return self.x_a0
+
+
+class DAFoamSolverUnsteady(ExplicitComponent):
+
+    def initialize(self):
+        self.options.declare("solver")
+        self.options.declare("run_directory", default="")
+
+    def setup(self):
+        self.DVGeo = None
+        self.DASolver = self.options["solver"]
+        self.run_directory = self.options["run_directory"]
+
+        DASolver = self.DASolver
+
+        self.dRdWTPC = None
+
+        solverInputs = DASolver.getOption("solverInput")
+        for inputName in list(solverInputs.keys()):
+            inputType = solverInputs[inputName]["type"]
+            inputSize = DASolver.solver.getInputSize(inputName, inputType)
+            inputDistributed = DASolver.solver.getInputDistributed(inputName, inputType)
+            self.add_input(inputName, distributed=inputDistributed, shape=inputSize)
+
+        functions = DASolver.getOption("function")
+        for functionName in list(functions.keys()):
+            self.add_output(functionName, distributed=0, shape=1)
+    
+    def add_dvgeo(self, DVGeo):
+        self.DVGeo = DVGeo
+
+    def compute(self, inputs, outputs):
+
+        with cd(self.run_directory):
+
+            DASolver = self.DASolver
+
+            # before running the primal, we need to check if the mesh
+            # quality is good
+            meshOK = DASolver.solver.checkMesh()
+
+            # if readZeroFields, we need to read in the states from the 0 folder every time
+            # we start the primal here we read in all time levels. If readZeroFields is not set,
+            # we will use the latest flow fields (from a previous primal call) as the init conditions
+            readZeroFields = DASolver.getOption("unsteadyAdjoint")["readZeroFields"]
+            if readZeroFields:
+                DASolver.solver.setTime(0.0, 0)
+                deltaT = DASolver.solver.getDeltaT()
+                DASolver.readStateVars(0.0, deltaT)
+
+            # solve the flow with the current design variable
+            # if the mesh is not OK, do not run the primal
+            if meshOK:
+                DASolver.set_solver_input(inputs, self.DVGeo)
+                DASolver()
+            else:
+                DASolver.primalFail = 1
+
+            # get the objective functions
+            funcs = {}
+            DASolver.evalFunctionsUnsteady(funcs)
+
+            # now we can print the residual for the endTime state
+            DASolver.solver.calcPrimalResidualStatistics("print".encode())
+
+            for funcName in list(outputs.keys()):
+                outputs[funcName] = funcs[funcName]
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+        if mode == "fwd":
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
+
+        DASolver = self.DASolver
+
+        # run coloring
+        DASolver.solver.runColoring()
+
+        PCMatPrecomputeInterval = DASolver.getOption("unsteadyAdjoint")["PCMatPrecomputeInterval"]
+        PCMatUpdateInterval = DASolver.getOption("unsteadyAdjoint")["PCMatUpdateInterval"]
+
+        # NOTE: this step is critical because we need to compute the residual for
+        # self.solverAD once to get the proper oldTime level for unsteady adjoint
+        DASolver.solverAD.updateStateBoundaryConditions()
+        DASolver.solverAD.calcPrimalResidualStatistics("calc".encode())
+
+        # calc the total number of time instances
+        # we assume the adjoint is for deltaT to endTime
+        # but users can also prescribed a custom time range
+        functionStartTimeIndex = DASolver.solver.getUnsteadyFunctionStartTimeIndex()
+        functionEndTimeIndex = DASolver.solver.getUnsteadyFunctionEndTimeIndex()
+        deltaT = DASolver.solver.getDeltaT()
+
+        endTime = DASolver.solver.getEndTime()
+        endTimeIndex = round(endTime / deltaT)
+
+        localAdjSize = DASolver.getNLocalAdjointStates()
+
+        ddtSchemeOrder = DASolver.solver.getDdtSchemeOrder()
+
+        # read the latest solution
+        DASolver.solver.setTime(endTime, endTimeIndex)
+        DASolver.solverAD.setTime(endTime, endTimeIndex)
+        # now we can read the variables
+        DASolver.readStateVars(endTime, deltaT)
+
+        # now we can print the residual for the endTime state
+        DASolver.solverAD.calcPrimalResidualStatistics("print".encode())
+
+        # init dRdWTMF
+        DASolver.solverAD.initializedRdWTMatrixFree()
+
+        # precompute the KSP preconditioner Mat and save them to the self.dRdWTPC dict
+        if self.dRdWTPC is None:
+
+            self.dRdWTPC = {}
+
+            # always calculate the PC mat for the endTime
+            DASolver.solver.setTime(endTime, endTimeIndex)
+            DASolver.solverAD.setTime(endTime, endTimeIndex)
+            # now we can read the variables
+            DASolver.readStateVars(endTime, deltaT)
+            # calc the preconditioner mat for endTime
+            if self.comm.rank == 0:
+                print("Pre-Computing preconditiner mat for t = %f" % endTime)
+
+            dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
+            DASolver.solver.calcdRdWT(1, dRdWTPC1)
+            # always update the PC mat values using OpenFOAM's fvMatrix
+            DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
+            self.dRdWTPC[str(endTime)] = dRdWTPC1
+
+            # if we define some extra PCMat in PCMatPrecomputeInterval, calculate them here
+            # and set them to the self.dRdWTPC dict
+            if functionEndTimeIndex > PCMatPrecomputeInterval:
+                for timeIndex in range(functionEndTimeIndex - 1, 0, -1):
+                    if timeIndex % PCMatPrecomputeInterval == 0:
+                        t = timeIndex * deltaT
+                        if self.comm.rank == 0:
+                            print("Pre-Computing preconditiner mat for t = %f" % t)
+                        # read the latest solution
+                        DASolver.solver.setTime(t, timeIndex)
+                        DASolver.solverAD.setTime(t, timeIndex)
+                        # now we can read the variables
+                        DASolver.readStateVars(t, deltaT)
+
+                        # calc the preconditioner mat
+                        dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
+                        DASolver.solver.calcdRdWT(1, dRdWTPC1)
+                        # always update the PC mat values using OpenFOAM's fvMatrix
+                        DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
+                        self.dRdWTPC[str(t)] = dRdWTPC1
+
+        # Initialize the KSP object using the PCMat from the endTime
+        PCMat = self.dRdWTPC[str(endTime)]
+        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
+        DASolver.solverAD.createMLRKSPMatrixFree(PCMat, ksp)
+
+        solverInputs = DASolver.getOption("solverInput")
+
+        # init the dFdW vec
+        dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
+        dFdW.setSizes((localAdjSize, PETSc.DECIDE), bsize=1)
+        dFdW.setFromOptions()
+        dFdW.zeroEntries()
+
+        # init the adjoint vector
+        psi = dFdW.duplicate()
+        psi.zeroEntries()
+
+        # initialize the adjoint vecs
+        dRdW0TPsi = np.zeros(localAdjSize)
+        dRdW00TPsi = np.zeros(localAdjSize)
+        dRdW00TPsiBuffer = np.zeros(localAdjSize)
+        dFdWArray = np.zeros(localAdjSize)
+        psiArray = np.zeros(localAdjSize)
+
+        # loop over all function, calculate dFdW, and solve the adjoint
+        for functionName in list(d_outputs.keys()):
+
+            # we need to zero the total derivative for each function
+            totals = {}
+            for inputName in list(inputs.keys()):
+                totals[inputName] = np.zeros_like(inputs[inputName])
+
+            seed = d_outputs[functionName]
+
+            # if the seed is zero, do not compute the adjoint and pass to
+            # the next funnction
+            if np.linalg.norm(seed) < 1e-12:
+                continue
+
+            # zero the vecs
+            dRdW0TPsi[:] = 0.0
+            dRdW00TPsi[:] = 0.0
+            dRdW00TPsiBuffer[:] = 0.0
+            dFdWArray[:] = 0.0
+            dFdW.zeroEntries()
+
+            # loop over all time steps and solve the adjoint and accumulate the totals
+            adjointFail = 0
+            for n in range(endTimeIndex, 0, -1):
+                timeVal = n * deltaT
+
+                if self.comm.rank == 0:
+                    print("---- Solving unsteady adjoint for %s. t = %f ----" % (functionName, timeVal))
+
+                # set the time value and index in the OpenFOAM layer. Note: this is critical
+                # because if timeIndex < 2, OpenFOAM will not use the oldTime.oldTime for 2nd
+                # ddtScheme and mess up the totals. Check backwardDdtScheme.C
+                DASolver.solver.setTime(timeVal, n)
+                DASolver.solverAD.setTime(timeVal, n)
+                # now we can read the variables
+                # read the state, state.oldTime, etc and update self.wVec for this time instance
+                DASolver.readStateVars(timeVal, deltaT)
+
+                # calculate dFdW scaling, if time index is within the unsteady objective function
+                # index range, prescribed in unsteadyAdjointDict, we calculate dFdW
+                # otherwise, we use dFdW=0 because the unsteady obj does not depend
+                # on the state at this time index
+                dFScaling = 1.0
+                if n >= functionStartTimeIndex and n <= functionEndTimeIndex:
+                    dFScaling = DASolver.solver.getFunctionUnsteadyScaling()
+                else:
+                    dFScaling = 0.0
+
+                # calculate dFdW
+                jacInput = DASolver.getStates()
+                DASolver.solverAD.calcJacTVecProduct(
+                    "states",
+                    "stateVar",
+                    localAdjSize,
+                    jacInput,
+                    functionName,
+                    "function",
+                    1,
+                    seed,
+                    dFdWArray,
+                )
+
+                dFdWArray = dFdWArray * dFScaling
+
+                # do dFdW - dRdW0TPsi - dRdW00TPsi
+                if ddtSchemeOrder == 1:
+                    dFdWArray = dFdWArray - dRdW0TPsi
+                elif ddtSchemeOrder == 2:
+                    dFdWArray = dFdWArray - dRdW0TPsi - dRdW00TPsi
+                    # now copy the buffer vec dRdW00TPsiBuffer to dRdW00TPsi for the next time step
+                    dRdW00TPsi[:] = dRdW00TPsiBuffer
+                else:
+                    print("ddtSchemeOrder not valid!" % ddtSchemeOrder)
+
+                # check if we need to update the PC Mat vals or use the pre-computed PC matrix
+                if str(timeVal) in list(self.dRdWTPC.keys()):
+                    if self.comm.rank == 0:
+                        print("Using pre-computed KSP PC mat for %f" % timeVal)
+                    PCMat = self.dRdWTPC[str(timeVal)]
+                    DASolver.solverAD.updateKSPPCMat(PCMat, ksp)
+                if n % PCMatUpdateInterval == 0 and n < endTimeIndex:
+                    # udpate part of the PC mat
+                    if self.comm.rank == 0:
+                        print("Updating dRdWTPC mat value using OF fvMatrix")
+                    DASolver.solver.calcPCMatWithFvMatrix(PCMat)
+
+                # now solve the adjoint eqn
+                DASolver.arrayVal2Vec(dFdWArray, dFdW)
+                adjointFail = DASolver.solverAD.solveLinearEqn(ksp, dFdW, psi)
+
+                # if one adjoint solution fails, return immediate without solving for the rest of steps.
+                if adjointFail > 0:
+                    break
+
+                # loop over all inputs and compute total derivs
+                for inputName in list(inputs.keys()):
+
+                    # calculate dFdX
+                    inputType = solverInputs[inputName]["type"]
+                    input1 = inputs[inputName]
+                    inputSize = DASolver.solver.getInputSize(inputName, inputType)
+                    dFdX = np.zeros(inputSize)
+                    DASolver.solverAD.calcJacTVecProduct(
+                        inputName,
+                        inputType,
+                        inputSize,
+                        input1,
+                        functionName,
+                        "function",
+                        1,
+                        seed,
+                        dFdX,
+                    )
+                    # we need to scale the dFdX for unsteady adjoint too
+                    dFdX = dFdX * dFScaling
+
+                    # calculate dRdX^T * psi
+                    dRdXTPsi = np.zeros(inputSize)
+                    DASolver.vecVal2Array(psi, psiArray)
+                    DASolver.solverAD.calcJacTVecProduct(
+                        inputName,
+                        inputType,
+                        inputSize,
+                        input1,
+                        "residual",
+                        "residual",
+                        localAdjSize,
+                        psiArray,
+                        dRdXTPsi,
+                    )
+
+                    # total derivative
+                    totals[inputName] += dFdX - dRdXTPsi
+
+                # we need to calculate dRdW0TPsi for the previous time step
+                if ddtSchemeOrder == 1:
+                    DASolver.solverAD.calcdRdWOldTPsiAD(1, psiArray, dRdW0TPsi)
+                elif ddtSchemeOrder == 2:
+                    # do the same for the previous previous step, but we need to save it to a buffer vec
+                    # because dRdW00TPsi will be used 2 steps before
+                    DASolver.solverAD.calcdRdWOldTPsiAD(1, psiArray, dRdW0TPsi)
+                    DASolver.solverAD.calcdRdWOldTPsiAD(2, psiArray, dRdW00TPsiBuffer)
+
+            for inputName in list(inputs.keys()):
+                d_inputs[inputName] += totals[inputName]

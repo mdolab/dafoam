@@ -66,6 +66,7 @@ DASolver::DASolver(
     primalMinResTol_ = daOptionPtr_->getOption<scalar>("primalMinResTol");
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
     printInterval_ = daOptionPtr_->getOption<label>("printInterval");
+    printIntervalUnsteady_ = daOptionPtr_->getOption<label>("printIntervalUnsteady");
 
     // initialize the objStd variables.
     this->initObjStd();
@@ -4514,8 +4515,8 @@ void DASolver::calcdRdWTPsiAD(
 
 void DASolver::calcdRdWOldTPsiAD(
     const label oldTimeLevel,
-    const Vec psi,
-    Vec dRdWOldTPsi)
+    const double* psi,
+    double* dRdWOldTPsi)
 {
 #ifdef CODI_ADR
     /*
@@ -4532,15 +4533,13 @@ void DASolver::calcdRdWOldTPsiAD(
 
         oldTimeLevel: 1-dRdW0^T  2-dRdW00^T
 
-        psi: the vector to multiply dRdW0^T
+        psi: the array to multiply dRdW0^T
     
     Output:
         dRdWOldTPsi: the matrix-vector products dRdWOld^T * Psi
     */
 
     Info << "Calculating [dRdWOld]^T * Psi using reverse-mode AD with level " << oldTimeLevel << endl;
-
-    VecZeroEntries(dRdWOldTPsi);
 
     this->globalADTape_.reset();
     this->globalADTape_.setActive();
@@ -4563,9 +4562,6 @@ void DASolver::calcdRdWOldTPsiAD(
     // NOTE: we need to normalize dRdWOldTPsi!
     this->normalizeGradientVec(dRdWOldTPsi);
 
-    VecAssemblyBegin(dRdWOldTPsi);
-    VecAssemblyEnd(dRdWOldTPsi);
-
     this->globalADTape_.clearAdjoints();
     this->globalADTape_.reset();
 
@@ -4575,15 +4571,6 @@ void DASolver::calcdRdWOldTPsiAD(
     this->deactivateStateVariableInput4AD(oldTimeLevel);
     this->updateStateBoundaryConditions();
     this->calcResiduals();
-
-    wordList writeJacobians;
-    daOptionPtr_->getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
-    if (writeJacobians.found("dRdWOldTPsi") || writeJacobians.found("all"))
-    {
-        word outputName = "dRdWOldTPsi";
-        DAUtility::writeVectorBinary(dRdWOldTPsi, outputName);
-        DAUtility::writeVectorASCII(dRdWOldTPsi, outputName);
-    }
 #endif
 }
 
@@ -5218,6 +5205,108 @@ void DASolver::normalizeGradientVec(Vec vecY)
 #endif
 }
 
+
+void DASolver::normalizeGradientVec(double* vecArray)
+{
+#if defined(CODI_ADF) || defined(CODI_ADR)
+    /*
+    Description:
+        Normalize the reverse-mode AD derivatives stored in vecY
+    
+    Input/Output:
+        vecY: vector to be normalized. vecY = vecY * scalingFactor
+        the scalingFactor depends on states.
+        This is needed for the matrix-vector products in matrix-free adjoint
+
+    */
+
+    dictionary normStateDict = daOptionPtr_->getAllOptions().subDict("normalizeStates");
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        // if normalized state not defined, skip
+        if (normStateDict.found(stateName))
+        {
+
+            scalar scalingFactor = normStateDict.getScalar(stateName);
+
+            forAll(meshPtr_->cells(), cellI)
+            {
+                for (label i = 0; i < 3; i++)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                    vecArray[localIdx] *= scalingFactor.getValue();
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        // if normalized state not defined, skip
+        if (normStateDict.found(stateName))
+        {
+            scalar scalingFactor = normStateDict.getScalar(stateName);
+
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                vecArray[localIdx] *= scalingFactor.getValue();
+            }
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        // if normalized state not defined, skip
+        if (normStateDict.found(stateName))
+        {
+
+            scalar scalingFactor = normStateDict.getScalar(stateName);
+
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                vecArray[localIdx] *= scalingFactor.getValue();
+            }
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        // if normalized state not defined, skip
+        if (normStateDict.found(stateName))
+        {
+            scalar scalingFactor = normStateDict.getScalar(stateName);
+
+            forAll(meshPtr_->faces(), faceI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+                if (faceI < daIndexPtr_->nLocalInternalFaces)
+                {
+                    scalar meshSf = meshPtr_->magSf()[faceI];
+                    vecArray[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+                }
+                else
+                {
+                    label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                    label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                    label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                    scalar meshSf = meshPtr_->magSf().boundaryField()[patchIdx][faceIdx];
+                    vecArray[localIdx] *= scalingFactor.getValue() * meshSf.getValue();
+                }
+            }
+        }
+    }
+
+#endif
+}
+
 void DASolver::assignSeeds2ResidualGradient(const double* seeds)
 {
 
@@ -5393,6 +5482,94 @@ void DASolver::assignVec2ResidualGradient(Vec vecX)
     }
 
     VecRestoreArrayRead(vecX, &vecArray);
+#endif
+}
+
+
+void DASolver::assignVec2ResidualGradient(const double* vecArray)
+{
+#if defined(CODI_ADF) || defined(CODI_ADR)
+    /*
+    Description:
+        Assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
+    
+    Input:
+        vecX: vector storing the input seeds
+    
+    Output:
+        All residual variables in OpenFOAM will be set: stateRes[cellI].setGradient(vecX[localIdx])
+    */
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        const word resName = stateName + "Res";
+        volVectorField& stateRes = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(resName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                stateRes[cellI][i].setGradient(vecArray[localIdx]);
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        volScalarField& stateRes = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(resName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            stateRes[cellI].setGradient(vecArray[localIdx]);
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        const word resName = stateName + "Res";
+        volScalarField& stateRes = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(resName));
+
+        forAll(meshPtr_->cells(), cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+            stateRes[cellI].setGradient(vecArray[localIdx]);
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        const word resName = stateName + "Res";
+        surfaceScalarField& stateRes = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(resName));
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                stateRes[faceI].setGradient(vecArray[localIdx]);
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                stateRes.boundaryFieldRef()[patchIdx][faceIdx].setGradient(vecArray[localIdx]);
+            }
+        }
+    }
+
 #endif
 }
 
@@ -5652,6 +5829,184 @@ void DASolver::assignStateGradient2Vec(
     }
 
     VecRestoreArray(vecY, &vecArray);
+
+#endif
+}
+
+
+void DASolver::assignStateGradient2Vec(
+    double* vecArray,
+    const label oldTimeLevel)
+{
+#if defined(CODI_ADF) || defined(CODI_ADR)
+    /*
+    Description:
+        Set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
+    
+    Input:
+        OpenFOAM state variables that contain the reverse-mode derivative 
+
+        oldTimeLevel: which time level to register, the default value
+        is 0, meaning it will register the state itself. If its 
+        value is 1, it will register state.oldTime(), if its value
+        is 2, it will register state.oldTime().oldTime(). For
+        steady-state adjoint oldTimeLevel = 0
+    
+    Output:
+        vecY: a vector to store the derivatives. The order of this vector is 
+        the same as the state variable vector
+    */
+
+    if (oldTimeLevel < 0 || oldTimeLevel > 2)
+    {
+        FatalErrorIn("") << "oldTimeLevel not valid. Options: 0, 1, or 2"
+                         << abort(FatalError);
+    }
+
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
+        {
+            forAll(meshPtr_->cells(), cellI)
+            {
+                for (label i = 0; i < 3; i++)
+                {
+                    label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI, i);
+                    if (oldTimeLevel == 0)
+                    {
+                        vecArray[localIdx] = state[cellI][i].getGradient();
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        vecArray[localIdx] = state.oldTime()[cellI][i].getGradient();
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        vecArray[localIdx] = state.oldTime().oldTime()[cellI][i].getGradient();
+                    }
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
+        {
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                if (oldTimeLevel == 0)
+                {
+                    vecArray[localIdx] = state[cellI].getGradient();
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    vecArray[localIdx] = state.oldTime()[cellI].getGradient();
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    vecArray[localIdx] = state.oldTime().oldTime()[cellI].getGradient();
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
+        {
+            forAll(meshPtr_->cells(), cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, cellI);
+                if (oldTimeLevel == 0)
+                {
+                    vecArray[localIdx] = state[cellI].getGradient();
+                }
+                else if (oldTimeLevel == 1)
+                {
+                    vecArray[localIdx] = state.oldTime()[cellI].getGradient();
+                }
+                else if (oldTimeLevel == 2)
+                {
+                    vecArray[localIdx] = state.oldTime().oldTime()[cellI].getGradient();
+                }
+            }
+        }
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+
+        label maxOldTimes = state.nOldTimes();
+
+        if (maxOldTimes >= oldTimeLevel)
+        {
+            forAll(meshPtr_->faces(), faceI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(stateName, faceI);
+
+                if (faceI < daIndexPtr_->nLocalInternalFaces)
+                {
+                    if (oldTimeLevel == 0)
+                    {
+                        vecArray[localIdx] = state[faceI].getGradient();
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        vecArray[localIdx] = state.oldTime()[faceI].getGradient();
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        vecArray[localIdx] = state.oldTime().oldTime()[faceI].getGradient();
+                    }
+                }
+                else
+                {
+                    label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                    label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                    label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+
+                    if (oldTimeLevel == 0)
+                    {
+                        vecArray[localIdx] =
+                            state.boundaryField()[patchIdx][faceIdx].getGradient();
+                    }
+                    else if (oldTimeLevel == 1)
+                    {
+                        vecArray[localIdx] =
+                            state.oldTime().boundaryField()[patchIdx][faceIdx].getGradient();
+                    }
+                    else if (oldTimeLevel == 2)
+                    {
+                        vecArray[localIdx] =
+                            state.oldTime().oldTime().boundaryField()[patchIdx][faceIdx].getGradient();
+                    }
+                }
+            }
+        }
+    }
 
 #endif
 }
@@ -6266,7 +6621,6 @@ void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
         e.g., dR_U/dU, dR_p/dp, etc.
     */
 
-#ifndef SolidDASolver
     //DAUtility::writeMatrixASCII(PCMat, "MatOrig");
 
     // MatZeroEntries(PCMat);
@@ -6356,7 +6710,6 @@ void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
     MatAssemblyEnd(PCMat, MAT_FINAL_ASSEMBLY);
 
     //DAUtility::writeMatrixASCII(PCMat, "MatNew");
-#endif
 }
 
 /*

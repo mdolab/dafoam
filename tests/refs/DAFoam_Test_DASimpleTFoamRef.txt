@@ -4,7 +4,7 @@ Dictionary Key: PL
 @value    20.29373905065813 1e-10 1e-12
 Dictionary Key: HFX
 Dictionary Key: shape
-@value    3.080828396964823 1e-08 1e-12
+@value    3.080828396961477 1e-08 1e-12
 Dictionary Key: PL
 Dictionary Key: shape
-@value    12.43484081628204 1e-08 1e-12
+@value    12.43484081628197 1e-08 1e-12

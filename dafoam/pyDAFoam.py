@@ -589,7 +589,7 @@ class DAOPTION(object):
         self.printInterval = 100
 
         ## The print interval of unsteady primal solvers, e.g., for DAPisoFoam
-        self.printIntervalUnsteady = 500
+        self.printIntervalUnsteady = 1
 
         ## Users can adjust primalMinResTolDiff to tweak how much difference between primalMinResTol
         ## and the actual primal convergence is consider to be fail=True for the primal solution.
@@ -1526,7 +1526,68 @@ class PYDAFOAM(object):
 
         # assign the state from OF field to wVec so that the wVec
         # is update to date for unsteady adjoint
-        self.solver.ofField2StateVec(self.wVec)
+        # self.solver.ofField2StateVec(self.wVec)
+
+    def set_solver_input(self, inputs, DVGeo=None):
+        """
+        Set solver input. If it is forward mode, we also set the seeds
+        """
+        inputDict = self.getOption("solverInput")
+
+        for inputName in list(inputDict.keys()):
+            inputType = inputDict[inputName]["type"]
+            input = inputs[inputName]
+            inputSize = len(input)
+            seeds = np.zeros(inputSize)
+            if self.getOption("useAD")["mode"] == "forward":
+                if inputType == "volCoord":
+                    seeds = self.calcFFD2XvSeeds(DVGeo)
+                elif inputName == self.getOption("useAD")["dvName"]:
+                    seedIndex = self.getOption("useAD")["seedIndex"]
+                    seeds[seedIndex] = 1.0
+            # here we need to update the solver input for both solver and solverAD
+            self.solver.setSolverInput(inputName, inputType, inputSize, input, seeds)
+            self.solverAD.setSolverInput(inputName, inputType, inputSize, input, seeds)
+
+    def calcFFD2XvSeeds(self, DVGeo=None):
+        # Calculate the FFD2XvSeed array:
+        # Given a FFD seed xDvDot, run pyGeo and IDWarp and propagate the seed to Xv seed xVDot:
+        #     xSDot = \\frac{dX_{S}}{dX_{DV}}\\xDvDot
+        #     xVDot = \\frac{dX_{V}}{dX_{S}}\\xSDot
+
+        # Then, we assign this vector to FFD2XvSeed in the mphys_dafoam
+        # This will be used in forward mode AD runs
+
+        discipline = self.getOption("discipline")
+
+        if DVGeo is None:
+            raise Error("calcFFD2XvSeeds is call but no DVGeo object found! Call add_dvgeo in the run script!")
+
+        if self.mesh is None:
+            raise Error("calcFFD2XvSeeds is call but no mesh object found!")
+
+        dvName = self.getOption("useAD")["dvName"]
+        seedIndex = self.getOption("useAD")["seedIndex"]
+        # create xDVDot vec and initialize it with zeros
+        xDV = DVGeo.getValues()
+
+        # create a copy of xDV and set the seed to 1.0
+        # the dv and index depends on dvName and seedIndex
+        xDvDot = {}
+        for key in list(xDV.keys()):
+            xDvDot[key] = np.zeros_like(xDV[key])
+        xDvDot[dvName][seedIndex] = 1.0
+
+        # get the original surf coords
+        xSDot0 = np.zeros_like(self.xs0)
+        xSDot0 = self.mapVector(xSDot0, self.allSurfacesGroup, self.designSurfacesGroup)
+
+        # get xSDot
+        xSDot = DVGeo.totalSensitivityProd(xDvDot, ptSetName="x_%s0" % discipline).reshape(xSDot0.shape)
+        # get xVDot
+        xVDot = self.mesh.warpDerivFwd(xSDot)
+
+        return xVDot
 
     def solveAdjointUnsteady(self):
         """
@@ -3015,6 +3076,41 @@ class PYDAFOAM(object):
             array1[i] = seqVec[i]
 
         return array1
+
+    def arrayVal2Vec(self, array1, vec):
+        """
+        Assign the values from array1 to vec
+        """
+
+        size = len(array1)
+
+        Istart, Iend = vec.getOwnershipRange()
+
+        if (Iend - Istart) != size:
+            raise Error("array and vec's sizes are not consistent")
+
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            vec[i] = array1[iRel]
+
+        vec.assemblyBegin()
+        vec.assemblyEnd()
+
+    def vecVal2Array(self, vec, array1):
+        """
+        Assign the values from vec to array1
+        """
+
+        size = len(array1)
+
+        Istart, Iend = vec.getOwnershipRange()
+
+        if (Iend - Istart) != size:
+            raise Error("array and vec's sizes are not consistent")
+
+        for i in range(Istart, Iend):
+            iRel = i - Istart
+            array1[iRel] = vec[i]
 
     def vec2Array(self, vec):
         """

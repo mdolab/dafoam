@@ -204,8 +204,8 @@ public:
     /// compute dRdWOld^T*Psi
     void calcdRdWOldTPsiAD(
         const label oldTimeLevel,
-        const Vec psi,
-        Vec dRdWOldTPsi)
+        const double* psi,
+        double* dRdWOldTPsi)
     {
         DASolverPtr_->calcdRdWOldTPsiAD(oldTimeLevel, psi, dRdWOldTPsi);
     }

@@ -67,13 +67,22 @@ void DAPimpleFoam::initSolver()
     fvMesh& mesh = meshPtr_();
 #include "createPimpleControlPython.H"
 #include "createFieldsPimple.H"
-#include "createAdjointIncompressible.H"
-    // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
-    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+    // read the RAS model from constant/turbulenceProperties
+    const word turbModelName(
+        IOdictionary(
+            IOobject(
+                "turbulenceProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false))
+            .subDict("RAS")
+            .lookup("RASModel"));
+    daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
 
-    this->setDAObjFuncList();
+#include "createAdjoint.H"
 
     // initialize fvSource and the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -101,35 +110,14 @@ void DAPimpleFoam::initSolver()
     }
 }
 
-label DAPimpleFoam::solvePrimal(
-    const Vec xvVec,
-    Vec wVec)
+label DAPimpleFoam::solvePrimal()
 {
     /*
     Description:
         Call the primal solver to get converged state variables
-
-    Input:
-        xvVec: a vector that contains all volume mesh coordinates
-
-    Output:
-        wVec: state variable vector
     */
 
 #include "createRefsPimple.H"
-
-    // change the run status
-    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
-
-    runTime.setTime(0.0, 0);
-    // if readZeroFields, we need to read in the states from the 0 folder every time 
-    // we start the primal here we read in all time levels
-    label readZeroFields = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("readZeroFields");
-    if (readZeroFields)
-    {
-        this->readStateVars(0.0, 0);
-        this->readStateVars(0.0, 1);
-    }
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
@@ -137,33 +125,10 @@ label DAPimpleFoam::solvePrimal(
     Info << "\nStarting time loop\n"
          << endl;
 
-    // deform the mesh based on the xvVec
-    this->pointVec2OFMesh(xvVec);
-
-    // check mesh quality
-    label meshOK = this->checkMesh();
-
-    if (!meshOK)
-    {
-        this->writeFailedMesh();
-        return 1;
-    }
-
-    // if the forwardModeAD is active, we need to set the seed here
-#include "setForwardADSeeds.H"
-
-    // We need to set the mesh moving to false, otherwise we will get V0 not found error.
-    // Need to dig into this issue later
-    // NOTE: we have commented this out. Setting mesh.moving(false) has been done
-    // right after mesh.movePoints() calls.
-    //mesh.moving(false);
-
-    label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
-    label printToScreen = 0;
     label pimplePrintToScreen = 0;
 
     // reset the unsteady obj func to zeros
-    this->initUnsteadyObjFuncs();
+    this->initUnsteadyFunctions();
 
     // we need to reduce the number of files written to the disk to minimize the file IO load
     label reduceIO = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("reduceIO");
@@ -178,16 +143,13 @@ label DAPimpleFoam::solvePrimal(
     label nInstances = round(endTime / deltaT);
 
     // main loop
-    label regModelFail = 0;
-    label fail = 0;
     for (label iter = 1; iter <= nInstances; iter++)
     {
-
         ++runTime;
 
-        printToScreen = this->isPrintTime(runTime, printInterval);
+        printToScreen_ = this->isPrintTime(runTime, printIntervalUnsteady_);
 
-        if (printToScreen)
+        if (printToScreen_)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
@@ -195,7 +157,7 @@ label DAPimpleFoam::solvePrimal(
         // --- Pressure-velocity PIMPLE corrector loop
         while (pimple.loop())
         {
-            if (pimple.finalIter() && printToScreen)
+            if (pimple.finalIter() && printToScreen_)
             {
                 pimplePrintToScreen = 1;
             }
@@ -213,38 +175,24 @@ label DAPimpleFoam::solvePrimal(
             }
 
             laminarTransport.correct();
-            daTurbulenceModelPtr_->correct(pimplePrintToScreen);
-
-            // update the output field value at each iteration, if the regression model is active
-            fail = daRegressionPtr_->compute();
+            // primalMaxRes_ is just a dummy input, we will not use it
+            daTurbulenceModelPtr_->correct(pimplePrintToScreen, primalMaxRes_);
         }
 
-        regModelFail += fail;
+        this->calcUnsteadyFunctions();
 
-        if (this->validateStates())
-        {
-            // write data to files and quit
-            runTime.writeNow();
-            mesh.write();
-            return 1;
-        }
-
-        this->calcUnsteadyObjFuncs();
-
-        if (printToScreen)
+        if (printToScreen_)
         {
 #include "CourantNo.H"
 
             daTurbulenceModelPtr_->printYPlus();
 
-            this->printAllObjFuncs();
+            this->printAllFunctions();
 
             if (daOptionPtr_->getOption<label>("debug"))
             {
                 this->calcPrimalResidualStatistics("print");
             }
-
-            daRegressionPtr_->printInputInfo();
 
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"
@@ -254,24 +202,12 @@ label DAPimpleFoam::solvePrimal(
         if (reduceIO && iter < nInstances)
         {
             this->writeAdjStates(reduceIOWriteMesh_, additionalOutput);
-            daRegressionPtr_->writeFeatures();
         }
         else
         {
             runTime.write();
-            daRegressionPtr_->writeFeatures();
         }
     }
-
-    if (regModelFail > 0)
-    {
-        return 1;
-    }
-
-    this->calcPrimalResidualStatistics("print");
-
-    // primal converged, assign the OpenFoam fields to the state vec wVec
-    this->ofField2StateVec(wVec);
 
     // write the mesh to files
     mesh.write();
