@@ -1540,12 +1540,11 @@ class PYDAFOAM(object):
             inputSize = len(input)
             seeds = np.zeros(inputSize)
             if self.getOption("useAD")["mode"] == "forward":
-                if inputName == self.getOption("useAD")["dvName"]:
-                    if inputType == "volCoord":
-                        seeds = self.calcFFD2XvSeeds(DVGeo)
-                    else:
-                        seedIndex = self.getOption("useAD")["seedIndex"]
-                        seeds[seedIndex] = 1.0
+                if inputType == "volCoord":
+                    seeds = self.calcFFD2XvSeeds(DVGeo)
+                elif inputName == self.getOption("useAD")["dvName"]:
+                    seedIndex = self.getOption("useAD")["seedIndex"]
+                    seeds[seedIndex] = 1.0
             # here we need to update the solver input for both solver and solverAD
             self.solver.setSolverInput(inputName, inputType, inputSize, input, seeds)
             self.solverAD.setSolverInput(inputName, inputType, inputSize, input, seeds)
@@ -1562,10 +1561,10 @@ class PYDAFOAM(object):
         discipline = self.getOption("discipline")
 
         if DVGeo is None:
-            raise RuntimeError("calcFFD2XvSeeds is call but no DVGeo object found! Call add_dvgeo in the run script!")
+            raise Error("calcFFD2XvSeeds is call but no DVGeo object found! Call add_dvgeo in the run script!")
 
         if self.mesh is None:
-            raise RuntimeError("calcFFD2XvSeeds is call but no mesh object found!")
+            raise Error("calcFFD2XvSeeds is call but no mesh object found!")
 
         dvName = self.getOption("useAD")["dvName"]
         seedIndex = self.getOption("useAD")["seedIndex"]

@@ -2215,13 +2215,11 @@ class DAFoamBuilderUnsteady(Group):
         self.options.declare("solver_options")
         self.options.declare("mesh_options", default=None)
         self.options.declare("run_directory", default="")
-        self.options.declare("dvgeo", default=None)
 
     def setup(self):
         self.run_directory = self.options["run_directory"]
         self.solver_options = self.options["solver_options"]
         self.mesh_options = self.options["mesh_options"]
-        self.DVGeo = self.options["dvgeo"]
 
         with cd(self.run_directory):
             # initialize the PYDAFOAM class, defined in pyDAFoam.py
@@ -2242,7 +2240,7 @@ class DAFoamBuilderUnsteady(Group):
                 self.add_subsystem("warper", DAFoamWarper(solver=self.DASolver), promotes=["*"])
 
         # add the solver comp
-        self.add_subsystem("solver", DAFoamSolverUnsteady(solver=self.DASolver, dvgeo=self.DVGeo), promotes=["*"])
+        self.add_subsystem("solver", DAFoamSolverUnsteady(solver=self.DASolver), promotes=["*"])
 
     def get_surface_mesh(self):
         return self.x_a0
@@ -2252,11 +2250,10 @@ class DAFoamSolverUnsteady(ExplicitComponent):
 
     def initialize(self):
         self.options.declare("solver")
-        self.options.declare("dvgeo", default=None)
         self.options.declare("run_directory", default="")
 
     def setup(self):
-        self.DVGeo = self.options["dvgeo"]
+        self.DVGeo = None
         self.DASolver = self.options["solver"]
         self.run_directory = self.options["run_directory"]
 
@@ -2274,6 +2271,9 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         functions = DASolver.getOption("function")
         for functionName in list(functions.keys()):
             self.add_output(functionName, distributed=0, shape=1)
+    
+    def add_dvgeo(self, DVGeo):
+        self.DVGeo = DVGeo
 
     def compute(self, inputs, outputs):
 

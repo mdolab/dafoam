@@ -28,6 +28,7 @@ U0 = 10.0
 daOptions = {
     "designSurfaces": ["bot"],
     "solverName": "DAPimpleFoam",
+    #"useAD": {"mode": "forward", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
         # "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "useWallFunction": False,
@@ -83,7 +84,9 @@ class Top(Group):
         self.add_subsystem("geometry", OM_DVGEOCOMP(file="FFD/FFD.xyz", type="ffd"), promotes=["*"])
 
         self.add_subsystem(
-            "cruise", DAFoamBuilderUnsteady(solver_options=daOptions, mesh_options=meshOptions), promotes=["*"]
+            "cruise",
+            DAFoamBuilderUnsteady(solver_options=daOptions, mesh_options=meshOptions),
+            promotes=["*"],
         )
 
         self.connect("x_aero0", "x_aero")
@@ -95,6 +98,9 @@ class Top(Group):
 
         # add pointset
         self.geometry.nom_add_discipline_coords("aero", points)
+
+        # add the dv_geo object to the builder solver. This will be used to write deformed FFDs
+        self.cruise.solver.add_dvgeo(self.geometry.DVGeo)
 
         # geometry setup
         pts = self.geometry.DVGeo.getLocalIndex(0)
