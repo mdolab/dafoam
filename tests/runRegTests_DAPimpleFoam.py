@@ -28,7 +28,7 @@ U0 = 10.0
 daOptions = {
     "designSurfaces": ["bot"],
     "solverName": "DAPimpleFoam",
-    #"useAD": {"mode": "forward", "seedIndex": 0, "dvName": "shape"},
+    "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
         # "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "useWallFunction": False,
@@ -125,30 +125,38 @@ class Top(Group):
         # self.add_constraint("CL", equals=0.3)
 
 
+# adjoint-deriv
 prob = om.Problem()
 prob.model = Top()
-
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aero.html")
-
-# optFuncs = OptFuncs(daOptions, prob)
-
-# verify the total derivatives against the finite-difference
 prob.run_model()
-results = prob.check_totals(
-    of=["CD"],
-    wrt=["patchV", "shape"],
-    compact_print=True,
-    step=1e-2,
-    form="central",
-    step_calc="abs",
-)
+totals = prob.compute_totals()
+
+dvNames = ["shape", "patchV"]
+funcNames = ["CD"]
+
 if gcomm.rank == 0:
     funcDict = {}
-    funcDict["CD"] = prob.get_val("CD")
     derivDict = {}
-    derivDict["CD"] = {}
-    derivDict["CD"]["patchV"] = results[("CD", "patchV")]["J_fwd"][0]
-    derivDict["CD"]["shape"] = results[("CD", "shape")]["J_fwd"][0]
+    for funcName in funcNames:
+        funcDict[funcName] = prob.get_val(funcName)
+        derivDict[funcName] = {}
+
+# forwardAD-deriv
+daOptions["useAD"]["mode"] = "forward"
+for dvName in dvNames:
+    daOptions["useAD"]["dvName"] = dvName
+    prob = om.Problem()
+    prob.model = Top()
+    prob.setup(mode="rev")
+    prob.run_model()
+
+    if gcomm.rank == 0:
+        for funcName in funcNames:
+            derivDict[funcName]["%s-Adjoint" % dvName] = totals[("cruise.solver.%s" % funcName, "dvs.%s" % dvName)][0]
+            derivDict[funcName]["%s-ForwardAD" % dvName] = prob.get_val(funcName)[0]
+
+if gcomm.rank == 0:
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)

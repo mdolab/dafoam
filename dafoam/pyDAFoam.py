@@ -1499,10 +1499,13 @@ class PYDAFOAM(object):
             seeds = np.zeros(inputSize)
             if self.getOption("useAD")["mode"] == "forward":
                 if inputType == "volCoord":
-                    seeds = self.calcFFD2XvSeeds(DVGeo)
-                elif inputName == self.getOption("useAD")["dvName"]:
-                    seedIndex = self.getOption("useAD")["seedIndex"]
-                    seeds[seedIndex] = 1.0
+                    if self.getOption("useAD")["dvName"] not in list(inputDict.keys()):
+                        seeds = self.calcFFD2XvSeeds(DVGeo)
+                else:
+                    if inputName == self.getOption("useAD")["dvName"]:
+                        seedIndex = self.getOption("useAD")["seedIndex"]
+                        seeds[seedIndex] = 1.0
+
             # here we need to update the solver input for both solver and solverAD
             self.solver.setSolverInput(inputName, inputType, inputSize, input, seeds)
             self.solverAD.setSolverInput(inputName, inputType, inputSize, input, seeds)
