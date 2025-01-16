@@ -351,25 +351,17 @@ public:
         DASolverPtr_->syncDAOptionToActuatorDVs();
     }
 
-    /// return the value of objective
-    double getFunctionValue(const word functionName)
+    /// return the value of objective based on timeOp
+    double getTimeOpFuncVal(const word functionName)
     {
-        double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getFunctionValue(functionName));
-        return returnVal;
+        return DASolverPtr_->getTimeOpFuncVal(functionName);
     }
 
-    double getFunctionValueUnsteady(const word functionName)
+    /// get the scaling factor for dF/d? computation
+    double getdFScaling(const word functionName, const label timeIdx)
     {
         double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getFunctionValueUnsteady(functionName));
-        return returnVal;
-    }
-
-    double getFunctionUnsteadyScaling()
-    {
-        double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getFunctionUnsteadyScaling());
+        assignValueCheckAD(returnVal, DASolverPtr_->getdFScaling(functionName, timeIdx));
         return returnVal;
     }
 

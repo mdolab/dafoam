@@ -48,6 +48,7 @@ daOptions = {
             "directionMode": "fixedDirection",
             "direction": [1.0, 0.0, 0.0],
             "scale": 1.0,
+            "timeOp": "average",
         },
         "CL": {
             "type": "force",
@@ -56,6 +57,7 @@ daOptions = {
             "directionMode": "fixedDirection",
             "direction": [0.0, 1.0, 0.0],
             "scale": 1.0,
+            "timeOp": "average",
         },
     },
     "adjStateOrdering": "cell",

@@ -4,15 +4,17 @@
     Version : v4
 
     Description:
-        Child class for heat flux
+        Child class for the average value for the given valList
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAFunctionWallHeatFlux_H
-#define DAFunctionWallHeatFlux_H
+#ifndef DATimeOpAverage_H
+#define DATimeOpAverage_H
 
-#include "DAFunction.H"
+#include "DATimeOp.H"
 #include "addToRunTimeSelectionTable.H"
+#include "mixedFvPatchFields.H"
+#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -20,46 +22,39 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAFunctionWallHeatFlux Declaration
+      Class DATimeOpAverage Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAFunctionWallHeatFlux
-    : public DAFunction
+class DATimeOpAverage
+    : public DATimeOp
 {
 
 protected:
-
-    /// Cp used in incompressible heatFlux calculation
-    scalar Cp_ = -9999.0;
-
-    /// thermal conductivity for solid heatFlux calculation
-    scalar k_ = -9999.0;
-
-    /// wall heat flux field
-    volScalarField wallHeatFlux_;
-
-    /// the area of all heat flux patches
-    scalar areaSum_ = -9999.0;
-
 public:
-    TypeName("wallHeatFlux");
+    TypeName("average");
     // Constructors
 
     //- Construct from components
-    DAFunctionWallHeatFlux(
-        const fvMesh& mesh,
-        const DAOption& daOption,
-        const DAModel& daModel,
-        const DAIndex& daIndex,
-        const word functionName);
+    DATimeOpAverage(
+        const word timeOpType);
 
     //- Destructor
-    virtual ~DAFunctionWallHeatFlux()
+    virtual ~DATimeOpAverage()
     {
     }
 
-    /// calculate the value of objective function
-    virtual scalar calcFunction();
+    /// compute the timeOp value based on valList
+    virtual scalar compute(
+        const scalarList& valList,
+        const label iStart,
+        const label iEnd);
+
+    /// compute the scaling factor for dF/d? calculation.
+    virtual scalar dFScaling(
+        const scalarList& valList,
+        const label iStart,
+        const label iEnd,
+        const label timeIdx);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

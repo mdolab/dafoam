@@ -127,9 +127,6 @@ label DAPimpleFoam::solvePrimal()
 
     label pimplePrintToScreen = 0;
 
-    // reset the unsteady obj func to zeros
-    this->initUnsteadyFunctions();
-
     // we need to reduce the number of files written to the disk to minimize the file IO load
     label reduceIO = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("reduceIO");
     wordList additionalOutput;
@@ -179,15 +176,13 @@ label DAPimpleFoam::solvePrimal()
             daTurbulenceModelPtr_->correct(pimplePrintToScreen, primalMaxRes_);
         }
 
-        this->calcUnsteadyFunctions();
+        this->calcAllFunctions(printToScreen_);
 
         if (printToScreen_)
         {
 #include "CourantNo.H"
 
             daTurbulenceModelPtr_->printYPlus();
-
-            this->printAllFunctions();
 
             if (daOptionPtr_->getOption<label>("debug"))
             {
@@ -208,6 +203,9 @@ label DAPimpleFoam::solvePrimal()
             runTime.write();
         }
     }
+
+    // need to save primalFinalTimeIndex_.
+    primalFinalTimeIndex_ = runTime.timeIndex();
 
     // write the mesh to files
     mesh.write();

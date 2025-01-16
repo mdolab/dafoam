@@ -63,7 +63,7 @@ public:
     }
 
     /// calculate the value of objective function
-    virtual void calcFunction(scalar& functionValue);
+    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

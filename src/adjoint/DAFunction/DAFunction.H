@@ -57,6 +57,9 @@ protected:
     /// the type of the objective function
     word functionType_;
 
+    /// time operator such as final, sum, or average
+    word timeOp_;
+
     /// dictionary containing the information for the objective function
     dictionary functionDict_;
 
@@ -68,9 +71,6 @@ protected:
 
     /// scale of the objective function
     scalar scale_;
-
-    /// the value of the objective function
-    scalar functionValue_;
 
     /// whether to calculate (obj-ref)^2
     label calcRefVar_;
@@ -136,10 +136,7 @@ public:
     void calcFunctionSources();
 
     /// calculate the value of objective function
-    virtual void calcFunction(scalar& functionValue) = 0;
-
-    /// calculate the value of objective function
-    scalar getFunctionValue();
+    virtual scalar calcFunction() = 0;
 
     /// return the name of objective function
     word getFunctionName()
@@ -151,6 +148,12 @@ public:
     word getFunctionType()
     {
         return functionType_;
+    }
+
+    /// return the time operator such as final, sum, average, variance
+    word getFunctionTimeOp()
+    {
+        return timeOp_;
     }
 
     /// return DAFunction::faceSources_

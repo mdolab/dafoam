@@ -1055,9 +1055,9 @@ class PYDAFOAM(object):
 
     def calcPrimalResidualStatistics(self, mode):
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.calcPrimalResidualStatistics(mode.encode())
+            self.solverAD.calcPrimalResidualStatistics(mode)
         else:
-            self.solver.calcPrimalResidualStatistics(mode.encode())
+            self.solver.calcPrimalResidualStatistics(mode)
 
     def writeDeformedFFDs(self, counter=None):
         """
@@ -1170,52 +1170,10 @@ class PYDAFOAM(object):
             else:
                 # call self.solver.getFunctionValue to get the functionValue from
                 # the DASolver
-                if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
-                    functionValue = self.solver.getFunctionValueUnsteady(funcName.encode())
+                if self.getOption("useAD")["mode"] == "forward":
+                    functionValue = self.solverAD.getTimeOpFuncVal(funcName)
                 else:
-                    functionValue = self.solver.getFunctionValue(funcName.encode())
-                funcs[funcName] = functionValue
-                # assign the functionValuePrevIter
-                self.functionValuePrevIter[funcName] = funcs[funcName]
-
-        if self.primalFail:
-            funcs["fail"] = True
-        else:
-            funcs["fail"] = False
-
-        return
-
-    def evalFunctionsUnsteady(self, funcs):
-        """
-        This is the unsteady version of evalFunctions()
-
-        Parameters
-        ----------
-        funcs : dict
-            Dictionary into which the functions are saved.
-
-        Examples
-        --------
-        >>> funcs = {}
-        >>> CFDsolver()
-        >>> CFDsolver.evalFunctionsUnsteady(funcs)
-        >>> funcs
-        >>> # Result will look like:
-        >>> # {'CD':0.501, 'CL':0.02750, 'fail': False}
-        """
-
-        for funcName in list(self.getOption("function").keys()):
-            if self.primalFail:
-                if len(self.functionValuePrevIter) == 0:
-                    raise Error("Primal solution failed for the baseline design!")
-                else:
-                    # do not call self.solver.getFunctionValue because they can be nonphysical,
-                    # assign funcs based on self.functionValuePrevIter instead
-                    funcs[funcName] = self.functionValuePrevIter[funcName]
-            else:
-                # call self.solver.getFunctionValue to get the functionValue from
-                # the DASolver
-                functionValue = self.solver.getFunctionValueUnsteady(funcName.encode())
+                    functionValue = self.solver.getTimeOpFuncVal(funcName)
                 funcs[funcName] = functionValue
                 # assign the functionValuePrevIter
                 self.functionValuePrevIter[funcName] = funcs[funcName]

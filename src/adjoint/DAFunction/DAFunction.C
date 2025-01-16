@@ -36,6 +36,7 @@ DAFunction::DAFunction(
     // Assign type and scale, this is common for all objectives
     functionDict_.readEntry<word>("type", functionType_);
     functionDict_.readEntry<scalar>("scale", scale_);
+    timeOp_ = functionDict_.lookupOrDefault<word>("timeOp", "final");
 
     // calcualte the face and cell indices that are associated with this objective
     this->calcFunctionSources();
@@ -210,26 +211,6 @@ void DAFunction::calcFunctionSources()
                                             << "Options are: allCells, patchToFace, or boxToCell!"
                                             << abort(FatalError);
     }
-}
-
-scalar DAFunction::getFunctionValue()
-{
-    /*
-    Description:
-        Call the calcFunction in the child class and return
-        functionValue_
-    
-        NOTE: This is a interface for external calls where users
-        only want compute the objective value based on the existing
-        variable fields in OpenFOAM; no need to update state variables
-        or point coordinates. This can be used in the primal solver to print
-        the objective for each time step.
-    */
-    // calculate
-    this->calcFunction(functionValue_);
-
-    // return
-    return functionValue_;
 }
 
 void DAFunction::calcRefVar(scalar& functionValue)
