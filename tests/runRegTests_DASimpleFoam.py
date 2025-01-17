@@ -162,10 +162,14 @@ if gcomm.rank == 0:
     funcDict["CL"] = prob.get_val("cruise.aero_post.CL")
     derivDict = {}
     derivDict["LoD"] = {}
-    derivDict["LoD"]["shape"] = results[("LoD.val", "shape")]["J_fwd"][0]
-    derivDict["LoD"]["patchV"] = results[("LoD.val", "patchV")]["J_fwd"][0]
+    derivDict["LoD"]["shape-Adjoint"] = results[("LoD.val", "shape")]["J_fwd"][0]
+    derivDict["LoD"]["shape-FD"] = results[("LoD.val", "shape")]["J_fd"][0]
+    derivDict["LoD"]["patchV-Adjoint"] = results[("LoD.val", "patchV")]["J_fwd"][0]
+    derivDict["LoD"]["patchV-FD"] = results[("LoD.val", "patchV")]["J_fd"][0]
     derivDict["CL"] = {}
-    derivDict["CL"]["shape"] = results[("cruise.aero_post.CL", "shape")]["J_fwd"][0]
-    derivDict["CL"]["patchV"] = results[("cruise.aero_post.CL", "patchV")]["J_fwd"][0]
+    derivDict["CL"]["shape-Adjoint"] = results[("cruise.aero_post.CL", "shape")]["J_fwd"][0]
+    derivDict["CL"]["shape-FD"] = results[("cruise.aero_post.CL", "shape")]["J_fd"][0]
+    derivDict["CL"]["patchV-Adjoint"] = results[("cruise.aero_post.CL", "patchV")]["J_fwd"][0]
+    derivDict["CL"]["patchV-FD"] = results[("cruise.aero_post.CL", "patchV")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)

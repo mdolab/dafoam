@@ -973,13 +973,8 @@ class PYDAFOAM(object):
         NOTE: we should add all possible checks here!
         """
 
-        if not self.getOption("useAD")["mode"] in ["fd", "reverse", "forward"]:
-            raise Error("useAD->mode only supports fd, reverse, or forward!")
-
-        # check time accurate adjoint
-        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
-            if not self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-                raise Error("timeAccurate only supports useAD->mode=forward|reverse")
+        if not self.getOption("useAD")["mode"] in ["reverse", "forward"]:
+            raise Error("useAD->mode only supports reverse, or forward!")
 
         if "NONE" not in self.getOption("writeSensMap"):
             if not self.getOption("useAD")["mode"] in ["reverse"]:
@@ -2536,8 +2531,7 @@ class PYDAFOAM(object):
         Assign the boundary condition defined in primalBC to the OF fields
         """
         self.solver.setPrimalBoundaryConditions(printInfo)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.setPrimalBoundaryConditions(printInfoAD)
+        self.solverAD.setPrimalBoundaryConditions(printInfoAD)
 
     def _computeBasicFamilyInfo(self):
         """
@@ -3019,8 +3013,7 @@ class PYDAFOAM(object):
         """
 
         self.solver.updateOFFieldArray(states)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.updateOFFieldArray(states)
+        self.solverAD.updateOFFieldArray(states)
 
         return
 

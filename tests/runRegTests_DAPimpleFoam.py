@@ -125,38 +125,20 @@ class Top(Group):
         # self.add_constraint("CL", equals=0.3)
 
 
-# adjoint-deriv
-prob = om.Problem()
-prob.model = Top()
-prob.setup(mode="rev")
-om.n2(prob, show_browser=False, outfile="mphys_aero.html")
-prob.run_model()
-totals = prob.compute_totals()
+# NOTE: the patchV deriv is accurate with FD but not with forward AD. The forward AD changed the primal value
+# and the reason is still unknown..
+
+funcDict = {}
+derivDict = {}
 
 dvNames = ["shape", "patchV"]
-funcNames = ["CD"]
+dvSizes = [1, 1]
+funcNames = ["cruise.solver.CD"]
 
-if gcomm.rank == 0:
-    funcDict = {}
-    derivDict = {}
-    for funcName in funcNames:
-        funcDict[funcName] = prob.get_val(funcName)
-        derivDict[funcName] = {}
+# run the adjoint and forward ref
+run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvSizes, funcDict, derivDict)
 
-# forwardAD-deriv
-daOptions["useAD"]["mode"] = "forward"
-for dvName in dvNames:
-    daOptions["useAD"]["dvName"] = dvName
-    prob = om.Problem()
-    prob.model = Top()
-    prob.setup(mode="rev")
-    prob.run_model()
-
-    if gcomm.rank == 0:
-        for funcName in funcNames:
-            derivDict[funcName]["%s-Adjoint" % dvName] = totals[("cruise.solver.%s" % funcName, "dvs.%s" % dvName)][0]
-            derivDict[funcName]["%s-ForwardAD" % dvName] = prob.get_val(funcName)[0]
-
+# write the test results
 if gcomm.rank == 0:
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)

@@ -657,7 +657,10 @@ class DAFoamSolver(ImplicitComponent):
                 DASolver.primalFail = 1
 
             # after solving the primal, we need to print its residual info
-            DASolver.solver.calcPrimalResidualStatistics("print")
+            if DASolver.getOption("useAD")["mode"] == "forward":
+                DASolver.solverAD.calcPrimalResidualStatistics("print")
+            else:
+                DASolver.solver.calcPrimalResidualStatistics("print")
 
             # get the objective functions
             funcs = {}

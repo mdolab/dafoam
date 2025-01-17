@@ -1,0 +1,26 @@
+Dictionary Key: cruise.aero_post.functionals.CD
+Dictionary Key: patchV0-Adjoint
+@value         4.9855169326001176 1e-08 1e-12
+Dictionary Key: patchV0-ForwardAD
+@value         4.9855169325953970 1e-08 1e-12
+Dictionary Key: patchV1-Adjoint
+@value        -0.1711005434000997 1e-08 1e-12
+Dictionary Key: patchV1-ForwardAD
+@value        -0.1711005433832956 1e-08 1e-12
+Dictionary Key: shape0-Adjoint
+@value        17.4367863584713092 1e-08 1e-12
+Dictionary Key: shape0-ForwardAD
+@value        17.4367863584871863 1e-08 1e-12
+Dictionary Key: cruise.aero_post.functionals.CL
+Dictionary Key: patchV0-Adjoint
+@value         5.6666126630203442 1e-08 1e-12
+Dictionary Key: patchV0-ForwardAD
+@value         5.6666126630085776 1e-08 1e-12
+Dictionary Key: patchV1-Adjoint
+@value         1.6535725265234873 1e-08 1e-12
+Dictionary Key: patchV1-ForwardAD
+@value         1.6535725265236030 1e-08 1e-12
+Dictionary Key: shape0-Adjoint
+@value        25.6297123966399489 1e-08 1e-12
+Dictionary Key: shape0-ForwardAD
+@value        25.6297123966309783 1e-08 1e-12
