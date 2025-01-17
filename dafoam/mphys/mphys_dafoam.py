@@ -657,7 +657,10 @@ class DAFoamSolver(ImplicitComponent):
                 DASolver.primalFail = 1
 
             # after solving the primal, we need to print its residual info
-            DASolver.solver.calcPrimalResidualStatistics("print".encode())
+            if DASolver.getOption("useAD")["mode"] == "forward":
+                DASolver.solverAD.calcPrimalResidualStatistics("print")
+            else:
+                DASolver.solver.calcPrimalResidualStatistics("print")
 
             # get the objective functions
             funcs = {}
@@ -677,7 +680,7 @@ class DAFoamSolver(ImplicitComponent):
 
             # We also need to just calculate the residual for the AD mode to initialize vars like URes
             # We do not print the residual for AD, though
-            DASolver.solverAD.calcPrimalResidualStatistics("calc".encode())
+            DASolver.solverAD.calcPrimalResidualStatistics("calc")
 
     def linearize(self, inputs, outputs, residuals):
         # NOTE: we do not do any computation in this function, just print some information
@@ -2271,7 +2274,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         functions = DASolver.getOption("function")
         for functionName in list(functions.keys()):
             self.add_output(functionName, distributed=0, shape=1)
-    
+
     def add_dvgeo(self, DVGeo):
         self.DVGeo = DVGeo
 
@@ -2304,10 +2307,10 @@ class DAFoamSolverUnsteady(ExplicitComponent):
 
             # get the objective functions
             funcs = {}
-            DASolver.evalFunctionsUnsteady(funcs)
+            DASolver.evalFunctions(funcs)
 
             # now we can print the residual for the endTime state
-            DASolver.solver.calcPrimalResidualStatistics("print".encode())
+            DASolver.solver.calcPrimalResidualStatistics("print")
 
             for funcName in list(outputs.keys()):
                 outputs[funcName] = funcs[funcName]
@@ -2333,7 +2336,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         # NOTE: this step is critical because we need to compute the residual for
         # self.solverAD once to get the proper oldTime level for unsteady adjoint
         DASolver.solverAD.updateStateBoundaryConditions()
-        DASolver.solverAD.calcPrimalResidualStatistics("calc".encode())
+        DASolver.solverAD.calcPrimalResidualStatistics("calc")
 
         # calc the total number of time instances
         # we assume the adjoint is for deltaT to endTime
@@ -2356,7 +2359,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         DASolver.readStateVars(endTime, deltaT)
 
         # now we can print the residual for the endTime state
-        DASolver.solverAD.calcPrimalResidualStatistics("print".encode())
+        DASolver.solverAD.calcPrimalResidualStatistics("print")
 
         # init dRdWTMF
         DASolver.solverAD.initializedRdWTMatrixFree()
@@ -2469,11 +2472,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 # index range, prescribed in unsteadyAdjointDict, we calculate dFdW
                 # otherwise, we use dFdW=0 because the unsteady obj does not depend
                 # on the state at this time index
-                dFScaling = 1.0
-                if n >= functionStartTimeIndex and n <= functionEndTimeIndex:
-                    dFScaling = DASolver.solver.getFunctionUnsteadyScaling()
-                else:
-                    dFScaling = 0.0
+                dFScaling = DASolver.solver.getdFScaling(functionName, n - 1)
 
                 # calculate dFdW
                 jacInput = DASolver.getStates()

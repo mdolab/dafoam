@@ -68,9 +68,6 @@ DASolver::DASolver(
     printInterval_ = daOptionPtr_->getOption<label>("printInterval");
     printIntervalUnsteady_ = daOptionPtr_->getOption<label>("printIntervalUnsteady");
 
-    // initialize the objStd variables.
-    this->initObjStd();
-
     Info << "DAOpton initialized " << endl;
 }
 
@@ -142,28 +139,20 @@ label DASolver::loop(Time& runTime)
         funcObj.execute();
     }
 
-    // calculate the objective function standard deviation. It will be used in determining if the primal converges
-    this->calcObjStd(runTime);
-
     // check exit condition, we need to satisfy both the residual and function std condition
-    if (primalMaxRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_ && primalObjStd_ < primalObjStdTol_)
+    if (primalMaxRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_)
     {
         Info << "Time = " << t << endl;
 
         Info << "Minimal residual " << primalMaxRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
 
-        if (primalObjStdActive_)
-        {
-            Info << "Function standard deviation " << primalObjStd_ << " satisfied the prescribed tolerance " << primalObjStdTol_ << endl
-                 << endl;
-        }
-
-        this->printAllFunctions();
+        this->calcAllFunctions(1);
         runTime.writeNow();
         prevPrimalSolTime_ = t;
         funcObj.end();
         daRegressionPtr_->writeFeatures();
+        primalFinalTimeIndex_ = runTime.timeIndex();
         return 0;
     }
     else if (t > endTime - 0.5 * deltaT)
@@ -171,6 +160,7 @@ label DASolver::loop(Time& runTime)
         prevPrimalSolTime_ = t;
         funcObj.end();
         daRegressionPtr_->writeFeatures();
+        primalFinalTimeIndex_ = runTime.timeIndex();
         return 0;
     }
     else
@@ -183,166 +173,7 @@ label DASolver::loop(Time& runTime)
     }
 }
 
-void DASolver::initObjStd()
-{
-    /*
-    Description:
-        Initialize the objStd variables.
-    */
-
-    // check if the objective function std is used in determining the primal convergence
-    primalObjStdActive_ = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "active");
-    if (primalObjStdActive_)
-    {
-        // if it is active, read in the tolerance and set a large value for the initial std
-        primalObjStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalObjStdTol", "tol");
-        primalObjStd_ = 999.0;
-
-        label steps = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "steps");
-        primalObjSeries_.setSize(steps, 0.0);
-
-        word functionNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "functionName");
-
-        label functionNameFound = 0;
-        const dictionary& functionDict = daOptionPtr_->getAllOptions().subDict("function");
-        forAll(functionDict.toc(), idxI)
-        {
-            word functionName = functionDict.toc()[idxI];
-            if (functionName == functionNameWanted)
-            {
-                functionNameFound = 1;
-            }
-        }
-        if (functionNameFound == 0)
-        {
-            FatalErrorIn("initObjStd") << "objStd->functionName not found! "
-                                       << abort(FatalError);
-        }
-    }
-    else
-    {
-        // if it is not active, set primalObjStdTol_ > primalObjStd_, such that it will
-        // always pass the condition in DASolver::loop (ignore primalObjStd)
-        primalObjStdTol_ = 1e-5;
-        primalObjStd_ = 0.0;
-    }
-}
-
-void DASolver::calcObjStd(Time& runTime)
-{
-    /*
-    Description:
-        calculate the objective function's std, this will be used to stop the primal simulation and also 
-        evaluate whether the primal converges. We will start calculating the objStd when primalObjSeries_
-        is filled at least once, i.e., runTime.timeIndex() >= steps
-    */
-
-    if (!primalObjStdActive_)
-    {
-        return;
-    }
-    else if (runTime.timeIndex() < 1)
-    {
-        // if primalObjStd is active and timeIndex = 0, we need to reset primalObjStd_ to a large value
-        // NOTE: we need to reset primalObjStd_ for each primal call!
-        // Because timeIndex == 0, we don't need to compute the objStd, so we can return
-        // we will start computing the ojbStd for timeIndex>=1
-        primalObjStd_ = 999.0;
-        return;
-    }
-
-    label steps = daOptionPtr_->getSubDictOption<label>("primalObjStdTol", "steps");
-
-    word functionNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "functionName");
-
-    scalar functionSum = 0.0;
-    forAll(daFunctionPtrList_, idxI)
-    {
-        DAFunction& daFunction = daFunctionPtrList_[idxI];
-        word functionName = daFunction.getFunctionName();
-        if (functionName == functionNameWanted)
-        {
-            functionSum += daFunction.getFunctionValue();
-        }
-    }
-    label seriesI = (runTime.timeIndex() - 1) % steps;
-    primalObjSeries_[seriesI] = functionSum;
-
-    if (runTime.timeIndex() >= steps)
-    {
-        scalar mean = 0;
-        forAll(primalObjSeries_, idxI)
-        {
-            mean += primalObjSeries_[idxI];
-        }
-        mean /= steps;
-        primalObjStd_ = 0.0;
-        forAll(primalObjSeries_, idxI)
-        {
-            primalObjStd_ += (primalObjSeries_[idxI] - mean) * (primalObjSeries_[idxI] - mean);
-        }
-        primalObjStd_ = sqrt(primalObjStd_ / steps);
-    }
-}
-
-void DASolver::calcUnsteadyFunctions()
-{
-    /*
-    Description:
-        Calculate unsteady objective function, e.g., the time average obj func
-    */
-
-    if (daFunctionPtrList_.size() == 0)
-    {
-        FatalErrorIn("calcUnsteadyFunctions") << "daFunctionPtrList_.size() ==0... "
-                                              << "Forgot to call setDAFunctionList?"
-                                              << abort(FatalError);
-    }
-
-    word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "functionTimeOperator");
-
-    forAll(daFunctionPtrList_, idxI)
-    {
-        DAFunction& daFunction = daFunctionPtrList_[idxI];
-        word functionName = daFunction.getFunctionName();
-        word uKey = functionName;
-        if (timeOperator == "None")
-        {
-            FatalErrorIn("") << "calcUnsteadyFunctions is called but the timeOperator is not set!!! Options are: average or sum"
-                             << abort(FatalError);
-        }
-        else if (timeOperator == "sum")
-        {
-            label startTimeIndex = this->getUnsteadyFunctionStartTimeIndex();
-            label endTimeIndex = this->getUnsteadyFunctionEndTimeIndex();
-            label timeIndex = runTimePtr_->timeIndex();
-            if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
-            {
-                unsteadyFunctions_[uKey] += daFunction.getFunctionValue();
-            }
-        }
-        else if (timeOperator == "average")
-        {
-            // calculate the average on the fly, i.e., moving average
-            label startTimeIndex = this->getUnsteadyFunctionStartTimeIndex();
-            label endTimeIndex = this->getUnsteadyFunctionEndTimeIndex();
-            label timeIndex = runTimePtr_->timeIndex();
-            if (timeIndex >= startTimeIndex && timeIndex <= endTimeIndex)
-            {
-                label n = timeIndex - startTimeIndex + 1;
-                scalar functionVal = daFunction.getFunctionValue();
-                unsteadyFunctions_[uKey] = (unsteadyFunctions_[uKey] * (n - 1) + functionVal) / n;
-            }
-        }
-        else
-        {
-            FatalErrorIn("") << "calcUnsteadyFunctions is called but the timeOperator is not set!!! Options are: average or sum"
-                             << abort(FatalError);
-        }
-    }
-}
-
-void DASolver::printAllFunctions()
+void DASolver::calcAllFunctions(label print)
 {
     /*
     Description:
@@ -357,88 +188,83 @@ void DASolver::printAllFunctions()
                                           << abort(FatalError);
     }
 
-    word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "functionTimeOperator");
+    label timeIndex = runTimePtr_->timeIndex();
+    label listIndex = timeIndex - 1;
 
     forAll(daFunctionPtrList_, idxI)
     {
         DAFunction& daFunction = daFunctionPtrList_[idxI];
         word functionName = daFunction.getFunctionName();
-        word uKey = functionName;
-        scalar functionVal = daFunction.getFunctionValue();
-        Info << functionName
-             << "-" << daFunction.getFunctionType()
-             << ": " << functionVal;
-        if (primalObjStdActive_)
+        word timeOpType = daFunction.getFunctionTimeOp();
+        scalar functionVal = daFunction.calcFunction();
+        functionTimeSteps_[idxI][listIndex] = functionVal;
+
+        if (print)
         {
-            word functionNameWanted = daOptionPtr_->getSubDictOption<word>("primalObjStdTol", "functionName");
-            if (functionNameWanted == functionName)
-            {
-                Info << " Std " << primalObjStd_;
-            }
-        }
-        if (timeOperator == "average" || timeOperator == "sum")
-        {
-            Info << " Unsteady " << timeOperator << " " << unsteadyFunctions_[uKey];
-        }
+            Info << functionName
+                 << ": " << functionVal;
+
+            scalar timeOpVal = daTimeOpPtrList_[idxI].compute(functionTimeSteps_[idxI], 0, listIndex);
+
+            Info << " " << timeOpType << ": " << timeOpVal;
 #ifdef CODI_ADF
-
-        // if the forwardModeAD is active,, we need to get the total derivatives here
-        if (daOptionPtr_->getAllOptions().subDict("useAD").getWord("mode") == "forward")
-        {
-            Info << " ForwardAD Deriv: " << functionVal.getGradient();
-
-            // assign the forward mode AD derivative to forwardADDerivVal_
-            // such that we can get this value later
-            forwardADDerivVal_.set(functionName, functionVal.getGradient());
-
-            if (daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "mode") == "timeAccurate")
-            {
-                Info << " Unsteady Deriv: " << unsteadyFunctions_[uKey].getGradient();
-            }
-        }
+            Info << " ADF-Deriv: " << timeOpVal.getGradient();
 #endif
-        Info << endl;
+            Info << endl;
+        }
     }
 }
 
-scalar DASolver::getFunctionValueUnsteady(const word functionName)
+double DASolver::getTimeOpFuncVal(const word functionName)
 {
-    /*
-    Description:
-        Return the value of the objective function for unsteady cases
-        NOTE: we will sum up all the parts in functionName
-
-    Input:
-        functionName: the name of the objective function
-
-    Output:
-        functionValue: the value of the objective
-    */
-    if (daFunctionPtrList_.size() == 0)
-    {
-        FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
-                                          << "Forgot to call setDAFunctionList?"
-                                          << abort(FatalError);
-    }
-
-    scalar functionValue = 0.0;
-
+    // return the function value based on timeOp
+    label listFinalIndex = primalFinalTimeIndex_ - 1;
+    scalar funcVal = 0.0;
     forAll(daFunctionPtrList_, idxI)
     {
         DAFunction& daFunction = daFunctionPtrList_[idxI];
-        word functionNameI = daFunction.getFunctionName();
-        word uKey = functionNameI;
-
-        if (functionNameI == functionName)
+        word functionName1 = daFunction.getFunctionName();
+        if (functionName1 == functionName)
         {
-            functionValue += unsteadyFunctions_[uKey];
+            funcVal = daTimeOpPtrList_[idxI].compute(functionTimeSteps_[idxI], 0, listFinalIndex);
         }
     }
+#ifdef CODI_ADF
+    return funcVal.getGradient();
+#endif
 
-    return functionValue;
+#ifdef CODI_ADR
+    return funcVal.getValue();
+#endif
+
+#ifdef CODI_NO_AD
+    return funcVal;
+#endif
 }
 
-scalar DASolver::getFunctionValue(const word functionName)
+/// get the scaling factor for dF/d? derivative computation
+scalar DASolver::getdFScaling(
+    const word functionName,
+    const label timeIdx)
+{
+    scalar scaling = 0.0;
+    label listFinalIndex = primalFinalTimeIndex_ - 1;
+    forAll(daFunctionPtrList_, idxI)
+    {
+        DAFunction& daFunction = daFunctionPtrList_[idxI];
+        word functionName1 = daFunction.getFunctionName();
+        if (functionName1 == functionName)
+        {
+            scaling = daTimeOpPtrList_[idxI].dFScaling(functionTimeSteps_[idxI], 0, listFinalIndex, timeIdx);
+            return scaling;
+        }
+    }
+    FatalErrorIn("getdFScaling") << "functionName not found! "
+                                 << abort(FatalError);
+    return scaling;
+}
+
+scalar DASolver::calcFunction(const word functionName)
 {
     /*
     Description:
@@ -454,9 +280,9 @@ scalar DASolver::getFunctionValue(const word functionName)
 
     if (daFunctionPtrList_.size() == 0)
     {
-        FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
-                                          << "Forgot to call setDAFunctionList?"
-                                          << abort(FatalError);
+        FatalErrorIn("calcFunction") << "daFunctionPtrList_.size() ==0... "
+                                     << "Forgot to call setDAFunctionList?"
+                                     << abort(FatalError);
     }
 
     scalar functionValue = 0.0;
@@ -466,7 +292,7 @@ scalar DASolver::getFunctionValue(const word functionName)
         DAFunction& daFunction = daFunctionPtrList_[idxI];
         if (daFunction.getFunctionName() == functionName)
         {
-            functionValue += daFunction.getFunctionValue();
+            functionValue = daFunction.calcFunction();
         }
     }
 
@@ -477,7 +303,7 @@ void DASolver::setDAFunctionList()
 {
     /*
     Description:
-        Set up the objective function list such that we can call printAllFunctions and getFunctionValue
+        Set up the objective function list such that we can call calcAllFunctions and calcFunction
         NOTE: this function needs to be called before calculating any objective functions
 
     Example:
@@ -491,6 +317,7 @@ void DASolver::setDAFunctionList()
                 "source": "patchToFace",
                 "patches": ["walls", "wallsbump"],
                 "scale": 0.5,
+                "timeOp": "final"
             },
             "func1":
             {
@@ -498,6 +325,7 @@ void DASolver::setDAFunctionList()
                 "source": "patchToFace",
                 "patches": ["wallsbump", "frontandback"],
                 "scale": 0.5,
+                "timeOp": "average"
             },
             "func2": 
             {
@@ -505,6 +333,7 @@ void DASolver::setDAFunctionList()
                 "source": "patchToFace",
                 "patches": ["walls", "wallsbump", "frontandback"],
                 "scale": 1.0,
+                "timeOp": "variance"
             },
         }
     */
@@ -513,15 +342,16 @@ void DASolver::setDAFunctionList()
 
     const dictionary& functionDict = allOptions.subDict("function");
 
-    // loop over all functions and parts and calc the number of
+    // loop over all functions and calc the number of
     // DAFunction instances we need
-    label nFunctionInstances = 0;
+    label nFunctions = 0;
     forAll(functionDict.toc(), idxI)
     {
-        nFunctionInstances++;
+        nFunctions++;
     }
 
-    daFunctionPtrList_.setSize(nFunctionInstances);
+    daFunctionPtrList_.setSize(nFunctions);
+    daTimeOpPtrList_.setSize(nFunctions);
 
     // we need to repeat the loop to initialize the
     // DAFunction instances
@@ -537,32 +367,25 @@ void DASolver::setDAFunctionList()
                 daIndexPtr_(),
                 functionName)
                 .ptr());
+
+        // initialize DATimeOp pointer list
+        word timeOp = daFunctionPtrList_[idxI].getFunctionTimeOp();
+        daTimeOpPtrList_.set(
+            idxI,
+            DATimeOp::New(timeOp).ptr());
     }
 
-    // here we also initialize the unsteadyFunctions hashtable
+    // here we also initialize the functionTimeSteps lists
+    scalar endTime = runTimePtr_->endTime().value();
+    scalar deltaT = runTimePtr_->deltaT().value();
+    label nSteps = round(endTime / deltaT);
+    functionTimeSteps_.setSize(nFunctions);
     forAll(daFunctionPtrList_, idxI)
     {
-        DAFunction& daFunction = daFunctionPtrList_[idxI];
-        word functionName = daFunction.getFunctionName();
-        word uKey = functionName;
-        unsteadyFunctions_.set(uKey, 0.0);
-
-        word timeOperator = daOptionPtr_->getSubDictOption<word>("unsteadyAdjoint", "functionTimeOperator");
-        if (timeOperator == "None" || timeOperator == "sum")
+        functionTimeSteps_[idxI].setSize(nSteps);
+        forAll(functionTimeSteps_[idxI], idxJ)
         {
-            unsteadyFunctionsScaling_ = 1.0;
-        }
-        else if (timeOperator == "average")
-        {
-            label startTimeIndex = this->getUnsteadyFunctionStartTimeIndex();
-            label endTimeIndex = this->getUnsteadyFunctionEndTimeIndex();
-            label nInstances = endTimeIndex - startTimeIndex + 1;
-            unsteadyFunctionsScaling_ = 1.0 / nInstances;
-        }
-        else
-        {
-            FatalErrorIn("setDAFunctionList") << "timeOperator not valid! Options are None, average, or sum"
-                                              << abort(FatalError);
+            functionTimeSteps_[idxI][idxJ] = 0.0;
         }
     }
 }
@@ -5205,7 +5028,6 @@ void DASolver::normalizeGradientVec(Vec vecY)
 #endif
 }
 
-
 void DASolver::normalizeGradientVec(double* vecArray)
 {
 #if defined(CODI_ADF) || defined(CODI_ADR)
@@ -5484,7 +5306,6 @@ void DASolver::assignVec2ResidualGradient(Vec vecX)
     VecRestoreArrayRead(vecX, &vecArray);
 #endif
 }
-
 
 void DASolver::assignVec2ResidualGradient(const double* vecArray)
 {
@@ -5832,7 +5653,6 @@ void DASolver::assignStateGradient2Vec(
 
 #endif
 }
-
 
 void DASolver::assignStateGradient2Vec(
     double* vecArray,
@@ -6471,79 +6291,6 @@ void DASolver::updateStateBoundaryConditions()
         daModelPtr_->correctBoundaryConditions();
         daModelPtr_->updateIntermediateVariables();
     }
-}
-
-void DASolver::saveTimeInstanceFieldHybrid(label& timeInstanceI)
-{
-    /*
-    Description:
-        Save primal variable to time instance list for unsteady adjoint
-        Here we save the last nTimeInstances snapshots
-    */
-
-    scalar endTime = runTimePtr_->endTime().value();
-    scalar t = runTimePtr_->timeOutputValue();
-    scalar instanceStart =
-        endTime - periodicity_ / nTimeInstances_ * (nTimeInstances_ - 1 - timeInstanceI);
-
-    // the 2nd condition is for t=9.999999999999 scenario)
-    if (t > instanceStart || fabs(t - endTime) < 1e-8)
-    {
-        Info << "Saving time instance " << timeInstanceI << " at Time = " << t << endl;
-
-        // save fields
-        daFieldPtr_->ofField2List(
-            stateAllInstances_[timeInstanceI],
-            stateBoundaryAllInstances_[timeInstanceI]);
-
-        // save objective functions
-        forAll(daOptionPtr_->getAllOptions().subDict("function").toc(), idxI)
-        {
-            word functionName = daOptionPtr_->getAllOptions().subDict("function").toc()[idxI];
-            scalar functionVal = this->getFunctionValue(functionName);
-            functionsAllInstances_[timeInstanceI].set(functionName, functionVal);
-        }
-
-        // save runTime
-        runTimeAllInstances_[timeInstanceI] = t;
-        runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
-
-        if (daOptionPtr_->getOption<label>("debug"))
-        {
-            this->calcPrimalResidualStatistics("print");
-        }
-
-        timeInstanceI++;
-    }
-    return;
-}
-
-void DASolver::saveTimeInstanceFieldTimeAccurate(label& timeInstanceI)
-{
-    /*
-    Description:
-        Save primal variable to time instance list for unsteady adjoint
-        Here we save every time step
-    */
-    // save fields
-    daFieldPtr_->ofField2List(
-        stateAllInstances_[timeInstanceI],
-        stateBoundaryAllInstances_[timeInstanceI]);
-
-    // save objective functions
-    forAll(daOptionPtr_->getAllOptions().subDict("function").toc(), idxI)
-    {
-        word functionName = daOptionPtr_->getAllOptions().subDict("function").toc()[idxI];
-        scalar functionVal = this->getFunctionValue(functionName);
-        functionsAllInstances_[timeInstanceI].set(functionName, functionVal);
-    }
-
-    // save runTime
-    scalar t = runTimePtr_->timeOutputValue();
-    runTimeAllInstances_[timeInstanceI] = t;
-    runTimeIndexAllInstances_[timeInstanceI] = runTimePtr_->timeIndex();
-
-    timeInstanceI++;
 }
 
 void DASolver::setTimeInstanceField(const label instanceI)

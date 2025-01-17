@@ -90,7 +90,7 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
 }
 
 /// calculate the value of objective function
-void DAFunctionWallHeatFlux::calcFunction(scalar& functionValue)
+scalar DAFunctionWallHeatFlux::calcFunction()
 {
     /*
     Description:
@@ -114,7 +114,7 @@ void DAFunctionWallHeatFlux::calcFunction(scalar& functionValue)
     reduce(areaSum_, sumOp<scalar>());
 
     // initialize objFunValue
-    functionValue = 0.0;
+    scalar functionValue = 0.0;
 
     volScalarField::Boundary& wallHeatFluxBf = wallHeatFlux_.boundaryFieldRef();
 
@@ -189,7 +189,7 @@ void DAFunctionWallHeatFlux::calcFunction(scalar& functionValue)
     // check if we need to calculate refDiff.
     this->calcRefVar(functionValue);
 
-    return;
+    return functionValue;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -139,11 +139,10 @@ label DASimpleTFoam::solvePrimal()
         laminarTransport.correct();
         daTurbulenceModelPtr_->correct(printToScreen_, primalMaxRes_);
 
+        this->calcAllFunctions(printToScreen_);
+
         if (printToScreen_)
         {
-            daTurbulenceModelPtr_->printYPlus();
-
-            this->printAllFunctions();
 
             Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                  << "  ClockTime = " << runTime.elapsedClockTime() << " s"

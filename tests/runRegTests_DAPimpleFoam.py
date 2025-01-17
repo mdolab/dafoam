@@ -28,7 +28,7 @@ U0 = 10.0
 daOptions = {
     "designSurfaces": ["bot"],
     "solverName": "DAPimpleFoam",
-    #"useAD": {"mode": "forward", "seedIndex": 0, "dvName": "shape"},
+    "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
         # "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "useWallFunction": False,
@@ -48,6 +48,7 @@ daOptions = {
             "directionMode": "fixedDirection",
             "direction": [1.0, 0.0, 0.0],
             "scale": 1.0,
+            "timeOp": "average",
         },
         "CL": {
             "type": "force",
@@ -56,6 +57,7 @@ daOptions = {
             "directionMode": "fixedDirection",
             "direction": [0.0, 1.0, 0.0],
             "scale": 1.0,
+            "timeOp": "average",
         },
     },
     "adjStateOrdering": "cell",
@@ -123,30 +125,20 @@ class Top(Group):
         # self.add_constraint("CL", equals=0.3)
 
 
-prob = om.Problem()
-prob.model = Top()
+# NOTE: the patchV deriv is accurate with FD but not with forward AD. The forward AD changed the primal value
+# and the reason is still unknown..
 
-prob.setup(mode="rev")
-om.n2(prob, show_browser=False, outfile="mphys_aero.html")
+funcDict = {}
+derivDict = {}
 
-# optFuncs = OptFuncs(daOptions, prob)
+dvNames = ["shape", "patchV"]
+dvSizes = [1, 1]
+funcNames = ["cruise.solver.CD"]
 
-# verify the total derivatives against the finite-difference
-prob.run_model()
-results = prob.check_totals(
-    of=["CD"],
-    wrt=["patchV", "shape"],
-    compact_print=True,
-    step=1e-2,
-    form="central",
-    step_calc="abs",
-)
+# run the adjoint and forward ref
+run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvSizes, funcDict, derivDict)
+
+# write the test results
 if gcomm.rank == 0:
-    funcDict = {}
-    funcDict["CD"] = prob.get_val("CD")
-    derivDict = {}
-    derivDict["CD"] = {}
-    derivDict["CD"]["patchV"] = results[("CD", "patchV")]["J_fwd"][0]
-    derivDict["CD"]["shape"] = results[("CD", "shape")]["J_fwd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)

@@ -77,7 +77,7 @@ DAFunctionForce::DAFunctionForce(
 }
 
 /// calculate the value of objective function
-void DAFunctionForce::calcFunction(scalar& functionValue)
+scalar DAFunctionForce::calcFunction()
 {
     /*
     Description:
@@ -115,7 +115,7 @@ void DAFunctionForce::calcFunction(scalar& functionValue)
     }
 
     // initialize objFunValue
-    functionValue = 0.0;
+    scalar functionValue = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
     const volScalarField& p = db.lookupObject<volScalarField>("p");
@@ -149,7 +149,7 @@ void DAFunctionForce::calcFunction(scalar& functionValue)
     // check if we need to calculate refDiff.
     this->calcRefVar(functionValue);
 
-    return;
+    return functionValue;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

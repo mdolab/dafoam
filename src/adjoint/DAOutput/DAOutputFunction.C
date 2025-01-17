@@ -50,7 +50,7 @@ void DAOutputFunction::run(scalarList& output)
     DAFunction& daFunction = daFunctionList_[idxI];
 
     // compute the objective function
-    scalar fVal = daFunction.getFunctionValue();
+    scalar fVal = daFunction.calcFunction();
 
     output[0] = fVal;
 }

@@ -34,7 +34,7 @@ DAFunctionTotalPressure::DAFunctionTotalPressure(
 }
 
 /// calculate the value of objective function
-void DAFunctionTotalPressure::calcFunction(scalar& functionValue)
+scalar DAFunctionTotalPressure::calcFunction()
 {
     /*
     Description:
@@ -58,7 +58,7 @@ void DAFunctionTotalPressure::calcFunction(scalar& functionValue)
     reduce(areaSum_, sumOp<scalar>());
 
     // initialize objFunValue
-    functionValue = 0.0;
+    scalar functionValue = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
     const volScalarField& p = db.lookupObject<volScalarField>("p");
@@ -90,7 +90,7 @@ void DAFunctionTotalPressure::calcFunction(scalar& functionValue)
     // check if we need to calculate refDiff.
     this->calcRefVar(functionValue);
 
-    return;
+    return functionValue;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

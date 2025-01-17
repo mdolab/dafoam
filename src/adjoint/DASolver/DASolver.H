@@ -40,6 +40,7 @@
 #include "DAInput.H"
 #include "DAOutput.H"
 #include "DAGlobalVar.H"
+#include "DATimeOp.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -90,6 +91,9 @@ protected:
 
     /// a list of DAFunction pointers
     UPtrList<DAFunction> daFunctionPtrList_;
+
+    /// a list of DATimeOp pointers
+    UPtrList<DATimeOp> daTimeOpPtrList_;
 
     /// DACheckMesh object pointer
     autoPtr<DACheckMesh> daCheckMeshPtr_;
@@ -208,14 +212,11 @@ protected:
     /// how frequent do you want to print the primal info default is every 100 steps
     label printIntervalUnsteady_ = 1;
 
-    /// save primal variable to time instance list for hybrid adjoint (unsteady)
-    void saveTimeInstanceFieldHybrid(label& timeInstanceI);
+    /// a list list that saves the function value for all time steps
+    List<scalarList> functionTimeSteps_;
 
-    /// save primal variable to time instance list for time accurate adjoint (unsteady)
-    void saveTimeInstanceFieldTimeAccurate(label& timeInstanceI);
-
-    /// a hash table that save the unsteady obj funcs, e.g., time-averaged drag
-    HashTable<scalar> unsteadyFunctions_;
+    /// the final time index from the primal solve. for steady state cases it can converge before endTime
+    label primalFinalTimeIndex_;
 
     /// a scaling factor related to the unsteady obj func timeOperator e.g., in dFdW calculation
     scalar unsteadyFunctionsScaling_;
@@ -703,18 +704,10 @@ public:
     void setDAFunctionList();
 
     /// calculate the values of all objective functions and print them to screen
-    void printAllFunctions();
+    void calcAllFunctions(label print=0);
 
-    /// reset the unsteady function to zero
-    void initUnsteadyFunctions()
-    {
-        forAll(daFunctionPtrList_, idxI)
-        {
-            DAFunction& daFunction = daFunctionPtrList_[idxI];
-            word functionName = daFunction.getFunctionName();
-            unsteadyFunctions_[functionName] = 0.0;
-        }
-    }
+    /// get the function value based on timeOp
+    double getTimeOpFuncVal(const word functionName);
 
     /// return the index of a give functionName in daFunctionPtrList_
     label getFunctionListIndex(const word functionName)
@@ -728,18 +721,6 @@ public:
                 return idxI;
             }
         }
-    }
-
-    /// calculate and save the unsteady objective function
-    void calcUnsteadyFunctions();
-
-    /// return the unsteady function values
-    scalar getFunctionValueUnsteady(const word functionName);
-
-    /// get the objective func scaling for unsteady adjoint
-    scalar getFunctionUnsteadyScaling()
-    {
-        return unsteadyFunctionsScaling_;
     }
 
     /// get the unsteady adjoint start time index
@@ -778,8 +759,11 @@ public:
         return daCheckMeshPtr_->run();
     }
 
-    /// return the value of the objective function
-    scalar getFunctionValue(const word functionName);
+    /// calculate and return the value of the objective function
+    scalar calcFunction(const word functionName);
+
+    /// get the scaling factor for dF/d? derivative computation
+    scalar getdFScaling(const word functionName, const label timeIdx);
 
     /// return the forces of the desired fluid-structure-interaction patches
     void getForces(
@@ -1189,12 +1173,6 @@ public:
         scalar latestTime = timeDirs.last().value();
         return latestTime;
     }
-
-    /// initialize the objStd vars
-    void initObjStd();
-
-    /// calculate the objective function's std
-    void calcObjStd(Time& runTime);
 
     /// write the adjoint variables for all states
     void writeAdjointFields(

@@ -973,13 +973,8 @@ class PYDAFOAM(object):
         NOTE: we should add all possible checks here!
         """
 
-        if not self.getOption("useAD")["mode"] in ["fd", "reverse", "forward"]:
-            raise Error("useAD->mode only supports fd, reverse, or forward!")
-
-        # check time accurate adjoint
-        if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
-            if not self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-                raise Error("timeAccurate only supports useAD->mode=forward|reverse")
+        if not self.getOption("useAD")["mode"] in ["reverse", "forward"]:
+            raise Error("useAD->mode only supports reverse, or forward!")
 
         if "NONE" not in self.getOption("writeSensMap"):
             if not self.getOption("useAD")["mode"] in ["reverse"]:
@@ -1055,9 +1050,9 @@ class PYDAFOAM(object):
 
     def calcPrimalResidualStatistics(self, mode):
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.calcPrimalResidualStatistics(mode.encode())
+            self.solverAD.calcPrimalResidualStatistics(mode)
         else:
-            self.solver.calcPrimalResidualStatistics(mode.encode())
+            self.solver.calcPrimalResidualStatistics(mode)
 
     def writeDeformedFFDs(self, counter=None):
         """
@@ -1170,52 +1165,10 @@ class PYDAFOAM(object):
             else:
                 # call self.solver.getFunctionValue to get the functionValue from
                 # the DASolver
-                if self.getOption("unsteadyAdjoint")["mode"] == "timeAccurate":
-                    functionValue = self.solver.getFunctionValueUnsteady(funcName.encode())
+                if self.getOption("useAD")["mode"] == "forward":
+                    functionValue = self.solverAD.getTimeOpFuncVal(funcName)
                 else:
-                    functionValue = self.solver.getFunctionValue(funcName.encode())
-                funcs[funcName] = functionValue
-                # assign the functionValuePrevIter
-                self.functionValuePrevIter[funcName] = funcs[funcName]
-
-        if self.primalFail:
-            funcs["fail"] = True
-        else:
-            funcs["fail"] = False
-
-        return
-
-    def evalFunctionsUnsteady(self, funcs):
-        """
-        This is the unsteady version of evalFunctions()
-
-        Parameters
-        ----------
-        funcs : dict
-            Dictionary into which the functions are saved.
-
-        Examples
-        --------
-        >>> funcs = {}
-        >>> CFDsolver()
-        >>> CFDsolver.evalFunctionsUnsteady(funcs)
-        >>> funcs
-        >>> # Result will look like:
-        >>> # {'CD':0.501, 'CL':0.02750, 'fail': False}
-        """
-
-        for funcName in list(self.getOption("function").keys()):
-            if self.primalFail:
-                if len(self.functionValuePrevIter) == 0:
-                    raise Error("Primal solution failed for the baseline design!")
-                else:
-                    # do not call self.solver.getFunctionValue because they can be nonphysical,
-                    # assign funcs based on self.functionValuePrevIter instead
-                    funcs[funcName] = self.functionValuePrevIter[funcName]
-            else:
-                # call self.solver.getFunctionValue to get the functionValue from
-                # the DASolver
-                functionValue = self.solver.getFunctionValueUnsteady(funcName.encode())
+                    functionValue = self.solver.getTimeOpFuncVal(funcName)
                 funcs[funcName] = functionValue
                 # assign the functionValuePrevIter
                 self.functionValuePrevIter[funcName] = funcs[funcName]
@@ -1541,10 +1494,13 @@ class PYDAFOAM(object):
             seeds = np.zeros(inputSize)
             if self.getOption("useAD")["mode"] == "forward":
                 if inputType == "volCoord":
-                    seeds = self.calcFFD2XvSeeds(DVGeo)
-                elif inputName == self.getOption("useAD")["dvName"]:
-                    seedIndex = self.getOption("useAD")["seedIndex"]
-                    seeds[seedIndex] = 1.0
+                    if self.getOption("useAD")["dvName"] not in list(inputDict.keys()):
+                        seeds = self.calcFFD2XvSeeds(DVGeo)
+                else:
+                    if inputName == self.getOption("useAD")["dvName"]:
+                        seedIndex = self.getOption("useAD")["seedIndex"]
+                        seeds[seedIndex] = 1.0
+
             # here we need to update the solver input for both solver and solverAD
             self.solver.setSolverInput(inputName, inputType, inputSize, input, seeds)
             self.solverAD.setSolverInput(inputName, inputType, inputSize, input, seeds)
@@ -2575,8 +2531,7 @@ class PYDAFOAM(object):
         Assign the boundary condition defined in primalBC to the OF fields
         """
         self.solver.setPrimalBoundaryConditions(printInfo)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.setPrimalBoundaryConditions(printInfoAD)
+        self.solverAD.setPrimalBoundaryConditions(printInfoAD)
 
     def _computeBasicFamilyInfo(self):
         """
@@ -3058,8 +3013,7 @@ class PYDAFOAM(object):
         """
 
         self.solver.updateOFFieldArray(states)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.updateOFFieldArray(states)
+        self.solverAD.updateOFFieldArray(states)
 
         return
 

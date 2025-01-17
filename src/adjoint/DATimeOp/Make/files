@@ -1,0 +1,5 @@
+DATimeOp.C
+DATimeOpFinal.C
+DATimeOpAverage.C
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDATimeOp$(WM_CODI_AD_LIB_POSTFIX)

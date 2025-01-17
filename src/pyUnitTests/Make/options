@@ -59,6 +59,7 @@ LIB_LIBS = \
     -lDAInput$(WM_CODI_AD_LIB_POSTFIX) \
     -lDAOutput$(WM_CODI_AD_LIB_POSTFIX) \
     -lDASolver$(WM_CODI_AD_LIB_POSTFIX) \
+    -lDATimeOp$(WM_CODI_AD_LIB_POSTFIX) \
     -lDAGlobalVar$(WM_CODI_AD_LIB_POSTFIX) \
     -L$(PETSC_LIB) -lpetsc \
     -L$(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs \

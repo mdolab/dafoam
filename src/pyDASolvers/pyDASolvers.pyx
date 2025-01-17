@@ -81,9 +81,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int getNCouplingFaces()
         int getNCouplingPoints()
         int checkMesh()
-        double getFunctionValue(char *)
-        double getFunctionValueUnsteady(char *)
-        double getFunctionUnsteadyScaling()
+        double getdFScaling(char *, int)
+        double getTimeOpFuncVal(char *)
         double getElapsedClockTime()
         double getElapsedCpuTime()
         void calcCouplingFaceCoords(double *, double *)
@@ -359,14 +358,11 @@ cdef class pyDASolvers:
     def checkMesh(self):
         return self._thisptr.checkMesh()
     
-    def getFunctionValue(self, functionName):
-        return self._thisptr.getFunctionValue(functionName)
+    def getTimeOpFuncVal(self, functionName):
+        return self._thisptr.getTimeOpFuncVal(functionName.encode())
     
-    def getFunctionValueUnsteady(self, functionName):
-        return self._thisptr.getFunctionValueUnsteady(functionName)
-    
-    def getFunctionUnsteadyScaling(self):
-        return self._thisptr.getFunctionUnsteadyScaling()
+    def getdFScaling(self, functionName, timeIdx=-1):
+        return self._thisptr.getdFScaling(functionName.encode(), timeIdx)
     
     def getElapsedClockTime(self):
         return self._thisptr.getElapsedClockTime()
@@ -523,7 +519,7 @@ cdef class pyDASolvers:
         self._thisptr.updateStateBoundaryConditions()
     
     def calcPrimalResidualStatistics(self, mode):
-        self._thisptr.calcPrimalResidualStatistics(mode)
+        self._thisptr.calcPrimalResidualStatistics(mode.encode())
     
     def getForwardADDerivVal(self, functionName):
         return self._thisptr.getForwardADDerivVal(functionName)

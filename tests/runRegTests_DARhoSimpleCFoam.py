@@ -161,8 +161,10 @@ if gcomm.rank == 0:
     funcDict["CL"] = prob.get_val("cruise.aero_post.CL")
     derivDict = {}
     derivDict["CD"] = {}
-    derivDict["CD"]["twist"] = results[("cruise.aero_post.CD", "twist")]["J_fwd"][0]
+    derivDict["CD"]["twist-Adjoint"] = results[("cruise.aero_post.CD", "twist")]["J_fwd"][0]
+    derivDict["CD"]["twist-FD"] = results[("cruise.aero_post.CD", "twist")]["J_fd"][0]
     derivDict["CL"] = {}
-    derivDict["CL"]["twist"] = results[("cruise.aero_post.CL", "twist")]["J_fwd"][0]
+    derivDict["CL"]["twist-Adjoint"] = results[("cruise.aero_post.CL", "twist")]["J_fwd"][0]
+    derivDict["CL"]["twist-FD"] = results[("cruise.aero_post.CL", "twist")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
