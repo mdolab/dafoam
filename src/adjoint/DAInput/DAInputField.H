@@ -1,0 +1,102 @@
+/*---------------------------------------------------------------------------*\
+
+    DAFoam  : Discrete Adjoint with OpenFOAM
+    Version : v4
+
+    Description:
+        Child class for field variable input
+
+\*---------------------------------------------------------------------------*/
+
+#ifndef DAInputField_H
+#define DAInputField_H
+
+#include "DAInput.H"
+#include "addToRunTimeSelectionTable.H"
+#include "mixedFvPatchFields.H"
+#include "DAGlobalVar.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+namespace Foam
+{
+
+/*---------------------------------------------------------------------------*\
+      Class DAInputField Declaration
+\*---------------------------------------------------------------------------*/
+
+class DAInputField
+    : public DAInput
+{
+
+protected:
+    word fieldName_;
+    word fieldType_;
+
+public:
+    TypeName("field");
+    // Constructors
+
+    //- Construct from components
+    DAInputField(
+        const word inputName,
+        const word inputType,
+        fvMesh& mesh,
+        const DAOption& daOption,
+        const DAModel& daModel,
+        const DAIndex& daIndex);
+
+    //- Destructor
+    virtual ~DAInputField()
+    {
+    }
+
+    virtual void run(const scalarList& input);
+
+    virtual label size()
+    {
+        if (fieldType_ == "scalar")
+        {
+            if (this->distributed())
+            {
+                return daIndex_.nLocalCells;
+            }
+            else
+            {
+                return daIndex_.nGlobalCells;
+            }
+        }
+        else if (fieldType_ == "vector")
+        {
+            if (this->distributed())
+            {
+                return daIndex_.nLocalCells * 3;
+            }
+            else
+            {
+                return daIndex_.nGlobalCells * 3;
+            }
+        }
+        else
+        {
+            FatalErrorIn("DAInputField::size") << "fieldType not valid" << exit(FatalError);
+            return -1;
+        }
+    }
+
+    virtual label distributed()
+    {
+        label distributed = daOption_.getAllOptions().subDict("solverInput").subDict(inputName_).getLabel("distributed");
+        return distributed;
+    }
+};
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+} // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#endif
+
+// ************************************************************************* //

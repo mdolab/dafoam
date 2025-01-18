@@ -29,6 +29,7 @@ if gcomm.rank == 0:
 U0 = 10.0
 p0 = 0.0
 nuTilda0 = 4.5e-5
+nCells = 343
 
 daOptions = {
     "designSurfaces": ["walls"],
@@ -66,6 +67,7 @@ daOptions = {
     "solverInput": {
         "aero_vol_coords": {"type": "volCoord"},
         "patchV": {"type": "patchVelocity", "patches": ["inlet"], "flowAxis": "x", "normalAxis": "y"},
+        "beta": {"type": "field", "fieldName": "betaFINuTilda", "fieldType": "scalar", "distributed": False},
     },
 }
 
@@ -120,13 +122,16 @@ class Top(Multipoint):
         # add the design variables to the dvs component's output
         self.dvs.add_output("shape", val=np.zeros(1))
         self.dvs.add_output("patchV", val=np.array([10.0, 0.0]))
+        self.dvs.add_output("beta", val=np.ones(nCells))
         # manually connect the dvs output to the geometry and cruise
         self.connect("shape", "geometry.shape")
         self.connect("patchV", "cruise.patchV")
+        self.connect("beta", "cruise.beta")
 
         # define the design variables to the top level
         self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
         self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0)
+        self.add_design_var("beta", lower=-50.0, upper=50.0, scaler=1.0, indices=[0, 1])
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
@@ -136,8 +141,8 @@ class Top(Multipoint):
 funcDict = {}
 derivDict = {}
 
-dvNames = ["shape", "patchV"]
-dvSizes = [1, 2]
+dvNames = ["shape", "patchV", "beta"]
+dvSizes = [1, 2, 2]
 funcNames = ["cruise.aero_post.functionals.CL", "cruise.aero_post.functionals.CD"]
 
 # run the adjoint and forward ref
