@@ -132,11 +132,11 @@ funcDict = {}
 derivDict = {}
 
 dvNames = ["shape", "patchV"]
-dvSizes = [1, 1]
+dvIndices = [[0], [0]]
 funcNames = ["cruise.solver.CD"]
 
 # run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvSizes, funcDict, derivDict)
+run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
 
 # write the test results
 if gcomm.rank == 0:
