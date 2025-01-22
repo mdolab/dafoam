@@ -41,8 +41,7 @@ addToRunTimeSelectionTable(DASolver, DAPimpleDyMFoam, dictionary);
 DAPimpleDyMFoam::DAPimpleDyMFoam(
     char* argsAll,
     PyObject* pyOptions)
-    : DASolver(argsAll, pyOptions),
-      daMotionPtr_(nullptr)
+    : DASolver(argsAll, pyOptions)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -56,20 +55,16 @@ void DAPimpleDyMFoam::initSolver()
     daOptionPtr_.reset(new DAOption(meshPtr_(), pyOptions_));
 }
 
-label DAPimpleDyMFoam::solvePrimal(
-    const Vec xvVec,
-    Vec wVec)
+label DAPimpleDyMFoam::solvePrimal()
 {
     /*
     Description:
         Call the primal solver to get converged state variables
 
-    Input:
-        xvVec: a vector that contains all volume mesh coordinates
-
     Output:
-        wVec: state variable vector
+        state variable vector
     */
+
     Foam::argList& args = argsPtr_();
 #include "createTime.H"
 #include "createDynamicFvMesh.H"
@@ -79,8 +74,6 @@ label DAPimpleDyMFoam::solvePrimal(
 #include "createUfIfPresent.H"
 #include "CourantNo.H"
 #include "setInitialDeltaT.H"
-
-    daMotionPtr_.reset(DAMotion::New(mesh, daOptionPtr_()));
 
     turbulence->validate();
 
@@ -97,8 +90,6 @@ label DAPimpleDyMFoam::solvePrimal(
 #include "setDeltaT.H"
 
         ++runTime;
-
-        daMotionPtr_->correct();
 
         Info << "Time = " << runTime.timeName() << nl << endl;
 

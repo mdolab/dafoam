@@ -38,9 +38,6 @@
 #include "singlePhaseTransportModel.H"
 #include "turbulentTransportModel.H"
 #include "pimpleControlDF.H"
-#include "DARegDbSinglePhaseTransportModel.H"
-#include "DARegDbTurbulenceModelIncompressible.H"
-#include "DAMotion.H"
 #include "pimpleControl.H"
 #include "dynamicFvMesh.H"
 #include "CorrectPhi.H"
@@ -59,10 +56,6 @@ class DAPimpleDyMFoam
 {
 
 protected:
-
-    /// rigid body motion pointer
-    autoPtr<DAMotion> daMotionPtr_;
-
 public:
     TypeName("DAPimpleDyMFoam");
     // Constructors
@@ -81,9 +74,7 @@ public:
     virtual void initSolver();
 
     /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec);
+    virtual label solvePrimal();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
