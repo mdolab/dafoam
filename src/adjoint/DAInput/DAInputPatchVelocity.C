@@ -100,6 +100,12 @@ void DAInputPatchVelocity::run(const scalarList& input)
                     inletOutletPatch.refValue()[faceI][normalAxisIndex] = UyNew;
                 }
             }
+            else
+            {
+                FatalErrorIn("DAInputPatchVelocity::run")
+                    << "patch type not valid! only support fixedValue or inletOutlet"
+                    << exit(FatalError);
+            }
         }
     }
     U.correctBoundaryConditions();

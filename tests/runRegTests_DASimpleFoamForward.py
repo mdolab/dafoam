@@ -69,6 +69,7 @@ daOptions = {
         "patchV": {"type": "patchVelocity", "patches": ["inlet"], "flowAxis": "x", "normalAxis": "y"},
         "beta": {"type": "field", "fieldName": "betaFINuTilda", "fieldType": "scalar", "distributed": False},
         "fv_source": {"type": "field", "fieldName": "fvSource", "fieldType": "vector", "distributed": False},
+        "nutilda_in": {"type": "patchVar", "varName": "nuTilda", "varType": "scalar", "patches": ["inlet"]},
     },
 }
 
@@ -125,17 +126,20 @@ class Top(Multipoint):
         self.dvs.add_output("patchV", val=np.array([10.0, 0.0]))
         self.dvs.add_output("beta", val=np.ones(nCells))
         self.dvs.add_output("fv_source", val=np.zeros(nCells * 3))
+        self.dvs.add_output("nutilda_in", val=np.array([nuTilda0]))
         # manually connect the dvs output to the geometry and cruise
         self.connect("shape", "geometry.shape")
         self.connect("patchV", "cruise.patchV")
         self.connect("beta", "cruise.beta")
         self.connect("fv_source", "cruise.fv_source")
+        self.connect("nutilda_in", "cruise.nutilda_in")
 
         # define the design variables to the top level
         self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
         self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0)
         self.add_design_var("beta", lower=-50.0, upper=50.0, scaler=1.0, indices=[0, 200])
         self.add_design_var("fv_source", lower=-50.0, upper=50.0, scaler=1.0, indices=[100, 300])
+        self.add_design_var("nutilda_in", lower=-50.0, upper=50.0, scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
@@ -145,8 +149,8 @@ class Top(Multipoint):
 funcDict = {}
 derivDict = {}
 
-dvNames = ["shape", "patchV", "beta", "fv_source"]
-dvIndices = [[0], [0, 1], [0, 200], [100, 300]]
+dvNames = ["shape", "patchV", "beta", "fv_source", "nutilda_in"]
+dvIndices = [[0], [0, 1], [0, 200], [100, 300], [0], [0]]
 funcNames = ["cruise.aero_post.functionals.CL", "cruise.aero_post.functionals.CD"]
 
 # run the adjoint and forward ref
