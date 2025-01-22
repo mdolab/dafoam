@@ -15,6 +15,8 @@ EXE_INC = \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/sampling/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude \
     -I$(LIB_SRC)/fileFormats/lnInclude \
     -I$(LIB_SRC)/surfMesh/lnInclude \
     -I../adjoint/lnInclude \
@@ -39,6 +41,9 @@ LIB_LIBS = \
     -lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) \
     -lsampling$(WM_CODI_AD_LIB_POSTFIX) \
     -lmeshTools$(WM_CODI_AD_LIB_POSTFIX) \
+    -ldynamicFvMesh$(WM_CODI_AD_LIB_POSTFIX) \
+    -ltopoChangerFvMesh$(WM_CODI_AD_LIB_POSTFIX) \
+    -ldynamicMesh$(WM_CODI_AD_LIB_POSTFIX) \
     -lfvOptions$(WM_CODI_AD_LIB_POSTFIX) \
     -lDAOption$(WM_CODI_AD_LIB_POSTFIX) \
     -lDAUtility$(WM_CODI_AD_LIB_POSTFIX) \
