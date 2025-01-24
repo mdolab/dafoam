@@ -14,7 +14,7 @@ REG_FILES_DO_NOT_MATCH = 1
 REG_ERROR = -1
 
 
-def run_tests(om, Top, comm, daOptions, funcNames, dvNames, dvSizes, funcDict, derivDict):
+def run_tests(om, Top, comm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict):
 
     # adjoint-deriv
     prob = om.Problem()
@@ -32,8 +32,9 @@ def run_tests(om, Top, comm, daOptions, funcNames, dvNames, dvSizes, funcDict, d
 
     # forwardAD-deriv
     daOptions["useAD"]["mode"] = "forward"
-    for dvIdx, dvName in enumerate(dvNames):
-        for index in range(dvSizes[dvIdx]):
+    for i, dvName in enumerate(dvNames):
+        tempI = 0
+        for index in dvIndices[i]:
             daOptions["useAD"]["dvName"] = dvName
             daOptions["useAD"]["seedIndex"] = index
             prob = om.Problem()
@@ -44,9 +45,11 @@ def run_tests(om, Top, comm, daOptions, funcNames, dvNames, dvSizes, funcDict, d
             if comm.rank == 0:
                 for funcName in funcNames:
                     derivDict[funcName]["%s%i-Adjoint" % (dvName, index)] = [
-                        totals[(funcName, "dvs.%s" % dvName)][0][index]
+                        totals[(funcName, "dvs.%s" % dvName)][0][tempI]
                     ]
                     derivDict[funcName]["%s%i-ForwardAD" % (dvName, index)] = prob.get_val(funcName)[0]
+
+            tempI += 1
 
 
 def reg_write(values, rel_tol=1e-12, abs_tol=1e-12):

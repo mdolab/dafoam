@@ -61,11 +61,17 @@ daOptions = {
         },
     },
     "adjStateOrdering": "cell",
-    "adjEqnOption": {"gmresRelTol": 1.0e-8, "pcFillLevel": 1, "jacMatReOrdering": "natural", "dynAdjustTol": False},
+    "adjEqnOption": {"gmresRelTol": 1.0e-8, "pcFillLevel": 1, "jacMatReOrdering": "natural"},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
-    "solverInput": {
-        "aero_vol_coords": {"type": "volCoord"},
-        "patchV": {"type": "patchVelocity", "patches": ["inlet"], "flowAxis": "x", "normalAxis": "y"},
+    "inputInfo": {
+        "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
+        "patchV": {
+            "type": "patchVelocity",
+            "patches": ["inlet"],
+            "flowAxis": "x",
+            "normalAxis": "y",
+            "components": ["solver", "function"],
+        },
     },
 }
 
@@ -132,11 +138,11 @@ funcDict = {}
 derivDict = {}
 
 dvNames = ["shape", "patchV"]
-dvSizes = [1, 1]
+dvIndices = [[0], [0]]
 funcNames = ["cruise.solver.CD"]
 
 # run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvSizes, funcDict, derivDict)
+run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
 
 # write the test results
 if gcomm.rank == 0:

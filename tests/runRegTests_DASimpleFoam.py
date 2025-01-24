@@ -18,7 +18,7 @@ gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/NACA0012")
 if gcomm.rank == 0:
-    os.system("rm -rf 0 processor* *.bin")
+    os.system("rm -rf 0 system processor* *.bin")
     os.system("cp -r 0.incompressible 0")
     os.system("cp -r system.incompressible system")
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
@@ -62,11 +62,17 @@ daOptions = {
             "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
     },
-    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm", "dynAdjustTol": False},
+    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
-    "solverInput": {
-        "aero_vol_coords": {"type": "volCoord"},
-        "patchV": {"type": "patchVelocity", "patches": ["inout"], "flowAxis": "x", "normalAxis": "y"},
+    "inputInfo": {
+        "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
+        "patchV": {
+            "type": "patchVelocity",
+            "patches": ["inout"],
+            "flowAxis": "x",
+            "normalAxis": "y",
+            "components": ["solver", "function"],
+        },
     },
 }
 

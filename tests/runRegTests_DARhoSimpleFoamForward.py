@@ -42,7 +42,7 @@ daOptions = {
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [nuTilda0]},
         "useWallFunction": True,
-        "thermo:mu": 1.e-5,
+        "thermo:mu": 1.0e-5,
     },
     "function": {
         "CD": {
@@ -62,11 +62,17 @@ daOptions = {
             "scale": 1.0,
         },
     },
-    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm", "dynAdjustTol": False},
+    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "nuTilda": 1e-3, "T": 300.0},
-    "solverInput": {
-        "aero_vol_coords": {"type": "volCoord"},
-        "patchV": {"type": "patchVelocity", "patches": ["inlet"], "flowAxis": "x", "normalAxis": "y"},
+    "inputInfo": {
+        "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
+        "patchV": {
+            "type": "patchVelocity",
+            "patches": ["inlet"],
+            "flowAxis": "x",
+            "normalAxis": "y",
+            "components": ["solver", "function"],
+        },
     },
 }
 
@@ -138,11 +144,11 @@ funcDict = {}
 derivDict = {}
 
 dvNames = ["shape", "patchV"]
-dvSizes = [1, 2]
+dvIndices = [[0], [0, 1]]
 funcNames = ["cruise.aero_post.functionals.CL", "cruise.aero_post.functionals.CD"]
 
 # run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvSizes, funcDict, derivDict)
+run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
 
 # write the test results
 if gcomm.rank == 0:

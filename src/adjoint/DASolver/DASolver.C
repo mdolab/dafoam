@@ -437,18 +437,28 @@ void DASolver::calcCouplingFaceCoords(
     */
     this->updateOFMesh(volCoords);
 
-    wordList patchList;
-    this->getCouplingPatchList(patchList);
-    // get the total number of points and faces for the patchList
-    label nPoints, nFaces;
-    this->getPatchInfo(nPoints, nFaces, patchList);
-
+    wordList patches;
+    wordList components;
+    dictionary outputInfo = daOptionPtr_->getAllOptions().subDict("outputInfo");
+    forAll(outputInfo.toc(), idxI)
+    {
+        word outputName = outputInfo.toc()[idxI];
+        outputInfo.subDict(outputName).readEntry("components", components);
+        if (components.found("cht"))
+        {
+            outputInfo.subDict(outputName).readEntry("patches", patches);
+            break;
+        }
+    }
+    // NOTE: always sort the patch because the order of the patch element matters in CHT coupling
+    sort(patches);
+    
     // ******** first loop
     label counterFaceI = 0;
-    forAll(patchList, cI)
+    forAll(patches, cI)
     {
         // get the patch id label
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patches[cI]);
         forAll(meshPtr_->boundaryMesh()[patchI], faceI)
         {
             for (label i = 0; i < 3; i++)
@@ -464,10 +474,10 @@ void DASolver::calcCouplingFaceCoords(
     // we need to translate the 2nd one by 1000, so the meld component will find the correct
     // coordinates for interpolation. If these two sets of coords are overlapped, we will have
     // wrong interpolations from meld.
-    forAll(patchList, cI)
+    forAll(patches, cI)
     {
         // get the patch id label
-        label patchI = meshPtr_->boundaryMesh().findPatchID(patchList[cI]);
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patches[cI]);
         forAll(meshPtr_->boundaryMesh()[patchI], faceI)
         {
             for (label i = 0; i < 3; i++)
@@ -3209,6 +3219,8 @@ void DASolver::calcPrimalResidualStatistics(
         }
     }
 
+    Info << " " << endl;
+
     return;
 }
 
@@ -4017,6 +4029,35 @@ label DASolver::getOutputSize(
     return daOutput->size();
 }
 
+/// get whether the output is distributed among processors
+void DASolver::calcOutput(
+    const word outputName,
+    const word outputType,
+    double* output)
+{
+    autoPtr<DAOutput> daOutput(
+        DAOutput::New(
+            outputName,
+            outputType,
+            meshPtr_(),
+            daOptionPtr_(),
+            daModelPtr_(),
+            daIndexPtr_(),
+            daResidualPtr_(),
+            daFunctionPtrList_));
+
+    label outputSize = daOutput->size();
+
+    scalarList outputList(outputSize, 0.0);
+
+    daOutput->run(outputList);
+
+    forAll(outputList, idxI)
+    {
+        assignValueCheckAD(output[idxI], outputList[idxI]);
+    }
+}
+
 label DASolver::getInputDistributed(
     const word inputName,
     const word inputType)
@@ -4068,7 +4109,7 @@ void DASolver::calcJacTVecProduct(
         Calculate the Jacobian-matrix-transposed and vector product for [dOutput/dInput]^T * psi
     
     Input:
-        inputName: name of the input. This is usually defined in solverInputs
+        inputName: name of the input. This is usually defined in inputInfo
 
         inputType: type of the input. This should be consistent with the child class type in DAInput
 

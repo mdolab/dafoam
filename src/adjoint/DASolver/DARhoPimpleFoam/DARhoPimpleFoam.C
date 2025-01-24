@@ -94,7 +94,7 @@ void DARhoPimpleFoam::initSolver()
     }
 
     // reduceIO does not write mesh, but if there is a FFD variable, set writeMesh to 1
-    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("solverInput");
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("inputInfo");
     forAll(dvSubDict.toc(), idxI)
     {
         word dvName = dvSubDict.toc()[idxI];

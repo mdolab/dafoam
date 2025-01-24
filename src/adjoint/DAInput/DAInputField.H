@@ -4,12 +4,12 @@
     Version : v4
 
     Description:
-        Child class for velocity magnitude and angle of attach at a given patch
+        Child class for field variable input
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAInputPatchVelocity_H
-#define DAInputPatchVelocity_H
+#ifndef DAInputField_H
+#define DAInputField_H
 
 #include "DAInput.H"
 #include "addToRunTimeSelectionTable.H"
@@ -22,20 +22,23 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAInputPatchVelocity Declaration
+      Class DAInputField Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAInputPatchVelocity
+class DAInputField
     : public DAInput
 {
 
 protected:
+    word fieldName_;
+    word fieldType_;
+
 public:
-    TypeName("patchVelocity");
+    TypeName("field");
     // Constructors
 
     //- Construct from components
-    DAInputPatchVelocity(
+    DAInputField(
         const word inputName,
         const word inputType,
         fvMesh& mesh,
@@ -44,7 +47,7 @@ public:
         const DAIndex& daIndex);
 
     //- Destructor
-    virtual ~DAInputPatchVelocity()
+    virtual ~DAInputField()
     {
     }
 
@@ -52,13 +55,39 @@ public:
 
     virtual label size()
     {
-        // [UMag, AoA]
-        return 2;
+        if (fieldType_ == "scalar")
+        {
+            if (this->distributed())
+            {
+                return daIndex_.nLocalCells;
+            }
+            else
+            {
+                return daIndex_.nGlobalCells;
+            }
+        }
+        else if (fieldType_ == "vector")
+        {
+            if (this->distributed())
+            {
+                return daIndex_.nLocalCells * 3;
+            }
+            else
+            {
+                return daIndex_.nGlobalCells * 3;
+            }
+        }
+        else
+        {
+            FatalErrorIn("DAInputField::size") << "fieldType not valid" << exit(FatalError);
+            return -1;
+        }
     }
 
     virtual label distributed()
     {
-        return 0;
+        label distributed = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_).getLabel("distributed");
+        return distributed;
     }
 };
 

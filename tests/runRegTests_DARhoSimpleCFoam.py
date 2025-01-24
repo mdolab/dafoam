@@ -18,7 +18,7 @@ gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/NACA0012")
 if gcomm.rank == 0:
-    os.system("rm -rf 0 processor* *.bin")
+    os.system("rm -rf 0 system processor* *.bin")
     os.system("cp -r 0.compressible 0")
     os.system("cp -r system.transonic system")
     os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
@@ -63,12 +63,12 @@ daOptions = {
             "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
     },
-    "adjEqnOption": {"gmresRelTol": 1.0e-11, "pcFillLevel": 1, "jacMatReOrdering": "natural", "dynAdjustTol": False},
+    "adjEqnOption": {"gmresRelTol": 1.0e-11, "pcFillLevel": 1, "jacMatReOrdering": "natural"},
     "adjStateOrdering": "cell",
     "transonicPCOption": 1,
     "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "T": T0, "nuTilda": 1e-3},
-    "solverInput": {
-        "aero_vol_coords": {"type": "volCoord"},
+    "inputInfo": {
+        "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
     },
 }
 

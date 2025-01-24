@@ -4,17 +4,16 @@
     Version : v4
 
     Description:
-        Child class for velocity magnitude and angle of attach at a given patch
+        Child class for a selected variable at a select patch
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAInputPatchVelocity_H
-#define DAInputPatchVelocity_H
+#ifndef DAInputPatchVar_H
+#define DAInputPatchVar_H
 
 #include "DAInput.H"
 #include "addToRunTimeSelectionTable.H"
 #include "mixedFvPatchFields.H"
-#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -22,20 +21,26 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAInputPatchVelocity Declaration
+      Class DAInputPatchVar Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAInputPatchVelocity
+class DAInputPatchVar
     : public DAInput
 {
 
 protected:
+    /// the name of the variable
+    word varName_;
+
+    /// the type of the variable can be either scalar or vector
+    word varType_;
+
 public:
-    TypeName("patchVelocity");
+    TypeName("patchVar");
     // Constructors
 
     //- Construct from components
-    DAInputPatchVelocity(
+    DAInputPatchVar(
         const word inputName,
         const word inputType,
         fvMesh& mesh,
@@ -44,7 +49,7 @@ public:
         const DAIndex& daIndex);
 
     //- Destructor
-    virtual ~DAInputPatchVelocity()
+    virtual ~DAInputPatchVar()
     {
     }
 
@@ -52,8 +57,18 @@ public:
 
     virtual label size()
     {
-        // [UMag, AoA]
-        return 2;
+        if (varType_ == "scalar")
+        {
+            return 1;
+        }
+        else if (varType_ == "vector")
+        {
+            return 3;
+        }
+        else
+        {
+            FatalErrorIn("DAInputPatchVar::size") << "varType not valid" << exit(FatalError);
+        }
     }
 
     virtual label distributed()

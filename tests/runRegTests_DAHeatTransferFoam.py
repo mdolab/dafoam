@@ -53,6 +53,7 @@ daOptions = {
     },
 }
 
+
 class Top(Multipoint):
     def setup(self):
         dafoam_builder = DAFoamBuilder(daOptions, None, scenario="aerodynamic")
@@ -62,6 +63,7 @@ class Top(Multipoint):
 
     def configure(self):
         self.add_objective("cruise.aero_post.HFX", scaler=1.0)
+
 
 prob = om.Problem()
 prob.model = Top()

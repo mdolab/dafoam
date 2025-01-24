@@ -51,6 +51,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcJacTVecProduct(char *, char *, int, double *, char *, char *, int, double *, double *)
         int getInputSize(char *, char *)
         int getOutputSize(char *, char *)
+        void calcOutput(char *, char *, double *)
         int getInputDistributed(char *, char *)
         int getOutputDistributed(char *, char *)
         void setSolverInput(char *, char *, int, double *, double *)
@@ -69,6 +70,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void updateOFFieldArray(double *)
         void getOFField(double *)
         void updateOFMesh(PetscVec)
+        void updateOFMeshArray(double *)
         void setdXvdFFDMat(PetscMat)
         void setFFD2XvSeedVec(PetscVec)
         int getGlobalXvIndex(int, int)
@@ -220,6 +222,10 @@ cdef class pyDASolvers:
     
     def getOutputDistributed(self, outputName, outputType):
         return self._thisptr.getOutputDistributed(outputName.encode(), outputType.encode())
+
+    def calcOutput(self, outputName, outputType, np.ndarray[double, ndim=1, mode="c"] output):
+        cdef double *output_data = <double*>output.data
+        self._thisptr.calcOutput(outputName.encode(), outputType.encode(), output_data)
     
     def calcJacTVecProduct(self,
             inputName,
@@ -309,6 +315,11 @@ cdef class pyDASolvers:
     
     def updateOFMesh(self, Vec xvVec):
         self._thisptr.updateOFMesh(xvVec.vec)
+    
+    def updateOFMeshArray(self, np.ndarray[double, ndim=1, mode="c"] vol_coords):
+        assert len(vol_coords) == self.getNLocalPoints() * 3, "invalid array size!"
+        cdef double *vol_coords_data = <double*>vol_coords.data
+        self._thisptr.updateOFMeshArray(vol_coords_data)
 
     def setdXvdFFDMat(self, Mat dXvdFFDMat):
         self._thisptr.setdXvdFFDMat(dXvdFFDMat.mat)
@@ -375,7 +386,6 @@ cdef class pyDASolvers:
             np.ndarray[double, ndim=1, mode="c"] surfCoords):
 
         assert len(volCoords) == self.getNLocalPoints() * 3, "invalid array size!"
-        assert len(surfCoords) == self.getNCouplingFaces() * 6, "invalid array size!"
 
         cdef double *volCoords_data = <double*>volCoords.data
         cdef double *surfCoords_data = <double*>surfCoords.data
