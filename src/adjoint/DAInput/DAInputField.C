@@ -31,8 +31,8 @@ DAInputField::DAInputField(
         daModel,
         daIndex)
 {
-    fieldName_ = daOption_.getAllOptions().subDict("solverInput").subDict(inputName).getWord("fieldName");
-    fieldType_ = daOption_.getAllOptions().subDict("solverInput").subDict(inputName).getWord("fieldType");
+    fieldName_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).getWord("fieldName");
+    fieldType_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).getWord("fieldType");
 }
 
 void DAInputField::run(const scalarList& input)

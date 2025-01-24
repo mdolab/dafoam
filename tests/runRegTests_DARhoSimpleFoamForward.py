@@ -42,7 +42,7 @@ daOptions = {
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [nuTilda0]},
         "useWallFunction": True,
-        "thermo:mu": 1.e-5,
+        "thermo:mu": 1.0e-5,
     },
     "function": {
         "CD": {
@@ -62,11 +62,17 @@ daOptions = {
             "scale": 1.0,
         },
     },
-    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm", "dynAdjustTol": False},
+    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "nuTilda": 1e-3, "T": 300.0},
-    "solverInput": {
-        "aero_vol_coords": {"type": "volCoord"},
-        "patchV": {"type": "patchVelocity", "patches": ["inlet"], "flowAxis": "x", "normalAxis": "y"},
+    "inputInfo": {
+        "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
+        "patchV": {
+            "type": "patchVelocity",
+            "patches": ["inlet"],
+            "flowAxis": "x",
+            "normalAxis": "y",
+            "components": ["solver", "function"],
+        },
     },
 }
 

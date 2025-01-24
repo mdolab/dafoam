@@ -32,8 +32,8 @@ DAInputPatchVar::DAInputPatchVar(
         daIndex)
 {
 
-    varName_ = daOption_.getAllOptions().subDict("solverInput").subDict(inputName_).getWord("varName");
-    varType_ = daOption_.getAllOptions().subDict("solverInput").subDict(inputName_).getWord("varType");
+    varName_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_).getWord("varName");
+    varType_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_).getWord("varType");
 
     if (varType_ != "scalar" && varType_ != "vector")
     {
@@ -49,7 +49,7 @@ void DAInputPatchVar::run(const scalarList& input)
     */
 
     wordList patchNames;
-    dictionary patchVSubDict = daOption_.getAllOptions().subDict("solverInput").subDict(inputName_);
+    dictionary patchVSubDict = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_);
     patchVSubDict.readEntry<wordList>("patches", patchNames);
 
 #ifndef CODI_ADR

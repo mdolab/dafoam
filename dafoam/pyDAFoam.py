@@ -281,27 +281,37 @@ class DAOPTION(object):
         ##    },
         self.function = {}
 
-        ## Solver input information. Different type of design variables require different keys
+        ## General input information. Different type of inputs require different keys
         ## For patchVelocity, we need to set a list of far field patch names from which the angle of
         ## attack is computed, this is usually a far field patch. Also, we need to prescribe
         ## flow and normal axies, and alpha = atan( U_normal / U_flow ) at patches
         ## Example
-        ##     solverInput = {
-        ##         "aero_vol_coords" : {"type": "volCoord"},
+        ##     inputInfo = {
+        ##         "aero_vol_coords" : {"type": "volCoord", "addToSolver": True},
         ##         "patchV" = {
         ##             "type": "patchVelocity",
         ##             "patches": ["farField"],
         ##             "flowAxis": "x",
-        ##             "normalAxis": "y"
+        ##             "normalAxis": "y",
+        ##             "addToSolver": True,
         ##         },
         ##         "ux0" = {
         ##             "type": "patchVariable",
         ##             "patches": ["inlet"],
         ##             "variable": "U",
-        ##             "comp": 0
+        ##             "comp": 0,
+        ##             "addToSolver": True,
         ##         },
         ##     }
-        self.solverInput = {}
+        self.inputInfo = {}
+
+        ## General input information. Different type of outputs require different keys
+        ## Example
+        ##     outputInfo = {
+        ##         "T_conduct" : {"type": "thermalVar", "patches": ["wing"]},
+        ##         "f_aero": {"type": "surfForce", "patches": ["wing"]}
+        ##     }
+        self.outputInfo = {}
 
         ## List of patch names for the design surface. These patch names need to be of wall type
         ## and shows up in the constant/polyMesh/boundary file
@@ -620,7 +630,7 @@ class DAOPTION(object):
             "fpRelTol": 1e-6,
             "fpMinResTolDiff": 1.0e2,
             "fpPCUpwind": False,
-            "dynAdjustTol": True,
+            "dynAdjustTol": False,
         }
 
         ## Normalization for residuals. We should normalize all residuals!
@@ -1485,21 +1495,23 @@ class PYDAFOAM(object):
         """
         Set solver input. If it is forward mode, we also set the seeds
         """
-        inputDict = self.getOption("solverInput")
+        inputDict = self.getOption("inputInfo")
 
         for inputName in list(inputDict.keys()):
-            inputType = inputDict[inputName]["type"]
-            input = inputs[inputName]
-            inputSize = len(input)
-            seeds = np.zeros(inputSize)
-            if self.getOption("useAD")["mode"] == "forward":
-                if inputType == "volCoord":
-                    if self.getOption("useAD")["dvName"] not in list(inputDict.keys()):
-                        seeds = self.calcFFD2XvSeeds(DVGeo)
-                else:
-                    if inputName == self.getOption("useAD")["dvName"]:
-                        seedIndex = self.getOption("useAD")["seedIndex"]
-                        seeds[seedIndex] = 1.0
+            # this input is attached to solver comp
+            if "solver" in inputDict[inputName]["components"]:
+                inputType = inputDict[inputName]["type"]
+                input = inputs[inputName]
+                inputSize = len(input)
+                seeds = np.zeros(inputSize)
+                if self.getOption("useAD")["mode"] == "forward":
+                    if inputType == "volCoord":
+                        if self.getOption("useAD")["dvName"] not in list(inputDict.keys()):
+                            seeds = self.calcFFD2XvSeeds(DVGeo)
+                    else:
+                        if inputName == self.getOption("useAD")["dvName"]:
+                            seedIndex = self.getOption("useAD")["seedIndex"]
+                            seeds[seedIndex] = 1.0
 
             # here we need to update the solver input for both solver and solverAD
             self.solver.setSolverInput(inputName, inputType, inputSize, input, seeds)
@@ -1659,7 +1671,7 @@ class PYDAFOAM(object):
         self.solverAD.createMLRKSPMatrixFree(PCMat, ksp)
 
         functionDict = self.getOption("function")
-        designVarDict = self.getOption("solverInput")
+        designVarDict = self.getOption("inputInfo")
 
         # init the dFdW vec
         wSize = self.solver.getNLocalAdjointStates()
@@ -1877,7 +1889,7 @@ class PYDAFOAM(object):
         # ************ Now compute the total derivatives **********************
         Info("Computing total derivatives....")
 
-        designVarDict = self.getOption("solverInput")
+        designVarDict = self.getOption("inputInfo")
         for designVarName in designVarDict:
             Info("Computing total derivatives for %s" % designVarName)
             ###################### BC: boundary condition as design variable ###################
@@ -3014,6 +3026,16 @@ class PYDAFOAM(object):
 
         self.solver.updateOFFieldArray(states)
         self.solverAD.updateOFFieldArray(states)
+
+        return
+    
+    def setVolCoords(self, vol_coords):
+        """
+        Set the vol_coords to the OpenFOAM field
+        """
+
+        self.solver.updateOFMeshArray(vol_coords)
+        self.solverAD.updateOFMeshArray(vol_coords)
 
         return
 

@@ -457,6 +457,12 @@ public:
         const word outputName,
         const word outputType);
     
+    /// get whether the output is distributed among processors
+    void calcOutput(
+        const word outputName,
+        const word outputType,
+        double* output);
+    
     /// run the coloring solver
     void runColoring();
 

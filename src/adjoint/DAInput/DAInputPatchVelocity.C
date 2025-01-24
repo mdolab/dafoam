@@ -48,7 +48,7 @@ void DAInputPatchVelocity::run(const scalarList& input)
     globalVar.patchVelocity[1] = input[1];
 
     wordList patchNames;
-    dictionary patchVSubDict = daOption_.getAllOptions().subDict("solverInput").subDict(inputName_);
+    dictionary patchVSubDict = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_);
     patchVSubDict.readEntry<wordList>("patches", patchNames);
 
 #ifndef CODI_ADR

@@ -13,10 +13,13 @@ else
   wget https://github.com/DAFoam/reg_test_files/archive/refs/heads/main.tar.gz -O reg_test_files-main.tar.gz --no-check-certificate
 fi
 
+# remove the old one and extract the tarball
+rm -rf reg_test_files-main
+tar -xvf reg_test_files-main.tar.gz
+
 function runRegTests() 
 {
-  rm -rf reg_test_files-main DAFoam_Test_${1}.txt
-  tar -zxf reg_test_files-main.tar.gz
+  rm -rf DAFoam_Test_${1}.txt
   if [ -z "$DF_CHECK_COVERAGE" ]; then
     mpirun --oversubscribe -np 4 python runRegTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
@@ -48,8 +51,7 @@ function runRegTests()
 
 function runUnitTests()
 {
-  rm -rf reg_test_files-main DAFoam_Test_${1}.txt
-  tar -zxf reg_test_files-main.tar.gz
+  rm -rf DAFoam_Test_${1}.txt
   mpirun --oversubscribe -np 4 python runUnitTests_${1}.py
 }
 
@@ -78,3 +80,6 @@ for file in runUnitTests_*.py; do
     runUnitTests "$extracted_name"
   fi
 done
+
+echo " "
+echo "*** All Tests Passed! ***"

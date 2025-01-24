@@ -86,7 +86,7 @@ public:
 
     virtual label distributed()
     {
-        label distributed = daOption_.getAllOptions().subDict("solverInput").subDict(inputName_).getLabel("distributed");
+        label distributed = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_).getLabel("distributed");
         return distributed;
     }
 };

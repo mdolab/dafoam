@@ -21,7 +21,6 @@ os.chdir("./reg_test_files-main/UBendDuct")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor* *.bin")
     os.system("cp -r 0.incompressible 0")
-    os.system("cp -r system.incompressible system")
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
@@ -63,10 +62,10 @@ daOptions = {
             "scale": 1.0,
         },
     },
-    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm", "dynAdjustTol": False},
+    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
-    "solverInput": {
-        "aero_vol_coords": {"type": "volCoord"},
+    "inputInfo": {
+        "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
     },
 }
 

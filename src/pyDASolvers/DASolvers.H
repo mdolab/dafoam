@@ -80,6 +80,14 @@ public:
         return DASolverPtr_->getOutputSize(outputName, outputType);
     }
 
+    void calcOutput(
+        const word outputName,
+        const word outputType,
+        double* output)
+    {
+        DASolverPtr_->calcOutput(outputName, outputType, output);
+    }
+
     label getInputDistributed(
         const word inputName,
         const word inputType)
