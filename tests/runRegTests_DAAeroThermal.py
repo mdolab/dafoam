@@ -115,6 +115,7 @@ daOptionsThermal = {
         "pcFillLevel": 1,
         "jacMatReOrdering": "natural",
         "useNonZeroInitGuess": True,
+        "dynAdjustTol": True
     },
     "normalizeStates": {
         "T": 300.0,
