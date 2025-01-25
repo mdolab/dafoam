@@ -30,15 +30,12 @@
 #include "nearWallDist.H"
 #include "DAUtility.H"
 #include "DAOption.H"
-#include "DARegDbNearWallDist.H"
 #include "DAMacroFunctions.H"
 #include "nutkWallFunctionFvPatchScalarField.H" // for yPlus
 #include "wallFvPatch.H" // for yPlus
 
 #include "singlePhaseTransportModel.H"
 #include "turbulentTransportModel.H"
-#include "DARegDbTurbulenceModelIncompressible.H"
-#include "DARegDbSinglePhaseTransportModel.H"
 #include "fluidThermo.H"
 #include "turbulentFluidThermoModel.H"
 
