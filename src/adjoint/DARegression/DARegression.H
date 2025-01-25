@@ -29,6 +29,7 @@ namespace Foam
 \*---------------------------------------------------------------------------*/
 
 class DARegression
+    : public regIOobject
 {
 
 private:
@@ -176,9 +177,9 @@ public:
     label checkOutput(word modelName, volScalarField& outputField);
 
     /// print the input
-    void printInputInfo()
+    void printInputInfo(const label printToScreen)
     {
-        if (!active_)
+        if (!active_ || !printToScreen)
         {
             return;
         }
@@ -243,6 +244,12 @@ public:
         DAUtility::pyCalcBetaJacVecProdInterface(x, x_b, n, y, y_b, m, DAUtility::pyCalcBetaJacVecProd);
     }
 #endif
+
+    /// this is a virtual function for regIOobject
+    bool writeData(Ostream& os) const
+    {
+        return true;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

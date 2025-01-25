@@ -254,7 +254,7 @@ public:
     bool writeData(Ostream& os) const;
 
     /// print the min max and mean yPlus to screen
-    void printYPlus() const;
+    void printYPlus(const label printToScreen) const;
 
     word getTurbModelType() const
     {

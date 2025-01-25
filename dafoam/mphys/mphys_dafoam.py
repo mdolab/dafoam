@@ -722,11 +722,9 @@ class DAFoamSolver(ImplicitComponent):
                 DASolver.solverAD.calcJacTVecProduct(
                     self.stateName,
                     "stateVar",
-                    self.localAdjSize,
                     jacInput,
                     self.residualName,
                     "residual",
-                    self.localAdjSize,
                     seed,
                     product,
                 )
@@ -736,17 +734,14 @@ class DAFoamSolver(ImplicitComponent):
             inputDict = DASolver.getOption("inputInfo")
             for inputName in list(inputs.keys()):
                 inputType = inputDict[inputName]["type"]
-                inputSize = DASolver.solver.getInputSize(inputName, inputType)
-                product = np.zeros(inputSize)
                 jacInput = inputs[inputName]
+                product = np.zeros_like(jacInput)
                 DASolver.solverAD.calcJacTVecProduct(
                     inputName,
                     inputType,
-                    inputSize,
                     jacInput,
                     self.residualName,
                     "residual",
-                    self.localAdjSize,
                     seed,
                     product,
                 )
@@ -903,11 +898,9 @@ class DAFoamSolver(ImplicitComponent):
         DASolver.solverAD.calcJacTVecProduct(
             self.stateName,
             "stateVar",
-            self.localAdjSize,
             jacInput,
             self.residualName,
             "residual",
-            self.localAdjSize,
             seed,
             rArray,
         )
@@ -1114,33 +1107,28 @@ class DAFoamFunctions(ExplicitComponent):
             for inputName in list(d_inputs.keys()):
                 # compute dFdW * seed
                 if inputName == self.stateName:
-                    product = np.zeros(localAdjSize)
                     jacInput = inputs[self.stateName]
+                    product = np.zeros_like(jacInput)
                     DASolver.solverAD.calcJacTVecProduct(
                         self.stateName,
                         "stateVar",
-                        localAdjSize,
                         jacInput,
                         functionName,
                         "function",
-                        1,
                         seed,
                         product,
                     )
                     d_inputs[self.stateName] += product
                 else:
                     inputType = inputDict[inputName]["type"]
-                    inputSize = DASolver.solver.getInputSize(inputName, inputType)
-                    product = np.zeros(inputSize)
                     jacInput = inputs[inputName]
+                    product = np.zeros_like(jacInput)
                     DASolver.solverAD.calcJacTVecProduct(
                         inputName,
                         inputType,
-                        inputSize,
                         jacInput,
                         functionName,
                         "function",
-                        1,
                         seed,
                         product,
                     )
@@ -1267,37 +1255,30 @@ class DAFoamThermal(ExplicitComponent):
 
         for outputName in list(d_outputs.keys()):
             seeds = d_outputs[outputName]
-            outputSize = len(seeds)
 
             if self.stateName in d_inputs:
-                inputSize = DASolver.getNLocalAdjointStates()
-                product = np.zeros(inputSize)
                 jacInput = inputs[self.stateName]
+                product = np.zeros_like(jacInput)
                 DASolver.solverAD.calcJacTVecProduct(
                     self.stateName,
                     "stateVar",
-                    inputSize,
                     jacInput,
                     outputName,
                     "thermalVarOutput",
-                    outputSize,
                     seeds,
                     product,
                 )
                 d_inputs[self.stateName] += product
 
             if self.volCoordName in d_inputs:
-                inputSize = DASolver.getNLocalPoints() * 3
-                product = np.zeros(inputSize)
                 jacInput = inputs[self.volCoordName]
+                product = np.zeros_like(jacInput)
                 DASolver.solverAD.calcJacTVecProduct(
                     self.volCoordName,
                     "volCoord",
-                    inputSize,
                     jacInput,
                     outputName,
                     "thermalVarOutput",
-                    outputSize,
                     seeds,
                     product,
                 )
@@ -2496,11 +2477,9 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 DASolver.solverAD.calcJacTVecProduct(
                     "states",
                     "stateVar",
-                    localAdjSize,
                     jacInput,
                     functionName,
                     "function",
-                    1,
                     seed,
                     dFdWArray,
                 )
@@ -2542,17 +2521,14 @@ class DAFoamSolverUnsteady(ExplicitComponent):
 
                     # calculate dFdX
                     inputType = inputDict[inputName]["type"]
-                    input1 = inputs[inputName]
-                    inputSize = DASolver.solver.getInputSize(inputName, inputType)
-                    dFdX = np.zeros(inputSize)
+                    jacInput = inputs[inputName]
+                    dFdX = np.zeros_like(jacInput)
                     DASolver.solverAD.calcJacTVecProduct(
                         inputName,
                         inputType,
-                        inputSize,
-                        input1,
+                        jacInput,
                         functionName,
                         "function",
-                        1,
                         seed,
                         dFdX,
                     )
@@ -2560,16 +2536,14 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     dFdX = dFdX * dFScaling
 
                     # calculate dRdX^T * psi
-                    dRdXTPsi = np.zeros(inputSize)
+                    dRdXTPsi = np.zeros_like(jacInput)
                     DASolver.vecVal2Array(psi, psiArray)
                     DASolver.solverAD.calcJacTVecProduct(
                         inputName,
                         inputType,
-                        inputSize,
-                        input1,
+                        jacInput,
                         "residual",
                         "residual",
-                        localAdjSize,
                         psiArray,
                         dRdXTPsi,
                     )

@@ -722,7 +722,7 @@ void DAkOmega::getTurbProdOverDestruct(volScalarField& PoD) const
 
     forAll(P, cellI)
     {
-        PoD[cellI] = P[cellI] / (D[cellI] + 1e-16);
+        PoD[cellI] = P[cellI] / (D[cellI] + P[cellI] + 1e-16);
     }
 }
 
@@ -741,7 +741,7 @@ void DAkOmega::getTurbConvOverProd(volScalarField& CoP) const
 
     forAll(P, cellI)
     {
-        CoP[cellI] = C[cellI] / (P[cellI] + 1e-16);
+        CoP[cellI] = C[cellI] / (P[cellI] + C[cellI] + 1e-16);
     }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

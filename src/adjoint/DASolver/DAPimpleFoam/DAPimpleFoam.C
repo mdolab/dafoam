@@ -177,22 +177,16 @@ label DAPimpleFoam::solvePrimal()
         }
 
         this->calcAllFunctions(printToScreen_);
-
         if (printToScreen_)
         {
 #include "CourantNo.H"
-
-            daTurbulenceModelPtr_->printYPlus();
-
             if (daOptionPtr_->getOption<label>("debug"))
             {
                 this->calcPrimalResidualStatistics("print");
             }
-
-            Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                 << nl << endl;
         }
+        daTurbulenceModelPtr_->printYPlus(printToScreen_);
+        this->printElapsedTime(runTime, printToScreen_);
 
         if (reduceIO && iter < nInstances)
         {

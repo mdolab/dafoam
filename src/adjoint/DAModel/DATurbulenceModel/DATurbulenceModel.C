@@ -434,7 +434,7 @@ void DATurbulenceModel::correctWallDist()
     this->correctBoundaryConditions();
 }
 
-void DATurbulenceModel::printYPlus() const
+void DATurbulenceModel::printYPlus(const label printToScreen) const
 {
     /*
     Description:
@@ -443,74 +443,78 @@ void DATurbulenceModel::printYPlus() const
         Modified from src/functionObjects/field/yPlus/yPlus.C
     */
 
-    volScalarField yPlus(
-        IOobject(
-            typeName,
-            mesh_.time().timeName(),
+    if (printToScreen)
+    {
+
+        volScalarField yPlus(
+            IOobject(
+                typeName,
+                mesh_.time().timeName(),
+                mesh_,
+                IOobject::NO_READ,
+                IOobject::AUTO_WRITE),
             mesh_,
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE),
-        mesh_,
-        dimensionedScalar(dimless, Zero));
-    volScalarField::Boundary& yPlusBf = yPlus.boundaryFieldRef();
+            dimensionedScalar(dimless, Zero));
+        volScalarField::Boundary& yPlusBf = yPlus.boundaryFieldRef();
 
-    const nearWallDist nwd(mesh_);
-    const volScalarField::Boundary& d = nwd.y();
+        const nearWallDist nwd(mesh_);
+        const volScalarField::Boundary& d = nwd.y();
 
-    const fvPatchList& patches = mesh_.boundary();
+        const fvPatchList& patches = mesh_.boundary();
 
-    const volScalarField::Boundary& nutBf = nut_.boundaryField();
-    const volVectorField::Boundary& UBf = U_.boundaryField();
+        const volScalarField::Boundary& nutBf = nut_.boundaryField();
+        const volVectorField::Boundary& UBf = U_.boundaryField();
 
-    volScalarField nuEff = this->nuEff();
-    volScalarField nu = this->nu();
+        volScalarField nuEff = this->nuEff();
+        volScalarField nu = this->nu();
 
-    const volScalarField::Boundary& nuEffBf = nuEff.boundaryField();
-    const volScalarField::Boundary& nuBf = nu.boundaryField();
+        const volScalarField::Boundary& nuEffBf = nuEff.boundaryField();
+        const volScalarField::Boundary& nuBf = nu.boundaryField();
 
-    forAll(patches, patchI)
-    {
-        const fvPatch& patch = patches[patchI];
-
-        if (isA<nutWallFunctionFvPatchScalarField>(nutBf[patchI]))
+        forAll(patches, patchI)
         {
-            const nutWallFunctionFvPatchScalarField& nutPf =
-                dynamic_cast<const nutWallFunctionFvPatchScalarField&>(
-                    nutBf[patchI]);
+            const fvPatch& patch = patches[patchI];
 
-            yPlusBf[patchI] = nutPf.yPlus();
-        }
-        else if (isA<wallFvPatch>(patch))
-        {
-            yPlusBf[patchI] =
-                d[patchI]
-                * sqrt(
-                    nuEffBf[patchI]
-                    * mag(UBf[patchI].snGrad()))
-                / nuBf[patchI];
-        }
-    }
-
-    // now compute the global min, max, and mean
-    scalarList yPlusAll;
-    forAll(patches, patchI)
-    {
-        const fvPatch& patch = patches[patchI];
-        if (isA<wallFvPatch>(patch))
-        {
-            forAll(yPlusBf[patchI], faceI)
+            if (isA<nutWallFunctionFvPatchScalarField>(nutBf[patchI]))
             {
-                yPlusAll.append(yPlusBf[patchI][faceI]);
+                const nutWallFunctionFvPatchScalarField& nutPf =
+                    dynamic_cast<const nutWallFunctionFvPatchScalarField&>(
+                        nutBf[patchI]);
+
+                yPlusBf[patchI] = nutPf.yPlus();
+            }
+            else if (isA<wallFvPatch>(patch))
+            {
+                yPlusBf[patchI] =
+                    d[patchI]
+                    * sqrt(
+                        nuEffBf[patchI]
+                        * mag(UBf[patchI].snGrad()))
+                    / nuBf[patchI];
             }
         }
-    }
-    scalar minYplus = gMin(yPlusAll);
-    scalar maxYplus = gMax(yPlusAll);
-    scalar avgYplus = gAverage(yPlusAll);
 
-    Info << "yPlus min: " << minYplus
-         << " max: " << maxYplus
-         << " mean: " << avgYplus << endl;
+        // now compute the global min, max, and mean
+        scalarList yPlusAll;
+        forAll(patches, patchI)
+        {
+            const fvPatch& patch = patches[patchI];
+            if (isA<wallFvPatch>(patch))
+            {
+                forAll(yPlusBf[patchI], faceI)
+                {
+                    yPlusAll.append(yPlusBf[patchI][faceI]);
+                }
+            }
+        }
+        scalar minYplus = gMin(yPlusAll);
+        scalar maxYplus = gMax(yPlusAll);
+        scalar avgYplus = gAverage(yPlusAll);
+
+        Info << "yPlus min: " << minYplus
+             << " max: " << maxYplus
+             << " mean: " << avgYplus << endl;
+    }
 }
 
 label DATurbulenceModel::isPrintTime(
