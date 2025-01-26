@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAOutputThermalVar.H"
+#include "DAOutputThermalCoupling.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAOutputThermalVar, 0);
-addToRunTimeSelectionTable(DAOutput, DAOutputThermalVar, dictionary);
+defineTypeNameAndDebug(DAOutputThermalCoupling, 0);
+addToRunTimeSelectionTable(DAOutput, DAOutputThermalCoupling, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAOutputThermalVar::DAOutputThermalVar(
+DAOutputThermalCoupling::DAOutputThermalCoupling(
     const word outputName,
     const word outputType,
     fvMesh& mesh,
@@ -55,7 +55,7 @@ DAOutputThermalVar::DAOutputThermalVar(
     size_ *= 2;
 }
 
-void DAOutputThermalVar::run(scalarList& output)
+void DAOutputThermalCoupling::run(scalarList& output)
 {
     /*
     Description:
@@ -205,7 +205,7 @@ void DAOutputThermalVar::run(scalarList& output)
     }
     else
     {
-        FatalErrorIn("DAOutputThermalVar::run") << " discipline not valid! "
+        FatalErrorIn("DAOutputThermalCoupling::run") << " discipline not valid! "
                                                 << abort(FatalError);
     }
 }

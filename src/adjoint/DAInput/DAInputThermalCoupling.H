@@ -4,15 +4,19 @@
     Version : v4
 
     Description:
-        Child class for thermal transfer variables for CHT
+        Child class for thermal variables in CHT.
 
-        Compute the thermal variables for all of the faces on the conjugate heat 
-        transfer patches.
+        Assign the thermal BC values to all of the faces on the conjugate heat 
+        transfer patches. 
 
-        NOTE: we have two separate variables to assign to the thermal array. 
-        One is the near wall temperature and the other is kappa/d. 
+        We assume the conjugate coupling patches are of mixed type, so we need to assign
+        refValue = neighbour near wall temperature
+        refGrad = 0
+        valueFraction = neighKDeltaCoeffs / ( neighKDeltaCoeffs + myKDeltaCoeffs)
+
+        NOTE: we have two separate variables saved in the thermal array. 
+        One is the neighbour near wall temperature and the other is the neighbour kappa/d. 
         So the size of thermal array is 2 * nCouplingFaces
-
         NOTE: this function can be called by either fluid or solid domain!
 
         This conjugate heat transfer coupling uses the OpenFOAM's implementation in
@@ -20,10 +24,10 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAOutputThermalVar_H
-#define DAOutputThermalVar_H
+#ifndef DAInputThermalCoupling_H
+#define DAInputThermalCoupling_H
 
-#include "DAOutput.H"
+#include "DAInput.H"
 #include "addToRunTimeSelectionTable.H"
 #include "mixedFvPatchFields.H"
 #include "thermodynamicConstants.H"
@@ -34,11 +38,11 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAOutputThermalVar Declaration
+      Class DAInputThermalCoupling Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAOutputThermalVar
-    : public DAOutput
+class DAInputThermalCoupling
+    : public DAInput
 {
 
 protected:
@@ -52,26 +56,24 @@ protected:
     word discipline_;
 
 public:
-    TypeName("thermalVarOutput");
+    TypeName("thermalCouplingInput");
     // Constructors
 
     //- Construct from components
-    DAOutputThermalVar(
-        const word outputName,
-        const word outputType,
+    DAInputThermalCoupling(
+        const word inputName,
+        const word inputType,
         fvMesh& mesh,
         const DAOption& daOption,
-        DAModel& daModel,
-        const DAIndex& daIndex,
-        DAResidual& daResidual,
-        UPtrList<DAFunction>& daFunctionList);
+        const DAModel& daModel,
+        const DAIndex& daIndex);
 
     //- Destructor
-    virtual ~DAOutputThermalVar()
+    virtual ~DAInputThermalCoupling()
     {
     }
 
-    virtual void run(scalarList& output);
+    virtual void run(const scalarList& input);
 
     virtual label size()
     {

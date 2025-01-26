@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAInputThermalVar.H"
+#include "DAInputThermalCoupling.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAInputThermalVar, 0);
-addToRunTimeSelectionTable(DAInput, DAInputThermalVar, dictionary);
+defineTypeNameAndDebug(DAInputThermalCoupling, 0);
+addToRunTimeSelectionTable(DAInput, DAInputThermalCoupling, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAInputThermalVar::DAInputThermalVar(
+DAInputThermalCoupling::DAInputThermalCoupling(
     const word inputName,
     const word inputType,
     fvMesh& mesh,
@@ -52,7 +52,7 @@ DAInputThermalVar::DAInputThermalVar(
     size_ *= 2;
 }
 
-void DAInputThermalVar::run(const scalarList& input)
+void DAInputThermalCoupling::run(const scalarList& input)
 {
     /*
     Description:
@@ -223,7 +223,7 @@ void DAInputThermalVar::run(const scalarList& input)
     }
     else
     {
-        FatalErrorIn("DAInputThermalVar::run") << " discipline not valid! "
+        FatalErrorIn("DAInputThermalCoupling::run") << " discipline not valid! "
                                                << abort(FatalError);
     }
 

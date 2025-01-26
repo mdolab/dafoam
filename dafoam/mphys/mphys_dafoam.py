@@ -1219,7 +1219,7 @@ class DAFoamThermal(ExplicitComponent):
         outputDict = DASolver.getOption("outputInfo")
         for outputName in list(outputDict.keys()):
             # this input is attached to the DAFoamThermal comp
-            if "cht" in outputDict[outputName]["components"]:
+            if "thermalCoupling" in outputDict[outputName]["components"]:
                 self.outputName = outputName
                 self.outputType = outputDict[outputName]["type"]
                 self.outputSize = DASolver.solver.getOutputSize(outputName, self.outputType)
@@ -1264,7 +1264,7 @@ class DAFoamThermal(ExplicitComponent):
                     "stateVar",
                     jacInput,
                     outputName,
-                    "thermalVarOutput",
+                    "thermalCouplingOutput",
                     seeds,
                     product,
                 )
@@ -1278,7 +1278,7 @@ class DAFoamThermal(ExplicitComponent):
                     "volCoord",
                     jacInput,
                     outputName,
-                    "thermalVarOutput",
+                    "thermalCouplingOutput",
                     seeds,
                     product,
                 )
@@ -1310,7 +1310,7 @@ class DAFoamFaceCoords(ExplicitComponent):
         outputDict = DASolver.getOption("outputInfo")
         for outputName in list(outputDict.keys()):
             # this input is attached to the DAFoamThermal comp
-            if "cht" in outputDict[outputName]["components"]:
+            if "thermalCoupling" in outputDict[outputName]["components"]:
                 outputType = outputDict[outputName]["type"]
                 outputSize = DASolver.solver.getOutputSize(outputName, outputType)
                 # NOTE: here x_surface0 is the surface coordinate, which is 3 times the number of faces
@@ -1319,7 +1319,7 @@ class DAFoamFaceCoords(ExplicitComponent):
                 break
 
         if self.nSurfCoords is None:
-            raise AnalysisError("not cht output found!")
+            raise AnalysisError("no thermalCoupling output found!")
 
     def compute(self, inputs, outputs):
 
