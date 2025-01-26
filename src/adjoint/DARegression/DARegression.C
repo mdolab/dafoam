@@ -300,7 +300,7 @@ void DARegression::calcInputFeatures(word modelName)
             scalar val = 0;
             forAll(features_[modelName][idxI], cellI)
             {
-                val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
+                val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI] + sqrt(k[cellI]) * y[cellI] + 1e-16);
                 features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();

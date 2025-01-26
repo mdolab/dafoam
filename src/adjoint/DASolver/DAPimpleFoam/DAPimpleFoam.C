@@ -140,6 +140,8 @@ label DAPimpleFoam::solvePrimal()
     label nInstances = round(endTime / deltaT);
 
     // main loop
+    label regModelFail = 0;
+    label fail = 0;
     for (label iter = 1; iter <= nInstances; iter++)
     {
         ++runTime;
@@ -174,9 +176,24 @@ label DAPimpleFoam::solvePrimal()
             laminarTransport.correct();
             // primalMaxRes_ is just a dummy input, we will not use it
             daTurbulenceModelPtr_->correct(pimplePrintToScreen, primalMaxRes_);
+
+            // update the output field value at each iteration, if the regression model is active
+            fail = daRegressionPtr_->compute();
+        }
+
+        regModelFail += fail;
+
+        if (this->validateStates())
+        {
+            // write data to files and quit
+            runTime.writeNow();
+            mesh.write();
+            return 1;
         }
 
         this->calcAllFunctions(printToScreen_);
+        daRegressionPtr_->printInputInfo(printToScreen_);
+
         if (printToScreen_)
         {
 #include "CourantNo.H"
@@ -191,11 +208,18 @@ label DAPimpleFoam::solvePrimal()
         if (reduceIO && iter < nInstances)
         {
             this->writeAdjStates(reduceIOWriteMesh_, additionalOutput);
+            daRegressionPtr_->writeFeatures();
         }
         else
         {
             runTime.write();
+            daRegressionPtr_->writeFeatures();
         }
+    }
+
+    if (regModelFail != 0)
+    {
+        return 1;
     }
 
     // need to save primalFinalTimeIndex_.
