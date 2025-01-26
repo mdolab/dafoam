@@ -123,16 +123,16 @@ daOptionsThermal = {
     "inputInfo": {
         "thermal_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
         "q_conduct": {
-            "type": "thermalVarInput",
+            "type": "thermalCouplingInput",
             "patches": ["channel_outer", "channel_inner"],
             "components": ["solver"],
         },
     },
     "outputInfo": {
         "T_conduct": {
-            "type": "thermalVarOutput",
+            "type": "thermalCouplingOutput",
             "patches": ["channel_outer", "channel_inner"],
-            "components": ["cht"],
+            "components": ["thermalCoupling"],
         },
     },
 }
