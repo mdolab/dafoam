@@ -63,30 +63,44 @@ daOptions = {
         },
     },
     "function": {
-        "CD": {
-            "type": "force",
-            "source": "patchToFace",
-            "patches": ["walls"],
-            "directionMode": "fixedDirection",
-            "direction": [1.0, 0.0, 0.0],
+        "UVar": {
+            "type": "variance",
+            "source": "boxToCell",
+            "min": [0.2, 0.2, 0.3],
+            "max": [0.8, 0.8, 0.9],
             "scale": 1.0,
+            "mode": "field",
+            "varName": "U",
+            "varType": "vector",
+            "components": [0, 1, 2],
+            "timeDependentRefData": False,
         },
-        "CL": {
-            "type": "force",
+        "PVar": {
+            "type": "variance",
             "source": "patchToFace",
             "patches": ["walls"],
-            "directionMode": "fixedDirection",
-            "direction": [0.0, 1.0, 0.0],
             "scale": 1.0,
+            "mode": "surface",
+            "varName": "p",
+            "varType": "scalar",
+            "timeDependentRefData": False,
+        },
+        "UProbe": {
+            "type": "variance",
+            "source": "allCells",
+            "scale": 1.0,
+            "mode": "probePoint",
+            "probePointCoords": [[0.51, 0.52, 0.53], [0.2, 0.3, 0.4]],
+            "varName": "U",
+            "varType": "vector",
+            "components": [0, 1],
+            "timeDependentRefData": False,
         },
     },
     "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
     "inputInfo": {
-        "reg_model": {
-            "type": "regressionPar",
-            "components": ["solver", "function"]
-        },
+        "reg_model": {"type": "regressionPar", "components": ["solver", "function"]},
     },
 }
 
@@ -115,8 +129,9 @@ class Top(Multipoint):
         # define the design variables to the top level
         self.add_design_var("reg_model", lower=-100.0, upper=100.0, scaler=1.0, indices=[0, 50])
         # add constraints and the objective
-        self.add_objective("scenario.aero_post.CD", scaler=1.0)
-        self.add_constraint("scenario.aero_post.CL", equals=0.3)
+        self.add_objective("scenario.aero_post.UVar", scaler=1.0)
+        self.add_constraint("scenario.aero_post.PVar", equals=0.3)
+        self.add_constraint("scenario.aero_post.UProbe", equals=0.3)
 
 
 funcDict = {}
@@ -124,7 +139,11 @@ derivDict = {}
 
 dvNames = ["reg_model"]
 dvIndices = [[0, 50]]
-funcNames = ["scenario.aero_post.functionals.CL", "scenario.aero_post.functionals.CD"]
+funcNames = [
+    "scenario.aero_post.functionals.UVar",
+    "scenario.aero_post.functionals.PVar",
+    "scenario.aero_post.functionals.UProbe",
+]
 
 # run the adjoint and forward ref
 run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)

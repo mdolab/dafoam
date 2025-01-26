@@ -14,6 +14,7 @@ function makeDAFoam()
   cd src/newTurbModels && ./Allmake && cd -
   cd src/pyUnitTests && ./Allmake && cd -
   cd src/pyDASolvers && ./Allmake && cd -
+  cd src/utilities/preProcessing && ./Allmake && cd -
   # disable the -e flag
   set +e
 }
