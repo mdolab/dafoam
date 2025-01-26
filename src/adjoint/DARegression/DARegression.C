@@ -18,7 +18,16 @@ DARegression::DARegression(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel)
-    : mesh_(mesh),
+    : regIOobject(
+        IOobject(
+            "DARegression", // the db name
+            mesh.time().timeName(),
+            mesh, // register to mesh
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            true // always register object
+            )),
+      mesh_(mesh),
       daOption_(daOption),
       daModel_(daModel)
 {
@@ -156,6 +165,10 @@ void DARegression::calcInputFeatures(word modelName)
         Calculate the input features. Here features is a unique list for all the regModel's inputNames.
         This is because two regModel's inputNames can have overlap, so we don't want to compute
         duplicated features
+
+        NOTE: if a feature is a ratio between variable A and variable B, we will normalize 
+        it such that the range of this feature is from -1 to 1 by using:
+        feature = A / (A + B + 1e-16)
     */
 
     forAll(features_[modelName], idxI)
@@ -171,7 +184,7 @@ void DARegression::calcInputFeatures(word modelName)
             volScalarField magS = mag(symm(gradU));
             forAll(features_[modelName][idxI], cellI)
             {
-                features_[modelName][idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
+                features_[modelName][idxI][cellI] = (magOmega[cellI] / (magS[cellI] + magOmega[cellI] + 1e-16) + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
         }
@@ -192,7 +205,7 @@ void DARegression::calcInputFeatures(word modelName)
             volScalarField nu = daModel_.getDATurbulenceModel().nu();
             forAll(features_[modelName][idxI], cellI)
             {
-                features_[modelName][idxI][cellI] = (nuTilda[cellI] / nu[cellI] + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
+                features_[modelName][idxI][cellI] = (nuTilda[cellI] / (nu[cellI] + nuTilda[cellI] + 1e-16) + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
         }
@@ -273,7 +286,7 @@ void DARegression::calcInputFeatures(word modelName)
             scalar val = 0;
             forAll(features_[modelName][idxI], cellI)
             {
-                val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + 1e-16);
+                val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + k[cellI] + 1e-16);
                 features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
@@ -287,7 +300,7 @@ void DARegression::calcInputFeatures(word modelName)
             scalar val = 0;
             forAll(features_[modelName][idxI], cellI)
             {
-                val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
+                val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI] + sqrt(k[cellI]) * y[cellI] + 1e-16);
                 features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
@@ -312,7 +325,7 @@ void DARegression::calcInputFeatures(word modelName)
             scalar val = 0;
             forAll(features_[modelName][idxI], cellI)
             {
-                val = mag(tau[cellI]) / (k[cellI] + 1e-16);
+                val = mag(tau[cellI]) / (k[cellI] + mag(tau[cellI]) + 1e-16);
                 features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();

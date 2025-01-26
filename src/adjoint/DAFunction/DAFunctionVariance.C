@@ -5,92 +5,79 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAObjFuncVariance.H"
+#include "DAFunctionVariance.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAObjFuncVariance, 0);
-addToRunTimeSelectionTable(DAObjFunc, DAObjFuncVariance, dictionary);
+defineTypeNameAndDebug(DAFunctionVariance, 0);
+addToRunTimeSelectionTable(DAFunction, DAFunctionVariance, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAObjFuncVariance::DAObjFuncVariance(
+DAFunctionVariance::DAFunctionVariance(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const DAResidual& daResidual,
-    const word objFuncName,
-    const word objFuncPart,
-    const dictionary& objFuncDict)
-    : DAObjFunc(
+    const word functionName)
+    : DAFunction(
         mesh,
         daOption,
         daModel,
         daIndex,
-        daResidual,
-        objFuncName,
-        objFuncPart,
-        objFuncDict),
-#ifdef CompressibleFlow
-      thermo_(const_cast<fluidThermo&>(daModel.getThermo())),
-#endif
+        functionName),
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel()))
 {
 
-    // Assign type, this is common for all objectives
-    objFuncDict_.readEntry<word>("type", objFuncType_);
-
-    objFuncDict_.readEntry<scalar>("scale", scale_);
-
     // read the parameters
 
-    objFuncDict_.readEntry<word>("mode", mode_);
+    functionDict_.readEntry<word>("mode", mode_);
 
     if (mode_ == "surface")
     {
-        objFuncDict_.readEntry<wordList>("surfaceNames", surfaceNames_);
+        // check if the faceSources is set
+        if (faceSources_.size() == 0)
+        {
+            FatalErrorIn("") << "surface mode is used but patchToFace is not set!"
+                             << abort(FatalError);
+        }
     }
 
     if (mode_ == "probePoint")
     {
-        objFuncDict_.readEntry<List<List<scalar>>>("probePointCoords", probePointCoords_);
+        functionDict_.readEntry<List<List<scalar>>>("probePointCoords", probePointCoords_);
     }
 
-    objFuncDict_.readEntry<word>("varName", varName_);
+    functionDict_.readEntry<word>("varName", varName_);
 
     if (varName_ == "wallHeatFlux")
     {
-#ifdef IncompressibleFlow
-        // initialize the Prandtl number from transportProperties
-        IOdictionary transportProperties(
-            IOobject(
-                "transportProperties",
-                mesh.time().constant(),
-                mesh,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE,
-                false));
-        // for incompressible flow, we need to read Cp from transportProperties
-        Cp_ = readScalar(transportProperties.lookup("Cp"));
-#endif
+        if (daTurb_.getTurbModelType() == "incompressible")
+        {
+            // initialize the Prandtl number from transportProperties
+            IOdictionary transportProperties(
+                IOobject(
+                    "transportProperties",
+                    mesh.time().constant(),
+                    mesh,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE,
+                    false));
+            // for incompressible flow, we need to read Cp from transportProperties
+            Cp_ = readScalar(transportProperties.lookup("Cp"));
+        }
     }
 
-    objFuncDict_.readEntry<word>("varType", varType_);
+    functionDict_.readEntry<word>("varType", varType_);
 
     if (varType_ == "vector")
     {
-        objFuncDict_.readEntry<labelList>("components", components_);
+        functionDict_.readEntry<labelList>("components", components_);
     }
 
-    timeDependentRefData_ = objFuncDict_.getLabel("timeDependentRefData");
-
-    if (daIndex.adjStateNames.found(varName_))
-    {
-        objFuncConInfo_ = {{varName_}};
-    }
+    timeDependentRefData_ = functionDict_.getLabel("timeDependentRefData");
 
     // get the time information
     scalar endTime = mesh_.time().endTime().value();
@@ -163,7 +150,7 @@ DAObjFuncVariance::DAObjFuncVariance(
         Info << endl;
         Info << "**************************************************************************** " << endl;
         Info << "*         WARNING! Can't find data files or can't find valid               * " << endl;
-        Info << "*         values in data files for the variance objFunc " << varName_ << "       * " << endl;
+        Info << "*         values in data files for the variance function " << varName_ << "       * " << endl;
         Info << "**************************************************************************** " << endl;
         Info << endl;
     }
@@ -218,29 +205,21 @@ DAObjFuncVariance::DAObjFuncVariance(
                 }
                 else if (mode_ == "surface")
                 {
-                    forAll(surfaceNames_, idxI)
+                    forAll(faceSources_, idxI)
                     {
-                        word surfaceName = surfaceNames_[idxI];
-                        label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
-                        if (patchI >= 0)
-                        {
-                            forAll(varData.boundaryField()[patchI], faceI)
-                            {
-                                refValue_[n].append(varData.boundaryField()[patchI][faceI]);
-                                nRefPoints_++;
-                            }
-                        }
-                        else
-                        {
-                            FatalErrorIn("") << "surfaceName " << surfaceName << " not found!"
-                                             << abort(FatalError);
-                        }
+                        const label& functionFaceI = faceSources_[idxI];
+                        label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
+                        const label patchI = daIndex_.bFacePatchI[bFaceI];
+                        const label faceI = daIndex_.bFaceFaceI[bFaceI];
+                        refValue_[n].append(varData.boundaryField()[patchI][faceI]);
+                        nRefPoints_++;
                     }
                 }
                 else if (mode_ == "field")
                 {
-                    forAll(varData, cellI)
+                    forAll(cellSources_, idxI)
                     {
+                        label cellI = cellSources_[idxI];
                         refValue_[n].append(varData[cellI]);
                         nRefPoints_++;
                     }
@@ -301,33 +280,26 @@ DAObjFuncVariance::DAObjFuncVariance(
                 }
                 else if (mode_ == "surface")
                 {
-                    forAll(surfaceNames_, idxI)
+                    forAll(faceSources_, idxI)
                     {
-                        word surfaceName = surfaceNames_[idxI];
-                        label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
-                        if (patchI >= 0)
+                        const label& functionFaceI = faceSources_[idxI];
+                        label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
+                        const label patchI = daIndex_.bFacePatchI[bFaceI];
+                        const label faceI = daIndex_.bFaceFaceI[bFaceI];
+
+                        forAll(components_, idxJ)
                         {
-                            forAll(varData.boundaryField()[patchI], faceI)
-                            {
-                                forAll(components_, idxJ)
-                                {
-                                    label compI = components_[idxJ];
-                                    refValue_[n].append(varData.boundaryField()[patchI][faceI][compI]);
-                                    nRefPoints_++;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            FatalErrorIn("") << "surfaceName " << surfaceName << " not found!"
-                                             << abort(FatalError);
+                            label compI = components_[idxJ];
+                            refValue_[n].append(varData.boundaryField()[patchI][faceI][compI]);
+                            nRefPoints_++;
                         }
                     }
                 }
                 else if (mode_ == "field")
                 {
-                    forAll(varData, cellI)
+                    forAll(cellSources_, idxI)
                     {
+                        label cellI = cellSources_[idxI];
                         forAll(components_, idxJ)
                         {
                             label compI = components_[idxJ];
@@ -357,35 +329,15 @@ DAObjFuncVariance::DAObjFuncVariance(
 }
 
 /// calculate the value of objective function
-void DAObjFuncVariance::calcObjFunc(
-    const labelList& objFuncFaceSources,
-    const labelList& objFuncCellSources,
-    scalarList& objFuncFaceValues,
-    scalarList& objFuncCellValues,
-    scalar& objFuncValue)
+scalar DAFunctionVariance::calcFunction()
 {
     /*
     Description:
-        Calculate the obj = mesh volume * variable (whether to take a square of the variable
-        depends on isSquare)
-
-    Input:
-        objFuncFaceSources: List of face source (index) for this objective
-    
-        objFuncCellSources: List of cell source (index) for this objective
-
-    Output:
-        objFuncFaceValues: the discrete value of objective for each face source (index). 
-        This  will be used for computing df/dw in the adjoint.
-    
-        objFuncCellValues: the discrete value of objective on each cell source (index). 
-        This will be used for computing df/dw in the adjoint.
-    
-        objFuncValue: the sum of objective, reduced across all processors and scaled by "scale"
+        Calculate the variance
     */
 
     // initialize objFunValue
-    objFuncValue = 0.0;
+    scalar functionValue = 0.0;
 
     if (isRefData_)
     {
@@ -407,88 +359,79 @@ void DAObjFuncVariance::calcObjFunc(
             volSymmTensorField devRhoReff = daTurb_.devRhoReff();
 
             label pointI = 0;
-            forAll(surfaceNames_, idxI)
+            forAll(faceSources_, idxI)
             {
-                word surfaceName = surfaceNames_[idxI];
-                label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
+                const label& functionFaceI = faceSources_[idxI];
+                label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
+                const label patchI = daIndex_.bFacePatchI[bFaceI];
+                const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
-                if (mesh_.boundaryMesh()[patchI].size() > 0)
+                const vectorField& SfB = mesh_.Sf().boundaryField()[patchI];
+                const scalarField& magSfB = mesh_.magSf().boundaryField()[patchI];
+                const symmTensorField& ReffB = devRhoReff.boundaryField()[patchI];
+
+                vectorField shearB = (-SfB / magSfB) & ReffB;
+
+                forAll(components_, idxJ)
                 {
-                    const vectorField& SfB = mesh_.Sf().boundaryField()[patchI];
-                    const scalarField& magSfB = mesh_.magSf().boundaryField()[patchI];
-                    const symmTensorField& ReffB = devRhoReff.boundaryField()[patchI];
-
-                    vectorField shearB = (-SfB / magSfB) & ReffB;
-
-                    forAll(shearB, faceI)
-                    {
-                        forAll(components_, idxJ)
-                        {
-                            label compI = components_[idxJ];
-                            scalar varDif = (shearB[faceI][compI] - refValue_[timeIndex - 1][pointI]);
-                            objFuncValue += scale_ * varDif * varDif;
-                            pointI++;
-                        }
-                    }
+                    label compI = components_[idxJ];
+                    scalar varDif = (shearB[faceI][compI] - refValue_[timeIndex - 1][pointI]);
+                    functionValue += scale_ * varDif * varDif;
+                    pointI++;
                 }
             }
         }
         else if (varName_ == "wallHeatFlux")
         {
-#ifdef IncompressibleFlow
-            // incompressible flow does not have he, so we do H = Cp * alphaEff * dT/dz
-            const volScalarField& T = mesh_.thisDb().lookupObject<volScalarField>("T");
-            volScalarField alphaEff = daTurb_.alphaEff();
-            const volScalarField::Boundary& TBf = T.boundaryField();
-            const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
-
-            label pointI = 0;
-            forAll(surfaceNames_, idxI)
+            if (daTurb_.getTurbModelType() == "incompressible")
             {
-                word surfaceName = surfaceNames_[idxI];
-                label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
+                // incompressible flow does not have he, so we do H = Cp * alphaEff * dT/dz
+                const volScalarField& T = mesh_.thisDb().lookupObject<volScalarField>("T");
+                volScalarField alphaEff = daTurb_.alphaEff();
+                const volScalarField::Boundary& TBf = T.boundaryField();
+                const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
 
-                if (mesh_.boundaryMesh()[patchI].size() > 0)
+                label pointI = 0;
+                forAll(faceSources_, idxI)
                 {
+                    const label& functionFaceI = faceSources_[idxI];
+                    label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
+                    const label patchI = daIndex_.bFacePatchI[bFaceI];
+                    const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
                     scalarField hfx = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
 
-                    forAll(mesh_.boundaryMesh()[patchI], faceI)
-                    {
-                        scalar varDif = (hfx[faceI] - refValue_[timeIndex - 1][pointI]);
-                        objFuncValue += scale_ * varDif * varDif;
-                        pointI++;
-                    }
+                    scalar varDif = (hfx[faceI] - refValue_[timeIndex - 1][pointI]);
+                    functionValue += scale_ * varDif * varDif;
+                    pointI++;
                 }
             }
-#endif
 
-#ifdef CompressibleFlow
-            // compressible flow, H = alphaEff * dHE/dz
-            volScalarField& he = thermo_.he();
-            const volScalarField::Boundary& heBf = he.boundaryField();
-            volScalarField alphaEff = daTurb_.alphaEff();
-            const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
-
-            label pointI = 0;
-            forAll(surfaceNames_, idxI)
+            if (daTurb_.getTurbModelType() == "compressible")
             {
-                word surfaceName = surfaceNames_[idxI];
-                label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
-                if (mesh_.boundaryMesh()[patchI].size() > 0)
+                // compressible flow, H = alphaEff * dHE/dz
+                fluidThermo& thermo_(const_cast<fluidThermo&>(
+                    mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties")));
+                volScalarField& he = thermo_.he();
+                const volScalarField::Boundary& heBf = he.boundaryField();
+                volScalarField alphaEff = daTurb_.alphaEff();
+                const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+
+                label pointI = 0;
+                forAll(faceSources_, idxI)
                 {
+                    const label& functionFaceI = faceSources_[idxI];
+                    label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
+                    const label patchI = daIndex_.bFacePatchI[bFaceI];
+                    const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
                     scalarField hfx = alphaEffBf[patchI] * heBf[patchI].snGrad();
 
-                    forAll(mesh_.boundaryMesh()[patchI], faceI)
-                    {
-                        scalar varDif = (hfx[faceI] - refValue_[timeIndex - 1][pointI]);
-                        objFuncValue += scale_ * varDif * varDif;
-                        pointI++;
-                    }
+                    scalar varDif = (hfx[faceI] - refValue_[timeIndex - 1][pointI]);
+                    functionValue += scale_ * varDif * varDif;
+                    pointI++;
                 }
             }
-#endif
         }
         else
         {
@@ -502,30 +445,30 @@ void DAObjFuncVariance::calcObjFunc(
                     {
                         label cellI = probeCellIndex_[idxI];
                         scalar varDif = (var[cellI] - refValue_[timeIndex - 1][idxI]);
-                        objFuncValue += scale_ * varDif * varDif;
+                        functionValue += scale_ * varDif * varDif;
                     }
                 }
                 else if (mode_ == "surface")
                 {
                     label pointI = 0;
-                    forAll(surfaceNames_, idxI)
+                    forAll(faceSources_, idxI)
                     {
-                        word surfaceName = surfaceNames_[idxI];
-                        label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
-                        forAll(var.boundaryField()[patchI], faceI)
-                        {
-                            scalar varDif = (var.boundaryField()[patchI][faceI] - refValue_[timeIndex - 1][pointI]);
-                            objFuncValue += scale_ * varDif * varDif;
-                            pointI++;
-                        }
+                        const label& functionFaceI = faceSources_[idxI];
+                        label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
+                        const label patchI = daIndex_.bFacePatchI[bFaceI];
+                        const label faceI = daIndex_.bFaceFaceI[bFaceI];
+                        scalar varDif = (var.boundaryField()[patchI][faceI] - refValue_[timeIndex - 1][pointI]);
+                        functionValue += scale_ * varDif * varDif;
+                        pointI++;
                     }
                 }
                 else if (mode_ == "field")
                 {
-                    forAll(var, cellI)
+                    forAll(cellSources_, idxI)
                     {
+                        label cellI = cellSources_[idxI];
                         scalar varDif = (var[cellI] - refValue_[timeIndex - 1][cellI]);
-                        objFuncValue += scale_ * varDif * varDif;
+                        functionValue += scale_ * varDif * varDif;
                     }
                 }
             }
@@ -543,7 +486,7 @@ void DAObjFuncVariance::calcObjFunc(
                         {
                             label compI = components_[idxJ];
                             scalar varDif = (var[cellI][compI] - refValue_[timeIndex - 1][pointI]);
-                            objFuncValue += scale_ * varDif * varDif;
+                            functionValue += scale_ * varDif * varDif;
                             pointI++;
                         }
                     }
@@ -551,32 +494,32 @@ void DAObjFuncVariance::calcObjFunc(
                 else if (mode_ == "surface")
                 {
                     label pointI = 0;
-                    forAll(surfaceNames_, idxI)
+                    forAll(faceSources_, idxI)
                     {
-                        word surfaceName = surfaceNames_[idxI];
-                        label patchI = mesh_.boundaryMesh().findPatchID(surfaceName);
-                        forAll(var.boundaryField()[patchI], faceI)
+                        const label& functionFaceI = faceSources_[idxI];
+                        label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
+                        const label patchI = daIndex_.bFacePatchI[bFaceI];
+                        const label faceI = daIndex_.bFaceFaceI[bFaceI];
+                        forAll(components_, idxJ)
                         {
-                            forAll(components_, idxJ)
-                            {
-                                label compI = components_[idxJ];
-                                scalar varDif = (var.boundaryField()[patchI][faceI][compI] - refValue_[timeIndex - 1][pointI]);
-                                objFuncValue += scale_ * varDif * varDif;
-                                pointI++;
-                            }
+                            label compI = components_[idxJ];
+                            scalar varDif = (var.boundaryField()[patchI][faceI][compI] - refValue_[timeIndex - 1][pointI]);
+                            functionValue += scale_ * varDif * varDif;
+                            pointI++;
                         }
                     }
                 }
                 else if (mode_ == "field")
                 {
                     label pointI = 0;
-                    forAll(var, cellI)
+                    forAll(cellSources_, idxI)
                     {
+                        label cellI = cellSources_[idxI];
                         forAll(components_, idxJ)
                         {
                             label compI = components_[idxJ];
                             scalar varDif = (var[cellI][compI] - refValue_[timeIndex - 1][pointI]);
-                            objFuncValue += scale_ * varDif * varDif;
+                            functionValue += scale_ * varDif * varDif;
                             pointI++;
                         }
                     }
@@ -590,15 +533,15 @@ void DAObjFuncVariance::calcObjFunc(
             }
         }
         // need to reduce the sum of force across all processors
-        reduce(objFuncValue, sumOp<scalar>());
+        reduce(functionValue, sumOp<scalar>());
 
         if (nRefPoints_ != 0)
         {
-            objFuncValue /= nRefPoints_;
+            functionValue /= nRefPoints_;
         }
     }
 
-    return;
+    return functionValue;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

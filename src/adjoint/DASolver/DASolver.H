@@ -156,8 +156,8 @@ protected:
         const Time& runTime,
         const label printInterval) const;
 
-    /// check whether the min residual in primal satisfy the prescribed tolerance
-    label checkResidualTol(const scalar& primalMaxRes);
+    /// check whether the primal fails based on residual and regression fail flag
+    label checkPrimalFailure();
 
     /// reduce the connectivity level for Jacobian connectivity mat
     void reduceStateResConLevel(
@@ -202,6 +202,9 @@ protected:
 
     /// whether to print primal information to the screen
     label printToScreen_ = 0;
+
+    /// whether the regModel compute fails
+    label regModelFail_ = 0;
 
     /// how frequent do you want to print the primal info default is every 100 steps
     label printInterval_ = 100;
@@ -350,6 +353,16 @@ public:
         }
     }
 
+    void printElapsedTime(const Time& runTime, const label printToScreen)
+    {
+        if (printToScreen)
+        {
+            Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
+                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+                 << nl << endl;
+        }
+    }
+
     /// return the value of objective function at the given time instance and name
     scalar getTimeInstanceFunction(
         const label instanceI,
@@ -446,23 +459,23 @@ public:
     label getOutputSize(
         const word outputName,
         const word outputType);
-    
+
     /// get whether the input is distributed among processors
     label getInputDistributed(
         const word inputName,
         const word inputType);
-    
+
     /// get whether the output is distributed among processors
     label getOutputDistributed(
         const word outputName,
         const word outputType);
-    
+
     /// get whether the output is distributed among processors
     void calcOutput(
         const word outputName,
         const word outputType,
         double* output);
-    
+
     /// run the coloring solver
     void runColoring();
 
@@ -470,11 +483,9 @@ public:
     void calcJacTVecProduct(
         const word inputName,
         const word inputType,
-        const int inputSize,
         const double* input,
         const word outputName,
         const word outputType,
-        const int outputSize,
         const double* seed,
         double* product);
 
@@ -555,7 +566,7 @@ public:
     void assignStateGradient2Vec(
         Vec vecY,
         const label oldTimeLevel = 0);
-    
+
     /// set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY
     void assignStateGradient2Vec(
         double* vecY,
@@ -710,7 +721,7 @@ public:
     void setDAFunctionList();
 
     /// calculate the values of all objective functions and print them to screen
-    void calcAllFunctions(label print=0);
+    void calcAllFunctions(label print = 0);
 
     /// get the function value based on timeOp
     double getTimeOpFuncVal(const word functionName);
@@ -1047,37 +1058,25 @@ public:
     /// get the number of regression model parameters
     label getNRegressionParameters(word modelName)
     {
-#ifdef SolidDASolver
-        return 0;
-#else
         return daRegressionPtr_->nParameters(modelName);
-#endif
     }
 
     /// get the regression parameter
     scalar getRegressionParameter(word modelName, const label idxI)
     {
-#ifdef SolidDASolver
-        return 0.0;
-#else
         return daRegressionPtr_->getParameter(modelName, idxI);
-#endif
     }
 
     /// set the regression parameter
     void setRegressionParameter(word modelName, const label idxI, scalar val)
     {
-#ifndef SolidDASolver
         daRegressionPtr_->setParameter(modelName, idxI, val);
-#endif
     }
 
     /// call the compute method of the regression model
     void regressionModelCompute()
     {
-#ifndef SolidDASolver
         daRegressionPtr_->compute();
-#endif
     }
 
     /// update the primal state boundary condition based on the primalBC dict

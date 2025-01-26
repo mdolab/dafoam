@@ -48,7 +48,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initSolver()
         int solvePrimal()
         void runColoring()
-        void calcJacTVecProduct(char *, char *, int, double *, char *, char *, int, double *, double *)
+        void calcJacTVecProduct(char *, char *, double *, char *, char *, double *, double *)
         int getInputSize(char *, char *)
         int getOutputSize(char *, char *)
         void calcOutput(char *, char *, double *)
@@ -230,14 +230,15 @@ cdef class pyDASolvers:
     def calcJacTVecProduct(self,
             inputName,
             inputType,
-            inputSize,
             np.ndarray[double, ndim=1, mode="c"] inputs,
             outputName,
             outputType,
-            outputSize,
             np.ndarray[double, ndim=1, mode="c"] seeds,
             np.ndarray[double, ndim=1, mode="c"] product):
-        
+
+        inputSize = self.getInputSize(inputName, inputType)
+        outputSize = self.getOutputSize(outputName, outputType)
+
         assert len(inputs) == inputSize, "invalid input array size!"
         assert len(seeds) == outputSize, "invalid seed array size!"
         assert len(product) == inputSize, "invalid product array size!"
@@ -249,11 +250,9 @@ cdef class pyDASolvers:
         self._thisptr.calcJacTVecProduct(
             inputName.encode(),
             inputType.encode(),
-            inputSize,
             inputs_data,
             outputName.encode(),
             outputType.encode(),
-            outputSize,
             seeds_data, 
             product_data)
     

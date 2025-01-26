@@ -106,22 +106,18 @@ public:
     void calcJacTVecProduct(
         const word inputName,
         const word inputType,
-        const int inputSize,
         const double* input,
         const word outputName,
         const word outputType,
-        const int outputSize,
         const double* seed,
         double* product)
     {
         DASolverPtr_->calcJacTVecProduct(
             inputName,
             inputType,
-            inputSize,
             input,
             outputName,
             outputType,
-            outputSize,
             seed,
             product);
     }

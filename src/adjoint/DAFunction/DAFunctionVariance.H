@@ -4,14 +4,14 @@
     Version : v4
 
     Description:
-        Child class for variable volume sum
+        Child class for variance
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncVariance_H
-#define DAObjFuncVariance_H
+#ifndef DAFunctionVariance_H
+#define DAFunctionVariance_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,11 +20,11 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncVariance Declaration
+      Class DAFunctionVariance Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncVariance
-    : public DAObjFunc
+class DAFunctionVariance
+    : public DAFunction
 {
 
 protected:
@@ -46,6 +46,9 @@ protected:
     /// coordinates of the probe points
     List<List<scalar>> probePointCoords_;
 
+    /// what probe point method to use
+    word probePointMethod_;
+
     /// names of the surfaces for ref data
     List<word> surfaceNames_;
 
@@ -64,11 +67,6 @@ protected:
     /// whether the ref data is time dependent if yes we need data in all time folders otherwise get it from the 0 folder
     label timeDependentRefData_;
 
-#ifdef CompressibleFlow
-    /// thermophysical property
-    fluidThermo& thermo_;
-#endif
-
     /// DATurbulenceModel object
     DATurbulenceModel& daTurb_;
 
@@ -80,28 +78,20 @@ public:
     // Constructors
 
     //- Construct from components
-    DAObjFuncVariance(
+    DAFunctionVariance(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncVariance()
+    virtual ~DAFunctionVariance()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

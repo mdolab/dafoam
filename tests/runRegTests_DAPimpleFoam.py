@@ -37,7 +37,6 @@ daOptions = {
         "mode": "timeAccurate",
         "PCMatPrecomputeInterval": 5,
         "PCMatUpdateInterval": 1,
-        "functionTimeOperator": "average",
         "readZeroFields": True,
     },
     "function": {

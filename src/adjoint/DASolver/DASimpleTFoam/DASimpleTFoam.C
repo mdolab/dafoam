@@ -139,15 +139,15 @@ label DASimpleTFoam::solvePrimal()
         laminarTransport.correct();
         daTurbulenceModelPtr_->correct(printToScreen_, primalMaxRes_);
 
+        // calculate all functions
         this->calcAllFunctions(printToScreen_);
-
-        if (printToScreen_)
-        {
-
-            Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                 << nl << endl;
-        }
+        // calculate yPlus
+        daTurbulenceModelPtr_->printYPlus(printToScreen_);
+        // print run time 
+        this->printElapsedTime(runTime, printToScreen_);
+        // compute the regression model and print the feature
+        regModelFail_ = daRegressionPtr_->compute();
+        daRegressionPtr_->printInputInfo(printToScreen_);
 
         runTime.write();
     }
@@ -158,7 +158,7 @@ label DASimpleTFoam::solvePrimal()
     Info << "End\n"
          << endl;
 
-    return this->checkResidualTol(primalMaxRes_);
+    return this->checkPrimalFailure();
 }
 
 } // End namespace Foam

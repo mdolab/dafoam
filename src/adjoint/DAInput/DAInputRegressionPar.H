@@ -4,15 +4,16 @@
     Version : v4
 
     Description:
-        Child class for translation oscillation motion
+        Child class for regression parameters
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAMotionTranslation_H
-#define DAMotionTranslation_H
+#ifndef DAInputRegressionPar_H
+#define DAInputRegressionPar_H
 
-#include "DAMotion.H"
+#include "DAInput.H"
 #include "addToRunTimeSelectionTable.H"
+#include "DARegression.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -20,42 +21,46 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAMotionTranslation Declaration
+      Class DAInputRegressionPar Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAMotionTranslation
-    : public DAMotion
+class DAInputRegressionPar
+    : public DAInput
 {
 
 protected:
-    /// amplitude of the translation oscillation
-    scalar amplitude_;
-
-    /// frequency of the translation oscillation
-    scalar frequency_;
-
-    /// phase of the translation oscillation
-    scalar phase_;
-
-    /// direction of the translation oscillation
-    vector direction_ = vector::zero;
+    /// list of patch names for the thermal var
+    DARegression& daRegression_;
 
 public:
-    TypeName("translation");
+    TypeName("regressionPar");
     // Constructors
 
     //- Construct from components
-    DAMotionTranslation(
-        const dynamicFvMesh& mesh,
-        const DAOption& daOption);
+    DAInputRegressionPar(
+        const word inputName,
+        const word inputType,
+        fvMesh& mesh,
+        const DAOption& daOption,
+        const DAModel& daModel,
+        const DAIndex& daIndex);
 
     //- Destructor
-    virtual ~DAMotionTranslation()
+    virtual ~DAInputRegressionPar()
     {
     }
 
-    /// update the cell displacement
-    virtual void correct();
+    virtual void run(const scalarList& input);
+
+    virtual label size()
+    {
+        return daRegression_.nParameters(inputName_);
+    }
+
+    virtual label distributed()
+    {
+        return 0;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

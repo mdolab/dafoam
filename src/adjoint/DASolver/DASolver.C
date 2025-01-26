@@ -4095,11 +4095,9 @@ label DASolver::getOutputDistributed(
 void DASolver::calcJacTVecProduct(
     const word inputName,
     const word inputType,
-    const int inputSize,
     const double* input,
     const word outputName,
     const word outputType,
-    const int outputSize,
     const double* seed,
     double* product)
 {
@@ -4113,15 +4111,11 @@ void DASolver::calcJacTVecProduct(
 
         inputType: type of the input. This should be consistent with the child class type in DAInput
 
-        inputSize: size of the input array
-
         input: the actual value of the input array
 
         outputName: name of the output.
 
         outputType: type of the output. This should be consistent with the child class type in DAOutput
-
-        outputSize: size of the output array
 
         seed: the seed array
     
@@ -4151,6 +4145,9 @@ void DASolver::calcJacTVecProduct(
             daIndexPtr_(),
             daResidualPtr_(),
             daFunctionPtrList_));
+    
+    label inputSize = daInput->size();
+    label outputSize = daOutput->size();
 
     // create input and output lists
     scalarList inputList(inputSize, 0.0);
@@ -5993,22 +5990,29 @@ void DASolver::setFFD2XvSeedVec(Vec vecIn)
     VecCopy(vecIn, FFD2XvSeedVec_);
 }
 
-label DASolver::checkResidualTol(const scalar& primalMaxRes)
+label DASolver::checkPrimalFailure()
 {
     /*
     Description:
-        Check whether the min residual in primal satisfy the prescribed tolerance
-        If yes, return 0 else return 1
+        Check whether the primal solution fails. Yes: return 1. No: return 0
+        - Check whether the min residual in primal satisfy the prescribed tolerance
+        - Check whether the regression model computation fails
     */
 
     // when checking the tolerance, we relax the criteria by tolMax
 
+    if (regModelFail_ != 0)
+    {
+        Info << "Regression model computation has invalid values. Primal solution failed!" << endl;
+        return 1;
+    }
+
     scalar tolMax = daOptionPtr_->getOption<scalar>("primalMinResTolDiff");
     scalar stdTolMax = daOptionPtr_->getSubDictOption<scalar>("primalObjStdTol", "tolDiff");
-    if (primalMaxRes / primalMinResTol_ > tolMax)
+    if (primalMaxRes_ / primalMinResTol_ > tolMax)
     {
         Info << "********************************************" << endl;
-        Info << "Primal min residual " << primalMaxRes << endl
+        Info << "Primal min residual " << primalMaxRes_ << endl
              << "did not satisfy the prescribed tolerance "
              << primalMinResTol_ << endl;
         Info << "Primal solution failed!" << endl;
@@ -6317,7 +6321,8 @@ void DASolver::updateStateBoundaryConditions()
     */
 
     // if we have regression models, we also need to update them because they will update the fields
-    this->regressionModelCompute();
+    // NOTE we should have done it in DAInput, no need to call it again.
+    // this->regressionModelCompute();
 
     label nBCCalls = 1;
     if (daOptionPtr_->getOption<label>("hasIterativeBC"))

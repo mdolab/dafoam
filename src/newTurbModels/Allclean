@@ -6,6 +6,6 @@ if [ -z "$WM_PROJECT" ]; then
 fi
 
 cd compressible && wclean && cd -
-ce incompressible && wclean && cd -
+cd incompressible && wclean && cd -
 
 

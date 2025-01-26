@@ -38,8 +38,6 @@
 #include "fluidThermo.H"
 #include "turbulentFluidThermoModel.H"
 #include "pimpleControlDF.H"
-#include "DARegDbFluidThermo.H"
-#include "DARegDbTurbulenceModelCompressible.H"
 #include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
