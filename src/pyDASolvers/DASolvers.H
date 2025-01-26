@@ -214,27 +214,11 @@ public:
         DASolverPtr_->calcdRdWOldTPsiAD(oldTimeLevel, psi, dRdWOldTPsi);
     }
 
-    /// compute [dRdW]^T*Psi
-    void calcdRdWTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        Vec dRdWTPsi)
-    {
-        DASolverPtr_->calcdRdWTPsiAD(xvVec, wVec, psi, dRdWTPsi);
-    }
-
-    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
-    void updateOFField(const Vec wVec)
-    {
-        DASolverPtr_->updateOFField(wVec);
-    }
-
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the states array
-    void updateOFFieldArray(const double* states)
+    void updateOFFields(const double* states)
     {
 #if !defined(CODI_ADR) && !defined(CODI_ADF)
-        DASolverPtr_->updateOFField(states);
+        DASolverPtr_->updateOFFields(states);
 #else
         label localSize = this->getNLocalAdjointStates();
         scalar* statesArray = new scalar[localSize];
@@ -242,20 +226,20 @@ public:
         {
             statesArray[i] = states[i];
         }
-        DASolverPtr_->updateOFField(statesArray);
+        DASolverPtr_->updateOFFields(statesArray);
         delete[] statesArray;
 #endif
     }
 
     /// Assign the OpenFOAM field values to the states array
-    void getOFField(double* states)
+    void getOFFields(double* states)
     {
 #if !defined(CODI_ADR) && !defined(CODI_ADF)
-        DASolverPtr_->getOFField(states);
+        DASolverPtr_->getOFFields(states);
 #else
         label localSize = this->getNLocalAdjointStates();
         scalar* statesArray = new scalar[localSize];
-        DASolverPtr_->getOFField(statesArray);
+        DASolverPtr_->getOFFields(statesArray);
         for (label i = 0; i < localSize; i++)
         {
             states[i] = statesArray[i].value();
@@ -265,13 +249,7 @@ public:
     }
 
     /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
-    void updateOFMesh(const Vec xvVec)
-    {
-        DASolverPtr_->updateOFMesh(xvVec);
-    }
-
-    /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
-    void updateOFMeshArray(const double* volCoords)
+    void updateOFMesh(const double* volCoords)
     {
 #if !defined(CODI_ADR) && !defined(CODI_ADF)
         DASolverPtr_->updateOFMesh(volCoords);
@@ -295,34 +273,10 @@ public:
         return DASolverPtr_->getGlobalXvIndex(idxPoint, idxCoord);
     }
 
-    /// basically, we call DASolver::ofField2StateVec
-    void ofField2StateVec(Vec stateVec) const
-    {
-        DASolverPtr_->ofField2StateVec(stateVec);
-    }
-
-    /// basically, we call DASolver::stateVec2OFField
-    void stateVec2OFField(const Vec stateVec) const
-    {
-        DASolverPtr_->stateVec2OFField(stateVec);
-    }
-
     /// basically, we call DASolver::checkMesh
     label checkMesh() const
     {
         return DASolverPtr_->checkMesh();
-    }
-
-    /// Get the number of faces for the MDO coupling patches
-    label getNCouplingFaces()
-    {
-        return DASolverPtr_->getNCouplingFaces();
-    }
-
-    /// Get the number of points for the MDO coupling patches
-    label getNCouplingPoints()
-    {
-        return DASolverPtr_->getNCouplingPoints();
     }
 
     // return the number of local mesh points
@@ -369,6 +323,18 @@ public:
         return returnVal;
     }
 
+    void calcCouplingFaceCoords(
+        const double* volCoords,
+        double* surfCoords)
+    {
+#if !defined(CODI_ADR) && !defined(CODI_ADF)
+        DASolverPtr_->calcCouplingFaceCoords(volCoords, surfCoords);
+        return;
+#endif
+        FatalErrorIn("calcCouplingFaceCoords") << "should not call this func in AD mode!"
+                                               << abort(FatalError);
+    }
+
     /// return the elapsed clock time for testing speed
     double getElapsedClockTime()
     {
@@ -383,72 +349,6 @@ public:
         double returnVal = 0.0;
         assignValueCheckAD(returnVal, DASolverPtr_->getElapsedCpuTime());
         return returnVal;
-    }
-
-    void calcCouplingFaceCoords(
-        const double* volCoords,
-        double* surfCoords)
-    {
-#if !defined(CODI_ADR) && !defined(CODI_ADF)
-        DASolverPtr_->calcCouplingFaceCoords(volCoords, surfCoords);
-        return;
-#endif
-        FatalErrorIn("calcCouplingFaceCoords") << "should not call this func in AD mode!"
-                                               << abort(FatalError);
-    }
-
-    /// calc matrix-vector products for calcCouplingFaceCoords
-    void calcCouplingFaceCoordsAD(
-        const double* volCoords,
-        const double* seeds,
-        double* product)
-    {
-        DASolverPtr_->calcCouplingFaceCoordsAD(volCoords, seeds, product);
-    }
-
-    /// return the force on the FSI patches
-    void getForces(Vec fX, Vec fY, Vec fZ)
-    {
-        DASolverPtr_->getForces(fX, fY, fZ);
-    }
-
-    /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
-    void getThermal(
-        const double* volCoords,
-        const double* states,
-        double* thermal)
-    {
-#if !defined(CODI_ADR) && !defined(CODI_ADF)
-        DASolverPtr_->getThermal(volCoords, states, thermal);
-        return;
-#endif
-        FatalErrorIn("getThermal") << "should not call this func in AD mode!"
-                                   << abort(FatalError);
-    }
-
-    /// compute the temperature on the conjugate heat transfer patches AD
-    void getThermalAD(
-        const word inputName,
-        const double* volCoords,
-        const double* states,
-        const double* seeds,
-        double* product)
-    {
-        DASolverPtr_->getThermalAD(inputName, volCoords, states, seeds, product);
-    }
-
-    /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches
-    void setThermal(double* thermal)
-    {
-        label nCouplingFaces = this->getNCouplingFaces();
-        scalar* thermalArray = new scalar[nCouplingFaces * 2];
-        for (label i = 0; i < nCouplingFaces * 2; i++)
-        {
-            thermalArray[i] = thermal[i];
-        }
-
-        DASolverPtr_->setThermal(thermalArray);
-        delete[] thermalArray;
     }
 
     /// get the number of regression model parameters
@@ -469,38 +369,10 @@ public:
         scalar val1 = val;
         DASolverPtr_->setRegressionParameter(modelName, idxI, val1);
     }
-
-    /// get a variable from OF layer
-    void getOFField(
-        const word fieldName,
-        const word fieldType,
-        Vec field)
-    {
-        DASolverPtr_->getOFField(fieldName, fieldType, field);
-    }
-
-    /// return the acoustic data values
-    void getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, word groupName)
-    {
-        DASolverPtr_->getAcousticData(x, y, z, nX, nY, nZ, a, fX, fY, fZ, groupName);
-    }
-
     /// call DASolver::printAllOptions
     void printAllOptions()
     {
         DASolverPtr_->printAllOptions();
-    }
-
-    /// set values for dXvdFFDMat
-    void setdXvdFFDMat(const Mat dXvdFFDMat)
-    {
-        DASolverPtr_->setdXvdFFDMat(dXvdFFDMat);
-    }
-
-    /// set the value for DASolver::FFD2XvSeedVec_
-    void setFFD2XvSeedVec(Vec vecIn)
-    {
-        DASolverPtr_->setFFD2XvSeedVec(vecIn);
     }
 
     /// update the allOptions_ dict in DAOption based on the pyOptions from pyDAFoam
@@ -515,30 +387,6 @@ public:
         double returnVal = 0.0;
         assignValueCheckAD(returnVal, DASolverPtr_->getPrevPrimalSolTime());
         return returnVal;
-    }
-
-    /// assign the points in fvMesh of OpenFOAM based on the point vector
-    void pointVec2OFMesh(const Vec xvVec) const
-    {
-        DASolverPtr_->pointVec2OFMesh(xvVec);
-    }
-
-    /// assign the point vector based on the points in fvMesh of OpenFOAM
-    void ofMesh2PointVec(Vec xvVec) const
-    {
-        DASolverPtr_->ofMesh2PointVec(xvVec);
-    }
-
-    /// assign the OpenFOAM residual fields based on the resVec
-    void resVec2OFResField(const Vec resVec) const
-    {
-        DASolverPtr_->resVec2OFResField(resVec);
-    }
-
-    /// assign the resVec based on OpenFOAM residual fields
-    void ofResField2ResVec(Vec resVec) const
-    {
-        DASolverPtr_->resVec2OFResField(resVec);
     }
 
     /// write the matrix in binary format
@@ -589,23 +437,6 @@ public:
         DASolverPtr_->writeVectorBinary(vecIn, prefix);
     }
 
-    /// assign primal variables based on the current time instance
-    void setTimeInstanceField(const label instanceI)
-    {
-        DASolverPtr_->setTimeInstanceField(instanceI);
-    }
-
-    /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
-    void setTimeInstanceVar(
-        const word mode,
-        Mat stateMat,
-        Mat stateBCMat,
-        Vec timeVec,
-        Vec timeIdxVec)
-    {
-        DASolverPtr_->setTimeInstanceVar(mode, stateMat, stateBCMat, timeVec, timeIdxVec);
-    }
-
     /// read the state variables from the disk and assign the value to the prescribe time level
     void readStateVars(
         scalar timeVal,
@@ -652,56 +483,6 @@ public:
                                   << abort(FatalError);
     }
 
-    /// get the unsteady adjoint start time
-    int getUnsteadyFunctionStartTimeIndex()
-    {
-#if !defined(CODI_ADR) && !defined(CODI_ADF)
-        return DASolverPtr_->getUnsteadyFunctionStartTimeIndex();
-#endif
-        FatalErrorIn("getUnsteadyFunctionStartTimeIndex") << "should not call this func in AD mode!"
-                                                          << abort(FatalError);
-    }
-
-    /// get the unsteady adjoint end time
-    int getUnsteadyFunctionEndTimeIndex()
-    {
-#if !defined(CODI_ADR) && !defined(CODI_ADF)
-        return DASolverPtr_->getUnsteadyFunctionEndTimeIndex();
-#endif
-        FatalErrorIn("getUnsteadyFunctionEndTimeIndex") << "should not call this func in AD mode!"
-                                                        << abort(FatalError);
-    }
-
-    /// return the value of objective function at the given time instance and name
-    double getTimeInstanceFunction(
-        const label instanceI,
-        const word functionName)
-    {
-        double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getTimeInstanceFunction(instanceI, functionName));
-        return returnVal;
-    }
-
-    /// set the field value
-    void setFieldValue4GlobalCellI(
-        const word fieldName,
-        const scalar val,
-        const label globalCellI,
-        const label compI = 0)
-    {
-        DASolverPtr_->setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI);
-    }
-
-    /// set the field value
-    void setFieldValue4LocalCellI(
-        const word fieldName,
-        const scalar val,
-        const label localCellI,
-        const label compI = 0)
-    {
-        DASolverPtr_->setFieldValue4LocalCellI(fieldName, val, localCellI, compI);
-    }
-
     /// update the boundary condition for a field
     void updateBoundaryConditions(
         const word fieldName,
@@ -722,91 +503,16 @@ public:
         DASolverPtr_->calcPrimalResidualStatistics(mode, 0);
     }
 
-    /// get forwardADDerivVal_
-    PetscScalar getForwardADDerivVal(const word functionName)
-    {
-        return DASolverPtr_->getForwardADDerivVal(functionName);
-    }
-
-    /// calculate the residual and assign it to the resVec vector
-    void calcResidualVec(Vec resVec)
-    {
-        DASolverPtr_->calcResidualVec(resVec);
-    }
-
     void setPrimalBoundaryConditions(const label printInfo = 1)
     {
         DASolverPtr_->setPrimalBoundaryConditions(printInfo);
     }
 
-    /// calculate the fvSource based on the force profile
-    void calcFvSource(
-        const word propName,
-        Vec aForce,
-        Vec tForce,
-        Vec rDist,
-        Vec targetForce,
-        Vec center,
-        Vec xvVec,
-        Vec fvSource)
-    {
-        DASolverPtr_->calcFvSource(propName, aForce, tForce, rDist, targetForce, center, xvVec, fvSource);
-    }
-
-    void calcdFvSourcedInputsTPsiAD(
-        const word propName,
-        const word mode,
-        Vec aForce,
-        Vec tForce,
-        Vec rDist,
-        Vec targetForce,
-        Vec center,
-        Vec xvVec,
-        Vec psi,
-        Vec dFvSource)
-    {
-        DASolverPtr_->calcdFvSourcedInputsTPsiAD(propName, mode, aForce, tForce, rDist, targetForce, center, xvVec, psi, dFvSource);
-    }
-
-    void calcForceProfile(
-        const word propName,
-        Vec aForce,
-        Vec tForce,
-        Vec rDist,
-        Vec integralForce)
-    {
-        DASolverPtr_->calcForceProfile(propName, aForce, tForce, rDist, integralForce);
-    }
-
-    void calcdForceProfiledXvWAD(
-        const word propName,
-        const word inputMode,
-        const word outputMode,
-        const Vec xvVec,
-        const Vec wVec,
-        Vec psi,
-        Vec dForcedXvW)
-    {
-        DASolverPtr_->calcdForceProfiledXvWAD(propName, inputMode, outputMode, xvVec, wVec, psi, dForcedXvW);
-    }
-
-    void calcdForcedStateTPsiAD(
-        const word mode,
-        Vec xvVec,
-        Vec stateVec,
-        Vec psiVec,
-        Vec prodVec)
-    {
-        DASolverPtr_->calcdForcedStateTPsiAD(mode, xvVec, stateVec, psiVec, prodVec);
-    }
-
     label runFPAdj(
-        const Vec xvVec,
-        const Vec wVec,
         Vec dFdW,
         Vec psi)
     {
-        return DASolverPtr_->runFPAdj(xvVec, wVec, dFdW, psi);
+        return DASolverPtr_->runFPAdj(dFdW, psi);
     }
 
     /// initialize the call back function pointer

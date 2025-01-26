@@ -74,10 +74,6 @@ class DAOPTION(object):
         ## of magnitude (default) higher than this tolerance, the primal solution will return fail=True
         self.primalMinResTol = 1.0e-8
 
-        ## The convergence tolerance based on the selected objective function's standard deviation
-        ## The standard deviation is calculated based on the last N (default 200) steps of the objective function series
-        self.primalObjStdTol = {"active": False, "functionName": "None", "steps": 200, "tol": 1e-5, "tolDiff": 1e2}
-
         ## The boundary condition for primal solution. The keys should include "variable", "patch",
         ## and "value". For turbulence variable, one can also set "useWallFunction" [bool].
         ## Note that setting "primalBC" will overwrite any values defined in the "0" folder.
@@ -98,80 +94,60 @@ class DAOPTION(object):
         ##     normalizeStates = {"U": 10.0, "p": 101325.0, "phi": 1.0, "nuTilda": 1.e-4}
         self.normalizeStates = {}
 
-        ## Information on objective function. Each objective function requires a different input forma
-        ## But for all objectives, we need to give a name to the objective function, e.g., CD or any
-        ## other preferred name, and the information for each part of the objective function. Most of
-        ## the time, the objective has only one part (in this case part1), but one can also combine two
-        ## parts of objectives, e.g., we can define a new objective that is the sum of force and moment.
-        ## For each part, we need to define the type of objective (e.g., force, moment; we need to use
-        ## the reserved type names), how to select the discrete mesh faces to compute the objective
+        ## Information on objective and constraint functions. Each function requires a different input form
+        ## But for all functions, we need to give a name to the function, e.g., CD or any
+        ## other preferred name. Then, define the type of function (e.g., force, moment; we need to use
+        ## the reserved type names), how to select the discrete mesh faces to compute the function
         ## (e.g., we select them from the name of a patch patchToFace), the name of the patch (wing)
-        ## for patchToFace, the scaling factor "scale", and whether to compute adjoint for this
-        ## objective "addToAdjoint". For force objectives, we need to project the force vector to a
+        ## for patchToFace, the scaling factor "scale". For forces, we need to project the force vector to a
         ## specific direction. The following example defines that CD is the force that is parallel to flow
         ## (parallelToFlow). Alternative, we can also use fixedDirection and provide a direction key for
         ## force, i.e., "directionMode": "fixedDirection", "direction": [1.0, 0.0, 0.0]. Since we select
-        ## parallelToFlow, we need to prescribe the name of angle of attack design variable to determine
-        ## the flow direction. Here alpha will be defined in runScript.py:
-        ## DVGeo.addGeoDVGlobal("alpha", [alpha0], alpha, lower=-10.0, upper=10.0, scale=1.0).
-        ## NOTE: if no alpha is added in DVGeo.addGeoDVGlobal, we can NOT use parallelToFlow.
+        ## parallelToFlow, we need to prescribe the name of angle of patchVelocityInputName to determine
+        ## the flow direction.
+        ## NOTE: if patchVelocity not added in inputInfo, we can NOT use parallelToFlow.
         ## For this case, we have to use "directionMode": "fixedDirection".
         ## Example
         ##     "function": {
         ##         "CD": {
-        ##             "part1": {
-        ##                 "type": "force",
-        ##                 "source": "patchToFace",
-        ##                 "patches": ["wing"],
-        ##                 "directionMode": "parallelToFlow",
-        ##                 "alphaName": "alpha",
-        ##                 "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef),
-        ##                 "addToAdjoint": True,
-        ##             }
+        ##             "type": "force",
+        ##             "source": "patchToFace",
+        ##             "patches": ["wing"],
+        ##             "directionMode": "parallelToFlow",
+        ##             "patchVelocityInputName": "patchV",
+        ##             "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef),
         ##         },
         ##         "CL": {
-        ##             "part1": {
-        ##                 "type": "force",
-        ##                 "source": "patchToFace",
-        ##                 "patches": ["wing"],
-        ##                 "directionMode": "normalToFlow",
-        ##                 "alphaName": "alpha",
-        ##                 "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef),
-        ##                 "addToAdjoint": True,
-        ##             }
+        ##             "type": "force",
+        ##             "source": "patchToFace",
+        ##             "patches": ["wing"],
+        ##             "directionMode": "normalToFlow",
+        ##             "patchVelocityInputName": "patchV",
+        ##             "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef),
         ##         },
         ##         "CMZ": {
-        ##             "part1": {
-        ##                 "type": "moment",
-        ##                 "source": "patchToFace",
-        ##                 "patches": ["wing"],
-        ##                 "axis": [0.0, 0.0, 1.0],
-        ##                 "center": [0.25, 0.0, 0.05],
-        ##                 "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef * LRef),
-        ##                 "addToAdjoint": True,
-        ##             }
+        ##             "type": "moment",
+        ##             "source": "patchToFace",
+        ##             "patches": ["wing"],
+        ##             "axis": [0.0, 0.0, 1.0],
+        ##             "center": [0.25, 0.0, 0.05],
+        ##             "scale": 1.0 / (0.5 * UmagIn * UmagIn * ARef * LRef),
         ##         },
         ##         "TPR": {
-        ##             "part1": {
-        ##                 "type": "totalPressureRatio",
-        ##                 "source": "patchToFace",
-        ##                 "patches": ["inlet", "outlet"],
-        ##                 "inletPatches": ["inlet"],
-        ##                 "outletPatches": ["outlet"],
-        ##                 "scale": 1.0,
-        ##                 "addToAdjoint": True,
-        ##             }
+        ##             "type": "totalPressureRatio",
+        ##             "source": "patchToFace",
+        ##             "patches": ["inlet", "outlet"],
+        ##             "inletPatches": ["inlet"],
+        ##             "outletPatches": ["outlet"],
+        ##             "scale": 1.0,
         ##         },
         ##         "TTR": {
-        ##             "part1": {
-        ##                 "type": "totalTemperatureRatio",
-        ##                 "source": "patchToFace",
-        ##                 "patches": ["inlet", "outlet"],
-        ##                 "inletPatches": ["inlet"],
-        ##                 "outletPatches": ["outlet"],
-        ##                 "scale": 1.0,
-        ##                 "addToAdjoint": False,
-        ##             }
+        ##             "type": "totalTemperatureRatio",
+        ##             "source": "patchToFace",
+        ##             "patches": ["inlet", "outlet"],
+        ##             "inletPatches": ["inlet"],
+        ##             "outletPatches": ["outlet"],
+        ##             "scale": 1.0,
         ##         },
         ##         "MFR": {
         ##             "part1": {
@@ -182,101 +158,53 @@ class DAOPTION(object):
         ##                 "addToAdjoint": True,
         ##             }
         ##         },
-        ##        "PL": {
-        ##            "part1": {
-        ##                "type": "totalPressure",
-        ##                "source": "patchToFace",
-        ##                "patches": ["inlet"],
-        ##                "scale": 1.0 / (0.5 * U0 * U0),
-        ##                "addToAdjoint": True,
-        ##            },
-        ##            "part2": {
-        ##                "type": "totalPressure",
-        ##                "source": "patchToFace",
-        ##                "patches": ["outlet"],
-        ##                "scale": -1.0 / (0.5 * U0 * U0),
-        ##                "addToAdjoint": True,
-        ##            }
+        ##        "TP": {
+        ##            "type": "totalPressure",
+        ##            "source": "patchToFace",
+        ##            "patches": ["inlet"],
+        ##            "scale": 1.0 / (0.5 * U0 * U0),
         ##        },
         ##        "NU": {
-        ##            "part1": {
-        ##                "type": "wallHeatFlux",
-        ##                "source": "patchToFace",
-        ##                "patches": ["ubend"],
-        ##                "scale": 1.0,
-        ##                "addToAdjoint": True,
-        ##            }
+        ##            "type": "wallHeatFlux",
+        ##            "source": "patchToFace",
+        ##            "patches": ["ubend"],
+        ##            "scale": 1.0,
         ##        },
         ##        "VMS": {
-        ##            "part1": {
-        ##                "type": "vonMisesStressKS",
-        ##                "source": "boxToCell",
-        ##                "min": [-10.0, -10.0, -10.0],
-        ##                "max": [10.0, 10.0, 10.0],
-        ##                "scale": 1.0,
-        ##                "coeffKS": 2.0e-3,
-        ##                "addToAdjoint": True,
-        ##            }
+        ##            "type": "vonMisesStressKS",
+        ##            "source": "boxToCell",
+        ##            "min": [-10.0, -10.0, -10.0],
+        ##            "max": [10.0, 10.0, 10.0],
+        ##            "scale": 1.0,
+        ##            "coeffKS": 2.0e-3,
         ##        },
         ##        "M": {
-        ##            "part1": {
-        ##                "type": "mass",
-        ##                "source": "boxToCell",
-        ##                "min": [-10.0, -10.0, -10.0],
-        ##                "max": [10.0, 10.0, 10.0],
-        ##                "scale": 1.0,
-        ##                "addToAdjoint": True,
-        ##            }
+        ##            "type": "mass",
+        ##            "source": "boxToCell",
+        ##            "min": [-10.0, -10.0, -10.0],
+        ##            "max": [10.0, 10.0, 10.0],
+        ##            "scale": 1.0,
         ##        },
         ##        "THRUST": {
-        ##            "part1": {
-        ##                "type": "variableVolSum",
-        ##                "source": "boxToCell",
-        ##                "min": [-50.0, -50.0, -50.0],
-        ##                "max": [50.0, 50.0, 50.0],
-        ##                "varName": "fvSource",
-        ##                "varType": "vector",
-        ##                "component": 0,
-        ##                "isSquare": 0,
-        ##                "scale": 1.0,
-        ##                "addToAdjoint": True,
-        ##            },
-        ##        },
-        ##        "FI": {
-        ##            "part1": {
-        ##                "type": "stateErrorNorm",
-        ##                "source": "boxToCell",
-        ##                "min": [-100.0, -100.0, -100.0],
-        ##                "max": [100.0, 100.0, 100.0],
-        ##                "stateName": "U",
-        ##                "stateRefName": "UTrue",
-        ##                "stateType": "vector",
-        ##                "scale": 1.0,
-        ##                "addToAdjoint": True,
-        ##            },
-        ##            "part2": {
-        ##                "type": "stateErrorNorm",
-        ##                "source": "boxToCell",
-        ##                "min": [-100.0, -100.0, -100.0],
-        ##                "max": [100.0, 100.0, 100.0],
-        ##                "stateName": "betaSA",
-        ##                "stateRefName": "betaSATrue",
-        ##                "stateType": "scalar",
-        ##                "scale": 0.01,
-        ##                "addToAdjoint": True,
-        ##            },
+        ##            "type": "variableVolSum",
+        ##            "source": "boxToCell",
+        ##            "min": [-50.0, -50.0, -50.0],
+        ##            "max": [50.0, 50.0, 50.0],
+        ##            "varName": "fvSource",
+        ##            "varType": "vector",
+        ##            "component": 0,
+        ##            "isSquare": 0,
+        ##            "scale": 1.0,
         ##        },
         ##        "COP": {
-        ##            "part1": {
-        ##                "type": "centerOfPressure",
-        ##                "source": "patchToFace",
-        ##                "patches": ["wing"],
-        ##                "axis": [1.0, 0.0, 0.0],
-        ##                "forceAxis": [0.0, 1.0, 0.0],
-        ##                "center": [0, 0, 0],
-        ##                "scale": 1.0,
-        ##                "addToAdjoint": True,
-        ##            },
+        ##            "type": "centerOfPressure",
+        ##            "source": "patchToFace",
+        ##            "patches": ["wing"],
+        ##            "axis": [1.0, 0.0, 0.0],
+        ##            "forceAxis": [0.0, 1.0, 0.0],
+        ##            "center": [0, 0, 0],
+        ##            "scale": 1.0,
+        ##            "addToAdjoint": True,
         ##        },
         ##    },
         self.function = {}
@@ -346,9 +274,6 @@ class DAOPTION(object):
                 },
             },
         }
-
-        ## Aero-propulsive options
-        self.aeroPropulsive = {}
 
         # *********************************************************************************************
         # ****************************** Intermediate Options *****************************************
@@ -444,22 +369,10 @@ class DAOPTION(object):
         ## DAFoam, e.g., aero+thermal, we need to set it to something like "thermal"
         self.discipline = "aero"
 
-        ## Whether to perform multipoint optimization.
-        self.multiPoint = False
-
-        ## If multiPoint = True, how many primal configurations for the multipoint optimization.
-        self.nMultiPoints = 1
-
         ## The step size for finite-difference computation of partial derivatives. The default values
         ## will work for most of the case.
         self.adjPartDerivFDStep = {
             "State": 1.0e-6,
-            "FFD": 1.0e-3,
-            "BC": 1.0e-2,
-            "AOA": 1.0e-3,
-            "ACTP": 1.0e-2,
-            "ACTD": 1.0e-2,
-            "ACTL": 1.0e-2,
         }
 
         ## Which options to use to improve the adjoint equation convergence of transonic conditions
@@ -471,21 +384,12 @@ class DAOPTION(object):
         ## periodicity of flow oscillation (hybrid adjoint only)
         self.unsteadyAdjoint = {
             "mode": "None",
-            "nTimeInstances": -1,
-            "periodicity": -1.0,
-            "functionStartTime": -1.0,
-            "functionEndTime": -1.0,
-            "functionTimeOperator": "None",
             "PCMatPrecomputeInterval": 100,
             "PCMatUpdateInterval": 1,
             "reduceIO": True,
             "additionalOutput": ["None"],
             "readZeroFields": True,
         }
-
-        ## At which iteration should we start the averaging of objective functions.
-        ## This is only used for unsteady solvers
-        self.functionAvgStart = 1
 
         ## The interval of recomputing the pre-conditioner matrix dRdWTPC for solveAdjoint
         ## By default, dRdWTPC will be re-computed each time the solveAdjoint function is called
@@ -503,10 +407,6 @@ class DAOPTION(object):
         ## refer to: Kenway et al. Effective adjoint approach for computational fluid dynamics,
         ## Progress in Aerospace Science, 2019.
         self.useAD = {"mode": "reverse", "dvName": "None", "seedIndex": -9999}
-
-        ## Rigid body motion for dynamic mesh
-        ## This option will be used in DAPimpleDyMFoam to simulate dynamicMesh motion
-        self.rigidBodyMotion = {"mode": "dummy"}
 
         ## whether we have iterative BC such as totaPressure
         ## If True, we will call the correctBoundaryConditions and updateIntermediateVariables
@@ -560,23 +460,9 @@ class DAOPTION(object):
             # },
         }
 
-        ## whether to use averaged states
-        ## This is useful for cases when steady-state solvers do not converge very well, e.g., flow
-        ## separation. In these cases, the flow field and the objective function will oscillate and
-        ## to get a better flow field and obj func value, we can use step-averaged (mean) states
-        ## the start can be from 0 to 1. 0 means we use all time steps for averaging, while 1 means
-        ## we use no time steps for averaging. 0.8 means we use the last 20% of the time step for averaging.
-        ## We usually don't use 0 because the flow will need some spin up time, so using the spin-up
-        ## flow field for meanStates will be slightly inaccurate.
-        self.useMeanStates = {"active": False, "start": 0.5}
-
         # *********************************************************************************************
         # ************************************ Advance Options ****************************************
         # *********************************************************************************************
-
-        ## The run status which can be solvePrimal, solveAdjoint, or calcTotalDeriv. This parameter is
-        ## used internally, so users should never change this option in the Python layer.
-        self.runStatus = "None"
 
         ## The current objective function name. This variable will be reset in DAFoamFunctions
         ## Then, we know which objective function is used in solve_linear in DAFoamSolver
@@ -689,9 +575,6 @@ class DAOPTION(object):
         ## odering is the best choice.
         self.adjStateOrdering = "state"
 
-        ## Default name for the mesh surface family. Users typically don't need to change
-        self.meshSurfaceFamily = "None"
-
         ## The threshold for check mesh call
         self.checkMeshThreshold = {
             "maxAspectRatio": 1000.0,
@@ -725,26 +608,6 @@ class DAOPTION(object):
         ## be True for production runs. However, it is useful for debugging purpose (e.g., to find out
         ## the poor quality mesh during line search)
         self.writeMinorIterations = False
-
-        ## whether to run the primal using the first order div scheme. This can be used to generate smoother
-        ## flow field for computing the preconditioner matrix to avoid singularity. It can help the adjoint
-        ## convergence for y+ = 1 meshes. If True, we will run the primal using low order scheme when computing
-        ## or updating the PC mat. To enable this option, set "active" to True.
-        self.runLowOrderPrimal4PC = {"active": False}
-
-        ## Parameters for wing-propeller coupling optimizations. We can add multiple propellers
-        self.wingProp = {
-            "test_propeller_default": {
-                "active": False,
-                "nForceSections": 10,
-                "axis": [1.0, 0.0, 0.0],
-                "rotationCenter": [0.0, 0.0, 0.0],
-                "actEps": 0.02,
-                "rotDir": "right",
-                "interpScheme": "Poly4Gauss",
-                "bladeName": "blade",
-            },
-        }
 
         ## number of minimal primal iterations. The primal has to run this many iterations, even the primal residual
         ## has reduced below the tolerance. The default is 1: the primal has to run for at least one iteration
@@ -856,24 +719,21 @@ class PYDAFOAM(object):
         # NOTE: the treatment of aeroacoustic is different because it supports more than
         # one couplingSurfaceGroups. For other scenarios, only one couplingSurfaceGroup
         # can be defined. TODO. we need to make them consistent in the future..
-        couplingInfo = self.getOption("couplingInfo")
+        # couplingInfo = self.getOption("couplingInfo")
         self.couplingSurfacesGroup = self.designSurfacesGroup
-        if couplingInfo["aerostructural"]["active"]:
-            # we support only one aerostructural surfaceGroup for now
-            self.couplingSurfacesGroup = list(couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys())[0]
-            patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
-            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
-        elif couplingInfo["aeroacoustic"]["active"]:
-            for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
-                self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
-        elif couplingInfo["aerothermal"]["active"]:
-            # we support only one aerothermal coupling surfaceGroup for now
-            self.couplingSurfacesGroup = list(couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys())[0]
-            patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
-            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
-
-        # get the surface coordinate of allSurfacesGroup
-        self.xs0 = self.getSurfaceCoordinates(self.allSurfacesGroup)
+        # if couplingInfo["aerostructural"]["active"]:
+        #     # we support only one aerostructural surfaceGroup for now
+        #     self.couplingSurfacesGroup = list(couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys())[0]
+        #     patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
+        #     self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
+        # elif couplingInfo["aeroacoustic"]["active"]:
+        #     for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
+        #         self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
+        # elif couplingInfo["aerothermal"]["active"]:
+        #     # we support only one aerothermal coupling surfaceGroup for now
+        #     self.couplingSurfacesGroup = list(couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys())[0]
+        #     patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
+        #     self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
 
         # By Default we don't have an external mesh object or a
         # geometric manipulation object
@@ -889,9 +749,6 @@ class PYDAFOAM(object):
 
         # a KSP object which may be used outside of the pyDAFoam class
         self.ksp = None
-
-        # initialize the dRdWTPC dict for unsteady adjoint
-        self.dRdWTPCUnsteady = None
 
         if self.getOption("tensorflow")["active"]:
             TensorFlowHelper.options = self.getOption("tensorflow")
@@ -925,15 +782,6 @@ class PYDAFOAM(object):
         """
         Solve the primal
         """
-
-        # update the mesh coordinates if DVGeo is set
-        # add point set and update the mesh based on the DV values
-
-        # now call the internal design var function to update DASolver parameters
-        # self.runInternalDVFunc()
-
-        # update the primal boundary condition right before calling solvePrimal
-        # self.setPrimalBoundaryConditions()
 
         Info("Running Primal Solver %03d" % self.nSolvePrimals)
 
@@ -990,9 +838,6 @@ class PYDAFOAM(object):
             if not self.getOption("useAD")["mode"] in ["reverse"]:
                 raise Error("writeSensMap is only compatible with useAD->mode=reverse")
 
-        if self.getOption("runLowOrderPrimal4PC")["active"]:
-            self.setOption("runLowOrderPrimal4PC", {"active": True, "isPC": False})
-
         if self.getOption("adjEqnSolMethod") == "fixedPoint":
             # for the fixed-point adjoint, we should not normalize the states and residuals
             if self.comm.rank == 0:
@@ -1008,24 +853,24 @@ class PYDAFOAM(object):
             raise Error("discipline: %s not supported. Options are: aero or thermal" % self.getOption("discipline"))
 
         # check coupling Info
-        nActivated = 0
-        for coupling in self.getOption("couplingInfo"):
-            if self.getOption("couplingInfo")[coupling]["active"]:
-                nActivated += 1
-        if nActivated > 1:
-            raise Error("Only one coupling scenario can be active, while %i found" % nActivated)
+        # nActivated = 0
+        # for coupling in self.getOption("couplingInfo"):
+        #    if self.getOption("couplingInfo")[coupling]["active"]:
+        #        nActivated += 1
+        # if nActivated > 1:
+        #    raise Error("Only one coupling scenario can be active, while %i found" % nActivated)
 
-        nAerothermalSurfaces = len(self.getOption("couplingInfo")["aerothermal"]["couplingSurfaceGroups"].keys())
-        if nAerothermalSurfaces > 1:
-            raise Error(
-                "Only one couplingSurfaceGroups is supported for aerothermal, while %i found" % nAerothermalSurfaces
-            )
+        # nAerothermalSurfaces = len(self.getOption("couplingInfo")["aerothermal"]["couplingSurfaceGroups"].keys())
+        # if nAerothermalSurfaces > 1:
+        #    raise Error(
+        #        "Only one couplingSurfaceGroups is supported for aerothermal, while %i found" % nAerothermalSurfaces
+        #    )
 
-        nAeroStructSurfaces = len(self.getOption("couplingInfo")["aerostructural"]["couplingSurfaceGroups"].keys())
-        if nAeroStructSurfaces > 1:
-            raise Error(
-                "Only one couplingSurfaceGroups is supported for aerostructural, while %i found" % nAeroStructSurfaces
-            )
+        # nAeroStructSurfaces = len(self.getOption("couplingInfo")["aerostructural"]["couplingSurfaceGroups"].keys())
+        # if nAeroStructSurfaces > 1:
+        #    raise Error(
+        #        "Only one couplingSurfaceGroups is supported for aerostructural, while %i found" % nAeroStructSurfaces
+        #    )
 
         # check the patchNames from primalBC dict
         primalBCDict = self.getOption("primalBC")
@@ -1044,17 +889,16 @@ class PYDAFOAM(object):
         # check the patch names from function dict
         functionDict = self.getOption("function")
         for objKey in functionDict:
-            for part in functionDict[objKey]:
-                try:
-                    patches = functionDict[objKey][part]["patches"]
-                except Exception:
-                    continue
-                for patchName in patches:
-                    if patchName not in self.boundaries.keys():
-                        raise Error(
-                            "function-%s-%s-patches-%s is not valid. Please use a patchName from the boundaries list: %s"
-                            % (objKey, part, patchName, self.boundaries.keys())
-                        )
+            try:
+                patches = functionDict[objKey]["patches"]
+            except Exception:
+                continue
+            for patchName in patches:
+                if patchName not in self.boundaries.keys():
+                    raise Error(
+                        "function-%s-patches-%s is not valid. Please use a patchName from the boundaries list: %s"
+                        % (objKey, patchName, self.boundaries.keys())
+                    )
 
         # check other combinations...
 
@@ -1082,55 +926,6 @@ class PYDAFOAM(object):
 
         if self.getOption("writeAdjointFields"):
             self.solver.writeAdjointFields(function, writeTime, psi)
-
-    def writeTotalDeriv(self, fileName, sens, evalFuncs):
-        """
-        Write the total derivatives history to files in the json format
-        This will only write total derivative for evalFuncs
-        """
-        # Write the sens history to files
-        if self.comm.rank == 0:
-            if self.nSolveAdjoints == 2:
-                f = open(fileName, "w")
-            else:
-                f = open(fileName, "a")
-            # write design variables
-            f.write('\n"Optimization_Iteration_%03d":\n' % (self.nSolveAdjoints - 1))
-            f.write("{\n")
-            nFuncNames = len(evalFuncs)
-            funcNameCounter = 0
-            for funcName in sorted(evalFuncs):
-                f.write('    "%s": \n    {\n' % funcName)
-                nDVNames = len(sens[funcName])
-                dvNameCounter = 0
-                for dvName in sorted(sens[funcName]):
-                    f.write('        "%s": ' % dvName)
-                    try:
-                        nDVs = len(sens[funcName][dvName])
-                        f.write("[ ")
-                        for i in range(nDVs):
-                            if i < nDVs - 1:
-                                f.write("%20.15e, " % sens[funcName][dvName][i])
-                            else:
-                                f.write("%20.15e " % sens[funcName][dvName][i])
-                        f.write("]")
-                    except Exception:
-                        f.write(" %20.15e" % sens[funcName][dvName])
-                    # check whether to add a comma
-                    dvNameCounter = dvNameCounter + 1
-                    if dvNameCounter < nDVNames:
-                        f.write(",\n")
-                    else:
-                        f.write("\n")
-                f.write("    }")
-                # check whether to add a comma
-                funcNameCounter = funcNameCounter + 1
-                if funcNameCounter < nFuncNames:
-                    f.write(",\n")
-                else:
-                    f.write("\n")
-            f.write("},\n")
-            f.close()
 
     def evalFunctions(self, funcs):
         """
@@ -1547,7 +1342,8 @@ class PYDAFOAM(object):
         xDvDot[dvName][seedIndex] = 1.0
 
         # get the original surf coords
-        xSDot0 = np.zeros_like(self.xs0)
+        xs0 = self.getSurfaceCoordinates(self.allSurfacesGroup)
+        xSDot0 = np.zeros_like(xs0)
         xSDot0 = self.mapVector(xSDot0, self.allSurfacesGroup, self.designSurfacesGroup)
 
         # get xSDot
@@ -1556,750 +1352,6 @@ class PYDAFOAM(object):
         xVDot = self.mesh.warpDerivFwd(xSDot)
 
         return xVDot
-
-    def solveAdjointUnsteady(self):
-        """
-        Run adjoint solver to compute the total derivs for unsteady solvers
-
-        Input:
-        ------
-        xvVec: vector that contains all the mesh point coordinates
-
-        wVec: vector that contains all the state variables
-
-        designVariable: a dictionary that contain the design variable values
-
-        Output:
-        -------
-        self.adjTotalDeriv: the dict contains all the total derivative vectors
-
-        self.adjointFail: if the adjoint solution fails, assigns 1, otherwise 0
-        """
-
-        """
-
-        if self.getOption("useAD")["mode"] != "reverse":
-            raise Error("solveAdjointUnsteady only supports useAD->mode=reverse")
-
-        self.setOption("runStatus", "solveAdjoint")
-        self.updateDAOption()
-
-        PCMatPrecompute = self.getOption("unsteadyAdjoint")["PCMatPrecomputeInterval"]
-        PCMatUpdate = self.getOption("unsteadyAdjoint")["PCMatUpdateInterval"]
-
-        self.adjointFail = 0
-
-        # update the state to self.solver and self.solverAD
-        self.solver.updateOFField(self.wVec)
-        self.solver.updateOFMesh(self.xvVec)
-        self.solverAD.updateOFField(self.wVec)
-        self.solverAD.updateOFMesh(self.xvVec)
-
-        # NOTE: this step is critical because we need to compute the residual for
-        # self.solverAD once to get the proper oldTime level for unsteady adjoint
-        self.solverAD.updateStateBoundaryConditions()
-        self.solverAD.calcPrimalResidualStatistics("calc".encode())
-
-        # call the internal design var function to update DASolver parameters
-        self.runInternalDVFunc()
-
-        # calc the total number of time instances
-        # we assume the adjoint is for deltaT to endTime
-        # but users can also prescribed a custom time range
-        functionStartTimeIndex = self.solver.getUnsteadyFunctionStartTimeIndex()
-        functionEndTimeIndex = self.solver.getUnsteadyFunctionEndTimeIndex()
-        deltaT = self.solver.getDeltaT()
-
-        endTime = self.solver.getEndTime()
-        endTimeIndex = round(endTime / deltaT)
-
-        ddtSchemeOrder = self.solver.getDdtSchemeOrder()
-
-        # read the latest solution
-        self.solver.setTime(endTime, endTimeIndex)
-        self.solverAD.setTime(endTime, endTimeIndex)
-        # now we can read the variables
-        self.readStateVars(endTime, deltaT)
-
-        # now we can print the residual for the endTime state
-        self.solverAD.calcPrimalResidualStatistics("print".encode())
-
-        # init dRdWTMF
-        self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
-
-        # precompute the KSP preconditioner Mat and save them to the self.dRdWTPCUnsteady dict
-        if self.dRdWTPCUnsteady is None:
-
-            self.dRdWTPCUnsteady = {}
-
-            # always calculate the PC mat for the endTime
-            self.solver.setTime(endTime, endTimeIndex)
-            self.solverAD.setTime(endTime, endTimeIndex)
-            # now we can read the variables
-            self.readStateVars(endTime, deltaT)
-            # calc the preconditioner mat for endTime
-            Info("Pre-Computing preconditiner mat for t = %f" % endTime)
-            dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
-            self.solver.calcdRdWT(self.xvVec, self.wVec, 1, dRdWTPC)
-            # always update the PC mat values using OpenFOAM's fvMatrix
-            self.solver.calcPCMatWithFvMatrix(dRdWTPC)
-            self.dRdWTPCUnsteady[str(endTime)] = dRdWTPC
-
-            # if we define some extra PCMat in PCMatPrecomputeInterval, calculate them here
-            # and set them to the self.dRdWTPCUnsteady dict
-            if functionEndTimeIndex > PCMatPrecompute:
-                for timeIndex in range(functionEndTimeIndex - 1, 0, -1):
-                    if timeIndex % PCMatPrecompute == 0:
-                        t = timeIndex * deltaT
-                        Info("Pre-Computing preconditiner mat for t = %f" % t)
-                        # read the latest solution
-                        self.solver.setTime(t, timeIndex)
-                        self.solverAD.setTime(t, timeIndex)
-                        # now we can read the variables
-                        self.readStateVars(t, deltaT)
-
-                        # calc the preconditioner mat
-                        dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
-                        self.solver.calcdRdWT(self.xvVec, self.wVec, 1, dRdWTPC)
-                        # always update the PC mat values using OpenFOAM's fvMatrix
-                        self.solver.calcPCMatWithFvMatrix(dRdWTPC)
-                        self.dRdWTPCUnsteady[str(t)] = dRdWTPC
-
-        # Initialize the KSP object using the PCMat from the endTime
-        PCMat = self.dRdWTPCUnsteady[str(endTime)]
-        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-        self.solverAD.createMLRKSPMatrixFree(PCMat, ksp)
-
-        functionDict = self.getOption("function")
-        designVarDict = self.getOption("inputInfo")
-
-        # init the dFdW vec
-        wSize = self.solver.getNLocalAdjointStates()
-        dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
-        dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
-        dFdW.setFromOptions()
-        # initialize the adjoint vecs
-        dRdW0TPsi = dFdW.duplicate()
-        dRdW00TPsi = dFdW.duplicate()
-        dRdW00TPsiBuffer = dFdW.duplicate()
-
-        # we need to reset the total derivative every time we call solveAdjointUnsteady!
-        self.adjTotalDeriv = self._initializeAdjTotalDeriv()
-
-        # loop over all function, calculate dFdW, and solve the adjoint
-        self.adjointFail = 0
-        for functionName in functionDict:
-            if functionName in self.functionNames4Adj:
-                # zero the vecs
-                dRdW0TPsi.zeroEntries()
-                dRdW00TPsi.zeroEntries()
-                dRdW00TPsiBuffer.zeroEntries()
-                dFdW.zeroEntries()
-                # get the dFdW scaling factor
-                # loop over all time steps and solve the adjoint and accumulate the totals
-                for n in range(endTimeIndex, 0, -1):
-
-                    timeVal = n * deltaT
-
-                    Info("---- Solving unsteady adjoint for %s. t = %f ----" % (functionName, timeVal))
-
-                    # set the time value and index in the OpenFOAM layer. Note: this is critical
-                    # because if timeIndex < 2, OpenFOAM will not use the oldTime.oldTime for 2nd
-                    # ddtScheme and mess up the totals. Check backwardDdtScheme.C
-                    self.solver.setTime(timeVal, n)
-                    self.solverAD.setTime(timeVal, n)
-                    # now we can read the variables
-                    # read the state, state.oldTime, etc and update self.wVec for this time instance
-                    self.readStateVars(timeVal, deltaT)
-
-                    # calculate dFdW, if time index is within the unsteady objective function
-                    # index range, prescribed in unsteadyAdjointDict, we calculate dFdW
-                    # otherwise, we use dFdW=0 because the unsteady obj does not depend
-                    # on the state at this time index
-                    dFScaling = 1.0
-                    if n >= functionStartTimeIndex and n <= functionEndTimeIndex:
-                        dFScaling = self.solver.getFunctionUnsteadyScaling()
-                    else:
-                        dFScaling = 0.0
-
-                    self.solverAD.calcdFdWAD(self.xvVec, self.wVec, functionName.encode(), dFdW)
-                    dFdW.scale(dFScaling)
-
-                    # do dFdW - dRdW0TPsi - dRdW00TPsi
-                    if ddtSchemeOrder == 1:
-                        dFdW.axpy(-1.0, dRdW0TPsi)
-                    elif ddtSchemeOrder == 2:
-                        dFdW.axpy(-1.0, dRdW0TPsi)
-                        dFdW.axpy(-1.0, dRdW00TPsi)
-                        # now copy the buffer vec dRdW00TPsiBuffer to dRdW00TPsi for the next time step
-                        dRdW00TPsi = dRdW00TPsiBuffer.copy()
-                    else:
-                        raise Error("ddtSchemeOrder not valid!" % ddtSchemeOrder)
-
-                    # check if we need to update the PC Mat vals or use the pre-computed PC matrix
-                    if str(timeVal) in list(self.dRdWTPCUnsteady.keys()):
-                        Info("Using pre-computed KSP PC mat for %f" % timeVal)
-                        PCMat = self.dRdWTPCUnsteady[str(timeVal)]
-                        self.solverAD.updateKSPPCMat(PCMat, ksp)
-                    if n % PCMatUpdate == 0 and n < endTimeIndex:
-                        # udpate part of the PC mat
-                        Info("Updating dRdWTPC mat value using OF fvMatrix")
-                        self.solver.calcPCMatWithFvMatrix(PCMat)
-
-                    # now solve the adjoint eqn
-                    self.adjointFail += self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[functionName])
-
-                    # loop over all the design vars and accumulate totals
-                    for designVarName in designVarDict:
-                        Info("Computing total derivatives of %s wrt %s" % (functionName, designVarName))
-                        if designVarDict[designVarName]["designVarType"] == "BC":
-                            self.calcTotalDerivsBC(functionName, designVarName, dFScaling, True)
-                        elif designVarDict[designVarName]["designVarType"] == "AOA":
-                            self.calcTotalDerivsAOA(functionName, designVarName, dFScaling, True)
-                        elif designVarDict[designVarName]["designVarType"] == "FFD":
-                            self.calcTotalDerivsFFD(functionName, designVarName, dFScaling, True)
-                        elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
-                            designVarType = designVarDict[designVarName]["designVarType"]
-                            self.calcTotalDerivsACT(functionName, designVarName, designVarType, dFScaling, True)
-                        elif designVarDict[designVarName]["designVarType"] == "Field":
-                            fieldType = designVarDict[designVarName]["fieldType"]
-                            self.calcTotalDerivsField(functionName, designVarName, fieldType, dFScaling, True)
-                        elif designVarDict[designVarName]["designVarType"] == "RegPar":
-                            modelName = designVarDict[designVarName]["modelName"]
-                            self.calcTotalDerivsRegPar(functionName, designVarName, modelName, dFScaling, True)
-                        else:
-                            raise Error("designVarType not valid!")
-
-                    # we need to calculate dRdW0TPsi for the previous time step
-                    if ddtSchemeOrder == 1:
-                        self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[functionName], dRdW0TPsi)
-                    elif ddtSchemeOrder == 2:
-                        # do the same for the previous previous step, but we need to save it to a buffer vec
-                        # because dRdW00TPsi will be used 2 steps before
-                        self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[functionName], dRdW0TPsi)
-                        self.solverAD.calcdRdWOldTPsiAD(2, self.adjVectors[functionName], dRdW00TPsiBuffer)
-
-                    # if one adjoint solution fails, return immediate without solving for the rest of steps.
-                    if self.adjointFail > 0:
-                        break
-
-        self.nSolveAdjoints += 1
-        """
-
-    def solveAdjoint(self):
-        """
-        Run adjoint solver to compute the adjoint vector psiVec
-
-        Input:
-        ------
-        xvVec: vector that contains all the mesh point coordinates
-
-        wVec: vector that contains all the state variables
-
-        Output:
-        -------
-        self.adjTotalDeriv: the dict contains all the total derivative vectors
-
-        self.adjointFail: if the adjoint solution fails, assigns 1, otherwise 0
-        """
-
-        # save the point vector and state vector to disk
-        """
-        Info("Saving the xvVec and wVec vectors to disk....")
-        self.comm.Barrier()
-        viewerXv = PETSc.Viewer().createBinary("xvVec_%03d.bin" % self.nSolveAdjoints, mode="w", comm=PETSc.COMM_WORLD)
-        viewerXv(self.xvVec)
-        viewerW = PETSc.Viewer().createBinary("wVec_%03d.bin" % self.nSolveAdjoints, mode="w", comm=PETSc.COMM_WORLD)
-        viewerW(self.wVec)
-        """
-
-        """
-        if self.getOption("useAD")["mode"] == "forward":
-            raise Error("solveAdjoint only supports useAD->mode=reverse|fd")
-
-        if not self.getOption("writeMinorIterations"):
-            self.renameSolution(self.nSolveAdjoints)
-
-        Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
-
-        self.setOption("runStatus", "solveAdjoint")
-        self.updateDAOption()
-
-        if self.getOption("multiPoint"):
-            self.solver.updateOFField(self.wVec)
-            if self.getOption("useAD")["mode"] == "reverse":
-                self.solverAD.updateOFField(self.wVec)
-
-        # call the internal design var function to update DASolver parameters
-        self.runInternalDVFunc()
-
-        self.adjointFail = 0
-
-        # calculate dRdWT
-        if self.getOption("useAD")["mode"] == "fd":
-            dRdWT = PETSc.Mat().create(PETSc.COMM_WORLD)
-            self.solver.calcdRdWT(self.xvVec, self.wVec, 0, dRdWT)
-        elif self.getOption("useAD")["mode"] == "reverse":
-            self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
-
-        # calculate dRdWTPC. If runLowOrderPrimal4PC is true, we compute the PC mat
-        # before solving the primal, so we will skip it here
-        if not self.getOption("runLowOrderPrimal4PC")["active"]:
-            adjPCLag = self.getOption("adjPCLag")
-            if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
-                self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
-                self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
-
-        # Initialize the KSP object
-        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-        if self.getOption("useAD")["mode"] == "fd":
-            self.solver.createMLRKSP(dRdWT, self.dRdWTPC, ksp)
-        elif self.getOption("useAD")["mode"] == "reverse":
-            self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
-
-        # loop over all function, calculate dFdW, and solve the adjoint
-        functionDict = self.getOption("function")
-        wSize = self.solver.getNLocalAdjointStates()
-        for functionName in functionDict:
-            if functionName in self.functionNames4Adj:
-                dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
-                dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
-                dFdW.setFromOptions()
-                if self.getOption("useAD")["mode"] == "fd":
-                    self.solver.calcdFdW(self.xvVec, self.wVec, functionName.encode(), dFdW)
-                elif self.getOption("useAD")["mode"] == "reverse":
-                    self.solverAD.calcdFdWAD(self.xvVec, self.wVec, functionName.encode(), dFdW)
-
-                # Initialize the adjoint vector psi and solve for it
-                if self.getOption("useAD")["mode"] == "fd":
-                    self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, self.adjVectors[functionName])
-                elif self.getOption("useAD")["mode"] == "reverse":
-                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[functionName])
-
-                dFdW.destroy()
-
-        ksp.destroy()
-        if self.getOption("useAD")["mode"] == "fd":
-            dRdWT.destroy()
-        elif self.getOption("useAD")["mode"] == "reverse":
-            self.solverAD.destroydRdWTMatrixFree()
-        # we destroy dRdWTPC only when we need to recompute it next time
-        # see the bottom of this function
-
-        # ************ Now compute the total derivatives **********************
-        Info("Computing total derivatives....")
-
-        designVarDict = self.getOption("inputInfo")
-        for designVarName in designVarDict:
-            Info("Computing total derivatives for %s" % designVarName)
-            ###################### BC: boundary condition as design variable ###################
-            if designVarDict[designVarName]["designVarType"] == "BC":
-                if self.getOption("useAD")["mode"] == "fd":
-                    nDVs = 1
-                    # calculate dRdBC
-                    dRdBC = PETSc.Mat().create(PETSc.COMM_WORLD)
-                    self.solver.calcdRdBC(self.xvVec, self.wVec, designVarName.encode(), dRdBC)
-                    # loop over all objectives
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            # calculate dFdBC
-                            dFdBC = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdBC.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            dFdBC.setFromOptions()
-                            self.solver.calcdFdBC(
-                                self.xvVec, self.wVec, functionName.encode(), designVarName.encode(), dFdBC
-                            )
-                            # call the total deriv
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            totalDeriv.setFromOptions()
-                            self.calcTotalDeriv(dRdBC, dFdBC, self.adjVectors[functionName], totalDeriv)
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[functionName][designVarName][i] = totalDerivSeq[i]
-
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdBC.destroy()
-                    dRdBC.destroy()
-                elif self.getOption("useAD")["mode"] == "reverse":
-                    # loop over all objectives
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            self.calcTotalDerivsBC(functionName, designVarName)
-            ###################### AOA: angle of attack as design variable ###################
-            elif designVarDict[designVarName]["designVarType"] == "AOA":
-                if self.getOption("useAD")["mode"] == "fd":
-                    nDVs = 1
-                    # calculate dRdAOA
-                    dRdAOA = PETSc.Mat().create(PETSc.COMM_WORLD)
-                    self.solver.calcdRdAOA(self.xvVec, self.wVec, designVarName.encode(), dRdAOA)
-                    # loop over all objectives
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            # calculate dFdAOA
-                            dFdAOA = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdAOA.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            dFdAOA.setFromOptions()
-                            self.solver.calcdFdAOA(
-                                self.xvVec, self.wVec, functionName.encode(), designVarName.encode(), dFdAOA
-                            )
-                            # call the total deriv
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            totalDeriv.setFromOptions()
-                            self.calcTotalDeriv(dRdAOA, dFdAOA, self.adjVectors[functionName], totalDeriv)
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[functionName][designVarName][i] = totalDerivSeq[i]
-
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdAOA.destroy()
-                    dRdAOA.destroy()
-                elif self.getOption("useAD")["mode"] == "reverse":
-                    # loop over all objectives
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            self.calcTotalDerivsAOA(functionName, designVarName)
-            ################### FFD: FFD points as design variable ###################
-            elif designVarDict[designVarName]["designVarType"] == "FFD":
-                if self.getOption("useAD")["mode"] == "fd":
-                    nDVs = self.setdXvdFFDMat(designVarName)
-                    # calculate dRdFFD
-                    dRdFFD = PETSc.Mat().create(PETSc.COMM_WORLD)
-                    self.solver.calcdRdFFD(self.xvVec, self.wVec, designVarName.encode(), dRdFFD)
-                    # loop over all objectives
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            # calculate dFdFFD
-                            dFdFFD = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdFFD.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            dFdFFD.setFromOptions()
-                            self.solver.calcdFdFFD(
-                                self.xvVec, self.wVec, functionName.encode(), designVarName.encode(), dFdFFD
-                            )
-                            # call the total deriv
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            totalDeriv.setFromOptions()
-                            self.calcTotalDeriv(dRdFFD, dFdFFD, self.adjVectors[functionName], totalDeriv)
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[functionName][designVarName][i] = totalDerivSeq[i]
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdFFD.destroy()
-                    dRdFFD.destroy()
-                elif self.getOption("useAD")["mode"] == "reverse":
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            self.calcTotalDerivsFFD(functionName, designVarName)
-            ################### ACT: actuator models as design variable ###################
-            elif designVarDict[designVarName]["designVarType"] in ["ACTL", "ACTP", "ACTD"]:
-                if self.getOption("useAD")["mode"] == "fd":
-                    designVarType = designVarDict[designVarName]["designVarType"]
-                    nDVTable = {"ACTP": 9, "ACTD": 13, "ACTL": 11}
-                    nDVs = nDVTable[designVarType]
-                    # calculate dRdACT
-                    dRdACT = PETSc.Mat().create(PETSc.COMM_WORLD)
-                    self.solver.calcdRdACT(
-                        self.xvVec, self.wVec, designVarName.encode(), designVarType.encode(), dRdACT
-                    )
-                    # loop over all objectives
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            # calculate dFdACT
-                            dFdACT = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            dFdACT.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            dFdACT.setFromOptions()
-                            self.solver.calcdFdACT(
-                                self.xvVec,
-                                self.wVec,
-                                functionName.encode(),
-                                designVarName.encode(),
-                                designVarType.encode(),
-                                dFdACT,
-                            )
-                            # call the total deriv
-                            totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-                            totalDeriv.setSizes((PETSc.DECIDE, nDVs), bsize=1)
-                            totalDeriv.setFromOptions()
-                            self.calcTotalDeriv(dRdACT, dFdACT, self.adjVectors[functionName], totalDeriv)
-                            # assign the total derivative to self.adjTotalDeriv
-                            self.adjTotalDeriv[functionName][designVarName] = np.zeros(nDVs, self.dtype)
-                            # we need to convert the parallel vec to seq vec
-                            totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
-                            self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-                            for i in range(nDVs):
-                                self.adjTotalDeriv[functionName][designVarName][i] = totalDerivSeq[i]
-                            totalDeriv.destroy()
-                            totalDerivSeq.destroy()
-                            dFdACT.destroy()
-                    dRdACT.destroy()
-                elif self.getOption("useAD")["mode"] == "reverse":
-                    designVarType = designVarDict[designVarName]["designVarType"]
-                    # loop over all objectives
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            self.calcTotalDerivsACT(functionName, designVarName, designVarType)
-            ################### Field: field variables (e.g., alphaPorosity, betaSA) as design variable ###################
-            elif designVarDict[designVarName]["designVarType"] == "Field":
-                if self.getOption("useAD")["mode"] == "reverse":
-                    fieldType = designVarDict[designVarName]["fieldType"]
-                    # loop over all objectives
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            self.calcTotalDerivsField(functionName, designVarName, fieldType)
-                else:
-                    raise Error("For Field design variable type, we only support useAD->mode=reverse")
-            ################### RegPar: regression model's parameters ###################
-            elif designVarDict[designVarName]["designVarType"] == "RegPar":
-                if self.getOption("useAD")["mode"] == "reverse":
-                    # loop over all objectives
-                    for functionName in functionDict:
-                        if functionName in self.functionNames4Adj:
-                            modelName = designVarDict[designVarName]["modelName"]
-                            self.calcTotalDerivsRegPar(functionName, designVarName, modelName)
-                else:
-                    raise Error("For Field design variable type, we only support useAD->mode=reverse")
-            else:
-                raise Error("designVarType %s not supported!" % designVarDict[designVarName]["designVarType"])
-
-        self.nSolveAdjoints += 1
-
-        # we destroy dRdWTPC only when we need to recompute it next time
-        if (self.nSolveAdjoints - 1) % adjPCLag == 0:
-            self.dRdWTPC.destroy()
-        
-        """
-
-        return
-
-    def getForces(self, groupName=None):
-        """
-        Return the forces on this processor on the families defined by groupName.
-        Parameters
-        ----------
-        groupName : str
-            Group identifier to get only forces cooresponding to the
-            desired group. The group must be a family or a user-supplied
-            group of families. The default is None which corresponds to
-            design surfaces.
-
-        Returns
-        -------
-        forces : array (N,3)
-            Forces on this processor. Note that N may be 0, and an
-            empty array of shape (0, 3) can be returned.
-        """
-        Info("Computing surface forces")
-        # Calculate number of surface points
-        if groupName is None:
-            groupName = self.couplingSurfacesGroup
-        nPts, _ = self._getSurfaceSize(groupName)
-
-        fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        fX.setSizes((nPts, PETSc.DECIDE), bsize=1)
-        fX.setFromOptions()
-
-        fY = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        fY.setSizes((nPts, PETSc.DECIDE), bsize=1)
-        fY.setFromOptions()
-
-        fZ = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        fZ.setSizes((nPts, PETSc.DECIDE), bsize=1)
-        fZ.setFromOptions()
-
-        # Compute forces
-        self.solver.getForces(fX, fY, fZ)
-
-        # Copy data from PETSc vectors
-        forces = np.zeros((nPts, 3))
-        forces[:, 0] = np.copy(fX.getArray())
-        forces[:, 1] = np.copy(fY.getArray())
-        forces[:, 2] = np.copy(fZ.getArray())
-
-        # Cleanup PETSc vectors
-        fX.destroy()
-        fY.destroy()
-        fZ.destroy()
-
-        # Print total force
-        fXSum = np.sum(forces[:, 0])
-        fYSum = np.sum(forces[:, 1])
-        fZSum = np.sum(forces[:, 2])
-
-        fXTot = self.comm.allreduce(fXSum, op=MPI.SUM)
-        fYTot = self.comm.allreduce(fYSum, op=MPI.SUM)
-        fZTot = self.comm.allreduce(fZSum, op=MPI.SUM)
-
-        Info("Total force:")
-        Info("Fx = %e" % fXTot)
-        Info("Fy = %e" % fYTot)
-        Info("Fz = %e" % fZTot)
-
-        # Finally map the vector as required.
-        return forces
-
-    def getAcousticData(self, groupName=None):
-        """
-        Return the acoustic data on this processor.
-        Parameters
-        ----------
-        groupName : str
-            Group identifier to get only data cooresponding to the
-            desired group. The group must be a family or a user-supplied
-            group of families. The default is None which corresponds to
-            design surfaces.
-
-        Returns
-        -------
-        position : array (N,3)
-            Face positions on this processor. Note that N may be 0, and an
-            empty array of shape (0, 3) can be returned.
-        normal : array (N,3)
-            Face normals on this processor. Note that N may be 0, and an
-            empty array of shape (0, 3) can be returned.
-        area : array (N)
-            Face areas on this processor. Note that N may be 0, and an
-            empty array of shape (0) can be returned.
-        forces : array (N,3)
-            Face forces on this processor. Note that N may be 0, and an
-            empty array of shape (0, 3) can be returned.
-        """
-        Info("Computing surface acoustic data")
-        # Calculate number of surface cells
-        if groupName is None:
-            raise ValueError("Aeroacoustic grouName not set!")
-        _, nCls = self._getSurfaceSize(groupName)
-
-        x = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        x.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        x.setFromOptions()
-
-        y = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        y.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        y.setFromOptions()
-
-        z = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        z.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        z.setFromOptions()
-
-        nX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        nX.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        nX.setFromOptions()
-
-        nY = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        nY.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        nY.setFromOptions()
-
-        nZ = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        nZ.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        nZ.setFromOptions()
-
-        a = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        a.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        a.setFromOptions()
-
-        fX = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        fX.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        fX.setFromOptions()
-
-        fY = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        fY.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        fY.setFromOptions()
-
-        fZ = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        fZ.setSizes((nCls, PETSc.DECIDE), bsize=1)
-        fZ.setFromOptions()
-
-        # Compute forces
-        self.solver.getAcousticData(x, y, z, nX, nY, nZ, a, fX, fY, fZ, groupName.encode())
-
-        # Copy data from PETSc vectors
-        positions = np.zeros((nCls, 3))
-        positions[:, 0] = np.copy(x.getArray())
-        positions[:, 1] = np.copy(y.getArray())
-        positions[:, 2] = np.copy(z.getArray())
-        normals = np.zeros((nCls, 3))
-        normals[:, 0] = np.copy(nX.getArray())
-        normals[:, 1] = np.copy(nY.getArray())
-        normals[:, 2] = np.copy(nZ.getArray())
-        areas = np.zeros(nCls)
-        areas[:] = np.copy(a.getArray())
-        forces = np.zeros((nCls, 3))
-        forces[:, 0] = np.copy(fX.getArray())
-        forces[:, 1] = np.copy(fY.getArray())
-        forces[:, 2] = np.copy(fZ.getArray())
-
-        # Cleanup PETSc vectors
-        x.destroy()
-        y.destroy()
-        z.destroy()
-        nX.destroy()
-        nY.destroy()
-        nZ.destroy()
-        a.destroy()
-        fX.destroy()
-        fY.destroy()
-        fZ.destroy()
-
-        # Finally map the vector as required.
-        return positions, normals, areas, forces
-
-    def getOFField(self, fieldName, fieldType, distributed=False):
-        """
-        Get the OpenFOAM field variable in mesh.Db() and return it as a serial or parallel array
-
-        Input:
-        ------
-        fieldName: name of the OF field
-
-        fieldType: type of the OF Field, can be either scalar or vector
-
-        distributed: whether the array is distributed (parallel)
-
-        Output:
-        ------
-        field: numpy array that saves the field
-
-        """
-
-        if fieldType == "scalar":
-            fieldComp = 1
-        elif fieldType == "vector":
-            fieldComp = 3
-        else:
-            raise Error("fieldType not valid!")
-        nLocalCells = self.solver.getNLocalCells()
-
-        vecSize = fieldComp * nLocalCells
-        fieldVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
-        fieldVec.setSizes((vecSize, PETSc.DECIDE), bsize=1)
-        fieldVec.setFromOptions()
-        fieldVec.zeroEntries()
-
-        self.solver.getOFField(fieldName.encode(), fieldType.encode(), fieldVec)
-
-        if distributed:
-            field = self.vec2Array(fieldVec)
-        else:
-            field = self.convertMPIVec2SeqArray(fieldVec)
-
-        return field
 
     def _initSolver(self):
         """
@@ -2906,37 +1958,6 @@ class PYDAFOAM(object):
                 "Received data type is %-47s" % (name, self.defaultOptions[name][0], type(value))
             )
 
-    def setThermal(self, thermalArray):
-        """
-        Update the values in thermalArray to OpenFOAM's temperature boundary conditions
-
-        Parameters
-        ----------
-        thermalArray: array
-            thermal array that contains the boundary values for OpenFOAM's temperature variable
-        """
-
-        self.solver.setThermal(thermalArray)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.setThermal(thermalArray)
-
-    def setRegressionParameter(self, modelName, idx, val):
-        """
-        Update the regression parameters
-
-        Parameters
-        ----------
-        idx: int
-            the index of the parameter
-
-        val, float
-            the parameter value to set
-        """
-
-        self.solver.setRegressionParameter(modelName.encode(), idx, val)
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.setRegressionParameter(modelName.encode(), idx, val)
-
     def getNRegressionParameters(self, modelName):
         """
         Get the number of regression model parameters
@@ -3015,7 +2036,7 @@ class PYDAFOAM(object):
 
         nLocalStateSize = self.solver.getNLocalAdjointStates()
         states = np.zeros(nLocalStateSize, self.dtype)
-        self.solver.getOFField(states)
+        self.solver.getOFFields(states)
 
         return states
 
@@ -3024,18 +2045,18 @@ class PYDAFOAM(object):
         Set the state to the OpenFOAM field
         """
 
-        self.solver.updateOFFieldArray(states)
-        self.solverAD.updateOFFieldArray(states)
+        self.solver.updateOFFields(states)
+        self.solverAD.updateOFFields(states)
 
         return
-    
+
     def setVolCoords(self, vol_coords):
         """
         Set the vol_coords to the OpenFOAM field
         """
 
-        self.solver.updateOFMeshArray(vol_coords)
-        self.solverAD.updateOFMeshArray(vol_coords)
+        self.solver.updateOFMesh(vol_coords)
+        self.solverAD.updateOFMesh(vol_coords)
 
         return
 

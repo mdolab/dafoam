@@ -872,7 +872,7 @@ class DAFoamSolver(ImplicitComponent):
                         print("---------------------------------------------")
                     self.solution_counter += 1
                 # solve the adjoint equation using the fixed-point adjoint approach
-                fail = DASolver.solverAD.runFPAdj(DASolver.xvVec, DASolver.wVec, dFdW, self.psi)
+                fail = DASolver.solverAD.runFPAdj(dFdW, self.psi)
             else:
                 raise RuntimeError("adjEqnSolMethod=%s not valid! Options are: Krylov or fixedPoint" % adjEqnSolMethod)
 
@@ -2340,7 +2340,6 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         # calc the total number of time instances
         # we assume the adjoint is for deltaT to endTime
         # but users can also prescribed a custom time range
-        functionEndTimeIndex = DASolver.solver.getUnsteadyFunctionEndTimeIndex()
         deltaT = DASolver.solver.getDeltaT()
 
         endTime = DASolver.solver.getEndTime()
@@ -2384,24 +2383,22 @@ class DAFoamSolverUnsteady(ExplicitComponent):
 
             # if we define some extra PCMat in PCMatPrecomputeInterval, calculate them here
             # and set them to the self.dRdWTPC dict
-            if functionEndTimeIndex > PCMatPrecomputeInterval:
-                for timeIndex in range(functionEndTimeIndex - 1, 0, -1):
-                    if timeIndex % PCMatPrecomputeInterval == 0:
-                        t = timeIndex * deltaT
-                        if self.comm.rank == 0:
-                            print("Pre-Computing preconditiner mat for t = %f" % t)
-                        # read the latest solution
-                        DASolver.solver.setTime(t, timeIndex)
-                        DASolver.solverAD.setTime(t, timeIndex)
-                        # now we can read the variables
-                        DASolver.readStateVars(t, deltaT)
-
-                        # calc the preconditioner mat
-                        dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
-                        DASolver.solver.calcdRdWT(1, dRdWTPC1)
-                        # always update the PC mat values using OpenFOAM's fvMatrix
-                        DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
-                        self.dRdWTPC[str(t)] = dRdWTPC1
+            for timeIndex in range(endTimeIndex - 1, 0, -1):
+                if timeIndex % PCMatPrecomputeInterval == 0:
+                    t = timeIndex * deltaT
+                    if self.comm.rank == 0:
+                        print("Pre-Computing preconditiner mat for t = %f" % t)
+                    # read the latest solution
+                    DASolver.solver.setTime(t, timeIndex)
+                    DASolver.solverAD.setTime(t, timeIndex)
+                    # now we can read the variables
+                    DASolver.readStateVars(t, deltaT)
+                    # calc the preconditioner mat
+                    dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
+                    DASolver.solver.calcdRdWT(1, dRdWTPC1)
+                    # always update the PC mat values using OpenFOAM's fvMatrix
+                    DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
+                    self.dRdWTPC[str(t)] = dRdWTPC1
 
         # Initialize the KSP object using the PCMat from the endTime
         PCMat = self.dRdWTPC[str(endTime)]
