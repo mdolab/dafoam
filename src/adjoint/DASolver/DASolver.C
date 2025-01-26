@@ -1568,7 +1568,7 @@ void DASolver::calcCouplingFaceCoords(
     {
         word outputName = outputInfo.toc()[idxI];
         outputInfo.subDict(outputName).readEntry("components", components);
-        if (components.found("cht"))
+        if (components.found("thermalCoupling"))
         {
             outputInfo.subDict(outputName).readEntry("patches", patches);
             break;
