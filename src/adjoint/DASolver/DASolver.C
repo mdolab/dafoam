@@ -183,9 +183,17 @@ void DASolver::calcAllFunctions(label print)
 
     if (daFunctionPtrList_.size() == 0)
     {
-        FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
-                                          << "Forgot to call setDAFunctionList?"
-                                          << abort(FatalError);
+        // if users do not set function, we can just skip this call
+        if (daOptionPtr_->getAllOptions().subDict("function").toc().size() != 0)
+        {
+            FatalErrorIn("printAllFunctions") << "daFunctionPtrList_.size() ==0... "
+                                              << "Forgot to call setDAFunctionList?"
+                                              << abort(FatalError);
+        }
+        else
+        {
+            return;
+        }
     }
 
     label timeIndex = runTimePtr_->timeIndex();
@@ -452,7 +460,7 @@ void DASolver::calcCouplingFaceCoords(
     }
     // NOTE: always sort the patch because the order of the patch element matters in CHT coupling
     sort(patches);
-    
+
     // ******** first loop
     label counterFaceI = 0;
     forAll(patches, cI)
@@ -4145,7 +4153,7 @@ void DASolver::calcJacTVecProduct(
             daIndexPtr_(),
             daResidualPtr_(),
             daFunctionPtrList_));
-    
+
     label inputSize = daInput->size();
     label outputSize = daOutput->size();
 
