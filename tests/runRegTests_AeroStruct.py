@@ -187,7 +187,7 @@ class Top(Multipoint):
         )
 
         for discipline in ["aero"]:
-            self.connect("geometry.x_%s0" % discipline, "cruise.x_%s0_masked" % discipline)
+            self.connect("geometry.x_%s0" % discipline, "cruise.x_%s0" % discipline)
         for discipline in ["struct"]:
             self.connect("geometry.x_%s0" % discipline, "cruise.x_%s0" % discipline)
 
