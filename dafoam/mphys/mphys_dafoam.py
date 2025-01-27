@@ -1350,17 +1350,34 @@ class DAFoamForces(ExplicitComponent):
 
         self.discipline = self.DASolver.getOption("discipline")
 
-        self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-        self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.stateName = "%s_states" % self.discipline
+        self.volCoordName = "%s_vol_coords" % self.discipline
+
+        self.add_input(self.volCoordName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input(self.stateName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
         local_surface_coord_size = self.DASolver.getSurfaceCoordinates(self.DASolver.couplingSurfacesGroup).size
         self.add_output("f_aero", distributed=True, shape=local_surface_coord_size, tags=["mphys_coupling"])
 
+        # now loop over the solver input keys to determine which other variables we need to add as inputs
+        outputDict = self.DASolver.getOption("outputInfo")
+        for outputName in list(outputDict.keys()):
+            # this input is attached to the DAFoamThermal comp
+            if "forceCoupling" in outputDict[outputName]["components"]:
+                self.outputName = outputName
+                self.outputType = outputDict[outputName]["type"]
+                break
+
     def compute(self, inputs, outputs):
 
-        self.DASolver.setStates(inputs["%s_states" % self.discipline])
+        self.DASolver.setStates(inputs[self.stateName])
+        self.DASolver.setVolCoords(inputs[self.volCoordName])
 
-        outputs["f_aero"] = self.DASolver.getForces().flatten(order="C")
+        forces = np.zeros_like(outputs["f_aero"])
+
+        self.DASolver.solver.calcOutput(self.outputName, self.outputType, forces)
+
+        outputs["f_aero"] = forces
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
@@ -1376,21 +1393,35 @@ class DAFoamForces(ExplicitComponent):
             return
 
         if "f_aero" in d_outputs:
-            fBar = d_outputs["f_aero"]
-            fBarVec = DASolver.array2Vec(fBar)
+            seeds = d_outputs["f_aero"]
 
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                dForcedXv = DASolver.xvVec.duplicate()
-                dForcedXv.zeroEntries()
-                DASolver.solverAD.calcdForcedXvAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedXv)
-                xVBar = DASolver.vec2Array(dForcedXv)
-                d_inputs["%s_vol_coords" % self.discipline] += xVBar
-            if "%s_states" % self.discipline in d_inputs:
-                dForcedW = DASolver.wVec.duplicate()
-                dForcedW.zeroEntries()
-                DASolver.solverAD.calcdForcedWAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedW)
-                wBar = DASolver.vec2Array(dForcedW)
-                d_inputs["%s_states" % self.discipline] += wBar
+            if self.stateName in d_inputs:
+                jacInput = inputs[self.stateName]
+                product = np.zeros_like(jacInput)
+                DASolver.solverAD.calcJacTVecProduct(
+                    self.stateName,
+                    "stateVar",
+                    jacInput,
+                    self.outputName,
+                    "forceCouplingOutput",
+                    seeds,
+                    product,
+                )
+                d_inputs[self.stateName] += product
+
+            if self.volCoordName in d_inputs:
+                jacInput = inputs[self.volCoordName]
+                product = np.zeros_like(jacInput)
+                DASolver.solverAD.calcJacTVecProduct(
+                    self.volCoordName,
+                    "volCoord",
+                    jacInput,
+                    self.outputName,
+                    "thermalCouplingOutput",
+                    seeds,
+                    product,
+                )
+                d_inputs[self.volCoordName] += product
 
 
 class DAFoamAcoustics(ExplicitComponent):

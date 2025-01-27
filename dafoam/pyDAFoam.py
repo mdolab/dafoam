@@ -719,21 +719,21 @@ class PYDAFOAM(object):
         # NOTE: the treatment of aeroacoustic is different because it supports more than
         # one couplingSurfaceGroups. For other scenarios, only one couplingSurfaceGroup
         # can be defined. TODO. we need to make them consistent in the future..
-        # couplingInfo = self.getOption("couplingInfo")
+        couplingInfo = self.getOption("couplingInfo")
         self.couplingSurfacesGroup = self.designSurfacesGroup
-        # if couplingInfo["aerostructural"]["active"]:
-        #     # we support only one aerostructural surfaceGroup for now
-        #     self.couplingSurfacesGroup = list(couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys())[0]
-        #     patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
-        #     self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
-        # elif couplingInfo["aeroacoustic"]["active"]:
-        #     for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
-        #         self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
-        # elif couplingInfo["aerothermal"]["active"]:
-        #     # we support only one aerothermal coupling surfaceGroup for now
-        #     self.couplingSurfacesGroup = list(couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys())[0]
-        #     patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
-        #     self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
+        if couplingInfo["aerostructural"]["active"]:
+            # we support only one aerostructural surfaceGroup for now
+            self.couplingSurfacesGroup = list(couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys())[0]
+            patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
+            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
+        elif couplingInfo["aeroacoustic"]["active"]:
+            for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
+                self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
+        elif couplingInfo["aerothermal"]["active"]:
+            # we support only one aerothermal coupling surfaceGroup for now
+            self.couplingSurfacesGroup = list(couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys())[0]
+            patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
+            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
 
         # By Default we don't have an external mesh object or a
         # geometric manipulation object
