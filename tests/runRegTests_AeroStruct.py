@@ -58,7 +58,7 @@ daOptions = {
             "propMovement": False,
         },
     },
-    "primalMinResTol": 1.0e-8,
+    "primalMinResTol": 1.0e-10,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
@@ -175,8 +175,8 @@ class Top(Multipoint):
         self.add_subsystem("geometry", OM_DVGEOCOMP(file="./FFD/parentFFD.xyz", type="ffd"))
 
         # add the coupling solvers
-        nonlinear_solver = om.NonlinearBlockGS(maxiter=25, iprint=2, use_aitken=True, rtol=1e-8, atol=1e-8)
-        linear_solver = om.LinearBlockGS(maxiter=25, iprint=2, use_aitken=True, rtol=1e-6, atol=1e-6)
+        nonlinear_solver = om.NonlinearBlockGS(maxiter=25, iprint=2, use_aitken=True, rtol=1e-10, atol=1e-7)
+        linear_solver = om.LinearBlockGS(maxiter=25, iprint=2, use_aitken=True, rtol=1e-8, atol=1e-12)
         self.mphys_add_scenario(
             "cruise",
             ScenarioAeroStructural(
