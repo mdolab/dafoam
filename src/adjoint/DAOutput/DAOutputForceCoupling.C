@@ -52,6 +52,8 @@ DAOutputForceCoupling::DAOutputForceCoupling(
         label patchIPoints = boundaryMesh.findPatchID(patchName);
         size_ += boundaryMesh[patchIPoints].size();
     }
+    // we have x, y, z coords for each point
+    size_ *= 3;
 }
 
 void DAOutputForceCoupling::run(scalarList& output)
@@ -61,9 +63,9 @@ void DAOutputForceCoupling::run(scalarList& output)
         Assign output based on OF fields
     */
 
-    scalarList fX(size_);
-    scalarList fY(size_);
-    scalarList fZ(size_);
+    scalarList fX(size_ / 3);
+    scalarList fY(size_ / 3);
+    scalarList fZ(size_ / 3);
 
     // Initialize surface field for face-centered forces
     volVectorField volumeForceField(
@@ -76,7 +78,7 @@ void DAOutputForceCoupling::run(scalarList& output)
         mesh_,
         dimensionedVector("surfaceForce", dimensionSet(1, 1, -2, 0, 0, 0, 0), vector::zero),
         "fixedValue");
-    
+
     // this code is pulled from:
     // src/functionObjects/forces/forces.C
     // modified slightly

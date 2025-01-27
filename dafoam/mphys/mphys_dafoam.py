@@ -1379,6 +1379,21 @@ class DAFoamForces(ExplicitComponent):
 
         outputs["f_aero"] = forces
 
+        # print out the total forces. They shoud be consistent with the primal's print out
+        forcesV = forces.reshape((-1, 3))
+        fXSum = np.sum(forcesV[:, 0])
+        fYSum = np.sum(forcesV[:, 1])
+        fZSum = np.sum(forcesV[:, 2])
+        fXTot = self.comm.allreduce(fXSum, op=MPI.SUM)
+        fYTot = self.comm.allreduce(fYSum, op=MPI.SUM)
+        fZTot = self.comm.allreduce(fZSum, op=MPI.SUM)
+
+        if self.comm.rank == 0:
+            print("Total force:")
+            print("Fx = %f" % fXTot)
+            print("Fy = %f" % fYTot)
+            print("Fz = %f" % fZTot)
+
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
         DASolver = self.DASolver
@@ -1417,7 +1432,7 @@ class DAFoamForces(ExplicitComponent):
                     "volCoord",
                     jacInput,
                     self.outputName,
-                    "thermalCouplingOutput",
+                    "forceCouplingOutput",
                     seeds,
                     product,
                 )
