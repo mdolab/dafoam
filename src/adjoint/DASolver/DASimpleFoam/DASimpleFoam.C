@@ -159,8 +159,6 @@ label DASimpleFoam::solvePrimal()
 // ************ the following are functions for consistent fixed-point adjoint
 
 label DASimpleFoam::runFPAdj(
-    const Vec xvVec,
-    const Vec wVec,
     Vec dFdW,
     Vec psi)
 {
@@ -184,10 +182,6 @@ label DASimpleFoam::runFPAdj(
 
     // Here we keep the values of the previous step psi
     //VecZeroEntries(psi);
-
-    // update the state and mesh
-    this->updateOFField(wVec);
-    this->updateOFMesh(xvVec);
 
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
 
