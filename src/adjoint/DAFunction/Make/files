@@ -4,5 +4,6 @@ DAFunctionMoment.C
 DAFunctionWallHeatFlux.C
 DAFunctionTotalPressure.C
 DAFunctionVariance.C
+DAFunctionMassFlowRate.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFunction$(WM_CODI_AD_LIB_POSTFIX)

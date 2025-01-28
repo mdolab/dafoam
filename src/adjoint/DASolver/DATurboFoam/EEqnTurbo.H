@@ -19,10 +19,10 @@
     // and final residuals
     SolverPerformance<scalar> solverE = EEqn.solve();
 
-    DAUtility::primalResidualControl(solverE, printToScreen, "he");
+    DAUtility::primalResidualControl(solverE, printToScreen_, "he", primalMaxRes_);
 
     // bound he
-    DAUtility::boundVar(allOptions, he, printToScreen);
+    DAUtility::boundVar(allOptions, he, printToScreen_);
 
     thermo.correct();
 }

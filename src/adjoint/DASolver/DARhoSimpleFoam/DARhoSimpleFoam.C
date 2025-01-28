@@ -141,11 +141,11 @@ label DARhoSimpleFoam::solvePrimal()
         this->calcAllFunctions(printToScreen_);
         // calculate yPlus
         daTurbulenceModelPtr_->printYPlus(printToScreen_);
-        // print run time 
-        this->printElapsedTime(runTime, printToScreen_);
         // compute the regression model and print the feature
         regModelFail_ = daRegressionPtr_->compute();
         daRegressionPtr_->printInputInfo(printToScreen_);
+        // print run time 
+        this->printElapsedTime(runTime, printToScreen_);
 
         runTime.write();
     }

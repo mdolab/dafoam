@@ -98,12 +98,8 @@ label DAHeatTransferFoam::solvePrimal()
 
         this->calcAllFunctions(printToScreen_);
 
-        if (printToScreen_)
-        {
-            Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                 << nl << endl;
-        }
+        // print run time 
+        this->printElapsedTime(runTime, printToScreen_);
 
         runTime.write();
     }

@@ -8,10 +8,10 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncMassFlowRate_H
-#define DAObjFuncMassFlowRate_H
+#ifndef DAFunctionMassFlowRate_H
+#define DAFunctionMassFlowRate_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,51 +20,36 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncMassFlowRate Declaration
+      Class DAFunctionMassFlowRate Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncMassFlowRate
-    : public DAObjFunc
+class DAFunctionMassFlowRate
+    : public DAFunction
 {
 
 protected:
-
     /// DATurbulenceModel object
     DATurbulenceModel& daTurb_;
-
-    /// density 
-    volScalarField rho_;
-    
-    /// the area of all inlet patches
-    scalar areaSum_ = -9999.0;
 
 public:
     TypeName("massFlowRate");
     // Constructors
 
     //- Construct from components
-    DAObjFuncMassFlowRate(
+    DAFunctionMassFlowRate(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncMassFlowRate()
+    virtual ~DAFunctionMassFlowRate()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
