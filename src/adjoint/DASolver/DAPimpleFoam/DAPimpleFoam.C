@@ -151,6 +151,7 @@ label DAPimpleFoam::solvePrimal()
         if (printToScreen_)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
+#include "CourantNo.H"
         }
 
         // --- Pressure-velocity PIMPLE corrector loop
@@ -193,15 +194,6 @@ label DAPimpleFoam::solvePrimal()
 
         this->calcAllFunctions(printToScreen_);
         daRegressionPtr_->printInputInfo(printToScreen_);
-
-        if (printToScreen_)
-        {
-#include "CourantNo.H"
-            if (daOptionPtr_->getOption<label>("debug"))
-            {
-                this->calcPrimalResidualStatistics("print");
-            }
-        }
         daTurbulenceModelPtr_->printYPlus(printToScreen_);
         this->printElapsedTime(runTime, printToScreen_);
 

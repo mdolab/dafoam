@@ -2,8 +2,10 @@ DAStateInfo.C
 DAStateInfoSimpleFoam.C
 DAStateInfoSimpleTFoam.C
 DAStateInfoPimpleFoam.C
+DAStateInfoRhoPimpleFoam.C
 DAStateInfoRhoSimpleFoam.C
 DAStateInfoRhoSimpleCFoam.C
 DAStateInfoHeatTransferFoam.C
+DAStateInfoSolidDisplacementFoam.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAStateInfo$(WM_CODI_AD_LIB_POSTFIX)

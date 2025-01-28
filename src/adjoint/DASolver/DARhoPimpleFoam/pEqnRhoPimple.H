@@ -1,5 +1,5 @@
 rho = thermo.rho();
-DAUtility::boundVar(allOptions, rho, printToScreen);
+DAUtility::boundVar(allOptions, rho, pimplePrintToScreen);
 rho.relax();
 
 volScalarField rAU(1.0 / UEqn.A());
@@ -41,7 +41,7 @@ while (pimple.correctNonOrthogonal())
     // and final residuals
     SolverPerformance<scalar> solverP = pEqn.solve(mesh.solver(p.select(pimple.finalInnerIter())));
 
-    DAUtility::primalResidualControl(solverP, pimplePrintToScreen, "p");
+    DAUtility::primalResidualControl(solverP, pimplePrintToScreen, "p", primalMaxRes_);
 
     if (pimple.finalNonOrthogonalIter())
     {
@@ -60,15 +60,15 @@ if (pimplePrintToScreen)
 p.relax();
 
 // bound p
-DAUtility::boundVar(allOptions, p, printToScreen);
+DAUtility::boundVar(allOptions, p, pimplePrintToScreen);
 
 rho = thermo.rho();
-DAUtility::boundVar(allOptions, rho, printToScreen);
+DAUtility::boundVar(allOptions, rho, pimplePrintToScreen);
 rho.relax();
 
 U = HbyA - rAU * fvc::grad(p);
 // bound U
-DAUtility::boundVar(allOptions, U, printToScreen);
+DAUtility::boundVar(allOptions, U, pimplePrintToScreen);
 U.correctBoundaryConditions();
 
 K = 0.5 * magSqr(U);

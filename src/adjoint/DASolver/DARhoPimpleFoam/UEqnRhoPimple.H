@@ -18,9 +18,9 @@ UEqn.relax();
 // and final residuals
 SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
-DAUtility::primalResidualControl(solverU, pimplePrintToScreen, "U");
+DAUtility::primalResidualControl(solverU, pimplePrintToScreen, "U", primalMaxRes_);
 
 // bound U
-DAUtility::boundVar(allOptions, U, printToScreen);
+DAUtility::boundVar(allOptions, U, pimplePrintToScreen);
 
 K = 0.5 * magSqr(U);
