@@ -246,7 +246,6 @@ results = prob.check_totals(
     form="central",
     step_calc="abs",
 )
-print(results)
 
 if gcomm.rank == 0:
     funcDict = {}

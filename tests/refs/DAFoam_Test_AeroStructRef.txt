@@ -1,0 +1,21 @@
+Dictionary Key: CD
+@value         0.0334577366481270 1e-10 1e-12
+Dictionary Key: CL
+@value         0.2439576760769672 1e-10 1e-12
+Dictionary Key: VM
+@value         0.4059018465506266 1e-10 1e-12
+Dictionary Key: CD
+Dictionary Key: shape-Adjoint
+@value         0.0005528433889994 1e-08 1e-12
+Dictionary Key: shape-FD
+@value         0.0005528434004489 1e-08 1e-12
+Dictionary Key: CL
+Dictionary Key: shape-Adjoint
+@value         0.0108994104305105 1e-08 1e-12
+Dictionary Key: shape-FD
+@value         0.0108994104365649 1e-08 1e-12
+Dictionary Key: VM
+Dictionary Key: shape-Adjoint
+@value         0.0142494237805676 1e-08 1e-12
+Dictionary Key: shape-FD
+@value         0.0142494237063602 1e-08 1e-12
