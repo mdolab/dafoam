@@ -8,10 +8,10 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncMeshQualityKS_H
-#define DAObjFuncMeshQualityKS_H
+#ifndef DAFunctionMeshQualityKS_H
+#define DAFunctionMeshQualityKS_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "polyMeshTools.H"
 #include "addToRunTimeSelectionTable.H"
 
@@ -21,11 +21,11 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncMeshQualityKS Declaration
+      Class DAFunctionMeshQualityKS Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncMeshQualityKS
-    : public DAObjFunc
+class DAFunctionMeshQualityKS
+    : public DAFunction
 {
 
 protected:
@@ -48,28 +48,20 @@ public:
     // Constructors
 
     //- Construct from components
-    DAObjFuncMeshQualityKS(
+    DAFunctionMeshQualityKS(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncMeshQualityKS()
+    virtual ~DAFunctionMeshQualityKS()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

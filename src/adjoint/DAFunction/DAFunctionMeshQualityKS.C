@@ -5,51 +5,39 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAObjFuncMeshQualityKS.H"
+#include "DAFunctionMeshQualityKS.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAObjFuncMeshQualityKS, 0);
-addToRunTimeSelectionTable(DAObjFunc, DAObjFuncMeshQualityKS, dictionary);
+defineTypeNameAndDebug(DAFunctionMeshQualityKS, 0);
+addToRunTimeSelectionTable(DAFunction, DAFunctionMeshQualityKS, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAObjFuncMeshQualityKS::DAObjFuncMeshQualityKS(
+DAFunctionMeshQualityKS::DAFunctionMeshQualityKS(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const DAResidual& daResidual,
-    const word objFuncName,
-    const word objFuncPart,
-    const dictionary& objFuncDict)
-    : DAObjFunc(
+    const word functionName)
+    : DAFunction(
         mesh,
         daOption,
         daModel,
         daIndex,
-        daResidual,
-        objFuncName,
-        objFuncPart,
-        objFuncDict)
+        functionName)
 {
-    // Assign type, this is common for all objectives
-    objFuncDict_.readEntry<word>("type", objFuncType_);
 
-    objFuncConInfo_ = {};
+    functionDict_.readEntry<scalar>("coeffKS", coeffKS_);
 
-    objFuncDict_.readEntry<scalar>("scale", scale_);
-
-    objFuncDict_.readEntry<scalar>("coeffKS", coeffKS_);
-
-    objFuncDict_.readEntry<word>("metric", metric_);
+    functionDict_.readEntry<word>("metric", metric_);
 
     // the polyMeshTools funcs are not fully AD in parallel, so the mesh quality
     // computed at the processor faces will not be properly back-propagate in AD
     // we can ignore the mesh quality at proc patches if includeProcPatches = False (default)
-    includeProcPatches_ = objFuncDict_.lookupOrDefault<label>("includeProcPatches", 0);
+    includeProcPatches_ = functionDict_.lookupOrDefault<label>("includeProcPatches", 0);
     includeFaceList_.setSize(mesh_.nFaces(), 1);
     if (!includeProcPatches_)
     {
@@ -80,36 +68,17 @@ DAObjFuncMeshQualityKS::DAObjFuncMeshQualityKS(
 }
 
 /// calculate the value of objective function
-void DAObjFuncMeshQualityKS::calcObjFunc(
-    const labelList& objFuncFaceSources,
-    const labelList& objFuncCellSources,
-    scalarList& objFuncFaceValues,
-    scalarList& objFuncCellValues,
-    scalar& objFuncValue)
+scalar DAFunctionMeshQualityKS::calcFunction()
 {
     /*
     Description:
         Calculate the mesh quality and aggregate with the KS function
-        e.g., if metric is the faceSkewness, the objFunc value will be the
+        e.g., if metric is the faceSkewness, the function value will be the
         approximated max skewness
-
-    Input:
-        objFuncFaceSources: List of face source (index) for this objective
-    
-        objFuncCellSources: List of cell source (index) for this objective
-
-    Output:
-        objFuncFaceValues: the discrete value of objective for each face source (index). 
-        This  will be used for computing df/dw in the adjoint.
-    
-        objFuncCellValues: the discrete value of objective on each cell source (index). 
-        This will be used for computing df/dw in the adjoint.
-    
-        objFuncValue: the sum of objective, reduced across all processors and scaled by "scale"
     */
 
     // initialize objFunValue
-    objFuncValue = 0.0;
+    scalar functionValue = 0.0;
 
     if (metric_ == "faceOrthogonality")
     {
@@ -125,10 +94,10 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
         {
             if (includeFaceList_[faceI] == 1)
             {
-                objFuncValue += exp(coeffKS_ * faceOrthogonality[faceI]);
+                functionValue += exp(coeffKS_ * faceOrthogonality[faceI]);
             }
 
-            if (objFuncValue > 1e200)
+            if (functionValue > 1e200)
             {
                 FatalErrorIn(" ") << "KS function summation term too large! "
                                   << "Reduce coeffKS! " << abort(FatalError);
@@ -172,10 +141,10 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
         {
             if (includeFaceList_[faceI] == 1)
             {
-                objFuncValue += exp(coeffKS_ * nonOrthoAngle[faceI]);
+                functionValue += exp(coeffKS_ * nonOrthoAngle[faceI]);
             }
 
-            if (objFuncValue > 1e200)
+            if (functionValue > 1e200)
             {
                 FatalErrorIn(" ") << "KS function summation term too large! "
                                   << "Reduce coeffKS! " << abort(FatalError);
@@ -197,10 +166,10 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
         {
             if (includeFaceList_[faceI] == 1)
             {
-                objFuncValue += exp(coeffKS_ * faceSkewness[faceI]);
+                functionValue += exp(coeffKS_ * faceSkewness[faceI]);
             }
 
-            if (objFuncValue > 1e200)
+            if (functionValue > 1e200)
             {
                 FatalErrorIn(" ") << "KS function summation term too large! "
                                   << "Reduce coeffKS! " << abort(FatalError);
@@ -215,14 +184,14 @@ void DAObjFuncMeshQualityKS::calcObjFunc(
     }
 
     // need to reduce the sum of force across all processors
-    reduce(objFuncValue, sumOp<scalar>());
+    reduce(functionValue, sumOp<scalar>());
 
-    objFuncValue = log(objFuncValue) / coeffKS_;
+    functionValue = log(functionValue) / coeffKS_;
 
     // check if we need to calculate refDiff.
-    this->calcRefVar(objFuncValue);
+    this->calcRefVar(functionValue);
 
-    return;
+    return functionValue;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

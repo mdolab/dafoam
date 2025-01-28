@@ -168,9 +168,6 @@ public:
         return cellSources_;
     }
 
-    /// whether to compute reference coefficients for special function treatment such as totalPressureRatio
-    label calcRefCoeffs = 1;
-
     /// calculate (var-ref)^2
     void calcRefVar(scalar& functionValue);
 };

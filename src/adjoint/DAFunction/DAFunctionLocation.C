@@ -5,67 +5,54 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAObjFuncLocation.H"
+#include "DAFunctionLocation.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAObjFuncLocation, 0);
-addToRunTimeSelectionTable(DAObjFunc, DAObjFuncLocation, dictionary);
+defineTypeNameAndDebug(DAFunctionLocation, 0);
+addToRunTimeSelectionTable(DAFunction, DAFunctionLocation, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAObjFuncLocation::DAObjFuncLocation(
+DAFunctionLocation::DAFunctionLocation(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const DAResidual& daResidual,
-    const word objFuncName,
-    const word objFuncPart,
-    const dictionary& objFuncDict)
-    : DAObjFunc(
+    const word functionName)
+    : DAFunction(
         mesh,
         daOption,
         daModel,
         daIndex,
-        daResidual,
-        objFuncName,
-        objFuncPart,
-        objFuncDict)
+        functionName)
 {
-    // Assign type, this is common for all objectives
-    objFuncDict_.readEntry<word>("type", objFuncType_);
 
-    // setup the connectivity for Location.
-    objFuncConInfo_ = {};
+    functionDict_.readEntry<word>("mode", mode_);
 
-    objFuncDict_.readEntry<scalar>("scale", scale_);
-
-    objFuncDict_.readEntry<word>("mode", mode_);
-
-    if (objFuncDict_.found("coeffKS"))
+    if (functionDict_.found("coeffKS"))
     {
-        objFuncDict_.readEntry<scalar>("coeffKS", coeffKS_);
+        functionDict_.readEntry<scalar>("coeffKS", coeffKS_);
     }
 
-    if (objFuncDict_.found("axis"))
+    if (functionDict_.found("axis"))
     {
         scalarList axisRead;
-        objFuncDict_.readEntry<scalarList>("axis", axisRead);
+        functionDict_.readEntry<scalarList>("axis", axisRead);
         axis_ = {axisRead[0], axisRead[1], axisRead[2]};
         axis_ /= mag(axis_);
     }
 
-    if (objFuncDict_.found("center"))
+    if (functionDict_.found("center"))
     {
         scalarList centerRead;
-        objFuncDict_.readEntry<scalarList>("center", centerRead);
+        functionDict_.readEntry<scalarList>("center", centerRead);
         center_ = {centerRead[0], centerRead[1], centerRead[2]};
     }
 
-    snapCenter2Cell_ = objFuncDict_.lookupOrDefault<label>("snapCenter2Cell", 0);
+    snapCenter2Cell_ = functionDict_.lookupOrDefault<label>("snapCenter2Cell", 0);
     if (snapCenter2Cell_)
     {
         point centerPoint = {center_[0], center_[1], center_[2]};
@@ -101,10 +88,10 @@ DAObjFuncLocation::DAObjFuncLocation(
         // otherwise, we should use maxRadiusKS instead
         scalar maxR = -100000;
         label maxRPatchI = -999, maxRFaceI = -999;
-        forAll(objFuncFaceSources_, idxI)
+        forAll(faceSources_, idxI)
         {
-            const label& objFuncFaceI = objFuncFaceSources_[idxI];
-            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+            const label& functionFaceI = faceSources_[idxI];
+            label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
             const label patchI = daIndex_.bFacePatchI[bFaceI];
             const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
@@ -139,7 +126,7 @@ DAObjFuncLocation::DAObjFuncLocation(
     }
 }
 
-void DAObjFuncLocation::findGlobalSnappedCenter(
+void DAFunctionLocation::findGlobalSnappedCenter(
     label snappedCenterCellI,
     vector& center)
 {
@@ -163,39 +150,15 @@ void DAObjFuncLocation::findGlobalSnappedCenter(
 }
 
 /// calculate the value of objective function
-void DAObjFuncLocation::calcObjFunc(
-    const labelList& objFuncFaceSources,
-    const labelList& objFuncCellSources,
-    scalarList& objFuncFaceValues,
-    scalarList& objFuncCellValues,
-    scalar& objFuncValue)
+scalar DAFunctionLocation::calcFunction()
 {
     /*
     Description:
-        Calculate the Location of a selected patch. 
-
-    Input:
-        objFuncFaceSources: List of face source (index) for this objective
-    
-        objFuncCellSources: List of cell source (index) for this objective
-
-    Output:
-        objFuncFaceValues: the discrete value of objective for each face source (index). 
-        This  will be used for computing df/dw in the adjoint.
-    
-        objFuncCellValues: the discrete value of objective on each cell source (index). 
-        This will be used for computing df/dw in the adjoint.
-    
-        objFuncValue: the sum of objective, reduced across all processors and scaled by "scale"
+        Calculate the Location of a selected patch. The actual computation depends on the mode
     */
 
-    // initialize faceValues to zero
-    forAll(objFuncFaceValues, idxI)
-    {
-        objFuncFaceValues[idxI] = 0.0;
-    }
     // initialize objFunValue
-    objFuncValue = 0.0;
+    scalar functionValue = 0.0;
 
     if (mode_ == "maxRadiusKS")
     {
@@ -208,10 +171,10 @@ void DAObjFuncLocation::calcObjFunc(
             this->findGlobalSnappedCenter(snappedCenterCellI_, center);
         }
 
-        forAll(objFuncFaceSources, idxI)
+        forAll(faceSources_, idxI)
         {
-            const label& objFuncFaceI = objFuncFaceSources[idxI];
-            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+            const label& functionFaceI = faceSources_[idxI];
+            label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
             const label patchI = daIndex_.bFacePatchI[bFaceI];
             const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
@@ -227,9 +190,7 @@ void DAObjFuncLocation::calcObjFunc(
 
             scalar radius = mag(faceCRadial);
 
-            objFuncFaceValues[idxI] = exp(coeffKS_ * radius);
-
-            objValTmp += objFuncFaceValues[idxI];
+            objValTmp += exp(coeffKS_ * radius);
 
             if (objValTmp > 1e200)
             {
@@ -241,7 +202,7 @@ void DAObjFuncLocation::calcObjFunc(
         // need to reduce the sum of force across all processors
         reduce(objValTmp, sumOp<scalar>());
 
-        objFuncValue = log(objValTmp) / coeffKS_;
+        functionValue = log(objValTmp) / coeffKS_;
     }
     else if (mode_ == "maxInverseRadiusKS")
     {
@@ -256,10 +217,10 @@ void DAObjFuncLocation::calcObjFunc(
             this->findGlobalSnappedCenter(snappedCenterCellI_, center);
         }
 
-        forAll(objFuncFaceSources, idxI)
+        forAll(faceSources_, idxI)
         {
-            const label& objFuncFaceI = objFuncFaceSources[idxI];
-            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
+            const label& functionFaceI = faceSources_[idxI];
+            label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
             const label patchI = daIndex_.bFacePatchI[bFaceI];
             const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
@@ -276,9 +237,7 @@ void DAObjFuncLocation::calcObjFunc(
             scalar radius = mag(faceCRadial);
             scalar iRadius = 1.0 / (radius + 1e-12);
 
-            objFuncFaceValues[idxI] = exp(coeffKS_ * iRadius);
-
-            objValTmp += objFuncFaceValues[idxI];
+            objValTmp +=  exp(coeffKS_ * iRadius);
 
             if (objValTmp > 1e200)
             {
@@ -290,7 +249,7 @@ void DAObjFuncLocation::calcObjFunc(
         // need to reduce the sum of force across all processors
         reduce(objValTmp, sumOp<scalar>());
 
-        objFuncValue = log(objValTmp) / coeffKS_;
+        functionValue = log(objValTmp) / coeffKS_;
     }
     else if (mode_ == "maxRadius")
     {
@@ -320,19 +279,19 @@ void DAObjFuncLocation::calcObjFunc(
 
         reduce(radius, sumOp<scalar>());
 
-        objFuncValue = radius;
+        functionValue = radius;
     }
     else
     {
-        FatalErrorIn("DAObjFuncLocation") << "mode: " << mode_ << " not supported!"
+        FatalErrorIn("DAFunctionLocation") << "mode: " << mode_ << " not supported!"
                                           << "Options are: maxRadius"
                                           << abort(FatalError);
     }
 
     // check if we need to calculate refDiff.
-    this->calcRefVar(objFuncValue);
+    this->calcRefVar(functionValue);
 
-    return;
+    return functionValue;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

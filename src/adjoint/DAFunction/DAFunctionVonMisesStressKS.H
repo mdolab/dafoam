@@ -4,14 +4,14 @@
     Version : v4
 
     Description:
-        Child class for center of pressure
+        Child class for max von Mises stress
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncCenterOfPressure_H
-#define DAObjFuncCenterOfPressure_H
+#ifndef DAFunctionVonMisesStressKS_H
+#define DAFunctionVonMisesStressKS_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,51 +20,37 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncCenterOfPressure Declaration
+      Class DAFunctionVonMisesStressKS Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncCenterOfPressure
-    : public DAObjFunc
+class DAFunctionVonMisesStressKS
+    : public DAFunction
 {
 
 protected:
 
-    /// the direction to project the center of pressure onto
-    vector axis_;
-
-    /// the direction to project the force onto
-    vector forceAxis_;
-
-    /// The point to compute center of pressure about
-    vector center_;
+    /// coefficient for the KS function
+    scalar coeffKS_;
 
 public:
-    TypeName("centerOfPressure");
+    TypeName("vonMisesStressKS");
     // Constructors
 
     //- Construct from components
-    DAObjFuncCenterOfPressure(
+    DAFunctionVonMisesStressKS(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncCenterOfPressure()
+    virtual ~DAFunctionVonMisesStressKS()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

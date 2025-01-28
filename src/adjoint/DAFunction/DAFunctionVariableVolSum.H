@@ -4,15 +4,14 @@
     Version : v4
 
     Description:
-        Child class for approximated max variable (in tne 
-        entire field) using the KS function
+        Child class for variable volume sum
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncFieldMaxKS_H
-#define DAObjFuncFieldMaxKS_H
+#ifndef DAFunctionVariableVolSum_H
+#define DAFunctionVariableVolSum_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -21,11 +20,11 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncFieldMaxKS Declaration
+      Class DAFunctionVariableVolSum Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncFieldMaxKS
-    : public DAObjFunc
+class DAFunctionVariableVolSum
+    : public DAFunction
 {
 
 protected:
@@ -39,36 +38,34 @@ protected:
     /// if vector which element?
     label component_;
 
-    /// the KS coefficient
-    scalar coeffKS_;
+    /// whether to take a square of the variable
+    label isSquare_;
+
+    /// whether to normalize the volume sum with the total volume
+    label divByTotalVol_;
+
+    /// whether to multiply the variable by the volume
+    label multiplyVol_;
 
 public:
-    TypeName("fieldMaxKS");
+    TypeName("variableVolSum");
     // Constructors
 
     //- Construct from components
-    DAObjFuncFieldMaxKS(
+    DAFunctionVariableVolSum(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncFieldMaxKS()
+    virtual ~DAFunctionVariableVolSum()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

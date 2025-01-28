@@ -4,14 +4,14 @@
     Version : v4
 
     Description:
-        Child class for mass
+        Child class for total pressure ratio
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncMass_H
-#define DAObjFuncMass_H
+#ifndef DAFunctionTotalPressureRatio_H
+#define DAFunctionTotalPressureRatio_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,43 +20,50 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncMass Declaration
+      Class DAFunctionTotalPressureRatio Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncMass
-    : public DAObjFunc
+class DAFunctionTotalPressureRatio
+    : public DAFunction
 {
 
+protected:
+
+    /// the area of all inlet patches
+    scalar areaSumInlet_ = -9999.0;
+
+    /// the area of all outlet patches
+    scalar areaSumOutlet_ = -9999.0;
+
+    /// names of outlet patches
+    wordList outletPatches_;
+
+    /// names of inlet patches
+    wordList inletPatches_;
+
+    scalar Cp_;
+
+    scalar gamma_;
+
 public:
-    TypeName("mass");
+    TypeName("totalPressureRatio");
     // Constructors
 
-    /// user-defined density
-    scalar rho_ = -1.0;
-
     //- Construct from components
-    DAObjFuncMass(
+    DAFunctionTotalPressureRatio(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncMass()
+    virtual ~DAFunctionTotalPressureRatio()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

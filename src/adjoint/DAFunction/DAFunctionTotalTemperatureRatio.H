@@ -4,14 +4,14 @@
     Version : v4
 
     Description:
-        Child class for max von Mises stress
+        Child class for total temperature ratio
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncVonMisesStressKS_H
-#define DAObjFuncVonMisesStressKS_H
+#ifndef DAFunctionTotalTemperatureRatio_H
+#define DAFunctionTotalTemperatureRatio_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,45 +20,50 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncVonMisesStressKS Declaration
+      Class DAFunctionTotalTemperatureRatio Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncVonMisesStressKS
-    : public DAObjFunc
+class DAFunctionTotalTemperatureRatio
+    : public DAFunction
 {
 
 protected:
 
-    /// coefficient for the KS function
-    scalar coeffKS_;
+    /// the area of all inlet patches
+    scalar areaSumInlet_ = -9999.0;
+
+    /// the area of all outlet patches
+    scalar areaSumOutlet_ = -9999.0;
+
+    /// names of outlet patches
+    wordList outletPatches_;
+
+    /// names of inlet patches
+    wordList inletPatches_;
+
+    scalar Cp_;
+
+    scalar gamma_;
 
 public:
-    TypeName("vonMisesStressKS");
+    TypeName("totalTemperatureRatio");
     // Constructors
 
     //- Construct from components
-    DAObjFuncVonMisesStressKS(
+    DAFunctionTotalTemperatureRatio(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncVonMisesStressKS()
+    virtual ~DAFunctionTotalTemperatureRatio()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

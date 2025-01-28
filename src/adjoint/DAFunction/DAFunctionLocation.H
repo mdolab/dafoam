@@ -8,10 +8,10 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAObjFuncLocation_H
-#define DAObjFuncLocation_H
+#ifndef DAFunctionLocation_H
+#define DAFunctionLocation_H
 
-#include "DAObjFunc.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,11 +20,11 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAObjFuncLocation Declaration
+      Class DAFunctionLocation Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAObjFuncLocation
-    : public DAObjFunc
+class DAFunctionLocation
+    : public DAFunction
 {
 
 protected:
@@ -57,28 +57,20 @@ public:
     // Constructors
 
     //- Construct from components
-    DAObjFuncLocation(
+    DAFunctionLocation(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const DAResidual& daResidual,
-        const word objFuncName,
-        const word objFuncPart,
-        const dictionary& objFuncDict);
+        const word functionName);
 
     //- Destructor
-    virtual ~DAObjFuncLocation()
+    virtual ~DAFunctionLocation()
     {
     }
 
     /// calculate the value of objective function
-    virtual void calcObjFunc(
-        const labelList& objFuncFaceSources,
-        const labelList& objFuncCellSources,
-        scalarList& objFuncFaceValues,
-        scalarList& objFuncCellValues,
-        scalar& objFuncValue);
+    virtual scalar calcFunction();
 
     void findGlobalSnappedCenter(
         label snappedCenterCellI,
