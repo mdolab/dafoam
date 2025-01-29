@@ -36,11 +36,11 @@ DAFunctionVariableVolSum::DAFunctionVariableVolSum(
 
     functionDict_.readEntry<label>("component", component_);
 
-    functionDict_.readEntry<label>("isSquare", isSquare_);
+    isSquare_ = functionDict_.lookupOrDefault<label>("isSquare", 0);
 
     multiplyVol_ = functionDict_.lookupOrDefault<label>("multiplyVol", 1);
 
-    functionDict_.readEntry<label>("divByTotalVol", divByTotalVol_);
+    divByTotalVol_ = functionDict_.lookupOrDefault<label>("divByTotalVol", 0);
 }
 
 /// calculate the value of objective function
@@ -72,9 +72,9 @@ scalar DAFunctionVariableVolSum::calcFunction()
     {
         const volScalarField& var = db.lookupObject<volScalarField>(varName_);
         // calculate mass
-        forAll(faceSources_, idxI)
+        forAll(cellSources_, idxI)
         {
-            const label& cellI = faceSources_[idxI];
+            const label& cellI = cellSources_[idxI];
             scalar volume = 1.0;
             if (multiplyVol_)
             {
@@ -94,9 +94,9 @@ scalar DAFunctionVariableVolSum::calcFunction()
     {
         const volVectorField& var = db.lookupObject<volVectorField>(varName_);
         // calculate mass
-        forAll(faceSources_, idxI)
+        forAll(cellSources_, idxI)
         {
-            const label& cellI = faceSources_[idxI];
+            const label& cellI = cellSources_[idxI];
             scalar volume = 1.0;
             if (multiplyVol_)
             {

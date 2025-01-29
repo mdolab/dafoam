@@ -58,9 +58,9 @@ scalar DAFunctionVonMisesStressKS::calcFunction()
     volScalarField vonMises = scale_ * sqrt((3.0 / 2.0) * magSqr(dev(sigma)));
 
     scalar objValTmp = 0.0;
-    forAll(faceSources_, idxI)
+    forAll(cellSources_, idxI)
     {
-        const label& cellI = faceSources_[idxI];
+        const label& cellI = cellSources_[idxI];
 
         objValTmp += exp(coeffKS_ * vonMises[cellI]);
 

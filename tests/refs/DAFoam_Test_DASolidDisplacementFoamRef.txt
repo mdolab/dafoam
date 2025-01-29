@@ -1,0 +1,14 @@
+Dictionary Key: M
+@value     11950.1830603837443050 1e-10 1e-12
+Dictionary Key: VMS
+@value     29161.9458712946761807 1e-10 1e-12
+Dictionary Key: M
+Dictionary Key: shape-Adjoint
+@value        75.4582249878130256 1e-08 1e-12
+Dictionary Key: shape-FD
+@value        75.4582249848172069 1e-08 1e-12
+Dictionary Key: VMS
+Dictionary Key: shape-Adjoint
+@value     -2821.8611790351396849 1e-08 1e-12
+Dictionary Key: shape-FD
+@value     -2750.1637668553739786 1e-08 1e-12

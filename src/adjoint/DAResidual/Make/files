@@ -5,6 +5,7 @@ DAResidualPimpleFoam.C
 DAResidualRhoPimpleFoam.C
 DAResidualRhoSimpleFoam.C
 DAResidualRhoSimpleCFoam.C
+DAResidualTurboFoam.C
 DAResidualHeatTransferFoam.C
 DAResidualSolidDisplacementFoam.C
 

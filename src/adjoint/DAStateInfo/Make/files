@@ -5,6 +5,7 @@ DAStateInfoPimpleFoam.C
 DAStateInfoRhoPimpleFoam.C
 DAStateInfoRhoSimpleFoam.C
 DAStateInfoRhoSimpleCFoam.C
+DAStateInfoTurboFoam.C
 DAStateInfoHeatTransferFoam.C
 DAStateInfoSolidDisplacementFoam.C
 

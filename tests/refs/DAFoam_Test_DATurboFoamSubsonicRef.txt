@@ -1,0 +1,14 @@
+Dictionary Key: CMZ
+@value         0.1372992459531786 1e-10 1e-12
+Dictionary Key: TPR
+@value         1.0266181284534761 1e-10 1e-12
+Dictionary Key: CMZ
+Dictionary Key: shape-Adjoint
+@value         0.5773165963831111 1e-08 1e-12
+Dictionary Key: shape-FD
+@value         0.5763850273535809 1e-08 1e-12
+Dictionary Key: TPR
+Dictionary Key: shape-Adjoint
+@value        -0.0581793583856289 1e-08 1e-12
+Dictionary Key: shape-FD
+@value        -0.0583449111964001 1e-08 1e-12
