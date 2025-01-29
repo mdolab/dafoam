@@ -148,7 +148,7 @@ public:
     virtual void calcResiduals(const dictionary& options);
 
     /// solve the residual equations and update the state
-    virtual void correct(label printToScreen);
+    virtual void correct(label printToScreen, const scalar& primalMaxRes);
 
     /// save near wall omega values to omegaNearWall_
     void saveOmegaNearWall();
