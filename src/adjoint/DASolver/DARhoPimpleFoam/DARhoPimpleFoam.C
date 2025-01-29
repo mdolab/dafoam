@@ -187,7 +187,7 @@ label DARhoPimpleFoam::solvePrimal()
 #include "pEqnRhoPimple.H"
             }
 
-            daTurbulenceModelPtr_->correct(pimplePrintToScreen, primalMaxRes_);
+            daTurbulenceModelPtr_->correct(pimplePrintToScreen);
 
             // update the output field value at each iteration, if the regression model is active
             fail = daRegressionPtr_->compute();

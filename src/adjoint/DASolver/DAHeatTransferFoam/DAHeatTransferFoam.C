@@ -94,7 +94,7 @@ label DAHeatTransferFoam::solvePrimal()
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverT = TEqn.solve();
-        DAUtility::primalResidualControl(solverT, printToScreen_, "T", primalMaxRes_);
+        DAUtility::primalResidualControl(solverT, printToScreen_, "T", daGlobalVarPtr_->primalMaxRes);
 
         this->calcAllFunctions(printToScreen_);
 

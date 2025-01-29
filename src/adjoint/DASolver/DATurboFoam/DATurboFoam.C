@@ -98,7 +98,7 @@ label DATurboFoam::solvePrimal()
 #include "pEqnTurbo.H"
 #include "EEqnTurbo.H"
 
-        daTurbulenceModelPtr_->correct(printToScreen_, primalMaxRes_);
+        daTurbulenceModelPtr_->correct(printToScreen_);
 
         // calculate all functions
         this->calcAllFunctions(printToScreen_);

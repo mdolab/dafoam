@@ -101,7 +101,7 @@ label DASolidDisplacementFoam::solvePrimal()
         // and final residuals
         SolverPerformance<vector> solverD = DEqn.solve();
 
-        DAUtility::primalResidualControl(solverD, printToScreen_, "D", primalMaxRes_);
+        DAUtility::primalResidualControl(solverD, printToScreen_, "D", daGlobalVarPtr_->primalMaxRes);
 
         // calculate all functions
         this->calcAllFunctions(printToScreen_);

@@ -57,6 +57,9 @@ public:
 
     /// patch velocity list [UMag, AOA] AoA is in degrees
     scalarList patchVelocity = {0.0, 0.0};
+
+    /// the maximal residual for primal   this var will be used in multiple classes
+    scalar primalMaxRes = 0.0;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

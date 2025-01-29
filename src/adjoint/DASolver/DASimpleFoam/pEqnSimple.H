@@ -49,7 +49,7 @@
         // and final residuals
         SolverPerformance<scalar> solverP = pEqn.solve();
 
-        DAUtility::primalResidualControl(solverP, printToScreen_, "p", primalMaxRes_);
+        DAUtility::primalResidualControl(solverP, printToScreen_, "p", daGlobalVarPtr_->primalMaxRes);
 
         if (simple.finalNonOrthogonalIter())
         {

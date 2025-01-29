@@ -175,8 +175,7 @@ label DAPimpleFoam::solvePrimal()
             }
 
             laminarTransport.correct();
-            // primalMaxRes_ is just a dummy input, we will not use it
-            daTurbulenceModelPtr_->correct(pimplePrintToScreen, primalMaxRes_);
+            daTurbulenceModelPtr_->correct(pimplePrintToScreen);
 
             // update the output field value at each iteration, if the regression model is active
             fail = daRegressionPtr_->compute();

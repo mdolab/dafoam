@@ -135,7 +135,7 @@ label DARhoSimpleFoam::solvePrimal()
 #include "EEqnRhoSimple.H"
 #include "pEqnRhoSimple.H"
 
-        daTurbulenceModelPtr_->correct(printToScreen_, primalMaxRes_);
+        daTurbulenceModelPtr_->correct(printToScreen_);
 
         // calculate all functions
         this->calcAllFunctions(printToScreen_);

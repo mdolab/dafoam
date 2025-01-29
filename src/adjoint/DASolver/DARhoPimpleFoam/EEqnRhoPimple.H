@@ -24,7 +24,7 @@
     // and final residuals
     SolverPerformance<scalar> solverE = EEqn.solve();
 
-    DAUtility::primalResidualControl(solverE, pimplePrintToScreen, "he", primalMaxRes_);
+    DAUtility::primalResidualControl(solverE, pimplePrintToScreen, "he", daGlobalVarPtr_->primalMaxRes);
 
     // bound he
     DAUtility::boundVar(allOptions, he, pimplePrintToScreen);

@@ -23,8 +23,6 @@ daFieldPtr_.reset(new DAField(mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()
 
 daResidualPtr_.reset(DAResidual::New(solverName, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
 
-daGlobalVarPtr_.reset(new DAGlobalVar(mesh));
-
 // initialize checkMesh
 daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 

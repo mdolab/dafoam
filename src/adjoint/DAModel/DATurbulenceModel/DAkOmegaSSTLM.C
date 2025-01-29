@@ -983,7 +983,7 @@ void DAkOmegaSSTLM::addModelResidualCon(HashTable<List<List<word>>>& allCon) con
     }
 }
 
-void DAkOmegaSSTLM::correct(label printToScreen, const scalar& primalMaxRes)
+void DAkOmegaSSTLM::correct(label printToScreen)
 {
     /*
     Descroption:
@@ -998,7 +998,6 @@ void DAkOmegaSSTLM::correct(label printToScreen, const scalar& primalMaxRes)
     solveTurbState_ = 1;
     dictionary dummyOptions;
     dummyOptions.set("printToScreen", printToScreen);
-    dummyOptions.set("primalMaxRes", primalMaxRes);
     this->calcResiduals(dummyOptions);
     // after it, we reset solveTurbState_ = 0 such that calcResiduals will not
     // update nuTilda when calling from the adjoint class, i.e., solveAdjoint from DASolver.
@@ -1027,14 +1026,7 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
     // Copy and modify based on the "correct" function
 
-    label printToScreen = 0;
-    if (solveTurbState_)
-    {
-        if (options.getLabel("printToScreen"))
-        {
-            printToScreen = 1;
-        }
-    }
+    label printToScreen = options.lookupOrDefault("printToScreen", 0);
 
     word divKScheme = "div(phi,k)";
     word divOmegaScheme = "div(phi,omega)";
@@ -1114,12 +1106,10 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
             if (solveTurbState_)
             {
-                scalar primalMaxRes = options.getScalar("primalMaxRes");
-
                 // get the solver performance info such as initial
                 // and final residuals
                 SolverPerformance<scalar> solverOmega = solve(omegaEqn);
-                DAUtility::primalResidualControl(solverOmega, printToScreen, "omega", primalMaxRes);
+                DAUtility::primalResidualControl(solverOmega, printToScreen, "omega", daGlobalVar_.primalMaxRes);
 
                 DAUtility::boundVar(allOptions_, omega_, printToScreen);
             }
@@ -1151,12 +1141,11 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
         if (solveTurbState_)
         {
-            scalar primalMaxRes = options.getScalar("primalMaxRes");
 
             // get the solver performance info such as initial
             // and final residuals
             SolverPerformance<scalar> solverK = solve(kEqn);
-            DAUtility::primalResidualControl(solverK, printToScreen, "k", primalMaxRes);
+            DAUtility::primalResidualControl(solverK, printToScreen, "k", daGlobalVar_.primalMaxRes);
 
             DAUtility::boundVar(allOptions_, k_, printToScreen);
 
@@ -1208,12 +1197,11 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
             if (solveTurbState_)
             {
-                scalar primalMaxRes = options.getScalar("primalMaxRes");
 
                 // get the solver performance info such as initial
                 // and final residuals
                 SolverPerformance<scalar> solverReThetat = solve(ReThetatEqn);
-                DAUtility::primalResidualControl(solverReThetat, printToScreen, "ReThetat", primalMaxRes);
+                DAUtility::primalResidualControl(solverReThetat, printToScreen, "ReThetat", daGlobalVar_.primalMaxRes);
 
                 DAUtility::boundVar(allOptions_, ReThetat_, printToScreen);
             }
@@ -1256,12 +1244,11 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
             if (solveTurbState_)
             {
-                scalar primalMaxRes = options.getScalar("primalMaxRes");
 
                 // get the solver performance info such as initial
                 // and final residuals
                 SolverPerformance<scalar> solverGammaInt = solve(gammaIntEqn);
-                DAUtility::primalResidualControl(solverGammaInt, printToScreen, "gammaInt", primalMaxRes);
+                DAUtility::primalResidualControl(solverGammaInt, printToScreen, "gammaInt", daGlobalVar_.primalMaxRes);
 
                 DAUtility::boundVar(allOptions_, gammaInt_, printToScreen);
 

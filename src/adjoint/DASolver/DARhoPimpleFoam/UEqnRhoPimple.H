@@ -18,7 +18,7 @@ UEqn.relax();
 // and final residuals
 SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
-DAUtility::primalResidualControl(solverU, pimplePrintToScreen, "U", primalMaxRes_);
+DAUtility::primalResidualControl(solverU, pimplePrintToScreen, "U", daGlobalVarPtr_->primalMaxRes);
 
 // bound U
 DAUtility::boundVar(allOptions, U, pimplePrintToScreen);
