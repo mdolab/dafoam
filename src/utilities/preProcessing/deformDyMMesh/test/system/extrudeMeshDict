@@ -1,0 +1,56 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.6                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      extrudeProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Where to get surface from: either from surface ('surface') or
+// from (flipped) patch of existing case ('patch')
+constructFrom patch;    //surface;
+
+// If construct from (flipped) patch
+sourceCase ".";
+sourcePatches (back);
+
+exposedPatchName front;
+
+// Flip surface normals before usage.
+flipNormals true;
+
+
+// Do front and back need to be merged? Usually only makes sense for 360
+// degree wedges.
+mergeFaces false; //true;
+
+
+//- Linear extrusion in point-normal direction
+extrudeModel        linearNormal;
+
+
+nLayers          1; // was 20;
+
+
+linearNormalCoeffs
+{
+    thickness       1.0; // was 0.05;
+}
+
+linearRadialCoeffs
+{
+     R              0.1;
+}
+
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+

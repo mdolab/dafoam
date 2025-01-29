@@ -100,6 +100,7 @@ int main(int argc, char* argv[])
     while (runTime.run())
     {
         ++runTime;
+        
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
         pointField ourNewPoints(mesh.points());
