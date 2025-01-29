@@ -1,0 +1,62 @@
+# 1 "Make/options"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 12 "<command-line>"
+# 1 "/usr/include/stdc-predef.h" 1 3 4
+
+# 17 "/usr/include/stdc-predef.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 12 "<command-line>" 2
+# 1 "Make/options"
+EXE_INC = -std=c++11 -Wno-old-style-cast -Wno-conversion-null -Wno-deprecated-copy -I$(LIB_SRC)/finiteVolume/lnInclude -I$(LIB_SRC)/meshTools/lnInclude -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude -I$(LIB_SRC)/TurbulenceModels/incompressible/lnInclude -I$(LIB_SRC)/TurbulenceModels/compressible/lnInclude
+# 11 "Make/options"
+
+EXE_LIBS = -lfiniteVolume -lmeshTools -lturbulenceModels -lincompressibleTurbulenceModels -lcompressibleTurbulenceModels
+
+
+
+
+
+
