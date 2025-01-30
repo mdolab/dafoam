@@ -14,6 +14,44 @@ REG_FILES_DO_NOT_MATCH = 1
 REG_ERROR = -1
 
 
+def run_tests(om, Top, comm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict):
+
+    # adjoint-deriv
+    prob = om.Problem()
+    prob.model = Top()
+    prob.setup(mode="rev")
+    om.n2(prob, show_browser=False, outfile="mphys_aero.html")
+    prob.run_model()
+    totals = prob.compute_totals()
+
+    if comm.rank == 0:
+        print(totals)
+        for funcName in funcNames:
+            funcDict[funcName] = prob.get_val(funcName)
+            derivDict[funcName] = {}
+
+    # forwardAD-deriv
+    daOptions["useAD"]["mode"] = "forward"
+    for i, dvName in enumerate(dvNames):
+        tempI = 0
+        for index in dvIndices[i]:
+            daOptions["useAD"]["dvName"] = dvName
+            daOptions["useAD"]["seedIndex"] = index
+            prob = om.Problem()
+            prob.model = Top()
+            prob.setup(mode="rev")
+            prob.run_model()
+
+            if comm.rank == 0:
+                for funcName in funcNames:
+                    derivDict[funcName]["%s%i-Adjoint" % (dvName, index)] = [
+                        totals[(funcName, "dvs.%s" % dvName)][0][tempI]
+                    ]
+                    derivDict[funcName]["%s%i-ForwardAD" % (dvName, index)] = prob.get_val(funcName)[0]
+
+            tempI += 1
+
+
 def reg_write(values, rel_tol=1e-12, abs_tol=1e-12):
     """
     Write values in special value format
@@ -21,7 +59,7 @@ def reg_write(values, rel_tol=1e-12, abs_tol=1e-12):
     values = numpy.atleast_1d(values)
     values = values.flatten()
     for val in values:
-        s = "@value %20.16g %g %g" % (val, rel_tol, abs_tol)
+        s = "@value %26.16f %g %g" % (val, rel_tol, abs_tol)
         print(s)
 
     return

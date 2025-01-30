@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
     Child class for the kOmegaSST model
@@ -169,6 +169,10 @@ protected:
 
     /// 3D wall distance
     const volScalarField& y_;
+
+    /// we need to make the G field a class variable and register it to the mesh.db
+    /// such that the omegaWallFunction BC can find it
+    autoPtr<volScalarField::Internal> GPtr_;
 
     /// beta field for field inversion
     volScalarField betaFIK_;

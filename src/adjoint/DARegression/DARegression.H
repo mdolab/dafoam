@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Regression model
@@ -29,6 +29,7 @@ namespace Foam
 \*---------------------------------------------------------------------------*/
 
 class DARegression
+    : public regIOobject
 {
 
 private:
@@ -105,7 +106,7 @@ protected:
     /// a list of scalarField to save the input features
     HashTable<PtrList<volScalarField>> features_;
 
-#if defined(CODI_AD_FORWARD)
+#if defined(CODI_ADF)
     /// a flatten double feature array for externalTensorFlow model (forward AD)
     double* featuresFlattenArrayDouble_;
 
@@ -139,7 +140,7 @@ public:
     {
         if (useExternalModel_)
         {
-#if defined(CODI_AD_FORWARD)
+#if defined(CODI_ADF)
             delete[] featuresFlattenArrayDouble_;
             delete[] outputFieldArrayDouble_;
 #else
@@ -176,9 +177,9 @@ public:
     label checkOutput(word modelName, volScalarField& outputField);
 
     /// print the input
-    void printInputInfo()
+    void printInputInfo(const label printToScreen)
     {
-        if (!active_)
+        if (!active_ || !printToScreen)
         {
             return;
         }
@@ -218,7 +219,7 @@ public:
         }
     }
 
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
 
     /// these two functions are for AD external functions
     static void betaCompute(
@@ -243,6 +244,12 @@ public:
         DAUtility::pyCalcBetaJacVecProdInterface(x, x_b, n, y, y_b, m, DAUtility::pyCalcBetaJacVecProd);
     }
 #endif
+
+    /// this is a virtual function for regIOobject
+    bool writeData(Ostream& os) const
+    {
+        return true;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

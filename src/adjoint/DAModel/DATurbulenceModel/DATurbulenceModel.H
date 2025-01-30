@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
     Augmented turbulence model for the adjoint method, including residual 
@@ -30,24 +30,15 @@
 #include "nearWallDist.H"
 #include "DAUtility.H"
 #include "DAOption.H"
-#include "DARegDbNearWallDist.H"
 #include "DAMacroFunctions.H"
+#include "DAGlobalVar.H"
 #include "nutkWallFunctionFvPatchScalarField.H" // for yPlus
 #include "wallFvPatch.H" // for yPlus
 
-#ifdef IncompressibleFlow
 #include "singlePhaseTransportModel.H"
 #include "turbulentTransportModel.H"
-#include "DARegDbTurbulenceModelIncompressible.H"
-#include "DARegDbSinglePhaseTransportModel.H"
-#endif
-
-#ifdef CompressibleFlow
 #include "fluidThermo.H"
 #include "turbulentFluidThermoModel.H"
-#include "DARegDbTurbulenceModelCompressible.H"
-#include "DARegDbFluidThermo.H"
-#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -79,6 +70,9 @@ protected:
     /// all DAFoam options
     const dictionary& allOptions_;
 
+    /// global variable
+    DAGlobalVar& daGlobalVar_;
+
     /// turbulence viscosity
     volScalarField& nut_;
 
@@ -94,31 +88,11 @@ protected:
     /// phase*phi*density field
     surfaceScalarField& phaseRhoPhi_;
 
-#ifdef IncompressibleFlow
-    /// DARegDbSinglePhaseTransportModel reference
-    const DARegDbSinglePhaseTransportModel& daRegDbTransport_;
-    /// laminar viscosity for incompressible flow
-    const singlePhaseTransportModel& laminarTransport_;
-    /// DARegDbTurbulenceModelIncompressible reference
-    const DARegDbTurbulenceModelIncompressible& daRegDbTurbIncomp_;
-    /// turbulence model object
-    const incompressible::turbulenceModel& turbulence_;
-    /// density field, initialize with ones
-    volScalarField rho_;
-#endif
+    /// an uniform rho field with ones
+    volScalarField rhoOne_;
 
-#ifdef CompressibleFlow
-    /// DARegDbFluidThermo reference
-    const DARegDbFluidThermo& daRegDbThermo_;
-    /// thermo model for compressible flow
-    const fluidThermo& thermo_;
-    /// DARegDbTurbulenceModelCompressible reference
-    const DARegDbTurbulenceModelCompressible& daRegDbTurbComp_;
-    /// turbulence model object
-    const compressible::turbulenceModel& turbulence_;
-    /// density field, lookup from fvMesh
-    volScalarField& rho_;
-#endif
+    /// whether the turbulence model is incompressible or compressible
+    word turbModelType_ = "None";
 
     /// turbulence model property dict
     IOdictionary turbDict_;
@@ -233,7 +207,7 @@ public:
     tmp<volScalarField> nuEff() const;
 
     /// get the nut field
-    tmp<volScalarField> getNut()
+    tmp<volScalarField> nut()
     {
         return nut_;
     }
@@ -245,22 +219,22 @@ public:
     tmp<volScalarField> nu() const;
 
     /// get alpha field
-    tmp<volScalarField> getAlpha() const;
+    tmp<volScalarField> alpha() const;
 
     /// get the density field
-    tmp<volScalarField> getRho()
-    {
-        return rho_;
-    }
+    tmp<volScalarField> rho() const;
+
+    /// return the dimension of rho
+    dimensionSet rhoDimensions() const;
 
     /// get the phase field
-    tmp<volScalarField> getPhase()
+    tmp<volScalarField> phase()
     {
         return phase_;
     }
 
     /// get the turbulent Prandtl number
-    scalar getPrt()
+    scalar prt()
     {
         if (Prt_ > 0)
         {
@@ -274,18 +248,19 @@ public:
         }
     }
 
-#ifdef CompressibleFlow
-    const fluidThermo& getThermo() const;
-#endif
-
     /// get mu
-    tmp<Foam::volScalarField> getMu() const;
+    tmp<Foam::volScalarField> mu() const;
 
     /// this is a virtual function for regIOobject
     bool writeData(Ostream& os) const;
 
     /// print the min max and mean yPlus to screen
-    void printYPlus() const;
+    void printYPlus(const label printToScreen) const;
+
+    word getTurbModelType() const
+    {
+        return turbModelType_;
+    }
 
     label isPrintTime(
         const Time& runTime,

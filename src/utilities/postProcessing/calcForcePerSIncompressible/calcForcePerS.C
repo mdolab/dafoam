@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Calculating force per surface area. This will be used to plot the 

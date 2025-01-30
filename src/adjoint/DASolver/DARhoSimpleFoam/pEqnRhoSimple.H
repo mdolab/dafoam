@@ -47,7 +47,7 @@ while (simple.correctNonOrthogonal())
     // and final residuals
     SolverPerformance<scalar> solverP = pEqn.solve();
 
-    DAUtility::primalResidualControl(solverP, printToScreen, "p");
+    DAUtility::primalResidualControl(solverP, printToScreen_, "p", daGlobalVarPtr_->primalMaxRes);
 
     if (simple.finalNonOrthogonalIter())
     {
@@ -55,7 +55,7 @@ while (simple.correctNonOrthogonal())
     }
 }
 
-if (printToScreen)
+if (printToScreen_)
 {
 #include "continuityErrsPython.H"
 }
@@ -64,11 +64,11 @@ if (printToScreen)
 p.relax();
 
 // bound p
-DAUtility::boundVar(allOptions, p, printToScreen);
+DAUtility::boundVar(allOptions, p, printToScreen_);
 
 U = HbyA - rAU * fvc::grad(p);
 // bound U
-DAUtility::boundVar(allOptions, U, printToScreen);
+DAUtility::boundVar(allOptions, U, printToScreen_);
 U.correctBoundaryConditions();
 fvOptions.correct(U);
 
@@ -92,4 +92,4 @@ rho = thermo.rho();
 rho.relax();
 
 // bound rho
-DAUtility::boundVar(allOptions, rho, printToScreen);
+DAUtility::boundVar(allOptions, rho, printToScreen_);

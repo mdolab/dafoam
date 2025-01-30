@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
 \*---------------------------------------------------------------------------*/
 
@@ -166,7 +166,7 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
                         {
                             scalar twoPi = 2.0 * pi;
                             Info << "blade " << bb << " theta: "
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_ADF) || defined(CODI_ADR)
                                  << fmod(thetaBlade.getValue(), twoPi.getValue()) * 180.0 / pi.getValue()
 #else
                                  << fmod(thetaBlade, twoPi) * 180.0 / pi

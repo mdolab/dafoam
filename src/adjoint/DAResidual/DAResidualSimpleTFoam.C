@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
 \*---------------------------------------------------------------------------*/
 
@@ -217,7 +217,7 @@ void DAResidualSimpleTFoam::updateIntermediateVariables()
         Update the intermediate variables that depend on the state variables
     */
 
-    alphat_ = daTurb_.getNut() / Prt_;
+    alphat_ = daTurb_.nut() / Prt_;
     alphat_.correctBoundaryConditions();
 
     MRF_.correctBoundaryVelocity(U_);

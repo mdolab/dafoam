@@ -1,0 +1,7 @@
+DAOutput.C
+DAOutputResidual.C
+DAOutputFunction.C
+DAOutputThermalCoupling.C
+DAOutputForceCoupling.C
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAOutput$(WM_CODI_AD_LIB_POSTFIX)

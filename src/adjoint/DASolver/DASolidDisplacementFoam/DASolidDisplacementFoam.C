@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     This class is modified from OpenFOAM's source code
     applications/solvers/stressAnalysis/solidDisplacementFoam
@@ -64,59 +64,25 @@ void DASolidDisplacementFoam::initSolver()
     Time& runTime = runTimePtr_();
     fvMesh& mesh = meshPtr_();
 #include "createFieldsSolidDisplacement.H"
-#include "createAdjointSolid.H"
-    // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
-
-    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
-
-    this->setDAObjFuncList();
+#include "createAdjoint.H"
 }
 
-label DASolidDisplacementFoam::solvePrimal(
-    const Vec xvVec,
-    Vec wVec)
+label DASolidDisplacementFoam::solvePrimal()
 {
     /*
     Description:
         Call the primal solver to get converged state variables
-
-    Input:
-        xvVec: a vector that contains all volume mesh coordinates
-
-    Output:
-        wVec: state variable vector
     */
 
 #include "createRefsSolidDisplacement.H"
 
-    // change the run status
-    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
-
     Info << "\nCalculating displacement field\n"
          << endl;
 
-    // deform the mesh based on the xvVec
-    this->pointVec2OFMesh(xvVec);
-
-    // check mesh quality
-    label meshOK = this->checkMesh();
-
-    if (!meshOK)
-    {
-        this->writeFailedMesh();
-        return 1;
-    }
-
-    label printInterval = daOptionPtr_->getOption<label>("printInterval");
-    label printToScreen = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        DAUtility::primalMaxInitRes_ = -1e16;
 
-        printToScreen = this->isPrintTime(runTime, printInterval);
-
-        if (printToScreen)
+        if (printToScreen_)
         {
             Info << "Iteration = " << runTime.value() << nl << endl;
         }
@@ -135,33 +101,17 @@ label DASolidDisplacementFoam::solvePrimal(
         // and final residuals
         SolverPerformance<vector> solverD = DEqn.solve();
 
-        DAUtility::primalResidualControl(solverD, printToScreen, "D");
+        DAUtility::primalResidualControl(solverD, printToScreen_, "D", daGlobalVarPtr_->primalMaxRes);
 
-        if (this->validateStates())
-        {
-            // write data to files and quit
-            runTime.writeNow();
-            mesh.write();
-            return 1;
-        }
-
-        if (printToScreen)
-        {
-            this->printAllObjFuncs();
-            Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                 << nl << endl;
-        }
+        // calculate all functions
+        this->calcAllFunctions(printToScreen_);
+        // print run time
+        this->printElapsedTime(runTime, printToScreen_);
 
         runTime.write();
     }
 
 #include "calculateStressSolidDisplacement.H"
-
-    this->calcPrimalResidualStatistics("print");
-
-    // primal converged, assign the OpenFoam fields to the state vec wVec
-    this->ofField2StateVec(wVec);
 
     // write the mesh to files
     mesh.write();
@@ -169,7 +119,7 @@ label DASolidDisplacementFoam::solvePrimal(
     Info << "End\n"
          << endl;
 
-    return this->checkResidualTol();
+    return this->checkPrimalFailure();
 }
 
 } // End namespace Foam

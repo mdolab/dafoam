@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
 \*---------------------------------------------------------------------------*/
 
@@ -33,7 +33,8 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
       fvSourceEnergy_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("fvSourceEnergy"))),
       fvOptions_(fv::options::New(mesh)),
-      thermo_(const_cast<fluidThermo&>(daModel.getThermo())),
+      thermo_(const_cast<fluidThermo&>(
+          mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties"))),
       he_(thermo_.he()),
       rho_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("rho"))),
@@ -70,7 +71,7 @@ DAResidualRhoSimpleFoam::DAResidualRhoSimpleFoam(
         Info << "Cp " << Cp_ << endl;
     }
 
-    // this is just a dummy call because we need to run the constrain once 
+    // this is just a dummy call because we need to run the constrain once
     // to initialize fvOptions, before we can use it. Otherwise, we may get
     // a seg fault when we call fvOptions_.correct(U_) in updateIntermediateVars
     fvVectorMatrix UEqn(
@@ -193,7 +194,7 @@ void DAResidualRhoSimpleFoam::calcResiduals(const dictionary& options)
         HbyAPtr() = rAU * UEqn.H();
     }
     volVectorField& HbyA = HbyAPtr();
-    
+
     tUEqn.clear();
 
     surfaceScalarField phiHbyA("phiHbyA", fvc::interpolate(rho_) * fvc::flux(HbyA));

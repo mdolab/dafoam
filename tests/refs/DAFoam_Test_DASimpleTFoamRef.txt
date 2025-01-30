@@ -1,28 +1,14 @@
-Dictionary Key: NU
-@value    513.3599335250423 1e-08 1e-10
+Dictionary Key: HFX
+@value       113.4025011782558892 1e-10 1e-12
 Dictionary Key: PL
-@value    2.053403073037444 1e-08 1e-10
-Dictionary Key: TNormSum
-@value    2361.136766932203 1e-08 1e-10
-Dictionary Key: fail
-@value                    0 1e-08 1e-10
-Dictionary Key: NU
-Dictionary Key: shapey
-@value   -204.6444265560553 0.001 1e-05
-@value     68.3267549079506 0.001 1e-05
-@value   -32.81975544151101 0.001 1e-05
-Dictionary Key: shapez
-@value   -4.224928144500048 0.001 1e-05
-@value     -1.3401659269247 0.001 1e-05
-@value    1.943753727554488 0.001 1e-05
+@value        20.2937390506475985 1e-10 1e-12
+Dictionary Key: HFX
+Dictionary Key: shape-Adjoint
+@value         3.0800992152263214 1e-08 1e-12
+Dictionary Key: shape-FD
+@value         3.0703420519130304 1e-08 1e-12
 Dictionary Key: PL
-Dictionary Key: shapey
-@value    2.115930039789867 0.001 1e-05
-@value  -0.7117232451777479 0.001 1e-05
-@value   -0.379162684192302 0.001 1e-05
-Dictionary Key: shapez
-@value -0.02150437692562673 0.001 1e-05
-@value  0.04788101619105432 0.001 1e-05
-@value  0.02242244335160787 0.001 1e-05
-Dictionary Key: fail
-@value                    0 0.001 1e-05
+Dictionary Key: shape-Adjoint
+@value        12.4336312401959290 1e-08 1e-12
+Dictionary Key: shape-FD
+@value        12.5414016982249450 1e-08 1e-12

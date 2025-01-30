@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Child class for DARhoPimpleFoam
@@ -38,8 +38,6 @@
 #include "fluidThermo.H"
 #include "turbulentFluidThermoModel.H"
 #include "pimpleControlDF.H"
-#include "DARegDbFluidThermo.H"
-#include "DARegDbTurbulenceModelCompressible.H"
 #include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -122,9 +120,7 @@ public:
     virtual void initSolver();
 
     /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec);
+    virtual label solvePrimal();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

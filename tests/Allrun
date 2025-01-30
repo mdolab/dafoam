@@ -13,19 +13,15 @@ else
   wget https://github.com/DAFoam/reg_test_files/archive/refs/heads/main.tar.gz -O reg_test_files-main.tar.gz --no-check-certificate
 fi
 
-if [ -z "$1" ]; then
-  echo "Argument not found. Using the default value: all"
-  argm="all"
-else
-  argm="$1"
-fi
+# remove the old one and extract the tarball
+rm -rf reg_test_files-main
+tar -xvf reg_test_files-main.tar.gz
 
-function runTests() 
+function runRegTests() 
 {
-  rm -rf reg_test_files-main DAFoam_Test_${1}.txt
-  tar -zxf reg_test_files-main.tar.gz
+  rm -rf DAFoam_Test_${1}.txt
   if [ -z "$DF_CHECK_COVERAGE" ]; then
-    mpirun --oversubscribe -np 4 python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    mpirun --oversubscribe -np 4 python runRegTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
       echo "${1}: Failed!"
       exit 1
@@ -41,7 +37,7 @@ function runTests()
       echo "${1}: Success!"
     fi
   elif [ "$DF_CHECK_COVERAGE" = "1" ]; then
-    mpirun --oversubscribe -np 4 coverage run runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    mpirun --oversubscribe -np 4 coverage run runRegTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
       echo "${1}: Failed!"
       exit 1
@@ -53,214 +49,37 @@ function runTests()
   fi
 }
 
-function runTestsSerial() 
+function runUnitTests()
 {
-  rm -rf reg_test_files-main DAFoam_Test_${1}.txt
-  tar -zxf reg_test_files-main.tar.gz
-  if [ -z "$DF_CHECK_COVERAGE" ]; then
-    python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
-    if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-      echo "${1}: Failed!"
-      exit 1
-    fi
-    # need to replace the "[0m" for mphys tests 
-    sed -i 's/\[0m//g' DAFoam_Test_${1}.txt
-    sed -i 's/[^[:print:]\t]//g' DAFoam_Test_${1}.txt
-    python testFuncs.py refs/DAFoam_Test_${1}Ref.txt DAFoam_Test_${1}.txt
-    if [ "$?" -ne "0" ]; then 
-      echo "${1}: Failed!"
-      exit 1
-    else
-      echo "${1}: Success!"
-    fi
-  elif [ "$DF_CHECK_COVERAGE" = "1" ]; then
-    coverage run runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
-    if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
-      echo "${1}: Failed!"
-      exit 1
-    fi
-    echo "DF_CHECK_COVERAGE key found! Do NOT check the regression test values!"
-  else
-    echo "DF_CHECK_COVERAGE key not valid! Set it to 1!"
-    exit 1
-  fi
+  rm -rf DAFoam_Test_${1}.txt
+  mpirun --oversubscribe -np 4 python runUnitTests_${1}.py
 }
 
-case $argm in
-  "all")
-    echo "Running all tests...."
-    sleep 3
-    runTests Integration
-    runTests Primal
-    runTests DASimpleFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
-      runTests DASimpleFoamAD
-      runTests DASimpleFoamField
-      runTests DASimpleFoamkOmegaFieldInversionOmega
-      runTests DASimpleFoamkOmegaSSTFieldInversion
-      runTests DASimpleFoamFieldInversionObjectiveFunctions
-    fi
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADF.so" ]; then
-      runTests DASimpleFoamForwardAD
-      runTests DASimpleFoamFieldForwardAD
-      runTests DASimpleFoamMRFForwardAD
-    fi
-    runTests DASimpleFoamMRF
-    runTests DASimpleTFoam
-    runTests DAPisoFoam
-    runTests DAPisoFoamACTL
-    runTests DAPimpleFoam
-    runTests DAPimpleFoamField
-    runTests DAPimpleFoamTurbModels
-    runTests DAPimpleDyMFoam
-    if python -c "import tensorflow" &> /dev/null; then
-        runTests DASimpleFoamkOmegaSSTFIML
-    fi
-    runTests DARhoSimpleFoam
-    runTests DARhoSimpleFoamUBend
-    runTests DARhoSimpleCFoam
-    runTests DARhoPimpleFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
-      runTests DARhoSimpleFoamMRFAD
-      runTests DARhoSimpleFoamAD
-      runTests DARhoSimpleCFoamAD
-    fi
-    runTests DATurboFoamSubsonic
-    runTests DATurboFoamTransonic
-    runTests DASolidDisplacementFoam
-    runTests DAScalarTransportFoam
-    runTests DALaplacianFoam
-    runTests DAHeatTransferFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
-      runTests MphysAero
-      runTestsSerial MphysAeroFixedPoint
-      runTests MphysAeroOpt
-      runTests MphysAeroField
-    fi
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
-      runTests MphysAeroStructOpt
-      runTests MphysAeroThermal
-      runTests MphysAeroAcoustic
-      runTests MphysAeroProp
-      runTests MphysAeroPropCoupled
-    fi
-    echo " "
-    echo "************************************************************"
-    echo "**************** All DAFoam tests passed! ******************"
-    echo "************************************************************"
-    echo " "
-    ;;
-  "incompressible")
-    echo "Running incompressible tests...."
-    sleep 3
-    runTests Integration
-    runTests Primal
-    runTests DASimpleFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
-      runTests DASimpleFoamAD
-      runTests DASimpleFoamField
-      runTests DASimpleFoamkOmegaFieldInversionOmega
-      runTests DASimpleFoamkOmegaSSTFieldInversion
-      runTests DASimpleFoamFieldInversionObjectiveFunctions
-    fi
-    runTests DASimpleFoamMRF
-    runTests DASimpleTFoam
-    runTests DAPisoFoam
-    runTests DAPisoFoamACTL
-    runTests DAPimpleFoam
-    runTests DAPimpleFoamField
-    runTests DAPimpleFoamTurbModels
-    runTests DAPimpleDyMFoam
-    if python -c "import tensorflow" &> /dev/null; then
-        runTests DASimpleFoamkOmegaSSTFIML
-    fi
-    echo " "
-    echo "************************************************************"
-    echo "************** Incompressible tests passed! ****************"
-    echo "************************************************************"
-    echo " "
-    ;;
-  "compressible")
-    echo "Running compressible tests...."
-    sleep 3
-    runTests DARhoSimpleFoam
-    runTests DARhoSimpleFoamUBend
-    runTests DARhoSimpleCFoam
-    runTests DARhoPimpleFoam
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
-      runTests DARhoSimpleFoamMRFAD
-      runTests DARhoSimpleFoamAD
-      runTests DARhoSimpleCFoamAD
-    fi
-    runTests DATurboFoamSubsonic
-    runTests DATurboFoamTransonic
-    echo " "
-    echo "************************************************************"
-    echo "*************** Compressible tests passed! *****************"
-    echo "************************************************************"
-    echo " "
-    ;;
-  "solid")
-    echo "Running solid tests...."
-    sleep 3
-    runTests DASolidDisplacementFoam
-    runTests DAScalarTransportFoam
-    runTests DALaplacianFoam
-    runTests DAHeatTransferFoam
-    echo " "
-    echo "************************************************************"
-    echo "******************* Solid tests passed! ********************"
-    echo "************************************************************"
-    echo " "
-    ;;
-  "forward")
-    echo "Running forward AD tests...."
-    sleep 3
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADF.so" ]; then
-      runTests DASimpleFoamForwardAD
-      runTests DASimpleFoamFieldForwardAD
-      runTests DASimpleFoamMRFForwardAD
-    fi
-    echo " "
-    echo "************************************************************"
-    echo "**************** Forward AD tests passed! ******************"
-    echo "************************************************************"
-    echo " "
-    ;;
-  "mphys_incomp")
-    echo "Running Mphys incompressible tests...."
-    sleep 3
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamIncompressibleADR.so" ]; then
-      runTests MphysAero
-      runTestsSerial MphysAeroFixedPoint
-      runTests MphysAeroOpt
-      runTests MphysAeroField
-    fi
-    echo " "
-    echo "************************************************************"
-    echo "************ Mphys incompressible tests passed! ************"
-    echo "************************************************************"
-    echo " "
-    ;;
-  "mphys_comp")
-    echo "Running Mphys compressible tests...."
-    sleep 3
-    if [ -f "$DAFOAM_ROOT_PATH/OpenFOAM/sharedLibs/libDAFoamCompressibleADR.so" ]; then
-      runTests MphysAeroStructOpt
-      runTests MphysAeroThermal
-      runTests MphysAeroAcoustic
-      runTests MphysAeroProp
-      runTests MphysAeroPropCoupled
-    fi
-    echo " "
-    echo "************************************************************"
-    echo "************* Mphys compressible tests passed! *************"
-    echo "************************************************************"
-    echo " "
-    ;;
-  *)
-    echo "Argument not valid! Options are: all, incompressible, compressible, solid, forward, mphys_incomp, or mphys_comp"
-    echo "Example: ./Allrun all"
-    exit 1
-    ;;
-esac
+# Find all files matching the regression test script pattern
+for file in runRegTests_*.py; do
+  # Check if the file exists to avoid wildcard issues
+  if [[ -f "$file" ]]; then
+    # Extract the part between "runRegTests_" and ".py"
+    extracted_name="${file#runRegTests_}"
+    extracted_name="${extracted_name%.py}"
+    
+    # run the regression tests
+    runRegTests "$extracted_name"
+  fi
+done
+
+# Find all files matching the unit test script pattern
+for file in runUnitTests_*.py; do
+  # Check if the file exists to avoid wildcard issues
+  if [[ -f "$file" ]]; then
+    # Extract the part between "runUnitTests_" and ".py"
+    extracted_name="${file#runUnitTests_}"
+    extracted_name="${extracted_name%.py}"
+    
+    # run the regression tests
+    runUnitTests "$extracted_name"
+  fi
+done
+
+echo " "
+echo "*** All Tests Passed! ***"

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     This file is modified from OpenFOAM's source code
     src/TurbulenceModels/turbulenceModels/RAS/kEpsilon/kEpsilon.H
@@ -79,12 +79,7 @@ DAkEpsilon::DAkEpsilon(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           mesh,
-#ifdef CompressibleFlow
-          dimensionedScalar("epsilonRes", dimensionSet(1, -1, -4, 0, 0, 0, 0), 0.0),
-#endif
-#ifdef IncompressibleFlow
-          dimensionedScalar("epsilonRes", dimensionSet(0, 2, -4, 0, 0, 0, 0), 0.0),
-#endif
+          dimensionedScalar("epsilonRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
       k_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("k"))),
@@ -96,12 +91,7 @@ DAkEpsilon::DAkEpsilon(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           mesh,
-#ifdef CompressibleFlow
-          dimensionedScalar("kRes", dimensionSet(1, -1, -3, 0, 0, 0, 0), 0.0),
-#endif
-#ifdef IncompressibleFlow
-          dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
-#endif
+          dimensionedScalar("kRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
       betaFIK_(
           IOobject(
@@ -124,6 +114,19 @@ DAkEpsilon::DAkEpsilon(
           dimensionedScalar("betaFIEpsilon", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           "zeroGradient")
 {
+
+    // we need to reset the nuTildaRes's dimension based on the model type
+    if (turbModelType_ == "incompressible")
+    {
+        epsilonRes_.dimensions().reset(dimensionSet(0, 2, -4, 0, 0, 0, 0));
+        kRes_.dimensions().reset(dimensionSet(0, 2, -3, 0, 0, 0, 0));
+    }
+
+    if (turbModelType_ == "compressible")
+    {
+        epsilonRes_.dimensions().reset(dimensionSet(1, -1, -4, 0, 0, 0, 0));
+        kRes_.dimensions().reset(dimensionSet(1, -1, -3, 0, 0, 0, 0));
+    }
 
     // calculate the size of epsilonWallFunction faces
     label nWallFaces = 0;
@@ -152,7 +155,7 @@ tmp<fvScalarMatrix> DAkEpsilon::kSource() const
     return tmp<fvScalarMatrix>(
         new fvScalarMatrix(
             k_,
-            dimVolume * rho_.dimensions() * k_.dimensions()
+            dimVolume * this->rhoDimensions() * k_.dimensions()
                 / dimTime));
 }
 
@@ -161,7 +164,7 @@ tmp<fvScalarMatrix> DAkEpsilon::epsilonSource() const
     return tmp<fvScalarMatrix>(
         new fvScalarMatrix(
             epsilon_,
-            dimVolume * rho_.dimensions() * epsilon_.dimensions()
+            dimVolume * this->rhoDimensions() * epsilon_.dimensions()
                 / dimTime));
 }
 
@@ -444,39 +447,40 @@ void DAkEpsilon::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
     }
 
     // NOTE: for compressible flow, it depends on rho so we need to add T and p
-#ifdef IncompressibleFlow
-    allCon.set(
-        "epsilonRes",
-        {
-            {"U", "epsilon", "k", "phi"}, // lv0
-            {"U", "epsilon", "k"}, // lv1
-            {"U", "epsilon", "k"} // lv2
-        });
-    allCon.set(
-        "kRes",
-        {
-            {"U", "epsilon", "k", "phi"}, // lv0
-            {"U", "epsilon", "k"}, // lv1
-            {"U", "epsilon", "k"} // lv2
-        });
-#endif
-
-#ifdef CompressibleFlow
-    allCon.set(
-        "epsilonRes",
-        {
-            {"U", "T", pName, "epsilon", "k", "phi"}, // lv0
-            {"U", "T", pName, "epsilon", "k"}, // lv1
-            {"U", "T", pName, "epsilon", "k"} // lv2
-        });
-    allCon.set(
-        "kRes",
-        {
-            {"U", "T", pName, "epsilon", "k", "phi"}, // lv0
-            {"U", "T", pName, "epsilon", "k"}, // lv1
-            {"U", "T", pName, "epsilon", "k"} // lv2
-        });
-#endif
+    if (turbModelType_ == "incompressible")
+    {
+        allCon.set(
+            "epsilonRes",
+            {
+                {"U", "epsilon", "k", "phi"}, // lv0
+                {"U", "epsilon", "k"}, // lv1
+                {"U", "epsilon", "k"} // lv2
+            });
+        allCon.set(
+            "kRes",
+            {
+                {"U", "epsilon", "k", "phi"}, // lv0
+                {"U", "epsilon", "k"}, // lv1
+                {"U", "epsilon", "k"} // lv2
+            });
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        allCon.set(
+            "epsilonRes",
+            {
+                {"U", "T", pName, "epsilon", "k", "phi"}, // lv0
+                {"U", "T", pName, "epsilon", "k"}, // lv1
+                {"U", "T", pName, "epsilon", "k"} // lv2
+            });
+        allCon.set(
+            "kRes",
+            {
+                {"U", "T", pName, "epsilon", "k", "phi"}, // lv0
+                {"U", "T", pName, "epsilon", "k"}, // lv1
+                {"U", "T", pName, "epsilon", "k"} // lv2
+            });
+    }
 }
 
 void DAkEpsilon::correct(label printToScreen)
@@ -527,6 +531,8 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
 
     label isPC = 0;
 
+    label printToScreen = options.lookupOrDefault("printToScreen", 0);
+
     if (!solveTurbState_)
     {
         isPC = options.getLabel("isPC");
@@ -538,11 +544,13 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         }
     }
 
+    volScalarField rho = this->rho();
+
     // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
     // while for the incompresssible "this->phi()" returns phi only
     // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
     volScalarField::Internal divU(
-        fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_))().v());
+        fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_))().v());
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField::Internal G(
@@ -563,12 +571,12 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
 
     // Dissipation equation
     tmp<fvScalarMatrix> epsEqn(
-        fvm::ddt(phase_, rho_, epsilon_)
+        fvm::ddt(phase_, rho, epsilon_)
             + fvm::div(phaseRhoPhi_, epsilon_, divEpsilonScheme)
-            - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
-        == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFIEpsilon_()
-            - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
-            - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
+            - fvm::laplacian(phase_ * rho * DepsilonEff(), epsilon_)
+        == C1_ * phase_() * rho() * G * epsilon_() / k_() * betaFIEpsilon_()
+            - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho() * divU, epsilon_)
+            - fvm::Sp(C2_ * phase_() * rho() * epsilon_() / k_(), epsilon_)
             + epsilonSource());
 
     epsEqn.ref().relax();
@@ -577,12 +585,10 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
 
     if (solveTurbState_)
     {
-        label printToScreen = options.getLabel("printToScreen");
-
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverEpsilon = solve(epsEqn);
-        DAUtility::primalResidualControl(solverEpsilon, printToScreen, "epsilon");
+        DAUtility::primalResidualControl(solverEpsilon, printToScreen, "epsilon", daGlobalVar_.primalMaxRes);
 
         DAUtility::boundVar(allOptions_, epsilon_, printToScreen);
     }
@@ -599,24 +605,23 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
 
     // Turbulent kinetic energy equation
     tmp<fvScalarMatrix> kEqn(
-        fvm::ddt(phase_, rho_, k_)
+        fvm::ddt(phase_, rho, k_)
             + fvm::div(phaseRhoPhi_, k_, divKScheme)
-            - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-        == phase_() * rho_() * G * betaFIK_()
-            - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
-            - fvm::Sp(phase_() * rho_() * epsilon_() / k_(), k_)
+            - fvm::laplacian(phase_ * rho * DkEff(), k_)
+        == phase_() * rho() * G * betaFIK_()
+            - fvm::SuSp((2.0 / 3.0) * phase_() * rho() * divU, k_)
+            - fvm::Sp(phase_() * rho() * epsilon_() / k_(), k_)
             + kSource());
 
     kEqn.ref().relax();
 
     if (solveTurbState_)
     {
-        label printToScreen = options.getLabel("printToScreen");
 
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverK = solve(kEqn);
-        DAUtility::primalResidualControl(solverK, printToScreen, "k");
+        DAUtility::primalResidualControl(solverK, printToScreen, "k", daGlobalVar_.primalMaxRes);
 
         DAUtility::boundVar(allOptions_, k_, printToScreen);
 
@@ -652,11 +657,13 @@ void DAkEpsilon::getFvMatrixFields(
             << exit(FatalError);
     }
 
+    volScalarField rho = this->rho();
+
     // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
     // while for the incompresssible "this->phi()" returns phi only
     // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
     volScalarField::Internal divU(
-        fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_))().v());
+        fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_))().v());
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField::Internal G(
@@ -671,12 +678,12 @@ void DAkEpsilon::getFvMatrixFields(
     {
         // Dissipation equation
         fvScalarMatrix epsEqn(
-            fvm::ddt(phase_, rho_, epsilon_)
+            fvm::ddt(phase_, rho, epsilon_)
                 + fvm::div(phaseRhoPhi_, epsilon_, "div(pc)")
-                - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
-            == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFIEpsilon_()
-                - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
-                - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
+                - fvm::laplacian(phase_ * rho * DepsilonEff(), epsilon_)
+            == C1_ * phase_() * rho() * G * epsilon_() / k_() * betaFIEpsilon_()
+                - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho() * divU, epsilon_)
+                - fvm::Sp(C2_ * phase_() * rho() * epsilon_() / k_(), epsilon_)
                 + epsilonSource());
 
         epsEqn.relax();
@@ -691,12 +698,12 @@ void DAkEpsilon::getFvMatrixFields(
     else if (varName == "k")
     {
         fvScalarMatrix kEqn(
-            fvm::ddt(phase_, rho_, k_)
+            fvm::ddt(phase_, rho, k_)
                 + fvm::div(phaseRhoPhi_, k_, "div(pc)")
-                - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-            == phase_() * rho_() * G * betaFIK_()
-                - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
-                - fvm::Sp(phase_() * rho_() * epsilon_() / k_(), k_)
+                - fvm::laplacian(phase_ * rho * DkEff(), k_)
+            == phase_() * rho() * G * betaFIK_()
+                - fvm::SuSp((2.0 / 3.0) * phase_() * rho() * divU, k_)
+                - fvm::Sp(phase_() * rho() * epsilon_() / k_(), k_)
                 + kSource());
 
         kEqn.relax();
@@ -718,12 +725,14 @@ void DAkEpsilon::getTurbProdOverDestruct(volScalarField& PoD) const
         "kEpsilon:G",
         nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
 
-    volScalarField::Internal P = phase_() * rho_() * G;
-    volScalarField::Internal D = phase_() * rho_() * epsilon_();
+    volScalarField rho = this->rho();
+
+    volScalarField::Internal P = phase_() * rho() * G;
+    volScalarField::Internal D = phase_() * rho() * epsilon_();
 
     forAll(P, cellI)
     {
-        PoD[cellI] = P[cellI] / (D[cellI] + 1e-16);
+        PoD[cellI] = P[cellI] / (D[cellI] + P[cellI] + 1e-16);
     }
 }
 
@@ -739,12 +748,14 @@ void DAkEpsilon::getTurbConvOverProd(volScalarField& CoP) const
         "kEpsilon:G",
         nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
 
-    volScalarField::Internal P = phase_() * rho_() * G;
+    volScalarField rho = this->rho();
+
+    volScalarField::Internal P = phase_() * rho() * G;
     volScalarField C = fvc::div(phaseRhoPhi_, k_);
 
     forAll(P, cellI)
     {
-        CoP[cellI] = C[cellI] / (P[cellI] + 1e-16);
+        CoP[cellI] = C[cellI] / (P[cellI] + C[cellI] + 1e-16);
     }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

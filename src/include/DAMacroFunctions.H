@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Macro functions for DAFoam
@@ -25,17 +25,17 @@
         const_cast<fieldType&>(                  \
             db.lookupObject<fieldType>(stateResName)));
 
-#define normalizeResiduals(resName)                                                                \
-    if (!DAUtility::isInList<word>(#resName, daOption_.getOption<wordList>("normalizeResiduals"))) \
-    {                                                                                              \
-        forAll(resName##_, cellI)                                                                  \
-        {                                                                                          \
-            resName##_[cellI] *= mesh_.V()[cellI];                                                 \
-        }                                                                                          \
+#define normalizeResiduals(resName)                                           \
+    if (!daOption_.getOption<wordList>("normalizeResiduals").found(#resName)) \
+    {                                                                         \
+        forAll(resName##_, cellI)                                             \
+        {                                                                     \
+            resName##_[cellI] *= mesh_.V()[cellI];                            \
+        }                                                                     \
     }
 
 #define normalizePhiResiduals(resName)                                                                        \
-    if (DAUtility::isInList<word>(#resName, daOption_.getOption<wordList>("normalizeResiduals")))             \
+    if (daOption_.getOption<wordList>("normalizeResiduals").found(#resName))                                  \
     {                                                                                                         \
         forAll(resName##_, faceI)                                                                             \
         {                                                                                                     \
@@ -96,7 +96,7 @@
 #endif
 
 // If AD is used, do valA=valB.getValue(), otherwise, do valA=valB
-#if defined(CODI_AD_FORWARD) || defined(CODI_AD_REVERSE)
+#if defined(CODI_ADF) || defined(CODI_ADR)
 #define assignValueCheckAD(valA, valB) \
     valA = valB.getValue();
 #else

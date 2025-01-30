@@ -1,14 +1,2 @@
-Dictionary Key: HF_INNER
-@value     180150.558627527 1e-08 1e-10
-Dictionary Key: HF_OUTER
-@value   -220150.5586275289 1e-08 1e-10
-Dictionary Key: IR1KS
-@value    19.89626068314585 1e-08 1e-10
-Dictionary Key: R1
-@value    0.994617581067802 1e-08 1e-10
-Dictionary Key: R1KS
-@value    6.252992336157548 1e-08 1e-10
-Dictionary Key: TNormSum
-@value    6400011.351333449 1e-08 1e-10
-Dictionary Key: fail
-@value                    0 1e-08 1e-10
+Dictionary Key: HFX
+@value    180150.5586275270325132 1e-10 1e-12

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Field manipulation such as correct boundary conditions
@@ -82,6 +82,9 @@ public:
 
     /// assign the fields in OpenFOAM based on the state array
     void state2OFField(const scalar* states) const;
+
+    /// assign the openfoam fields to the states array
+    void ofField2State(scalar* states) const;
 
     /// assign the points in fvMesh of OpenFOAM based on the point vector
     void pointVec2OFMesh(const Vec xvVec) const;

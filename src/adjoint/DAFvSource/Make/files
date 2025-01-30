@@ -1,0 +1,5 @@
+DAFvSource.C
+DAFvSourceActuatorDisk.C
+DAFvSourceHeatSource.C
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFvSource$(WM_CODI_AD_LIB_POSTFIX)

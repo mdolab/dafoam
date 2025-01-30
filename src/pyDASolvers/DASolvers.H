@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Python wrapper library for DASolver
@@ -61,139 +61,94 @@ public:
     }
 
     /// solve the primal equations
-    label solvePrimal(
-        const Vec xvVec,
-        Vec wVec)
+    label solvePrimal()
     {
-        return DASolverPtr_->solvePrimal(xvVec, wVec);
+        return DASolverPtr_->solvePrimal();
+    }
+
+    label getInputSize(
+        const word inputName,
+        const word inputType)
+    {
+        return DASolverPtr_->getInputSize(inputName, inputType);
+    }
+
+    label getOutputSize(
+        const word outputName,
+        const word outputType)
+    {
+        return DASolverPtr_->getOutputSize(outputName, outputType);
+    }
+
+    void calcOutput(
+        const word outputName,
+        const word outputType,
+        double* output)
+    {
+        DASolverPtr_->calcOutput(outputName, outputType, output);
+    }
+
+    label getInputDistributed(
+        const word inputName,
+        const word inputType)
+    {
+        return DASolverPtr_->getInputDistributed(inputName, inputType);
+    }
+
+    label getOutputDistributed(
+        const word outputName,
+        const word outputType)
+    {
+        return DASolverPtr_->getOutputDistributed(outputName, outputType);
+    }
+
+    /// calculate the Jacobian-matrix-transposed and vector product for product = [dOutput/dInput]^T * seed
+    void calcJacTVecProduct(
+        const word inputName,
+        const word inputType,
+        const double* input,
+        const word outputName,
+        const word outputType,
+        const double* seed,
+        double* product)
+    {
+        DASolverPtr_->calcJacTVecProduct(
+            inputName,
+            inputType,
+            input,
+            outputName,
+            outputType,
+            seed,
+            product);
+    }
+
+    void setSolverInput(
+        const word inputName,
+        const word inputType,
+        const int inputSize,
+        const double* input,
+        const double* seed)
+    {
+        DASolverPtr_->setSolverInput(
+            inputName,
+            inputType,
+            inputSize,
+            input,
+            seed);
+    }
+
+    /// run the coloring solver
+    void runColoring()
+    {
+        DASolverPtr_->runColoring();
     }
 
     /// compute dRdWT
     void calcdRdWT(
-        const Vec xvVec,
-        const Vec wVec,
         const label isPC,
         Mat dRdWT)
     {
-        DASolverPtr_->calcdRdWT(xvVec, wVec, isPC, dRdWT);
-    }
-
-    /// compute dFdW
-    void calcdFdW(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        Vec dFdW)
-    {
-        DASolverPtr_->calcdFdW(xvVec, wVec, objFuncName, dFdW);
-    }
-
-    /// compute dFdW using reverse-mode AD
-    void calcdFdWAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        Vec dFdW)
-    {
-        DASolverPtr_->calcdFdWAD(xvVec, wVec, objFuncName, dFdW);
-    }
-
-    /// compute dFdXv using reverse-mode AD
-    void calcdFdXvAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdXv)
-    {
-        DASolverPtr_->calcdFdXvAD(xvVec, wVec, objFuncName, designVarName, dFdXv);
-    }
-
-    /// compute dRdXv^T*Psi
-    void calcdRdXvTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        Vec dRdXvTPsi)
-    {
-        DASolverPtr_->calcdRdXvTPsiAD(xvVec, wVec, psi, dRdXvTPsi);
-    }
-
-    /// compute dForcedXv
-    void calcdForcedXvAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dForcedW)
-    {
-        DASolverPtr_->calcdForcedXvAD(xvVec, wVec, fBarVec, dForcedW);
-    }
-
-    /// compute dAcoudXv
-    void calcdAcousticsdXvAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dAcoudW,
-        word varName,
-        word groupName)
-    {
-        DASolverPtr_->calcdAcousticsdXvAD(xvVec, wVec, fBarVec, dAcoudW, varName, groupName);
-    }
-
-    /// compute dRdAct^T*Psi
-    void calcdRdActTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdActTPsi)
-    {
-        DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
-    }
-
-    /// compute dRdHSC^T*Psi
-    void calcdRdHSCTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdHSCTPsi)
-    {
-        DASolverPtr_->calcdRdHSCTPsiAD(xvVec, wVec, psi, designVarName, dRdHSCTPsi);
-    }
-
-    /// compute dForcedW
-    void calcdForcedWAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dForcedW)
-    {
-        DASolverPtr_->calcdForcedWAD(xvVec, wVec, fBarVec, dForcedW);
-    }
-
-    /// compute dAcoudW
-    void calcdAcousticsdWAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec fBarVec,
-        Vec dAcoudW,
-        word varName,
-        word groupName)
-    {
-        DASolverPtr_->calcdAcousticsdWAD(xvVec, wVec, fBarVec, dAcoudW, varName, groupName);
-    }
-
-    /// compute dRdAOA^T*Psi
-    void calcdRdAOATPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdAOATPsi)
-    {
-        DASolverPtr_->calcdRdAOATPsiAD(xvVec, wVec, psi, designVarName, dRdAOATPsi);
+        DASolverPtr_->calcdRdWT(isPC, dRdWT);
     }
 
     /// create the multi-level Richardson KSP for solving linear equation
@@ -222,11 +177,9 @@ public:
     }
 
     /// initialize matrix free dRdWT
-    void initializedRdWTMatrixFree(
-        const Vec xvVec,
-        const Vec wVec)
+    void initializedRdWTMatrixFree()
     {
-        DASolverPtr_->initializedRdWTMatrixFree(xvVec, wVec);
+        DASolverPtr_->initializedRdWTMatrixFree();
     }
 
     /// destroy matrix free dRdWT
@@ -252,187 +205,64 @@ public:
         DASolverPtr_->convertMPIVec2SeqVec(mpiVec, seqVec);
     }
 
-    /// compute dRdBC
-    void calcdRdBC(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdBC)
-    {
-        DASolverPtr_->calcdRdBC(xvVec, wVec, designVarName, dRdBC);
-    }
-
-    /// compute dFdBC
-    void calcdFdBC(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdBC)
-    {
-        DASolverPtr_->calcdFdBC(xvVec, wVec, objFuncName, designVarName, dFdBC);
-    }
-
-    /// compute dFdBCAD
-    void calcdFdBCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdBC)
-    {
-        DASolverPtr_->calcdFdBCAD(xvVec, wVec, objFuncName, designVarName, dFdBC);
-    }
-
-    /// compute dRdBC^T*Psi
-    void calcdRdBCTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdBCTPsi)
-    {
-        DASolverPtr_->calcdRdBCTPsiAD(xvVec, wVec, psi, designVarName, dRdBCTPsi);
-    }
-
-    /// compute dRdAOA
-    void calcdRdAOA(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdAOA)
-    {
-        DASolverPtr_->calcdRdAOA(xvVec, wVec, designVarName, dRdAOA);
-    }
-
-    /// compute dFdAOA
-    void calcdFdAOA(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdAOA)
-    {
-        DASolverPtr_->calcdFdAOA(xvVec, wVec, objFuncName, designVarName, dFdAOA);
-    }
-
-    /// compute dRdFFD
-    void calcdRdFFD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        Mat dRdFFD)
-    {
-        DASolverPtr_->calcdRdFFD(xvVec, wVec, designVarName, dRdFFD);
-    }
-
-    /// compute dFdFFD
-    void calcdFdFFD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdFFD)
-    {
-        DASolverPtr_->calcdFdFFD(xvVec, wVec, objFuncName, designVarName, dFdFFD);
-    }
-
-    /// compute dRdACT
-    void calcdRdACT(
-        const Vec xvVec,
-        const Vec wVec,
-        const word designVarName,
-        const word designVarType,
-        Mat dRdACT)
-    {
-        DASolverPtr_->calcdRdACT(xvVec, wVec, designVarName, designVarType, dRdACT);
-    }
-
-    /// compute dFdACT
-    void calcdFdACTAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdACT)
-    {
-        DASolverPtr_->calcdFdACTAD(xvVec, wVec, objFuncName, designVarName, dFdACT);
-    }
-
-    /// compute dFdHSC
-    void calcdFdHSCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdHSC)
-    {
-        DASolverPtr_->calcdFdHSCAD(xvVec, wVec, objFuncName, designVarName, dFdHSC);
-    }
-
-    /// compute dFdACT
-    void calcdFdACT(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        const word designVarType,
-        Vec dFdACT)
-    {
-        DASolverPtr_->calcdFdACT(xvVec, wVec, objFuncName, designVarName, designVarType, dFdACT);
-    }
-
-    /// compute dRdField
-    void calcdRdFieldTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdFieldTPsi)
-    {
-        DASolverPtr_->calcdRdFieldTPsiAD(xvVec, wVec, psi, designVarName, dRdFieldTPsi);
-    }
-
-    /// compute dFdField
-    void calcdFdFieldAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdField)
-    {
-        DASolverPtr_->calcdFdFieldAD(xvVec, wVec, objFuncName, designVarName, dFdField);
-    }
-
     /// compute dRdWOld^T*Psi
     void calcdRdWOldTPsiAD(
         const label oldTimeLevel,
-        const Vec psi,
-        Vec dRdWOldTPsi)
+        const double* psi,
+        double* dRdWOldTPsi)
     {
         DASolverPtr_->calcdRdWOldTPsiAD(oldTimeLevel, psi, dRdWOldTPsi);
     }
 
-    /// compute [dRdW]^T*Psi
-    void calcdRdWTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        Vec dRdWTPsi)
+    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the states array
+    void updateOFFields(const double* states)
     {
-        DASolverPtr_->calcdRdWTPsiAD(xvVec, wVec, psi, dRdWTPsi);
+#if !defined(CODI_ADR) && !defined(CODI_ADF)
+        DASolverPtr_->updateOFFields(states);
+#else
+        label localSize = this->getNLocalAdjointStates();
+        scalar* statesArray = new scalar[localSize];
+        for (label i = 0; i < localSize; i++)
+        {
+            statesArray[i] = states[i];
+        }
+        DASolverPtr_->updateOFFields(statesArray);
+        delete[] statesArray;
+#endif
     }
 
-    /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
-    void updateOFField(const Vec wVec)
+    /// Assign the OpenFOAM field values to the states array
+    void getOFFields(double* states)
     {
-        DASolverPtr_->updateOFField(wVec);
+#if !defined(CODI_ADR) && !defined(CODI_ADF)
+        DASolverPtr_->getOFFields(states);
+#else
+        label localSize = this->getNLocalAdjointStates();
+        scalar* statesArray = new scalar[localSize];
+        DASolverPtr_->getOFFields(statesArray);
+        for (label i = 0; i < localSize; i++)
+        {
+            states[i] = statesArray[i].value();
+        }
+        delete[] statesArray;
+#endif
     }
 
     /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
-    void updateOFMesh(const Vec xvVec)
+    void updateOFMesh(const double* volCoords)
     {
-        DASolverPtr_->updateOFMesh(xvVec);
+#if !defined(CODI_ADR) && !defined(CODI_ADF)
+        DASolverPtr_->updateOFMesh(volCoords);
+#else
+        label localSize = this->getNLocalPoints() * 3;
+        scalar* volCoordsArray = new scalar[localSize];
+        for (label i = 0; i < localSize; i++)
+        {
+            volCoordsArray[i] = volCoords[i];
+        }
+        DASolverPtr_->updateOFMesh(volCoordsArray);
+        delete[] volCoordsArray;
+#endif
     }
 
     /// basically, we call DAIndex::getGlobalXvIndex
@@ -443,34 +273,10 @@ public:
         return DASolverPtr_->getGlobalXvIndex(idxPoint, idxCoord);
     }
 
-    /// basically, we call DASolver::ofField2StateVec
-    void ofField2StateVec(Vec stateVec) const
-    {
-        DASolverPtr_->ofField2StateVec(stateVec);
-    }
-
-    /// basically, we call DASolver::stateVec2OFField
-    void stateVec2OFField(const Vec stateVec) const
-    {
-        DASolverPtr_->stateVec2OFField(stateVec);
-    }
-
     /// basically, we call DASolver::checkMesh
     label checkMesh() const
     {
         return DASolverPtr_->checkMesh();
-    }
-
-    /// Get the number of faces for the MDO coupling patches
-    label getNCouplingFaces()
-    {
-        return DASolverPtr_->getNCouplingFaces();
-    }
-
-    /// Get the number of points for the MDO coupling patches
-    label getNCouplingPoints()
-    {
-        return DASolverPtr_->getNCouplingPoints();
     }
 
     // return the number of local mesh points
@@ -503,26 +309,30 @@ public:
         DASolverPtr_->syncDAOptionToActuatorDVs();
     }
 
-    /// return the value of objective
-    double getObjFuncValue(const word objFuncName)
+    /// return the value of objective based on timeOp
+    double getTimeOpFuncVal(const word functionName)
+    {
+        return DASolverPtr_->getTimeOpFuncVal(functionName);
+    }
+
+    /// get the scaling factor for dF/d? computation
+    double getdFScaling(const word functionName, const label timeIdx)
     {
         double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValue(objFuncName));
+        assignValueCheckAD(returnVal, DASolverPtr_->getdFScaling(functionName, timeIdx));
         return returnVal;
     }
 
-    double getObjFuncValueUnsteady(const word objFuncName)
+    void calcCouplingFaceCoords(
+        const double* volCoords,
+        double* surfCoords)
     {
-        double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncValueUnsteady(objFuncName));
-        return returnVal;
-    }
-
-    double getObjFuncUnsteadyScaling()
-    {
-        double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getObjFuncUnsteadyScaling());
-        return returnVal;
+#if !defined(CODI_ADR) && !defined(CODI_ADF)
+        DASolverPtr_->calcCouplingFaceCoords(volCoords, surfCoords);
+        return;
+#endif
+        FatalErrorIn("calcCouplingFaceCoords") << "should not call this func in AD mode!"
+                                               << abort(FatalError);
     }
 
     /// return the elapsed clock time for testing speed
@@ -539,72 +349,6 @@ public:
         double returnVal = 0.0;
         assignValueCheckAD(returnVal, DASolverPtr_->getElapsedCpuTime());
         return returnVal;
-    }
-
-    void calcCouplingFaceCoords(
-        const double* volCoords,
-        double* surfCoords)
-    {
-#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        DASolverPtr_->calcCouplingFaceCoords(volCoords, surfCoords);
-        return;
-#endif
-        FatalErrorIn("calcCouplingFaceCoords") << "should not call this func in AD mode!"
-                                               << abort(FatalError);
-    }
-
-    /// calc matrix-vector products for calcCouplingFaceCoords
-    void calcCouplingFaceCoordsAD(
-        const double* volCoords,
-        const double* seeds,
-        double* product)
-    {
-        DASolverPtr_->calcCouplingFaceCoordsAD(volCoords, seeds, product);
-    }
-
-    /// return the force on the FSI patches
-    void getForces(Vec fX, Vec fY, Vec fZ)
-    {
-        DASolverPtr_->getForces(fX, fY, fZ);
-    }
-
-    /// return the thermal (temperature or heat flux) on the conjugate heat transfer patches
-    void getThermal(
-        const double* volCoords,
-        const double* states,
-        double* thermal)
-    {
-#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        DASolverPtr_->getThermal(volCoords, states, thermal);
-        return;
-#endif
-        FatalErrorIn("getThermal") << "should not call this func in AD mode!"
-                                   << abort(FatalError);
-    }
-
-    /// compute the temperature on the conjugate heat transfer patches AD
-    void getThermalAD(
-        const word inputName,
-        const double* volCoords,
-        const double* states,
-        const double* seeds,
-        double* product)
-    {
-        DASolverPtr_->getThermalAD(inputName, volCoords, states, seeds, product);
-    }
-
-    /// set the thermal (temperature or heat flux) BC to the conjugate heat transfer patches
-    void setThermal(double* thermal)
-    {
-        label nCouplingFaces = this->getNCouplingFaces();
-        scalar* thermalArray = new scalar[nCouplingFaces * 2];
-        for (label i = 0; i < nCouplingFaces * 2; i++)
-        {
-            thermalArray[i] = thermal[i];
-        }
-
-        DASolverPtr_->setThermal(thermalArray);
-        delete[] thermalArray;
     }
 
     /// get the number of regression model parameters
@@ -625,73 +369,10 @@ public:
         scalar val1 = val;
         DASolverPtr_->setRegressionParameter(modelName, idxI, val1);
     }
-
-    /// calculte [dR/dRegParameters]^T * psi
-    void calcdRdRegParTPsiAD(
-        const double* volCoords,
-        const double* states,
-        const double* parameters,
-        const double* seeds,
-        const word modelName,
-        double* product)
-    {
-        DASolverPtr_->calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, modelName, product);
-    }
-
-    /// compute dFdRegPar AD
-    void calcdFdRegParAD(
-        const double* volCoords,
-        const double* states,
-        const double* parameters,
-        const word objFuncName,
-        const word designVarName,
-        const word modelName,
-        double* dFdRegPar)
-    {
-        DASolverPtr_->calcdFdRegParAD(volCoords, states, parameters, objFuncName, designVarName, modelName, dFdRegPar);
-    }
-
-    void calcdRdThermalTPsiAD(
-        const double* volCoords,
-        const double* states,
-        const double* thermal,
-        const double* seeds,
-        double* product)
-    {
-        DASolverPtr_->calcdRdThermalTPsiAD(volCoords, states, thermal, seeds, product);
-    }
-
-    /// get a variable from OF layer
-    void getOFField(
-        const word fieldName,
-        const word fieldType,
-        Vec field)
-    {
-        DASolverPtr_->getOFField(fieldName, fieldType, field);
-    }
-
-    /// return the acoustic data values
-    void getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, word groupName)
-    {
-        DASolverPtr_->getAcousticData(x, y, z, nX, nY, nZ, a, fX, fY, fZ, groupName);
-    }
-
     /// call DASolver::printAllOptions
     void printAllOptions()
     {
         DASolverPtr_->printAllOptions();
-    }
-
-    /// set values for dXvdFFDMat
-    void setdXvdFFDMat(const Mat dXvdFFDMat)
-    {
-        DASolverPtr_->setdXvdFFDMat(dXvdFFDMat);
-    }
-
-    /// set the value for DASolver::FFD2XvSeedVec_
-    void setFFD2XvSeedVec(Vec vecIn)
-    {
-        DASolverPtr_->setFFD2XvSeedVec(vecIn);
     }
 
     /// update the allOptions_ dict in DAOption based on the pyOptions from pyDAFoam
@@ -706,30 +387,6 @@ public:
         double returnVal = 0.0;
         assignValueCheckAD(returnVal, DASolverPtr_->getPrevPrimalSolTime());
         return returnVal;
-    }
-
-    /// assign the points in fvMesh of OpenFOAM based on the point vector
-    void pointVec2OFMesh(const Vec xvVec) const
-    {
-        DASolverPtr_->pointVec2OFMesh(xvVec);
-    }
-
-    /// assign the point vector based on the points in fvMesh of OpenFOAM
-    void ofMesh2PointVec(Vec xvVec) const
-    {
-        DASolverPtr_->ofMesh2PointVec(xvVec);
-    }
-
-    /// assign the OpenFOAM residual fields based on the resVec
-    void resVec2OFResField(const Vec resVec) const
-    {
-        DASolverPtr_->resVec2OFResField(resVec);
-    }
-
-    /// assign the resVec based on OpenFOAM residual fields
-    void ofResField2ResVec(Vec resVec) const
-    {
-        DASolverPtr_->resVec2OFResField(resVec);
     }
 
     /// write the matrix in binary format
@@ -780,23 +437,6 @@ public:
         DASolverPtr_->writeVectorBinary(vecIn, prefix);
     }
 
-    /// assign primal variables based on the current time instance
-    void setTimeInstanceField(const label instanceI)
-    {
-        DASolverPtr_->setTimeInstanceField(instanceI);
-    }
-
-    /// assign the time instance mats to/from the lists in the OpenFOAM layer depending on the mode
-    void setTimeInstanceVar(
-        const word mode,
-        Mat stateMat,
-        Mat stateBCMat,
-        Vec timeVec,
-        Vec timeIdxVec)
-    {
-        DASolverPtr_->setTimeInstanceVar(mode, stateMat, stateBCMat, timeVec, timeIdxVec);
-    }
-
     /// read the state variables from the disk and assign the value to the prescribe time level
     void readStateVars(
         scalar timeVal,
@@ -826,7 +466,7 @@ public:
     /// return the endTime
     double getEndTime()
     {
-#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+#if !defined(CODI_ADR) && !defined(CODI_ADF)
         return DASolverPtr_->getRunTime().endTime().value();
 #endif
         FatalErrorIn("getEndTime") << "should not call this func in AD mode!"
@@ -836,61 +476,11 @@ public:
     /// return the deltaT
     double getDeltaT()
     {
-#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+#if !defined(CODI_ADR) && !defined(CODI_ADF)
         return DASolverPtr_->getRunTime().deltaT().value();
 #endif
         FatalErrorIn("getDeltaT") << "should not call this func in AD mode!"
                                   << abort(FatalError);
-    }
-
-    /// get the unsteady adjoint start time
-    int getUnsteadyObjFuncStartTimeIndex()
-    {
-#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        return DASolverPtr_->getUnsteadyObjFuncStartTimeIndex();
-#endif
-        FatalErrorIn("getUnsteadyObjFuncStartTimeIndex") << "should not call this func in AD mode!"
-                                                         << abort(FatalError);
-    }
-
-    /// get the unsteady adjoint end time
-    int getUnsteadyObjFuncEndTimeIndex()
-    {
-#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
-        return DASolverPtr_->getUnsteadyObjFuncEndTimeIndex();
-#endif
-        FatalErrorIn("getUnsteadyObjFuncEndTimeIndex") << "should not call this func in AD mode!"
-                                                       << abort(FatalError);
-    }
-
-    /// return the value of objective function at the given time instance and name
-    double getTimeInstanceObjFunc(
-        const label instanceI,
-        const word objFuncName)
-    {
-        double returnVal = 0.0;
-        assignValueCheckAD(returnVal, DASolverPtr_->getTimeInstanceObjFunc(instanceI, objFuncName));
-        return returnVal;
-    }
-
-    /// set the field value
-    void setFieldValue4GlobalCellI(
-        const word fieldName,
-        const scalar val,
-        const label globalCellI,
-        const label compI = 0)
-    {
-        DASolverPtr_->setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI);
-    }
-
-    /// set the field value
-    void setFieldValue4LocalCellI(
-        const word fieldName,
-        const scalar val,
-        const label localCellI,
-        const label compI = 0)
-    {
-        DASolverPtr_->setFieldValue4LocalCellI(fieldName, val, localCellI, compI);
     }
 
     /// update the boundary condition for a field
@@ -913,91 +503,16 @@ public:
         DASolverPtr_->calcPrimalResidualStatistics(mode, 0);
     }
 
-    /// get forwardADDerivVal_
-    PetscScalar getForwardADDerivVal(const word objFuncName)
-    {
-        return DASolverPtr_->getForwardADDerivVal(objFuncName);
-    }
-
-    /// calculate the residual and assign it to the resVec vector
-    void calcResidualVec(Vec resVec)
-    {
-        DASolverPtr_->calcResidualVec(resVec);
-    }
-
     void setPrimalBoundaryConditions(const label printInfo = 1)
     {
         DASolverPtr_->setPrimalBoundaryConditions(printInfo);
     }
 
-    /// calculate the fvSource based on the force profile
-    void calcFvSource(
-        const word propName,
-        Vec aForce,
-        Vec tForce,
-        Vec rDist,
-        Vec targetForce,
-        Vec center,
-        Vec xvVec,
-        Vec fvSource)
-    {
-        DASolverPtr_->calcFvSource(propName, aForce, tForce, rDist, targetForce, center, xvVec, fvSource);
-    }
-
-    void calcdFvSourcedInputsTPsiAD(
-        const word propName,
-        const word mode,
-        Vec aForce,
-        Vec tForce,
-        Vec rDist,
-        Vec targetForce,
-        Vec center,
-        Vec xvVec,
-        Vec psi,
-        Vec dFvSource)
-    {
-        DASolverPtr_->calcdFvSourcedInputsTPsiAD(propName, mode, aForce, tForce, rDist, targetForce, center, xvVec, psi, dFvSource);
-    }
-
-    void calcForceProfile(
-        const word propName,
-        Vec aForce,
-        Vec tForce,
-        Vec rDist,
-        Vec integralForce)
-    {
-        DASolverPtr_->calcForceProfile(propName, aForce, tForce, rDist, integralForce);
-    }
-
-    void calcdForceProfiledXvWAD(
-        const word propName,
-        const word inputMode,
-        const word outputMode,
-        const Vec xvVec,
-        const Vec wVec,
-        Vec psi,
-        Vec dForcedXvW)
-    {
-        DASolverPtr_->calcdForceProfiledXvWAD(propName, inputMode, outputMode, xvVec, wVec, psi, dForcedXvW);
-    }
-
-    void calcdForcedStateTPsiAD(
-        const word mode,
-        Vec xvVec,
-        Vec stateVec,
-        Vec psiVec,
-        Vec prodVec)
-    {
-        DASolverPtr_->calcdForcedStateTPsiAD(mode, xvVec, stateVec, psiVec, prodVec);
-    }
-
     label runFPAdj(
-        const Vec xvVec,
-        const Vec wVec,
         Vec dFdW,
         Vec psi)
     {
-        return DASolverPtr_->runFPAdj(xvVec, wVec, dFdW, psi);
+        return DASolverPtr_->runFPAdj(dFdW, psi);
     }
 
     /// initialize the call back function pointer
@@ -1015,11 +530,11 @@ public:
 
     /// write the adjoint variables for all states
     void writeAdjointFields(
-        const word objFunc,
+        const word function,
         const double writeTime,
         const double* psi)
     {
-        DASolverPtr_->writeAdjointFields(objFunc, writeTime, psi);
+        DASolverPtr_->writeAdjointFields(function, writeTime, psi);
     }
 
     /// write the sensitivity map for all wall surfaces
@@ -1047,7 +562,7 @@ public:
     double getLatestTime()
     {
         double latestTime = 0.0;
-#if !defined(CODI_AD_REVERSE) && !defined(CODI_AD_FORWARD)
+#if !defined(CODI_ADR) && !defined(CODI_ADF)
         latestTime = DASolverPtr_->getLatestTime();
 #else
         scalar tmp = DASolverPtr_->getLatestTime();

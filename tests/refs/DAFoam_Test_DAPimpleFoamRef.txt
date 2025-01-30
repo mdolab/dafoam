@@ -1,54 +1,11 @@
-Dictionary Key: CD
-@value    7.747018955982705 1e-08 1e-10
-Dictionary Key: CMZVAR
-@value    41.05825214841987 1e-08 1e-10
-Dictionary Key: fail
-@value                    0 1e-08 1e-10
-Dictionary Key: CD
-Dictionary Key: actuator
-@value  0.06141669123894886 0.0001 1e-06
-@value -0.02943035191818643 0.0001 1e-06
-@value 8.532367829232026e-07 0.0001 1e-06
-@value                    0 0.0001 1e-06
-@value -0.02832584350427931 0.0001 1e-06
-@value -5.402340242215096e-06 0.0001 1e-06
-@value  -0.1093202159672174 0.0001 1e-06
-@value -0.003809632067486717 0.0001 1e-06
-@value 0.000292379034350851 0.0001 1e-06
-@value -6.047928239713498e-07 0.0001 1e-06
-@value -0.02579282652884607 0.0001 1e-06
-@value -0.01957297931933645 0.0001 1e-06
-@value                    0 0.0001 1e-06
-Dictionary Key: alpha
-@value   0.2971412894447766 0.0001 1e-06
-Dictionary Key: parameter
-@value   0.1061176536441759 0.0001 1e-06
-Dictionary Key: twist
-@value   0.5092929899511818 0.0001 1e-06
-Dictionary Key: uin
-@value   0.1887107736261104 0.0001 1e-06
-Dictionary Key: CMZVAR
-Dictionary Key: actuator
-@value  0.01291643471777806 0.0001 1e-06
-@value -0.06721783286374683 0.0001 1e-06
-@value 1.012188890171458e-06 0.0001 1e-06
-@value                    0 0.0001 1e-06
-@value -0.03989830051579327 0.0001 1e-06
-@value -1.174778728995113e-05 0.0001 1e-06
-@value -0.01318480218147377 0.0001 1e-06
-@value  0.02098453642920323 0.0001 1e-06
-@value 7.847574927121338e-05 0.0001 1e-06
-@value 1.135351990357217e-06 0.0001 1e-06
-@value -0.004900628281173936 0.0001 1e-06
-@value -0.007270672904233405 0.0001 1e-06
-@value                    0 0.0001 1e-06
-Dictionary Key: alpha
-@value   0.1694703808315662 0.0001 1e-06
-Dictionary Key: parameter
-@value  0.01320303798700824 0.0001 1e-06
-Dictionary Key: twist
-@value    2.800461949695517 0.0001 1e-06
-Dictionary Key: uin
-@value   0.5352122732349225 0.0001 1e-06
-Dictionary Key: fail
-@value                    0 0.0001 1e-06
+Dictionary Key: cruise.solver.CD
+@value         0.3936372895222005 1e-10 1e-12
+Dictionary Key: cruise.solver.CD
+Dictionary Key: patchV0-Adjoint
+@value        -0.0294059240678164 1e-08 1e-12
+Dictionary Key: patchV0-ForwardAD
+@value        -0.0292917561256024 1e-08 1e-12
+Dictionary Key: shape0-Adjoint
+@value        -0.3407044487665700 1e-08 1e-12
+Dictionary Key: shape0-ForwardAD
+@value        -0.3407791195499770 1e-08 1e-12

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Child class for DASolidDisplacementFoam
@@ -91,9 +91,7 @@ public:
     virtual void initSolver();
 
     /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec);
+    virtual label solvePrimal();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -1,0 +1,4 @@
+DASolvers.C
+pyDASolvers.cpp
+
+LIB = pyDASolvers$(WM_CODI_AD_LIB_POSTFIX)

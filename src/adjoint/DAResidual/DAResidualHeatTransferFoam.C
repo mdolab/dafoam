@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
 \*---------------------------------------------------------------------------*/
 
@@ -29,9 +29,9 @@ DAResidualHeatTransferFoam::DAResidualHeatTransferFoam(
       kPtr_(nullptr)
 
 {
-    IOdictionary transportProperties(
+    IOdictionary solidProperties(
         IOobject(
-            "transportProperties",
+            "solidProperties",
             mesh_.time().constant(),
             mesh_,
             IOobject::MUST_READ,
@@ -41,7 +41,7 @@ DAResidualHeatTransferFoam::DAResidualHeatTransferFoam(
         new dimensionedScalar(
             "k",
             dimPower / dimLength / dimTemperature,
-            transportProperties));
+            solidProperties));
     
     const dictionary& allOptions = daOption.getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)

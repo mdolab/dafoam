@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# the script will exit if there is any error
+set -e
+
+if [ -z "$WM_PROJECT" ]; then
+  echo "OpenFOAM environment not found, forgot to source the OpenFOAM bashrc?"
+  exit 1
+fi
+
+cythonize -3 pyUnitTests.pyx
+wmake -j
+cp -r pyUnitTests$WM_CODI_AD_LIB_POSTFIX.so ../../dafoam/libs/$WM_CODI_AD_LIB_POSTFIX/pyUnitTests.$(python3 -c 'import sysconfig; ext_suffix = sysconfig.get_config_var("EXT_SUFFIX"); print(ext_suffix.split(".")[1])').so

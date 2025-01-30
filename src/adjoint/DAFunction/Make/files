@@ -1,0 +1,16 @@
+DAFunction.C
+DAFunctionForce.C
+DAFunctionMoment.C
+DAFunctionWallHeatFlux.C
+DAFunctionTotalPressure.C
+DAFunctionVariance.C
+DAFunctionMassFlowRate.C
+DAFunctionPatchMean.C
+DAFunctionTotalPressureRatio.C
+DAFunctionTotalTemperatureRatio.C
+DAFunctionVariableVolSum.C
+DAFunctionLocation.C
+DAFunctionMeshQualityKS.C
+DAFunctionVonMisesStressKS.C
+
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAFunction$(WM_CODI_AD_LIB_POSTFIX)

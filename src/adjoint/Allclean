@@ -5,6 +5,11 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-wclean
-rm -rf Make/files Make/options
+for d in ./*/ ; do 
+  cd "$d"
+  if test -f Make/files ; then
+    wclean
+  fi
+  cd ../
+done
 

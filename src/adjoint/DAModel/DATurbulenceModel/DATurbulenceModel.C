@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
 \*---------------------------------------------------------------------------*/
 
@@ -35,6 +35,7 @@ DATurbulenceModel::DATurbulenceModel(
       mesh_(mesh),
       daOption_(daOption),
       allOptions_(daOption.getAllOptions()),
+      daGlobalVar_(const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"))),
       nut_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("nut"))),
       U_(const_cast<volVectorField&>(
@@ -54,15 +55,8 @@ DATurbulenceModel::DATurbulenceModel(
           zeroGradientFvPatchField<scalar>::typeName),
       phaseRhoPhi_(const_cast<surfaceScalarField&>(
           mesh.thisDb().lookupObject<surfaceScalarField>("phi"))),
-#ifdef IncompressibleFlow
-      daRegDbTransport_(mesh.thisDb().lookupObject<DARegDbSinglePhaseTransportModel>(
-          "DARegDbSinglePhaseTransportModel")),
-      laminarTransport_(daRegDbTransport_.getObject()),
-      daRegDbTurbIncomp_(mesh.thisDb().lookupObject<DARegDbTurbulenceModelIncompressible>(
-          "DARegDbTurbulenceModelIncompressible")),
-      turbulence_(daRegDbTurbIncomp_.getObject()),
-      // for incompressible, we use uniform one field for rho
-      rho_(
+      // initialize an uniform rho field for incompressible cases
+      rhoOne_(
           IOobject(
               "rho",
               mesh.time().timeName(),
@@ -73,16 +67,6 @@ DATurbulenceModel::DATurbulenceModel(
           mesh,
           dimensionedScalar("rho", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           zeroGradientFvPatchField<scalar>::typeName),
-#endif
-#ifdef CompressibleFlow
-      daRegDbThermo_(mesh.thisDb().lookupObject<DARegDbFluidThermo>("DARegDbFluidThermo")),
-      thermo_(daRegDbThermo_.getObject()),
-      daRegDbTurbComp_(mesh.thisDb().lookupObject<DARegDbTurbulenceModelCompressible>(
-          "DARegDbTurbulenceModelCompressible")),
-      turbulence_(daRegDbTurbComp_.getObject()),
-      // for compressible flow, we lookup rho in fvMesh
-      rho_(const_cast<volScalarField&>(mesh.thisDb().lookupObject<volScalarField>("rho"))),
-#endif
       turbDict_(
           IOobject(
               "turbulenceProperties",
@@ -114,49 +98,62 @@ DATurbulenceModel::DATurbulenceModel(
           SMALL))
 {
 
-    // Now we need to initialize other variables
-#ifdef IncompressibleFlow
-
-    // initialize the Prandtl number from transportProperties
-    IOdictionary transportProperties(
-        IOobject(
-            "transportProperties",
-            mesh.time().constant(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE,
-            false));
-    Pr_ = readScalar(transportProperties.lookup("Pr"));
-
-    if (mesh_.thisDb().foundObject<volScalarField>("alphat"))
+    // first check the mode of the turbulence model: incompressible or compressible?
+    if (mesh.thisDb().foundObject<incompressible::turbulenceModel>(incompressible::turbulenceModel::propertiesName))
     {
-        Prt_ = readScalar(transportProperties.lookup("Prt"));
+        turbModelType_ = "incompressible";
+    }
+    else if (mesh.thisDb().foundObject<compressible::turbulenceModel>(compressible::turbulenceModel::propertiesName))
+    {
+        turbModelType_ = "compressible";
+    }
+    else
+    {
+        FatalErrorIn("DATurbulenceModel") << "turbModelType_ not valid!" << abort(FatalError);
+    }
+    Info << "Turbulence model is " << turbModelType_ << endl;
+
+    if (turbModelType_ == "incompressible")
+    {
+        // initialize the Prandtl number from transportProperties
+        IOdictionary transportProperties(
+            IOobject(
+                "transportProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false));
+        Pr_ = readScalar(transportProperties.lookup("Pr"));
+
+        if (mesh_.thisDb().foundObject<volScalarField>("alphat"))
+        {
+            Prt_ = readScalar(transportProperties.lookup("Prt"));
+        }
     }
 
-#endif
-
-#ifdef CompressibleFlow
-
-    // initialize the Prandtl number from thermophysicalProperties
-    IOdictionary thermophysicalProperties(
-        IOobject(
-            "thermophysicalProperties",
-            mesh.time().constant(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE,
-            false));
-    Pr_ = readScalar(
-        thermophysicalProperties.subDict("mixture").subDict("transport").lookup("Pr"));
-
-    if (mesh_.thisDb().foundObject<volScalarField>("alphat"))
+    if (turbModelType_ == "compressible")
     {
-        const IOdictionary& turbDict = mesh_.thisDb().lookupObject<IOdictionary>("turbulenceProperties");
-        dictionary rasSubDict = turbDict.subDict("RAS");
-        Prt_ = rasSubDict.getScalar("Prt");
-    }
 
-#endif
+        // initialize the Prandtl number from thermophysicalProperties
+        IOdictionary thermophysicalProperties(
+            IOobject(
+                "thermophysicalProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false));
+        Pr_ = readScalar(
+            thermophysicalProperties.subDict("mixture").subDict("transport").lookup("Pr"));
+
+        if (mesh_.thisDb().foundObject<volScalarField>("alphat"))
+        {
+            const IOdictionary& turbDict = mesh_.thisDb().lookupObject<IOdictionary>("turbulenceProperties");
+            dictionary rasSubDict = turbDict.subDict("RAS");
+            Prt_ = rasSubDict.getScalar("Prt");
+        }
+    }
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
@@ -215,7 +212,7 @@ void DATurbulenceModel::correctAlphat()
 
         volScalarField& alphat = const_cast<volScalarField&>(
             mesh_.thisDb().lookupObject<volScalarField>("alphat"));
-        alphat = rho_ * nut_ / Prt;
+        alphat = rho() * nut_ / Prt;
         alphat.correctBoundaryConditions();
     }
 }
@@ -242,21 +239,29 @@ tmp<volScalarField> DATurbulenceModel::alphaEff()
         For incompressible flow we use alpha+alphat
     */
 
-#ifdef IncompressibleFlow
-    const volScalarField& alphat = mesh_.thisDb().lookupObject<volScalarField>("alphat");
-    return tmp<volScalarField>(
-        new volScalarField(
-            "alphaEff",
-            this->getAlpha() + alphat));
-#endif
-
-#ifdef CompressibleFlow
-    const volScalarField& alphat = mesh_.thisDb().lookupObject<volScalarField>("alphat");
-    return tmp<volScalarField>(
-        new volScalarField(
-            "alphaEff",
-            thermo_.alphaEff(alphat)));
-#endif
+    if (turbModelType_ == "incompressible")
+    {
+        const volScalarField& alphat = mesh_.thisDb().lookupObject<volScalarField>("alphat");
+        return tmp<volScalarField>(
+            new volScalarField(
+                "alphaEff",
+                this->alpha() + alphat));
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        const volScalarField& alphat = mesh_.thisDb().lookupObject<volScalarField>("alphat");
+        const fluidThermo& thermo = mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties");
+        return tmp<volScalarField>(
+            new volScalarField(
+                "alphaEff",
+                thermo.alphaEff(alphat)));
+    }
+    else
+    {
+        FatalErrorIn("alphaEff") << "turbModelType_ not valid!" << abort(FatalError);
+        // a dummy return
+        return this->alpha();
+    }
 }
 
 tmp<volScalarField> DATurbulenceModel::nu() const
@@ -268,16 +273,71 @@ tmp<volScalarField> DATurbulenceModel::nu() const
         For incompressible flow we get it from ther laminarTransport object
     */
 
-#ifdef IncompressibleFlow
-    return laminarTransport_.nu();
-#endif
-
-#ifdef CompressibleFlow
-    return thermo_.mu() / rho_;
-#endif
+    if (turbModelType_ == "incompressible")
+    {
+        const volScalarField& nu = mesh_.thisDb().lookupObject<singlePhaseTransportModel>("transportProperties").nu();
+        return nu;
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        const volScalarField& mu = mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").mu();
+        return mu / this->rho();
+    }
+    else
+    {
+        FatalErrorIn("alphaEff") << "turbModelType_ not valid!" << abort(FatalError);
+        // a dummy return
+        return this->mu();
+    }
 }
 
-tmp<volScalarField> DATurbulenceModel::getAlpha() const
+tmp<volScalarField> DATurbulenceModel::rho() const
+{
+    /*
+    Description:
+        Return the density field
+        For compressible flow, we get it from the memory
+        For incompressible flow we return one
+    */
+
+    if (turbModelType_ == "incompressible")
+    {
+        return rhoOne_;
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        const volScalarField& rho = mesh_.thisDb().lookupObject<volScalarField>("rho");
+        return rho;
+    }
+    else
+    {
+        FatalErrorIn("alphaEff") << "turbModelType_ not valid!" << abort(FatalError);
+        // a dummy return
+        return this->alpha();
+    }
+}
+
+/// return the dimension of rho
+dimensionSet DATurbulenceModel::rhoDimensions() const
+{
+    if (turbModelType_ == "incompressible")
+    {
+        return rhoOne_.dimensions();
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        const volScalarField& rho = mesh_.thisDb().lookupObject<volScalarField>("rho");
+        return rho.dimensions();
+    }
+    else
+    {
+        FatalErrorIn("alphaEff") << "turbModelType_ not valid!" << abort(FatalError);
+        // a dummy return
+        return rhoOne_.dimensions();
+    }
+}
+
+tmp<volScalarField> DATurbulenceModel::alpha() const
 {
     /*
     Description:
@@ -286,7 +346,7 @@ tmp<volScalarField> DATurbulenceModel::getAlpha() const
     return this->nu() / Pr_;
 }
 
-tmp<Foam::volScalarField> DATurbulenceModel::getMu() const
+tmp<Foam::volScalarField> DATurbulenceModel::mu() const
 {
     /*
     Description:
@@ -295,12 +355,17 @@ tmp<Foam::volScalarField> DATurbulenceModel::getMu() const
         Not appliable for other flow conditions
     */
 
-#ifdef CompressibleFlow
-    return thermo_.mu();
-#else
-    FatalErrorIn("flowCondition not valid!") << abort(FatalError);
-    return nut_;
-#endif
+    if (turbModelType_ == "compressible")
+    {
+        const volScalarField& mu = mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").mu();
+        return mu;
+    }
+    else
+    {
+        FatalErrorIn("flowCondition not valid!") << abort(FatalError);
+        // a dummy return
+        return this->nu();
+    }
 }
 
 tmp<volSymmTensorField> DATurbulenceModel::devRhoReff() const
@@ -318,7 +383,7 @@ tmp<volSymmTensorField> DATurbulenceModel::devRhoReff() const
                 mesh_,
                 IOobject::NO_READ,
                 IOobject::NO_WRITE),
-            (-phase_ * rho_ * nuEff()) * dev(twoSymm(fvc::grad(U_)))));
+            (-phase_ * rho() * nuEff()) * dev(twoSymm(fvc::grad(U_)))));
 }
 
 tmp<fvVectorMatrix> DATurbulenceModel::divDevRhoReff(
@@ -328,20 +393,19 @@ tmp<fvVectorMatrix> DATurbulenceModel::divDevRhoReff(
     Description:
         Return divDevRhoReff for the laplacian terms
     */
-
-#ifdef IncompressibleFlow
-    word divScheme = "div((nuEff*dev2(T(grad(U)))))";
-#endif
-#ifdef CompressibleFlow
-    word divScheme = "div(((rho*nuEff)*dev2(T(grad(U)))))";
-#endif
-
-    volScalarField& phase = phase_;
-    volScalarField& rho = rho_;
+    word divScheme = "None";
+    if (turbModelType_ == "incompressible")
+    {
+        divScheme = "div((nuEff*dev2(T(grad(U)))))";
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        divScheme = "div(((rho*nuEff)*dev2(T(grad(U)))))";
+    }
 
     return (
-        -fvm::laplacian(phase * rho * nuEff(), U)
-        - fvc::div((phase * rho * nuEff()) * dev2(T(fvc::grad(U))), divScheme));
+        -fvm::laplacian(phase_ * rho() * nuEff(), U)
+        - fvc::div((phase_ * rho() * nuEff()) * dev2(T(fvc::grad(U))), divScheme));
 }
 
 tmp<fvVectorMatrix> DATurbulenceModel::divDevReff(
@@ -371,18 +435,7 @@ void DATurbulenceModel::correctWallDist()
     this->correctBoundaryConditions();
 }
 
-#ifdef CompressibleFlow
-const fluidThermo& DATurbulenceModel::getThermo() const
-{
-    /*
-    Description:
-        Return the thermo object, only for compressible flow
-    */
-    return thermo_;
-}
-#endif
-
-void DATurbulenceModel::printYPlus() const
+void DATurbulenceModel::printYPlus(const label printToScreen) const
 {
     /*
     Description:
@@ -391,74 +444,78 @@ void DATurbulenceModel::printYPlus() const
         Modified from src/functionObjects/field/yPlus/yPlus.C
     */
 
-    volScalarField yPlus(
-        IOobject(
-            typeName,
-            mesh_.time().timeName(),
+    if (printToScreen)
+    {
+
+        volScalarField yPlus(
+            IOobject(
+                typeName,
+                mesh_.time().timeName(),
+                mesh_,
+                IOobject::NO_READ,
+                IOobject::AUTO_WRITE),
             mesh_,
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE),
-        mesh_,
-        dimensionedScalar(dimless, Zero));
-    volScalarField::Boundary& yPlusBf = yPlus.boundaryFieldRef();
+            dimensionedScalar(dimless, Zero));
+        volScalarField::Boundary& yPlusBf = yPlus.boundaryFieldRef();
 
-    const nearWallDist nwd(mesh_);
-    const volScalarField::Boundary& d = nwd.y();
+        const nearWallDist nwd(mesh_);
+        const volScalarField::Boundary& d = nwd.y();
 
-    const fvPatchList& patches = mesh_.boundary();
+        const fvPatchList& patches = mesh_.boundary();
 
-    const volScalarField::Boundary& nutBf = nut_.boundaryField();
-    const volVectorField::Boundary& UBf = U_.boundaryField();
+        const volScalarField::Boundary& nutBf = nut_.boundaryField();
+        const volVectorField::Boundary& UBf = U_.boundaryField();
 
-    volScalarField nuEff = this->nuEff();
-    volScalarField nu = this->nu();
+        volScalarField nuEff = this->nuEff();
+        volScalarField nu = this->nu();
 
-    const volScalarField::Boundary& nuEffBf = nuEff.boundaryField();
-    const volScalarField::Boundary& nuBf = nu.boundaryField();
+        const volScalarField::Boundary& nuEffBf = nuEff.boundaryField();
+        const volScalarField::Boundary& nuBf = nu.boundaryField();
 
-    forAll(patches, patchI)
-    {
-        const fvPatch& patch = patches[patchI];
-
-        if (isA<nutWallFunctionFvPatchScalarField>(nutBf[patchI]))
+        forAll(patches, patchI)
         {
-            const nutWallFunctionFvPatchScalarField& nutPf =
-                dynamic_cast<const nutWallFunctionFvPatchScalarField&>(
-                    nutBf[patchI]);
+            const fvPatch& patch = patches[patchI];
 
-            yPlusBf[patchI] = nutPf.yPlus();
-        }
-        else if (isA<wallFvPatch>(patch))
-        {
-            yPlusBf[patchI] =
-                d[patchI]
-                * sqrt(
-                    nuEffBf[patchI]
-                    * mag(UBf[patchI].snGrad()))
-                / nuBf[patchI];
-        }
-    }
-
-    // now compute the global min, max, and mean
-    scalarList yPlusAll;
-    forAll(patches, patchI)
-    {
-        const fvPatch& patch = patches[patchI];
-        if (isA<wallFvPatch>(patch))
-        {
-            forAll(yPlusBf[patchI], faceI)
+            if (isA<nutWallFunctionFvPatchScalarField>(nutBf[patchI]))
             {
-                yPlusAll.append(yPlusBf[patchI][faceI]);
+                const nutWallFunctionFvPatchScalarField& nutPf =
+                    dynamic_cast<const nutWallFunctionFvPatchScalarField&>(
+                        nutBf[patchI]);
+
+                yPlusBf[patchI] = nutPf.yPlus();
+            }
+            else if (isA<wallFvPatch>(patch))
+            {
+                yPlusBf[patchI] =
+                    d[patchI]
+                    * sqrt(
+                        nuEffBf[patchI]
+                        * mag(UBf[patchI].snGrad()))
+                    / nuBf[patchI];
             }
         }
-    }
-    scalar minYplus = gMin(yPlusAll);
-    scalar maxYplus = gMax(yPlusAll);
-    scalar avgYplus = gAverage(yPlusAll);
 
-    Info << "yPlus min: " << minYplus
-         << " max: " << maxYplus
-         << " mean: " << avgYplus << endl;
+        // now compute the global min, max, and mean
+        scalarList yPlusAll;
+        forAll(patches, patchI)
+        {
+            const fvPatch& patch = patches[patchI];
+            if (isA<wallFvPatch>(patch))
+            {
+                forAll(yPlusBf[patchI], faceI)
+                {
+                    yPlusAll.append(yPlusBf[patchI][faceI]);
+                }
+            }
+        }
+        scalar minYplus = gMin(yPlusAll);
+        scalar maxYplus = gMax(yPlusAll);
+        scalar avgYplus = gAverage(yPlusAll);
+
+        Info << "yPlus min: " << minYplus
+             << " max: " << maxYplus
+             << " mean: " << avgYplus << endl;
+    }
 }
 
 label DATurbulenceModel::isPrintTime(

@@ -1,0 +1,33 @@
+Dictionary Key: scenario.aero_post.functionals.PVar
+@value         3.0498126553500531 1e-10 1e-12
+Dictionary Key: scenario.aero_post.functionals.UProbe
+@value         0.0004804973677288 1e-10 1e-12
+Dictionary Key: scenario.aero_post.functionals.UVar
+@value         0.0047215608525406 1e-10 1e-12
+Dictionary Key: scenario.aero_post.functionals.PVar
+Dictionary Key: reg_model0-Adjoint
+@value        -0.0000193426361760 1e-08 1e-12
+Dictionary Key: reg_model0-ForwardAD
+@value        -0.0000193426691065 1e-08 1e-12
+Dictionary Key: reg_model50-Adjoint
+@value        -0.0000274447821257 1e-08 1e-12
+Dictionary Key: reg_model50-ForwardAD
+@value        -0.0000274448320905 1e-08 1e-12
+Dictionary Key: scenario.aero_post.functionals.UProbe
+Dictionary Key: reg_model0-Adjoint
+@value        -0.0000000810199490 1e-08 1e-12
+Dictionary Key: reg_model0-ForwardAD
+@value        -0.0000000810198947 1e-08 1e-12
+Dictionary Key: reg_model50-Adjoint
+@value        -0.0000001215169516 1e-08 1e-12
+Dictionary Key: reg_model50-ForwardAD
+@value        -0.0000001215168694 1e-08 1e-12
+Dictionary Key: scenario.aero_post.functionals.UVar
+Dictionary Key: reg_model0-Adjoint
+@value        -0.0000000058527679 1e-08 1e-12
+Dictionary Key: reg_model0-ForwardAD
+@value        -0.0000000058529452 1e-08 1e-12
+Dictionary Key: reg_model50-Adjoint
+@value         0.0000000174852700 1e-08 1e-12
+Dictionary Key: reg_model50-ForwardAD
+@value         0.0000000174849785 1e-08 1e-12

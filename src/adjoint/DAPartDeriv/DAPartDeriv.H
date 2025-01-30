@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Compute partial derivatives using the finite-difference method
@@ -20,7 +20,6 @@
 #include "DAModel.H"
 #include "DAStateInfo.H"
 #include "syncTools.H"
-#include "DAObjFunc.H"
 #include "DAJacCon.H"
 #include "DAResidual.H"
 
@@ -90,8 +89,8 @@ protected:
         const Vec coloredColumn,
         const label transposed,
         Mat jacMat,
-        const scalar jacLowerBound=1e-30) const;
-    
+        const scalar jacLowerBound = 1e-30) const;
+
     /// perturb the angle of attack
     void perturbAOA(
         const dictionary options,
@@ -101,45 +100,8 @@ protected:
     Mat dXvdFFDMat_;
 
 public:
-    /// Runtime type information
-    TypeName("DAPartDeriv");
-
-    // Declare run-time constructor selection table
-    declareRunTimeSelectionTable(
-        autoPtr,
-        DAPartDeriv,
-        dictionary,
-        (const word modelType,
-         const fvMesh& mesh,
-         const DAOption& daOption,
-         const DAModel& daModel,
-         const DAIndex& daIndex,
-         const DAJacCon& daJacCon,
-         const DAResidual& daResidual),
-        (modelType,
-         mesh,
-         daOption,
-         daModel,
-         daIndex,
-         daJacCon,
-         daResidual));
-
     // Constructors
-
-    //- Construct from components
     DAPartDeriv(
-        const word modelType,
-        const fvMesh& mesh,
-        const DAOption& daOption,
-        const DAModel& daModel,
-        const DAIndex& daIndex,
-        const DAJacCon& daJacCon,
-        const DAResidual& daResidual);
-
-    // Selectors
-
-    //- Return a reference to the selected model
-    static autoPtr<DAPartDeriv> New(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption,
@@ -162,16 +124,16 @@ public:
     }
 
     /// initialize partial derivative matrix
-    virtual void initializePartDerivMat(
+    void initializePartDerivMat(
         const dictionary& options,
-        Mat jacMat) = 0;
+        Mat jacMat);
 
     /// compute the partial derivative matrix
-    virtual void calcPartDerivMat(
+    void calcPartDerivMat(
         const dictionary& options,
         const Vec xvVec,
         const Vec wVec,
-        Mat jacMat) = 0;
+        Mat jacMat);
 
     /// setup dXvdFFD matrix
     void setdXvdFFDMat(const Mat dXvdFFDMat);

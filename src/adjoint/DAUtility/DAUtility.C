@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
 \*---------------------------------------------------------------------------*/
 
@@ -734,7 +734,8 @@ label DAUtility::isValueCloseToRef(
 void DAUtility::primalResidualControl(
     const SolverPerformance<scalar>& solverP,
     const label printToScreen,
-    const word varName)
+    const word varName,
+    scalar& primalMaxRes)
 {
     /*
     Description:
@@ -745,9 +746,9 @@ void DAUtility::primalResidualControl(
 
     scalar initRes = solverP.initialResidual();
 
-    if (initRes > DAUtility::primalMaxInitRes_)
+    if (initRes > primalMaxRes)
     {
-        DAUtility::primalMaxInitRes_ = initRes;
+        primalMaxRes = initRes;
     }
 
     if (printToScreen)
@@ -760,7 +761,8 @@ void DAUtility::primalResidualControl(
 void DAUtility::primalResidualControl(
     const SolverPerformance<vector>& solverP,
     const label printToScreen,
-    const word varName)
+    const word varName,
+    scalar& primalMaxRes)
 {
     /*
     Description:
@@ -780,9 +782,9 @@ void DAUtility::primalResidualControl(
     scalarList initResList = {initRes[0], initRes[1], initRes[2]};
     sort(initResList);
 
-    if (initResList[1] > DAUtility::primalMaxInitRes_)
+    if (initResList[1] > primalMaxRes)
     {
-        DAUtility::primalMaxInitRes_ = initResList[1];
+        primalMaxRes = initResList[1];
     }
 
     if (printToScreen)

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         Child class for DASimpleFoam
@@ -38,8 +38,6 @@
 #include "singlePhaseTransportModel.H"
 #include "turbulentTransportModel.H"
 #include "simpleControl.H"
-#include "DARegDbSinglePhaseTransportModel.H"
-#include "DARegDbTurbulenceModelIncompressible.H"
 #include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -101,7 +99,7 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
     /// tape positions for consistent fixed-point adjoint
     using Position = typename codi::RealReverse::Tape::Position;
     Position adjResStart_;
@@ -139,14 +137,10 @@ public:
     virtual void initSolver();
 
     /// solve the primal equations
-    virtual label solvePrimal(
-        const Vec xvVec,
-        Vec wVec);
+    virtual label solvePrimal();
 
     /// solve the adjoint equation using the fixed-point iteration method
     virtual label runFPAdj(
-        const Vec xvVec,
-        const Vec wVec,
         Vec dFdW,
         Vec psi);
 

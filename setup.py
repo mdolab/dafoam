@@ -24,7 +24,7 @@ setup(
     url="https://github.com/mdolab/dafoam",
     license="GPL version 3",
     packages=find_packages(include=["dafoam*"]),
-    package_data={"dafoam": ["*.so"]},
+    package_data={"dafoam": ["*/*.so", "*/*/*.so"]},
     scripts=[
         "dafoam/scripts/dafoam_matdiff.py",
         "dafoam/scripts/dafoam_vecdiff.py",

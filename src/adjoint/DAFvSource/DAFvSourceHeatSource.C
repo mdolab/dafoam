@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
 \*---------------------------------------------------------------------------*/
 
@@ -228,14 +228,13 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
 
             reduce(sourceTotal, sumOp<scalar>());
 
-            if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+#ifndef CODI_ADR
+            if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
             {
-                if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
-                {
-                    Info << "Total volume for " << sourceName << ": " << totalV << " m^3" << endl;
-                    Info << "Total heat source for " << sourceName << ": " << sourceTotal << " W." << endl;
-                }
+                Info << "Total volume for " << sourceName << ": " << totalV << " m^3" << endl;
+                Info << "Total heat source for " << sourceName << ": " << sourceTotal << " W." << endl;
             }
+#endif
         }
         else if (sourceType == "cylinderSmooth")
         {
@@ -347,14 +346,13 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
 
             reduce(sourceTotal, sumOp<scalar>());
 
-            if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+#ifndef CODI_ADR
+            if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
             {
-                if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
-                {
-                    Info << "Total volume for " << sourceName << ": " << volumeTotal << " m^3" << endl;
-                    Info << "Total heat source for " << sourceName << ": " << sourceTotal << " W." << endl;
-                }
+                Info << "Total volume for " << sourceName << ": " << volumeTotal << " m^3" << endl;
+                Info << "Total heat source for " << sourceName << ": " << sourceTotal << " W." << endl;
             }
+#endif
         }
         else
         {

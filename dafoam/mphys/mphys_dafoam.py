@@ -8,7 +8,6 @@ import petsc4py
 from petsc4py import PETSc
 import numpy as np
 from mpi4py import MPI
-from mphys import MaskedConverter, UnmaskedConverter, MaskedVariableDescription
 from mphys.utils.directory_utils import cd
 
 petsc4py.init(sys.argv)
@@ -24,7 +23,6 @@ class DAFoamBuilder(Builder):
         options,  # DAFoam options
         mesh_options=None,  # IDWarp options
         scenario="aerodynamic",  # scenario type to configure the groups
-        prop_coupling=None,
         run_directory="",  # the directory to run this case in, default is the current directory
     ):
 
@@ -48,9 +46,6 @@ class DAFoamBuilder(Builder):
 
         # the directory to run this case in, default is the current directory
         self.run_directory = run_directory
-
-        # flag for aero-propulsive coupling variables
-        self.prop_coupling = prop_coupling
 
         # depending on the scenario we are building for, we adjust a few internal parameters:
         if scenario.lower() == "aerodynamic":
@@ -92,7 +87,6 @@ class DAFoamBuilder(Builder):
             solver=self.DASolver,
             use_warper=self.warp_in_solver,
             struct_coupling=self.struct_coupling,
-            prop_coupling=self.prop_coupling,
             thermal_coupling=self.thermal_coupling,
             run_directory=self.run_directory,
         )
@@ -121,20 +115,6 @@ class DAFoamBuilder(Builder):
             groupName = self.DASolver.couplingSurfacesGroup
         nodes = int(self.DASolver.getSurfaceCoordinates(groupName=groupName).size / 3)
 
-        # Add fictitious nodes to root proc, if they are used
-        if self.comm.rank == 0:
-            aerostructDict = self.DASolver.getOption("couplingInfo")["aerostructural"]
-            fvSourceDict = self.DASolver.getOption("fvSource")
-            if aerostructDict["active"] and aerostructDict["propMovement"]:
-                if "fvSource" in aerostructDict.keys():
-                    # Iterate through Actuator Disks
-                    for fvSource, parameters in aerostructDict["fvSource"].items():
-                        # Check if Actuator Disk Exists
-                        if fvSource not in fvSourceDict:
-                            raise RuntimeWarning("Actuator disk {} not found when adding masked nodes".format(fvSource))
-
-                        # Count Nodes
-                        nodes += 1 + parameters["nNodes"]
         return nodes
 
     def get_ndof(self):
@@ -151,7 +131,6 @@ class DAFoamGroup(Group):
         self.options.declare("solver", recordable=False)
         self.options.declare("struct_coupling", default=False)
         self.options.declare("use_warper", default=True)
-        self.options.declare("prop_coupling", default=None)
         self.options.declare("thermal_coupling", default=False)
         self.options.declare("run_directory", default="")
 
@@ -160,24 +139,11 @@ class DAFoamGroup(Group):
         self.DASolver = self.options["solver"]
         self.struct_coupling = self.options["struct_coupling"]
         self.use_warper = self.options["use_warper"]
-        self.prop_coupling = self.options["prop_coupling"]
         self.thermal_coupling = self.options["thermal_coupling"]
         self.run_directory = self.options["run_directory"]
         self.discipline = self.DASolver.getOption("discipline")
 
-        if self.prop_coupling is not None:
-            if self.prop_coupling not in ["Prop", "Wing"]:
-                raise AnalysisError("prop_coupling can be either Wing or Prop, while %s is given!" % self.prop_coupling)
-
-        aerostructDict = self.DASolver.getOption("couplingInfo")["aerostructural"]
         if self.use_warper:
-            # Setup node masking
-            self.mphys_set_masking()
-
-            # Add propeller movement, if enabled
-            if aerostructDict["active"] and aerostructDict["propMovement"]:
-                prop_movement = DAFoamActuator(solver=self.DASolver)
-                self.add_subsystem("prop_movement", prop_movement, promotes_inputs=["*"], promotes_outputs=["*"])
 
             # if we dont have geo_disp, we also need to promote the x_a as x_a0 from the deformer component
             self.add_subsystem(
@@ -185,219 +151,33 @@ class DAFoamGroup(Group):
                 DAFoamWarper(
                     solver=self.DASolver,
                 ),
-                promotes_inputs=[("x_%s" % self.discipline, "x_%s_masked" % self.discipline)],
+                promotes_inputs=["x_%s" % self.discipline],
                 promotes_outputs=["%s_vol_coords" % self.discipline],
             )
-        elif aerostructDict["active"] and aerostructDict["propMovement"]:
-            raise RuntimeError(
-                "Propeller movement not possible when the warper is outside of the solver. Check for a valid scenario."
-            )
-
-        if self.prop_coupling is not None:
-            if self.prop_coupling == "Wing":
-                self.add_subsystem(
-                    "source",
-                    DAFoamFvSource(solver=self.DASolver),
-                    promotes_inputs=["*"],
-                    promotes_outputs=["*"],
-                )
 
         # add the solver implicit component
         self.add_subsystem(
             "solver",
-            DAFoamSolver(solver=self.DASolver, prop_coupling=self.prop_coupling, run_directory=self.run_directory),
+            DAFoamSolver(solver=self.DASolver, run_directory=self.run_directory),
             promotes_inputs=["*"],
             promotes_outputs=["%s_states" % self.discipline],
         )
-
-        if self.prop_coupling is not None:
-            if self.prop_coupling == "Prop":
-
-                activeProp = None
-                nActiveProps = 0
-
-                wingPropNameList = list(self.DASolver.getOption("wingProp").keys())
-
-                for propName in wingPropNameList:
-                    if self.DASolver.getOption("wingProp")[propName]["active"]:
-                        activeProp = propName
-                        nActiveProps += 1
-
-                if nActiveProps != 1:
-                    raise RuntimeError(
-                        "if prop_coupling = Prop, we should set only one active propeller for wingProp key."
-                    )
-
-                self.add_subsystem(
-                    activeProp,
-                    DAFoamPropForce(solver=self.DASolver, propName=activeProp),
-                    promotes_inputs=["*"],
-                    promotes_outputs=["*"],
-                )
 
         if self.struct_coupling:
             self.add_subsystem(
                 "force",
                 DAFoamForces(solver=self.DASolver),
                 promotes_inputs=["%s_vol_coords" % self.discipline, "%s_states" % self.discipline],
-                promotes_outputs=[("f_aero", "f_aero_masked")],
+                promotes_outputs=["f_aero"],
             )
 
         if self.thermal_coupling:
-
             self.add_subsystem(
                 "get_%s" % self.discipline,
                 DAFoamThermal(solver=self.DASolver),
                 promotes_inputs=["*"],
                 promotes_outputs=["*"],
             )
-
-        # Setup unmasking
-        self.mphys_set_unmasking(forces=self.struct_coupling)
-
-    def mphys_compute_nodes(self):
-        aerostructDict = self.DASolver.getOption("couplingInfo")["aerostructural"]
-        fvSourceDict = self.DASolver.getOption("fvSource")
-
-        # Check if Actuator Disk Definitions Exist, only add to Root Proc
-        nodes_prop = 0
-        if self.comm.rank == 0:
-            if aerostructDict["active"] and aerostructDict["propMovement"]:
-                if "fvSource" in aerostructDict.keys():
-                    # Iterate through Actuator Disks
-                    for fvSource, parameters in aerostructDict["fvSource"].items():
-                        # Check if Actuator Disk Exists
-                        if fvSource not in fvSourceDict:
-                            raise RuntimeWarning("Actuator disk %s not found when adding masked nodes" % fvSource)
-
-                        # Count Nodes
-                        nodes_prop += 1 + parameters["nNodes"]
-
-        # Compute number of aerodynamic nodes
-        nodes_aero = int(self.DASolver.getSurfaceCoordinates(groupName=self.DASolver.designSurfacesGroup).size / 3)
-
-        # Sum nodes and return all values
-        nodes_total = nodes_aero + nodes_prop
-        return nodes_total, nodes_aero, nodes_prop
-
-    def mphys_set_masking(self):
-        # Retrieve number of nodes in each category
-        nodes_total, nodes_aero, nodes_prop = self.mphys_compute_nodes()
-
-        aerostructDict = self.DASolver.getOption("couplingInfo")["aerostructural"]
-
-        mask = []
-        output = []
-        promotes_inputs = []
-        promotes_outputs = []
-
-        # Mesh Coordinate Mask
-        mask.append(np.zeros([(nodes_total) * 3], dtype=bool))
-        mask[0][:] = True
-
-        if nodes_prop > 0:
-            mask[0][3 * nodes_aero :] = False
-
-        output.append(
-            MaskedVariableDescription("x_%s_masked" % self.discipline, shape=(nodes_aero) * 3, tags=["mphys_coupling"])
-        )
-
-        promotes_outputs.append("x_%s_masked" % self.discipline)
-
-        # Add Propeller Masks
-        if aerostructDict["active"] and aerostructDict["propMovement"]:
-            if "fvSource" in aerostructDict.keys():
-                i_fvSource = 0
-                i_start = 3 * nodes_aero
-                for fvSource, parameters in aerostructDict["fvSource"].items():
-                    mask.append(np.zeros([(nodes_total) * 3], dtype=bool))
-                    mask[i_fvSource + 1][:] = False
-
-                    if self.comm.rank == 0:
-                        mask[i_fvSource + 1][i_start : i_start + 3 * (1 + parameters["nNodes"])] = True
-                        i_start += 3 * (1 + parameters["nNodes"])
-
-                        output.append(
-                            MaskedVariableDescription(
-                                "x_prop_%s" % fvSource, shape=((1 + parameters["nNodes"])) * 3, tags=["mphys_coupling"]
-                            )
-                        )
-                    else:
-                        output.append(
-                            MaskedVariableDescription("x_prop_%s" % fvSource, shape=(0), tags=["mphys_coupling"])
-                        )
-
-                    promotes_outputs.append("x_prop_%s" % fvSource)
-
-                    i_fvSource += 1
-
-        # Define Mask
-        input = MaskedVariableDescription("x_%s" % self.discipline, shape=(nodes_total) * 3, tags=["mphys_coupling"])
-        promotes_inputs.append("x_%s" % self.discipline)
-        masker = MaskedConverter(input=input, output=output, mask=mask, distributed=True, init_output=0.0)
-        self.add_subsystem("masker", masker, promotes_inputs=promotes_inputs, promotes_outputs=promotes_outputs)
-
-    def mphys_set_unmasking(self, forces=False):
-        # Retrieve number of nodes in each category
-        nodes_total, nodes_aero, nodes_prop = self.mphys_compute_nodes()
-
-        # If forces are active, generate mask
-        if forces:
-            aerostructDict = self.DASolver.getOption("couplingInfo")["aerostructural"]
-
-            mask = []
-            input = []
-            promotes_inputs = []
-            promotes_outputs = []
-
-            # Mesh Coordinate Mask
-            mask.append(np.zeros([(nodes_total) * 3], dtype=bool))
-            mask[0][:] = True
-            if nodes_prop > 0:
-                mask[0][3 * nodes_aero :] = False
-            input.append(MaskedVariableDescription("f_aero_masked", shape=(nodes_aero) * 3, tags=["mphys_coupling"]))
-            promotes_inputs.append("f_aero_masked")
-
-            if aerostructDict["active"] and aerostructDict["propMovement"]:
-                if "fvSource" in aerostructDict.keys():
-                    # Add Propeller Masks
-                    i_fvSource = 0
-                    i_start = 3 * nodes_aero
-                    for fvSource, parameters in aerostructDict["fvSource"].items():
-                        mask.append(np.zeros([(nodes_total) * 3], dtype=bool))
-                        mask[i_fvSource + 1][:] = False
-
-                        if self.comm.rank == 0:
-                            mask[i_fvSource + 1][i_start : i_start + 3 * (1 + parameters["nNodes"])] = True
-                            i_start += 3 * (1 + parameters["nNodes"])
-
-                            input.append(
-                                MaskedVariableDescription(
-                                    "f_prop_%s" % fvSource,
-                                    shape=((1 + parameters["nNodes"])) * 3,
-                                    tags=["mphys_coordinates"],
-                                )
-                            )
-                        else:
-                            input.append(
-                                MaskedVariableDescription("f_prop_%s" % fvSource, shape=(0), tags=["mphys_coupling"])
-                            )
-                        promotes_inputs.append("f_prop_%s" % fvSource)
-
-                        i_fvSource += 1
-
-            # Define Mask
-            output = MaskedVariableDescription("f_aero", shape=(nodes_total) * 3, tags=["mphys_coupling"])
-            promotes_outputs.append("f_aero")
-            unmasker = UnmaskedConverter(input=input, output=output, mask=mask, distributed=True, default_values=0.0)
-            self.add_subsystem(
-                "force_unmasker", unmasker, promotes_inputs=promotes_inputs, promotes_outputs=promotes_outputs
-            )
-
-    def mphys_set_options(self, optionDict):
-        # here optionDict should be a dictionary that has a consistent format
-        # with the daOptions defined in the run script
-        self.solver.set_options(optionDict)
 
 
 class DAFoamPrecouplingGroup(Group):
@@ -416,15 +196,8 @@ class DAFoamPrecouplingGroup(Group):
         self.thermal_coupling = self.options["thermal_coupling"]
         self.discipline = self.DASolver.getOption("discipline")
 
-        aerostructDict = self.DASolver.getOption("couplingInfo")["aerostructural"]
-
         # Return the warper only if it is not in the solver
         if not self.warp_in_solver:
-            if aerostructDict["active"] and aerostructDict["propMovement"]:
-                raise RuntimeError(
-                    "Propeller movement not possible when the warper is outside of the solver. Check for a valid scenario."
-                )
-
             self.add_subsystem(
                 "warper",
                 DAFoamWarper(solver=self.DASolver),
@@ -432,92 +205,10 @@ class DAFoamPrecouplingGroup(Group):
                 promotes_outputs=["%s_vol_coords" % self.discipline],
             )
 
-        # If the warper is in the solver, add other pre-coupling groups if desired
-        else:
-            fvSourceDict = self.DASolver.getOption("fvSource")
-            nodes_prop = 0
-
-            # Add propeller nodes and subsystem if needed
-            if aerostructDict["active"] and aerostructDict["propMovement"]:
-                self.add_subsystem(
-                    "prop_nodes", DAFoamPropNodes(solver=self.DASolver), promotes_inputs=["*"], promotes_outputs=["*"]
-                )
-
-                # Only add to Root Proc
-                if self.comm.rank == 0:
-                    if "fvSource" in aerostructDict.keys():
-                        # Iterate through Actuator Disks
-                        for fvSource, parameters in aerostructDict["fvSource"].items():
-                            # Check if Actuator Disk Exists
-                            if fvSource not in fvSourceDict:
-                                raise RuntimeWarning("Actuator disk %s not found when adding masked nodes" % fvSource)
-
-                            # Count Nodes
-                            nodes_prop += 1 + parameters["nNodes"]
-
-            nodes_aero = int(self.DASolver.getSurfaceCoordinates(groupName=self.DASolver.designSurfacesGroup).size / 3)
-            nodes_total = nodes_aero + nodes_prop
-
-            mask = []
-            input = []
-            promotes_inputs = []
-
-            # Mesh Coordinate Mask
-            mask.append(np.zeros([(nodes_total) * 3], dtype=bool))
-            mask[0][:] = True
-            if nodes_prop > 0:
-                mask[0][3 * nodes_aero :] = False
-            input.append(
-                MaskedVariableDescription(
-                    "x_%s0_masked" % self.discipline, shape=(nodes_aero) * 3, tags=["mphys_coordinates"]
-                )
-            )
-            promotes_inputs.append("x_%s0_masked" % self.discipline)
-
-            # Add propeller movement nodes mask if needed
-            if aerostructDict["active"] and aerostructDict["propMovement"]:
-                # Add Propeller Masks
-                if "fvSource" in aerostructDict.keys():
-                    i_fvSource = 0
-                    i_start = 3 * nodes_aero
-                    for fvSource, parameters in aerostructDict["fvSource"].items():
-                        mask.append(np.zeros([(nodes_total) * 3], dtype=bool))
-                        mask[i_fvSource + 1][:] = False
-
-                        if self.comm.rank == 0:
-                            mask[i_fvSource + 1][i_start : i_start + 3 * (1 + parameters["nNodes"])] = True
-                            i_start += 3 * (1 + parameters["nNodes"])
-
-                            input.append(
-                                MaskedVariableDescription(
-                                    "x_prop0_nodes_%s" % fvSource,
-                                    shape=((1 + parameters["nNodes"])) * 3,
-                                    tags=["mphys_coordinates"],
-                                )
-                            )
-                        else:
-                            input.append(
-                                MaskedVariableDescription(
-                                    "x_prop0_nodes_%s" % fvSource, shape=(0), tags=["mphys_coordinates"]
-                                )
-                            )
-                        promotes_inputs.append("x_prop0_nodes_%s" % fvSource)
-
-                        i_fvSource += 1
-
-            output = MaskedVariableDescription(
-                "x_%s0" % self.discipline, shape=(nodes_total) * 3, tags=["mphys_coordinates"]
-            )
-
-            unmasker = UnmaskedConverter(input=input, output=output, mask=mask, distributed=True, default_values=0.0)
-            self.add_subsystem(
-                "unmasker", unmasker, promotes_inputs=promotes_inputs, promotes_outputs=["x_%s0" % self.discipline]
-            )
-
         if self.thermal_coupling:
             self.add_subsystem(
                 "%s_xs" % self.discipline,
-                DAFoamFaceCoords(solver=self.DASolver, groupName=self.DASolver.couplingSurfacesGroup),
+                DAFoamFaceCoords(solver=self.DASolver),
                 promotes_inputs=["*"],
                 promotes_outputs=["*"],
             )
@@ -537,23 +228,6 @@ class DAFoamPostcouplingGroup(Group):
         # Add Functionals
         self.add_subsystem("functionals", DAFoamFunctions(solver=self.DASolver), promotes=["*"])
 
-        # Add Acoustics Data
-        couplingInfo = self.DASolver.getOption("couplingInfo")
-        if couplingInfo["aeroacoustic"]["active"]:
-            for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
-                self.add_subsystem(
-                    groupName, DAFoamAcoustics(solver=self.DASolver, groupName=groupName), promotes_inputs=["*"]
-                )
-
-    def mphys_add_funcs(self):
-        self.functionals.mphys_add_funcs()
-
-    def add_dv_func(self, dvName, dv_func):
-        self.functionals.add_dv_func(dvName, dv_func)
-
-    def mphys_set_options(self, options):
-        self.functionals.mphys_set_options(options)
-
 
 class DAFoamSolver(ImplicitComponent):
     """
@@ -562,13 +236,10 @@ class DAFoamSolver(ImplicitComponent):
 
     def initialize(self):
         self.options.declare("solver", recordable=False)
-        self.options.declare("prop_coupling", recordable=False)
         self.options.declare("run_directory", default="")
 
     def setup(self):
         # NOTE: the setup function will be called everytime a new scenario is created.
-
-        self.prop_coupling = self.options["prop_coupling"]
 
         self.DASolver = self.options["solver"]
         DASolver = self.DASolver
@@ -579,26 +250,25 @@ class DAFoamSolver(ImplicitComponent):
 
         self.solution_counter = 1
 
-        # by default, we will not have a separate optionDict attached to this
-        # solver. But if we do multipoint optimization, we need to use the
-        # optionDict for each point because each point may have different
-        # objFunc and primalBC options
-        self.optionDict = None
-
-        # Initialize the design variable functions, e.g., aoa, actuator
-        self.dv_funcs = {}
-
         # pointer to the DVGeo object
         self.DVGeo = None
 
         # pointer to the DVCon object
         self.DVCon = None
 
+        # setup some names
+        self.stateName = "%s_states" % self.discipline
+        self.residualName = "%s_residuals" % self.discipline
+        self.volCoordName = "%s_vol_coords" % self.discipline
+
         # initialize the dRdWT matrix-free matrix in DASolver
-        DASolver.solverAD.initializedRdWTMatrixFree(DASolver.xvVec, DASolver.wVec)
+        DASolver.solverAD.initializedRdWTMatrixFree()
 
         # create the adjoint vector
-        self.psi = self.DASolver.wVec.duplicate()
+        self.localAdjSize = DASolver.getNLocalAdjointStates()
+        self.psi = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        self.psi.setSizes((self.localAdjSize, PETSc.DECIDE), bsize=1)
+        self.psi.setFromOptions()
         self.psi.zeroEntries()
 
         # if true, we need to compute the coloring
@@ -607,81 +277,20 @@ class DAFoamSolver(ImplicitComponent):
         else:
             self.runColoring = True
 
-        # determine which function to compute the adjoint
-        self.evalFuncs = []
-        DASolver.setEvalFuncs(self.evalFuncs)
-
-        local_state_size = DASolver.getNLocalAdjointStates()
-
-        designVariables = DASolver.getOption("designVar")
-
-        # get the dvType dict
-        self.dvType = {}
-        for dvName in list(designVariables.keys()):
-            self.dvType[dvName] = designVariables[dvName]["designVarType"]
-
         # setup input and output for the solver
-        # we need to add states for all cases
-        self.add_output(
-            "%s_states" % self.discipline, distributed=True, shape=local_state_size, tags=["mphys_coupling"]
-        )
+        # we need to add states as outputs for all cases
+        local_state_size = DASolver.getNLocalAdjointStates()
+        self.add_output(self.stateName, distributed=True, shape=local_state_size, tags=["mphys_coupling"])
 
-        couplingInfo = DASolver.getOption("couplingInfo")
-        if couplingInfo["aerothermal"]["active"]:
-            nCells, nFaces = self.DASolver._getSurfaceSize(self.DASolver.couplingSurfacesGroup)
-            # NOTE: here we create two duplicated surface center coords, so the size is nFaces * 2
-            # one is for transferring near wall temperature, the other is for transferring k/d coefficients
-            if self.discipline == "aero":
-                # we need to set initial values for T_convect
-                T_convect0 = np.zeros(2 * nFaces)
-                for n in range(nFaces):
-                    T_convect0[n] = 300.0
-                self.add_input("T_convect", distributed=True, val=T_convect0, tags=["mphys_coupling"])
-            if self.discipline == "thermal":
-                # we need to set initial values for q_conduct
-                q_conduct0 = np.zeros(2 * nFaces)
-                for n in range(nFaces):
-                    q_conduct0[n] = 300.0
-                self.add_input("q_conduct", distributed=True, val=q_conduct0, tags=["mphys_coupling"])
-
-        # now loop over the design variable keys to determine which other variables we need to add
-        shapeVarAdded = False
-        for dvName in list(designVariables.keys()):
-            dvType = self.dvType[dvName]
-            if dvType == "FFD":  # add shape variables
-                if shapeVarAdded is False:  # we add the shape variable only once
-                    # NOTE: for shape variables, we add dafoam_vol_coords as the input name
-                    # the specific name for this shape variable will be added in the geometry component (DVGeo)
-                    self.add_input(
-                        "%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"]
-                    )
-                    shapeVarAdded = True
-            elif dvType == "AOA":  # add angle of attack variable
-                self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
-            elif dvType == "BC":  # add boundary conditions
-                self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
-            elif dvType == "ACTD":  # add actuator parameter variables
-                nACTDVars = 13
-                if "comps" in list(designVariables[dvName].keys()):
-                    nACTDVars = len(designVariables[dvName]["comps"])
-                self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
-            elif dvType == "HSC":  # add heat source parameter variables
-                nHSCVars = 9
-                if "comps" in list(designVariables[dvName].keys()):
-                    nHSCVars = len(designVariables[dvName]["comps"])
-                self.add_input(dvName, distributed=False, shape=nHSCVars, tags=["mphys_coupling"])
-            elif dvType == "Field":  # add field variables
-                # user can prescribe whether the field var is distributed. Default is True
-                distributed = True
-                if "distributed" in designVariables[dvName]:
-                    distributed = designVariables[dvName]["distributed"]
-                self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
-            elif dvType == "RegPar":
-                modelName = designVariables[dvName]["modelName"]
-                nParameters = self.DASolver.solver.getNRegressionParameters(modelName.encode())
-                self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
-            else:
-                raise AnalysisError("designVarType %s not supported! " % dvType)
+        # now loop over the solver input keys to determine which other variables we need to add as inputs
+        inputDict = DASolver.getOption("inputInfo")
+        for inputName in list(inputDict.keys()):
+            # this input is attached to solver comp
+            if "solver" in inputDict[inputName]["components"]:
+                inputType = inputDict[inputName]["type"]
+                inputSize = DASolver.solver.getInputSize(inputName, inputType)
+                inputDistributed = DASolver.solver.getInputDistributed(inputName, inputType)
+                self.add_input(inputName, distributed=inputDistributed, shape=inputSize, tags=["mphys_coupling"])
 
     def add_dvgeo(self, DVGeo):
         self.DVGeo = DVGeo
@@ -689,41 +298,17 @@ class DAFoamSolver(ImplicitComponent):
     def add_dvcon(self, DVCon):
         self.DVCon = DVCon
 
-    def add_dv_func(self, dvName, dv_func):
-        # add a design variable function to self.dv_func
-        # we need to call this function in runScript.py everytime we define a new dv_func, e.g., aoa, actuator
-        # no need to call this for the shape variables because they will be handled in the geometry component
-        # the dv_func should have two inputs, (dvVal, DASolver)
-        if dvName in self.dv_funcs:
-            raise AnalysisError("dvName %s is already in self.dv_funcs! " % dvName)
-        else:
-            self.dv_funcs[dvName] = dv_func
-
-    def set_options(self, optionDict):
-        # here optionDict should be a dictionary that has a consistent format
-        # with the daOptions defined in the run script
-        self.optionDict = optionDict
-
-    def apply_options(self, optionDict):
-        if optionDict is not None:
-            # This is a multipoint optimization. We need to replace the
-            # daOptions with optionDict
-            for key in optionDict.keys():
-                self.DASolver.setOption(key, optionDict[key])
-            self.DASolver.updateDAOption()
-
     # calculate the residual
-    def apply_nonlinear(self, inputs, outputs, residuals):
-        DASolver = self.DASolver
-        # NOTE: we do not pass the states from inputs to the OF layer.
-        # this can cause potential convergence issue because the initial states
-        # in the inputs are set to all ones. So passing this all-ones states
-        # into the OF layer may diverge the primal solver. Here we can always
-        # use the states from the OF layer to compute the residuals.
-        # DASolver.setStates(outputs["%s_states" % self.discipline])
-
-        # get flow residuals from DASolver
-        residuals["%s_states" % self.discipline] = DASolver.getResiduals()
+    # def apply_nonlinear(self, inputs, outputs, residuals):
+    #     DASolver = self.DASolver
+    #     # NOTE: we do not pass the states from inputs to the OF layer.
+    #     # this can cause potential convergence issue because the initial states
+    #     # in the inputs are set to all ones. So passing this all-ones states
+    #     # into the OF layer may diverge the primal solver. Here we can always
+    #     # use the states from the OF layer to compute the residuals.
+    #     # DASolver.setStates(outputs["%s_states" % self.discipline])
+    #     # get flow residuals from DASolver
+    #     residuals[self.stateName] = DASolver.getResiduals()
 
     # solve the flow
     def solve_nonlinear(self, inputs, outputs):
@@ -732,50 +317,48 @@ class DAFoamSolver(ImplicitComponent):
 
             DASolver = self.DASolver
 
-            # set the runStatus, this is useful when the actuator term is activated
-            DASolver.setOption("runStatus", "solvePrimal")
-
-            # assign the optionDict to the solver
-            self.apply_options(self.optionDict)
-
-            # now call the dv_funcs to update the design variables
-            for dvName in self.dv_funcs:
-                func = self.dv_funcs[dvName]
-                dvVal = inputs[dvName]
-                func(dvVal, DASolver)
-
-            DASolver.updateDAOption()
-
-            couplingInfo = DASolver.getOption("couplingInfo")
-            if couplingInfo["aerothermal"]["active"]:
-                if self.discipline == "aero":
-                    T_convect = inputs["T_convect"]
-                    DASolver.setThermal(T_convect)
-                elif self.discipline == "thermal":
-                    q_conduct = inputs["q_conduct"]
-                    DASolver.setThermal(q_conduct)
-                else:
-                    raise AnalysisError("discipline not valid!")
+            # before running the primal, we need to check if the mesh
+            # quality is good
+            meshOK = DASolver.solver.checkMesh()
 
             # solve the flow with the current design variable
-            DASolver()
+            # if the mesh is not OK, do not run the primal
+            if meshOK:
+                DASolver.set_solver_input(inputs, self.DVGeo)
+                DASolver()
+            else:
+                DASolver.primalFail = 1
+
+            # after solving the primal, we need to print its residual info
+            if DASolver.getOption("useAD")["mode"] == "forward":
+                DASolver.solverAD.calcPrimalResidualStatistics("print")
+            else:
+                DASolver.solver.calcPrimalResidualStatistics("print")
 
             # get the objective functions
             funcs = {}
-            DASolver.evalFunctions(funcs, evalFuncs=self.evalFuncs)
+            DASolver.evalFunctions(funcs)
 
             # assign the computed flow states to outputs
-            outputs["%s_states" % self.discipline] = DASolver.getStates()
+            states = DASolver.getStates()
+            outputs[self.stateName] = states
 
             # if the primal solution fail, we return analysisError and let the optimizer handle it
             fail = funcs["fail"]
             if fail:
                 raise AnalysisError("Primal solution failed!")
 
+            # set states
+            DASolver.setStates(states)
+
+            # We also need to just calculate the residual for the AD mode to initialize vars like URes
+            # We do not print the residual for AD, though
+            DASolver.solverAD.calcPrimalResidualStatistics("calc")
+
     def linearize(self, inputs, outputs, residuals):
         # NOTE: we do not do any computation in this function, just print some information
 
-        self.DASolver.setStates(outputs["%s_states" % self.discipline])
+        self.DASolver.setStates(outputs[self.stateName])
 
     def apply_linear(self, inputs, outputs, d_inputs, d_outputs, d_residuals, mode):
         # compute the matrix vector products for states and volume mesh coordinates
@@ -793,179 +376,47 @@ class DAFoamSolver(ImplicitComponent):
 
         DASolver = self.DASolver
 
-        # assign the optionDict to the solver
-        self.apply_options(self.optionDict)
-
-        # now call the dv_funcs to update the design variables
-        for dvName in self.dv_funcs:
-            func = self.dv_funcs[dvName]
-            dvVal = inputs[dvName]
-            func(dvVal, DASolver)
-
         # assign the states in outputs to the OpenFOAM flow fields
-        DASolver.setStates(outputs["%s_states" % self.discipline])
+        # NOTE: this is not quite necessary because setStates have been called before in the solve_nonlinear
+        # here we call it just be on the safe side
+        DASolver.setStates(outputs[self.stateName])
 
-        designVariables = DASolver.getOption("designVar")
-
-        if "%s_states" % self.discipline in d_residuals:
+        if self.stateName in d_residuals:
 
             # get the reverse mode AD seed from d_residuals
-            resBar = d_residuals["%s_states" % self.discipline]
-            # convert the seed array to Petsc vector
-            resBarVec = DASolver.array2Vec(resBar)
+            seed = d_residuals[self.stateName]
 
             # this computes [dRdW]^T*Psi using reverse mode AD
-            if "%s_states" % self.discipline in d_outputs:
-                prodVec = DASolver.wVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdRdWTPsiAD(DASolver.xvVec, DASolver.wVec, resBarVec, prodVec)
-                wBar = DASolver.vec2Array(prodVec)
-                d_outputs["%s_states" % self.discipline] += wBar
+            if self.stateName in d_outputs:
+                product = np.zeros(self.localAdjSize)
+                jacInput = outputs[self.stateName]
+                DASolver.solverAD.calcJacTVecProduct(
+                    self.stateName,
+                    "stateVar",
+                    jacInput,
+                    self.residualName,
+                    "residual",
+                    seed,
+                    product,
+                )
+                d_outputs[self.stateName] += product
 
-            # loop over all d_inputs keys and compute the matrix-vector products accordingly
-            for inputName in list(d_inputs.keys()):
-                # this computes [dRdXv]^T*Psi using reverse mode AD
-                if inputName == "%s_vol_coords" % self.discipline:
-                    prodVec = DASolver.xvVec.duplicate()
-                    prodVec.zeroEntries()
-                    DASolver.solverAD.calcdRdXvTPsiAD(DASolver.xvVec, DASolver.wVec, resBarVec, prodVec)
-                    xVBar = DASolver.vec2Array(prodVec)
-                    d_inputs["%s_vol_coords" % self.discipline] += xVBar
-                elif inputName == "q_conduct":
-                    # calculate [dRdQ]^T*Psi for thermal
-                    volCoords = inputs["%s_vol_coords" % self.discipline]
-                    states = outputs["%s_states" % self.discipline]
-                    thermal = inputs["q_conduct"]
-                    product = np.zeros_like(thermal)
-                    DASolver.solverAD.calcdRdThermalTPsiAD(volCoords, states, thermal, resBar, product)
-                    d_inputs["q_conduct"] += product
-                elif inputName == "T_convect":
-                    # calculate [dRdT]^T*Psi for aero
-                    volCoords = inputs["%s_vol_coords" % self.discipline]
-                    states = outputs["%s_states" % self.discipline]
-                    thermal = inputs["T_convect"]
-                    product = np.zeros_like(thermal)
-                    DASolver.solverAD.calcdRdThermalTPsiAD(volCoords, states, thermal, resBar, product)
-                    d_inputs["T_convect"] += product
-                else:  # now we deal with general input output names
-                    # compute [dRdAOA]^T*Psi using reverse mode AD
-                    if self.dvType[inputName] == "AOA":
-                        prodVec = PETSc.Vec().create(self.comm)
-                        prodVec.setSizes((PETSc.DECIDE, 1), bsize=1)
-                        prodVec.setFromOptions()
-                        DASolver.solverAD.calcdRdAOATPsiAD(
-                            DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
-                        )
-                        # The aoaBar variable will be length 1 on the root proc, but length 0 an all slave procs.
-                        # The value on the root proc must be broadcast across all procs.
-                        if self.comm.rank == 0:
-                            aoaBar = DASolver.vec2Array(prodVec)[0]
-                        else:
-                            aoaBar = 0.0
-
-                        d_inputs[inputName] += self.comm.bcast(aoaBar, root=0)
-
-                    # compute [dRdBC]^T*Psi using reverse mode AD
-                    elif self.dvType[inputName] == "BC":
-                        prodVec = PETSc.Vec().create(self.comm)
-                        prodVec.setSizes((PETSc.DECIDE, 1), bsize=1)
-                        prodVec.setFromOptions()
-                        DASolver.solverAD.calcdRdBCTPsiAD(
-                            DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
-                        )
-                        # The BCBar variable will be length 1 on the root proc, but length 0 an all slave procs.
-                        # The value on the root proc must be broadcast across all procs.
-                        if self.comm.rank == 0:
-                            BCBar = DASolver.vec2Array(prodVec)[0]
-                        else:
-                            BCBar = 0.0
-
-                        d_inputs[inputName] += self.comm.bcast(BCBar, root=0)
-
-                    # compute [dRdActD]^T*Psi using reverse mode AD
-                    elif self.dvType[inputName] == "ACTD":
-                        prodVec = PETSc.Vec().create(self.comm)
-                        prodVec.setSizes((PETSc.DECIDE, 13), bsize=1)
-                        prodVec.setFromOptions()
-                        DASolver.solverAD.calcdRdActTPsiAD(
-                            DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
-                        )
-                        # we will convert the MPI prodVec to seq array for all procs
-                        ACTDBar = DASolver.convertMPIVec2SeqArray(prodVec)
-                        if "comps" in list(designVariables[inputName].keys()):
-                            nACTDVars = len(designVariables[inputName]["comps"])
-                            ACTDBarSub = np.zeros(nACTDVars, "d")
-                            for i in range(nACTDVars):
-                                comp = designVariables[inputName]["comps"][i]
-                                ACTDBarSub[i] = ACTDBar[comp]
-                            d_inputs[inputName] += ACTDBarSub
-                        else:
-                            d_inputs[inputName] += ACTDBar
-
-                    # compute [dRdHSC]^T*Psi using reverse mode AD
-                    elif self.dvType[inputName] == "HSC":
-                        prodVec = PETSc.Vec().create(self.comm)
-                        prodVec.setSizes((PETSc.DECIDE, 9), bsize=1)
-                        prodVec.setFromOptions()
-                        DASolver.solverAD.calcdRdHSCTPsiAD(
-                            DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
-                        )
-                        # we will convert the MPI prodVec to seq array for all procs
-                        HSCBar = DASolver.convertMPIVec2SeqArray(prodVec)
-                        if "comps" in list(designVariables[inputName].keys()):
-                            nHSCVars = len(designVariables[inputName]["comps"])
-                            HSCBarSub = np.zeros(nHSCVars, "d")
-                            for i in range(nHSCVars):
-                                comp = designVariables[inputName]["comps"][i]
-                                HSCBarSub[i] = HSCBar[comp]
-                            d_inputs[inputName] += HSCBarSub
-                        else:
-                            d_inputs[inputName] += HSCBar
-
-                    # compute dRdFieldT*Psi using reverse mode AD
-                    elif self.dvType[inputName] == "Field":
-                        nLocalCells = self.DASolver.solver.getNLocalCells()
-                        fieldType = DASolver.getOption("designVar")[inputName]["fieldType"]
-                        fieldComp = 1
-                        if fieldType == "vector":
-                            fieldComp = 3
-                        nLocalSize = nLocalCells * fieldComp
-                        prodVec = PETSc.Vec().create(self.comm)
-                        prodVec.setSizes((nLocalSize, PETSc.DECIDE), bsize=1)
-                        prodVec.setFromOptions()
-                        DASolver.solverAD.calcdRdFieldTPsiAD(
-                            DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
-                        )
-                        # user can prescribe whether the field var is distributed. Default is True
-                        distributed = True
-                        if "distributed" in designVariables[inputName]:
-                            distributed = designVariables[inputName]["distributed"]
-
-                        if distributed:
-                            fieldBar = DASolver.vec2Array(prodVec)
-                        else:
-                            fieldBar = DASolver.convertMPIVec2SeqArray(prodVec)
-                        d_inputs[inputName] += fieldBar
-
-                    elif self.dvType[inputName] == "RegPar":
-                        volCoords = DASolver.vec2Array(DASolver.xvVec)
-                        states = outputs["%s_states" % self.discipline]
-                        parameters = inputs[inputName]
-                        product = np.zeros_like(parameters)
-                        seeds = d_residuals["%s_states" % self.discipline]
-
-                        modelName = designVariables[inputName]["modelName"]
-
-                        DASolver.solverAD.calcdRdRegParTPsiAD(
-                            volCoords, states, parameters, seeds, modelName.encode(), product
-                        )
-
-                        # reduce to make sure all procs get the same product
-                        product = self.comm.allreduce(product, op=MPI.SUM)
-
-                        d_inputs[inputName] += product
-                    else:
-                        raise AnalysisError("designVarType %s not supported! " % self.dvType[inputName])
+            # loop over all inputs keys and compute the matrix-vector products accordingly
+            inputDict = DASolver.getOption("inputInfo")
+            for inputName in list(inputs.keys()):
+                inputType = inputDict[inputName]["type"]
+                jacInput = inputs[inputName]
+                product = np.zeros_like(jacInput)
+                DASolver.solverAD.calcJacTVecProduct(
+                    inputName,
+                    inputType,
+                    jacInput,
+                    self.residualName,
+                    "residual",
+                    seed,
+                    product,
+                )
+                d_inputs[inputName] += product
 
     def solve_linear(self, d_outputs, d_residuals, mode):
         # solve the adjoint equation [dRdW]^T * Psi = dFdW
@@ -984,20 +435,16 @@ class DAFoamSolver(ImplicitComponent):
 
             DASolver = self.DASolver
 
-            # set the runStatus, this is useful when the actuator term is activated
-            DASolver.setOption("runStatus", "solveAdjoint")
-            DASolver.updateDAOption()
-
             adjEqnSolMethod = DASolver.getOption("adjEqnSolMethod")
 
             # right hand side array from d_outputs
-            dFdWArray = d_outputs["%s_states" % self.discipline]
+            dFdWArray = d_outputs[self.stateName]
             # convert the array to vector
             dFdW = DASolver.array2Vec(dFdWArray)
 
             # run coloring
             if self.DASolver.getOption("adjUseColoring") and self.runColoring:
-                self.DASolver.runColoring()
+                self.DASolver.solver.runColoring()
                 self.runColoring = False
 
             if adjEqnSolMethod == "Krylov":
@@ -1007,7 +454,7 @@ class DAFoamSolver(ImplicitComponent):
                 if DASolver.getOption("writeMinorIterations"):
                     if DASolver.dRdWTPC is None or DASolver.ksp is None:
                         DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
-                        DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
+                        DASolver.solver.calcdRdWT(1, DASolver.dRdWTPC)
                         DASolver.ksp = PETSc.KSP().create(self.comm)
                         DASolver.solverAD.createMLRKSPMatrixFree(DASolver.dRdWTPC, DASolver.ksp)
                 # otherwise, we need to recompute the PC mat based on adjPCLag
@@ -1053,7 +500,7 @@ class DAFoamSolver(ImplicitComponent):
                             if DASolver.dRdWTPC is not None:
                                 DASolver.dRdWTPC.destroy()
                             DASolver.dRdWTPC = PETSc.Mat().create(self.comm)
-                            DASolver.solver.calcdRdWT(DASolver.xvVec, DASolver.wVec, 1, DASolver.dRdWTPC)
+                            DASolver.solver.calcdRdWT(1, DASolver.dRdWTPC)
                             # reset the KSP
                             if DASolver.ksp is not None:
                                 DASolver.ksp.destroy()
@@ -1067,7 +514,7 @@ class DAFoamSolver(ImplicitComponent):
                     self.psi.set(0)
                 else:
                     # if useNonZeroInitGuess is True, we will assign the OM's psi to self.psi
-                    self.psi = DASolver.array2Vec(d_residuals["%s_states" % self.discipline].copy())
+                    self.psi = DASolver.array2Vec(d_residuals[self.stateName].copy())
 
                 if self.DASolver.getOption("adjEqnOption")["dynAdjustTol"]:
                     # if we want to dynamically adjust the tolerance, call this function. This is mostly used
@@ -1080,10 +527,10 @@ class DAFoamSolver(ImplicitComponent):
 
                 # optionally write the adjoint vector as OpenFOAM field format for post-processing
                 # update the obj func name for solve_linear later
-                solveLinearObjFuncName = DASolver.getOption("solveLinearObjFuncName")
-                psi_array = DASolver.vec2Array(self.psi)
-                solTimeFloat = self.solution_counter / 1e4
-                self.DASolver.writeAdjointFields(solveLinearObjFuncName, solTimeFloat, psi_array)
+                # solveLinearFunctionName = DASolver.getOption("solveLinearFunctionName")
+                # psi_array = DASolver.vec2Array(self.psi)
+                # solTimeFloat = self.solution_counter / 1e4
+                # self.DASolver.writeAdjointFields(solveLinearFunctionName, solTimeFloat, psi_array)
 
             elif adjEqnSolMethod == "fixedPoint":
                 solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
@@ -1096,12 +543,12 @@ class DAFoamSolver(ImplicitComponent):
                         print("---------------------------------------------")
                     self.solution_counter += 1
                 # solve the adjoint equation using the fixed-point adjoint approach
-                fail = DASolver.solverAD.runFPAdj(DASolver.xvVec, DASolver.wVec, dFdW, self.psi)
+                fail = DASolver.solverAD.runFPAdj(dFdW, self.psi)
             else:
                 raise RuntimeError("adjEqnSolMethod=%s not valid! Options are: Krylov or fixedPoint" % adjEqnSolMethod)
 
             # convert the solution vector to array and assign it to d_residuals
-            d_residuals["%s_states" % self.discipline] = DASolver.vec2Array(self.psi)
+            d_residuals[self.stateName] = DASolver.vec2Array(self.psi)
 
             # if the adjoint solution fail, we return analysisError and let the optimizer handle it
             if fail:
@@ -1116,11 +563,23 @@ class DAFoamSolver(ImplicitComponent):
 
         DASolver = self.DASolver
         # calculate the initial residual for the adjoint before solving
-        rVec = self.DASolver.wVec.duplicate()
-        rVec.zeroEntries()
-        DASolver.solverAD.calcdRdWTPsiAD(DASolver.xvVec, DASolver.wVec, psi, rVec)
+        rArray = np.zeros(self.localAdjSize)
+        jacInput = DASolver.getStates()
+        seed = DASolver.vec2Array(psi)
+        DASolver.solverAD.calcJacTVecProduct(
+            self.stateName,
+            "stateVar",
+            jacInput,
+            self.residualName,
+            "residual",
+            seed,
+            rArray,
+        )
+        rVec = DASolver.array2Vec(rArray)
         rVec.axpy(-1.0, dFdW)
+        # NOTE, this is the norm for the global vec
         rNorm = rVec.norm()
+
         # read the rTol and aTol from DAOption
         rTol0 = self.DASolver.getOption("adjEqnOption")["gmresRelTol"]
         aTol0 = self.DASolver.getOption("adjEqnOption")["gmresAbsTol"]
@@ -1131,32 +590,6 @@ class DAFoamSolver(ImplicitComponent):
             aTolNew = aTol0
         # assign the atolNew and distable rTol
         ksp.setTolerances(rtol=0.0, atol=aTolNew, divtol=None, max_it=None)
-
-
-class DAFoamMeshGroup(Group):
-    def initialize(self):
-        self.options.declare("solver", recordable=False)
-
-    def setup(self):
-        DASolver = self.options["solver"]
-
-        self.discipline = self.DASolver.getOption("discipline")
-
-        self.add_subsystem("surface_mesh", DAFoamMesh(solver=DASolver), promotes=["*"])
-        self.add_subsystem(
-            "volume_mesh",
-            DAFoamWarper(solver=DASolver),
-            promotes_inputs=[("x_%s_masked" % self.discipline, "x_%s0" % self.discipline)],
-            promotes_outputs=["%s_vol_coords" % self.discipline],
-        )
-
-    def mphys_add_coordinate_input(self):
-        # just pass through the call
-        return self.surface_mesh.mphys_add_coordinate_input()
-
-    def mphys_get_triangulated_surface(self):
-        # just pass through the call
-        return self.surface_mesh.mphys_get_triangulated_surface()
 
 
 class DAFoamMesh(ExplicitComponent):
@@ -1246,147 +679,53 @@ class DAFoamFunctions(ExplicitComponent):
     def setup(self):
 
         self.DASolver = self.options["solver"]
+        DASolver = self.DASolver
 
         self.discipline = self.DASolver.getOption("discipline")
 
-        # init the dv_funcs
-        self.dv_funcs = {}
-
-        self.optionDict = None
-
-        # get the dvType dict
-        designVariables = self.DASolver.getOption("designVar")
-        self.dvType = {}
-        for dvName in list(designVariables.keys()):
-            self.dvType[dvName] = designVariables[dvName]["designVarType"]
+        # setup some names
+        self.stateName = "%s_states" % self.discipline
+        self.volCoordName = "%s_vol_coords" % self.discipline
 
         # setup input and output for the function
         # we need to add states for all cases
-        self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input(self.stateName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
-        # now loop over the design variable keys to determine which other variables we need to add
-        shapeVarAdded = False
-        for dvName in list(designVariables.keys()):
-            dvType = self.dvType[dvName]
-            if dvType == "FFD":  # add shape variables
-                if shapeVarAdded is False:  # we add the shape variable only once
-                    # NOTE: for shape variables, we add dafoam_vol_coords as the input name
-                    # the specific name for this shape variable will be added in the geometry component (DVGeo)
-                    self.add_input(
-                        "%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"]
-                    )
-                    shapeVarAdded = True
-            elif dvType == "AOA":  # add angle of attack variable
-                self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
-            elif dvType == "BC":  # add boundary conditions
-                self.add_input(dvName, distributed=False, shape_by_conn=True, tags=["mphys_coupling"])
-            elif dvType == "ACTD":  # add actuator parameter variables
-                nACTDVars = 13
-                if "comps" in list(designVariables[dvName].keys()):
-                    nACTDVars = len(designVariables[dvName]["comps"])
-                self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
-            elif dvType == "HSC":  # add heat source parameter variables
-                nHSCVars = 9
-                if "comps" in list(designVariables[dvName].keys()):
-                    nHSCVars = len(designVariables[dvName]["comps"])
-                self.add_input(dvName, distributed=False, shape=nHSCVars, tags=["mphys_coupling"])
-            elif dvType == "Field":  # add field variables
-                # user can prescribe whether the field var is distributed. Default is True
-                distributed = True
-                if "distributed" in designVariables[dvName]:
-                    distributed = designVariables[dvName]["distributed"]
-                self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
-            elif dvType == "RegPar":
-                modelName = designVariables[dvName]["modelName"]
-                nParameters = self.DASolver.solver.getNRegressionParameters(modelName.encode())
-                self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
-            else:
-                raise AnalysisError("designVarType %s not supported! " % dvType)
+        # now loop over the solver input keys to determine which other variables we need to add as inputs
+        inputDict = DASolver.getOption("inputInfo")
+        for inputName in list(inputDict.keys()):
+            # this input is attached to function comp
+            if "function" in inputDict[inputName]["components"]:
+                inputType = inputDict[inputName]["type"]
+                inputSize = DASolver.solver.getInputSize(inputName, inputType)
+                inputDistributed = DASolver.solver.getInputDistributed(inputName, inputType)
+                self.add_input(inputName, distributed=inputDistributed, shape=inputSize, tags=["mphys_coupling"])
 
-    def mphys_add_funcs(self):
-        # add the function names to this component, called from runScript.py
-
-        # it is called objFunc in DAOptions but it contains both objective and constraint functions
-        objFuncs = self.DASolver.getOption("objFunc")
-
-        self.funcs = []
-
-        for objFunc in objFuncs:
-            self.funcs.append(objFunc)
-
+        # add outputs
+        functions = self.DASolver.getOption("function")
         # loop over the functions here and create the output
-        for f_name in self.funcs:
-            self.add_output(f_name, distributed=False, shape=1, units=None, tags=["mphys_result"])
-
-    def add_dv_func(self, dvName, dv_func):
-        # add a design variable function to self.dv_func
-        # we need to call this function in runScript.py everytime we define a new dv_func, e.g., aoa, actuator
-        # no need to call this for the shape variables because they will be handled in the geometry component
-        # the dv_func should have two inputs, (dvVal, DASolver)
-        if dvName in self.dv_funcs:
-            raise AnalysisError("dvName %s is already in self.dv_funcs! " % dvName)
-        else:
-            self.dv_funcs[dvName] = dv_func
-
-    def mphys_set_options(self, optionDict):
-        # here optionDict should be a dictionary that has a consistent format
-        # with the daOptions defined in the run script
-        self.optionDict = optionDict
-
-    def apply_options(self, optionDict):
-        if optionDict is not None:
-            # This is a multipoint optimization. We need to replace the
-            # daOptions with optionDict
-            for key in optionDict.keys():
-                self.DASolver.setOption(key, optionDict[key])
-            self.DASolver.updateDAOption()
+        for f_name in list(functions.keys()):
+            self.add_output(f_name, distributed=False, shape=1, units=None)
 
     # get the objective function from DASolver
     def compute(self, inputs, outputs):
 
         DASolver = self.DASolver
 
-        DASolver.setStates(inputs["%s_states" % self.discipline])
+        DASolver.setStates(inputs[self.stateName])
 
         funcs = {}
-
-        if self.funcs is not None:
-            DASolver.evalFunctions(funcs, evalFuncs=self.funcs)
-            for f_name in self.funcs:
-                if f_name in funcs:
-                    outputs[f_name] = funcs[f_name]
+        DASolver.evalFunctions(funcs)
+        for f_name in list(outputs.keys()):
+            outputs[f_name] = funcs[f_name]
 
     # compute the partial derivatives of functions
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
-        # we first check if all the seeds in d_outputs are zeros. If yes, we return without calculation anything
-        n_non_zero_seeds = 0
-        for func_name in d_outputs:
-            if d_outputs[func_name] != 0.0:
-                n_non_zero_seeds += 1
-        if n_non_zero_seeds == 0:
-            return
-        elif n_non_zero_seeds > 1:
-            if self.comm.rank == 0:
-                print("************* Warning *************")
-                print("More than one non-zero seed found! ", d_outputs)
-
         DASolver = self.DASolver
 
-        # set the runStatus, this is useful when the actuator term is activated
-        DASolver.setOption("runStatus", "solveAdjoint")
-        DASolver.updateDAOption()
-
-        designVariables = DASolver.getOption("designVar")
-
-        # assign the optionDict to the solver
-        self.apply_options(self.optionDict)
-        # now call the dv_funcs to update the design variables
-        for dvName in self.dv_funcs:
-            func = self.dv_funcs[dvName]
-            dvVal = inputs[dvName]
-            func(dvVal, DASolver)
-        DASolver.setStates(inputs["%s_states" % self.discipline])
+        # TODO. this may not be needed
+        DASolver.setStates(inputs[self.stateName])
 
         # we do not support forward mode AD
         if mode == "fwd":
@@ -1398,177 +737,45 @@ class DAFoamFunctions(ExplicitComponent):
             )
             return
 
-        funcsBar = {}
-
-        # assign value to funcsBar. NOTE: we only assign seed if d_outputs has
-        # non-zero values! We assume OM will pass only one non-zero seed here
-        # therefore, funcsBar should have only one key
-        if self.funcs is None:
-            raise AnalysisError("functions not set! Forgot to call mphys_add_funcs?")
-        else:
-            for func_name in self.funcs:
-                if func_name in d_outputs and d_outputs[func_name] != 0.0:
-                    funcsBar[func_name] = d_outputs[func_name][0]
-
-        # if self.comm.rank == 0:
-        #     print(funcsBar)
-
-        if self.comm.rank == 0:
-            print("Computing partials for ", list(funcsBar.keys()))
-
-        # update the obj func name for solve_linear later
-        DASolver.setOption("solveLinearObjFuncName", list(funcsBar.keys())[0])
-        DASolver.updateDAOption()
-
         # loop over all d_inputs keys and compute the partials accordingly
-        for objFuncName in list(funcsBar.keys()):
+        inputDict = DASolver.getOption("inputInfo")
+        for functionName in list(d_outputs.keys()):
 
-            fBar = funcsBar[objFuncName]
+            seed = d_outputs[functionName]
+
+            # if the seed is zero, do not compute
+            if abs(seed) < 1e-12:
+                continue
 
             for inputName in list(d_inputs.keys()):
-
-                # compute dFdW * fBar
-                if inputName == "%s_states" % self.discipline:
-                    dFdW = DASolver.wVec.duplicate()
-                    dFdW.zeroEntries()
-                    DASolver.solverAD.calcdFdWAD(DASolver.xvVec, DASolver.wVec, objFuncName.encode(), dFdW)
-                    wBar = DASolver.vec2Array(dFdW)
-                    d_inputs["%s_states" % self.discipline] += wBar * fBar
-
-                # compute dFdW * fBar
-                elif inputName == "%s_vol_coords" % self.discipline:
-                    dFdXv = DASolver.xvVec.duplicate()
-                    dFdXv.zeroEntries()
-                    DASolver.solverAD.calcdFdXvAD(
-                        DASolver.xvVec, DASolver.wVec, objFuncName.encode(), "dummy".encode(), dFdXv
+                # compute dFdW * seed
+                if inputName == self.stateName:
+                    jacInput = inputs[self.stateName]
+                    product = np.zeros_like(jacInput)
+                    DASolver.solverAD.calcJacTVecProduct(
+                        self.stateName,
+                        "stateVar",
+                        jacInput,
+                        functionName,
+                        "function",
+                        seed,
+                        product,
                     )
-                    xVBar = DASolver.vec2Array(dFdXv)
-                    d_inputs["%s_vol_coords" % self.discipline] += xVBar * fBar
-
-                # now we deal with general input input names
+                    d_inputs[self.stateName] += product
                 else:
-                    # compute dFdAOA
-                    if self.dvType[inputName] == "AOA":
-                        dFdAOA = PETSc.Vec().create(self.comm)
-                        dFdAOA.setSizes((PETSc.DECIDE, 1), bsize=1)
-                        dFdAOA.setFromOptions()
-                        DASolver.calcdFdAOAAnalytical(objFuncName, dFdAOA)
-
-                        # The aoaBar variable will be length 1 on the root proc, but length 0 an all slave procs.
-                        # The value on the root proc must be broadcast across all procs.
-                        if self.comm.rank == 0:
-                            aoaBar = DASolver.vec2Array(dFdAOA)[0] * fBar
-                        else:
-                            aoaBar = 0.0
-
-                        d_inputs[inputName] += self.comm.bcast(aoaBar, root=0)
-
-                    # compute dFdBC
-                    elif self.dvType[inputName] == "BC":
-                        dFdBC = PETSc.Vec().create(self.comm)
-                        dFdBC.setSizes((PETSc.DECIDE, 1), bsize=1)
-                        dFdBC.setFromOptions()
-                        DASolver.solverAD.calcdFdBCAD(
-                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdBC
-                        )
-                        # The BCBar variable will be length 1 on the root proc, but length 0 an all slave procs.
-                        # The value on the root proc must be broadcast across all procs.
-                        if self.comm.rank == 0:
-                            BCBar = DASolver.vec2Array(dFdBC)[0] * fBar
-                        else:
-                            BCBar = 0.0
-
-                        d_inputs[inputName] += self.comm.bcast(BCBar, root=0)
-
-                    # compute dFdActD
-                    elif self.dvType[inputName] == "ACTD":
-                        dFdACTD = PETSc.Vec().create(self.comm)
-                        dFdACTD.setSizes((PETSc.DECIDE, 13), bsize=1)
-                        dFdACTD.setFromOptions()
-                        DASolver.solverAD.calcdFdACTAD(
-                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdACTD
-                        )
-                        # we will convert the MPI dFdACTD to seq array for all procs
-                        ACTDBar = DASolver.convertMPIVec2SeqArray(dFdACTD)
-                        if "comps" in list(designVariables[inputName].keys()):
-                            nACTDVars = len(designVariables[inputName]["comps"])
-                            ACTDBarSub = np.zeros(nACTDVars, "d")
-                            for i in range(nACTDVars):
-                                comp = designVariables[inputName]["comps"][i]
-                                ACTDBarSub[i] = ACTDBar[comp]
-                            d_inputs[inputName] += ACTDBarSub * fBar
-                        else:
-                            d_inputs[inputName] += ACTDBar * fBar
-
-                    # compute dFdHSC
-                    elif self.dvType[inputName] == "HSC":
-                        dFdHSC = PETSc.Vec().create(self.comm)
-                        dFdHSC.setSizes((PETSc.DECIDE, 9), bsize=1)
-                        dFdHSC.setFromOptions()
-                        DASolver.solverAD.calcdFdHSCAD(
-                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdHSC
-                        )
-                        # we will convert the MPI dFdHSC to seq array for all procs
-                        HSCBar = DASolver.convertMPIVec2SeqArray(dFdHSC)
-                        if "comps" in list(designVariables[inputName].keys()):
-                            nHSCVars = len(designVariables[inputName]["comps"])
-                            HSCBarSub = np.zeros(nHSCVars, "d")
-                            for i in range(nHSCVars):
-                                comp = designVariables[inputName]["comps"][i]
-                                HSCBarSub[i] = HSCBar[comp]
-                            d_inputs[inputName] += HSCBarSub * fBar
-                        else:
-                            d_inputs[inputName] += HSCBar * fBar
-
-                    # compute dFdField
-                    elif self.dvType[inputName] == "Field":
-                        nLocalCells = self.DASolver.solver.getNLocalCells()
-                        fieldType = DASolver.getOption("designVar")[inputName]["fieldType"]
-                        fieldComp = 1
-                        if fieldType == "vector":
-                            fieldComp = 3
-                        nLocalSize = nLocalCells * fieldComp
-                        dFdField = PETSc.Vec().create(self.comm)
-                        dFdField.setSizes((nLocalSize, PETSc.DECIDE), bsize=1)
-                        dFdField.setFromOptions()
-                        DASolver.solverAD.calcdFdFieldAD(
-                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdField
-                        )
-
-                        # user can prescribe whether the field var is distributed. Default is True
-                        distributed = True
-                        if "distributed" in designVariables[inputName]:
-                            distributed = designVariables[inputName]["distributed"]
-
-                        if distributed:
-                            fieldBar = DASolver.vec2Array(dFdField)
-                        else:
-                            fieldBar = DASolver.convertMPIVec2SeqArray(dFdField)
-
-                        d_inputs[inputName] += fieldBar * fBar
-
-                    elif self.dvType[inputName] == "RegPar":
-                        volCoords = DASolver.vec2Array(DASolver.xvVec)
-                        states = inputs["%s_states" % self.discipline]
-                        parameters = inputs[inputName]
-                        product = np.zeros_like(parameters)
-
-                        modelName = designVariables[inputName]["modelName"]
-
-                        DASolver.solverAD.calcdFdRegParAD(
-                            volCoords,
-                            states,
-                            parameters,
-                            objFuncName.encode(),
-                            inputName.encode(),
-                            modelName.encode(),
-                            product,
-                        )
-
-                        d_inputs[inputName] += product * fBar
-
-                    else:
-                        raise AnalysisError("designVarType %s not supported! " % self.dvType[inputName])
+                    inputType = inputDict[inputName]["type"]
+                    jacInput = inputs[inputName]
+                    product = np.zeros_like(jacInput)
+                    DASolver.solverAD.calcJacTVecProduct(
+                        inputName,
+                        inputType,
+                        jacInput,
+                        functionName,
+                        "function",
+                        seed,
+                        product,
+                    )
+                    d_inputs[inputName] += product
 
 
 class DAFoamWarper(ExplicitComponent):
@@ -1603,8 +810,6 @@ class DAFoamWarper(ExplicitComponent):
         DASolver.setSurfaceCoordinates(x_a, DASolver.designSurfacesGroup)
         DASolver.mesh.warpMesh()
         solverGrid = DASolver.mesh.getSolverGrid()
-        # actually change the mesh in the C++ layer by setting xvVec
-        DASolver.xvFlatten2XvVec(solverGrid, DASolver.xvVec)
         outputs["%s_vol_coords" % self.discipline] = solverGrid
 
     # compute the mesh warping products in IDWarp
@@ -1643,44 +848,40 @@ class DAFoamThermal(ExplicitComponent):
     def setup(self):
 
         self.DASolver = self.options["solver"]
+        DASolver = self.DASolver
 
         self.discipline = self.DASolver.getOption("discipline")
 
-        self.nCouplingFaces = self.DASolver.solver.getNCouplingFaces()
+        self.stateName = "%s_states" % self.discipline
+        self.volCoordName = "%s_vol_coords" % self.discipline
 
-        self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-        self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input(self.volCoordName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input(self.stateName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
-        if self.discipline == "thermal":
-            self.add_output("T_conduct", distributed=True, shape=self.nCouplingFaces * 2, tags=["mphys_coupling"])
-        elif self.discipline == "aero":
-            self.add_output("q_convect", distributed=True, shape=self.nCouplingFaces * 2, tags=["mphys_coupling"])
-        else:
-            raise AnalysisError("%s not supported! Options are: aero or thermal" % self.discipline)
+        # now loop over the solver input keys to determine which other variables we need to add as inputs
+        outputDict = DASolver.getOption("outputInfo")
+        for outputName in list(outputDict.keys()):
+            # this input is attached to the DAFoamThermal comp
+            if "thermalCoupling" in outputDict[outputName]["components"]:
+                self.outputName = outputName
+                self.outputType = outputDict[outputName]["type"]
+                self.outputSize = DASolver.solver.getOutputSize(outputName, self.outputType)
+                outputDistributed = DASolver.solver.getOutputDistributed(outputName, self.outputType)
+                self.add_output(
+                    outputName, distributed=outputDistributed, shape=self.outputSize, tags=["mphys_coupling"]
+                )
+                break
 
     def compute(self, inputs, outputs):
 
-        self.DASolver.setStates(inputs["%s_states" % self.discipline])
+        self.DASolver.setStates(inputs[self.stateName])
+        self.DASolver.setVolCoords(inputs[self.volCoordName])
 
-        vol_coords = inputs["%s_vol_coords" % self.discipline]
-        states = inputs["%s_states" % self.discipline]
+        thermal = np.zeros(self.outputSize)
 
-        thermal = np.zeros(self.nCouplingFaces * 2)
+        self.DASolver.solver.calcOutput(self.outputName, self.outputType, thermal)
 
-        if self.discipline == "thermal":
-
-            self.DASolver.solver.getThermal(vol_coords, states, thermal)
-
-            outputs["T_conduct"] = thermal
-
-        elif self.discipline == "aero":
-
-            self.DASolver.solver.getThermal(vol_coords, states, thermal)
-
-            outputs["q_convect"] = thermal
-
-        else:
-            raise AnalysisError("%s not supported! Options are: aero or thermal" % self.discipline)
+        outputs[self.outputName] = thermal
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
@@ -1695,34 +896,36 @@ class DAFoamThermal(ExplicitComponent):
 
         DASolver = self.DASolver
 
-        vol_coords = inputs["%s_vol_coords" % self.discipline]
-        states = inputs["%s_states" % self.discipline]
+        for outputName in list(d_outputs.keys()):
+            seeds = d_outputs[outputName]
 
-        if "T_conduct" in d_outputs:
-            seeds = d_outputs["T_conduct"]
+            if self.stateName in d_inputs:
+                jacInput = inputs[self.stateName]
+                product = np.zeros_like(jacInput)
+                DASolver.solverAD.calcJacTVecProduct(
+                    self.stateName,
+                    "stateVar",
+                    jacInput,
+                    outputName,
+                    "thermalCouplingOutput",
+                    seeds,
+                    product,
+                )
+                d_inputs[self.stateName] += product
 
-            if "%s_states" % self.discipline in d_inputs:
-                product = np.zeros_like(d_inputs["%s_states" % self.discipline])
-                DASolver.solverAD.getThermalAD("states", vol_coords, states, seeds, product)
-                d_inputs["%s_states" % self.discipline] += product
-
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                product = np.zeros_like(d_inputs["%s_vol_coords" % self.discipline])
-                DASolver.solverAD.getThermalAD("volCoords", vol_coords, states, seeds, product)
-                d_inputs["%s_vol_coords" % self.discipline] += product
-
-        if "q_convect" in d_outputs:
-            seeds = d_outputs["q_convect"]
-
-            if "%s_states" % self.discipline in d_inputs:
-                product = np.zeros_like(d_inputs["%s_states" % self.discipline])
-                DASolver.solverAD.getThermalAD("states", vol_coords, states, seeds, product)
-                d_inputs["%s_states" % self.discipline] += product
-
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                product = np.zeros_like(d_inputs["%s_vol_coords" % self.discipline])
-                DASolver.solverAD.getThermalAD("volCoords", vol_coords, states, seeds, product)
-                d_inputs["%s_vol_coords" % self.discipline] += product
+            if self.volCoordName in d_inputs:
+                jacInput = inputs[self.volCoordName]
+                product = np.zeros_like(jacInput)
+                DASolver.solverAD.calcJacTVecProduct(
+                    self.volCoordName,
+                    "volCoord",
+                    jacInput,
+                    outputName,
+                    "thermalCouplingOutput",
+                    seeds,
+                    product,
+                )
+                d_inputs[self.volCoordName] += product
 
 
 class DAFoamFaceCoords(ExplicitComponent):
@@ -1733,54 +936,46 @@ class DAFoamFaceCoords(ExplicitComponent):
 
     def initialize(self):
         self.options.declare("solver", recordable=False)
-        self.options.declare("groupName", recordable=False)
 
     def setup(self):
 
         self.DASolver = self.options["solver"]
         self.discipline = self.DASolver.getOption("discipline")
-        groupName = self.options["groupName"]
-
-        self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-
-        nPts, self.nFaces = self.DASolver._getSurfaceSize(groupName)
-        # NOTE: here we create two duplicated surface center coordinates, so the size is nFaces * 6
-        # one is for transferring near wall temperature, the other is for transferring k/d coefficients
-        self.add_output(
-            "x_%s_surface0" % self.discipline, distributed=True, shape=self.nFaces * 6, tags=["mphys_coupling"]
-        )
-
-    def compute(self, inputs, outputs):
-
-        volCoords = inputs["%s_vol_coords" % self.discipline]
-
-        nCouplingFaces = self.DASolver.solver.getNCouplingFaces()
-        surfCoords = np.zeros(nCouplingFaces * 6)
-        self.DASolver.solver.calcCouplingFaceCoords(volCoords, surfCoords)
-
-        outputs["x_%s_surface0" % self.discipline] = surfCoords
-
-    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-
-        if mode == "fwd":
-            om.issue_warning(
-                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
-                prefix="",
-                stacklevel=2,
-                category=om.OpenMDAOWarning,
-            )
-            return
+        self.volCoordName = "%s_vol_coords" % self.discipline
+        self.surfCoordName = "x_%s_surface0" % self.discipline
 
         DASolver = self.DASolver
 
-        if "x_%s_surface0" % self.discipline in d_outputs:
-            seeds = d_outputs["x_%s_surface0" % self.discipline]
+        self.add_input(self.volCoordName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                volCoords = inputs["%s_vol_coords" % self.discipline]
-                product = np.zeros_like(volCoords)
-                DASolver.solverAD.calcCouplingFaceCoordsAD(volCoords, seeds, product)
-                d_inputs["%s_vol_coords" % self.discipline] += product
+        # now loop over the solver input keys to determine which other variables we need to add as inputs
+        self.nSurfCoords = None
+        outputDict = DASolver.getOption("outputInfo")
+        for outputName in list(outputDict.keys()):
+            # this input is attached to the DAFoamThermal comp
+            if "thermalCoupling" in outputDict[outputName]["components"]:
+                outputType = outputDict[outputName]["type"]
+                outputSize = DASolver.solver.getOutputSize(outputName, outputType)
+                # NOTE: here x_surface0 is the surface coordinate, which is 3 times the number of faces
+                self.nSurfCoords = outputSize * 3
+                self.add_output(self.surfCoordName, distributed=True, shape=self.nSurfCoords, tags=["mphys_coupling"])
+                break
+
+        if self.nSurfCoords is None:
+            raise AnalysisError("no thermalCoupling output found!")
+
+    def compute(self, inputs, outputs):
+
+        volCoords = inputs[self.volCoordName]
+        surfCoords = np.zeros(self.nSurfCoords)
+        self.DASolver.solver.calcCouplingFaceCoords(volCoords, surfCoords)
+
+        outputs[self.surfCoordName] = surfCoords
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+        # there is no need to compute the jacvec_product because FUN2FEM assumes the surfCoords will not updated during optimization
+        # so it will set a zero seed for this anyway
+        pass
 
 
 class DAFoamForces(ExplicitComponent):
@@ -1798,17 +993,48 @@ class DAFoamForces(ExplicitComponent):
 
         self.discipline = self.DASolver.getOption("discipline")
 
-        self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-        self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.stateName = "%s_states" % self.discipline
+        self.volCoordName = "%s_vol_coords" % self.discipline
 
-        local_surface_coord_size = self.DASolver.getSurfaceCoordinates(self.DASolver.couplingSurfacesGroup).size
-        self.add_output("f_aero", distributed=True, shape=local_surface_coord_size, tags=["mphys_coupling"])
+        self.add_input(self.volCoordName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input(self.stateName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+
+        # now loop over the solver input keys to determine which other variables we need to add as inputs
+        outputDict = self.DASolver.getOption("outputInfo")
+        for outputName in list(outputDict.keys()):
+            # this input is attached to the DAFoamThermal comp
+            if "forceCoupling" in outputDict[outputName]["components"]:
+                self.outputName = outputName
+                self.outputType = outputDict[outputName]["type"]
+                outputSize = self.DASolver.solver.getOutputSize(self.outputName, self.outputType)
+                self.add_output("f_aero", distributed=True, shape=outputSize, tags=["mphys_coupling"])
+                break
 
     def compute(self, inputs, outputs):
 
-        self.DASolver.setStates(inputs["%s_states" % self.discipline])
+        self.DASolver.setStates(inputs[self.stateName])
+        self.DASolver.setVolCoords(inputs[self.volCoordName])
 
-        outputs["f_aero"] = self.DASolver.getForces().flatten(order="C")
+        forces = np.zeros_like(outputs["f_aero"])
+
+        self.DASolver.solver.calcOutput(self.outputName, self.outputType, forces)
+
+        outputs["f_aero"] = forces
+
+        # print out the total forces. They shoud be consistent with the primal's print out
+        forcesV = forces.reshape((-1, 3))
+        fXSum = np.sum(forcesV[:, 0])
+        fYSum = np.sum(forcesV[:, 1])
+        fZSum = np.sum(forcesV[:, 2])
+        fXTot = self.comm.allreduce(fXSum, op=MPI.SUM)
+        fYTot = self.comm.allreduce(fYSum, op=MPI.SUM)
+        fZTot = self.comm.allreduce(fZSum, op=MPI.SUM)
+
+        if self.comm.rank == 0:
+            print("Total force:")
+            print("Fx = %f" % fXTot)
+            print("Fy = %f" % fYTot)
+            print("Fz = %f" % fZTot)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
@@ -1824,665 +1050,35 @@ class DAFoamForces(ExplicitComponent):
             return
 
         if "f_aero" in d_outputs:
-            fBar = d_outputs["f_aero"]
-            fBarVec = DASolver.array2Vec(fBar)
+            seeds = d_outputs["f_aero"]
 
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                dForcedXv = DASolver.xvVec.duplicate()
-                dForcedXv.zeroEntries()
-                DASolver.solverAD.calcdForcedXvAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedXv)
-                xVBar = DASolver.vec2Array(dForcedXv)
-                d_inputs["%s_vol_coords" % self.discipline] += xVBar
-            if "%s_states" % self.discipline in d_inputs:
-                dForcedW = DASolver.wVec.duplicate()
-                dForcedW.zeroEntries()
-                DASolver.solverAD.calcdForcedWAD(DASolver.xvVec, DASolver.wVec, fBarVec, dForcedW)
-                wBar = DASolver.vec2Array(dForcedW)
-                d_inputs["%s_states" % self.discipline] += wBar
-
-
-class DAFoamAcoustics(ExplicitComponent):
-    """
-    OpenMDAO component that wraps acoustic coupling
-
-    """
-
-    def initialize(self):
-        self.options.declare("solver", recordable=False)
-        self.options.declare("groupName", recordable=False)
-
-    def setup(self):
-
-        self.DASolver = self.options["solver"]
-        self.groupName = self.options["groupName"]
-
-        self.discipline = self.DASolver.getOption("discipline")
-
-        self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-        self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-
-        _, nCls = self.DASolver._getSurfaceSize(self.groupName)
-        self.add_output("xAcou", distributed=True, shape=nCls * 3)
-        self.add_output("nAcou", distributed=True, shape=nCls * 3)
-        self.add_output("aAcou", distributed=True, shape=nCls)
-        self.add_output("fAcou", distributed=True, shape=nCls * 3)
-
-    def compute(self, inputs, outputs):
-
-        self.DASolver.setStates(inputs["%s_states" % self.discipline])
-
-        positions, normals, areas, forces = self.DASolver.getAcousticData(self.groupName)
-
-        outputs["xAcou"] = positions.flatten(order="C")
-        outputs["nAcou"] = normals.flatten(order="C")
-        outputs["aAcou"] = areas.flatten(order="C")
-        outputs["fAcou"] = forces.flatten(order="C")
-
-    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-
-        DASolver = self.DASolver
-
-        if mode == "fwd":
-            om.issue_warning(
-                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
-                prefix="",
-                stacklevel=2,
-                category=om.OpenMDAOWarning,
-            )
-            return
-
-        for varName in ["xAcou", "nAcou", "aAcou", "fAcou"]:
-            if varName in d_outputs:
-                fBar = d_outputs[varName]
-                fBarVec = DASolver.array2Vec(fBar)
-                if "%s_vol_coords" % self.discipline in d_inputs:
-                    dAcoudXv = DASolver.xvVec.duplicate()
-                    dAcoudXv.zeroEntries()
-                    DASolver.solverAD.calcdAcousticsdXvAD(
-                        DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudXv, varName.encode(), self.groupName.encode()
-                    )
-                    xVBar = DASolver.vec2Array(dAcoudXv)
-                    d_inputs["%s_vol_coords" % self.discipline] += xVBar
-                if "%s_states" % self.discipline in d_inputs:
-                    dAcoudW = DASolver.wVec.duplicate()
-                    dAcoudW.zeroEntries()
-                    DASolver.solverAD.calcdAcousticsdWAD(
-                        DASolver.xvVec, DASolver.wVec, fBarVec, dAcoudW, varName.encode(), self.groupName.encode()
-                    )
-                    wBar = DASolver.vec2Array(dAcoudW)
-                    d_inputs["%s_states" % self.discipline] += wBar
-
-
-class DAFoamPropForce(ExplicitComponent):
-    """
-    DAFoam component that computes the propeller force and radius profile based on the CFD surface states
-    """
-
-    def initialize(self):
-        self.options.declare("solver", recordable=False)
-        self.options.declare("propName", recordable=False)
-
-    def setup(self):
-
-        self.DASolver = self.options["solver"]
-        self.propName = self.options["propName"]
-
-        self.discipline = self.DASolver.getOption("discipline")
-
-        # inputs
-        self.nForceSections = self.DASolver.getOption("wingProp")[self.propName]["nForceSections"]
-        self.add_input("%s_states" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-        self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-
-        # outputs
-        self.add_output("axial_force", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
-        self.add_output("tangential_force", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
-        self.add_output("radial_location", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"])
-        self.add_output("integral_force", distributed=False, shape=2, tags=["mphys_coupling"])
-
-    def compute(self, inputs, outputs):
-
-        DASolver = self.DASolver
-
-        DASolver.setStates(inputs["%s_states" % self.discipline])
-
-        # initialize output to zeros
-        axialForceProfileVec = PETSc.Vec().createSeq(self.nForceSections, bsize=1, comm=PETSc.COMM_SELF)
-        axialForceProfileVec.zeroEntries()
-        tangentialForceProfileVec = PETSc.Vec().createSeq(self.nForceSections, bsize=1, comm=PETSc.COMM_SELF)
-        tangentialForceProfileVec.zeroEntries()
-        radialLocationVec = PETSc.Vec().createSeq(self.nForceSections, bsize=1, comm=PETSc.COMM_SELF)
-        radialLocationVec.zeroEntries()
-        integralForceVec = PETSc.Vec().createSeq(2, bsize=1, comm=PETSc.COMM_SELF)
-        integralForceVec.zeroEntries()
-
-        DASolver.solver.calcForceProfile(
-            self.propName.encode(),
-            axialForceProfileVec,
-            tangentialForceProfileVec,
-            radialLocationVec,
-            integralForceVec,
-        )
-
-        outputs["axial_force"] = DASolver.vec2ArraySeq(axialForceProfileVec)
-        outputs["tangential_force"] = DASolver.vec2ArraySeq(tangentialForceProfileVec)
-        outputs["radial_location"] = DASolver.vec2ArraySeq(radialLocationVec)
-        outputs["integral_force"] = DASolver.vec2ArraySeq(integralForceVec)
-
-    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-        DASolver = self.DASolver
-
-        if mode == "fwd":
-            om.issue_warning(
-                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
-                prefix="",
-                stacklevel=2,
-                category=om.OpenMDAOWarning,
-            )
-            return
-
-        dafoam_states = inputs["%s_states" % self.discipline]
-        dafoam_xv = inputs["%s_vol_coords" % self.discipline]
-
-        stateVec = DASolver.array2Vec(dafoam_states)
-        xvVec = DASolver.array2Vec(dafoam_xv)
-
-        if "axial_force" in d_outputs:
-            aFBar = d_outputs["axial_force"]
-            aFBarVec = DASolver.array2VecSeq(aFBar)
-
-            if "%s_states" % self.discipline in d_inputs:
-                prodVec = stateVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(
-                    self.propName.encode(),
-                    "aForce".encode(),
-                    "state".encode(),
-                    xvVec,
-                    stateVec,
-                    aFBarVec,
-                    prodVec,
+            if self.stateName in d_inputs:
+                jacInput = inputs[self.stateName]
+                product = np.zeros_like(jacInput)
+                DASolver.solverAD.calcJacTVecProduct(
+                    self.stateName,
+                    "stateVar",
+                    jacInput,
+                    self.outputName,
+                    "forceCouplingOutput",
+                    seeds,
+                    product,
                 )
-                sBar = DASolver.vec2Array(prodVec)
-                # sBar = self.comm.allreduce(sBar, op=MPI.SUM)
-                d_inputs["%s_states" % self.discipline] += sBar
+                d_inputs[self.stateName] += product
 
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(
-                    self.propName.encode(),
-                    "aForce".encode(),
-                    "mesh".encode(),
-                    xvVec,
-                    stateVec,
-                    aFBarVec,
-                    prodVec,
+            if self.volCoordName in d_inputs:
+                jacInput = inputs[self.volCoordName]
+                product = np.zeros_like(jacInput)
+                DASolver.solverAD.calcJacTVecProduct(
+                    self.volCoordName,
+                    "volCoord",
+                    jacInput,
+                    self.outputName,
+                    "forceCouplingOutput",
+                    seeds,
+                    product,
                 )
-                vBar = DASolver.vec2Array(prodVec)
-                # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
-                d_inputs["%s_vol_coords" % self.discipline] += vBar
-
-        if "tangential_force" in d_outputs:
-            tFBar = d_outputs["tangential_force"]
-            tFBarVec = DASolver.array2VecSeq(tFBar)
-
-            if "%s_states" % self.discipline in d_inputs:
-                prodVec = stateVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(
-                    self.propName.encode(),
-                    "tForce".encode(),
-                    "state".encode(),
-                    xvVec,
-                    stateVec,
-                    tFBarVec,
-                    prodVec,
-                )
-                sBar = DASolver.vec2Array(prodVec)
-                # sBar = self.comm.allreduce(sBar, op=MPI.SUM)
-                d_inputs["%s_states" % self.discipline] += sBar
-
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(
-                    self.propName.encode(),
-                    "tForce".encode(),
-                    "mesh".encode(),
-                    xvVec,
-                    stateVec,
-                    tFBarVec,
-                    prodVec,
-                )
-                vBar = DASolver.vec2Array(prodVec)
-                # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
-                d_inputs["%s_vol_coords" % self.discipline] += vBar
-
-        if "radial_location" in d_inputs:
-            rDBar = d_outputs["radial_location"]
-            rDBarVec = DASolver.array2VecSeq(rDBar)
-            if "%s_states" % self.discipline in d_inputs:
-                prodVec = stateVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(
-                    self.propName.encode(),
-                    "rDist".encode(),
-                    "state".encode(),
-                    xvVec,
-                    stateVec,
-                    rDBarVec,
-                    prodVec,
-                )
-                sBar = DASolver.vec2Array(prodVec)
-                # sBar = self.comm.allreduce(sBar, op=MPI.SUM)
-                d_inputs["%s_states" % self.discipline] += sBar
-
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(
-                    self.propName.encode(),
-                    "rDist".encode(),
-                    "mesh".encode(),
-                    xvVec,
-                    stateVec,
-                    rDBarVec,
-                    prodVec,
-                )
-                vBar = DASolver.vec2Array(prodVec)
-                # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
-                d_inputs["%s_vol_coords" % self.discipline] += vBar
-
-        if "integral_force" in d_outputs:
-            iFBar = d_outputs["integral_force"]
-            iFBarVec = DASolver.array2VecSeq(iFBar)
-
-            if "%s_states" % self.discipline in d_inputs:
-                prodVec = stateVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(
-                    self.propName.encode(),
-                    "integralForce".encode(),
-                    "state".encode(),
-                    xvVec,
-                    stateVec,
-                    iFBarVec,
-                    prodVec,
-                )
-                sBar = DASolver.vec2Array(prodVec)
-                # sBar = self.comm.allreduce(sBar, op=MPI.SUM)
-                d_inputs["%s_states" % self.discipline] += sBar
-
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdForceProfiledXvWAD(
-                    self.propName.encode(),
-                    "integralForce".encode(),
-                    "mesh".encode(),
-                    xvVec,
-                    stateVec,
-                    iFBarVec,
-                    prodVec,
-                )
-                vBar = DASolver.vec2Array(prodVec)
-                # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
-                d_inputs["%s_vol_coords" % self.discipline] += vBar
-
-
-class DAFoamFvSource(ExplicitComponent):
-    """
-    DAFoam component that computes the actuator source term based on force and radius profiles and prop center
-    """
-
-    def initialize(self):
-        self.options.declare("solver", recordable=False)
-
-    def setup(self):
-
-        self.DASolver = self.options["solver"]
-
-        self.discipline = self.DASolver.getOption("discipline")
-
-        # loop over all the propNames and check if any of them is active. If yes, add inputs for this prop
-        for propName in list(self.DASolver.getOption("wingProp").keys()):
-            if self.DASolver.getOption("wingProp")[propName]["active"]:
-                self.nForceSections = self.DASolver.getOption("wingProp")[propName]["nForceSections"]
-                self.add_input(
-                    propName + "_axial_force", distributed=False, shape=self.nForceSections, tags=["mphys_coupling"]
-                )
-                self.add_input(
-                    propName + "_tangential_force",
-                    distributed=False,
-                    shape=self.nForceSections,
-                    tags=["mphys_coupling"],
-                )
-                self.add_input(
-                    propName + "_radial_location",
-                    distributed=False,
-                    shape=self.nForceSections,
-                    tags=["mphys_coupling"],
-                )
-                self.add_input(propName + "_integral_force", distributed=False, shape=2, tags=["mphys_coupling"])
-                self.add_input(propName + "_prop_center", distributed=False, shape=3, tags=["mphys_coupling"])
-
-        self.add_input("%s_vol_coords" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-
-        # we have only one output
-        self.nLocalCells = self.DASolver.solver.getNLocalCells()
-        self.add_output("fvSource", distributed=True, shape=self.nLocalCells * 3, tags=["mphys_coupling"])
-
-    def compute(self, inputs, outputs):
-
-        DASolver = self.DASolver
-
-        dafoam_xv = inputs["%s_vol_coords" % self.discipline]
-        xvVec = DASolver.array2Vec(dafoam_xv)
-
-        # initialize output to zeros
-        fvSourceVec = PETSc.Vec().create(self.comm)
-        fvSourceVec.setSizes((self.nLocalCells * 3, PETSc.DECIDE), bsize=1)
-        fvSourceVec.setFromOptions()
-        fvSourceVec.zeroEntries()
-
-        outputs["fvSource"] = DASolver.vec2Array(fvSourceVec)
-
-        # we call calcFvSource multiple times and add contributions from all the propellers
-        for propName in list(self.DASolver.getOption("wingProp").keys()):
-            if self.DASolver.getOption("wingProp")[propName]["active"]:
-
-                axial_force = inputs[propName + "_axial_force"]
-                tangential_force = inputs[propName + "_tangential_force"]
-                radial_location = inputs[propName + "_radial_location"]
-                integral_force = inputs[propName + "_integral_force"]
-                prop_center = inputs[propName + "_prop_center"]
-
-                axial_force_vec = DASolver.array2VecSeq(axial_force)
-                tangential_force_vec = DASolver.array2VecSeq(tangential_force)
-                radial_location_vec = DASolver.array2VecSeq(radial_location)
-                integral_force_vec = DASolver.array2VecSeq(integral_force)
-                prop_center_vec = DASolver.array2VecSeq(prop_center)
-
-                fvSourceVec.zeroEntries()
-
-                DASolver.solver.calcFvSource(
-                    propName.encode(),
-                    axial_force_vec,
-                    tangential_force_vec,
-                    radial_location_vec,
-                    integral_force_vec,
-                    prop_center_vec,
-                    xvVec,
-                    fvSourceVec,
-                )
-
-                outputs["fvSource"] += DASolver.vec2Array(fvSourceVec)
-
-    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-
-        DASolver = self.DASolver
-
-        if mode == "fwd":
-            om.issue_warning(
-                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
-                prefix="",
-                stacklevel=2,
-                category=om.OpenMDAOWarning,
-            )
-            return
-
-        dafoam_xv = inputs["%s_vol_coords" % self.discipline]
-        xvVec = DASolver.array2Vec(dafoam_xv)
-
-        if "fvSource" in d_outputs:
-            sBar = d_outputs["fvSource"]
-            sBarVec = DASolver.array2Vec(sBar)
-
-            for propName in list(self.DASolver.getOption("wingProp").keys()):
-                if self.DASolver.getOption("wingProp")[propName]["active"]:
-
-                    a = inputs[propName + "_axial_force"]
-                    t = inputs[propName + "_tangential_force"]
-                    r = inputs[propName + "_radial_location"]
-                    f = inputs[propName + "_integral_force"]
-                    c = inputs[propName + "_prop_center"]
-
-                    aVec = DASolver.array2VecSeq(a)
-                    tVec = DASolver.array2VecSeq(t)
-                    rVec = DASolver.array2VecSeq(r)
-                    fVec = DASolver.array2VecSeq(f)
-                    cVec = DASolver.array2VecSeq(c)
-
-                    if propName + "_axial_force" in d_inputs:
-                        prodVec = PETSc.Vec().createSeq(self.nForceSections, bsize=1, comm=PETSc.COMM_SELF)
-                        prodVec.zeroEntries()
-                        DASolver.solverAD.calcdFvSourcedInputsTPsiAD(
-                            propName.encode(), "aForce".encode(), aVec, tVec, rVec, fVec, cVec, xvVec, sBarVec, prodVec
-                        )
-                        aBar = DASolver.vec2ArraySeq(prodVec)
-                        aBar = self.comm.allreduce(aBar, op=MPI.SUM)
-                        d_inputs[propName + "_axial_force"] += aBar
-
-                    if propName + "_tangential_force" in d_inputs:
-                        prodVec = PETSc.Vec().createSeq(self.nForceSections, bsize=1, comm=PETSc.COMM_SELF)
-                        prodVec.zeroEntries()
-                        DASolver.solverAD.calcdFvSourcedInputsTPsiAD(
-                            propName.encode(), "tForce".encode(), aVec, tVec, rVec, fVec, cVec, xvVec, sBarVec, prodVec
-                        )
-                        tBar = DASolver.vec2ArraySeq(prodVec)
-                        tBar = self.comm.allreduce(tBar, op=MPI.SUM)
-                        d_inputs[propName + "_tangential_force"] += tBar
-
-                    if propName + "_radial_location" in d_inputs:
-                        prodVec = PETSc.Vec().createSeq(self.nForceSections, bsize=1, comm=PETSc.COMM_SELF)
-                        prodVec.zeroEntries()
-                        DASolver.solverAD.calcdFvSourcedInputsTPsiAD(
-                            propName.encode(), "rDist".encode(), aVec, tVec, rVec, fVec, cVec, xvVec, sBarVec, prodVec
-                        )
-                        rBar = DASolver.vec2ArraySeq(prodVec)
-                        rBar = self.comm.allreduce(rBar, op=MPI.SUM)
-                        d_inputs[propName + "_radial_location"] += rBar
-
-                    if propName + "_integral_force" in d_inputs:
-                        prodVec = PETSc.Vec().createSeq(2, bsize=1, comm=PETSc.COMM_SELF)
-                        prodVec.zeroEntries()
-                        DASolver.solverAD.calcdFvSourcedInputsTPsiAD(
-                            propName.encode(),
-                            "targetForce".encode(),
-                            aVec,
-                            tVec,
-                            rVec,
-                            fVec,
-                            cVec,
-                            xvVec,
-                            sBarVec,
-                            prodVec,
-                        )
-                        fBar = DASolver.vec2ArraySeq(prodVec)
-                        fBar = self.comm.allreduce(fBar, op=MPI.SUM)
-                        d_inputs[propName + "_integral_force"] += fBar
-
-                    if propName + "_prop_center" in d_inputs:
-                        prodVec = PETSc.Vec().createSeq(3, bsize=1, comm=PETSc.COMM_SELF)
-                        prodVec.zeroEntries()
-                        DASolver.solverAD.calcdFvSourcedInputsTPsiAD(
-                            propName.encode(), "center".encode(), aVec, tVec, rVec, fVec, cVec, xvVec, sBarVec, prodVec
-                        )
-                        cBar = DASolver.vec2ArraySeq(prodVec)
-                        cBar = self.comm.allreduce(cBar, op=MPI.SUM)
-                        d_inputs[propName + "_prop_center"] += cBar
-
-            if "%s_vol_coords" % self.discipline in d_inputs:
-                prodVec = xvVec.duplicate()
-                prodVec.zeroEntries()
-                DASolver.solverAD.calcdFvSourcedInputsTPsiAD(
-                    propName.encode(), "mesh".encode(), aVec, tVec, rVec, fVec, cVec, xvVec, sBarVec, prodVec
-                )
-                vBar = DASolver.vec2Array(prodVec)
-                # vBar = self.comm.allreduce(vBar, op=MPI.SUM)
-                d_inputs["%s_vol_coords" % self.discipline] += vBar
-
-
-class DAFoamPropNodes(ExplicitComponent):
-    """
-    Component that computes propeller aero-node locations that link with structural nodes in aerostructural cases.
-    """
-
-    def initialize(self):
-        self.options.declare("solver", default=None, recordable=False)
-
-    def setup(self):
-        self.DASolver = self.options["solver"]
-
-        self.aerostructDict = self.DASolver.getOption("couplingInfo")["aerostructural"]
-        self.fvSourceDict = self.DASolver.getOption("fvSource")
-
-        if "fvSource" in self.aerostructDict.keys():
-            # Iterate through Actuator Disks
-            for fvSource, parameters in self.aerostructDict["fvSource"].items():
-                # Check if Actuator Disk Exists
-                if fvSource not in self.fvSourceDict:
-                    raise RuntimeWarning("Actuator disk %s not found when adding masked nodes" % fvSource)
-
-                # Add Input
-                self.add_input("x_prop0_%s" % fvSource, shape=3, distributed=False, tags=["mphys_coordinates"])
-
-                # Add Output
-                if self.comm.rank == 0:
-                    self.add_output(
-                        "x_prop0_nodes_%s" % fvSource,
-                        shape=(1 + parameters["nNodes"]) * 3,
-                        distributed=True,
-                        tags=["mphys_coordinates"],
-                    )
-                    self.add_output(
-                        "f_prop_%s" % fvSource,
-                        shape=(1 + parameters["nNodes"]) * 3,
-                        distributed=True,
-                        tags=["mphys_coordinates"],
-                    )
-                else:
-                    self.add_output(
-                        "x_prop0_nodes_%s" % fvSource, shape=(0), distributed=True, tags=["mphys_coordinates"]
-                    )
-                    self.add_output("f_prop_%s" % fvSource, shape=(0), distributed=True, tags=["mphys_coordinates"])
-
-    def compute(self, inputs, outputs):
-        # Loop over all actuator disks to generate ring of nodes for each
-        for fvSource, parameters in self.aerostructDict["fvSource"].items():
-            # Nodes should only be on root proc
-            if self.comm.rank == 0:
-                center = inputs["x_prop0_%s" % fvSource]
-
-                # Compute local coordinate frame for ring of nodes
-                direction = self.fvSourceDict[fvSource]["direction"]
-                direction = direction / np.linalg.norm(direction, 2)
-                temp_vec = np.array([1.0, 0.0, 0.0])
-                y_local = np.cross(direction, temp_vec)
-                if np.linalg.norm(y_local, 2) < 1e-5:
-                    temp_vec = np.array([0.0, 1.0, 0.0])
-                    y_local = np.cross(direction, temp_vec)
-                y_local = y_local / np.linalg.norm(y_local, 2)
-                z_local = np.cross(direction, y_local)
-                z_local = z_local / np.linalg.norm(z_local, 2)
-
-                n_theta = parameters["nNodes"]
-                radial_loc = parameters["radialLoc"]
-
-                # Set ring of nodes location and force values
-                nodes_x = np.zeros((n_theta + 1, 3))
-                nodes_x[0, :] = center
-                nodes_f = np.zeros((n_theta + 1, 3))
-                if n_theta == 0:
-                    nodes_f[0, :] = -self.fvSourceDict[fvSource]["targetThrust"] * direction
-                else:
-                    nodes_f[0, :] = 0.0
-                    for i in range(n_theta):
-                        theta = i / n_theta * 2 * np.pi
-                        nodes_x[i + 1, :] = (
-                            center + radial_loc * y_local * np.cos(theta) + radial_loc * z_local * np.sin(theta)
-                        )
-                        nodes_f[i + 1, :] = -self.fvSourceDict[fvSource]["targetThrust"] * direction / n_theta
-
-                outputs["x_prop0_nodes_%s" % fvSource] = nodes_x.flatten()
-                outputs["f_prop_%s" % fvSource] = nodes_f.flatten()
-
-    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-        if mode == "fwd":
-            om.issue_warning(
-                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
-                prefix="",
-                stacklevel=2,
-                category=om.OpenMDAOWarning,
-            )
-            return
-
-        for fvSource, parameters in self.aerostructDict["fvSource"].items():
-            if "x_prop0_%s" % fvSource in d_inputs:
-                if "x_prop0_nodes_%s" % fvSource in d_outputs:
-                    temp = np.zeros((parameters["nNodes"] + 1) * 3)
-                    # Take ring of node seeds, broadcast them, and add them to all procs
-                    if self.comm.rank == 0:
-                        temp[:] = d_outputs["x_prop0_nodes_%s" % fvSource]
-                    self.comm.Bcast(temp, root=0)
-                    for i in range(parameters["nNodes"]):
-                        d_inputs["x_prop0_%s" % fvSource] += temp[3 * i : 3 * i + 3]
-
-
-class DAFoamActuator(ExplicitComponent):
-    """
-    Component that updates actuator disk definition variables when actuator disks are displaced in an aerostructural case.
-    """
-
-    def initialize(self):
-        self.options.declare("solver", recordable=False)
-
-    def setup(self):
-        self.DASolver = self.options["solver"]
-
-        self.aerostructDict = self.DASolver.getOption("couplingInfo")["aerostructural"]
-        self.fvSourceDict = self.DASolver.getOption("fvSource")
-
-        for fvSource, _ in self.aerostructDict["fvSource"].items():
-            self.add_input("dv_actuator_%s" % fvSource, shape=(10), distributed=False, tags=["mphys_coupling"])
-            self.add_input("x_prop_%s" % fvSource, shape_by_conn=True, distributed=True, tags=["mphys_coupling"])
-
-            self.add_output("actuator_%s" % fvSource, shape_by_conn=(13), distributed=False, tags=["mphys_coupling"])
-
-    def compute(self, inputs, outputs):
-        # Loop over all actuator disks
-        for fvSource, _ in self.aerostructDict["fvSource"].items():
-            actuator = np.zeros(13)
-            # Update variables on root proc
-            if self.comm.rank == 0:
-                actuator[3:] = inputs["dv_actuator_%s" % fvSource][:]
-                actuator[:3] = inputs["x_prop_%s" % fvSource][:3]
-
-            # Broadcast variables to all procs and set as output
-            self.comm.Bcast(actuator, root=0)
-            outputs["actuator_%s" % fvSource] = actuator
-
-    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
-        if mode == "fwd":
-            om.issue_warning(
-                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
-                prefix="",
-                stacklevel=2,
-                category=om.OpenMDAOWarning,
-            )
-            return
-
-        # Loop over all actuator disks
-        for fvSource, _ in self.aerostructDict["fvSource"].items():
-            if "actuator_%s" % fvSource in d_outputs:
-                if "dv_actuator_%s" % fvSource in d_inputs:
-                    # Add non-location seeds to all procs
-                    d_inputs["dv_actuator_%s" % fvSource][:] += d_outputs["actuator_%s" % fvSource][3:]
-                if "x_prop_%s" % fvSource in d_inputs:
-                    # Add location seeds to only root proc
-                    if self.comm.rank == 0:
-                        d_inputs["x_prop_%s" % fvSource][:3] += d_outputs["actuator_%s" % fvSource][:3]
+                d_inputs[self.volCoordName] += product
 
 
 class OptFuncs(object):
@@ -2502,31 +1098,6 @@ class OptFuncs(object):
         self.daOptions = daOptions
         self.om_prob = om_prob
         self.comm = MPI.COMM_WORLD
-
-        # we need to check if the design variable set in the OM model is also set
-        # in the designVar key in DAOptions. If they are not consistent, we print
-        # an error and exit because it will produce wrong gradient
-
-        modelDesignVars = self.om_prob.model.get_design_vars()
-
-        isList = isinstance(self.daOptions, list)
-        if isList:
-            DADesignVars = []
-            for subDict in self.daOptions:
-                for key in list(subDict["designVar"].keys()):
-                    DADesignVars.append(key)
-        else:
-            DADesignVars = list(self.daOptions["designVar"].keys())
-        for modelDV in modelDesignVars:
-            dvFound = False
-            for dv in DADesignVars:
-                # NOTE. modelDV has format like dvs.shape, so we have to use "in" to check
-                if dv in modelDV:
-                    dvFound = True
-            if dvFound is not True:
-                raise RuntimeError(
-                    "Design variable %s is defined in the model but not found in designVar in DAOptions! " % modelDV
-                )
 
     def findFeasibleDesign(
         self,
@@ -2651,3 +1222,358 @@ class OptFuncs(object):
                 dvName = designVars[i]
                 comp = designVarsComp[i]
                 self.om_prob.set_val(dvName, dv1[i], indices=comp)
+
+
+class DAFoamBuilderUnsteady(Group):
+
+    def initialize(self):
+        self.options.declare("solver_options")
+        self.options.declare("mesh_options", default=None)
+        self.options.declare("run_directory", default="")
+
+    def setup(self):
+        self.run_directory = self.options["run_directory"]
+        self.solver_options = self.options["solver_options"]
+        self.mesh_options = self.options["mesh_options"]
+
+        with cd(self.run_directory):
+            # initialize the PYDAFOAM class, defined in pyDAFoam.py
+            self.DASolver = PYDAFOAM(options=self.solver_options, comm=self.comm)
+            if self.mesh_options is not None:
+                # always set the mesh
+                mesh = USMesh(options=self.mesh_options, comm=self.comm)
+                self.DASolver.setMesh(mesh)  # add the design surface family group
+                self.DASolver.printFamilyList()
+
+            self.x_a0 = self.DASolver.getSurfaceCoordinates(self.DASolver.designSurfacesGroup).flatten(order="C")
+
+        # if we have volume coords as the input, add the warper comp here
+        inputDict = self.DASolver.getOption("inputInfo")
+        for inputName in list(inputDict.keys()):
+            # this input is attached to solver comp
+            if "solver" in inputDict[inputName]["components"]:
+                inputType = inputDict[inputName]["type"]
+                if inputType == "volCoord":
+                    self.add_subsystem("warper", DAFoamWarper(solver=self.DASolver), promotes=["*"])
+                    break
+
+        # add the solver comp
+        self.add_subsystem("solver", DAFoamSolverUnsteady(solver=self.DASolver), promotes=["*"])
+
+    def get_surface_mesh(self):
+        return self.x_a0
+
+
+class DAFoamSolverUnsteady(ExplicitComponent):
+
+    def initialize(self):
+        self.options.declare("solver")
+        self.options.declare("run_directory", default="")
+
+    def setup(self):
+        self.DVGeo = None
+        self.DASolver = self.options["solver"]
+        self.run_directory = self.options["run_directory"]
+
+        DASolver = self.DASolver
+
+        self.dRdWTPC = None
+
+        inputDict = DASolver.getOption("inputInfo")
+        for inputName in list(inputDict.keys()):
+            # this input is attached to solver comp
+            if "solver" in inputDict[inputName]["components"]:
+                inputType = inputDict[inputName]["type"]
+                inputSize = DASolver.solver.getInputSize(inputName, inputType)
+                inputDistributed = DASolver.solver.getInputDistributed(inputName, inputType)
+                self.add_input(inputName, distributed=inputDistributed, shape=inputSize)
+
+        functions = DASolver.getOption("function")
+        for functionName in list(functions.keys()):
+            self.add_output(functionName, distributed=0, shape=1)
+
+    def add_dvgeo(self, DVGeo):
+        self.DVGeo = DVGeo
+
+    def compute(self, inputs, outputs):
+
+        with cd(self.run_directory):
+
+            DASolver = self.DASolver
+
+            # before running the primal, we need to check if the mesh
+            # quality is good
+            meshOK = DASolver.solver.checkMesh()
+
+            # if readZeroFields, we need to read in the states from the 0 folder every time
+            # we start the primal here we read in all time levels. If readZeroFields is not set,
+            # we will use the latest flow fields (from a previous primal call) as the init conditions
+            readZeroFields = DASolver.getOption("unsteadyAdjoint")["readZeroFields"]
+            if readZeroFields:
+                DASolver.solver.setTime(0.0, 0)
+                deltaT = DASolver.solver.getDeltaT()
+                DASolver.readStateVars(0.0, deltaT)
+
+            # solve the flow with the current design variable
+            # if the mesh is not OK, do not run the primal
+            if meshOK:
+                DASolver.set_solver_input(inputs, self.DVGeo)
+                DASolver()
+            else:
+                DASolver.primalFail = 1
+
+            # get the objective functions
+            funcs = {}
+            DASolver.evalFunctions(funcs)
+
+            # now we can print the residual for the endTime state
+            DASolver.solver.calcPrimalResidualStatistics("print")
+
+            for funcName in list(outputs.keys()):
+                outputs[funcName] = funcs[funcName]
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+        if mode == "fwd":
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
+
+        DASolver = self.DASolver
+
+        # run coloring
+        DASolver.solver.runColoring()
+
+        PCMatPrecomputeInterval = DASolver.getOption("unsteadyAdjoint")["PCMatPrecomputeInterval"]
+        PCMatUpdateInterval = DASolver.getOption("unsteadyAdjoint")["PCMatUpdateInterval"]
+
+        # NOTE: this step is critical because we need to compute the residual for
+        # self.solverAD once to get the proper oldTime level for unsteady adjoint
+        DASolver.solverAD.updateStateBoundaryConditions()
+        DASolver.solverAD.calcPrimalResidualStatistics("calc")
+
+        # calc the total number of time instances
+        # we assume the adjoint is for deltaT to endTime
+        # but users can also prescribed a custom time range
+        deltaT = DASolver.solver.getDeltaT()
+
+        endTime = DASolver.solver.getEndTime()
+        endTimeIndex = round(endTime / deltaT)
+
+        localAdjSize = DASolver.getNLocalAdjointStates()
+
+        ddtSchemeOrder = DASolver.solver.getDdtSchemeOrder()
+
+        # read the latest solution
+        DASolver.solver.setTime(endTime, endTimeIndex)
+        DASolver.solverAD.setTime(endTime, endTimeIndex)
+        # now we can read the variables
+        DASolver.readStateVars(endTime, deltaT)
+
+        # now we can print the residual for the endTime state
+        DASolver.solverAD.calcPrimalResidualStatistics("print")
+
+        # init dRdWTMF
+        DASolver.solverAD.initializedRdWTMatrixFree()
+
+        # precompute the KSP preconditioner Mat and save them to the self.dRdWTPC dict
+        if self.dRdWTPC is None:
+
+            self.dRdWTPC = {}
+
+            # always calculate the PC mat for the endTime
+            DASolver.solver.setTime(endTime, endTimeIndex)
+            DASolver.solverAD.setTime(endTime, endTimeIndex)
+            # now we can read the variables
+            DASolver.readStateVars(endTime, deltaT)
+            # calc the preconditioner mat for endTime
+            if self.comm.rank == 0:
+                print("Pre-Computing preconditiner mat for t = %f" % endTime)
+
+            dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
+            DASolver.solver.calcdRdWT(1, dRdWTPC1)
+            # always update the PC mat values using OpenFOAM's fvMatrix
+            DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
+            self.dRdWTPC[str(endTime)] = dRdWTPC1
+
+            # if we define some extra PCMat in PCMatPrecomputeInterval, calculate them here
+            # and set them to the self.dRdWTPC dict
+            for timeIndex in range(endTimeIndex - 1, 0, -1):
+                if timeIndex % PCMatPrecomputeInterval == 0:
+                    t = timeIndex * deltaT
+                    if self.comm.rank == 0:
+                        print("Pre-Computing preconditiner mat for t = %f" % t)
+                    # read the latest solution
+                    DASolver.solver.setTime(t, timeIndex)
+                    DASolver.solverAD.setTime(t, timeIndex)
+                    # now we can read the variables
+                    DASolver.readStateVars(t, deltaT)
+                    # calc the preconditioner mat
+                    dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
+                    DASolver.solver.calcdRdWT(1, dRdWTPC1)
+                    # always update the PC mat values using OpenFOAM's fvMatrix
+                    DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
+                    self.dRdWTPC[str(t)] = dRdWTPC1
+
+        # Initialize the KSP object using the PCMat from the endTime
+        PCMat = self.dRdWTPC[str(endTime)]
+        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
+        DASolver.solverAD.createMLRKSPMatrixFree(PCMat, ksp)
+
+        inputDict = DASolver.getOption("inputInfo")
+
+        # init the dFdW vec
+        dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
+        dFdW.setSizes((localAdjSize, PETSc.DECIDE), bsize=1)
+        dFdW.setFromOptions()
+        dFdW.zeroEntries()
+
+        # init the adjoint vector
+        psi = dFdW.duplicate()
+        psi.zeroEntries()
+
+        # initialize the adjoint vecs
+        dRdW0TPsi = np.zeros(localAdjSize)
+        dRdW00TPsi = np.zeros(localAdjSize)
+        dRdW00TPsiBuffer = np.zeros(localAdjSize)
+        dFdWArray = np.zeros(localAdjSize)
+        psiArray = np.zeros(localAdjSize)
+
+        # loop over all function, calculate dFdW, and solve the adjoint
+        for functionName in list(d_outputs.keys()):
+
+            # we need to zero the total derivative for each function
+            totals = {}
+            for inputName in list(inputs.keys()):
+                totals[inputName] = np.zeros_like(inputs[inputName])
+
+            seed = d_outputs[functionName]
+
+            # if the seed is zero, do not compute the adjoint and pass to
+            # the next funnction
+            if np.linalg.norm(seed) < 1e-12:
+                continue
+
+            # zero the vecs
+            dRdW0TPsi[:] = 0.0
+            dRdW00TPsi[:] = 0.0
+            dRdW00TPsiBuffer[:] = 0.0
+            dFdWArray[:] = 0.0
+            dFdW.zeroEntries()
+
+            # loop over all time steps and solve the adjoint and accumulate the totals
+            adjointFail = 0
+            for n in range(endTimeIndex, 0, -1):
+                timeVal = n * deltaT
+
+                if self.comm.rank == 0:
+                    print("---- Solving unsteady adjoint for %s. t = %f ----" % (functionName, timeVal))
+
+                # set the time value and index in the OpenFOAM layer. Note: this is critical
+                # because if timeIndex < 2, OpenFOAM will not use the oldTime.oldTime for 2nd
+                # ddtScheme and mess up the totals. Check backwardDdtScheme.C
+                DASolver.solver.setTime(timeVal, n)
+                DASolver.solverAD.setTime(timeVal, n)
+                # now we can read the variables
+                # read the state, state.oldTime, etc and update self.wVec for this time instance
+                DASolver.readStateVars(timeVal, deltaT)
+
+                # calculate dFdW scaling, if time index is within the unsteady objective function
+                # index range, prescribed in unsteadyAdjointDict, we calculate dFdW
+                # otherwise, we use dFdW=0 because the unsteady obj does not depend
+                # on the state at this time index
+                dFScaling = DASolver.solver.getdFScaling(functionName, n - 1)
+
+                # calculate dFdW
+                jacInput = DASolver.getStates()
+                DASolver.solverAD.calcJacTVecProduct(
+                    "states",
+                    "stateVar",
+                    jacInput,
+                    functionName,
+                    "function",
+                    seed,
+                    dFdWArray,
+                )
+
+                dFdWArray = dFdWArray * dFScaling
+
+                # do dFdW - dRdW0TPsi - dRdW00TPsi
+                if ddtSchemeOrder == 1:
+                    dFdWArray = dFdWArray - dRdW0TPsi
+                elif ddtSchemeOrder == 2:
+                    dFdWArray = dFdWArray - dRdW0TPsi - dRdW00TPsi
+                    # now copy the buffer vec dRdW00TPsiBuffer to dRdW00TPsi for the next time step
+                    dRdW00TPsi[:] = dRdW00TPsiBuffer
+                else:
+                    print("ddtSchemeOrder not valid!" % ddtSchemeOrder)
+
+                # check if we need to update the PC Mat vals or use the pre-computed PC matrix
+                if str(timeVal) in list(self.dRdWTPC.keys()):
+                    if self.comm.rank == 0:
+                        print("Using pre-computed KSP PC mat for %f" % timeVal)
+                    PCMat = self.dRdWTPC[str(timeVal)]
+                    DASolver.solverAD.updateKSPPCMat(PCMat, ksp)
+                if n % PCMatUpdateInterval == 0 and n < endTimeIndex:
+                    # udpate part of the PC mat
+                    if self.comm.rank == 0:
+                        print("Updating dRdWTPC mat value using OF fvMatrix")
+                    DASolver.solver.calcPCMatWithFvMatrix(PCMat)
+
+                # now solve the adjoint eqn
+                DASolver.arrayVal2Vec(dFdWArray, dFdW)
+                adjointFail = DASolver.solverAD.solveLinearEqn(ksp, dFdW, psi)
+
+                # if one adjoint solution fails, return immediate without solving for the rest of steps.
+                if adjointFail > 0:
+                    break
+
+                # loop over all inputs and compute total derivs
+                for inputName in list(inputs.keys()):
+
+                    # calculate dFdX
+                    inputType = inputDict[inputName]["type"]
+                    jacInput = inputs[inputName]
+                    dFdX = np.zeros_like(jacInput)
+                    DASolver.solverAD.calcJacTVecProduct(
+                        inputName,
+                        inputType,
+                        jacInput,
+                        functionName,
+                        "function",
+                        seed,
+                        dFdX,
+                    )
+                    # we need to scale the dFdX for unsteady adjoint too
+                    dFdX = dFdX * dFScaling
+
+                    # calculate dRdX^T * psi
+                    dRdXTPsi = np.zeros_like(jacInput)
+                    DASolver.vecVal2Array(psi, psiArray)
+                    DASolver.solverAD.calcJacTVecProduct(
+                        inputName,
+                        inputType,
+                        jacInput,
+                        "residual",
+                        "residual",
+                        psiArray,
+                        dRdXTPsi,
+                    )
+
+                    # total derivative
+                    totals[inputName] += dFdX - dRdXTPsi
+
+                # we need to calculate dRdW0TPsi for the previous time step
+                if ddtSchemeOrder == 1:
+                    DASolver.solverAD.calcdRdWOldTPsiAD(1, psiArray, dRdW0TPsi)
+                elif ddtSchemeOrder == 2:
+                    # do the same for the previous previous step, but we need to save it to a buffer vec
+                    # because dRdW00TPsi will be used 2 steps before
+                    DASolver.solverAD.calcdRdWOldTPsiAD(1, psiArray, dRdW0TPsi)
+                    DASolver.solverAD.calcdRdWOldTPsiAD(2, psiArray, dRdW00TPsiBuffer)
+
+            for inputName in list(inputs.keys()):
+                d_inputs[inputName] += totals[inputName]

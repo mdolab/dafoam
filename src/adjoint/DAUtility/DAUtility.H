@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     Description:
         DAUtility contains basic functions such as matrix file IO, and
@@ -52,19 +52,6 @@ public:
     static void pyDict2OFDict(
         PyObject* pyDict,
         dictionary& ofDict);
-
-    /// check whether a value is in the list
-    template<class classType>
-    static label isInList(
-        const classType value,
-        const List<classType>& list);
-
-    /// replace a value in the list
-    template<class classType>
-    static label listReplaceVal(
-        List<classType>& listIn,
-        const classType valOrig,
-        const classType valNew);
 
     /// delete a value in the list
     template<class classType>
@@ -136,91 +123,24 @@ public:
     static void* pySetModelName;
     static pySetCharInterface pySetModelNameInterface;
 
-    /// the max initial residual norms for the primal solution for each state
-    static scalar primalMaxInitRes_;
-
     /// control when to print the residual and also compute the maxInitRes
     static void primalResidualControl(
         const SolverPerformance<scalar>& solverP,
         const label printToScreen,
-        const word varName);
+        const word varName,
+        scalar& primalMaxRes);
 
     /// control when to print the residual and also compute the maxInitRes
     static void primalResidualControl(
         const SolverPerformance<vector>& solverP,
         const label printToScreen,
-        const word varName);
+        const word varName,
+        scalar& primalMaxRes);
 
     static label myFindCell(
         const primitiveMesh& mesh,
         const point& point);
 };
-
-template<class classType>
-label DAUtility::isInList(
-    const classType value,
-    const List<classType>& list)
-{
-    /*
-    Description:
-        Check whether a value is in the list
-
-    Input:
-        value: a value to check with type: classType
-        list: list to check the value
-
-    Example:
-        If the list reads
-        list1={"test","run","compare"};
-        label val=isInList<word>("run",list1);
-        Here the return value: val==1 (value found in the list)
-    */
-
-    forAll(list, idxI)
-    {
-        if (list[idxI] == value)
-        {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-template<class classType>
-label DAUtility::listReplaceVal(
-    List<classType>& listIn,
-    const classType valOrig,
-    const classType valNew)
-{
-    /*
-    Description:
-        Replace a value in hte list, the list sequence is preserved
-
-    Input:
-        listIn: the list to replace
-        valOrig: original value in the list
-        valNew: new value to replace
-
-    Example:
-        List<word> listIn={"apple","orange"};
-        listReplaceVal<word>(listIn,"apple","banana");
-        Now listIn will be {"banana","orange"}
-        NOTE: if list has multiple valOrig, they will be all replaced
-    */
-
-    label foundVal = 0;
-    forAll(listIn, idxI)
-    {
-        const classType& val = listIn[idxI];
-        if (val == valOrig)
-        {
-            listIn[idxI] = valNew;
-            foundVal = 1;
-        }
-    }
-
-    return foundVal;
-}
 
 template<class classType>
 label DAUtility::listDeleteVal(

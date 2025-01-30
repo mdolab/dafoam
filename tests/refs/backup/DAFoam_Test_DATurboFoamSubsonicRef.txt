@@ -1,0 +1,30 @@
+Dictionary Key: CMZ
+@value   0.1430241062697062 1e-08 1e-10
+Dictionary Key: TPR
+@value    1.027591736884627 1e-08 1e-10
+Dictionary Key: fail
+@value                    0 1e-08 1e-10
+Dictionary Key: CMZ
+Dictionary Key: shapey
+@value    0.284774235720788 0.0001 1e-06
+@value   0.5019992820686592 0.0001 1e-06
+@value   0.3399894733398309 0.0001 1e-06
+@value   0.4471495481357648 0.0001 1e-06
+Dictionary Key: shapez
+@value -0.03754471534814914 0.0001 1e-06
+@value  -0.1668261693510449 0.0001 1e-06
+@value  -0.1865385648670614 0.0001 1e-06
+@value  -0.2092321326526177 0.0001 1e-06
+Dictionary Key: TPR
+Dictionary Key: shapey
+@value  0.08984231476276661 0.0001 1e-06
+@value  -0.1026282832287896 0.0001 1e-06
+@value  0.07889381125344438 0.0001 1e-06
+@value -0.08462041661143266 0.0001 1e-06
+Dictionary Key: shapez
+@value -0.03252865833279311 0.0001 1e-06
+@value  0.09550057053737057 0.0001 1e-06
+@value -0.04521482413177378 0.0001 1e-06
+@value    0.103781649612844 0.0001 1e-06
+Dictionary Key: fail
+@value                    0 0.0001 1e-06

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
 \*---------------------------------------------------------------------------*/
 
@@ -18,7 +18,16 @@ DARegression::DARegression(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel)
-    : mesh_(mesh),
+    : regIOobject(
+        IOobject(
+            "DARegression", // the db name
+            mesh.time().timeName(),
+            mesh, // register to mesh
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            true // always register object
+            )),
+      mesh_(mesh),
       daOption_(daOption),
       daModel_(daModel)
 {
@@ -138,7 +147,7 @@ DARegression::DARegression(
         if (useExternalModel_)
         {
 
-#if defined(CODI_AD_FORWARD)
+#if defined(CODI_ADF)
             featuresFlattenArrayDouble_ = new double[featuresFlattenArraySize_];
             outputFieldArrayDouble_ = new double[mesh_.nCells()];
 #else
@@ -156,6 +165,10 @@ void DARegression::calcInputFeatures(word modelName)
         Calculate the input features. Here features is a unique list for all the regModel's inputNames.
         This is because two regModel's inputNames can have overlap, so we don't want to compute
         duplicated features
+
+        NOTE: if a feature is a ratio between variable A and variable B, we will normalize 
+        it such that the range of this feature is from -1 to 1 by using:
+        feature = A / (A + B + 1e-16)
     */
 
     forAll(features_[modelName], idxI)
@@ -171,7 +184,7 @@ void DARegression::calcInputFeatures(word modelName)
             volScalarField magS = mag(symm(gradU));
             forAll(features_[modelName][idxI], cellI)
             {
-                features_[modelName][idxI][cellI] = (magOmega[cellI] / (magS[cellI] + 1e-16) + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
+                features_[modelName][idxI][cellI] = (magOmega[cellI] / (magS[cellI] + magOmega[cellI] + 1e-16) + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
         }
@@ -187,16 +200,14 @@ void DARegression::calcInputFeatures(word modelName)
         }
         else if (inputName == "chiSA")
         {
-#ifndef SolidDASolver
             // the chi() function from SA
             const volScalarField& nuTilda = mesh_.thisDb().lookupObject<volScalarField>("nuTilda");
             volScalarField nu = daModel_.getDATurbulenceModel().nu();
             forAll(features_[modelName][idxI], cellI)
             {
-                features_[modelName][idxI][cellI] = (nuTilda[cellI] / nu[cellI] + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
+                features_[modelName][idxI][cellI] = (nuTilda[cellI] / (nu[cellI] + nuTilda[cellI] + 1e-16) + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
-#endif
         }
         else if (inputName == "pGradStream")
         {
@@ -275,14 +286,13 @@ void DARegression::calcInputFeatures(word modelName)
             scalar val = 0;
             forAll(features_[modelName][idxI], cellI)
             {
-                val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + 1e-16);
+                val = k[cellI] / (0.5 * (U[cellI] & U[cellI]) + k[cellI] + 1e-16);
                 features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
         }
         else if (inputName == "ReWall")
         {
-#ifndef SolidDASolver
             // wall distance based Reynolds number
             const volScalarField& y = mesh_.thisDb().lookupObject<volScalarField>("yWall");
             const volScalarField& k = mesh_.thisDb().lookupObject<volScalarField>("k");
@@ -290,11 +300,10 @@ void DARegression::calcInputFeatures(word modelName)
             scalar val = 0;
             forAll(features_[modelName][idxI], cellI)
             {
-                val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI]);
+                val = sqrt(k[cellI]) * y[cellI] / (50.0 * nu[cellI] + sqrt(k[cellI]) * y[cellI] + 1e-16);
                 features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
-#endif
         }
         else if (inputName == "CoP")
         {
@@ -316,7 +325,7 @@ void DARegression::calcInputFeatures(word modelName)
             scalar val = 0;
             forAll(features_[modelName][idxI], cellI)
             {
-                val = mag(tau[cellI]) / (k[cellI] + 1e-16);
+                val = mag(tau[cellI]) / (k[cellI] + mag(tau[cellI]) + 1e-16);
                 features_[modelName][idxI][cellI] = (val + inputShift_[modelName][idxI]) * inputScale_[modelName][idxI];
             }
             features_[modelName][idxI].correctBoundaryConditions();
@@ -503,7 +512,7 @@ label DARegression::compute()
             DAUtility::pySetModelNameInterface(modelName.c_str(), DAUtility::pySetModelName);
 
             // NOTE: forward mode not supported..
-#if defined(CODI_AD_REVERSE)
+#if defined(CODI_ADR)
 
             // assign features_ to featuresFlattenArray_
             // here featuresFlattenArray_ should be order like this to facilitate Python layer reshape:
@@ -551,7 +560,7 @@ label DARegression::compute()
                 outputField[cellI] = outputFieldArray_[cellI];
             }
 
-#elif defined(CODI_AD_FORWARD)
+#elif defined(CODI_ADF)
             // assign features_ to featuresFlattenArray_
             // here featuresFlattenArray_ should be order like this to facilitate Python layer reshape:
             // [(cell1, feature1), (cell1, feature2), ... (cell2, feature1), (cell2, feature2) ... ]

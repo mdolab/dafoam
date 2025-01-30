@@ -1,0 +1,44 @@
+Dictionary Key: scenario.solver.PVar
+@value         6.4445673376955757 1e-10 1e-12
+Dictionary Key: scenario.solver.UProbe
+@value         0.0060282928638344 1e-10 1e-12
+Dictionary Key: scenario.solver.UVar
+@value         0.0532084670622937 1e-10 1e-12
+Dictionary Key: scenario.solver.wallShearStressVar
+@value         0.0015634517646619 1e-10 1e-12
+Dictionary Key: scenario.solver.PVar
+Dictionary Key: reg_model0-Adjoint
+@value        -0.0010051260004536 1e-08 1e-12
+Dictionary Key: reg_model0-ForwardAD
+@value        -0.0009858026569485 1e-08 1e-12
+Dictionary Key: reg_model50-Adjoint
+@value        -0.1448802022471877 1e-08 1e-12
+Dictionary Key: reg_model50-ForwardAD
+@value        -0.1383983966765719 1e-08 1e-12
+Dictionary Key: scenario.solver.UProbe
+Dictionary Key: reg_model0-Adjoint
+@value        -0.0000008571225178 1e-08 1e-12
+Dictionary Key: reg_model0-ForwardAD
+@value        -0.0000008498427839 1e-08 1e-12
+Dictionary Key: reg_model50-Adjoint
+@value        -0.0001614793600289 1e-08 1e-12
+Dictionary Key: reg_model50-ForwardAD
+@value        -0.0001528852541270 1e-08 1e-12
+Dictionary Key: scenario.solver.UVar
+Dictionary Key: reg_model0-Adjoint
+@value        -0.0000069627713609 1e-08 1e-12
+Dictionary Key: reg_model0-ForwardAD
+@value        -0.0000069114503012 1e-08 1e-12
+Dictionary Key: reg_model50-Adjoint
+@value        -0.0014578428083233 1e-08 1e-12
+Dictionary Key: reg_model50-ForwardAD
+@value        -0.0013949706090152 1e-08 1e-12
+Dictionary Key: scenario.solver.wallShearStressVar
+Dictionary Key: reg_model0-Adjoint
+@value        -0.0000001604437868 1e-08 1e-12
+Dictionary Key: reg_model0-ForwardAD
+@value        -0.0000001584312922 1e-08 1e-12
+Dictionary Key: reg_model50-Adjoint
+@value        -0.0000453930510031 1e-08 1e-12
+Dictionary Key: reg_model50-ForwardAD
+@value        -0.0000433310435371 1e-08 1e-12

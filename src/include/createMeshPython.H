@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     This file is modified from OpenFOAM's source code
     src/OpenFOAM/include/createMesh.H
@@ -38,4 +38,6 @@ meshPtr_.reset(
             runTimePtr_().timeName(),
             runTimePtr_(),
             IOobject::MUST_READ)));
+
+daGlobalVarPtr_.reset(new DAGlobalVar(meshPtr_()));
 

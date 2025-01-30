@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v3
+    Version : v4
 
     This class is modified from OpenFOAM's source code
     applications/solvers/incompressible/simpleFoam
@@ -54,20 +54,6 @@ DASimpleFoam::DASimpleFoam(
       fvSourcePtr_(nullptr),
       MRFPtr_(nullptr)
 {
-    // get fvSolution and fvSchemes info for fixed-point adjoint
-    const fvSolution& myFvSolution = meshPtr_->thisDb().lookupObject<fvSolution>("fvSolution");
-    if (myFvSolution.found("relaxationFactors"))
-    {
-        if (myFvSolution.subDict("relaxationFactors").found("equations"))
-        {
-            if (myFvSolution.subDict("relaxationFactors").subDict("equations").found("U"))
-            {
-                relaxUEqn_ = myFvSolution.subDict("relaxationFactors").subDict("equations").getScalar("U");
-            }
-        }
-    }
-    solverDictU_ = myFvSolution.subDict("solvers").subDict("U");
-    solverDictP_ = myFvSolution.subDict("solvers").subDict("p");
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -83,13 +69,22 @@ void DASimpleFoam::initSolver()
     fvMesh& mesh = meshPtr_();
 #include "createSimpleControlPython.H"
 #include "createFieldsSimple.H"
-#include "createAdjointIncompressible.H"
-    // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
-    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+    // read the RAS model from constant/turbulenceProperties
+    const word turbModelName(
+        IOdictionary(
+            IOobject(
+                "turbulenceProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false))
+            .subDict("RAS")
+            .lookup("RASModel"));
+    daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
 
-    this->setDAObjFuncList();
+#include "createAdjoint.H"
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -104,26 +99,15 @@ void DASimpleFoam::initSolver()
     }
 }
 
-label DASimpleFoam::solvePrimal(
-    const Vec xvVec,
-    Vec wVec)
+label DASimpleFoam::solvePrimal()
 {
     /*
     Description:
         Call the primal solver to get converged state variables
-
-    Input:
-        xvVec: a vector that contains all volume mesh coordinates
-
-    Output:
-        wVec: state variable vector
     */
 
 #include "createRefsSimple.H"
 #include "createFvOptions.H"
-
-    // change the run status
-    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
@@ -131,44 +115,10 @@ label DASimpleFoam::solvePrimal(
     Info << "\nStarting time loop\n"
          << endl;
 
-    // deform the mesh based on the xvVec
-    this->pointVec2OFMesh(xvVec);
-
-    // check mesh quality
-    label meshOK = this->checkMesh();
-
-    if (!meshOK)
-    {
-        this->writeFailedMesh();
-        return 1;
-    }
-
-    // if the forwardModeAD is active, we need to set the seed here
-#include "setForwardADSeeds.H"
-
-    word divUScheme = "div(phi,U)";
-    if (daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "active"))
-    {
-        if (daOptionPtr_->getSubDictOption<label>("runLowOrderPrimal4PC", "isPC"))
-        {
-            Info << "Using low order div scheme for primal solution .... " << endl;
-            divUScheme = "div(pc)";
-        }
-    }
-
-    // if useMeanStates is used, we need to zero meanStates before the primal run
-    this->zeroMeanStates();
-
-    label printInterval = daOptionPtr_->getOption<label>("printInterval");
-    label printToScreen = 0;
-    label regModelFail = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        DAUtility::primalMaxInitRes_ = -1e16;
 
-        printToScreen = this->isPrintTime(runTime, printInterval);
-
-        if (printToScreen)
+        if (printToScreen_)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
         }
@@ -182,67 +132,33 @@ label DASimpleFoam::solvePrimal(
         }
 
         laminarTransport.correct();
-        daTurbulenceModelPtr_->correct(printToScreen);
+        daTurbulenceModelPtr_->correct(printToScreen_);
 
-        // update the output field value at each iteration, if the regression model is active
-        regModelFail = daRegressionPtr_->compute();
-
-        if (this->validateStates())
-        {
-            // write data to files and quit
-            runTime.writeNow();
-            mesh.write();
-            return 1;
-        }
-
-        if (printToScreen)
-        {
-            daTurbulenceModelPtr_->printYPlus();
-
-            this->printAllObjFuncs();
-
-            daRegressionPtr_->printInputInfo();
-
-            Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                 << nl << endl;
-        }
-
-        // if useMeanStates is used, we need to calculate the meanStates
-        this->calcMeanStates();
+        // calculate all functions
+        this->calcAllFunctions(printToScreen_);
+        // calculate yPlus
+        daTurbulenceModelPtr_->printYPlus(printToScreen_);
+        // compute the regression model and print the feature
+        regModelFail_ = daRegressionPtr_->compute();
+        daRegressionPtr_->printInputInfo(printToScreen_);
+        // print run time 
+        this->printElapsedTime(runTime, printToScreen_);
 
         runTime.write();
     }
-
-    if (regModelFail != 0)
-    {
-        return 1;
-    }
-
-    // if useMeanStates is used, we need to assign meanStates to states right after the case converges
-    this->assignMeanStatesToStates();
-
-    this->writeAssociatedFields();
-
-    this->calcPrimalResidualStatistics("print");
-
-    // primal converged, assign the OpenFoam fields to the state vec wVec
-    this->ofField2StateVec(wVec);
 
     // write the mesh to files
     mesh.write();
 
     Info << "End\n"
          << endl;
-
-    return this->checkResidualTol();
+    
+    return this->checkPrimalFailure();
 }
 
 // ************ the following are functions for consistent fixed-point adjoint
 
 label DASimpleFoam::runFPAdj(
-    const Vec xvVec,
-    const Vec wVec,
     Vec dFdW,
     Vec psi)
 {
@@ -250,7 +166,7 @@ label DASimpleFoam::runFPAdj(
     // Otherwise, adjConv = 1
     label adjConv = 1;
 
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
     /*
     Description:
         Solve the adjoint using the fixed-point iteration method
@@ -266,10 +182,6 @@ label DASimpleFoam::runFPAdj(
 
     // Here we keep the values of the previous step psi
     //VecZeroEntries(psi);
-
-    // update the state and mesh
-    this->updateOFField(wVec);
-    this->updateOFMesh(xvVec);
 
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
 
@@ -975,7 +887,7 @@ void DASimpleFoam::vec2Fields(
     surfaceScalarField& phiField,
     volScalarField& nuTildaField)
 {
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
     PetscScalar* cVecArray;
     if (mode == "vec2Field")
     {
@@ -1312,7 +1224,7 @@ void DASimpleFoam::calcAdjointResidual(
     volScalarField& adjNuTildaRes,
     label& cnt)
 {
-#ifdef CODI_AD_REVERSE
+#ifdef CODI_ADR
     volVectorField& U = const_cast<volVectorField&>(meshPtr_->thisDb().lookupObject<volVectorField>("U"));
     volScalarField& p = const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("p"));
     volScalarField& nuTilda = const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>("nuTilda"));
