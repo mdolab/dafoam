@@ -20,7 +20,7 @@ gcomm = MPI.COMM_WORLD
 os.chdir("./reg_test_files-main/Ramp")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor* *.bin")
-    os.system("cp -r 0_incompressible 0")
+    os.system("cp -r 0_compressible 0")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
@@ -28,19 +28,30 @@ U0 = 10.0
 
 daOptions = {
     "designSurfaces": ["bot"],
-    "solverName": "DAPimpleFoam",
+    "solverName": "DARhoPimpleFoam",
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
         # "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
-        "useWallFunction": False,
+        "useWallFunction": True,
     },
     "unsteadyAdjoint": {
         "mode": "timeAccurate",
         "PCMatPrecomputeInterval": 5,
-        "PCMatUpdateInterval": 1,
+        "PCMatUpdateInterval": 100,  # TODO. the PCUpdate is not working.  the calcPCMatWithFvMatrix function is problematic for rhoPimple
         "readZeroFields": True,
     },
     "function": {
+        "UBulk": {
+            "type": "variableVolSum",
+            "source": "allCells",
+            "varName": "U",
+            "varType": "vector",
+            "component": 0,
+            "isSquare": 1,
+            "divByTotalVol": 1,
+            "scale": 1.0,
+            "timeOp": "average",
+        },
         "CD": {
             "type": "force",
             "source": "patchToFace",
@@ -50,28 +61,12 @@ daOptions = {
             "scale": 1.0,
             "timeOp": "average",
         },
-        "CL": {
-            "type": "force",
-            "source": "patchToFace",
-            "patches": ["bot"],
-            "directionMode": "fixedDirection",
-            "direction": [0.0, 1.0, 0.0],
-            "scale": 1.0,
-            "timeOp": "average",
-        },
     },
     "adjStateOrdering": "cell",
     "adjEqnOption": {"gmresRelTol": 1.0e-8, "pcFillLevel": 1, "jacMatReOrdering": "natural"},
-    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
+    "normalizeStates": {"U": U0, "p": 101325.0, "phi": 1.0, "nuTilda": 1e-3, "T": 300.0},
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
-        "patchV": {
-            "type": "patchVelocity",
-            "patches": ["inlet"],
-            "flowAxis": "x",
-            "normalAxis": "y",
-            "components": ["solver", "function"],
-        },
     },
 }
 
@@ -118,17 +113,15 @@ class Top(Group):
         self.geometry.nom_addShapeFunctionDV(dvName="shape", shapes=shapes)
 
         # add the design variables to the dvs component's output
-        self.dvs.add_output("patchV", val=np.array([10.0, 0.0]))
         self.dvs.add_output("shape", val=np.zeros(1))
         self.dvs.add_output("x_aero_in", val=points, distributed=True)
 
         # define the design variables to the top level
-        self.add_design_var("patchV", indices=[0], lower=-50.0, upper=50.0, scaler=1.0)
         self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
 
         # add constraints and the objective
-        self.add_objective("CD", scaler=1.0)
-        # self.add_constraint("CL", equals=0.3)
+        self.add_objective("UBulk", scaler=1.0)
+        self.add_constraint("CD", scaler=1.0, equals=1.0)
 
 
 # NOTE: the patchV deriv is accurate with FD but not with forward AD. The forward AD changed the primal value
@@ -137,9 +130,9 @@ class Top(Group):
 funcDict = {}
 derivDict = {}
 
-dvNames = ["shape", "patchV"]
-dvIndices = [[0], [0]]
-funcNames = ["cruise.solver.CD"]
+dvNames = ["shape"]
+dvIndices = [[0]]
+funcNames = ["cruise.solver.UBulk", "cruise.solver.CD"]
 
 # run the adjoint and forward ref
 run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)

@@ -2,6 +2,10 @@ Dictionary Key: CD
 @value         0.0170618714819692 1e-10 1e-12
 Dictionary Key: CL
 @value         0.2984067151382958 1e-10 1e-12
+Dictionary Key: nonOrtho
+@value        23.8934356542776314 1e-10 1e-12
+Dictionary Key: skewness
+@value         1.4671221512193253 1e-10 1e-12
 Dictionary Key: CL
 Dictionary Key: patchV-Adjoint
 @value         0.0602938548210897 1e-08 1e-12
@@ -24,3 +28,12 @@ Dictionary Key: shape-Adjoint
 @value        62.9167283705385358 1e-08 1e-12
 Dictionary Key: shape-FD
 @value        62.9468890552234370 1e-08 1e-12
+Dictionary Key: nonOrtho
+Dictionary Key: shape-Adjoint
+@value        -0.0178410856249778 1e-08 1e-12
+Dictionary Key: shape-FD
+@value        -0.0243671058851760 1e-08 1e-12
+Dictionary Key: skewness
+@value        -0.0001091622840756 1e-08 1e-12
+Dictionary Key: shape-FD
+@value        -0.0003604027958772 1e-08 1e-12

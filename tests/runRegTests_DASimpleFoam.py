@@ -61,6 +61,20 @@ daOptions = {
             "patchVelocityInputName": "patchV",
             "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
+        "skewness": {
+            "type": "meshQualityKS",
+            "source": "allCells",
+            "coeffKS": 20.0,
+            "metric": "faceSkewness",
+            "scale": 1.0,
+        },
+        "nonOrtho": {
+            "type": "meshQualityKS",
+            "source": "allCells",
+            "coeffKS": 1.0,
+            "metric": "nonOrthoAngle",
+            "scale": 1.0,
+        },
     },
     "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
@@ -154,7 +168,7 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 # verify the total derivatives against the finite-difference
 prob.run_model()
 results = prob.check_totals(
-    of=["LoD.val", "cruise.aero_post.CL"],
+    of=["LoD.val", "cruise.aero_post.CL", "cruise.aero_post.skewness", "cruise.aero_post.nonOrtho"],
     wrt=["patchV", "shape"],
     compact_print=True,
     step=1e-3,
@@ -166,6 +180,8 @@ if gcomm.rank == 0:
     funcDict = {}
     funcDict["CD"] = prob.get_val("cruise.aero_post.CD")
     funcDict["CL"] = prob.get_val("cruise.aero_post.CL")
+    funcDict["skewness"] = prob.get_val("cruise.aero_post.skewness")
+    funcDict["nonOrtho"] = prob.get_val("cruise.aero_post.nonOrtho")
     derivDict = {}
     derivDict["LoD"] = {}
     derivDict["LoD"]["shape-Adjoint"] = results[("LoD.val", "shape")]["J_fwd"][0]
@@ -177,5 +193,11 @@ if gcomm.rank == 0:
     derivDict["CL"]["shape-FD"] = results[("cruise.aero_post.CL", "shape")]["J_fd"][0]
     derivDict["CL"]["patchV-Adjoint"] = results[("cruise.aero_post.CL", "patchV")]["J_fwd"][0]
     derivDict["CL"]["patchV-FD"] = results[("cruise.aero_post.CL", "patchV")]["J_fd"][0]
+    derivDict["skewness"] = {}
+    derivDict["skewness"]["shape-Adjoint"] = results[("cruise.aero_post.skewness", "shape")]["J_fwd"][0]
+    derivDict["skewness"]["shape-FD"] = results[("cruise.aero_post.skewness", "shape")]["J_fd"][0]
+    derivDict["nonOrtho"] = {}
+    derivDict["nonOrtho"]["shape-Adjoint"] = results[("cruise.aero_post.nonOrtho", "shape")]["J_fwd"][0]
+    derivDict["nonOrtho"]["shape-FD"] = results[("cruise.aero_post.nonOrtho", "shape")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
