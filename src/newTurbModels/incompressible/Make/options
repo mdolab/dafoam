@@ -23,7 +23,7 @@ EXE_INC = \
     -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
     $(shell mpicc -show | grep -o '\-I[^ ]*') \
     $(shell python3-config --includes)  
-    
+
 
 LIB_LIBS = \
     -lturbulenceModels$(WM_CODI_AD_LIB_POSTFIX) \

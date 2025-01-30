@@ -4,5 +4,6 @@ MRFDF/IOMRFZoneListDF.C
 meshWaveFrozen/meshWaveFrozenPatchDistMethod.C
 pimpleControlDF/pimpleControlDF.C
 tractionDisplacement/tractionDisplacementFvPatchVectorField.C
+alphatWallFunctionIncomp/alphatWallFunctionIncompFvPatchScalarField.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAMisc$(WM_CODI_AD_LIB_POSTFIX)

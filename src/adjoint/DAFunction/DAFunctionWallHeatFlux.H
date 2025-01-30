@@ -41,6 +41,9 @@ protected:
     /// the area of all heat flux patches
     scalar areaSum_ = -9999.0;
 
+    /// if calculating flux per unit area or total, which mode to use
+    word calcMode_;
+
 public:
     TypeName("wallHeatFlux");
     // Constructors
