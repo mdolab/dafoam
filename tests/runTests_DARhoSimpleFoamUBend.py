@@ -21,7 +21,7 @@ if len(sys.argv) != 1:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/UBendDuct")
+os.chdir("./reg_test_files-3/UBendDuct")
 
 replace_text_in_file("system/controlDict", "endTime         500;", "endTime         2000;")
 replace_text_in_file("system/controlDict", "writeInterval   500;", "writeInterval   2000;")

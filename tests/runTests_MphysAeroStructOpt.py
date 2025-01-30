@@ -19,7 +19,7 @@ from tacs import elements, constitutive, functions
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/Wing")
+os.chdir("./reg_test_files-3/Wing")
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
     os.system("cp -r 0.subsonic 0")

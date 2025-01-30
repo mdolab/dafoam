@@ -18,7 +18,7 @@ from pygeo.mphys import OM_DVGEOCOMP
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/ChannelConjugateHeat")
+os.chdir("./reg_test_files-3/ChannelConjugateHeat")
 if gcomm.rank == 0:
     os.system("rm -rf */processor*")
 

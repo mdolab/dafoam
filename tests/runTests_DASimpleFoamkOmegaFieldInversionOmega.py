@@ -21,7 +21,7 @@ if len(sys.argv) != 1:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/NACA0012FieldInversion")
+os.chdir("./reg_test_files-3/NACA0012FieldInversion")
 
 replace_text_in_file("constant/turbulenceProperties", "RASModel             SpalartAllmarasFv3FieldInversion;", "RASModel             kOmegaFieldInversionOmega;")
 

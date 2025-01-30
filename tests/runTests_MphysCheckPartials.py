@@ -14,7 +14,7 @@ from dafoam.mphys.mphys_dafoam import DAFoamBuilder, DAFoamFaceCoords, DAFoamThe
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/CurvedCubeHexMesh")
+os.chdir("./reg_test_files-3/CurvedCubeHexMesh")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")
