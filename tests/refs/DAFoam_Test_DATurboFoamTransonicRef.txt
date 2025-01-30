@@ -1,0 +1,14 @@
+Dictionary Key: MFR
+@value         0.8128415885783922 1e-10 1e-12
+Dictionary Key: TTR
+@value         1.0686795780553069 1e-10 1e-12
+Dictionary Key: MFR
+Dictionary Key: shape-Adjoint
+@value         1.0856145697776081 1e-08 1e-12
+Dictionary Key: shape-FD
+@value         0.9800200958417236 1e-08 1e-12
+Dictionary Key: TTR
+Dictionary Key: shape-Adjoint
+@value         0.0587514849480070 1e-08 1e-12
+Dictionary Key: shape-FD
+@value         0.0633241798591371 1e-08 1e-12

@@ -75,12 +75,7 @@ DAkOmega::DAkOmega(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           mesh,
-#ifdef CompressibleFlow
-          dimensionedScalar("omegaRes", dimensionSet(1, -3, -2, 0, 0, 0, 0), 0.0),
-#endif
-#ifdef IncompressibleFlow
-          dimensionedScalar("omegaRes", dimensionSet(0, 0, -2, 0, 0, 0, 0), 0.0),
-#endif
+          dimensionedScalar("omegaRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
       k_(
           const_cast<volScalarField&>(
@@ -93,12 +88,7 @@ DAkOmega::DAkOmega(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           mesh,
-#ifdef CompressibleFlow
-          dimensionedScalar("kRes", dimensionSet(1, -1, -3, 0, 0, 0, 0), 0.0),
-#endif
-#ifdef IncompressibleFlow
-          dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
-#endif
+          dimensionedScalar("kRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
       betaFIK_(
           IOobject(
@@ -121,6 +111,17 @@ DAkOmega::DAkOmega(
           dimensionedScalar("betaFIOmega", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           "zeroGradient")
 {
+
+    if (turbModelType_ == "incompressible")
+    {
+        omegaRes_.dimensions().reset(dimensionSet(0, 0, -2, 0, 0, 0, 0));
+        kRes_.dimensions().reset(dimensionSet(0, 2, -3, 0, 0, 0, 0));
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        omegaRes_.dimensions().reset(dimensionSet(1, -3, -2, 0, 0, 0, 0));
+        kRes_.dimensions().reset(dimensionSet(1, -1, -3, 0, 0, 0, 0));
+    }
 
     // calculate the size of omegaWallFunction faces
     label nWallFaces = 0;
@@ -453,39 +454,40 @@ void DAkOmega::addModelResidualCon(HashTable<List<List<word>>>& allCon) const
     }
 
     // NOTE: for compressible flow, it depends on rho so we need to add T and p
-#ifdef IncompressibleFlow
-    allCon.set(
-        "omegaRes",
-        {
-            {"U", "omega", "k", "phi"}, // lv0
-            {"U", "omega", "k"}, // lv1
-            {"U", "omega", "k"} // lv2
-        });
-    allCon.set(
-        "kRes",
-        {
-            {"U", "omega", "k", "phi"}, // lv0
-            {"U", "omega", "k"}, // lv1
-            {"U", "omega", "k"} // lv2
-        });
-#endif
-
-#ifdef CompressibleFlow
-    allCon.set(
-        "omegaRes",
-        {
-            {"U", "T", pName, "omega", "k", "phi"}, // lv0
-            {"U", "T", pName, "omega", "k"}, // lv1
-            {"U", "T", pName, "omega", "k"} // lv2
-        });
-    allCon.set(
-        "kRes",
-        {
-            {"U", "T", pName, "omega", "k", "phi"}, // lv0
-            {"U", "T", pName, "omega", "k"}, // lv1
-            {"U", "T", pName, "omega", "k"} // lv2
-        });
-#endif
+    if (turbModelType_ == "incompressible")
+    {
+        allCon.set(
+            "omegaRes",
+            {
+                {"U", "omega", "k", "phi"}, // lv0
+                {"U", "omega", "k"}, // lv1
+                {"U", "omega", "k"} // lv2
+            });
+        allCon.set(
+            "kRes",
+            {
+                {"U", "omega", "k", "phi"}, // lv0
+                {"U", "omega", "k"}, // lv1
+                {"U", "omega", "k"} // lv2
+            });
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        allCon.set(
+            "omegaRes",
+            {
+                {"U", "T", pName, "omega", "k", "phi"}, // lv0
+                {"U", "T", pName, "omega", "k"}, // lv1
+                {"U", "T", pName, "omega", "k"} // lv2
+            });
+        allCon.set(
+            "kRes",
+            {
+                {"U", "T", pName, "omega", "k", "phi"}, // lv0
+                {"U", "T", pName, "omega", "k"}, // lv1
+                {"U", "T", pName, "omega", "k"} // lv2
+            });
+    }
 }
 
 void DAkOmega::correct(label printToScreen)
@@ -536,6 +538,8 @@ void DAkOmega::calcResiduals(const dictionary& options)
 
     label isPC = 0;
 
+    label printToScreen = options.lookupOrDefault("printToScreen", 0);
+
     if (!solveTurbState_)
     {
         isPC = options.getLabel("isPC");
@@ -547,10 +551,12 @@ void DAkOmega::calcResiduals(const dictionary& options)
         }
     }
 
+    volScalarField rho = this->rho();
+
     // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
     // while for the incompresssible "this->phi()" returns phi only
     // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
-    volScalarField divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_)));
+    volScalarField divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_)));
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
@@ -570,24 +576,22 @@ void DAkOmega::calcResiduals(const dictionary& options)
 
     // Turbulent frequency equation
     tmp<fvScalarMatrix> omegaEqn(
-        fvm::ddt(phase_, rho_, omega_)
+        fvm::ddt(phase_, rho, omega_)
             + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
-            - fvm::laplacian(phase_ * rho_ * DomegaEff(), omega_)
-        == gamma_ * phase_ * rho_ * G * omega_ / k_ * betaFIOmega_
-            - fvm::SuSp(scalar(2.0 / 3.0) * gamma_ * phase_ * rho_ * divU, omega_)
-            - fvm::Sp(beta_ * phase_ * rho_ * omega_, omega_));
+            - fvm::laplacian(phase_ * rho * DomegaEff(), omega_)
+        == gamma_ * phase_ * rho * G * omega_ / k_ * betaFIOmega_
+            - fvm::SuSp(scalar(2.0 / 3.0) * gamma_ * phase_ * rho * divU, omega_)
+            - fvm::Sp(beta_ * phase_ * rho * omega_, omega_));
 
     omegaEqn.ref().relax();
     omegaEqn.ref().boundaryManipulate(omega_.boundaryFieldRef());
 
     if (solveTurbState_)
     {
-        label printToScreen = options.getLabel("printToScreen");
-
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverOmega = solve(omegaEqn);
-        DAUtility::primalResidualControl(solverOmega, printToScreen, "omega");
+        DAUtility::primalResidualControl(solverOmega, printToScreen, "omega", daGlobalVar_.primalMaxRes);
 
         DAUtility::boundVar(allOptions_, omega_, printToScreen);
     }
@@ -604,23 +608,22 @@ void DAkOmega::calcResiduals(const dictionary& options)
 
     // Turbulent kinetic energy equation
     tmp<fvScalarMatrix> kEqn(
-        fvm::ddt(phase_, rho_, k_)
+        fvm::ddt(phase_, rho, k_)
             + fvm::div(phaseRhoPhi_, k_, divKScheme)
-            - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-        == phase_ * rho_ * G * betaFIK_
-            - fvm::SuSp((2.0 / 3.0) * phase_ * rho_ * divU, k_)
-            - fvm::Sp(Cmu_ * phase_ * rho_ * omega_, k_));
+            - fvm::laplacian(phase_ * rho * DkEff(), k_)
+        == phase_ * rho * G * betaFIK_
+            - fvm::SuSp((2.0 / 3.0) * phase_ * rho * divU, k_)
+            - fvm::Sp(Cmu_ * phase_ * rho * omega_, k_));
 
     kEqn.ref().relax();
 
     if (solveTurbState_)
     {
-        label printToScreen = options.getLabel("printToScreen");
 
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverK = solve(kEqn);
-        DAUtility::primalResidualControl(solverK, printToScreen, "k");
+        DAUtility::primalResidualControl(solverK, printToScreen, "k", daGlobalVar_.primalMaxRes);
 
         DAUtility::boundVar(allOptions_, k_, printToScreen);
 
@@ -656,10 +659,12 @@ void DAkOmega::getFvMatrixFields(
             << exit(FatalError);
     }
 
+    volScalarField rho = this->rho();
+
     // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
     // while for the incompresssible "this->phi()" returns phi only
     // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
-    volScalarField divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_)));
+    volScalarField divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_)));
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
@@ -673,12 +678,12 @@ void DAkOmega::getFvMatrixFields(
     {
         // Turbulent frequency equation
         fvScalarMatrix omegaEqn(
-            fvm::ddt(phase_, rho_, omega_)
+            fvm::ddt(phase_, rho, omega_)
                 + fvm::div(phaseRhoPhi_, omega_, "div(pc)")
-                - fvm::laplacian(phase_ * rho_ * DomegaEff(), omega_)
-            == gamma_ * phase_ * rho_ * G * omega_ / k_ * betaFIOmega_
-                - fvm::SuSp(scalar(2.0 / 3.0) * gamma_ * phase_ * rho_ * divU, omega_)
-                - fvm::Sp(beta_ * phase_ * rho_ * omega_, omega_));
+                - fvm::laplacian(phase_ * rho * DomegaEff(), omega_)
+            == gamma_ * phase_ * rho * G * omega_ / k_ * betaFIOmega_
+                - fvm::SuSp(scalar(2.0 / 3.0) * gamma_ * phase_ * rho * divU, omega_)
+                - fvm::Sp(beta_ * phase_ * rho * omega_, omega_));
 
         omegaEqn.relax();
 
@@ -693,12 +698,12 @@ void DAkOmega::getFvMatrixFields(
     {
         // Turbulent kinetic energy equation
         fvScalarMatrix kEqn(
-            fvm::ddt(phase_, rho_, k_)
+            fvm::ddt(phase_, rho, k_)
                 + fvm::div(phaseRhoPhi_, k_, "div(pc)")
-                - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-            == phase_ * rho_ * G * betaFIK_
-                - fvm::SuSp((2.0 / 3.0) * phase_ * rho_ * divU, k_)
-                - fvm::Sp(Cmu_ * phase_ * rho_ * omega_, k_));
+                - fvm::laplacian(phase_ * rho * DkEff(), k_)
+            == phase_ * rho * G * betaFIK_
+                - fvm::SuSp((2.0 / 3.0) * phase_ * rho * divU, k_)
+                - fvm::Sp(Cmu_ * phase_ * rho * omega_, k_));
 
         kEqn.relax();
 
@@ -717,8 +722,10 @@ void DAkOmega::getTurbProdOverDestruct(volScalarField& PoD) const
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
 
-    volScalarField P = phase_ * rho_ * G;
-    volScalarField D = Cmu_ * phase_ * rho_ * omega_ * k_;
+    volScalarField rho = this->rho();
+
+    volScalarField P = phase_ * rho * G;
+    volScalarField D = Cmu_ * phase_ * rho * omega_ * k_;
 
     forAll(P, cellI)
     {
@@ -736,7 +743,9 @@ void DAkOmega::getTurbConvOverProd(volScalarField& CoP) const
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
 
-    volScalarField P = phase_ * rho_ * G;
+    volScalarField rho = this->rho();
+
+    volScalarField P = phase_ * rho * G;
     volScalarField C = fvc::div(phaseRhoPhi_, k_);
 
     forAll(P, cellI)

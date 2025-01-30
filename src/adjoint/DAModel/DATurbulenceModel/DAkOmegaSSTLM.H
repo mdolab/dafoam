@@ -214,6 +214,10 @@ protected:
     /// 3D wall distance
     const volScalarField& y_;
 
+    /// we need to make the G field a class variable and register it to the mesh.db
+    /// such that the omegaWallFunction BC can find it
+    autoPtr<volScalarField::Internal> GPtr_;
+
     /// beta field for field inversion
     volScalarField betaFIK_;
     volScalarField betaFIOmega_;

@@ -151,6 +151,7 @@ label DAPimpleFoam::solvePrimal()
         if (printToScreen_)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
+#include "CourantNo.H"
         }
 
         // --- Pressure-velocity PIMPLE corrector loop
@@ -174,8 +175,7 @@ label DAPimpleFoam::solvePrimal()
             }
 
             laminarTransport.correct();
-            // primalMaxRes_ is just a dummy input, we will not use it
-            daTurbulenceModelPtr_->correct(pimplePrintToScreen, primalMaxRes_);
+            daTurbulenceModelPtr_->correct(pimplePrintToScreen);
 
             // update the output field value at each iteration, if the regression model is active
             fail = daRegressionPtr_->compute();
@@ -193,15 +193,6 @@ label DAPimpleFoam::solvePrimal()
 
         this->calcAllFunctions(printToScreen_);
         daRegressionPtr_->printInputInfo(printToScreen_);
-
-        if (printToScreen_)
-        {
-#include "CourantNo.H"
-            if (daOptionPtr_->getOption<label>("debug"))
-            {
-                this->calcPrimalResidualStatistics("print");
-            }
-        }
         daTurbulenceModelPtr_->printYPlus(printToScreen_);
         this->printElapsedTime(runTime, printToScreen_);
 

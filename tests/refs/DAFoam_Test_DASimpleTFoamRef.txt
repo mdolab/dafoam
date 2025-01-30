@@ -1,14 +1,14 @@
 Dictionary Key: HFX
-@value       113.4025011782633783 1e-10 1e-12
+@value       113.4025011782558892 1e-10 1e-12
 Dictionary Key: PL
-@value        20.2937390506581252 1e-10 1e-12
+@value        20.2937390506475985 1e-10 1e-12
 Dictionary Key: HFX
 Dictionary Key: shape-Adjoint
-@value         3.0808283969614774 1e-08 1e-12
+@value         3.0800992152263214 1e-08 1e-12
 Dictionary Key: shape-FD
-@value         3.0703420437639579 1e-08 1e-12
+@value         3.0703420519130304 1e-08 1e-12
 Dictionary Key: PL
 Dictionary Key: shape-Adjoint
-@value        12.4348408162819730 1e-08 1e-12
+@value        12.4336312401959290 1e-08 1e-12
 Dictionary Key: shape-FD
-@value        12.5414016950817313 1e-08 1e-12
+@value        12.5414016982249450 1e-08 1e-12

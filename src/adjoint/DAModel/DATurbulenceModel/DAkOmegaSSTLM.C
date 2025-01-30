@@ -134,12 +134,7 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           mesh,
-#ifdef CompressibleFlow
-          dimensionedScalar("omegaRes", dimensionSet(1, -3, -2, 0, 0, 0, 0), 0.0),
-#endif
-#ifdef IncompressibleFlow
-          dimensionedScalar("omegaRes", dimensionSet(0, 0, -2, 0, 0, 0, 0), 0.0),
-#endif
+          dimensionedScalar("omegaRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
       k_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("k"))),
@@ -151,12 +146,7 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           mesh,
-#ifdef CompressibleFlow
-          dimensionedScalar("kRes", dimensionSet(1, -1, -3, 0, 0, 0, 0), 0.0),
-#endif
-#ifdef IncompressibleFlow
-          dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
-#endif
+          dimensionedScalar("kRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
       ReThetat_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("ReThetat"))),
@@ -168,12 +158,7 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           mesh_,
-#ifdef CompressibleFlow
-          dimensionedScalar("ReThetatRes", dimensionSet(1, -3, -1, 0, 0, 0, 0), 0.0),
-#endif
-#ifdef IncompressibleFlow
-          dimensionedScalar("ReThetatRes", dimensionSet(0, 0, -1, 0, 0, 0, 0), 0.0),
-#endif
+          dimensionedScalar("ReThetatRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchScalarField::typeName),
       gammaInt_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("gammaInt"))),
@@ -185,16 +170,12 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
               IOobject::NO_READ,
               IOobject::NO_WRITE),
           mesh_,
-#ifdef CompressibleFlow
-          dimensionedScalar("gammaIntRes", dimensionSet(1, -3, -1, 0, 0, 0, 0), 0.0),
-#endif
-#ifdef IncompressibleFlow
-          dimensionedScalar("gammaIntRes", dimensionSet(0, 0, -1, 0, 0, 0, 0), 0.0),
-#endif
+          dimensionedScalar("gammaIntRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchScalarField::typeName),
       gammaIntEff_(const_cast<volScalarField::Internal&>(
           mesh_.thisDb().lookupObject<volScalarField::Internal>("gammaIntEff"))),
       y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")),
+      GPtr_(nullptr),
       betaFIK_(
           IOobject(
               "betaFIK",
@@ -217,6 +198,21 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
           "zeroGradient")
 {
 
+    if (turbModelType_ == "incompressible")
+    {
+        omegaRes_.dimensions().reset(dimensionSet(0, 0, -2, 0, 0, 0, 0));
+        kRes_.dimensions().reset(dimensionSet(0, 2, -3, 0, 0, 0, 0));
+        ReThetatRes_.dimensions().reset(dimensionSet(0, 0, -1, 0, 0, 0, 0));
+        gammaIntRes_.dimensions().reset(dimensionSet(0, 0, -1, 0, 0, 0, 0));
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        omegaRes_.dimensions().reset(dimensionSet(1, -3, -2, 0, 0, 0, 0));
+        kRes_.dimensions().reset(dimensionSet(1, -1, -3, 0, 0, 0, 0));
+        ReThetatRes_.dimensions().reset(dimensionSet(1, -3, -1, 0, 0, 0, 0));
+        gammaIntRes_.dimensions().reset(dimensionSet(1, -3, -1, 0, 0, 0, 0));
+    }
+
     // calculate the size of omegaWallFunction faces
     label nWallFaces = 0;
     forAll(omega_.boundaryField(), patchI)
@@ -233,6 +229,12 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
 
     // initialize omegaNearWall
     omegaNearWall_.setSize(nWallFaces);
+
+    // initialize the G field
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    volScalarField S2(2 * magSqr(symm(tgradU())));
+    volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
+    GPtr_.reset(new volScalarField::Internal("kOmegaSSTLM:G", nut_ * GbyNu0));
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -317,20 +319,18 @@ tmp<volScalarField::Internal> DAkOmegaSSTLM::epsilonBykSST(
 
 tmp<fvScalarMatrix> DAkOmegaSSTLM::kSource() const
 {
-    const volScalarField& rho = rho_;
     return tmp<fvScalarMatrix>(
         new fvScalarMatrix(
             k_,
-            dimVolume * rho.dimensions() * k_.dimensions() / dimTime));
+            dimVolume * this->rhoDimensions() * k_.dimensions() / dimTime));
 }
 
 tmp<fvScalarMatrix> DAkOmegaSSTLM::omegaSource() const
 {
-    const volScalarField& rho = rho_;
     return tmp<fvScalarMatrix>(
         new fvScalarMatrix(
             omega_,
-            dimVolume * rho.dimensions() * omega_.dimensions() / dimTime));
+            dimVolume * this->rhoDimensions() * omega_.dimensions() / dimTime));
 }
 
 tmp<fvScalarMatrix> DAkOmegaSSTLM::Qsas(
@@ -338,11 +338,10 @@ tmp<fvScalarMatrix> DAkOmegaSSTLM::Qsas(
     const volScalarField::Internal& gamma,
     const volScalarField::Internal& beta) const
 {
-    const volScalarField& rho = rho_;
     return tmp<fvScalarMatrix>(
         new fvScalarMatrix(
             omega_,
-            dimVolume * rho.dimensions() * omega_.dimensions() / dimTime));
+            dimVolume * this->rhoDimensions() * omega_.dimensions() / dimTime));
 }
 
 // SSTLM functions
@@ -916,71 +915,72 @@ void DAkOmegaSSTLM::addModelResidualCon(HashTable<List<List<word>>>& allCon) con
     }
 
     // NOTE: for compressible flow, it depends on rho so we need to add T and p
-#ifdef IncompressibleFlow
-    allCon.set(
-        "omegaRes",
-        {
-            {"U", "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
-            {"U", "omega", "k", "ReThetat", "gammaInt"}, // lv1
-            {"U", "omega", "k", "ReThetat", "gammaInt"} // lv2
-        });
-    allCon.set(
-        "kRes",
-        {
-            {"U", "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
-            {"U", "omega", "k", "ReThetat", "gammaInt"}, // lv1
-            {"U", "omega", "k", "ReThetat", "gammaInt"} // lv2
-        });
+    if (turbModelType_ == "incompressible")
+    {
+        allCon.set(
+            "omegaRes",
+            {
+                {"U", "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
+                {"U", "omega", "k", "ReThetat", "gammaInt"}, // lv1
+                {"U", "omega", "k", "ReThetat", "gammaInt"} // lv2
+            });
+        allCon.set(
+            "kRes",
+            {
+                {"U", "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
+                {"U", "omega", "k", "ReThetat", "gammaInt"}, // lv1
+                {"U", "omega", "k", "ReThetat", "gammaInt"} // lv2
+            });
 
-    allCon.set(
-        "ReThetatRes",
-        {
-            {"U", "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
-            {"U", "omega", "k", "ReThetat", "gammaInt"}, // lv1
-            {"U", "omega", "k", "ReThetat", "gammaInt"} // lv2
-        });
+        allCon.set(
+            "ReThetatRes",
+            {
+                {"U", "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
+                {"U", "omega", "k", "ReThetat", "gammaInt"}, // lv1
+                {"U", "omega", "k", "ReThetat", "gammaInt"} // lv2
+            });
 
-    allCon.set(
-        "gammaIntRes",
-        {
-            {"U", "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
-            {"U", "omega", "k", "ReThetat", "gammaInt"}, // lv1
-            {"U", "omega", "k", "ReThetat", "gammaInt"} // lv2
-        });
-#endif
+        allCon.set(
+            "gammaIntRes",
+            {
+                {"U", "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
+                {"U", "omega", "k", "ReThetat", "gammaInt"}, // lv1
+                {"U", "omega", "k", "ReThetat", "gammaInt"} // lv2
+            });
+    }
+    else if (turbModelType_ == "compressible")
+    {
+        allCon.set(
+            "omegaRes",
+            {
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"}, // lv1
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"} // lv2
+            });
+        allCon.set(
+            "kRes",
+            {
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"}, // lv1
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"} // lv2
+            });
 
-#ifdef CompressibleFlow
-    allCon.set(
-        "omegaRes",
-        {
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"}, // lv1
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"} // lv2
-        });
-    allCon.set(
-        "kRes",
-        {
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"}, // lv1
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"} // lv2
-        });
+        allCon.set(
+            "ReThetatRes",
+            {
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"}, // lv1
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"} // lv2
+            });
 
-    allCon.set(
-        "ReThetatRes",
-        {
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"}, // lv1
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"} // lv2
-        });
-
-    allCon.set(
-        "gammaIntRes",
-        {
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"}, // lv1
-            {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"} // lv2
-        });
-#endif
+        allCon.set(
+            "gammaIntRes",
+            {
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt", "phi"}, // lv0
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"}, // lv1
+                {"U", "T", pName, "omega", "k", "ReThetat", "gammaInt"} // lv2
+            });
+    }
 }
 
 void DAkOmegaSSTLM::correct(label printToScreen)
@@ -1026,19 +1026,14 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
     // Copy and modify based on the "correct" function
 
-    label printToScreen = 0;
-    if (solveTurbState_)
-    {
-        if (options.getLabel("printToScreen"))
-        {
-            printToScreen = 1;
-        }
-    }
+    label printToScreen = options.lookupOrDefault("printToScreen", 0);
 
     word divKScheme = "div(phi,k)";
     word divOmegaScheme = "div(phi,omega)";
     word divReThetatScheme = "div(phi,ReThetat)";
     word divGammaIntScheme = "div(phi,gammaInt)";
+
+    volScalarField rho = this->rho();
 
     label isPC = 0;
 
@@ -1059,12 +1054,13 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
         // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
         // while for the incompresssible "this->phi()" returns phi only
         // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
-        volScalarField::Internal divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_)));
+        volScalarField::Internal divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_)));
 
         tmp<volTensorField> tgradU = fvc::grad(U_);
         volScalarField S2(2 * magSqr(symm(tgradU())));
         volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
-        volScalarField::Internal G("kOmegaSSTLM:G", nut_ * GbyNu0);
+        volScalarField::Internal& G = const_cast<volScalarField::Internal&>(GPtr_());
+        G = nut_() * GbyNu0;
 
         if (solveTurbState_)
         {
@@ -1091,14 +1087,14 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
             // Turbulent frequency equation
             tmp<fvScalarMatrix> omegaEqn(
-                fvm::ddt(phase_, rho_, omega_)
+                fvm::ddt(phase_, rho, omega_)
                     + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
-                    - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
-                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFIOmega_()
-                    - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
-                    - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
+                    - fvm::laplacian(phase_ * rho * DomegaEff(F1), omega_)
+                == phase_() * rho() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFIOmega_()
+                    - fvm::SuSp((2.0 / 3.0) * phase_() * rho() * gamma * divU, omega_)
+                    - fvm::Sp(phase_() * rho() * beta * omega_(), omega_)
                     - fvm::SuSp(
-                        phase_() * rho_() * (F1() - scalar(1)) * CDkOmega() / omega_(),
+                        phase_() * rho() * (F1() - scalar(1)) * CDkOmega() / omega_(),
                         omega_)
                     + Qsas(S2(), gamma, beta)
                     + omegaSource()
@@ -1110,12 +1106,10 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
             if (solveTurbState_)
             {
-                label printToScreen = options.getLabel("printToScreen");
-
                 // get the solver performance info such as initial
                 // and final residuals
                 SolverPerformance<scalar> solverOmega = solve(omegaEqn);
-                DAUtility::primalResidualControl(solverOmega, printToScreen, "omega");
+                DAUtility::primalResidualControl(solverOmega, printToScreen, "omega", daGlobalVar_.primalMaxRes);
 
                 DAUtility::boundVar(allOptions_, omega_, printToScreen);
             }
@@ -1133,12 +1127,12 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
         // Turbulent kinetic energy equation
         tmp<fvScalarMatrix> kEqn(
-            fvm::ddt(phase_, rho_, k_)
+            fvm::ddt(phase_, rho, k_)
                 + fvm::div(phaseRhoPhi_, k_, divKScheme)
-                - fvm::laplacian(phase_ * rho_ * DkEff(F1), k_)
-            == phase_() * rho_() * Pk(G) * betaFIK_()
-                - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
-                - fvm::Sp(phase_() * rho_() * epsilonByk(F1, tgradU()), k_)
+                - fvm::laplacian(phase_ * rho * DkEff(F1), k_)
+            == phase_() * rho() * Pk(G) * betaFIK_()
+                - fvm::SuSp((2.0 / 3.0) * phase_() * rho() * divU, k_)
+                - fvm::Sp(phase_() * rho() * epsilonByk(F1, tgradU()), k_)
                 + kSource());
 
         tgradU.clear();
@@ -1147,12 +1141,11 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
         if (solveTurbState_)
         {
-            label printToScreen = options.getLabel("printToScreen");
 
             // get the solver performance info such as initial
             // and final residuals
             SolverPerformance<scalar> solverK = solve(kEqn);
-            DAUtility::primalResidualControl(solverK, printToScreen, "k");
+            DAUtility::primalResidualControl(solverK, printToScreen, "k", daGlobalVar_.primalMaxRes);
 
             DAUtility::boundVar(allOptions_, k_, printToScreen);
 
@@ -1191,25 +1184,24 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
         {
             const volScalarField::Internal t(500 * nu / sqr(Us));
             const volScalarField::Internal Pthetat(
-                phase_() * rho_() * (cThetat_ / t) * (1 - Fthetat));
+                phase_() * rho() * (cThetat_ / t) * (1 - Fthetat));
 
             // Transition onset momentum-thickness Reynolds number equation
             tmp<fvScalarMatrix> ReThetatEqn(
-                fvm::ddt(phase_, rho_, ReThetat_)
+                fvm::ddt(phase_, rho, ReThetat_)
                     + fvm::div(phaseRhoPhi_, ReThetat_, divReThetatScheme)
-                    - fvm::laplacian(phase_ * rho_ * DReThetatEff(), ReThetat_)
+                    - fvm::laplacian(phase_ * rho * DReThetatEff(), ReThetat_)
                 == Pthetat * ReThetat0(Us, dUsds, nu) - fvm::Sp(Pthetat, ReThetat_));
 
             ReThetatEqn.ref().relax();
 
             if (solveTurbState_)
             {
-                label printToScreen = options.getLabel("printToScreen");
 
                 // get the solver performance info such as initial
                 // and final residuals
                 SolverPerformance<scalar> solverReThetat = solve(ReThetatEqn);
-                DAUtility::primalResidualControl(solverReThetat, printToScreen, "ReThetat");
+                DAUtility::primalResidualControl(solverReThetat, printToScreen, "ReThetat", daGlobalVar_.primalMaxRes);
 
                 DAUtility::boundVar(allOptions_, ReThetat_, printToScreen);
             }
@@ -1232,19 +1224,19 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
         {
             const volScalarField::Internal Pgamma(
-                phase_() * rho_()
+                phase_() * rho()
                 * ca1_ * Flength(nu) * S * sqrt(gammaInt_() * Fonset(Rev, ReThetac, RT)));
 
             const volScalarField::Internal Fturb(exp(-pow4(0.25 * RT)));
 
             const volScalarField::Internal Egamma(
-                phase_() * rho_() * ca2_ * Omega * Fturb * gammaInt_());
+                phase_() * rho() * ca2_ * Omega * Fturb * gammaInt_());
 
             // Intermittency equation
             tmp<fvScalarMatrix> gammaIntEqn(
-                fvm::ddt(phase_, rho_, gammaInt_)
+                fvm::ddt(phase_, rho, gammaInt_)
                     + fvm::div(phaseRhoPhi_, gammaInt_, divGammaIntScheme)
-                    - fvm::laplacian(phase_ * rho_ * DgammaIntEff(), gammaInt_)
+                    - fvm::laplacian(phase_ * rho * DgammaIntEff(), gammaInt_)
                 == Pgamma - fvm::Sp(ce1_ * Pgamma, gammaInt_)
                     + Egamma - fvm::Sp(ce2_ * Egamma, gammaInt_));
 
@@ -1252,12 +1244,11 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
 
             if (solveTurbState_)
             {
-                label printToScreen = options.getLabel("printToScreen");
 
                 // get the solver performance info such as initial
                 // and final residuals
                 SolverPerformance<scalar> solverGammaInt = solve(gammaIntEqn);
-                DAUtility::primalResidualControl(solverGammaInt, printToScreen, "gammaInt");
+                DAUtility::primalResidualControl(solverGammaInt, printToScreen, "gammaInt", daGlobalVar_.primalMaxRes);
 
                 DAUtility::boundVar(allOptions_, gammaInt_, printToScreen);
 
@@ -1300,10 +1291,12 @@ void DAkOmegaSSTLM::getFvMatrixFields(
             << exit(FatalError);
     }
 
+    volScalarField rho = this->rho();
+
     // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
     // while for the incompresssible "this->phi()" returns phi only
     // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
-    volScalarField::Internal divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_)));
+    volScalarField::Internal divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_)));
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField S2(2 * magSqr(symm(tgradU())));
@@ -1325,12 +1318,13 @@ void DAkOmegaSSTLM::getFvMatrixFields(
         // Note: for compressible flow, the "this->phi()" function divides phi by fvc:interpolate(rho),
         // while for the incompresssible "this->phi()" returns phi only
         // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
-        volScalarField::Internal divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho_), U_)));
+        volScalarField::Internal divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_)));
 
         tmp<volTensorField> tgradU = fvc::grad(U_);
         volScalarField S2(2 * magSqr(symm(tgradU())));
         volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
-        volScalarField::Internal G("kOmegaSSTLM:G", nut_ * GbyNu0);
+        volScalarField::Internal& G = const_cast<volScalarField::Internal&>(GPtr_());
+        G = nut_() * GbyNu0;
 
         // NOTE instead of calling omega_.boundaryFieldRef().updateCoeffs();
         // here we call our self-defined boundary conditions
@@ -1350,14 +1344,14 @@ void DAkOmegaSSTLM::getFvMatrixFields(
 
             // Turbulent frequency equation
             fvScalarMatrix omegaEqn(
-                fvm::ddt(phase_, rho_, omega_)
+                fvm::ddt(phase_, rho, omega_)
                     + fvm::div(phaseRhoPhi_, omega_, "div(pc)")
-                    - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
-                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFIOmega_()
-                    - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
-                    - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
+                    - fvm::laplacian(phase_ * rho * DomegaEff(F1), omega_)
+                == phase_() * rho() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFIOmega_()
+                    - fvm::SuSp((2.0 / 3.0) * phase_() * rho() * gamma * divU, omega_)
+                    - fvm::Sp(phase_() * rho() * beta * omega_(), omega_)
                     - fvm::SuSp(
-                        phase_() * rho_() * (F1() - scalar(1)) * CDkOmega() / omega_(),
+                        phase_() * rho() * (F1() - scalar(1)) * CDkOmega() / omega_(),
                         omega_)
                     + Qsas(S2(), gamma, beta)
                     + omegaSource()
@@ -1378,12 +1372,12 @@ void DAkOmegaSSTLM::getFvMatrixFields(
         {
             // Turbulent kinetic energy equation
             fvScalarMatrix kEqn(
-                fvm::ddt(phase_, rho_, k_)
+                fvm::ddt(phase_, rho, k_)
                     + fvm::div(phaseRhoPhi_, k_, "div(pc)")
-                    - fvm::laplacian(phase_ * rho_ * DkEff(F1), k_)
-                == phase_() * rho_() * Pk(G)
-                    - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
-                    - fvm::Sp(phase_() * rho_() * epsilonByk(F1, tgradU()), k_)
+                    - fvm::laplacian(phase_ * rho * DkEff(F1), k_)
+                == phase_() * rho() * Pk(G)
+                    - fvm::SuSp((2.0 / 3.0) * phase_() * rho() * divU, k_)
+                    - fvm::Sp(phase_() * rho() * epsilonByk(F1, tgradU()), k_)
                     + kSource());
 
             tgradU.clear();
@@ -1420,13 +1414,13 @@ void DAkOmegaSSTLM::getFvMatrixFields(
         {
             const volScalarField::Internal t(500 * nu / sqr(Us));
             const volScalarField::Internal Pthetat(
-                phase_() * rho_() * (cThetat_ / t) * (1 - Fthetat));
+                phase_() * rho() * (cThetat_ / t) * (1 - Fthetat));
 
             // Transition onset momentum-thickness Reynolds number equation
             fvScalarMatrix ReThetatEqn(
-                fvm::ddt(phase_, rho_, ReThetat_)
+                fvm::ddt(phase_, rho, ReThetat_)
                     + fvm::div(phaseRhoPhi_, ReThetat_, "div(pc)")
-                    - fvm::laplacian(phase_ * rho_ * DReThetatEff(), ReThetat_)
+                    - fvm::laplacian(phase_ * rho * DReThetatEff(), ReThetat_)
                 == Pthetat * ReThetat0(Us, dUsds, nu) - fvm::Sp(Pthetat, ReThetat_));
 
             ReThetatEqn.relax();
@@ -1447,19 +1441,19 @@ void DAkOmegaSSTLM::getFvMatrixFields(
             const volScalarField::Internal RT(k_() / (nu * omega_()));
 
             const volScalarField::Internal Pgamma(
-                phase_() * rho_()
+                phase_() * rho()
                 * ca1_ * Flength(nu) * S * sqrt(gammaInt_() * Fonset(Rev, ReThetac, RT)));
 
             const volScalarField::Internal Fturb(exp(-pow4(0.25 * RT)));
 
             const volScalarField::Internal Egamma(
-                phase_() * rho_() * ca2_ * Omega * Fturb * gammaInt_());
+                phase_() * rho() * ca2_ * Omega * Fturb * gammaInt_());
 
             // Intermittency equation
             fvScalarMatrix gammaIntEqn(
-                fvm::ddt(phase_, rho_, gammaInt_)
+                fvm::ddt(phase_, rho, gammaInt_)
                     + fvm::div(phaseRhoPhi_, gammaInt_, "div(pc)")
-                    - fvm::laplacian(phase_ * rho_ * DgammaIntEff(), gammaInt_)
+                    - fvm::laplacian(phase_ * rho * DgammaIntEff(), gammaInt_)
                 == Pgamma - fvm::Sp(ce1_ * Pgamma, gammaInt_)
                     + Egamma - fvm::Sp(ce2_ * Egamma, gammaInt_));
 
@@ -1481,15 +1475,18 @@ void DAkOmegaSSTLM::getTurbProdOverDestruct(volScalarField& PoD) const
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField S2(2 * magSqr(symm(tgradU())));
     volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
-    volScalarField::Internal G("kOmegaSSTLM:G", nut_ * GbyNu0);
+    volScalarField::Internal& G = const_cast<volScalarField::Internal&>(GPtr_());
+    G = nut_() * GbyNu0;
+
+    volScalarField rho = this->rho();
 
     volScalarField CDkOmega(
         (scalar(2) * alphaOmega2_) * (fvc::grad(k_) & fvc::grad(omega_)) / omega_);
 
     volScalarField F1(this->F1(CDkOmega));
 
-    volScalarField::Internal P = phase_() * rho_() * Pk(G);
-    volScalarField::Internal D = phase_() * rho_() * epsilonByk(F1, tgradU()) * k_();
+    volScalarField::Internal P = phase_() * rho() * Pk(G);
+    volScalarField::Internal D = phase_() * rho() * epsilonByk(F1, tgradU()) * k_();
 
     forAll(P, cellI)
     {
@@ -1507,14 +1504,17 @@ void DAkOmegaSSTLM::getTurbConvOverProd(volScalarField& CoP) const
     tmp<volTensorField> tgradU = fvc::grad(U_);
     volScalarField S2(2 * magSqr(symm(tgradU())));
     volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
-    volScalarField::Internal G("kOmegaSSTLM:G", nut_ * GbyNu0);
+    volScalarField::Internal& G = const_cast<volScalarField::Internal&>(GPtr_());
+    G = nut_() * GbyNu0;
+
+    volScalarField rho = this->rho();
 
     volScalarField CDkOmega(
         (scalar(2) * alphaOmega2_) * (fvc::grad(k_) & fvc::grad(omega_)) / omega_);
 
     volScalarField F1(this->F1(CDkOmega));
 
-    volScalarField::Internal P = phase_() * rho_() * Pk(G);
+    volScalarField::Internal P = phase_() * rho() * Pk(G);
     volScalarField C = fvc::div(phaseRhoPhi_, k_);
 
     forAll(P, cellI)

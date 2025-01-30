@@ -143,9 +143,6 @@ protected:
     /// primal residual tolerance
     scalar primalMinResTol_ = 0.0;
 
-    /// primal maximal residual computed from all the governing equations
-    scalar primalMaxRes_ = 0.0;
-
     /// whether to print primal information to the screen
     label printToScreen_ = 0;
 

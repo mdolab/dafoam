@@ -73,13 +73,22 @@ void DARhoPimpleFoam::initSolver()
     argList& args = argsPtr_();
 #include "createPimpleControlPython.H"
 #include "createFieldsRhoPimple.H"
-#include "createAdjointCompressible.H"
-    // initialize checkMesh
-    daCheckMeshPtr_.reset(new DACheckMesh(daOptionPtr_(), runTime, mesh));
 
-    daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
+    // read the RAS model from constant/turbulenceProperties
+    const word turbModelName(
+        IOdictionary(
+            IOobject(
+                "turbulenceProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false))
+            .subDict("RAS")
+            .lookup("RASModel"));
+    daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
 
-    this->setDAObjFuncList();
+#include "createAdjoint.H"
 
     // initialize fvSource and compute the source term
     const dictionary& allOptions = daOptionPtr_->getAllOptions();
@@ -106,35 +115,14 @@ void DARhoPimpleFoam::initSolver()
     }
 }
 
-label DARhoPimpleFoam::solvePrimal(
-    const Vec xvVec,
-    Vec wVec)
+label DARhoPimpleFoam::solvePrimal()
 {
     /*
     Description:
         Call the primal solver to get converged state variables
-
-    Input:
-        xvVec: a vector that contains all volume mesh coordinates
-
-    Output:
-        wVec: state variable vector
     */
 
 #include "createRefsRhoPimple.H"
-
-    // change the run status
-    daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
-
-    runTime.setTime(0.0, 0);
-    // if readZeroFields, we need to read in the states from the 0 folder every time 
-    // we start the primal here we read in all time levels
-    label readZeroFields = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("readZeroFields");
-    if (readZeroFields)
-    {
-        this->readStateVars(0.0, 0);
-        this->readStateVars(0.0, 1);
-    }
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
@@ -142,27 +130,7 @@ label DARhoPimpleFoam::solvePrimal(
     Info << "\nStarting time loop\n"
          << endl;
 
-    // deform the mesh based on the xvVec
-    this->pointVec2OFMesh(xvVec);
-
-    // check mesh quality
-    label meshOK = this->checkMesh();
-
-    if (!meshOK)
-    {
-        this->writeFailedMesh();
-        return 1;
-    }
-
-    // if the forwardModeAD is active, we need to set the seed here
-#include "setForwardADSeeds.H"
-
-    label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
-    label printToScreen = 0;
     label pimplePrintToScreen = 0;
-
-    // reset the unsteady obj func to zeros
-    this->initUnsteadyObjFuncs();
 
     // we need to reduce the number of files written to the disk to minimize the file IO load
     label reduceIO = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("reduceIO");
@@ -184,11 +152,12 @@ label DARhoPimpleFoam::solvePrimal(
     {
         ++runTime;
 
-        printToScreen = this->isPrintTime(runTime, printInterval);
+        printToScreen_ = this->isPrintTime(runTime, printIntervalUnsteady_);
 
-        if (printToScreen)
+        if (printToScreen_)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
+#include "CourantNo.H"
         }
 
         if (pimple.nCorrPIMPLE() <= 1)
@@ -200,7 +169,7 @@ label DARhoPimpleFoam::solvePrimal(
         while (pimple.loop())
         {
 
-            if (pimple.finalIter() && printToScreen)
+            if (pimple.finalIter() && printToScreen_)
             {
                 pimplePrintToScreen = 1;
             }
@@ -234,21 +203,10 @@ label DARhoPimpleFoam::solvePrimal(
             return 1;
         }
 
-        this->calcUnsteadyObjFuncs();
-
-        if (printToScreen)
-        {
-#include "CourantNo.H"
-            daTurbulenceModelPtr_->printYPlus();
-
-            this->printAllObjFuncs();
-
-            daRegressionPtr_->printInputInfo();
-
-            Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                 << nl << endl;
-        }
+        this->calcAllFunctions(printToScreen_);
+        daRegressionPtr_->printInputInfo(printToScreen_);
+        daTurbulenceModelPtr_->printYPlus(printToScreen_);
+        this->printElapsedTime(runTime, printToScreen_);
 
         if (reduceIO && iter < nInstances)
         {
@@ -267,10 +225,8 @@ label DARhoPimpleFoam::solvePrimal(
         return 1;
     }
 
-    this->calcPrimalResidualStatistics("print");
-
-    // primal converged, assign the OpenFoam fields to the state vec wVec
-    this->ofField2StateVec(wVec);
+    // need to save primalFinalTimeIndex_.
+    primalFinalTimeIndex_ = runTime.timeIndex();
 
     // write the mesh to files
     mesh.write();

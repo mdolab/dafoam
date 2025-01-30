@@ -31,6 +31,7 @@
 #include "DAUtility.H"
 #include "DAOption.H"
 #include "DAMacroFunctions.H"
+#include "DAGlobalVar.H"
 #include "nutkWallFunctionFvPatchScalarField.H" // for yPlus
 #include "wallFvPatch.H" // for yPlus
 
@@ -68,6 +69,9 @@ protected:
 
     /// all DAFoam options
     const dictionary& allOptions_;
+
+    /// global variable
+    DAGlobalVar& daGlobalVar_;
 
     /// turbulence viscosity
     volScalarField& nut_;
@@ -179,7 +183,7 @@ public:
     virtual void calcResiduals(const dictionary& options) = 0;
 
     /// solve the residual equations and update the state
-    virtual void correct(label printToScreen, const scalar& primalMaxRes) = 0;
+    virtual void correct(label printToScreen) = 0;
 
     /// return the value of the production term from the turbulence model
     virtual void getTurbProdTerm(volScalarField& prodTerm) const;

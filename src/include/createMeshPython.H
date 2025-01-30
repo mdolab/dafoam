@@ -39,3 +39,5 @@ meshPtr_.reset(
             runTimePtr_(),
             IOobject::MUST_READ)));
 
+daGlobalVarPtr_.reset(new DAGlobalVar(meshPtr_()));
+

@@ -1,6 +1,6 @@
 rho = thermo.rho();
 // bound rho
-DAUtility::boundVar(allOptions, rho, printToScreen);
+DAUtility::boundVar(allOptions, rho, printToScreen_);
 
 if (!simple.transonic())
 {
@@ -45,7 +45,7 @@ if (simple.transonic())
         // and final residuals
         SolverPerformance<scalar> solverP = pEqn.solve();
 
-        DAUtility::primalResidualControl(solverP, printToScreen, "p");
+        DAUtility::primalResidualControl(solverP, printToScreen_, "p", daGlobalVarPtr_->primalMaxRes);
 
         if (simple.finalNonOrthogonalIter())
         {
@@ -78,7 +78,7 @@ else
         // and final residuals
         SolverPerformance<scalar> solverP = pEqn.solve();
 
-        DAUtility::primalResidualControl(solverP, printToScreen, "p");
+        DAUtility::primalResidualControl(solverP, printToScreen_, "p", daGlobalVarPtr_->primalMaxRes);
 
         if (simple.finalNonOrthogonalIter())
         {
@@ -87,7 +87,7 @@ else
     }
 }
 
-if (printToScreen)
+if (printToScreen_)
 {
 #include "continuityErrsPython.H"
 }
@@ -96,12 +96,12 @@ if (printToScreen)
 p.relax();
 
 // bound p
-DAUtility::boundVar(allOptions, p, printToScreen);
+DAUtility::boundVar(allOptions, p, printToScreen_);
 
 U = HbyA - (fvc::grad(p0) * (1.0 / AU - 1.0 / AtU) + fvc::grad(p) / AtU);
 
 // bound U
-DAUtility::boundVar(allOptions, U, printToScreen);
+DAUtility::boundVar(allOptions, U, printToScreen_);
 U.correctBoundaryConditions();
 
 // For closed-volume cases adjust the pressure and density levels
@@ -113,7 +113,7 @@ if (closedVolume)
 }
 
 rho = thermo.rho();
-DAUtility::boundVar(allOptions, rho, printToScreen);
+DAUtility::boundVar(allOptions, rho, printToScreen_);
 
 if (!simple.transonic())
 {

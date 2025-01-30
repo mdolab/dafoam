@@ -35,6 +35,7 @@ DATurbulenceModel::DATurbulenceModel(
       mesh_(mesh),
       daOption_(daOption),
       allOptions_(daOption.getAllOptions()),
+      daGlobalVar_(const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"))),
       nut_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("nut"))),
       U_(const_cast<volVectorField&>(

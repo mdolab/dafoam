@@ -140,11 +140,11 @@ label DASolver::loop(Time& runTime)
     }
 
     // check exit condition, we need to satisfy both the residual and function std condition
-    if (primalMaxRes_ < primalMinResTol_ && runTime.timeIndex() > primalMinIters_)
+    if (daGlobalVarPtr_->primalMaxRes < primalMinResTol_ && runTime.timeIndex() > primalMinIters_)
     {
         Info << "Time = " << t << endl;
 
-        Info << "Minimal residual " << primalMaxRes_ << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
+        Info << "Minimal residual " << daGlobalVarPtr_->primalMaxRes << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
              << endl;
 
         this->calcAllFunctions(1);
@@ -166,8 +166,8 @@ label DASolver::loop(Time& runTime)
     else
     {
         ++runTime;
-        // initialize primalMaxRes_ with a small value for this iteration
-        primalMaxRes_ = -1e10;
+        // initialize primalMaxRes with a small value for this iteration
+        daGlobalVarPtr_->primalMaxRes = -1e10;
         printToScreen_ = this->isPrintTime(runTime, printInterval_);
         return 1;
     }
@@ -2482,10 +2482,10 @@ label DASolver::checkPrimalFailure()
     }
 
     scalar tolMax = daOptionPtr_->getOption<scalar>("primalMinResTolDiff");
-    if (primalMaxRes_ / primalMinResTol_ > tolMax)
+    if (daGlobalVarPtr_->primalMaxRes / primalMinResTol_ > tolMax)
     {
         Info << "********************************************" << endl;
-        Info << "Primal min residual " << primalMaxRes_ << endl
+        Info << "Primal min residual " << daGlobalVarPtr_->primalMaxRes << endl
              << "did not satisfy the prescribed tolerance "
              << primalMinResTol_ << endl;
         Info << "Primal solution failed!" << endl;

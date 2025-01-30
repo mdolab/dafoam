@@ -28,7 +28,8 @@ DAResidualTurboFoam::DAResidualTurboFoam(
       setResidualClassMemberScalar(p, dimensionSet(1, -3, -1, 0, 0, 0, 0)),
       setResidualClassMemberScalar(T, dimensionSet(1, -1, -3, 0, 0, 0, 0)),
       setResidualClassMemberPhi(phi),
-      thermo_(const_cast<fluidThermo&>(daModel.getThermo())),
+      thermo_(const_cast<fluidThermo&>(
+          mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties"))),
       URel_(const_cast<volVectorField&>(
           mesh_.thisDb().lookupObject<volVectorField>("URel"))),
       he_(thermo_.he()),

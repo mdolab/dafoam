@@ -32,7 +32,8 @@ DAResidualRhoPimpleFoam::DAResidualRhoPimpleFoam(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       fvSourceEnergy_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("fvSourceEnergy"))),
-      thermo_(const_cast<fluidThermo&>(daModel.getThermo())),
+      thermo_(const_cast<fluidThermo&>(
+          mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties"))),
       he_(thermo_.he()),
       rho_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("rho"))),
@@ -294,16 +295,6 @@ void DAResidualRhoPimpleFoam::updateIntermediateVariables()
     dpdt_ = fvc::ddt(p_);
 
     // NOTE: alphat is updated in the correctNut function in DATurbulenceModel child classes
-
-    // Info << "oldTimeLevel: "<< endl;
-    // Info << U_.nOldTimes() << endl; 2
-    // Info << p_.nOldTimes() << endl; 2
-    // Info << T_.nOldTimes() << endl; 0
-    // Info << he_.nOldTimes() << endl; 2
-    // Info << phi_.nOldTimes() << endl; 0
-    // Info << rho_.nOldTimes() << endl; 2
-    // Info << psi_.nOldTimes() << endl; 2
-    // Info << K_.nOldTimes() << endl; 2
 }
 
 void DAResidualRhoPimpleFoam::correctBoundaryConditions()

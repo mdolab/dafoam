@@ -94,16 +94,12 @@ label DAHeatTransferFoam::solvePrimal()
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverT = TEqn.solve();
-        DAUtility::primalResidualControl(solverT, printToScreen_, "T", primalMaxRes_);
+        DAUtility::primalResidualControl(solverT, printToScreen_, "T", daGlobalVarPtr_->primalMaxRes);
 
         this->calcAllFunctions(printToScreen_);
 
-        if (printToScreen_)
-        {
-            Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-                 << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-                 << nl << endl;
-        }
+        // print run time 
+        this->printElapsedTime(runTime, printToScreen_);
 
         runTime.write();
     }

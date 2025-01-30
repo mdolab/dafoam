@@ -146,7 +146,7 @@ public:
     virtual void calcResiduals(const dictionary& options);
 
     /// solve the residual equations and update the state
-    virtual void correct(label printToScreen, const scalar& primalMaxRes);
+    virtual void correct(label printToScreen);
 
     /// Inverse transpose product, A_nuTilda^(-T)
     virtual void invTranProdNuTildaEqn(

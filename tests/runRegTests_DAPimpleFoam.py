@@ -19,7 +19,8 @@ gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/Ramp")
 if gcomm.rank == 0:
-    os.system("rm -rf processor* *.bin")
+    os.system("rm -rf 0 processor* *.bin")
+    os.system("cp -r 0_incompressible 0")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
