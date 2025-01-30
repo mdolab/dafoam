@@ -21,7 +21,7 @@ if len(sys.argv) != 1:
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/PlateHole")
+os.chdir("./reg_test_files-3/PlateHole")
 if gcomm.rank == 0:
     os.system("rm -rf processor*")
 

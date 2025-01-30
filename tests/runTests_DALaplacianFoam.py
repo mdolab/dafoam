@@ -15,7 +15,7 @@ from testFuncs import *
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/flange")
+os.chdir("./reg_test_files-3/flange")
 
 # test incompressible solvers
 aeroOptions = {

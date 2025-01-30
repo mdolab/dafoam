@@ -17,7 +17,7 @@ from pygeo import geo_utils
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/CurvedCubeSnappyHexMesh")
+os.chdir("./reg_test_files-3/CurvedCubeSnappyHexMesh")
 
 if gcomm.rank == 0:
     os.system("rm -rf 0 processor*")

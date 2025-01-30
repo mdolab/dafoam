@@ -5,12 +5,12 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-# check if we need to download reg_test_files-main.tar.gz
-if [ -f "reg_test_files-main.tar.gz" ]; then
-  echo "reg_test_files-main.tar.gz already exists."
+# check if we need to download reg_test_files-3.tar.gz
+if [ -f "reg_test_files-3.tar.gz" ]; then
+  echo "reg_test_files-3.tar.gz already exists."
 else
-  echo "Downloading reg_test_files-main.tar.gz"
-  wget https://github.com/DAFoam/reg_test_files/archive/refs/heads/main.tar.gz -O reg_test_files-main.tar.gz --no-check-certificate
+  echo "Downloading reg_test_files-3.tar.gz"
+  wget https://github.com/DAFoam/reg_test_files/archive/refs/tags/v3.tar.gz -O reg_test_files-3.tar.gz --no-check-certificate
 fi
 
 if [ -z "$1" ]; then
@@ -22,8 +22,8 @@ fi
 
 function runTests() 
 {
-  rm -rf reg_test_files-main DAFoam_Test_${1}.txt
-  tar -zxf reg_test_files-main.tar.gz
+  rm -rf reg_test_files-3 DAFoam_Test_${1}.txt
+  tar -zxf reg_test_files-3.tar.gz
   if [ -z "$DF_CHECK_COVERAGE" ]; then
     mpirun --oversubscribe -np 4 python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
@@ -55,8 +55,8 @@ function runTests()
 
 function runTestsSerial() 
 {
-  rm -rf reg_test_files-main DAFoam_Test_${1}.txt
-  tar -zxf reg_test_files-main.tar.gz
+  rm -rf reg_test_files-3 DAFoam_Test_${1}.txt
+  tar -zxf reg_test_files-3.tar.gz
   if [ -z "$DF_CHECK_COVERAGE" ]; then
     python runTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
