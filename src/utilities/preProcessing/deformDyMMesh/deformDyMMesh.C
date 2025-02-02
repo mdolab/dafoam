@@ -24,19 +24,19 @@ int main(int argc, char* argv[])
     Info << "Deform the mesh for field inversion...." << endl;
 
     argList::addOption(
+        "origin",
+        "(0 0 0)",
+        "prescribe the origin to deform the mesh");
+
+    argList::addOption(
+        "axis",
+        "(0 0 0)",
+        "prescribe the axis to deform the mesh");
+
+    argList::addOption(
         "omega",
         "0",
-        "prescribe an rotational angular velocity to deform the mesh");
-
-    argList::addOption(
-        "xc",
-        "0",
-        "prescribe the x center to deform the mesh");
-
-    argList::addOption(
-        "yc",
-        "0",
-        "prescribe the y center to deform the mesh");
+        "prescribe the angular velocity to deform the mesh");
 
     argList::addOption(
         "time",
@@ -47,34 +47,35 @@ int main(int argc, char* argv[])
 #include "createTime.H"
 #include "createMesh.H"
 
+
+    vector origin={0.0, 0.0, 0.0};
+    if (args.readIfPresent("origin", origin))
+    {
+        Info<< "The origin to rotate the mesh: " << origin << endl;
+    }
+    else
+    {
+        Info << "origin not set!" << endl;
+    }
+
+    vector axis={0, 0, 0};
+    if (args.readIfPresent("axis", axis))
+    {
+        Info<< "The axis to rotate the mesh: " << axis << endl;
+    }
+    else
+    {
+        Info << "axis center not set!" << endl;
+    }
+
     scalar omega = 0.0;
-    if (args.optionFound("omega"))
+    if (args.readIfPresent("omega", omega))
     {
-        omega = readScalar(args.optionLookup("omega")());
+        Info<< "The angular velocity to rotate the mesh: " << omega << endl;
     }
     else
     {
-        Info << "Omega not set! Don't rotate mesh." << endl;
-    }
-
-    scalar xc = 0.0;
-    if (args.optionFound("xc"))
-    {
-        xc = readScalar(args.optionLookup("xc")());
-    }
-    else
-    {
-        Info << "x center not set!" << endl;
-    }
-
-    scalar yc = 0.0;
-    if (args.optionFound("yc"))
-    {
-        yc = readScalar(args.optionLookup("yc")());
-    }
-    else
-    {
-        Info << "y center not set!" << endl;
+        Info << "omega not set! Don't rotate mesh." << endl;
     }
 
     scalar time = -1.0;
@@ -104,17 +105,17 @@ int main(int argc, char* argv[])
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
         pointField ourNewPoints(mesh.points());
-        scalar theta = omega;
+        scalar theta = omega * runTime.deltaT().value();
         scalar cosTheta = std::cos(theta);
         scalar sinTheta = std::sin(theta);
 
         forAll(ourNewPoints, pointI)
         {
-            scalar xTemp = ourNewPoints[pointI][0] - xc;
-            scalar yTemp = ourNewPoints[pointI][1] - yc;
+            scalar xTemp = ourNewPoints[pointI][0] - origin[0];
+            scalar yTemp = ourNewPoints[pointI][1] - origin[1];
 
-            ourNewPoints[pointI][0] = cosTheta * xTemp - sinTheta * yTemp + xc;
-            ourNewPoints[pointI][1] = sinTheta * xTemp + cosTheta * yTemp + yc;
+            ourNewPoints[pointI][0] = cosTheta * xTemp - sinTheta * yTemp + origin[0];
+            ourNewPoints[pointI][1] = sinTheta * xTemp + cosTheta * yTemp + origin[1];
         }
         
         mesh.movePoints(ourNewPoints);
