@@ -34,7 +34,7 @@ daOptionsAero = {
         "cold_air_inner",
         "cold_air_sides",
     ],
-    "solverName": "DASimpleTFoam",
+    "solverName": "DASimpleFoam",
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1.0e12,
     "discipline": "aero",
