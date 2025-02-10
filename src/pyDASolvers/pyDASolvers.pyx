@@ -278,7 +278,7 @@ cdef class pyDASolvers:
         elif fieldType == "vector":
             assert len(field) == self.getNLocalCells() * 3, "invalid array size!"
         cdef double *field_data = <double*>field.data
-        self._thisptr.getOFField(field_data)
+        self._thisptr.getOFField(fieldName.encode(), fieldType.encode(), field_data)
     
     def updateOFMesh(self, np.ndarray[double, ndim=1, mode="c"] vol_coords):
         assert len(vol_coords) == self.getNLocalPoints() * 3, "invalid array size!"

@@ -254,7 +254,7 @@ public:
         const word fieldType,
         double* field)
     {
-        DASolverPtr_->getOFFields(fieldName, fieldType, field);
+        DASolverPtr_->getOFField(fieldName, fieldType, field);
     }
 
     /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
