@@ -40,6 +40,9 @@ protected:
 
     surfaceScalarField& phi_;
     surfaceScalarField phiRes_;
+
+    autoPtr<volScalarField> TPtr_;
+    autoPtr<volScalarField> TResPtr_;
     //@}
 
     /// alpha porosity term
@@ -62,6 +65,13 @@ protected:
 
     /// whether to have fvSource term
     label hasFvSource_ = 0;
+
+    /// whether to include the temperature field
+    label hasTField_ = 0;
+
+    scalar Pr_;
+
+    scalar Prt_;
 
 public:
     TypeName("DASimpleFoam");

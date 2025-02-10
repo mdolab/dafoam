@@ -105,9 +105,24 @@ DAStateInfoSimpleFoam::DAStateInfoSimpleFoam(
     daModel.correctStateResidualModelCon(stateResConInfo_["pRes"]);
     daModel.correctStateResidualModelCon(stateResConInfo_["phiRes"]);
 
+    hasTField = DAUtility::isFieldReadable(mesh_, "T", "volScalarField");
+    
+    if (hasTField)
+    {
+        stateInfo_["volScalarStates"].append("T");
+        stateResConInfo_.set(
+            "TRes",
+            {
+                {"T", "nut", "phi"}, // lv0
+                {"T", "nut"}, // lv1
+                {"T"} // lv2
+            });
+
+        daModel.correctStateResidualModelCon(stateResConInfo_["TRes"]);
+    }
+
     // add physical model residual connectivity
     daModel.addModelResidualCon(stateResConInfo_);
-
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -66,3 +66,38 @@ turbulencePtr_.reset(
 // create MRF
 MRFPtr_.reset(new IOMRFZoneListDF(mesh));
 
+if (hasTField_)
+{
+    Info << "Reading field T\n"
+         << endl;
+    TPtr_.reset(
+        new volScalarField(
+            IOobject(
+                "T",
+                runTime.timeName(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::AUTO_WRITE),
+            mesh));
+
+    // Laminar Prandtl number
+    PrPtr_.reset(
+        new dimensionedScalar("Pr", dimless, laminarTransport));
+
+    // Turbulent Prandtl number
+    PrtPtr_.reset(
+        new dimensionedScalar("Prt", dimless, laminarTransport));
+
+    // kinematic turbulent thermal thermal conductivity m2/s
+    Info << "Reading field alphat\n"
+         << endl;
+    alphatPtr_.reset(
+        new volScalarField(
+            IOobject(
+                "alphat",
+                runTime.timeName(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::AUTO_WRITE),
+            mesh));
+}
