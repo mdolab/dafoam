@@ -6,6 +6,7 @@ Run Python tests for optimization integration
 from mpi4py import MPI
 from dafoam import PYDAFOAM
 import os
+import numpy as np
 
 gcomm = MPI.COMM_WORLD
 

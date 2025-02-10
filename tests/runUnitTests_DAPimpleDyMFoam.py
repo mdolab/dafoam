@@ -35,4 +35,7 @@ UNorm = gcomm.allreduce(UNorm, op=MPI.SUM)
 print("UNorm", UNorm)
 
 if abs(1183.7667637078503 - UNorm) / 1183.7667637078503 > 1e-6:
+    print("DAPimpleDyMFoam test failed!")
     exit(1)
+else:
+    print("DAPimpleDyMFoam test passed!")
