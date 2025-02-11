@@ -248,6 +248,15 @@ public:
 #endif
     }
 
+    /// get a field variable from OF layer
+    void getOFField(
+        const word fieldName,
+        const word fieldType,
+        double* field)
+    {
+        DASolverPtr_->getOFField(fieldName, fieldType, field);
+    }
+
     /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
     void updateOFMesh(const double* volCoords)
     {

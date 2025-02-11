@@ -982,6 +982,44 @@ label DASolver::solveLinearEqn(
     return error;
 }
 
+void DASolver::getOFField(
+    const word fieldName,
+    const word fieldType,
+    double* fieldArray)
+{
+    /*
+    Description:
+        assign a OpenFoam layer field variable in mesh.Db() to field
+    */
+
+    if (fieldType == "scalar")
+    {
+        const volScalarField& field = meshPtr_->thisDb().lookupObject<volScalarField>(fieldName);
+        forAll(field, cellI)
+        {
+            assignValueCheckAD(fieldArray[cellI], field[cellI]);
+        }
+    }
+    else if (fieldType == "vector")
+    {
+        const volVectorField& field = meshPtr_->thisDb().lookupObject<volVectorField>(fieldName);
+        label localIdx = 0;
+        forAll(field, cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                assignValueCheckAD(fieldArray[localIdx], field[cellI][comp]);
+                localIdx++;
+            }
+        }
+    }
+    else
+    {
+        FatalErrorIn("getField") << " fieldType not valid. Options: scalar or vector"
+                                 << abort(FatalError);
+    }
+}
+
 void DASolver::updateOFFields(const scalar* states)
 {
     label printInfo = 0;
@@ -1576,7 +1614,7 @@ void DASolver::calcCouplingFaceCoords(
     }
     // NOTE: always sort the patch because the order of the patch element matters in CHT coupling
     sort(patches);
-    
+
     // ******** first loop
     label counterFaceI = 0;
     forAll(patches, cI)

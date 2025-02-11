@@ -294,6 +294,12 @@ public:
         daFieldPtr_->ofField2State(states);
     }
 
+    /// get a field variable from OF layer
+    void getOFField(
+        const word fieldName,
+        const word fieldType,
+        double* field);
+
     /// get the array size of an input type
     label getInputSize(
         const word inputName,
@@ -350,7 +356,7 @@ public:
         const label oldTimeLevel,
         const double* psi,
         double* dRdWOldTPsi);
-    
+
     /// return the face coordinates based on vol coords
     void calcCouplingFaceCoords(
         const scalar* volCoords,
