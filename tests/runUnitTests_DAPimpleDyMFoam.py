@@ -14,6 +14,9 @@ gcomm = MPI.COMM_WORLD
 os.chdir("./reg_test_files-main/NACA0012DynamicMeshV4")
 if gcomm.rank == 0:
     os.system("rm -rf processor* *.bin")
+    os.system("cp -r system/controlDict_beforeUtility system/controlDict")
+    os.system("deformDynMesh -origin '(0.25 0 0)' -axis '(0 0 1)' -omega -0.5")
+    os.system("cp -r system/controlDict_afterUtility system/controlDict")    
 
 # aero setup
 U0 = 10.0
