@@ -1,4 +1,9 @@
 {
+    volScalarField& T = TPtr_();
+    dimensionedScalar Pr = PrPtr_();
+    dimensionedScalar Prt = PrtPtr_();
+    volScalarField& alphat = alphatPtr_();
+
     alphat = turbulencePtr_->nut() / Prt;
     alphat.correctBoundaryConditions();
 

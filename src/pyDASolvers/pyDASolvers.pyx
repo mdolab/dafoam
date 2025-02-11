@@ -67,6 +67,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void syncDAOptionToActuatorDVs()
         void updateOFFields(double *)
         void getOFFields(double *)
+        void getOFField(char *, char *, double *)
         void updateOFMesh(double *)
         int getGlobalXvIndex(int, int)
         int getNLocalAdjointStates()
@@ -270,6 +271,14 @@ cdef class pyDASolvers:
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
         cdef double *states_data = <double*>states.data
         self._thisptr.getOFFields(states_data)
+    
+    def getOFField(self, fieldName, fieldType, np.ndarray[double, ndim=1, mode="c"] field):
+        if fieldType == "scalar":
+            assert len(field) == self.getNLocalCells(), "invalid array size!"
+        elif fieldType == "vector":
+            assert len(field) == self.getNLocalCells() * 3, "invalid array size!"
+        cdef double *field_data = <double*>field.data
+        self._thisptr.getOFField(fieldName.encode(), fieldType.encode(), field_data)
     
     def updateOFMesh(self, np.ndarray[double, ndim=1, mode="c"] vol_coords):
         assert len(vol_coords) == self.getNLocalPoints() * 3, "invalid array size!"

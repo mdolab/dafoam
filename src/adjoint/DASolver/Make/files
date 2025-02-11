@@ -1,6 +1,5 @@
 DASolver.C
 DASimpleFoam/DASimpleFoam.C
-DASimpleTFoam/DASimpleTFoam.C
 DAPimpleFoam/DAPimpleFoam.C
 DARhoPimpleFoam/DARhoPimpleFoam.C
 DAPimpleDyMFoam/DAPimpleDyMFoam.C

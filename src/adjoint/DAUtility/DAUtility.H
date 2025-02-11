@@ -140,6 +140,11 @@ public:
     static label myFindCell(
         const primitiveMesh& mesh,
         const point& point);
+
+    static label isFieldReadable(
+        const fvMesh& mesh,
+        const word fieldName,
+        const word fieldType);
 };
 
 template<class classType>

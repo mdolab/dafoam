@@ -808,6 +808,48 @@ label DAUtility::myFindCell(
     return cellI;
 }
 
+label DAUtility::isFieldReadable(
+    const fvMesh& mesh,
+    const word fieldName,
+    const word fieldType)
+{
+    /*
+    Whether a field is readable from the disk. We will just check if the 
+    field exists on the disk (typically in the 0 folder)
+    */
+
+    label readable = 0;
+
+    IOobject headerFile(
+        fieldName,
+        mesh.time().timeName(),
+        mesh,
+        IOobject::NO_READ);
+
+    if (fieldType == "volScalarField")
+    {
+        if (headerFile.typeHeaderOk<volScalarField>(true))
+        {
+            readable = 1;
+        }
+    }
+    else if (fieldType == "volVectorField")
+    {
+        if (headerFile.typeHeaderOk<volVectorField>(true))
+        {
+            readable = 1;
+        }
+    }
+    else
+    {
+        FatalErrorIn("DAUtility::isFieldReadable")
+            << "fieldType not supported! Options are volScalarField or volVectorField"
+            << abort(FatalError);
+    }
+
+    return readable;
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

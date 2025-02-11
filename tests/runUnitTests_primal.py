@@ -6,12 +6,13 @@ Run Python tests for optimization integration
 from mpi4py import MPI
 from dafoam import PYDAFOAM
 import os
+import numpy as np
 
 gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/ConvergentChannel")
 if gcomm.rank == 0:
-    os.system("rm -rf processor* *.bin")
+    os.system("rm -rf 0/* processor* *.bin")
     os.system("cp -r 0.compressible/* 0/")
     os.system("cp -r system.subsonic/* system/")
     os.system("cp -r constant/turbulenceProperties.ke constant/turbulenceProperties")
@@ -33,7 +34,7 @@ else:
     print("ke test passed!")
 
 if gcomm.rank == 0:
-    os.system("rm -rf processor* *.bin")
+    os.system("rm -rf 0/* processor* *.bin")
     os.system("cp -r 0.compressible/* 0/")
     os.system("cp -r system.subsonic/* system/")
     os.system("cp -r constant/turbulenceProperties.kw constant/turbulenceProperties")
@@ -50,7 +51,7 @@ else:
     print("kw test passed!")
 
 if gcomm.rank == 0:
-    os.system("rm -rf processor* *.bin")
+    os.system("rm -rf 0/* processor* *.bin")
     os.system("cp -r 0.compressible/* 0/")
     os.system("cp -r system.subsonic/* system/")
     os.system("cp -r constant/turbulenceProperties.sstlm constant/turbulenceProperties")

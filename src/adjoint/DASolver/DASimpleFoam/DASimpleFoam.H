@@ -99,6 +99,21 @@ protected:
     /// pressure reference value
     scalar pRefValue_ = 0.0;
 
+    /// Prandtl number pointer
+    autoPtr<dimensionedScalar> PrPtr_;
+
+    /// Turbulence Prandtl pointer
+    autoPtr<dimensionedScalar> PrtPtr_;
+
+    /// temperature field pointer
+    autoPtr<volScalarField> TPtr_;
+
+    /// thermal diffusivity field pointer
+    autoPtr<volScalarField> alphatPtr_;
+
+    /// whether to have the temperature field
+    label hasTField_;
+
 #ifdef CODI_ADR
     /// tape positions for consistent fixed-point adjoint
     using Position = typename codi::RealReverse::Tape::Position;

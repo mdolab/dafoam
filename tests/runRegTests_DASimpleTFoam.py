@@ -31,7 +31,7 @@ nuTilda0 = 1.0e-3
 
 daOptions = {
     "designSurfaces": ["ubend"],
-    "solverName": "DASimpleTFoam",
+    "solverName": "DASimpleFoam",
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1e4,
     "useConstrainHbyA": False,
