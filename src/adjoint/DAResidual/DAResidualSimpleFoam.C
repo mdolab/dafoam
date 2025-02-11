@@ -27,6 +27,7 @@ DAResidualSimpleFoam::DAResidualSimpleFoam(
       setResidualClassMemberVector(U, dimensionSet(0, 1, -2, 0, 0, 0, 0)),
       setResidualClassMemberScalar(p, dimensionSet(0, 0, -1, 0, 0, 0, 0)),
       setResidualClassMemberPhi(phi),
+      TResPtr_(nullptr),
       alphaPorosity_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("alphaPorosity"))),
       fvSource_(const_cast<volVectorField&>(
@@ -45,7 +46,36 @@ DAResidualSimpleFoam::DAResidualSimpleFoam(
         hasFvSource_ = 1;
     }
 
-    // this is just a dummy call because we need to run the constrain once 
+    // check whether to include the temperature field
+    hasTField_ = DAUtility::isFieldReadable(mesh, "T", "volScalarField");
+    if (hasTField_)
+    {
+
+        TResPtr_.reset(new volScalarField(
+            IOobject(
+                "TRes",
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            mesh,
+            dimensionedScalar("TRes", dimensionSet(0, 0, -1, 1, 0, 0, 0), 0.0),
+            zeroGradientFvPatchField<scalar>::typeName));
+
+        // initialize the Prandtl number from transportProperties
+        IOdictionary transportProperties(
+            IOobject(
+                "transportProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false));
+        Pr_ = readScalar(transportProperties.lookup("Pr"));
+        Prt_ = readScalar(transportProperties.lookup("Prt"));
+    }
+
+    // this is just a dummy call because we need to run the constrain once
     // to initialize fvOptions, before we can use it. Otherwise, we may get
     // a seg fault when we call fvOptions_.correct(U_) in updateIntermediateVars
     fvVectorMatrix UEqn(
@@ -67,6 +97,10 @@ void DAResidualSimpleFoam::clear()
     URes_.clear();
     pRes_.clear();
     phiRes_.clear();
+    if (hasTField_)
+    {
+        TResPtr_->clear();
+    }
 }
 
 void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
@@ -177,6 +211,29 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
     phiRes_ = phiHbyA - pEqn.flux() - phi_;
     // need to normalize phiRes
     normalizePhiResiduals(phiRes);
+
+    if (hasTField_)
+    {
+        volScalarField& alphat = const_cast<volScalarField&>(
+            mesh_.thisDb().lookupObject<volScalarField>("alphat"));
+
+        volScalarField& T = const_cast<volScalarField&>(
+            mesh_.thisDb().lookupObject<volScalarField>("T"));
+
+        volScalarField& TRes_ = TResPtr_();
+
+        // ******** T Residuals **************
+        volScalarField alphaEff("alphaEff", daTurb_.nu() / Pr_ + alphat);
+
+        fvScalarMatrix TEqn(
+            fvm::div(phi_, T)
+            - fvm::laplacian(alphaEff, T));
+
+        TEqn.relax();
+
+        TRes_ = TEqn & T;
+        normalizeResiduals(TRes);
+    }
 }
 
 void DAResidualSimpleFoam::updateIntermediateVariables()
@@ -199,6 +256,12 @@ void DAResidualSimpleFoam::correctBoundaryConditions()
 
     U_.correctBoundaryConditions();
     p_.correctBoundaryConditions();
+    if (hasTField_)
+    {
+        volScalarField& T = const_cast<volScalarField&>(
+            mesh_.thisDb().lookupObject<volScalarField>("T"));
+        T.correctBoundaryConditions();
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

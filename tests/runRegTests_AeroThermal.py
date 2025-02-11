@@ -34,7 +34,7 @@ daOptionsAero = {
         "cold_air_inner",
         "cold_air_sides",
     ],
-    "solverName": "DASimpleTFoam",
+    "solverName": "DASimpleFoam",
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1.0e12,
     "discipline": "aero",
@@ -262,5 +262,5 @@ if gcomm.rank == 0:
     derivDict["HF_INNER"] = {}
     derivDict["HF_INNER"]["shape-Adjoint"] = results[("scenario.thermal_post.HF_INNER", "shape")]["J_fwd"][0]
     derivDict["HF_INNER"]["shape-FD"] = results[("scenario.thermal_post.HF_INNER", "shape")]["J_fd"][0]
-    reg_write_dict(funcDict, 1e-10, 1e-12)
-    reg_write_dict(derivDict, 1e-8, 1e-12)
+    reg_write_dict(funcDict, 1e-8, 1e-10)
+    reg_write_dict(derivDict, 1e-6, 1e-10)

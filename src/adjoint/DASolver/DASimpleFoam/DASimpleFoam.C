@@ -52,8 +52,14 @@ DASimpleFoam::DASimpleFoam(
       daTurbulenceModelPtr_(nullptr),
       daFvSourcePtr_(nullptr),
       fvSourcePtr_(nullptr),
-      MRFPtr_(nullptr)
+      MRFPtr_(nullptr),
+      PrPtr_(nullptr),
+      PrtPtr_(nullptr),
+      TPtr_(nullptr),
+      alphatPtr_(nullptr)
 {
+    // check whether the temperature field exists in the 0 folder
+    hasTField_ = DAUtility::isFieldReadable(meshPtr_(), "T", "volScalarField");
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -129,6 +135,10 @@ label DASimpleFoam::solvePrimal()
         {
 #include "UEqnSimple.H"
 #include "pEqnSimple.H"
+            if (hasTField_)
+            {
+#include "TEqnSimple.H"
+            }
         }
 
         laminarTransport.correct();
@@ -141,7 +151,7 @@ label DASimpleFoam::solvePrimal()
         // compute the regression model and print the feature
         regModelFail_ = daRegressionPtr_->compute();
         daRegressionPtr_->printInputInfo(printToScreen_);
-        // print run time 
+        // print run time
         this->printElapsedTime(runTime, printToScreen_);
 
         runTime.write();
@@ -152,7 +162,7 @@ label DASimpleFoam::solvePrimal()
 
     Info << "End\n"
          << endl;
-    
+
     return this->checkPrimalFailure();
 }
 
