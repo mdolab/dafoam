@@ -98,7 +98,22 @@ label DAPimpleDyMFoam::solvePrimal()
         {
             if (pimple.firstIter() || moveMeshOuterCorrectors)
             {
-                mesh.update();
+                //mesh.update();
+                pointIOField readPoints
+                (
+                    IOobject
+                    (
+                        "points",
+                        runTime.timeName(),
+                        "polyMesh",
+                        mesh,
+                        IOobject::MUST_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh.points()
+                );
+
+                mesh.movePoints(readPoints);
 
                 if (mesh.changing())
                 {
