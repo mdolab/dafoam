@@ -22,7 +22,7 @@ def run_tests(om, Top, comm, daOptions, funcNames, dvNames, dvIndices, funcDict,
     prob.setup(mode="rev")
     om.n2(prob, show_browser=False, outfile="mphys_aero.html")
     prob.run_model()
-    totals = prob.compute_totals()
+    totals = prob.compute_totals(of=funcNames)
 
     if comm.rank == 0:
         print(totals)

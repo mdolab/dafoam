@@ -64,7 +64,6 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int solveLinearEqn(PetscKSP, PetscVec, PetscVec)
         void calcdRdWOldTPsiAD(int, double *, double *)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
-        void syncDAOptionToActuatorDVs()
         void updateOFFields(double *)
         void getOFFields(double *)
         void getOFField(char *, char *, double *)
@@ -258,9 +257,6 @@ cdef class pyDASolvers:
 
     def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
         self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
-    
-    def syncDAOptionToActuatorDVs(self):
-        self._thisptr.syncDAOptionToActuatorDVs()
     
     def updateOFFields(self, np.ndarray[double, ndim=1, mode="c"] states):
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"

@@ -10,7 +10,7 @@ from testFuncs import *
 
 import openmdao.api as om
 from mphys.multipoint import Multipoint
-from dafoam.mphys import DAFoamBuilder, OptFuncs
+from dafoam.mphys import DAFoamBuilder
 from mphys.scenario_aerodynamic import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
@@ -36,12 +36,13 @@ daOptions = {
     "solverName": "DASimpleFoam",
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1e4,
+    "printDAOptions": False,
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [nuTilda0]},
-        "useWallFunction": True,
+        "useWallFunction": False,
         "transport:nu": 1.5e-5,
     },
     "function": {
@@ -51,28 +52,19 @@ daOptions = {
             "patches": ["walls"],
             "directionMode": "fixedDirection",
             "direction": [1.0, 0.0, 0.0],
-            "scale": 1.0,
+            "scale": 0.1,
         },
-        "CL": {
-            "type": "force",
+        "HFX": {
+            "type": "wallHeatFlux",
             "source": "patchToFace",
             "patches": ["walls"],
-            "directionMode": "fixedDirection",
-            "direction": [0.0, 1.0, 0.0],
-            "scale": 1.0,
+            "scale": 0.001,
         },
     },
     "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
-        "patchV": {
-            "type": "patchVelocity",
-            "patches": ["inlet"],
-            "flowAxis": "x",
-            "normalAxis": "y",
-            "components": ["solver", "function"],
-        },
         "beta": {
             "type": "field",
             "fieldName": "betaFINuTilda",
@@ -87,10 +79,10 @@ daOptions = {
             "distributed": False,
             "components": ["solver", "function"],
         },
-        "nutilda_in": {
+        "u_in": {
             "type": "patchVar",
-            "varName": "nuTilda",
-            "varType": "scalar",
+            "varName": "U",
+            "varType": "vector",
             "patches": ["inlet"],
             "components": ["solver", "function"],
         },
@@ -147,35 +139,35 @@ class Top(Multipoint):
 
         # add the design variables to the dvs component's output
         self.dvs.add_output("shape", val=np.zeros(1))
-        self.dvs.add_output("patchV", val=np.array([10.0, 0.0]))
         self.dvs.add_output("beta", val=np.ones(nCells))
         self.dvs.add_output("fv_source", val=np.zeros(nCells * 3))
-        self.dvs.add_output("nutilda_in", val=np.array([nuTilda0]))
+        self.dvs.add_output("u_in", val=np.array([10.0, 0.0, 0.0]))
+
         # manually connect the dvs output to the geometry and cruise
         self.connect("shape", "geometry.shape")
-        self.connect("patchV", "cruise.patchV")
         self.connect("beta", "cruise.beta")
         self.connect("fv_source", "cruise.fv_source")
-        self.connect("nutilda_in", "cruise.nutilda_in")
+        self.connect("u_in", "cruise.u_in")
 
         # define the design variables to the top level
         self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
-        self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0)
         self.add_design_var("beta", lower=-50.0, upper=50.0, scaler=1.0, indices=[0, 200])
         self.add_design_var("fv_source", lower=-50.0, upper=50.0, scaler=1.0, indices=[100, 300])
-        self.add_design_var("nutilda_in", lower=-50.0, upper=50.0, scaler=1.0)
+        self.add_design_var("u_in", lower=-50.0, upper=50.0, scaler=1.0, indices=[0])
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
-        self.add_constraint("cruise.aero_post.CL", equals=0.3)
 
 
 funcDict = {}
 derivDict = {}
 
-dvNames = ["shape", "patchV", "beta", "fv_source", "nutilda_in"]
-dvIndices = [[0], [0, 1], [0, 200], [100, 300], [0], [0]]
-funcNames = ["cruise.aero_post.functionals.CL", "cruise.aero_post.functionals.CD"]
+dvNames = ["shape", "beta", "fv_source", "u_in"]
+dvIndices = [[0], [0, 200], [100, 300], [0]]
+funcNames = [
+    "cruise.aero_post.functionals.CD",
+    "cruise.aero_post.functionals.HFX",
+]
 
 # run the adjoint and forward ref
 run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)

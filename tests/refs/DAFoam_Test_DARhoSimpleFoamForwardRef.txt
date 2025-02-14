@@ -1,26 +1,42 @@
-Dictionary Key: cruise.aero_post.functionals.CD
+Dictionary Key: cruise.aero_post.functionals.CMZ
+Dictionary Key: actuator_disk0-Adjoint
+@value         0.4970509323691013 1e-08 1e-12
+Dictionary Key: actuator_disk0-ForwardAD
+@value         0.4968582957963779 1e-08 1e-12
+Dictionary Key: actuator_disk1-Adjoint
+@value        -0.1649094370779269 1e-08 1e-12
+Dictionary Key: actuator_disk1-ForwardAD
+@value        -0.1647708340218890 1e-08 1e-12
+Dictionary Key: nutilda_in0-Adjoint
+@value     -1869.3066450167818857 1e-08 1e-12
+Dictionary Key: nutilda_in0-ForwardAD
+@value     -1877.7358002342023156 1e-08 1e-12
 Dictionary Key: patchV0-Adjoint
-@value        31.1574237746384490 1e-08 1e-12
+@value        10.0341902100680311 1e-08 1e-12
 Dictionary Key: patchV0-ForwardAD
-@value        31.1564722644699756 1e-08 1e-12
+@value        10.0393785847019821 1e-08 1e-12
 Dictionary Key: patchV1-Adjoint
-@value        -5.4632285249336832 1e-08 1e-12
+@value       -31.4086400035991176 1e-08 1e-12
 Dictionary Key: patchV1-ForwardAD
-@value        -5.4662522434120504 1e-08 1e-12
-Dictionary Key: shape0-Adjoint
-@value       401.6503310206595074 1e-08 1e-12
-Dictionary Key: shape0-ForwardAD
-@value       401.6878310045007652 1e-08 1e-12
-Dictionary Key: cruise.aero_post.functionals.CL
+@value       -31.4296613115408974 1e-08 1e-12
+Dictionary Key: cruise.aero_post.functionals.TP1
+Dictionary Key: actuator_disk0-Adjoint
+@value        -0.0016229186491010 1e-08 1e-12
+Dictionary Key: actuator_disk0-ForwardAD
+@value        -0.0016193864380470 1e-08 1e-12
+Dictionary Key: actuator_disk1-Adjoint
+@value        -0.0129343986913790 1e-08 1e-12
+Dictionary Key: actuator_disk1-ForwardAD
+@value        -0.0129322511964330 1e-08 1e-12
+Dictionary Key: nutilda_in0-Adjoint
+@value        -0.8948014554768886 1e-08 1e-12
+Dictionary Key: nutilda_in0-ForwardAD
+@value        -0.9110241052666682 1e-08 1e-12
 Dictionary Key: patchV0-Adjoint
-@value        37.2906330742174248 1e-08 1e-12
+@value         0.1335025555600671 1e-08 1e-12
 Dictionary Key: patchV0-ForwardAD
-@value        37.2884155306742784 1e-08 1e-12
+@value         0.1336474853340593 1e-08 1e-12
 Dictionary Key: patchV1-Adjoint
-@value        49.5055096655134363 1e-08 1e-12
+@value        -0.0050387990145232 1e-08 1e-12
 Dictionary Key: patchV1-ForwardAD
-@value        49.5050176046905719 1e-08 1e-12
-Dictionary Key: shape0-Adjoint
-@value       821.7389995536806282 1e-08 1e-12
-Dictionary Key: shape0-ForwardAD
-@value       821.7317374922084809 1e-08 1e-12
+@value        -0.0050413620342712 1e-08 1e-12

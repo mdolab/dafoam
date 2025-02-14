@@ -16,12 +16,12 @@ from pygeo.mphys import OM_DVGEOCOMP
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/NACA0012")
+os.chdir("./reg_test_files-main/NACA0012V4")
 if gcomm.rank == 0:
     os.system("rm -rf 0 system processor* *.bin")
     os.system("cp -r 0.compressible 0")
     os.system("cp -r system.transonic system")
-    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.sst constant/turbulenceProperties")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
@@ -29,7 +29,7 @@ U0 = 240.0
 p0 = 101325.0
 T0 = 300.0
 A0 = 0.1
-twist0 = 2.0
+twist0 = 3.0
 LRef = 1.0
 nuTilda0 = 4.5e-5
 

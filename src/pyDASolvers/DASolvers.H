@@ -312,12 +312,6 @@ public:
         return DASolverPtr_->getNLocalCells();
     }
 
-    /// synchronize the values in DAOption and actuatorDiskDVs_
-    void syncDAOptionToActuatorDVs()
-    {
-        DASolverPtr_->syncDAOptionToActuatorDVs();
-    }
-
     /// return the value of objective based on timeOp
     double getTimeOpFuncVal(const word functionName)
     {

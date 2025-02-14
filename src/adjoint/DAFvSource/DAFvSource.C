@@ -123,81 +123,18 @@ bool DAFvSource::writeData(Ostream& os) const
     return true;
 }
 
-void DAFvSource::syncDAOptionToActuatorDVs()
+void DAFvSource::initFvSourcePars()
 {
     /*
     Description:
-        Synchronize the values in DAOption and actuatorDiskDVs_. 
-        We need to synchronize the values defined in fvSource from DAOption to actuatorDiskDVs_
-        NOTE: we need to call this function whenever we change the actuator design variables 
-        during optimization. This is needed because we need to use actuatorDiskDVs_ in AD 
+        Initialize the values for all types of fvSource in DAGlobalVar, including 
+        actuatorDiskPars, heatSourcePars, etc
+        NOTE: this need to be implemented in the child class, if not,
+        print an error!
     */
-
-    // now we need to initialize actuatorDiskDVs_
-    dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
-
-    forAll(fvSourceSubDict.toc(), idxI)
-    {
-        word diskName = fvSourceSubDict.toc()[idxI];
-        // sub dictionary with all parameters for this disk
-        dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
-        word type = diskSubDict.getWord("type");
-        word source = diskSubDict.getWord("source");
-
-        if (type == "actuatorDisk" && source == "cylinderAnnulusSmooth")
-        {
-
-            // now read in all parameters for this actuator disk
-            scalarList centerList;
-            diskSubDict.readEntry<scalarList>("center", centerList);
-
-            scalarList dirList;
-            diskSubDict.readEntry<scalarList>("direction", dirList);
-
-            // we have 13 design variables for each disk
-            scalarList dvList(13);
-            dvList[0] = centerList[0];
-            dvList[1] = centerList[1];
-            dvList[2] = centerList[2];
-            dvList[3] = dirList[0];
-            dvList[4] = dirList[1];
-            dvList[5] = dirList[2];
-            dvList[6] = diskSubDict.getScalar("innerRadius");
-            dvList[7] = diskSubDict.getScalar("outerRadius");
-            dvList[8] = diskSubDict.getScalar("scale");
-            dvList[9] = diskSubDict.getScalar("POD");
-            dvList[10] = diskSubDict.getScalar("expM");
-            dvList[11] = diskSubDict.getScalar("expN");
-            dvList[12] = diskSubDict.getScalar("targetThrust");
-
-            // set actuatorDiskDVs_
-            actuatorDiskDVs_.set(diskName, dvList);
-        }
-        else if (type == "heatSource" && source == "cylinderSmooth")
-        {
-            // now read in all parameters for this actuator disk
-            scalarList centerList;
-            diskSubDict.readEntry<scalarList>("center", centerList);
-
-            scalarList axisList;
-            diskSubDict.readEntry<scalarList>("axis", axisList);
-
-            // we have 13 design variables for each disk
-            scalarList dvList(9);
-            dvList[0] = centerList[0];
-            dvList[1] = centerList[1];
-            dvList[2] = centerList[2];
-            dvList[3] = axisList[0];
-            dvList[4] = axisList[1];
-            dvList[5] = axisList[2];
-            dvList[6] = diskSubDict.getScalar("radius");
-            dvList[7] = diskSubDict.getScalar("length");
-            dvList[8] = diskSubDict.getScalar("power");
-
-            // set actuatorDiskDVs_
-            actuatorDiskDVs_.set(diskName, dvList);
-        }
-    }
+    FatalErrorIn("") << "initFvSourcePars not implemented " << endl
+                     << " in the child class for " << modelType_
+                     << abort(FatalError);
 }
 
 void DAFvSource::findGlobalSnappedCenter(
@@ -221,6 +158,30 @@ void DAFvSource::findGlobalSnappedCenter(
     center[0] = centerX;
     center[1] = centerY;
     center[2] = centerZ;
+}
+
+void DAFvSource::updateFvSource()
+{
+    // calculate fvSource based on the latest parameters defined in DAGlobalVar
+    if (mesh_.thisDb().foundObject<volVectorField>("fvSource"))
+    {
+        volVectorField& fvSource = const_cast<volVectorField&>(
+            mesh_.thisDb().lookupObject<volVectorField>("fvSource"));
+
+        this->calcFvSource(fvSource);
+    }
+    else if (mesh_.thisDb().foundObject<volScalarField>("fvSource"))
+    {
+        volScalarField& fvSource = const_cast<volScalarField&>(
+            mesh_.thisDb().lookupObject<volScalarField>("fvSource"));
+
+        this->calcFvSource(fvSource);
+    }
+    else
+    {
+        FatalErrorIn("") << "fvSource not found! "
+                         << abort(FatalError);
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -22,7 +22,7 @@ if gcomm.rank == 0:
     os.system("rm -rf 0/* processor* *.bin")
     os.system("cp -r 0.compressible/* 0/")
     os.system("cp -r system.subsonic/* system/")
-    os.system("cp -r constant/turbulenceProperties.sst constant/turbulenceProperties")
+    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
@@ -36,6 +36,7 @@ daOptions = {
     "primalMinResTol": 1.0e-11,
     "primalMinResTolDiff": 1e4,
     "useConstrainHbyA": False,
+    "printDAOptions": False,
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
@@ -44,33 +45,61 @@ daOptions = {
         "useWallFunction": True,
         "thermo:mu": 1.0e-5,
     },
+    "fvSource": {
+        "disk1": {
+            "type": "actuatorDisk",
+            "source": "cylinderAnnulusSmooth",
+            "center": [0.5, 0.5, 0.5],
+            "direction": [1.0, 0.0, 0.0],
+            "innerRadius": 0.01,
+            "outerRadius": 0.4,
+            "rotDir": "right",
+            "scale": 100.0,
+            "POD": 0.8,
+            "eps": 0.1,  # eps should be of cell size
+            "expM": 1.0,
+            "expN": 0.5,
+            "adjustThrust": 0,
+            "targetThrust": 1.0,
+        },
+    },
     "function": {
-        "CD": {
-            "type": "force",
+        "CMZ": {
+            "type": "moment",
             "source": "patchToFace",
             "patches": ["walls"],
-            "directionMode": "fixedDirection",
-            "direction": [1.0, 0.0, 0.0],
+            "axis": [0.0, 0.0, 1.0],
+            "center": [0.5, 0.5, 0.5],
             "scale": 1.0,
         },
-        "CL": {
-            "type": "force",
+        "TP1": {
+            "type": "totalPressure",
             "source": "patchToFace",
-            "patches": ["walls"],
-            "directionMode": "fixedDirection",
-            "direction": [0.0, 1.0, 0.0],
-            "scale": 1.0,
+            "patches": ["inlet"],
+            "scale": 1.0 / (0.5 * U0 * U0),
         },
     },
     "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "nuTilda": 1e-3, "T": 300.0},
     "inputInfo": {
-        "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
+        "actuator_disk": {
+            "type": "fvSourcePar",
+            "fvSourceName": "disk1",
+            "indices": [0, 7],
+            "components": ["solver", "function"],
+        },
         "patchV": {
             "type": "patchVelocity",
             "patches": ["inlet"],
             "flowAxis": "x",
             "normalAxis": "y",
+            "components": ["solver", "function"],
+        },
+        "nutilda_in": {
+            "type": "patchVar",
+            "varName": "nuTilda",
+            "varType": "scalar",
+            "patches": ["inlet"],
             "components": ["solver", "function"],
         },
     },
@@ -119,33 +148,34 @@ class Top(Multipoint):
         self.cruise.coupling.solver.add_dvgeo(self.geometry.DVGeo)
 
         # geometry setup
-        pts = self.geometry.DVGeo.getLocalIndex(0)
-        indexList = pts[1, 0, 1].flatten()
-        PS = geo_utils.PointSelect("list", indexList)
-        self.geometry.nom_addLocalDV(dvName="shape", pointSelect=PS)
 
         # add the design variables to the dvs component's output
-        self.dvs.add_output("shape", val=np.zeros(1))
-        self.dvs.add_output("patchV", val=np.array([U0, 0.0]))
+        self.dvs.add_output("actuator_disk", val=np.array([0.5, 0.4]))
+        self.dvs.add_output("patchV", val=np.array([50.0, 0.0]))
+        self.dvs.add_output("nutilda_in", val=np.array([nuTilda0]))
         # manually connect the dvs output to the geometry and cruise
-        self.connect("shape", "geometry.shape")
+        self.connect("actuator_disk", "cruise.actuator_disk")
         self.connect("patchV", "cruise.patchV")
+        self.connect("nutilda_in", "cruise.nutilda_in")
 
         # define the design variables to the top level
-        self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
+        self.add_design_var("actuator_disk", lower=-50.0, upper=50.0, scaler=1.0)
         self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0)
+        self.add_design_var("nutilda_in", lower=-50.0, upper=50.0, scaler=1.0)
 
         # add constraints and the objective
-        self.add_objective("cruise.aero_post.CD", scaler=1.0)
-        self.add_constraint("cruise.aero_post.CL", equals=0.3)
+        self.add_objective("cruise.aero_post.TP1", scaler=1.0)
 
 
 funcDict = {}
 derivDict = {}
 
-dvNames = ["shape", "patchV"]
-dvIndices = [[0], [0, 1]]
-funcNames = ["cruise.aero_post.functionals.CL", "cruise.aero_post.functionals.CD"]
+dvNames = ["actuator_disk", "patchV", "nutilda_in"]
+dvIndices = [[0, 1], [0, 1], [0]]
+funcNames = [
+    "cruise.aero_post.functionals.TP1",
+    "cruise.aero_post.functionals.CMZ",
+]
 
 # run the adjoint and forward ref
 run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)

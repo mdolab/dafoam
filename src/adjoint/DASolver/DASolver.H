@@ -558,14 +558,6 @@ public:
     /// calculate the residuals
     void calcResiduals(label isPC = 0);
 
-    /// synchronize the values in DAOption and actuatorDiskDVs_
-    void syncDAOptionToActuatorDVs()
-    {
-        DAFvSource& fvSource = const_cast<DAFvSource&>(
-            meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
-        fvSource.syncDAOptionToActuatorDVs();
-    }
-
     /// Accessing members
     /// return the mesh object
     const fvMesh& getMesh()
