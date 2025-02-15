@@ -1,1 +1,0 @@
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAField$(WM_CODI_AD_LIB_POSTFIX)
