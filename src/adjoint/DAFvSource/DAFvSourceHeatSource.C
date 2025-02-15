@@ -221,7 +221,7 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
                 // cell index
                 label cellI = fvSourceCellIndices_[sourceName][idxJ];
 
-                fvSource[cellI] = power / totalV;
+                fvSource[cellI] += power / totalV;
                 sourceTotal += fvSource[cellI] * mesh_.V()[cellI];
             }
 
