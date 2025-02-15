@@ -16,7 +16,7 @@ from pygeo.mphys import OM_DVGEOCOMP
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/ChannelConjugateHeat/thermal")
+os.chdir("./reg_test_files-main/ChannelConjugateHeatV4/thermal")
 
 daOptions = {
     "designSurfaces": ["channel_outer", "channel_inner", "channel_sides"],
@@ -36,7 +36,7 @@ daOptions = {
             "source": "cylinderToCell",
             "p1": [0.6, 0.055, 0.025],
             "p2": [1.0, 0.055, 0.025],
-            "radius": 0.01,
+            "radius": 0.05,
             "power": 1000.0,
         },
         "source2": {
@@ -45,10 +45,18 @@ daOptions = {
             "center": [0.201, 0.056, 0.026],
             "axis": [1.0, 0.0, 0.0],
             "length": 0.4,
-            "radius": 0.005,
+            "radius": 0.05,
             "power": 1000.0,
-            "eps": 0.001,
+            "eps": 0.01,
             "snapCenter2Cell": True,
+        },
+    },
+    "inputInfo": {
+        "heat_source": {
+            "type": "fvSourcePar",
+            "fvSourceName": "source2",
+            "indices": [0, 6],
+            "components": ["solver", "function"],
         },
     },
 }
@@ -59,9 +67,15 @@ class Top(Multipoint):
         dafoam_builder = DAFoamBuilder(daOptions, None, scenario="aerodynamic")
         dafoam_builder.initialize(self.comm)
 
+        # ivc to keep the top level DVs
+        self.add_subsystem("dvs", om.IndepVarComp(), promotes=["*"])
+
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
     def configure(self):
+        self.dvs.add_output("heat_source", val=np.array([0.3, 0.45]))
+        self.connect("heat_source", "cruise.heat_source")
+        self.add_design_var("heat_source", lower=-50.0, upper=50.0, scaler=1.0)
         self.add_objective("cruise.aero_post.HFX", scaler=1.0)
 
 
@@ -70,8 +84,6 @@ prob.model = Top()
 
 prob.setup(mode="rev")
 om.n2(prob, show_browser=False, outfile="mphys_aero.html")
-
-# optFuncs = OptFuncs(daOptions, prob)
 
 # verify the total derivatives against the finite-difference
 prob.run_model()

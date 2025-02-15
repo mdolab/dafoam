@@ -50,16 +50,16 @@ daOptions = {
             "type": "force",
             "source": "patchToFace",
             "patches": ["wing"],
-            "directionMode": "fixedDirection",
-            "direction": [1.0, 0.0, 0.0],
+            "directionMode": "parallelToFlow",
+            "patchVelocityInputName": "patchV",
             "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
         "CL": {
             "type": "force",
             "source": "patchToFace",
             "patches": ["wing"],
-            "directionMode": "fixedDirection",
-            "direction": [0.0, 1.0, 0.0],
+            "directionMode": "normalToFlow",
+            "patchVelocityInputName": "patchV",
             "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
     },
@@ -69,6 +69,13 @@ daOptions = {
     "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "T": T0, "nuTilda": 1e-3},
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
+        "patchV": {
+            "type": "patchVelocity",
+            "patches": ["inout"],
+            "flowAxis": "x",
+            "normalAxis": "y",
+            "components": ["solver", "function"],
+        },
     },
 }
 
@@ -125,11 +132,14 @@ class Top(Multipoint):
 
         # add the design variables to the dvs component's output
         self.dvs.add_output("twist", val=np.ones(1) * twist0)
+        self.dvs.add_output("patchV", val=np.array([240.0, 0.0]))
         # manually connect the dvs output to the geometry and cruise
         self.connect("twist", "geometry.twist")
+        self.connect("patchV", "cruise.patchV")
 
         # define the design variables to the top level
         self.add_design_var("twist", lower=-10.0, upper=10.0, scaler=1.0)
+        self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
@@ -148,7 +158,7 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 prob.run_model()
 results = prob.check_totals(
     of=["cruise.aero_post.CD", "cruise.aero_post.CL"],
-    wrt=["twist"],
+    wrt=["twist", "patchV"],
     compact_print=True,
     step=1e-3,
     form="central",
@@ -163,8 +173,12 @@ if gcomm.rank == 0:
     derivDict["CD"] = {}
     derivDict["CD"]["twist-Adjoint"] = results[("cruise.aero_post.CD", "twist")]["J_fwd"][0]
     derivDict["CD"]["twist-FD"] = results[("cruise.aero_post.CD", "twist")]["J_fd"][0]
+    derivDict["CD"]["patchV-Adjoint"] = results[("cruise.aero_post.CD", "patchV")]["J_fwd"][0]
+    derivDict["CD"]["patchV-FD"] = results[("cruise.aero_post.CD", "patchV")]["J_fd"][0]
     derivDict["CL"] = {}
     derivDict["CL"]["twist-Adjoint"] = results[("cruise.aero_post.CL", "twist")]["J_fwd"][0]
     derivDict["CL"]["twist-FD"] = results[("cruise.aero_post.CL", "twist")]["J_fd"][0]
+    derivDict["CL"]["patchV-Adjoint"] = results[("cruise.aero_post.CL", "patchV")]["J_fwd"][0]
+    derivDict["CL"]["patchV-FD"] = results[("cruise.aero_post.CL", "patchV")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)

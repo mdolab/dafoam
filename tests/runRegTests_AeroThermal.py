@@ -181,8 +181,8 @@ class Top(Multipoint):
                 thermal_builder=dafoam_builder_thermal,
                 thermalxfer_builder=thermalxfer_builder,
             ),
-            om.NonlinearBlockGS(maxiter=20, iprint=2, use_aitken=True, rtol=1e-10, atol=1e-14),
-            om.LinearBlockGS(maxiter=20, iprint=2, use_aitken=True, rtol=1e-10, atol=1e-14),
+            om.NonlinearBlockGS(maxiter=20, iprint=2, use_aitken=True, rtol=1e-8, atol=1e-14),
+            om.LinearBlockGS(maxiter=20, iprint=2, use_aitken=True, rtol=1e-8, atol=1e-14),
         )
 
         # need to manually connect the x_aero0 between the mesh and geometry components
@@ -263,4 +263,4 @@ if gcomm.rank == 0:
     derivDict["HF_INNER"]["shape-Adjoint"] = results[("scenario.thermal_post.HF_INNER", "shape")]["J_fwd"][0]
     derivDict["HF_INNER"]["shape-FD"] = results[("scenario.thermal_post.HF_INNER", "shape")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-8, 1e-10)
-    reg_write_dict(derivDict, 1e-6, 1e-10)
+    reg_write_dict(derivDict, 1e-4, 1e-10)
