@@ -17,7 +17,7 @@ from pygeo import geo_utils
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/NACA0012")
+os.chdir("./reg_test_files-main/NACA0012V4")
 if gcomm.rank == 0:
     os.system("rm -rf 0 system processor* *.bin")
     os.system("cp -r 0.incompressible 0")

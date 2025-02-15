@@ -20,8 +20,8 @@
     // and final residuals
     SolverPerformance<scalar> solverT = TEqn.solve();
 
-    DAUtility::primalResidualControl(solverT, printToScreen_, "T", daGlobalVarPtr_->primalMaxRes);
+    DAUtility::primalResidualControl(solverT, pimplePrintToScreen, "T", daGlobalVarPtr_->primalMaxRes);
 
     // bound T
-    DAUtility::boundVar(allOptions, T, printToScreen_);
+    DAUtility::boundVar(allOptions, T, pimplePrintToScreen);
 }

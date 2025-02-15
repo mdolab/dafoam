@@ -14,20 +14,23 @@ from mphys.multipoint import Multipoint
 from dafoam.mphys.mphys_dafoam import DAFoamBuilderUnsteady
 from mphys.scenario_aerodynamic import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
+from pygeo import geo_utils
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/Ramp")
+os.chdir("./reg_test_files-main/ConvergentChannel")
 if gcomm.rank == 0:
-    os.system("rm -rf 0 processor* *.bin")
-    os.system("cp -r 0_incompressible 0")
+    os.system("rm -rf 0/* processor* *.bin")
+    os.system("cp -r 0.incompressible/* 0/")
+    os.system("cp -r system.incompressible.unsteady/* system/")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
 U0 = 10.0
 
 daOptions = {
-    "designSurfaces": ["bot"],
+    "designSurfaces": ["walls"],
     "solverName": "DAPimpleFoam",
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
@@ -44,7 +47,7 @@ daOptions = {
         "CD": {
             "type": "force",
             "source": "patchToFace",
-            "patches": ["bot"],
+            "patches": ["walls"],
             "directionMode": "fixedDirection",
             "direction": [1.0, 0.0, 0.0],
             "scale": 1.0,
@@ -53,7 +56,7 @@ daOptions = {
         "CL": {
             "type": "force",
             "source": "patchToFace",
-            "patches": ["bot"],
+            "patches": ["walls"],
             "directionMode": "fixedDirection",
             "direction": [0.0, 1.0, 0.0],
             "scale": 1.0,
@@ -112,10 +115,9 @@ class Top(Group):
 
         # geometry setup
         pts = self.geometry.DVGeo.getLocalIndex(0)
-        dir_y = np.array([0.0, 1.0, 0.0])
-        shapes = []
-        shapes.append({pts[2, 0, 0]: dir_y, pts[2, 0, 1]: dir_y})
-        self.geometry.nom_addShapeFunctionDV(dvName="shape", shapes=shapes)
+        indexList = pts[1, 0, 1].flatten()
+        PS = geo_utils.PointSelect("list", indexList)
+        self.geometry.nom_addLocalDV(dvName="shape", pointSelect=PS)
 
         # add the design variables to the dvs component's output
         self.dvs.add_output("patchV", val=np.array([10.0, 0.0]))
