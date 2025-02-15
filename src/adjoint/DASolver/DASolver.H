@@ -655,7 +655,7 @@ public:
         label oldTimeLevel = 0);
 
     /// calculate the PC mat using fvMatrix
-    void calcPCMatWithFvMatrix(Mat PCMat);
+    void calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly = 0);
 
     /// initialize tensorflow functions and interfaces for callback
     void initTensorFlowFuncs(

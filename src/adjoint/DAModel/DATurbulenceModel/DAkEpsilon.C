@@ -93,6 +93,7 @@ DAkEpsilon::DAkEpsilon(
           mesh,
           dimensionedScalar("kRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
+      GPtr_(nullptr),
       betaFIK_(
           IOobject(
               "betaFIK",
@@ -145,6 +146,12 @@ DAkEpsilon::DAkEpsilon(
 
     // initialize epsilonNearWall
     epsilonNearWall_.setSize(nWallFaces);
+
+    // initialize the G field
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    GPtr_.reset(new volScalarField::Internal(
+        "kEpsilon:G",
+        nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v())));
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -553,9 +560,8 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_))().v());
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField::Internal G(
-        "kEpsilon:G",
-        nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
+    volScalarField::Internal& G = const_cast<volScalarField::Internal&>(GPtr_());
+    G = nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v());
     tgradU.clear();
 
     if (solveTurbState_)
@@ -666,9 +672,8 @@ void DAkEpsilon::getFvMatrixFields(
         fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_))().v());
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField::Internal G(
-        "kEpsilon:G",
-        nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
+    volScalarField::Internal& G = const_cast<volScalarField::Internal&>(GPtr_());
+    G = nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v());
     tgradU.clear();
 
     // special treatment for epsilon BC
@@ -721,9 +726,8 @@ void DAkEpsilon::getTurbProdOverDestruct(volScalarField& PoD) const
         Return the value of the production over destruction term from the turbulence model 
     */
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField::Internal G(
-        "kEpsilon:G",
-        nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
+    volScalarField::Internal& G = const_cast<volScalarField::Internal&>(GPtr_());
+    G = nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v());
 
     volScalarField rho = this->rho();
 
@@ -744,9 +748,8 @@ void DAkEpsilon::getTurbConvOverProd(volScalarField& CoP) const
     */
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField::Internal G(
-        "kEpsilon:G",
-        nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
+    volScalarField::Internal& G = const_cast<volScalarField::Internal&>(GPtr_());
+    G = nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v());
 
     volScalarField rho = this->rho();
 

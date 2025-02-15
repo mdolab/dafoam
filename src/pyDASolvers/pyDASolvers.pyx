@@ -98,7 +98,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int runFPAdj(PetscVec, PetscVec)
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *, pySetCharInterface, void *)
         void readStateVars(double, int)
-        void calcPCMatWithFvMatrix(PetscMat)
+        void calcPCMatWithFvMatrix(PetscMat, int)
         double getEndTime()
         double getDeltaT()
         void setTime(double, int)
@@ -373,8 +373,8 @@ cdef class pyDASolvers:
     def readStateVars(self, timeVal, timeLevel):
         self._thisptr.readStateVars(timeVal, timeLevel)
     
-    def calcPCMatWithFvMatrix(self, Mat PCMat):
-        self._thisptr.calcPCMatWithFvMatrix(PCMat.mat)
+    def calcPCMatWithFvMatrix(self, Mat PCMat, turbOnly=0):
+        self._thisptr.calcPCMatWithFvMatrix(PCMat.mat, turbOnly)
     
     def setTime(self, time, timeIndex):
         self._thisptr.setTime(time, timeIndex)

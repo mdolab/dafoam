@@ -449,9 +449,9 @@ public:
     }
 
     /// calculate the PC mat using fvMatrix
-    void calcPCMatWithFvMatrix(Mat PCMat)
+    void calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly)
     {
-        DASolverPtr_->calcPCMatWithFvMatrix(PCMat);
+        DASolverPtr_->calcPCMatWithFvMatrix(PCMat, turbOnly);
     }
 
     /// setTime for OF fields

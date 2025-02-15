@@ -1284,7 +1284,12 @@ void DAkOmegaSSTLM::getFvMatrixFields(
         this will be use to compute the preconditioner matrix
     */
 
-    if (varName != "k" && varName != "omega" && varName != "ReThetat" && varName != "gamma")
+    // NOTE: there is a bug in this func. The calcPCMatWithFvMatrix returns an error
+    // saying try to insert a value that is out of range...
+    Info << "Warning!!!!!! this child class is not implemented!" << endl;
+
+    /*
+    if (varName != "k" && varName != "omega" && varName != "ReThetat" && varName != "gammaInt")
     {
         FatalErrorIn(
             "varName not valid. It has to be k, omega, ReThetat, or gamma")
@@ -1297,11 +1302,6 @@ void DAkOmegaSSTLM::getFvMatrixFields(
     // while for the incompresssible "this->phi()" returns phi only
     // see src/TurbulenceModels/compressible/compressibleTurbulenceModel.C line 62 to 73
     volScalarField::Internal divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_)));
-
-    tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField S2(2 * magSqr(symm(tgradU())));
-    volScalarField::Internal GbyNu0((tgradU() && dev(twoSymm(tgradU()))));
-    volScalarField::Internal G("kOmegaSST:G", nut_ * GbyNu0);
 
     // NOTE instead of calling omega_.boundaryFieldRef().updateCoeffs();
     // here we call our self-defined boundary conditions
@@ -1464,6 +1464,7 @@ void DAkOmegaSSTLM::getFvMatrixFields(
             lower = gammaIntEqn.lower();
         }
     }
+*/
 }
 
 void DAkOmegaSSTLM::getTurbProdOverDestruct(volScalarField& PoD) const
