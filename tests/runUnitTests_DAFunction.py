@@ -170,8 +170,6 @@ DASolver.evalFunctions(funcs)
 if gcomm.rank == 0:
     print(funcs)
 
-del funcs["fail"]
-
 funcs_ref = {
     "CD": 2.2801022493682037,
     "CMZ": 7.1768354637131795,
@@ -269,8 +267,6 @@ DASolver.evalFunctions(funcs)
 
 if gcomm.rank == 0:
     print(funcs)
-
-del funcs["fail"]
 
 funcs_ref = {"HFX": 15.494946599784122, "TTR": 1.000000415241806, "MFR": 128.22449523986853, "TPR": 0.9934250594975235}
 
