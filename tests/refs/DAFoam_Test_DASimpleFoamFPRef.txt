@@ -1,0 +1,14 @@
+Dictionary Key: CD
+@value         0.1151360616658422 1e-10 1e-12
+Dictionary Key: CL
+@value         1.3997277369172973 1e-10 1e-12
+Dictionary Key: CD
+Dictionary Key: twist-Adjoint
+@value        69.7645300408012190 1e-08 1e-12
+Dictionary Key: twist-FD
+@value         0.0143070487840191 1e-08 1e-12
+Dictionary Key: CL
+Dictionary Key: twist-Adjoint
+@value     34780.7403924307436682 1e-08 1e-12
+Dictionary Key: twist-FD
+@value         0.4454858746150876 1e-08 1e-12

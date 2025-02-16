@@ -60,6 +60,21 @@ DASimpleFoam::DASimpleFoam(
 {
     // check whether the temperature field exists in the 0 folder
     hasTField_ = DAUtility::isFieldReadable(meshPtr_(), "T", "volScalarField");
+
+    // get fvSolution and fvSchemes info for fixed-point adjoint
+    const fvSolution& myFvSolution = meshPtr_->thisDb().lookupObject<fvSolution>("fvSolution");
+    if (myFvSolution.found("relaxationFactors"))
+    {
+        if (myFvSolution.subDict("relaxationFactors").found("equations"))
+        {
+            if (myFvSolution.subDict("relaxationFactors").subDict("equations").found("U"))
+            {
+                relaxUEqn_ = myFvSolution.subDict("relaxationFactors").subDict("equations").getScalar("U");
+            }
+        }
+    }
+    solverDictU_ = myFvSolution.subDict("solvers").subDict("U");
+    solverDictP_ = myFvSolution.subDict("solvers").subDict("p");
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
