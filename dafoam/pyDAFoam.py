@@ -739,11 +739,6 @@ class PYDAFOAM(object):
         # geometric manipulation object
         self.mesh = None
 
-        # functionValuePreIter stores the objective function value from the previous
-        # iteration. When the primal solution fails, the evalFunctions function will read
-        # value from self.functionValuePreIter
-        self.functionValuePrevIter = {}
-
         # preconditioner matrix
         self.dRdWTPC = None
 
@@ -930,58 +925,24 @@ class PYDAFOAM(object):
     def evalFunctions(self, funcs):
         """
         Evaluate the desired functions given in iterable object,
-        'evalFuncs' and add them to the dictionary 'funcs'. The keys
-        in the funcs dictionary will be have an _<ap.name> appended to
-        them. Additionally, information regarding whether or not the
-        last analysis with the solvePrimal was successful is
-        included. This information is included as "funcs['fail']". If
-        the 'fail' entry already exits in the dictionary the following
-        operation is performed:
-
-        funcs['fail'] = funcs['fail'] or <did this problem fail>
-
-        In other words, if any one problem fails, the funcs['fail']
-        entry will be False. This information can then be used
-        directly in the pyOptSparse.
-
-        Parameters
-        ----------
-        funcs : dict
-            Dictionary into which the functions are saved.
 
         Examples
         --------
         >>> funcs = {}
         >>> CFDsolver()
-        >>> CFDsolver.evalFunctions(funcs
-        >>> funcs
+        >>> CFDsolver.evalFunctions(funcs)
         >>> # Result will look like:
-        >>> # {'CD':0.501, 'CL':0.02750, 'fail': False}
+        >>> # {'CL':0.501, 'CD':0.02750}
         """
 
         for funcName in list(self.getOption("function").keys()):
-            if self.primalFail:
-                if len(self.functionValuePrevIter) == 0:
-                    raise Error("Primal solution failed for the baseline design!")
-                else:
-                    # do not call self.solver.getFunctionValue because they can be nonphysical,
-                    # assign funcs based on self.functionValuePrevIter instead
-                    funcs[funcName] = self.functionValuePrevIter[funcName]
+            # call self.solver.getFunctionValue to get the functionValue from
+            # the DASolver
+            if self.getOption("useAD")["mode"] == "forward":
+                functionValue = self.solverAD.getTimeOpFuncVal(funcName)
             else:
-                # call self.solver.getFunctionValue to get the functionValue from
-                # the DASolver
-                if self.getOption("useAD")["mode"] == "forward":
-                    functionValue = self.solverAD.getTimeOpFuncVal(funcName)
-                else:
-                    functionValue = self.solver.getTimeOpFuncVal(funcName)
-                funcs[funcName] = functionValue
-                # assign the functionValuePrevIter
-                self.functionValuePrevIter[funcName] = funcs[funcName]
-
-        if self.primalFail:
-            funcs["fail"] = True
-        else:
-            funcs["fail"] = False
+                functionValue = self.solver.getTimeOpFuncVal(funcName)
+            funcs[funcName] = functionValue
 
         return
 
