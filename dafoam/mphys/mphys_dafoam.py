@@ -1396,7 +1396,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
             dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
             DASolver.solver.calcdRdWT(1, dRdWTPC1)
             # always update the PC mat values using OpenFOAM's fvMatrix
-            DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
+            # DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
             self.dRdWTPC[str(endTime)] = dRdWTPC1
 
             # if we define some extra PCMat in PCMatPrecomputeInterval, calculate them here
@@ -1415,7 +1415,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
                     DASolver.solver.calcdRdWT(1, dRdWTPC1)
                     # always update the PC mat values using OpenFOAM's fvMatrix
-                    DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
+                    # DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
                     self.dRdWTPC[str(t)] = dRdWTPC1
 
         # Initialize the KSP object using the PCMat from the endTime
