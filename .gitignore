@@ -6,3 +6,20 @@
 
 # PyCharm specific
 /.idea
+
+# OpenFOAM make temp files
+src/adjoint/Make/linux64*
+src/adjoint/lnInclude
+src/newTurbModels/*/lnInclude
+src/newTurbModels/*/Make/linux64*
+src/pyDASolvers/lnInclude
+src/pyDASolvers/Make/linux64*
+src/pyDASolvers/*.h
+src/pyDASolvers/*.cpp
+src/pyUnitTests/lnInclude
+src/pyUnitTests/Make/linux64*
+src/pyUnitTests/*.h
+src/pyUnitTests/*.cpp
+src/utilities/*/*/Make/linux64*
+
+

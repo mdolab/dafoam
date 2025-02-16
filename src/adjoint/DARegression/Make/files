@@ -1,3 +1,0 @@
-DARegression.C
-
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDARegression$(WM_CODI_AD_LIB_POSTFIX)

@@ -1,3 +1,0 @@
-DAGlobalVar.C
-
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAGlobalVar$(WM_CODI_AD_LIB_POSTFIX)

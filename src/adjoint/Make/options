@@ -14,11 +14,13 @@ EXE_INC = \
     -I$(LIB_SRC)/finiteVolume/cfdTools \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/fileFormats/lnInclude \
     -I$(LIB_SRC)/surfMesh/lnInclude \
-    -I../lnInclude \
-    -I../../include \
+    -I./lnInclude \
+    -I../include \
     -I$(PETSC_DIR)/include \
     -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
     $(shell mpicc -show | grep -o '\-I[^ ]*') \
@@ -37,6 +39,9 @@ LIB_LIBS = \
     -lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) \
     -lsampling$(WM_CODI_AD_LIB_POSTFIX) \
     -lmeshTools$(WM_CODI_AD_LIB_POSTFIX) \
+    -ldynamicFvMesh$(WM_CODI_AD_LIB_POSTFIX) \
+    -ltopoChangerFvMesh$(WM_CODI_AD_LIB_POSTFIX) \
+    -ldynamicMesh$(WM_CODI_AD_LIB_POSTFIX) \
     -lfvOptions$(WM_CODI_AD_LIB_POSTFIX) \
     -L$(PETSC_LIB) -lpetsc \
     $(shell mpicc -show | grep -o '\-L[^ ]*') \
