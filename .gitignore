@@ -8,6 +8,7 @@
 /.idea
 
 # OpenFOAM make temp files
+*.so
 src/adjoint/Make/linux64*
 src/adjoint/lnInclude
 src/newTurbModels/*/lnInclude
@@ -21,5 +22,7 @@ src/pyUnitTests/Make/linux64*
 src/pyUnitTests/*.h
 src/pyUnitTests/*.cpp
 src/utilities/*/*/Make/linux64*
-
+build
+dafoam.egg-info
+__pycache__
 
