@@ -160,7 +160,7 @@ def reg_file_comp(ref_file, comp_file):
     f.close()
 
     # Copy the comp_file to compe_file.orig
-    os.system("cp %s %s.orig" % (comp_file, comp_file))
+    # os.system("cp %s %s.orig" % (comp_file, comp_file))
 
     # We must check that we have the same number of @value's to compare:
     if len(ref_values) != len(comp_values):
