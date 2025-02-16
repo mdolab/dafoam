@@ -317,6 +317,9 @@ class DAFoamSolver(ImplicitComponent):
 
             DASolver = self.DASolver
 
+            # set the solver input, including mesh, boundary etc.
+            DASolver.set_solver_input(inputs, self.DVGeo)
+
             # before running the primal, we need to check if the mesh
             # quality is good
             meshOK = DASolver.solver.checkMesh()
@@ -324,7 +327,6 @@ class DAFoamSolver(ImplicitComponent):
             # solve the flow with the current design variable
             # if the mesh is not OK, do not run the primal
             if meshOK:
-                DASolver.set_solver_input(inputs, self.DVGeo)
                 DASolver()
             else:
                 DASolver.primalFail = 1
