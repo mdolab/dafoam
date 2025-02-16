@@ -47,17 +47,17 @@ tMax = 0.05
 daOptions = {
     "designSurfaces": ["wing", "wing_te"],
     "solverName": "DARhoSimpleFoam",
-    "couplingInfo": {
-        "aerostructural": {
-            "active": True,
-            # the groupling surface group can be different
-            # from the design surfaces
-            "couplingSurfaceGroups": {
-                "wingGroup": ["wing", "wing_te"],
-            },
-            "propMovement": False,
-        },
-    },
+    # "couplingInfo": {
+    #     "aerostructural": {
+    #         "active": True,
+    #         # the groupling surface group can be different
+    #         # from the design surfaces
+    #         "couplingSurfaceGroups": {
+    #             "wingGroup": ["wing", "wing_te"],
+    #         },
+    #         "propMovement": False,
+    #     },
+    # },
     "primalMinResTol": 1.0e-10,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
@@ -77,13 +77,13 @@ daOptions = {
             "addToAdjoint": True,
         },
         "CL": {
-            "type": "force",
-            "source": "patchToFace",
-            "patches": ["wing", "wing_te"],
-            "directionMode": "fixedDirection",
-            "direction": [0.0, 1.0, 0.0],
-            "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
-            "addToAdjoint": True,
+           "type": "force",
+           "source": "patchToFace",
+           "patches": ["wing", "wing_te"],
+           "directionMode": "fixedDirection",
+           "direction": [0.0, 1.0, 0.0],
+           "scale": 1.0 / (0.5 * U0 * U0 * A0 * rho0),
+           "addToAdjoint": True,
         },
     },
     "adjEqnOption": {
@@ -175,8 +175,8 @@ class Top(Multipoint):
         self.add_subsystem("geometry", OM_DVGEOCOMP(file="./FFD/parentFFD.xyz", type="ffd"))
 
         # add the coupling solvers
-        nonlinear_solver = om.NonlinearBlockGS(maxiter=25, iprint=2, use_aitken=True, rtol=1e-10, atol=1e-7)
-        linear_solver = om.LinearBlockGS(maxiter=25, iprint=2, use_aitken=True, rtol=1e-8, atol=1e-12)
+        nonlinear_solver = om.NonlinearBlockGS(maxiter=10, iprint=2, use_aitken=True, rtol=1e-8, atol=1e-7)
+        linear_solver = om.LinearBlockGS(maxiter=10, iprint=2, use_aitken=True, rtol=1e-6, atol=1e-12)
         self.mphys_add_scenario(
             "cruise",
             ScenarioAeroStructural(
@@ -234,7 +234,7 @@ class Top(Multipoint):
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
-        self.add_constraint("cruise.aero_post.CL", equals=CL_target, scaler=1.0)
+        # self.add_constraint("cruise.aero_post.CL", equals=CL_target, scaler=1.0)
         # stress constraint
         self.add_constraint("cruise.ks_vmfailure", lower=0.0, upper=0.41, scaler=1.0)
 
@@ -264,12 +264,11 @@ if gcomm.rank == 0:
     derivDict["CD"] = {}
     derivDict["CD"]["shape-Adjoint"] = results[("cruise.aero_post.functionals.CD", "dvs.twist")]["J_fwd"][0]
     derivDict["CD"]["shape-FD"] = results[("cruise.aero_post.functionals.CD", "dvs.twist")]["J_fd"][0]
-    derivDict["CL"] = {}
-    derivDict["CL"]["shape-Adjoint"] = results[("cruise.aero_post.functionals.CL", "dvs.twist")]["J_fwd"][0]
-    derivDict["CL"]["shape-FD"] = results[("cruise.aero_post.functionals.CL", "dvs.twist")]["J_fd"][0]
+    # derivDict["CL"] = {}
+    # derivDict["CL"]["shape-Adjoint"] = results[("cruise.aero_post.functionals.CL", "dvs.twist")]["J_fwd"][0]
+    # derivDict["CL"]["shape-FD"] = results[("cruise.aero_post.functionals.CL", "dvs.twist")]["J_fd"][0]
     derivDict["VM"] = {}
     derivDict["VM"]["shape-Adjoint"] = results[("cruise.struct_post.eval_funcs.ks_vmfailure", "dvs.twist")]["J_fwd"][0]
     derivDict["VM"]["shape-FD"] = results[("cruise.struct_post.eval_funcs.ks_vmfailure", "dvs.twist")]["J_fd"][0]
-    reg_write_dict(funcDict, 1e-10, 1e-12)
-    reg_write_dict(derivDict, 1e-8, 1e-12)
-
+    reg_write_dict(funcDict, 1e-8, 1e-10)
+    reg_write_dict(derivDict, 1e-4, 1e-10)

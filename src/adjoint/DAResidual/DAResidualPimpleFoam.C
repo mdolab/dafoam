@@ -27,6 +27,7 @@ DAResidualPimpleFoam::DAResidualPimpleFoam(
       setResidualClassMemberVector(U, dimensionSet(0, 1, -2, 0, 0, 0, 0)),
       setResidualClassMemberScalar(p, dimensionSet(0, 0, -1, 0, 0, 0, 0)),
       setResidualClassMemberPhi(phi),
+      TResPtr_(nullptr),
       fvSource_(const_cast<volVectorField&>(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       daTurb_(const_cast<DATurbulenceModel&>(daModel.getDATurbulenceModel())),
@@ -40,7 +41,34 @@ DAResidualPimpleFoam::DAResidualPimpleFoam(
         hasFvSource_ = 1;
     }
 
-    mode_ = daOption.getSubDictOption<word>("unsteadyAdjoint", "mode");
+    // check whether to include the temperature field
+    hasTField_ = DAUtility::isFieldReadable(mesh, "T", "volScalarField");
+    if (hasTField_)
+    {
+
+        TResPtr_.reset(new volScalarField(
+            IOobject(
+                "TRes",
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE),
+            mesh,
+            dimensionedScalar("TRes", dimensionSet(0, 0, -1, 1, 0, 0, 0), 0.0),
+            zeroGradientFvPatchField<scalar>::typeName));
+
+        // initialize the Prandtl number from transportProperties
+        IOdictionary transportProperties(
+            IOobject(
+                "transportProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false));
+        Pr_ = readScalar(transportProperties.lookup("Pr"));
+        Prt_ = readScalar(transportProperties.lookup("Prt"));
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -56,6 +84,11 @@ void DAResidualPimpleFoam::clear()
     URes_.clear();
     pRes_.clear();
     phiRes_.clear();
+
+    if (hasTField_)
+    {
+        TResPtr_->clear();
+    }
 }
 
 void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
@@ -103,12 +136,9 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
         + daTurb_.divDevReff(U_)
         - fvSource_);
 
-    if (mode_ == "hybrid")
-    {
-        UEqn -= fvm::ddt(U_);
-    }
-
-    UEqn.relax();
+    // NOTE: we need to call UEqn.relax here because it does some BC treatment, but we need to 
+    // force the relaxation factor to be 1.0 because the last pimple loop does not use relaxation
+    UEqn.relax(1.0);
 
     URes_ = (UEqn & U_) + fvc::grad(p_);
     normalizeResiduals(URes);
@@ -170,6 +200,30 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
     phiRes_ = phiHbyA - pEqn.flux() - phi_;
     // need to normalize phiRes
     normalizePhiResiduals(phiRes);
+
+    if (hasTField_)
+    {
+        volScalarField& alphat = const_cast<volScalarField&>(
+            mesh_.thisDb().lookupObject<volScalarField>("alphat"));
+
+        volScalarField& T = const_cast<volScalarField&>(
+            mesh_.thisDb().lookupObject<volScalarField>("T"));
+
+        volScalarField& TRes_ = TResPtr_();
+
+        // ******** T Residuals **************
+        volScalarField alphaEff("alphaEff", daTurb_.nu() / Pr_ + alphat);
+
+        fvScalarMatrix TEqn(
+            fvm::ddt(T)
+            + fvm::div(phi_, T)
+            - fvm::laplacian(alphaEff, T));
+
+        TEqn.relax(1.0);
+
+        TRes_ = TEqn & T;
+        normalizeResiduals(TRes);
+    }
 }
 
 void DAResidualPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
@@ -262,7 +316,7 @@ void DAResidualPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
         }
     }
 
-    UEqn.relax();
+    UEqn.relax(1.0);
     label pRefCell = 0;
     scalar pRefValue = 0.0;
 
@@ -363,6 +417,80 @@ void DAResidualPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
         assignValueCheckAD(val, val1);
         MatSetValues(PCMat, 1, &colI, 1, &rowI, &val, INSERT_VALUES);
     }
+
+    if (hasTField_)
+    {
+        volScalarField& alphat = const_cast<volScalarField&>(
+            mesh_.thisDb().lookupObject<volScalarField>("alphat"));
+
+        volScalarField& T = const_cast<volScalarField&>(
+            mesh_.thisDb().lookupObject<volScalarField>("T"));
+
+        volScalarField alphaEff("alphaEff", daTurb_.nu() / Pr_ + alphat);
+
+        fvScalarMatrix TEqn(
+            fvm::ddt(T)
+            + fvm::div(phi_, T)
+            - fvm::laplacian(alphaEff, T));
+
+        scalar TScaling = 1.0;
+        if (normStateDict.found("T"))
+        {
+            TScaling = normStateDict.getScalar("T");
+        }
+        scalar TResScaling = 1.0;
+        // set diag
+        forAll(T, cellI)
+        {
+            if (normResDict.found("TRes"))
+            {
+                TResScaling = mesh_.V()[cellI];
+            }
+
+            PetscInt rowI = daIndex_.getGlobalAdjointStateIndex("T", cellI);
+            PetscInt colI = rowI;
+            scalarField D = TEqn.D();
+            scalar val1 = D[cellI] * TScaling / TResScaling;
+            assignValueCheckAD(val, val1);
+            MatSetValues(PCMat, 1, &rowI, 1, &colI, &val, INSERT_VALUES);
+        }
+
+        // set lower/owner
+        for (label faceI = 0; faceI < daIndex_.nLocalInternalFaces; faceI++)
+        {
+            label ownerCellI = owner[faceI];
+            label neighbourCellI = neighbour[faceI];
+
+            if (normResDict.found("TRes"))
+            {
+                TResScaling = mesh_.V()[neighbourCellI];
+            }
+
+            PetscInt rowI = daIndex_.getGlobalAdjointStateIndex("T", neighbourCellI);
+            PetscInt colI = daIndex_.getGlobalAdjointStateIndex("T", ownerCellI);
+            scalar val1 = TEqn.lower()[faceI] * TScaling / TResScaling;
+            assignValueCheckAD(val, val1);
+            MatSetValues(PCMat, 1, &colI, 1, &rowI, &val, INSERT_VALUES);
+        }
+
+        // set upper/neighbour
+        for (label faceI = 0; faceI < daIndex_.nLocalInternalFaces; faceI++)
+        {
+            label ownerCellI = owner[faceI];
+            label neighbourCellI = neighbour[faceI];
+
+            if (normResDict.found("TRes"))
+            {
+                TResScaling = mesh_.V()[ownerCellI];
+            }
+
+            PetscInt rowI = daIndex_.getGlobalAdjointStateIndex("T", ownerCellI);
+            PetscInt colI = daIndex_.getGlobalAdjointStateIndex("T", neighbourCellI);
+            scalar val1 = TEqn.upper()[faceI] * TScaling / TResScaling;
+            assignValueCheckAD(val, val1);
+            MatSetValues(PCMat, 1, &colI, 1, &rowI, &val, INSERT_VALUES);
+        }
+    }
 }
 
 void DAResidualPimpleFoam::updateIntermediateVariables()
@@ -384,6 +512,12 @@ void DAResidualPimpleFoam::correctBoundaryConditions()
 
     U_.correctBoundaryConditions();
     p_.correctBoundaryConditions();
+    if (hasTField_)
+    {
+        volScalarField& T = const_cast<volScalarField&>(
+            mesh_.thisDb().lookupObject<volScalarField>("T"));
+        T.correctBoundaryConditions();
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

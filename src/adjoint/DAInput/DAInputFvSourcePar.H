@@ -4,16 +4,17 @@
     Version : v4
 
     Description:
-        Child class for ActuatorDisk disk source
+        Child class for regression parameters
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAFvSourceActuatorDisk_H
-#define DAFvSourceActuatorDisk_H
+#ifndef DAInputFvSourcePar_H
+#define DAInputFvSourcePar_H
 
-#include "DAFvSource.H"
+#include "DAInput.H"
 #include "addToRunTimeSelectionTable.H"
 #include "DAGlobalVar.H"
+#include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -21,46 +22,49 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAFvSourceActuatorDisk Declaration
+      Class DAInputFvSourcePar Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAFvSourceActuatorDisk
-    : public DAFvSource
+class DAInputFvSourcePar
+    : public DAInput
 {
 
 protected:
+    word fvSourceType_;
 
-    /// HashTable that contains lists of cell indices that are within the actuator disk space
-    HashTable<labelList> fvSourceCellIndices_;
+    word fvSourceName_;
 
-    /// calculate DAFvSourceActuatorDisk::fvSourceCellIndices_
-    void calcFvSourceCellIndices(HashTable<labelList>& fvSourceCellIndices);
-
-    /// print interval for primal and adjoint
-    label printInterval_;
+    labelList indices_;
 
 public:
-    TypeName("actuatorDisk");
+    TypeName("fvSourcePar");
     // Constructors
 
     //- Construct from components
-    DAFvSourceActuatorDisk(
-        const word modelType,
-        const fvMesh& mesh,
+    DAInputFvSourcePar(
+        const word inputName,
+        const word inputType,
+        fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex);
 
     //- Destructor
-    virtual ~DAFvSourceActuatorDisk()
+    virtual ~DAInputFvSourcePar()
     {
     }
 
-    /// compute the FvSource term
-    virtual void calcFvSource(volVectorField& fvSource);
+    virtual void run(const scalarList& input);
 
-    /// Initialize the values for all types of fvSource in DAGlobalVar, including actuatorDiskPars, heatSourcePars, etc
-    virtual void initFvSourcePars();
+    virtual label size()
+    {
+        return indices_.size();
+    }
+
+    virtual label distributed()
+    {
+        return 0;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

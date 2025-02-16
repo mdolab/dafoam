@@ -1,3 +1,0 @@
-DAOption.C
-
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAOption$(WM_CODI_AD_LIB_POSTFIX)

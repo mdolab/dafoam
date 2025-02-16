@@ -2664,7 +2664,7 @@ void DASolver::updateStateBoundaryConditions()
     }
 }
 
-void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
+void DASolver::calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly)
 {
     /*
     Description:
@@ -2677,7 +2677,10 @@ void DASolver::calcPCMatWithFvMatrix(Mat PCMat)
     // MatZeroEntries(PCMat);
 
     // non turbulence variables
-    daResidualPtr_->calcPCMatWithFvMatrix(PCMat);
+    if (!turbOnly)
+    {
+        daResidualPtr_->calcPCMatWithFvMatrix(PCMat);
+    }
 
     // turbulence variables
     DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());

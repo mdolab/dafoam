@@ -64,7 +64,6 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int solveLinearEqn(PetscKSP, PetscVec, PetscVec)
         void calcdRdWOldTPsiAD(int, double *, double *)
         void convertMPIVec2SeqVec(PetscVec, PetscVec)
-        void syncDAOptionToActuatorDVs()
         void updateOFFields(double *)
         void getOFFields(double *)
         void getOFField(char *, char *, double *)
@@ -99,7 +98,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int runFPAdj(PetscVec, PetscVec)
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *, pySetCharInterface, void *)
         void readStateVars(double, int)
-        void calcPCMatWithFvMatrix(PetscMat)
+        void calcPCMatWithFvMatrix(PetscMat, int)
         double getEndTime()
         double getDeltaT()
         void setTime(double, int)
@@ -259,9 +258,6 @@ cdef class pyDASolvers:
     def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
         self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
     
-    def syncDAOptionToActuatorDVs(self):
-        self._thisptr.syncDAOptionToActuatorDVs()
-    
     def updateOFFields(self, np.ndarray[double, ndim=1, mode="c"] states):
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
         cdef double *states_data = <double*>states.data
@@ -377,8 +373,8 @@ cdef class pyDASolvers:
     def readStateVars(self, timeVal, timeLevel):
         self._thisptr.readStateVars(timeVal, timeLevel)
     
-    def calcPCMatWithFvMatrix(self, Mat PCMat):
-        self._thisptr.calcPCMatWithFvMatrix(PCMat.mat)
+    def calcPCMatWithFvMatrix(self, Mat PCMat, turbOnly=0):
+        self._thisptr.calcPCMatWithFvMatrix(PCMat.mat, turbOnly)
     
     def setTime(self, time, timeIndex):
         self._thisptr.setTime(time, timeIndex)

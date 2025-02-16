@@ -22,7 +22,7 @@ def run_tests(om, Top, comm, daOptions, funcNames, dvNames, dvIndices, funcDict,
     prob.setup(mode="rev")
     om.n2(prob, show_browser=False, outfile="mphys_aero.html")
     prob.run_model()
-    totals = prob.compute_totals()
+    totals = prob.compute_totals(of=funcNames)
 
     if comm.rank == 0:
         print(totals)
@@ -160,7 +160,7 @@ def reg_file_comp(ref_file, comp_file):
     f.close()
 
     # Copy the comp_file to compe_file.orig
-    os.system("cp %s %s.orig" % (comp_file, comp_file))
+    # os.system("cp %s %s.orig" % (comp_file, comp_file))
 
     # We must check that we have the same number of @value's to compare:
     if len(ref_values) != len(comp_values):

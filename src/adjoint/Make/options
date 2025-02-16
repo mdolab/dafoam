@@ -14,18 +14,16 @@ EXE_INC = \
     -I$(LIB_SRC)/finiteVolume/cfdTools \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/sampling/lnInclude \
-    -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
     -I$(LIB_SRC)/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/fileFormats/lnInclude \
     -I$(LIB_SRC)/surfMesh/lnInclude \
-    -I../adjoint/lnInclude \
+    -I./lnInclude \
     -I../include \
     -I$(PETSC_DIR)/include \
     -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
     $(shell mpicc -show | grep -o '\-I[^ ]*') \
-    $(shell python3 -c "import numpy; print('-I' + numpy.get_include())") \
-    $(shell python3 -c "import petsc4py; print('-I' + petsc4py.get_include())") \
     $(shell python3-config --includes) 
     
 
@@ -45,9 +43,7 @@ LIB_LIBS = \
     -ltopoChangerFvMesh$(WM_CODI_AD_LIB_POSTFIX) \
     -ldynamicMesh$(WM_CODI_AD_LIB_POSTFIX) \
     -lfvOptions$(WM_CODI_AD_LIB_POSTFIX) \
-    -lDASolver$(WM_CODI_AD_LIB_POSTFIX) \
     -L$(PETSC_LIB) -lpetsc \
-    -L$(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs \
     $(shell mpicc -show | grep -o '\-L[^ ]*') \
     $(shell python3-config --ldflags) \
     -fno-lto

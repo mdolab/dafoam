@@ -10,7 +10,7 @@ from testFuncs import *
 
 import openmdao.api as om
 from mphys.multipoint import Multipoint
-from dafoam.mphys import DAFoamBuilder, OptFuncs
+from dafoam.mphys import DAFoamBuilder
 from mphys.scenario_aerodynamic import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 
@@ -19,30 +19,28 @@ gcomm = MPI.COMM_WORLD
 os.chdir("./reg_test_files-main/NACA0012V4")
 if gcomm.rank == 0:
     os.system("rm -rf 0 system processor* *.bin")
-    os.system("cp -r 0.compressible 0")
-    os.system("cp -r system.transonic system")
-    os.system("cp -r constant/turbulenceProperties.sst constant/turbulenceProperties")
+    os.system("cp -r 0.incompressible 0")
+    os.system("cp -r system.incompressible system")
+    os.system("cp -r constant/turbulenceProperties.safv3 constant/turbulenceProperties")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
-U0 = 240.0
-p0 = 101325.0
-T0 = 300.0
+U0 = 10.0
+p0 = 0.0
 A0 = 0.1
-twist0 = 3.0
+aoa0 = 3.0
 LRef = 1.0
-nuTilda0 = 4.5e-5
+twist0 = 3.0
 
 daOptions = {
     "designSurfaces": ["wing"],
-    "solverName": "DARhoSimpleCFoam",
-    "primalMinResTol": 1.0e-11,
+    "solverName": "DASimpleFoam",
+    "adjEqnSolMethod": "fixedPoint",
+    "primalMinResTol": 1.0e-10,
     "primalMinResTolDiff": 1e4,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
-        "T0": {"variable": "T", "patches": ["inout"], "value": [T0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
-        "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
         "useWallFunction": True,
     },
     "function": {
@@ -50,32 +48,25 @@ daOptions = {
             "type": "force",
             "source": "patchToFace",
             "patches": ["wing"],
-            "directionMode": "parallelToFlow",
-            "patchVelocityInputName": "patchV",
-            "scale": 1.0 / (0.5 * U0 * U0 * A0),
+            "directionMode": "fixedDirection",
+            "direction": [1.0, 0.0, 0.0],
+            "scale": 1.0,
         },
         "CL": {
             "type": "force",
             "source": "patchToFace",
             "patches": ["wing"],
-            "directionMode": "normalToFlow",
-            "patchVelocityInputName": "patchV",
-            "scale": 1.0 / (0.5 * U0 * U0 * A0),
+            "directionMode": "fixedDirection",
+            "direction": [0.0, 1.0, 0.0],
+            "scale": 1.0,
         },
     },
-    "adjEqnOption": {"gmresRelTol": 1.0e-11, "pcFillLevel": 1, "jacMatReOrdering": "natural"},
-    "adjStateOrdering": "cell",
-    "transonicPCOption": 1,
-    "normalizeStates": {"U": U0, "p": p0, "phi": 1.0, "T": T0, "nuTilda": 1e-3},
+    "adjEqnOption": {
+        "fpMaxIters": 1000,
+        "fpRelTol": 1e-6,
+    },
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
-        "patchV": {
-            "type": "patchVelocity",
-            "patches": ["inout"],
-            "flowAxis": "x",
-            "normalAxis": "y",
-            "components": ["solver", "function"],
-        },
     },
 }
 
@@ -110,8 +101,6 @@ class Top(Multipoint):
         self.connect("mesh.x_aero0", "geometry.x_aero_in")
         self.connect("geometry.x_aero0", "cruise.x_aero")
 
-        self.add_subsystem("LoD", om.ExecComp("val=CL/CD"))
-
     def configure(self):
 
         # create geometric DV setup
@@ -132,14 +121,11 @@ class Top(Multipoint):
 
         # add the design variables to the dvs component's output
         self.dvs.add_output("twist", val=np.ones(1) * twist0)
-        self.dvs.add_output("patchV", val=np.array([240.0, 0.0]))
         # manually connect the dvs output to the geometry and cruise
         self.connect("twist", "geometry.twist")
-        self.connect("patchV", "cruise.patchV")
 
         # define the design variables to the top level
         self.add_design_var("twist", lower=-10.0, upper=10.0, scaler=1.0)
-        self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
@@ -158,7 +144,7 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 prob.run_model()
 results = prob.check_totals(
     of=["cruise.aero_post.CD", "cruise.aero_post.CL"],
-    wrt=["twist", "patchV"],
+    wrt=["twist"],
     compact_print=True,
     step=1e-3,
     form="central",
@@ -173,12 +159,8 @@ if gcomm.rank == 0:
     derivDict["CD"] = {}
     derivDict["CD"]["twist-Adjoint"] = results[("cruise.aero_post.CD", "twist")]["J_fwd"][0]
     derivDict["CD"]["twist-FD"] = results[("cruise.aero_post.CD", "twist")]["J_fd"][0]
-    derivDict["CD"]["patchV-Adjoint"] = results[("cruise.aero_post.CD", "patchV")]["J_fwd"][0]
-    derivDict["CD"]["patchV-FD"] = results[("cruise.aero_post.CD", "patchV")]["J_fd"][0]
     derivDict["CL"] = {}
     derivDict["CL"]["twist-Adjoint"] = results[("cruise.aero_post.CL", "twist")]["J_fwd"][0]
     derivDict["CL"]["twist-FD"] = results[("cruise.aero_post.CL", "twist")]["J_fd"][0]
-    derivDict["CL"]["patchV-Adjoint"] = results[("cruise.aero_post.CL", "patchV")]["J_fwd"][0]
-    derivDict["CL"]["patchV-FD"] = results[("cruise.aero_post.CL", "patchV")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)

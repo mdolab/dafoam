@@ -50,8 +50,14 @@ DAPimpleFoam::DAPimpleFoam(
       turbulencePtr_(nullptr),
       daTurbulenceModelPtr_(nullptr),
       daFvSourcePtr_(nullptr),
-      fvSourcePtr_(nullptr)
+      fvSourcePtr_(nullptr),
+      PrPtr_(nullptr),
+      PrtPtr_(nullptr),
+      TPtr_(nullptr),
+      alphatPtr_(nullptr)
 {
+    // check whether the temperature field exists in the 0 folder
+    hasTField_ = DAUtility::isFieldReadable(meshPtr_(), "T", "volScalarField");
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -172,6 +178,11 @@ label DAPimpleFoam::solvePrimal()
             while (pimple.correct())
             {
 #include "pEqnPimple.H"
+            }
+
+            if (hasTField_)
+            {
+#include "TEqnPimple.H"
             }
 
             laminarTransport.correct();

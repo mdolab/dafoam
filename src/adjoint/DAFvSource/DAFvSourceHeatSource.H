@@ -13,6 +13,7 @@
 
 #include "DAFvSource.H"
 #include "addToRunTimeSelectionTable.H"
+#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -65,6 +66,9 @@ public:
 
     /// compute the FvSource term
     virtual void calcFvSource(volScalarField& fvSource);
+
+    /// Initialize the values for all types of fvSource in DAGlobalVar, including actuatorDiskPars, heatSourcePars, etc
+    virtual void initFvSourcePars();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

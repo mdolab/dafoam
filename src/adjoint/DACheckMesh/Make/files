@@ -1,5 +1,0 @@
-DACheckMesh.C
-checkGeometry.C
-checkTools.C
-
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDACheckMesh$(WM_CODI_AD_LIB_POSTFIX)

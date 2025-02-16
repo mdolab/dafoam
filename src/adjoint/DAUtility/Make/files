@@ -1,3 +1,0 @@
-DAUtility.C
-
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAUtility$(WM_CODI_AD_LIB_POSTFIX)

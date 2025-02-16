@@ -10,7 +10,7 @@ function makeDAFoam()
   # the script will exit if there is any error
   set -e
   wmakeLnInclude src/adjoint
-  cd src/adjoint && ./Allmake && cd -
+  cd src/adjoint && wmake -j && cd -
   cd src/newTurbModels && ./Allmake && cd -
   cd src/pyUnitTests && ./Allmake && cd -
   cd src/pyDASolvers && ./Allmake && cd -
