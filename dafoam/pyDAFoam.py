@@ -791,7 +791,6 @@ class PYDAFOAM(object):
 
         if self.getOption("writeMinorIterations"):
             self.renameSolution(self.nSolvePrimals)
-            self.writeDeformedFFDs(self.nSolvePrimals)
 
         self.nSolvePrimals += 1
 
@@ -902,17 +901,6 @@ class PYDAFOAM(object):
             self.solverAD.calcPrimalResidualStatistics(mode)
         else:
             self.solver.calcPrimalResidualStatistics(mode)
-
-    def writeDeformedFFDs(self, counter=None):
-        """
-        Write the deformed FFDs to the disk during optimization
-        """
-
-        if self.getOption("writeDeformedFFDs"):
-            if counter is None:
-                self.DVGeo.writeTecplot("deformedFFD_%d.dat" % self.nSolveAdjoints)
-            else:
-                self.DVGeo.writeTecplot("deformedFFD_%d.dat" % counter)
 
     def writeAdjointFields(self, function, writeTime, psi):
         """
@@ -1198,31 +1186,6 @@ class PYDAFOAM(object):
             self.parallelFlag = "-parallel"
 
         return
-
-    def writePetscVecMat(self, name, vecMat, mode="Binary"):
-        """
-        Write Petsc vectors or matrices
-        """
-
-        Info("Saving %s to disk...." % name)
-        if mode == "ASCII":
-            viewer = PETSc.Viewer().createASCII(name + ".dat", mode="w", comm=PETSc.COMM_WORLD)
-            viewer.pushFormat(1)
-            viewer(vecMat)
-        elif mode == "Binary":
-            viewer = PETSc.Viewer().createBinary(name + ".bin", mode="w", comm=PETSc.COMM_WORLD)
-            viewer(vecMat)
-        else:
-            raise Error("mode not valid! Options are: ASCII or Binary")
-
-    def readPetscVecMat(self, name, vecMat):
-        """
-        Read Petsc vectors or matrices
-        """
-
-        Info("Reading %s from disk...." % name)
-        viewer = PETSc.Viewer().createBinary(name + ".bin", comm=PETSc.COMM_WORLD)
-        vecMat.load(viewer)
 
     def readStateVars(self, timeVal, deltaT):
         """
@@ -1962,22 +1925,6 @@ class PYDAFOAM(object):
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.updateDAOption(self.options)
 
-        if len(self.getOption("fvSource")) > 0:
-            self.syncDAOptionToActuatorDVs()
-
-    def syncDAOptionToActuatorDVs(self):
-        """
-        Synchronize the values in DAOption and actuatorDiskDVs_. We need to synchronize the values
-        defined in fvSource from DAOption to actuatorDiskDVs_ in the C++ layer
-        NOTE: we need to call this function whenever we change the actuator design variables
-        during optimization.
-        """
-
-        self.solver.syncDAOptionToActuatorDVs()
-
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.syncDAOptionToActuatorDVs()
-
     def getNLocalAdjointStates(self):
         """
         Get number of local adjoint states
@@ -2020,20 +1967,6 @@ class PYDAFOAM(object):
         self.solverAD.updateOFMesh(vol_coords)
 
         return
-
-    def convertMPIVec2SeqArray(self, mpiVec):
-        """
-        Convert a MPI vector to a seq array
-        """
-        vecSize = mpiVec.getSize()
-        seqVec = PETSc.Vec().createSeq(vecSize, bsize=1, comm=PETSc.COMM_SELF)
-        self.solver.convertMPIVec2SeqVec(mpiVec, seqVec)
-
-        array1 = np.zeros(vecSize, self.dtype)
-        for i in range(vecSize):
-            array1[i] = seqVec[i]
-
-        return array1
 
     def arrayVal2Vec(self, array1, vec):
         """
@@ -2103,34 +2036,6 @@ class PYDAFOAM(object):
         vec.assemblyEnd()
 
         return vec
-
-    def array2VecSeq(self, array1):
-        """
-        Convert a numpy array to Petsc vector in serial mode
-        """
-        size = len(array1)
-
-        vec = PETSc.Vec().createSeq(size, bsize=1, comm=PETSc.COMM_SELF)
-        vec.zeroEntries()
-
-        for i in range(size):
-            vec[i] = array1[i]
-
-        vec.assemblyBegin()
-        vec.assemblyEnd()
-
-        return vec
-
-    def vec2ArraySeq(self, vec):
-        """
-        Convert a Petsc vector to numpy array in serial mode
-        """
-
-        size = vec.getSize()
-        array1 = np.zeros(size, self.dtype)
-        for i in range(size):
-            array1[i] = vec[i]
-        return array1
 
     def _getImmutableOptions(self):
         """
