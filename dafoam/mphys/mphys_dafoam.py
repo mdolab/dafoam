@@ -324,12 +324,18 @@ class DAFoamSolver(ImplicitComponent):
             # quality is good
             meshOK = DASolver.solver.checkMesh()
 
-            # solve the flow with the current design variable
             # if the mesh is not OK, do not run the primal
-            if meshOK:
-                DASolver()
-            else:
-                DASolver.primalFail = 1
+            if meshOK != 1:
+                raise AnalysisError("Mesh quality error!")
+                return
+
+            # call the primal
+            DASolver()
+
+            # if the primal fails, do not set states and return
+            if DASolver.primalFail != 0:
+                raise AnalysisError("Primal solution failed!")
+                return
 
             # after solving the primal, we need to print its residual info
             if DASolver.getOption("useAD")["mode"] == "forward":
@@ -337,18 +343,9 @@ class DAFoamSolver(ImplicitComponent):
             else:
                 DASolver.solver.calcPrimalResidualStatistics("print")
 
-            # get the objective functions
-            funcs = {}
-            DASolver.evalFunctions(funcs)
-
             # assign the computed flow states to outputs
             states = DASolver.getStates()
             outputs[self.stateName] = states
-
-            # if the primal solution fail, we return analysisError and let the optimizer handle it
-            fail = funcs["fail"]
-            if fail:
-                raise AnalysisError("Primal solution failed!")
 
             # set states
             DASolver.setStates(states)

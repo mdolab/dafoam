@@ -29,7 +29,7 @@ if gcomm.rank == 0:
 U0 = 10.0
 p0 = 0.0
 A0 = 0.1
-twist0 = 3.0
+twist0 = 3.25
 LRef = 1.0
 nuTilda0 = 4.5e-5
 
@@ -180,7 +180,7 @@ class Top(Multipoint):
         self.connect("patchV", "cruise.patchV")
 
         # define the design variables to the top level
-        self.add_design_var("shape", lower=-0.1, upper=0.1, scaler=1.0)
+        self.add_design_var("shape", lower=-1.0, upper=1.0, scaler=0.01)
         self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0, indices=[1])
 
         # add constraints and the objective

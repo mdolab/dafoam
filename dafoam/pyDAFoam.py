@@ -739,11 +739,6 @@ class PYDAFOAM(object):
         # geometric manipulation object
         self.mesh = None
 
-        # functionValuePreIter stores the objective function value from the previous
-        # iteration. When the primal solution fails, the evalFunctions function will read
-        # value from self.functionValuePreIter
-        self.functionValuePrevIter = {}
-
         # preconditioner matrix
         self.dRdWTPC = None
 
@@ -796,7 +791,6 @@ class PYDAFOAM(object):
 
         if self.getOption("writeMinorIterations"):
             self.renameSolution(self.nSolvePrimals)
-            self.writeDeformedFFDs(self.nSolvePrimals)
 
         self.nSolvePrimals += 1
 
@@ -908,17 +902,6 @@ class PYDAFOAM(object):
         else:
             self.solver.calcPrimalResidualStatistics(mode)
 
-    def writeDeformedFFDs(self, counter=None):
-        """
-        Write the deformed FFDs to the disk during optimization
-        """
-
-        if self.getOption("writeDeformedFFDs"):
-            if counter is None:
-                self.DVGeo.writeTecplot("deformedFFD_%d.dat" % self.nSolveAdjoints)
-            else:
-                self.DVGeo.writeTecplot("deformedFFD_%d.dat" % counter)
-
     def writeAdjointFields(self, function, writeTime, psi):
         """
         Write the adjoint variables in OpenFOAM field format for post-processing
@@ -930,58 +913,24 @@ class PYDAFOAM(object):
     def evalFunctions(self, funcs):
         """
         Evaluate the desired functions given in iterable object,
-        'evalFuncs' and add them to the dictionary 'funcs'. The keys
-        in the funcs dictionary will be have an _<ap.name> appended to
-        them. Additionally, information regarding whether or not the
-        last analysis with the solvePrimal was successful is
-        included. This information is included as "funcs['fail']". If
-        the 'fail' entry already exits in the dictionary the following
-        operation is performed:
-
-        funcs['fail'] = funcs['fail'] or <did this problem fail>
-
-        In other words, if any one problem fails, the funcs['fail']
-        entry will be False. This information can then be used
-        directly in the pyOptSparse.
-
-        Parameters
-        ----------
-        funcs : dict
-            Dictionary into which the functions are saved.
 
         Examples
         --------
         >>> funcs = {}
         >>> CFDsolver()
-        >>> CFDsolver.evalFunctions(funcs
-        >>> funcs
+        >>> CFDsolver.evalFunctions(funcs)
         >>> # Result will look like:
-        >>> # {'CD':0.501, 'CL':0.02750, 'fail': False}
+        >>> # {'CL':0.501, 'CD':0.02750}
         """
 
         for funcName in list(self.getOption("function").keys()):
-            if self.primalFail:
-                if len(self.functionValuePrevIter) == 0:
-                    raise Error("Primal solution failed for the baseline design!")
-                else:
-                    # do not call self.solver.getFunctionValue because they can be nonphysical,
-                    # assign funcs based on self.functionValuePrevIter instead
-                    funcs[funcName] = self.functionValuePrevIter[funcName]
+            # call self.solver.getFunctionValue to get the functionValue from
+            # the DASolver
+            if self.getOption("useAD")["mode"] == "forward":
+                functionValue = self.solverAD.getTimeOpFuncVal(funcName)
             else:
-                # call self.solver.getFunctionValue to get the functionValue from
-                # the DASolver
-                if self.getOption("useAD")["mode"] == "forward":
-                    functionValue = self.solverAD.getTimeOpFuncVal(funcName)
-                else:
-                    functionValue = self.solver.getTimeOpFuncVal(funcName)
-                funcs[funcName] = functionValue
-                # assign the functionValuePrevIter
-                self.functionValuePrevIter[funcName] = funcs[funcName]
-
-        if self.primalFail:
-            funcs["fail"] = True
-        else:
-            funcs["fail"] = False
+                functionValue = self.solver.getTimeOpFuncVal(funcName)
+            funcs[funcName] = functionValue
 
         return
 
@@ -1237,31 +1186,6 @@ class PYDAFOAM(object):
             self.parallelFlag = "-parallel"
 
         return
-
-    def writePetscVecMat(self, name, vecMat, mode="Binary"):
-        """
-        Write Petsc vectors or matrices
-        """
-
-        Info("Saving %s to disk...." % name)
-        if mode == "ASCII":
-            viewer = PETSc.Viewer().createASCII(name + ".dat", mode="w", comm=PETSc.COMM_WORLD)
-            viewer.pushFormat(1)
-            viewer(vecMat)
-        elif mode == "Binary":
-            viewer = PETSc.Viewer().createBinary(name + ".bin", mode="w", comm=PETSc.COMM_WORLD)
-            viewer(vecMat)
-        else:
-            raise Error("mode not valid! Options are: ASCII or Binary")
-
-    def readPetscVecMat(self, name, vecMat):
-        """
-        Read Petsc vectors or matrices
-        """
-
-        Info("Reading %s from disk...." % name)
-        viewer = PETSc.Viewer().createBinary(name + ".bin", comm=PETSc.COMM_WORLD)
-        vecMat.load(viewer)
 
     def readStateVars(self, timeVal, deltaT):
         """
@@ -2001,22 +1925,6 @@ class PYDAFOAM(object):
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.updateDAOption(self.options)
 
-        if len(self.getOption("fvSource")) > 0:
-            self.syncDAOptionToActuatorDVs()
-
-    def syncDAOptionToActuatorDVs(self):
-        """
-        Synchronize the values in DAOption and actuatorDiskDVs_. We need to synchronize the values
-        defined in fvSource from DAOption to actuatorDiskDVs_ in the C++ layer
-        NOTE: we need to call this function whenever we change the actuator design variables
-        during optimization.
-        """
-
-        self.solver.syncDAOptionToActuatorDVs()
-
-        if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.syncDAOptionToActuatorDVs()
-
     def getNLocalAdjointStates(self):
         """
         Get number of local adjoint states
@@ -2059,20 +1967,6 @@ class PYDAFOAM(object):
         self.solverAD.updateOFMesh(vol_coords)
 
         return
-
-    def convertMPIVec2SeqArray(self, mpiVec):
-        """
-        Convert a MPI vector to a seq array
-        """
-        vecSize = mpiVec.getSize()
-        seqVec = PETSc.Vec().createSeq(vecSize, bsize=1, comm=PETSc.COMM_SELF)
-        self.solver.convertMPIVec2SeqVec(mpiVec, seqVec)
-
-        array1 = np.zeros(vecSize, self.dtype)
-        for i in range(vecSize):
-            array1[i] = seqVec[i]
-
-        return array1
 
     def arrayVal2Vec(self, array1, vec):
         """
@@ -2142,34 +2036,6 @@ class PYDAFOAM(object):
         vec.assemblyEnd()
 
         return vec
-
-    def array2VecSeq(self, array1):
-        """
-        Convert a numpy array to Petsc vector in serial mode
-        """
-        size = len(array1)
-
-        vec = PETSc.Vec().createSeq(size, bsize=1, comm=PETSc.COMM_SELF)
-        vec.zeroEntries()
-
-        for i in range(size):
-            vec[i] = array1[i]
-
-        vec.assemblyBegin()
-        vec.assemblyEnd()
-
-        return vec
-
-    def vec2ArraySeq(self, vec):
-        """
-        Convert a Petsc vector to numpy array in serial mode
-        """
-
-        size = vec.getSize()
-        array1 = np.zeros(size, self.dtype)
-        for i in range(size):
-            array1[i] = vec[i]
-        return array1
 
     def _getImmutableOptions(self):
         """

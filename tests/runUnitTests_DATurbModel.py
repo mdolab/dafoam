@@ -87,14 +87,18 @@ daOptions = {
     "primalMinResTol": 1e-12,
     "primalMinResTolDiff": 1e12,
     "printDAOptions": False,
+    "primalBC": {
+        "useWallFunction": False,
+    },
 }
 
 runTurbTests(daOptions, gcomm, "sa", [3786983.0152606126, 24688.14724830308, 1377093.7901194005])
 runTurbTests(daOptions, gcomm, "safv3", [3786983.4415608784, 24723.757496203303, 1377040.8468381139])
 runTurbTests(daOptions, gcomm, "sst", [3787030.9471557215, 28962.17463329316, 1390611.8099678971])
 runTurbTests(daOptions, gcomm, "kw", [3787032.628925756, 28956.64422546926, 1390393.340066838])
-runTurbTests(daOptions, gcomm, "ke", [3787018.3272404578, 32793.038729705666, 1388357.4270508958])
 runTurbTests(daOptions, gcomm, "sstlm", [3787217.019831411, 0.0, 1390631.4948573676])
+daOptions["primalBC"]["useWallFunction"] = True
+runTurbTests(daOptions, gcomm, "ke", [3787215.614401266, 32909.66124880357, 1389726.4789026403])
 
 # *********************
 # incompressible models
@@ -109,12 +113,16 @@ daOptions = {
     "primalMinResTol": 1e-12,
     "primalMinResTolDiff": 1e12,
     "printDAOptions": False,
+    "primalBC": {
+        "useWallFunction": False,
+    },
 }
 
 
 runTurbTests(daOptions, gcomm, "sa", [11309.310054439891, 4641.040337039391, 2286.4132760034713])
 runTurbTests(daOptions, gcomm, "safv3", [11309.358170023846, 4643.017299973399, 2286.64706255848])
-runTurbTests(daOptions, gcomm, "sst", [12711.272520230086, 5056.461333737587, 4261.118421979036])
-runTurbTests(daOptions, gcomm, "kw", [12850.006064183974, 5057.952497987695, 4458.606143827926])
-runTurbTests(daOptions, gcomm, "ke", [11276.051654025956, 7514.392599840207, 2081.922700509106])
-runTurbTests(daOptions, gcomm, "sstlm", [21113.619960526943, 0.0, 4408.409999542262])
+runTurbTests(daOptions, gcomm, "sst", [12711.272520230086, 5056.461333737587, 4262.780825469425])
+runTurbTests(daOptions, gcomm, "kw", [12850.006064183974, 5057.952497987695, 4457.375320867626])
+runTurbTests(daOptions, gcomm, "sstlm", [21113.619960526943, 0.0, 4394.72120742463])
+daOptions["primalBC"]["useWallFunction"] = True
+runTurbTests(daOptions, gcomm, "ke", [11285.261813132654, 7536.877768251798, 3355.117587986624])
