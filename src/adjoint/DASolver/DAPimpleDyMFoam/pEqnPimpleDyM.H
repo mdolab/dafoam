@@ -58,8 +58,7 @@ U.correctBoundaryConditions();
 fvOptions.correct(U);
 
 // Correct Uf if the mesh is moving
-//fvc::correctUf(Uf, U, phi);
-myCorrectUf(Uf, U, phi);
+fvc::correctUf(Uf, U, phi);
 
 // Make the fluxes relative to the mesh motion
 fvc::makeRelative(phi, U);

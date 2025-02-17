@@ -67,15 +67,11 @@ label DAPimpleDyMFoam::solvePrimal()
 
     Foam::argList& args = argsPtr_();
 #include "createTime.H"
-//#include "createDynamicFvMesh.H"
-#include "createMesh.H"
-    mesh.moving(true);
+#include "createDynamicFvMesh.H"
 #include "initContinuityErrs.H"
-//#include "createDyMControls.H"
-#include "myCreateDyMControls.H"
+#include "createDyMControls.H"
 #include "createFieldsPimpleDyM.H"
-//#include "createUfIfPresent.H"
-#include "myCreateUfIfPresent.H"
+#include "createUfIfPresent.H"
 #include "CourantNo.H"
 #include "setInitialDeltaT.H"
 
@@ -118,7 +114,6 @@ label DAPimpleDyMFoam::solvePrimal()
                 );
 
                 mesh.movePoints(readPoints);
-                U.correctBoundaryConditions(); 
 
                 if (mesh.changing())
                 {
