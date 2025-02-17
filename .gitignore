@@ -26,3 +26,5 @@ build
 dafoam.egg-info
 __pycache__
 reg_test_files*
+tests/*.txt
+tests/*.txt.orig

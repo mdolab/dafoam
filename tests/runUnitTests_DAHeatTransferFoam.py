@@ -21,6 +21,7 @@ os.chdir("./reg_test_files-main/ChannelConjugateHeatV4/thermal")
 daOptions = {
     "designSurfaces": ["channel_outer", "channel_inner", "channel_sides"],
     "solverName": "DAHeatTransferFoam",
+    "debug": True,
     "function": {
         "HFX": {
             "type": "wallHeatFlux",

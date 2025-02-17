@@ -58,12 +58,10 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void calcdRdWT(int, PetscMat)
         void initializedRdWTMatrixFree()
         void destroydRdWTMatrixFree()
-        void createMLRKSP(PetscMat, PetscMat, PetscKSP)
         void createMLRKSPMatrixFree(PetscMat, PetscKSP)
         void updateKSPPCMat(PetscMat, PetscKSP)
         int solveLinearEqn(PetscKSP, PetscVec, PetscVec)
         void calcdRdWOldTPsiAD(int, double *, double *)
-        void convertMPIVec2SeqVec(PetscVec, PetscVec)
         void updateOFFields(double *)
         void getOFFields(double *)
         void getOFField(char *, char *, double *)
@@ -243,9 +241,6 @@ cdef class pyDASolvers:
     def destroydRdWTMatrixFree(self):
         self._thisptr.destroydRdWTMatrixFree()
     
-    def createMLRKSP(self, Mat jacMat, Mat jacPCMat, KSP myKSP):
-        self._thisptr.createMLRKSP(jacMat.mat, jacPCMat.mat, myKSP.ksp)
-    
     def createMLRKSPMatrixFree(self, Mat jacPCMat, KSP myKSP):
         self._thisptr.createMLRKSPMatrixFree(jacPCMat.mat, myKSP.ksp)
     
@@ -254,9 +249,6 @@ cdef class pyDASolvers:
     
     def solveLinearEqn(self, KSP myKSP, Vec rhsVec, Vec solVec):
         return self._thisptr.solveLinearEqn(myKSP.ksp, rhsVec.vec, solVec.vec)
-
-    def convertMPIVec2SeqVec(self, Vec mpiVec, Vec seqVec):
-        self._thisptr.convertMPIVec2SeqVec(mpiVec.vec, seqVec.vec)
     
     def updateOFFields(self, np.ndarray[double, ndim=1, mode="c"] states):
         assert len(states) == self.getNLocalAdjointStates(), "invalid array size!"
@@ -359,7 +351,7 @@ cdef class pyDASolvers:
         self._thisptr.writeVectorBinary(vecIn.vec, prefix)
     
     def updateBoundaryConditions(self, fieldName, fieldType):
-        self._thisptr.updateBoundaryConditions(fieldName, fieldType)
+        self._thisptr.updateBoundaryConditions(fieldName.encode(), fieldType.encode())
     
     def updateStateBoundaryConditions(self):
         self._thisptr.updateStateBoundaryConditions()

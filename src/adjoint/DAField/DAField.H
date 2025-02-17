@@ -86,31 +86,14 @@ public:
     /// assign the openfoam fields to the states array
     void ofField2State(scalar* states) const;
 
-    /// assign the points in fvMesh of OpenFOAM based on the point vector
-    void pointVec2OFMesh(const Vec xvVec) const;
-
     /// assign the points in fvMesh of OpenFOAM based on the point array
     void point2OFMesh(const scalar* volCoords) const;
 
     /// assign the point vector based on the points in fvMesh of OpenFOAM
     void ofMesh2PointVec(Vec xvVec) const;
 
-    /// assign the residual field in OpenFOAM based on the residual vector
-    void resVec2OFResField(const Vec resVec) const;
-
     /// assign the residual vector based on the residual field in OpenFOAM
     void ofResField2ResVec(Vec resVec) const;
-
-    /// set the scalar list of states based on the latest fields in OpenFOAM
-    void ofField2List(
-        scalarList& stateList,
-        scalarList& stateBoundaryList) const;
-
-    /// assign the fields in OpenFOAM based on the scalar list of states
-    void list2OFField(
-        const scalarList& stateList,
-        const scalarList& stateBounaryList,
-        const label oldTimeLevel) const;
 
     /// set the boundary conditions based on parameters defined in DAOption
     void setPrimalBoundaryConditions(const label printInfo = 1);

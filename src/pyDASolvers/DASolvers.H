@@ -151,15 +151,6 @@ public:
         DASolverPtr_->calcdRdWT(isPC, dRdWT);
     }
 
-    /// create the multi-level Richardson KSP for solving linear equation
-    void createMLRKSP(
-        const Mat jacMat,
-        const Mat jacPCMat,
-        KSP ksp)
-    {
-        DASolverPtr_->createMLRKSP(jacMat, jacPCMat, ksp);
-    }
-
     /// Update the preconditioner matrix for the ksp object
     void updateKSPPCMat(
         Mat PCMat,
@@ -195,14 +186,6 @@ public:
         Vec solVec)
     {
         return DASolverPtr_->solveLinearEqn(ksp, rhsVec, solVec);
-    }
-
-    /// convert the mpi vec to a seq vec
-    void convertMPIVec2SeqVec(
-        const Vec mpiVec,
-        Vec seqVec)
-    {
-        DASolverPtr_->convertMPIVec2SeqVec(mpiVec, seqVec);
     }
 
     /// compute dRdWOld^T*Psi

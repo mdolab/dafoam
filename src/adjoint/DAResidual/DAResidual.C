@@ -129,7 +129,9 @@ void DAResidual::masterFunction(
 
     if (updateMesh)
     {
-        daField_.pointVec2OFMesh(xvVec);
+        FatalErrorIn("DAResidual::masterFunction")
+            << "updateMesh=true not supported!"
+            << abort(FatalError);
     }
 
     if (updateState)

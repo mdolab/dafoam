@@ -272,41 +272,6 @@ scalar DASolver::getdFScaling(
     return scaling;
 }
 
-scalar DASolver::calcFunction(const word functionName)
-{
-    /*
-    Description:
-        Return the value of the objective function.
-        NOTE: we will sum up all the parts in functionName
-
-    Input:
-        functionName: the name of the objective function
-
-    Output:
-        functionValue: the value of the objective
-    */
-
-    if (daFunctionPtrList_.size() == 0)
-    {
-        FatalErrorIn("calcFunction") << "daFunctionPtrList_.size() ==0... "
-                                     << "Forgot to call setDAFunctionList?"
-                                     << abort(FatalError);
-    }
-
-    scalar functionValue = 0.0;
-
-    forAll(daFunctionPtrList_, idxI)
-    {
-        DAFunction& daFunction = daFunctionPtrList_[idxI];
-        if (daFunction.getFunctionName() == functionName)
-        {
-            functionValue = daFunction.calcFunction();
-        }
-    }
-
-    return functionValue;
-}
-
 void DASolver::setDAFunctionList()
 {
     /*
@@ -899,21 +864,6 @@ void DASolver::calcdRdWT(
 
     // clear up
     daJacCon.clear();
-}
-
-void DASolver::createMLRKSP(
-    const Mat jacMat,
-    const Mat jacPCMat,
-    KSP ksp)
-{
-    /*
-    Description:
-        Call createMLRKSP from DALinearEqn
-        This is the main function we need to call to initialize the KSP and set
-        up parameters for solving the linear equations
-    */
-
-    daLinearEqnPtr_->createMLRKSP(jacMat, jacPCMat, ksp);
 }
 
 void DASolver::updateKSPPCMat(
@@ -2460,46 +2410,6 @@ void DASolver::assignStateGradient2Vec(
     }
 
 #endif
-}
-
-void DASolver::convertMPIVec2SeqVec(
-    const Vec mpiVec,
-    Vec seqVec)
-{
-    /*
-    Description: 
-        Convert a MPI vec to a seq vec by using VecScatter
-    
-    Input:
-        mpiVec: the MPI vector in parallel
-
-    Output:
-        seqVec: the seq vector in serial
-    */
-    label vecSize;
-    VecGetSize(mpiVec, &vecSize);
-
-    // scatter colors to local array for all procs
-    Vec vout;
-    VecScatter ctx;
-    VecScatterCreateToAll(mpiVec, &ctx, &vout);
-    VecScatterBegin(ctx, mpiVec, vout, INSERT_VALUES, SCATTER_FORWARD);
-    VecScatterEnd(ctx, mpiVec, vout, INSERT_VALUES, SCATTER_FORWARD);
-
-    PetscScalar* voutArray;
-    VecGetArray(vout, &voutArray);
-
-    PetscScalar* seqVecArray;
-    VecGetArray(seqVec, &seqVecArray);
-
-    for (label i = 0; i < vecSize; i++)
-    {
-        seqVecArray[i] = voutArray[i];
-    }
-    VecRestoreArray(vout, &voutArray);
-    VecRestoreArray(seqVec, &seqVecArray);
-    VecScatterDestroy(&ctx);
-    VecDestroy(&vout);
 }
 
 label DASolver::checkPrimalFailure()
