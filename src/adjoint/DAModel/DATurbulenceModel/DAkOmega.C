@@ -90,6 +90,7 @@ DAkOmega::DAkOmega(
           mesh,
           dimensionedScalar("kRes", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           zeroGradientFvPatchField<scalar>::typeName),
+      GPtr_(nullptr),
       betaFIK_(
           IOobject(
               "betaFIK",
@@ -139,6 +140,10 @@ DAkOmega::DAkOmega(
 
     // initialize omegaNearWall
     omegaNearWall_.setSize(nWallFaces);
+
+    // initialize the G field
+    tmp<volTensorField> tgradU = fvc::grad(U_);
+    GPtr_.reset(new volScalarField("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU())))));
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -559,7 +564,8 @@ void DAkOmega::calcResiduals(const dictionary& options)
     volScalarField divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_)));
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
+    volScalarField& G = const_cast<volScalarField&>(GPtr_());
+    G = nut_ * (tgradU() && dev(twoSymm(tgradU())));
     tgradU.clear();
 
     if (solveTurbState_)
@@ -667,7 +673,8 @@ void DAkOmega::getFvMatrixFields(
     volScalarField divU(fvc::div(fvc::absolute(phi_ / fvc::interpolate(rho), U_)));
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
+    volScalarField& G = const_cast<volScalarField&>(GPtr_());
+    G = nut_ * (tgradU() && dev(twoSymm(tgradU())));
     tgradU.clear();
 
     // NOTE instead of calling omega_.boundaryFieldRef().updateCoeffs();
@@ -720,7 +727,8 @@ void DAkOmega::getTurbProdOverDestruct(volScalarField& PoD) const
         Return the value of the production over destruction term from the turbulence model 
     */
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
+    volScalarField& G = const_cast<volScalarField&>(GPtr_());
+    G = nut_ * (tgradU() && dev(twoSymm(tgradU())));
 
     volScalarField rho = this->rho();
 
@@ -741,7 +749,8 @@ void DAkOmega::getTurbConvOverProd(volScalarField& CoP) const
     */
 
     tmp<volTensorField> tgradU = fvc::grad(U_);
-    volScalarField G("kOmega:G", nut_ * (tgradU() && dev(twoSymm(tgradU()))));
+    volScalarField& G = const_cast<volScalarField&>(GPtr_());
+    G = nut_ * (tgradU() && dev(twoSymm(tgradU())));
 
     volScalarField rho = this->rho();
 

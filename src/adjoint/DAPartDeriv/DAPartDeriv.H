@@ -78,11 +78,6 @@ protected:
         const scalar delta,
         Vec wVec);
 
-    /// perturb the values in the boundary condition
-    void perturbBC(
-        const dictionary options,
-        const scalar delta);
-
     /// set values for the partial derivative matrix
     void setPartDerivMat(
         const Vec resVec,
@@ -90,14 +85,6 @@ protected:
         const label transposed,
         Mat jacMat,
         const scalar jacLowerBound = 1e-30) const;
-
-    /// perturb the angle of attack
-    void perturbAOA(
-        const dictionary options,
-        const scalar delta);
-
-    /// volume mesh coordinates wrt the ffd point coordinate partials
-    Mat dXvdFFDMat_;
 
 public:
     // Constructors
@@ -120,7 +107,6 @@ public:
     /// clear members in parent and child objects
     void clear()
     {
-        MatDestroy(&dXvdFFDMat_);
     }
 
     /// initialize partial derivative matrix
@@ -134,9 +120,6 @@ public:
         const Vec xvVec,
         const Vec wVec,
         Mat jacMat);
-
-    /// setup dXvdFFD matrix
-    void setdXvdFFDMat(const Mat dXvdFFDMat);
 
     /// setup the state normalization vector
     void setNormStatePerturbVec(Vec* normStatePerturbVec);

@@ -1,3 +1,0 @@
-DAIndex.C
-
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAIndex$(WM_CODI_AD_LIB_POSTFIX)

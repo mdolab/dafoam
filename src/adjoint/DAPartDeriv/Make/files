@@ -1,3 +1,0 @@
-DAPartDeriv.C
-
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDAPartDeriv$(WM_CODI_AD_LIB_POSTFIX)

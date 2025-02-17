@@ -260,12 +260,6 @@ public:
         const label isPC,
         Mat dRdWT);
 
-    /// create a multi-level, Richardson KSP object
-    void createMLRKSP(
-        const Mat jacMat,
-        const Mat jacPCMat,
-        KSP ksp);
-
     /// Update the preconditioner matrix for the ksp object
     void updateKSPPCMat(
         Mat PCMat,
@@ -276,11 +270,6 @@ public:
         const KSP ksp,
         const Vec rhsVec,
         Vec solVec);
-
-    /// convert the mpi vec to a seq vec
-    void convertMPIVec2SeqVec(
-        const Vec mpiVec,
-        Vec seqVec);
 
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state array
     void updateOFFields(const scalar* states);
@@ -517,9 +506,6 @@ public:
         return daCheckMeshPtr_->run();
     }
 
-    /// calculate and return the value of the objective function
-    scalar calcFunction(const word functionName);
-
     /// get the scaling factor for dF/d? derivative computation
     scalar getdFScaling(const word functionName, const label timeIdx);
 
@@ -557,14 +543,6 @@ public:
 
     /// calculate the residuals
     void calcResiduals(label isPC = 0);
-
-    /// synchronize the values in DAOption and actuatorDiskDVs_
-    void syncDAOptionToActuatorDVs()
-    {
-        DAFvSource& fvSource = const_cast<DAFvSource&>(
-            meshPtr_->thisDb().lookupObject<DAFvSource>("DAFvSource"));
-        fvSource.syncDAOptionToActuatorDVs();
-    }
 
     /// Accessing members
     /// return the mesh object
@@ -663,7 +641,7 @@ public:
         label oldTimeLevel = 0);
 
     /// calculate the PC mat using fvMatrix
-    void calcPCMatWithFvMatrix(Mat PCMat);
+    void calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly = 0);
 
     /// initialize tensorflow functions and interfaces for callback
     void initTensorFlowFuncs(

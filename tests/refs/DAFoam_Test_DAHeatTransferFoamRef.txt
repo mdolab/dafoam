@@ -1,2 +1,0 @@
-Dictionary Key: HFX
-@value    180150.5586275270325132 1e-10 1e-12

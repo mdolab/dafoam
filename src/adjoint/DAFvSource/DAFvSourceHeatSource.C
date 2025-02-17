@@ -24,13 +24,9 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
     const DAIndex& daIndex)
     : DAFvSource(modelType, mesh, daOption, daModel, daIndex)
 {
+    this->initFvSourcePars();
+    
     printInterval_ = daOption.getOption<label>("printInterval");
-
-    // now we need to initialize actuatorDiskDVs_ by synchronizing the values
-    // defined in fvSource from DAOption to actuatorDiskDVs_
-    // NOTE: we need to call this function whenever we change the actuator
-    // design variables during optimization
-    this->syncDAOptionToActuatorDVs();
 
     const dictionary& allOptions = daOption_.getAllOptions();
 
@@ -103,6 +99,9 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
         }
         else if (sourceType == "cylinderSmooth")
         {
+            DAGlobalVar& globalVar =
+                const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+            HashTable<List<scalar>>& heatSourcePars = globalVar.heatSourcePars;
 
             // eps is a smoothing parameter, it should be the local mesh cell size in meters
             // near the cylinder region
@@ -111,7 +110,7 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
             snapCenter2Cell_.set(sourceName, sourceSubDict.lookupOrDefault<label>("snapCenter2Cell", 0));
             if (snapCenter2Cell_[sourceName])
             {
-                point centerPoint = {actuatorDiskDVs_[sourceName][0], actuatorDiskDVs_[sourceName][1], actuatorDiskDVs_[sourceName][2]};
+                point centerPoint = {heatSourcePars[sourceName][0], heatSourcePars[sourceName][1], heatSourcePars[sourceName][2]};
 
                 // NOTE: we need to call a self-defined findCell func to make it work correctly in ADR
                 label myCellI = DAUtility::myFindCell(mesh_, centerPoint);
@@ -222,7 +221,7 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
                 // cell index
                 label cellI = fvSourceCellIndices_[sourceName][idxJ];
 
-                fvSource[cellI] = power / totalV;
+                fvSource[cellI] += power / totalV;
                 sourceTotal += fvSource[cellI] * mesh_.V()[cellI];
             }
 
@@ -238,18 +237,22 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
         }
         else if (sourceType == "cylinderSmooth")
         {
+            DAGlobalVar& globalVar =
+                const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+            HashTable<List<scalar>>& heatSourcePars = globalVar.heatSourcePars;
+
             vector cylinderCenter =
-                {actuatorDiskDVs_[sourceName][0], actuatorDiskDVs_[sourceName][1], actuatorDiskDVs_[sourceName][2]};
+                {heatSourcePars[sourceName][0], heatSourcePars[sourceName][1], heatSourcePars[sourceName][2]};
 
             if (snapCenter2Cell_[sourceName])
             {
                 this->findGlobalSnappedCenter(snappedCenterCellI_[sourceName], cylinderCenter);
             }
             vector cylinderDir =
-                {actuatorDiskDVs_[sourceName][3], actuatorDiskDVs_[sourceName][4], actuatorDiskDVs_[sourceName][5]};
-            scalar radius = actuatorDiskDVs_[sourceName][6];
-            scalar cylinderLen = actuatorDiskDVs_[sourceName][7];
-            scalar power = actuatorDiskDVs_[sourceName][8];
+                {heatSourcePars[sourceName][3], heatSourcePars[sourceName][4], heatSourcePars[sourceName][5]};
+            scalar radius = heatSourcePars[sourceName][6];
+            scalar cylinderLen = heatSourcePars[sourceName][7];
+            scalar power = heatSourcePars[sourceName][8];
             vector cylinderDirNorm = cylinderDir / mag(cylinderDir);
             scalar eps = cylinderEps_[sourceName];
 
@@ -363,6 +366,54 @@ void DAFvSourceHeatSource::calcFvSource(volScalarField& fvSource)
     }
 
     fvSource.correctBoundaryConditions();
+}
+
+void DAFvSourceHeatSource::initFvSourcePars()
+{
+    /*
+    Description:
+        Initialize the values for all types of fvSource in DAGlobalVar, including 
+        actuatorDiskPars, heatSourcePars, etc
+    */
+
+    // now we need to initialize actuatorDiskPars
+    dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
+
+    forAll(fvSourceSubDict.toc(), idxI)
+    {
+        word diskName = fvSourceSubDict.toc()[idxI];
+        // sub dictionary with all parameters for this disk
+        dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
+        word type = diskSubDict.getWord("type");
+        word source = diskSubDict.getWord("source");
+
+        if (type == "heatSource" && source == "cylinderSmooth")
+        {
+            // now read in all parameters for this actuator disk
+            scalarList centerList;
+            diskSubDict.readEntry<scalarList>("center", centerList);
+
+            scalarList axisList;
+            diskSubDict.readEntry<scalarList>("axis", axisList);
+
+            // we have 13 design variables for each disk
+            scalarList dvList(9);
+            dvList[0] = centerList[0];
+            dvList[1] = centerList[1];
+            dvList[2] = centerList[2];
+            dvList[3] = axisList[0];
+            dvList[4] = axisList[1];
+            dvList[5] = axisList[2];
+            dvList[6] = diskSubDict.getScalar("radius");
+            dvList[7] = diskSubDict.getScalar("length");
+            dvList[8] = diskSubDict.getScalar("power");
+
+            // set actuatorDiskPars
+            DAGlobalVar& globalVar =
+                const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+            globalVar.heatSourcePars.set(diskName, dvList);
+        }
+    }
 }
 
 } // End namespace Foam

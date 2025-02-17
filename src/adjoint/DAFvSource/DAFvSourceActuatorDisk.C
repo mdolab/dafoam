@@ -24,15 +24,11 @@ DAFvSourceActuatorDisk::DAFvSourceActuatorDisk(
     const DAIndex& daIndex)
     : DAFvSource(modelType, mesh, daOption, daModel, daIndex)
 {
+    this->initFvSourcePars();
+
     this->calcFvSourceCellIndices(fvSourceCellIndices_);
 
     printInterval_ = daOption.getOption<label>("printInterval");
-
-    // now we need to initialize actuatorDiskDVs_ by synchronizing the values
-    // defined in fvSource from DAOption to actuatorDiskDVs_
-    // NOTE: we need to call this function whenever we change the actuator
-    // design variables during optimization
-    this->syncDAOptionToActuatorDVs();
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -209,19 +205,22 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
         }
         else if (source == "cylinderAnnulusSmooth")
         {
+            DAGlobalVar& globalVar =
+                const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+            HashTable<List<scalar>>& actuatorDiskPars = globalVar.actuatorDiskPars;
 
-            vector center = {actuatorDiskDVs_[diskName][0], actuatorDiskDVs_[diskName][1], actuatorDiskDVs_[diskName][2]};
-            vector dirNorm = {actuatorDiskDVs_[diskName][3], actuatorDiskDVs_[diskName][4], actuatorDiskDVs_[diskName][5]};
+            vector center = {actuatorDiskPars[diskName][0], actuatorDiskPars[diskName][1], actuatorDiskPars[diskName][2]};
+            vector dirNorm = {actuatorDiskPars[diskName][3], actuatorDiskPars[diskName][4], actuatorDiskPars[diskName][5]};
             dirNorm = dirNorm / mag(dirNorm);
-            scalar innerRadius = actuatorDiskDVs_[diskName][6];
-            scalar outerRadius = actuatorDiskDVs_[diskName][7];
+            scalar innerRadius = actuatorDiskPars[diskName][6];
+            scalar outerRadius = actuatorDiskPars[diskName][7];
             word rotDir = diskSubDict.getWord("rotDir");
             // we will calculate or read scale later
             scalar scale;
-            scalar POD = actuatorDiskDVs_[diskName][9];
+            scalar POD = actuatorDiskPars[diskName][9];
             scalar eps = diskSubDict.getScalar("eps");
-            scalar expM = actuatorDiskDVs_[diskName][10];
-            scalar expN = actuatorDiskDVs_[diskName][11];
+            scalar expM = actuatorDiskPars[diskName][10];
+            scalar expN = actuatorDiskPars[diskName][11];
             // Now we need to compute normalized eps in the radial direction, i.e. epsRStar this is because
             // we need to smooth the radial distribution of the thrust, here the radial location is
             // normalized as rStar = (r - rInner) / (rOuter - rInner), so to make epsRStar consistent with this
@@ -295,12 +294,12 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
                     tmpThrustSumAll += fAxial * mesh_.V()[cellI];
                 }
                 reduce(tmpThrustSumAll, sumOp<scalar>());
-                scalar targetThrust = actuatorDiskDVs_[diskName][12];
+                scalar targetThrust = actuatorDiskPars[diskName][12];
                 scale = targetThrust / tmpThrustSumAll;
             }
             else
             {
-                scale = actuatorDiskDVs_[diskName][8];
+                scale = actuatorDiskPars[diskName][8];
             }
 
             // now we have the correct scale, repeat the loop to assign fvSource
@@ -392,33 +391,32 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             reduce(thrustSourceSum, sumOp<scalar>());
             reduce(torqueSourceSum, sumOp<scalar>());
 
-            if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+#ifndef CODI_ADR
+            if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
             {
-                if (mesh_.time().timeIndex() % printInterval_ == 0 || mesh_.time().timeIndex() == 1)
+                Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
+                Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
+                if (adjustThrust)
                 {
-                    Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
-                    Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
-                    if (adjustThrust)
-                    {
-                        Info << "Dynamically adjusted scale for " << diskName << ": " << scale << endl;
-                    }
-                    if (daOption_.getOption<label>("debug"))
-                    {
-                        Info << "adjustThrust for " << diskName << ": " << adjustThrust << endl;
-                        Info << "center for " << diskName << ": " << center << endl;
-                        Info << "innerRadius for " << diskName << ": " << innerRadius << endl;
-                        Info << "outerRadius for " << diskName << ": " << outerRadius << endl;
-                        Info << "scale for " << diskName << ": " << scale << endl;
-                        Info << "POD for " << diskName << ": " << POD << endl;
-                        Info << "eps for " << diskName << ": " << eps << endl;
-                        Info << "expM for " << diskName << ": " << expM << endl;
-                        Info << "expN for " << diskName << ": " << expN << endl;
-                        Info << "epsRStar for " << diskName << ": " << epsRStar << endl;
-                        Info << "rStarMin for " << diskName << ": " << rStarMin << endl;
-                        Info << "rStarMax for " << diskName << ": " << rStarMax << endl;
-                    }
+                    Info << "Dynamically adjusted scale for " << diskName << ": " << scale << endl;
+                }
+                if (daOption_.getOption<label>("debug"))
+                {
+                    Info << "adjustThrust for " << diskName << ": " << adjustThrust << endl;
+                    Info << "center for " << diskName << ": " << center << endl;
+                    Info << "innerRadius for " << diskName << ": " << innerRadius << endl;
+                    Info << "outerRadius for " << diskName << ": " << outerRadius << endl;
+                    Info << "scale for " << diskName << ": " << scale << endl;
+                    Info << "POD for " << diskName << ": " << POD << endl;
+                    Info << "eps for " << diskName << ": " << eps << endl;
+                    Info << "expM for " << diskName << ": " << expM << endl;
+                    Info << "expN for " << diskName << ": " << expN << endl;
+                    Info << "epsRStar for " << diskName << ": " << epsRStar << endl;
+                    Info << "rStarMin for " << diskName << ": " << rStarMin << endl;
+                    Info << "rStarMax for " << diskName << ": " << rStarMax << endl;
                 }
             }
+#endif
         }
         else
         {
@@ -429,6 +427,59 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
     }
 
     fvSource.correctBoundaryConditions();
+}
+
+void DAFvSourceActuatorDisk::initFvSourcePars()
+{
+    /*
+    Description:
+        Initialize the values for all types of fvSource in DAGlobalVar, including 
+        actuatorDiskPars, heatSourcePars, etc
+    */
+
+    // now we need to initialize actuatorDiskPars
+    dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
+
+    forAll(fvSourceSubDict.toc(), idxI)
+    {
+        word diskName = fvSourceSubDict.toc()[idxI];
+        // sub dictionary with all parameters for this disk
+        dictionary diskSubDict = fvSourceSubDict.subDict(diskName);
+        word type = diskSubDict.getWord("type");
+        word source = diskSubDict.getWord("source");
+
+        if (type == "actuatorDisk" && source == "cylinderAnnulusSmooth")
+        {
+
+            // now read in all parameters for this actuator disk
+            scalarList centerList;
+            diskSubDict.readEntry<scalarList>("center", centerList);
+
+            scalarList dirList;
+            diskSubDict.readEntry<scalarList>("direction", dirList);
+
+            // we have 13 design variables for each disk
+            scalarList dvList(13);
+            dvList[0] = centerList[0];
+            dvList[1] = centerList[1];
+            dvList[2] = centerList[2];
+            dvList[3] = dirList[0];
+            dvList[4] = dirList[1];
+            dvList[5] = dirList[2];
+            dvList[6] = diskSubDict.getScalar("innerRadius");
+            dvList[7] = diskSubDict.getScalar("outerRadius");
+            dvList[8] = diskSubDict.getScalar("scale");
+            dvList[9] = diskSubDict.getScalar("POD");
+            dvList[10] = diskSubDict.getScalar("expM");
+            dvList[11] = diskSubDict.getScalar("expN");
+            dvList[12] = diskSubDict.getScalar("targetThrust");
+
+            // set actuatorDiskPars
+            DAGlobalVar& globalVar =
+                const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+            globalVar.actuatorDiskPars.set(diskName, dvList);
+        }
+    }
 }
 
 void DAFvSourceActuatorDisk::calcFvSourceCellIndices(HashTable<labelList>& fvSourceCellIndices)

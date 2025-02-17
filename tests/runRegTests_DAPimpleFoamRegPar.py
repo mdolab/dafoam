@@ -17,18 +17,21 @@ from pygeo.mphys import OM_DVGEOCOMP
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/Ramp")
+os.chdir("./reg_test_files-main/ConvergentChannel")
 if gcomm.rank == 0:
-    os.system("rm -rf processor* *.bin")
-    os.system("cp constant/turbulenceProperties_SA constant/turbulenceProperties")
+    os.system("rm -rf 0/* processor* *.bin")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
+    os.system("cp -r 0.incompressible/* 0/")
+    os.system("cp -r system.incompressible.unsteady/* system/")
     replace_text_in_file("system/fvSchemes", "meshWaveFrozen;", "meshWave;")
     os.system("pimpleFoam")
     os.system("getFIData -refFieldName U -refFieldType vector")
     os.system("getFIData -refFieldName p -refFieldType scalar")
     os.system("getFIData -refFieldName wallShearStress -refFieldType vector")
+    #os.system("getFIData -refFieldName wallHeatFlux -refFieldType scalar")
     os.system("decomposePar -time '0:'")
-    os.system("cp constant/turbulenceProperties_SST constant/turbulenceProperties")
-    os.system("rm -rf 0.*")
+    os.system("cp constant/turbulenceProperties.sst constant/turbulenceProperties")
+    os.system("rm -rf 0.0* 0.1")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
@@ -80,7 +83,7 @@ daOptions = {
         "PVar": {
             "type": "variance",
             "source": "patchToFace",
-            "patches": ["bot"],
+            "patches": ["walls"],
             "scale": 1.0,
             "mode": "surface",
             "varName": "p",
@@ -93,7 +96,7 @@ daOptions = {
             "source": "allCells",
             "scale": 1.0,
             "mode": "probePoint",
-            "probePointCoords": [[1.5, 0.0, 0.025], [1.5, -0.2, 0.025]],
+            "probePointCoords": [[0.5, 0.5, 0.5], [0.3, 0.2, 0.1]],
             "varName": "U",
             "varType": "vector",
             "components": [0, 1],
@@ -103,7 +106,7 @@ daOptions = {
         "wallShearStressVar": {
             "type": "variance",
             "source": "patchToFace",
-            "patches": ["bot"],
+            "patches": ["walls"],
             "scale": 1.0,
             "mode": "surface",
             "varName": "wallShearStress",
@@ -112,6 +115,18 @@ daOptions = {
             "timeDependentRefData": True,
             "timeOp": "average",
         },
+        # "wallHeatFlux": {
+        #     "type": "variance",
+        #     "source": "patchToFace",
+        #     "patches": ["walls"],
+        #     "scale": 1.0,
+        #     "mode": "surface",
+        #     "varName": "wallHeatFlux",
+        #     "varType": "scalar",
+        #     "components": [0],
+        #     "timeDependentRefData": True,
+        #     "timeOp": "average",
+        # },
     },
     "adjStateOrdering": "cell",
     "adjEqnOption": {"gmresRelTol": 1.0e-8, "pcFillLevel": 1, "jacMatReOrdering": "natural"},
@@ -160,7 +175,8 @@ funcNames = [
     "scenario.solver.UVar",
     "scenario.solver.PVar",
     "scenario.solver.UProbe",
-    "scenario.solver.wallShearStressVar"
+    "scenario.solver.wallShearStressVar",
+    #"scenario.solver.wallHeatFlux"
 ]
 
 # run the adjoint and forward ref

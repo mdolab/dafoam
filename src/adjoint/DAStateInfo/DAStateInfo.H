@@ -102,9 +102,6 @@ public:
     {
         return stateResConInfo_;
     }
-
-    /// whether to include the temperature field
-    label hasTField = 0;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

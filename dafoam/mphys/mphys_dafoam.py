@@ -317,17 +317,25 @@ class DAFoamSolver(ImplicitComponent):
 
             DASolver = self.DASolver
 
+            # set the solver input, including mesh, boundary etc.
+            DASolver.set_solver_input(inputs, self.DVGeo)
+
             # before running the primal, we need to check if the mesh
             # quality is good
             meshOK = DASolver.solver.checkMesh()
 
-            # solve the flow with the current design variable
             # if the mesh is not OK, do not run the primal
-            if meshOK:
-                DASolver.set_solver_input(inputs, self.DVGeo)
-                DASolver()
-            else:
-                DASolver.primalFail = 1
+            if meshOK != 1:
+                raise AnalysisError("Mesh quality error!")
+                return
+
+            # call the primal
+            DASolver()
+
+            # if the primal fails, do not set states and return
+            if DASolver.primalFail != 0:
+                raise AnalysisError("Primal solution failed!")
+                return
 
             # after solving the primal, we need to print its residual info
             if DASolver.getOption("useAD")["mode"] == "forward":
@@ -335,18 +343,9 @@ class DAFoamSolver(ImplicitComponent):
             else:
                 DASolver.solver.calcPrimalResidualStatistics("print")
 
-            # get the objective functions
-            funcs = {}
-            DASolver.evalFunctions(funcs)
-
             # assign the computed flow states to outputs
             states = DASolver.getStates()
             outputs[self.stateName] = states
-
-            # if the primal solution fail, we return analysisError and let the optimizer handle it
-            fail = funcs["fail"]
-            if fail:
-                raise AnalysisError("Primal solution failed!")
 
             # set states
             DASolver.setStates(states)
@@ -1396,7 +1395,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
             dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
             DASolver.solver.calcdRdWT(1, dRdWTPC1)
             # always update the PC mat values using OpenFOAM's fvMatrix
-            DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
+            # DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
             self.dRdWTPC[str(endTime)] = dRdWTPC1
 
             # if we define some extra PCMat in PCMatPrecomputeInterval, calculate them here
@@ -1415,7 +1414,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
                     DASolver.solver.calcdRdWT(1, dRdWTPC1)
                     # always update the PC mat values using OpenFOAM's fvMatrix
-                    DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
+                    # DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
                     self.dRdWTPC[str(t)] = dRdWTPC1
 
         # Initialize the KSP object using the PCMat from the endTime

@@ -41,7 +41,6 @@ protected:
     surfaceScalarField& phi_;
     surfaceScalarField phiRes_;
 
-    autoPtr<volScalarField> TPtr_;
     autoPtr<volScalarField> TResPtr_;
     //@}
 

@@ -6,3 +6,25 @@
 
 # PyCharm specific
 /.idea
+
+# OpenFOAM make temp files
+*.so
+src/adjoint/Make/linux64*
+src/adjoint/lnInclude
+src/newTurbModels/*/lnInclude
+src/newTurbModels/*/Make/linux64*
+src/pyDASolvers/lnInclude
+src/pyDASolvers/Make/linux64*
+src/pyDASolvers/*.h
+src/pyDASolvers/*.cpp
+src/pyUnitTests/lnInclude
+src/pyUnitTests/Make/linux64*
+src/pyUnitTests/*.h
+src/pyUnitTests/*.cpp
+src/utilities/*/*/Make/linux64*
+build
+dafoam.egg-info
+__pycache__
+reg_test_files*
+tests/*.txt
+tests/*.txt.orig

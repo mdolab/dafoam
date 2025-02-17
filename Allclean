@@ -8,7 +8,7 @@ fi
 function cleanDAFoam()
 { 
   cd src/adjoint && rm -rf lnInclude && cd -
-  cd src/adjoint && ./Allclean && cd -
+  cd src/adjoint && wclean && cd -
   cd src/newTurbModels && ./Allclean && cd -
   cd src/pyUnitTests && ./Allclean && cd -
   cd src/pyDASolvers && ./Allclean && cd -

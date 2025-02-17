@@ -96,6 +96,10 @@ protected:
     volScalarField kRes_;
     //@}
 
+    /// we need to make the G field a class variable and register it to the mesh.db
+    /// such that the omegaWallFunction BC can find it
+    autoPtr<volScalarField> GPtr_;
+
     /// beta field for field inversion
     volScalarField betaFIK_;
     volScalarField betaFIOmega_;

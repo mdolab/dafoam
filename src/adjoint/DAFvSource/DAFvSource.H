@@ -58,9 +58,6 @@ protected:
     /// DAIndex object
     const DAIndex& daIndex_;
 
-    /// the list of design variables for all the actuator disks
-    HashTable<List<scalar>> actuatorDiskDVs_;
-
 public:
     /// Runtime type information
     TypeName("DAFvSource");
@@ -108,50 +105,12 @@ public:
     /// overloaded function for scalar fields
     virtual void calcFvSource(volScalarField& fvSource);
 
-    /// set a new value to the actuator disk design variable
-    void setActuatorDVs(
-        const word diskName,
-        const label dvI,
-        const scalar val)
-    {
-        actuatorDiskDVs_[diskName][dvI] = val;
-    }
+    /// Initialize the values for all types of fvSource in DAGlobalVar, including actuatorDiskPars, heatSourcePars, etc
+    virtual void initFvSourcePars();
 
-    /// get the value from the actuator disk design variable
-    scalar getActuatorDVs(
-        const word diskName,
-        const label dvI)
-    {
-        return actuatorDiskDVs_[diskName][dvI];
-    }
-
-    /// calculate fvSource based on the latest actuatorDVs
-    void updateFvSource()
-    {
-        if (mesh_.thisDb().foundObject<volVectorField>("fvSource"))
-        {
-            volVectorField& fvSource = const_cast<volVectorField&>(
-                mesh_.thisDb().lookupObject<volVectorField>("fvSource"));
-
-            this->calcFvSource(fvSource);
-        }
-        else if (mesh_.thisDb().foundObject<volScalarField>("fvSource"))
-        {
-            volScalarField& fvSource = const_cast<volScalarField&>(
-                mesh_.thisDb().lookupObject<volScalarField>("fvSource"));
-
-            this->calcFvSource(fvSource);
-        }
-        else
-        {
-            FatalErrorIn("") << "fvSource not found! "
-                             << abort(FatalError);
-        }
-    }
-
-    /// synchronize the values in DAOption and actuatorDiskDVs_
-    void syncDAOptionToActuatorDVs();
-
+    /// calculate fvSource based on the latest parameters defined in DAGlobalVar
+    void updateFvSource();
+    
     /// virtual function for regIOobject
     bool writeData(Ostream& os) const;
 
