@@ -43,6 +43,8 @@ DAFunction/DAFunctionVonMisesStressKS.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
+DAFvSource/DAFvSourceActuatorLine.C
+DAFvSource/DAFvSourceActuatorPoint.C
 DAFvSource/DAFvSourceHeatSource.C
 DAFvSource/DAFvSourceUniformPressureGradient.C
 
