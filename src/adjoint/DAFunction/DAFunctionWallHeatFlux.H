@@ -44,6 +44,9 @@ protected:
     /// if calculating flux per unit area or total, which mode to use
     word calcMode_;
 
+    /// if calculating wallHeatFlux by OpenFOAMs snGrad() or DAFOAM's custom (daCustom) formulation
+    word formMode_;
+
 public:
     TypeName("wallHeatFlux");
     // Constructors
