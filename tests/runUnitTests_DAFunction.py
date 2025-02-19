@@ -65,6 +65,14 @@ daOptions = {
             "patches": ["walls"],
             "scale": 0.001,
         },
+        "HFX_custom": {
+            "type": "wallHeatFlux",
+            "scheme": "total",
+            "formulation": "daCustom",
+            "source": "patchToFace",
+            "patches": ["walls"],
+            "scale": 0.001,
+        },
         "PMean": {
             "type": "patchMean",
             "source": "patchToFace",
@@ -175,6 +183,7 @@ funcs_ref = {
     "CMZ": 7.1768354637131795,
     "TP1": 2.5561992647012914,
     "HFX": 1.5730364723151125,
+    "HFX_custom": 62.95548850901453,
     "PMean": 77.80996323506456,
     "UMean": 15.469850053816028,
     "skewness": 1.3140396235456926,
