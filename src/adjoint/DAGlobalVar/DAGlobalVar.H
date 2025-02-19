@@ -64,6 +64,12 @@ public:
     /// the list of parameters for all the actuator disks
     HashTable<List<scalar>> actuatorDiskPars;
 
+    /// the list of parameters for all the actuator lines
+    HashTable<List<scalar>> actuatorLinePars;
+
+    /// the list of parameters for all the actuator points
+    HashTable<List<scalar>> actuatorPointPars;
+
     /// the list of parameters for all the actuator disks
     HashTable<List<scalar>> heatSourcePars;
 };

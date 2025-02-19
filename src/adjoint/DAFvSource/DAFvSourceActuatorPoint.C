@@ -25,6 +25,7 @@ DAFvSourceActuatorPoint::DAFvSourceActuatorPoint(
     : DAFvSource(modelType, mesh, daOption, daModel, daIndex)
 {
     printIntervalUnsteady_ = daOption.getOption<label>("printIntervalUnsteady");
+    this->initFvSourcePars();
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -89,6 +90,10 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
 
     dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
 
+    DAGlobalVar& globalVar =
+        const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+    HashTable<List<scalar>>& actuatorPointPars = globalVar.actuatorPointPars;
+
     // loop over all the cell indices for all actuator points
     forAll(fvSourceSubDict.toc(), idxI)
     {
@@ -104,20 +109,23 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
         if (smoothFunction == "hyperbolic")
         {
             // now read in all parameters for this actuator point
-            scalarList center1;
-            scalarList size1;
-            scalarList amp1;
-            pointSubDict.readEntry<scalarList>("center", center1);
-            pointSubDict.readEntry<scalarList>("size", size1);
-            pointSubDict.readEntry<scalarList>("amplitude", amp1);
-            vector center = {center1[0], center1[1], center1[2]};
-            vector size = {size1[0], size1[1], size1[2]};
-            vector amp = {amp1[0], amp1[1], amp1[2]};
-            scalar period = pointSubDict.get<scalar>("periodicity");
-            scalar eps = pointSubDict.get<scalar>("eps");
-            scalar scale = pointSubDict.get<scalar>("scale");
+            vector center = {
+                actuatorPointPars[pointName][0],
+                actuatorPointPars[pointName][1],
+                actuatorPointPars[pointName][2]};
+            vector size = {
+                actuatorPointPars[pointName][3],
+                actuatorPointPars[pointName][4],
+                actuatorPointPars[pointName][5]};
+            vector amp = {
+                actuatorPointPars[pointName][6],
+                actuatorPointPars[pointName][7],
+                actuatorPointPars[pointName][8]};
+            scalar period = actuatorPointPars[pointName][10];
+            scalar eps = actuatorPointPars[pointName][12];
+            scalar scale = actuatorPointPars[pointName][9];
             label thrustDirIdx = pointSubDict.get<label>("thrustDirIdx");
-            scalar phase = pointSubDict.get<scalar>("phase");
+            scalar phase = actuatorPointPars[pointName][11];
 
             scalar t = mesh_.time().timeOutputValue();
             center += amp * sin(constant::mathematical::twoPi * t / period + phase);
@@ -139,29 +147,36 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
             }
             reduce(thrustTotal, sumOp<scalar>());
 
-            if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+#ifdef CODI_NO_AD
+            if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0 || mesh_.time().timeIndex() == 0)
             {
-                if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0 || mesh_.time().timeIndex() == 0)
-                {
-                    Info << "Actuator point source: " << pointName << endl;
-                    Info << "Total thrust source: " << thrustTotal << endl;
-                }
+                Info << "Actuator point source: " << pointName << endl;
+                Info << "Total thrust source: " << thrustTotal << endl;
             }
+#endif
         }
         else if (smoothFunction == "gaussian")
         {
             // now read in all parameters for this actuator point
-            scalarList center1;
-            scalarList amp1;
-            pointSubDict.readEntry<scalarList>("center", center1);
-            pointSubDict.readEntry<scalarList>("amplitude", amp1);
-            vector center = {center1[0], center1[1], center1[2]};
-            vector amp = {amp1[0], amp1[1], amp1[2]};
-            scalar period = pointSubDict.get<scalar>("periodicity");
-            scalar eps = pointSubDict.get<scalar>("eps");
-            scalar scale = pointSubDict.get<scalar>("scale");
+            vector center = {
+                actuatorPointPars[pointName][0],
+                actuatorPointPars[pointName][1],
+                actuatorPointPars[pointName][2]};
+            // NOTE: the size variable is not used in the gaussian method, but we set it
+            // anyway. So the gaussian case will have empty DV keys for indices from 3 to 5
+            vector size = {
+                actuatorPointPars[pointName][3],
+                actuatorPointPars[pointName][4],
+                actuatorPointPars[pointName][5]};
+            vector amp = {
+                actuatorPointPars[pointName][6],
+                actuatorPointPars[pointName][7],
+                actuatorPointPars[pointName][8]};
+            scalar period = actuatorPointPars[pointName][10];
+            scalar eps = actuatorPointPars[pointName][12];
+            scalar scale = actuatorPointPars[pointName][9];
             label thrustDirIdx = pointSubDict.get<label>("thrustDirIdx");
-            scalar phase = pointSubDict.get<scalar>("phase");
+            scalar phase = actuatorPointPars[pointName][11];
 
             scalar t = mesh_.time().timeOutputValue();
             center += amp * sin(constant::mathematical::twoPi * t / period + phase);
@@ -179,14 +194,13 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
             }
             reduce(thrustTotal, sumOp<scalar>());
 
-            if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+#ifdef CODI_NO_AD
+            if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0 || mesh_.time().timeIndex() == 1)
             {
-                if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0 || mesh_.time().timeIndex() == 1)
-                {
-                    Info << "Actuator point source: " << pointName << endl;
-                    Info << "Total thrust source: " << thrustTotal << endl;
-                }
+                Info << "Actuator point source: " << pointName << endl;
+                Info << "Total thrust source: " << thrustTotal << endl;
             }
+#endif
         }
         else
         {
@@ -195,6 +209,70 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
     }
 
     fvSource.correctBoundaryConditions();
+}
+
+void DAFvSourceActuatorPoint::initFvSourcePars()
+{
+    /*
+    Description:
+        Initialize the values for all types of fvSource in DAGlobalVar, including 
+        actuatorDiskPars, heatSourcePars, etc
+    */
+
+    // now we need to initialize actuatorDiskPars
+    dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
+
+    forAll(fvSourceSubDict.toc(), idxI)
+    {
+        word pointName = fvSourceSubDict.toc()[idxI];
+        // sub dictionary with all parameters for this disk
+        dictionary pointSubDict = fvSourceSubDict.subDict(pointName);
+        word type = pointSubDict.getWord("type");
+
+        if (type == "actuatorPoint")
+        {
+
+            // now read in all parameters for this actuator disk
+            scalarList centerList;
+            pointSubDict.readEntry<scalarList>("center", centerList);
+
+            scalarList sizeList;
+            word smoothFunction = pointSubDict.getWord("smoothFunction");
+            // read the size list for hyperbolic
+            if (smoothFunction == "hyperbolic")
+            {
+                pointSubDict.readEntry<scalarList>("size", sizeList);
+            }
+            else if (smoothFunction == "gaussian")
+            {
+                sizeList = {0.0, 0.0, 0.0};
+            }
+
+            scalarList ampList;
+            pointSubDict.readEntry<scalarList>("amplitude", ampList);
+
+            // we have 13 design variables for each line
+            scalarList dvList(13);
+            dvList[0] = centerList[0];
+            dvList[1] = centerList[1];
+            dvList[2] = centerList[2];
+            dvList[3] = sizeList[0];
+            dvList[4] = sizeList[1];
+            dvList[5] = sizeList[2];
+            dvList[6] = ampList[0];
+            dvList[7] = ampList[1];
+            dvList[8] = ampList[2];
+            dvList[9] = pointSubDict.getScalar("scale");
+            dvList[10] = pointSubDict.getScalar("periodicity");
+            dvList[11] = pointSubDict.getScalar("phase");
+            dvList[12] = pointSubDict.getScalar("eps");
+
+            // set actuatorDiskPars
+            DAGlobalVar& globalVar =
+                const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+            globalVar.actuatorPointPars.set(pointName, dvList);
+        }
+    }
 }
 
 } // End namespace Foam

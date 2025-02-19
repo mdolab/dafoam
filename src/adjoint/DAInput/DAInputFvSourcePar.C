@@ -46,6 +46,14 @@ DAInputFvSourcePar::DAInputFvSourcePar(
         {
             size = 13;
         }
+        else if (fvSourceType_ == "actuatorLine")
+        {
+            size = 18;
+        }
+        else if (fvSourceType_ == "actuatorPoint")
+        {
+            size = 13;
+        }
         else if (fvSourceType_ == "heatSource")
         {
             size = 9;
@@ -89,6 +97,22 @@ void DAInputFvSourcePar::run(const scalarList& input)
         {
             label selectedIndex = indices_[idxI];
             globalVar.actuatorDiskPars[fvSourceName_][selectedIndex] = input[idxI];
+        }
+    }
+    else if (fvSourceType_ == "actuatorLine")
+    {
+        forAll(indices_, idxI)
+        {
+            label selectedIndex = indices_[idxI];
+            globalVar.actuatorLinePars[fvSourceName_][selectedIndex] = input[idxI];
+        }
+    }
+    else if (fvSourceType_ == "actuatorPoint")
+    {
+        forAll(indices_, idxI)
+        {
+            label selectedIndex = indices_[idxI];
+            globalVar.actuatorPointPars[fvSourceName_][selectedIndex] = input[idxI];
         }
     }
     else if (fvSourceType_ == "heatSource")

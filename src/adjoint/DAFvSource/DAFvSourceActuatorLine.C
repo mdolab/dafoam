@@ -25,6 +25,7 @@ DAFvSourceActuatorLine::DAFvSourceActuatorLine(
     : DAFvSource(modelType, mesh, daOption, daModel, daIndex)
 {
     printIntervalUnsteady_ = daOption.getOption<label>("printIntervalUnsteady");
+    this->initFvSourcePars();
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -50,6 +51,10 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
 
     dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
 
+    DAGlobalVar& globalVar =
+        const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+    HashTable<List<scalar>>& actuatorLinePars = globalVar.actuatorLinePars;
+
     // loop over all the cell indices for all actuator lines
     forAll(fvSourceSubDict.toc(), idxI)
     {
@@ -58,21 +63,22 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
 
         // sub dictionary with all parameters for this disk
         dictionary lineSubDict = fvSourceSubDict.subDict(lineName);
-
-        // now read in all parameters for this actuator line
         // center of the actuator line
-        scalarList center1;
-        lineSubDict.readEntry<scalarList>("center", center1);
-        vector center = {center1[0], center1[1], center1[2]};
+        vector center = {
+            actuatorLinePars[lineName][0], 
+            actuatorLinePars[lineName][1], 
+            actuatorLinePars[lineName][2]};
         // thrust direction
-        scalarList direction1;
-        lineSubDict.readEntry<scalarList>("direction", direction1);
-        vector direction = {direction1[0], direction1[1], direction1[2]};
+        vector direction = {
+            actuatorLinePars[lineName][3], 
+            actuatorLinePars[lineName][4], 
+            actuatorLinePars[lineName][5]};
         direction = direction / mag(direction);
         // initial vector for the actuator line
-        scalarList initial1;
-        lineSubDict.readEntry<scalarList>("initial", initial1);
-        vector initial = {initial1[0], initial1[1], initial1[2]};
+        vector initial = {
+            actuatorLinePars[lineName][6], 
+            actuatorLinePars[lineName][7], 
+            actuatorLinePars[lineName][8]};
         initial = initial / mag(initial);
         if (fabs(direction & initial) > 1.0e-10)
         {
@@ -81,22 +87,22 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
         // rotation direction, can be either right or left
         word rotDir = lineSubDict.getWord("rotDir");
         // inner and outer radius of the lines
-        scalar innerRadius = lineSubDict.get<scalar>("innerRadius");
-        scalar outerRadius = lineSubDict.get<scalar>("outerRadius");
+        scalar innerRadius = actuatorLinePars[lineName][9];
+        scalar outerRadius = actuatorLinePars[lineName][10];
         // rotation speed in rpm
-        scalar rpm = lineSubDict.get<scalar>("rpm");
+        scalar rpm = actuatorLinePars[lineName][15];
         scalar radPerS = rpm / 60.0 * 2.0 * pi;
         // smooth factor which should be of grid size
-        scalar eps = lineSubDict.get<scalar>("eps");
+        scalar eps = actuatorLinePars[lineName][17];
         // scaling factor to ensure a desired integrated thrust
-        scalar scale = lineSubDict.get<scalar>("scale");
+        scalar scale = actuatorLinePars[lineName][11];
         // phase (rad) of the rotation positive value means rotates ahead of time for phase rad
-        scalar phase = lineSubDict.get<scalar>("phase");
+        scalar phase = actuatorLinePars[lineName][16];
         // number of blades for this line model
         label nBlades = lineSubDict.get<label>("nBlades");
-        scalar POD = lineSubDict.getScalar("POD");
-        scalar expM = lineSubDict.getScalar("expM");
-        scalar expN = lineSubDict.getScalar("expN");
+        scalar POD = actuatorLinePars[lineName][12];
+        scalar expM = actuatorLinePars[lineName][13];
+        scalar expN = actuatorLinePars[lineName][14];
         // Now we need to compute normalized eps in the radial direction, i.e. epsRStar this is because
         // we need to smooth the radial distribution of the thrust, here the radial location is
         // normalized as rStar = (r - rInner) / (rOuter - rInner), so to make epsRStar consistent with this
@@ -157,24 +163,20 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             for (label bb = 0; bb < nBlades; bb++)
             {
                 scalar thetaBlade = bb * 2.0 * pi / nBlades + radPerS * t + phase;
-                if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+#ifdef CODI_NO_AD
+                if (cellI == 0)
                 {
-                    if (cellI == 0)
+                    if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0
+                        || mesh_.time().timeIndex() == 1)
                     {
-                        if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0
-                            || mesh_.time().timeIndex() == 1)
-                        {
-                            scalar twoPi = 2.0 * pi;
-                            Info << "blade " << bb << " theta: "
-#if defined(CODI_ADF) || defined(CODI_ADR)
-                                 << fmod(thetaBlade.getValue(), twoPi.getValue()) * 180.0 / pi.getValue()
-#else
-                                 << fmod(thetaBlade, twoPi) * 180.0 / pi
-#endif
-                                 << " deg" << endl;
-                        }
+                        scalar twoPi = 2.0 * pi;
+                        Info << "blade " << bb << " theta: "
+                             //<< fmod(thetaBlade.getValue(), twoPi.getValue()) * 180.0 / pi.getValue()
+                             << fmod(thetaBlade, twoPi) * 180.0 / pi
+                             << " deg" << endl;
                     }
                 }
+#endif
                 // compute the rotated vector of initial by thetaBlade degree
                 // We use a simplified version of Rodrigues rotation formulation
                 vector rotatedVec = vector::zero;
@@ -236,18 +238,77 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
         reduce(thrustTotal, sumOp<scalar>());
         reduce(torqueTotal, sumOp<scalar>());
 
-        if (daOption_.getOption<word>("runStatus") == "solvePrimal")
+#ifdef CODI_NO_AD
+        if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0 || mesh_.time().timeIndex() == 1)
         {
-            if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0 || mesh_.time().timeIndex() == 1)
-            {
-                Info << "Actuator line source: " << lineName << endl;
-                Info << "Total thrust source: " << thrustTotal << endl;
-                Info << "Total torque source: " << torqueTotal << endl;
-            }
+            Info << "Actuator line source: " << lineName << endl;
+            Info << "Total thrust source: " << thrustTotal << endl;
+            Info << "Total torque source: " << torqueTotal << endl;
         }
+#endif
     }
 
     fvSource.correctBoundaryConditions();
+}
+
+void DAFvSourceActuatorLine::initFvSourcePars()
+{
+    /*
+    Description:
+        Initialize the values for all types of fvSource in DAGlobalVar, including 
+        actuatorDiskPars, heatSourcePars, etc
+    */
+
+    // now we need to initialize actuatorDiskPars
+    dictionary fvSourceSubDict = daOption_.getAllOptions().subDict("fvSource");
+
+    forAll(fvSourceSubDict.toc(), idxI)
+    {
+        word diskName = fvSourceSubDict.toc()[idxI];
+        // sub dictionary with all parameters for this disk
+        dictionary lineSubDict = fvSourceSubDict.subDict(diskName);
+        word type = lineSubDict.getWord("type");
+
+        if (type == "actuatorLine")
+        {
+
+            // now read in all parameters for this actuator disk
+            scalarList centerList;
+            lineSubDict.readEntry<scalarList>("center", centerList);
+
+            scalarList dirList;
+            lineSubDict.readEntry<scalarList>("direction", dirList);
+
+            scalarList initList;
+            lineSubDict.readEntry<scalarList>("initial", initList);
+
+            // we have 18 design variables for each line
+            scalarList dvList(18);
+            dvList[0] = centerList[0];
+            dvList[1] = centerList[1];
+            dvList[2] = centerList[2];
+            dvList[3] = dirList[0];
+            dvList[4] = dirList[1];
+            dvList[5] = dirList[2];
+            dvList[6] = initList[0];
+            dvList[7] = initList[1];
+            dvList[8] = initList[2];
+            dvList[9] = lineSubDict.getScalar("innerRadius");
+            dvList[10] = lineSubDict.getScalar("outerRadius");
+            dvList[11] = lineSubDict.getScalar("scale");
+            dvList[12] = lineSubDict.getScalar("POD");
+            dvList[13] = lineSubDict.getScalar("expM");
+            dvList[14] = lineSubDict.getScalar("expN");
+            dvList[15] = lineSubDict.getScalar("rpm");
+            dvList[16] = lineSubDict.getScalar("phase");
+            dvList[17] = lineSubDict.getScalar("eps");
+
+            // set actuatorDiskPars
+            DAGlobalVar& globalVar =
+                const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+            globalVar.actuatorLinePars.set(diskName, dvList);
+        }
+    }
 }
 
 } // End namespace Foam
