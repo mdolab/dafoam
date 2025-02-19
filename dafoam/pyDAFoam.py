@@ -329,6 +329,10 @@ class DAOPTION(object):
         ## The adjoint equation solution method. Options are: Krylov or fixedPoint
         self.adjEqnSolMethod = "Krylov"
 
+        ## whether the dynamic mesh is activated. The default is False, but if we need to use
+        ## DAPimpleDyMFoam, we need to set this flaf to True
+        self.dynamicMesh = False
+
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
         ## Setting the bounds increases the robustness of primal solution for compressible solvers.
         ## Also, we set lower bounds for turbulence variables to ensure they are physical
