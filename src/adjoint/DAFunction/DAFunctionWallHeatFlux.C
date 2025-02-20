@@ -23,11 +23,11 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
     const DAIndex& daIndex,
     const word functionName)
     : DAFunction(
-        mesh,
-        daOption,
-        daModel,
-        daIndex,
-        functionName),
+          mesh,
+          daOption,
+          daModel,
+          daIndex,
+          functionName),
       wallHeatFlux_(
           IOobject(
               "wallHeatFlux",
@@ -39,11 +39,10 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
           dimensionedScalar("wallHeatFlux", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
           "calculated")
 {
-	    
+
     // check and assign values for scheme and formulation
     formMode_ = functionDict_.lookupOrDefault<word>("formulation", "default");
-    calcMode_ = functionDict_.lookupOrDefault<word>("scheme", "byUnitArea");
-    
+    calcMode_ = functionDict_.lookupOrDefault<bool>("byUnitArea", true);
 
     if (mesh_.thisDb().foundObject<DATurbulenceModel>("DATurbulenceModel"))
     {
@@ -108,7 +107,7 @@ scalar DAFunctionWallHeatFlux::calcFunction()
     */
 
     // only calculate the area of all the heat flux patches if scheme is byUnitArea
-    if (calcMode_ == "byUnitArea")
+    if (calcMode_)
     {
         areaSum_ = 0.0;
         forAll(faceSources_, idxI)
@@ -121,13 +120,13 @@ scalar DAFunctionWallHeatFlux::calcFunction()
         }
         reduce(areaSum_, sumOp<scalar>());
     }
-    
+
     // initialize objFunValue
     scalar functionValue = 0.0;
 
     volScalarField::Boundary& wallHeatFluxBf = wallHeatFlux_.boundaryFieldRef();
 
-    // calculate HFX for fluid domain 
+    // calculate HFX for fluid domain
     if (mesh_.thisDb().foundObject<DATurbulenceModel>("DATurbulenceModel"))
     {
         DATurbulenceModel& daTurbModel =
@@ -141,7 +140,7 @@ scalar DAFunctionWallHeatFlux::calcFunction()
             volScalarField alphaEff = daTurbModel.alphaEff();
             const volScalarField::Boundary& TBf = T.boundaryField();
             const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
-	    
+
             forAll(wallHeatFluxBf, patchI)
             {
                 if (!wallHeatFluxBf[patchI].coupled())
@@ -155,28 +154,27 @@ scalar DAFunctionWallHeatFlux::calcFunction()
 
                     // use DAFOAM's custom formulation
                     else if (formMode_ == "daCustom")
-                    {  
+                    {
                         forAll(wallHeatFluxBf[patchI], faceI)
                         {
                             scalar T2 = TBf[patchI][faceI];
                             label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
-                            scalar T1 = T[nearWallCellIndex];       
+                            scalar T1 = T[nearWallCellIndex];
                             vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
                             vector c2 = mesh_.C()[nearWallCellIndex];
                             scalar d = mag(c1 - c2);
                             scalar dTdz = (T2 - T1) / d;
                             wallHeatFluxBf[patchI][faceI] = Cp_ * alphaEffBf[patchI][faceI] * dTdz;
-                     
                         }
                     }
 
                     // error message incase of invalid entry
                     else
                     {
-                       FatalErrorIn(" ") << "formulation: "
-                                        << formMode_ << " not supported!"
-                                        << " Options are: default and daCustom."
-                                        << abort(FatalError);
+                        FatalErrorIn(" ") << "formulation: "
+                                          << formMode_ << " not supported!"
+                                          << " Options are: default and daCustom."
+                                          << abort(FatalError);
                     }
                 }
             }
@@ -191,11 +189,42 @@ scalar DAFunctionWallHeatFlux::calcFunction()
             const volScalarField::Boundary& heBf = he.boundaryField();
             volScalarField alphaEff = daTurbModel.alphaEff();
             const volScalarField::Boundary& alphaEffBf = alphaEff.boundaryField();
+
             forAll(wallHeatFluxBf, patchI)
             {
                 if (!wallHeatFluxBf[patchI].coupled())
                 {
-                    wallHeatFluxBf[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
+
+                    // use OpenFOAM's snGrad()
+                    if (formMode_ == "default")
+                    {
+                        wallHeatFluxBf[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
+                    }
+
+                    // use DAFOAM's custom formulation
+                    else if (formMode_ == "daCustom")
+                    {
+                        forAll(wallHeatFluxBf[patchI], faceI)
+                        {
+                            scalar He2 = heBf[patchI][faceI];
+                            label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                            scalar He1 = he[nearWallCellIndex];
+                            vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
+                            vector c2 = mesh_.C()[nearWallCellIndex];
+                            scalar d = mag(c1 - c2);
+                            scalar dHedz = (He2 - He1) / d;
+                            wallHeatFluxBf[patchI][faceI] = alphaEffBf[patchI][faceI] * dHedz;
+                        }
+                    }
+
+                    // error message incase of invalid entry
+                    else
+                    {
+                        FatalErrorIn(" ") << "formulation: "
+                                          << formMode_ << " not supported!"
+                                          << " Options are: default and daCustom."
+                                          << abort(FatalError);
+                    }
                 }
             }
         }
@@ -207,11 +236,42 @@ scalar DAFunctionWallHeatFlux::calcFunction()
         const objectRegistry& db = mesh_.thisDb();
         const volScalarField& T = db.lookupObject<volScalarField>("T");
         const volScalarField::Boundary& TBf = T.boundaryField();
+
         forAll(wallHeatFluxBf, patchI)
         {
             if (!wallHeatFluxBf[patchI].coupled())
             {
-                wallHeatFluxBf[patchI] = k_ * TBf[patchI].snGrad();
+
+                // use OpenFOAM's snGrad()
+                if (formMode_ == "default")
+                {
+                    wallHeatFluxBf[patchI] = k_ * TBf[patchI].snGrad();
+                }
+
+                // use DAFOAM's custom formulation
+                else if (formMode_ == "daCustom")
+                {
+                    forAll(wallHeatFluxBf[patchI], faceI)
+                    {
+                        scalar T2 = TBf[patchI][faceI];
+                        label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                        scalar T1 = T[nearWallCellIndex];
+                        vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
+                        vector c2 = mesh_.C()[nearWallCellIndex];
+                        scalar d = mag(c1 - c2);
+                        scalar dTdz = (T2 - T1) / d;
+                        wallHeatFluxBf[patchI][faceI] = k_ * dTdz;
+                    }
+                }
+
+                // error message incase of invalid entry
+                else
+                {
+                    FatalErrorIn(" ") << "formulation: "
+                                      << formMode_ << " not supported!"
+                                      << " Options are: default and daCustom."
+                                      << abort(FatalError);
+                }
             }
         }
     }
@@ -227,13 +287,13 @@ scalar DAFunctionWallHeatFlux::calcFunction()
         scalar area = mesh_.magSf().boundaryField()[patchI][faceI];
 
         // represent wallHeatFlux by unit area
-        if (calcMode_ == "byUnitArea")
+        if (calcMode_)
         {
             val = scale_ * wallHeatFluxBf[patchI][faceI] * area / areaSum_;
         }
 
         // represent wallHeatFlux as total heat transfer through surface
-        else if (calcMode_ == "total")
+        else if (!calcMode_)
         {
             val = scale_ * wallHeatFluxBf[patchI][faceI] * area;
         }
@@ -241,10 +301,10 @@ scalar DAFunctionWallHeatFlux::calcFunction()
         // error message incase of invalid entry
         else
         {
-           FatalErrorIn(" ") << "scheme: "
-                            << calcMode_ << " not supported!"
-                            << " Options are: byUnitArea (default), total."
-                            << abort(FatalError);
+            FatalErrorIn(" ") << "byUnitArea: "
+                              << calcMode_ << " not supported!"
+                              << " Options are: True (default) and False."
+                              << abort(FatalError);
         }
 
         // update obj. func. val

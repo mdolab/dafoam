@@ -67,7 +67,7 @@ daOptions = {
         },
         "HFX_custom": {
             "type": "wallHeatFlux",
-            "scheme": "total",
+            "byUnitArea": False,
             "formulation": "daCustom",
             "source": "patchToFace",
             "patches": ["walls"],
@@ -183,7 +183,7 @@ funcs_ref = {
     "CMZ": 7.1768354637131795,
     "TP1": 2.5561992647012914,
     "HFX": 1.5730364723151125,
-    "HFX_custom": 62.95548850901453,
+    "HFX_custom": 5502.596904327625,
     "PMean": 77.80996323506456,
     "UMean": 15.469850053816028,
     "skewness": 1.3140396235456926,
@@ -243,6 +243,14 @@ daOptions = {
             "patches": ["walls"],
             "scale": 1.0,
         },
+        "HFX_custom": {
+            "type": "wallHeatFlux",
+            "byUnitArea": False,
+            "formulation": "daCustom",
+            "source": "patchToFace",
+            "patches": ["walls"],
+            "scale": 1.0,
+        },
         "TTR": {
             "type": "totalTemperatureRatio",
             "source": "patchToFace",
@@ -277,7 +285,13 @@ DASolver.evalFunctions(funcs)
 if gcomm.rank == 0:
     print(funcs)
 
-funcs_ref = {"HFX": 15.494946599784122, "TTR": 1.000000415241806, "MFR": 128.22449523986853, "TPR": 0.9934250594975235}
+funcs_ref = {
+    "HFX": 15.494946599784122,
+    "HFX_custom": 54.15546957805019,
+    "TTR": 1.000000415241806,
+    "MFR": 128.22449523986853,
+    "TPR": 0.9934250594975235,
+}
 
 fail = 0
 failedFunc = []
