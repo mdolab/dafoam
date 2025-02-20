@@ -71,7 +71,7 @@ daOptions = {
             "formulation": "daCustom",
             "source": "patchToFace",
             "patches": ["walls"],
-            "scale": 0.001,
+            "scale": 1.0,
         },
         "PMean": {
             "type": "patchMean",
