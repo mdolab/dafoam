@@ -145,13 +145,11 @@ scalar DAFunctionWallHeatFlux::calcFunction()
             {
                 if (!wallHeatFluxBf[patchI].coupled())
                 {
-
                     // use OpenFOAM's snGrad()
                     if (formMode_ == "default")
                     {
                         wallHeatFluxBf[patchI] = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
                     }
-
                     // use DAFOAM's custom formulation
                     else if (formMode_ == "daCustom")
                     {
@@ -167,7 +165,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                             wallHeatFluxBf[patchI][faceI] = Cp_ * alphaEffBf[patchI][faceI] * dTdz;
                         }
                     }
-
                     // error message incase of invalid entry
                     else
                     {
@@ -179,7 +176,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                 }
             }
         }
-
         // calculate HFX for compressible flow (HFX = alphaEff * dHe/dz)
         else if (daTurbModel.getTurbModelType() == "compressible")
         {
@@ -194,13 +190,11 @@ scalar DAFunctionWallHeatFlux::calcFunction()
             {
                 if (!wallHeatFluxBf[patchI].coupled())
                 {
-
                     // use OpenFOAM's snGrad()
                     if (formMode_ == "default")
                     {
                         wallHeatFluxBf[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
                     }
-
                     // use DAFOAM's custom formulation
                     else if (formMode_ == "daCustom")
                     {
@@ -216,7 +210,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                             wallHeatFluxBf[patchI][faceI] = alphaEffBf[patchI][faceI] * dHedz;
                         }
                     }
-
                     // error message incase of invalid entry
                     else
                     {
@@ -247,7 +240,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                 {
                     wallHeatFluxBf[patchI] = k_ * TBf[patchI].snGrad();
                 }
-
                 // use DAFOAM's custom formulation
                 else if (formMode_ == "daCustom")
                 {
@@ -263,7 +255,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                         wallHeatFluxBf[patchI][faceI] = k_ * dTdz;
                     }
                 }
-
                 // error message incase of invalid entry
                 else
                 {
@@ -291,13 +282,11 @@ scalar DAFunctionWallHeatFlux::calcFunction()
         {
             val = scale_ * wallHeatFluxBf[patchI][faceI] * area / areaSum_;
         }
-
         // represent wallHeatFlux as total heat transfer through surface
         else if (!calcMode_)
         {
             val = scale_ * wallHeatFluxBf[patchI][faceI] * area;
         }
-
         // error message incase of invalid entry
         else
         {
