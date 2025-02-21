@@ -67,11 +67,12 @@ label DAPimpleDyMFoam::solvePrimal()
 
     Foam::argList& args = argsPtr_();
 #include "createTime.H"
-#include "createDynamicFvMesh.H"
+#include "createMesh.H"
+    mesh.moving(true);
 #include "initContinuityErrs.H"
-#include "createDyMControls.H"
+#include "createDyMControlsPimpleDyM.H"
 #include "createFieldsPimpleDyM.H"
-#include "createUfIfPresent.H"
+#include "createUfIfPresentPimpleDyM.H"
 #include "CourantNo.H"
 #include "setInitialDeltaT.H"
 
@@ -99,26 +100,21 @@ label DAPimpleDyMFoam::solvePrimal()
             if (pimple.firstIter() || moveMeshOuterCorrectors)
             {
                 //mesh.update();
-                pointIOField readPoints
-                (
-                    IOobject
-                    (
+                pointIOField readPoints(
+                    IOobject(
                         "points",
                         runTime.timeName(),
                         "polyMesh",
                         mesh,
                         IOobject::MUST_READ,
-                        IOobject::NO_WRITE
-                    ),
-                    mesh.points()
-                );
+                        IOobject::NO_WRITE),
+                    mesh.points());
 
                 mesh.movePoints(readPoints);
+                U.correctBoundaryConditions();
 
                 if (mesh.changing())
                 {
-                    MRF.update();
-
                     if (correctPhi)
                     {
                         // Calculate absolute flux

@@ -32,7 +32,7 @@ UNorm = np.linalg.norm(U)
 UNorm = gcomm.allreduce(UNorm, op=MPI.SUM)
 print("UNorm", UNorm)
 
-if abs(1183.7667637078503 - UNorm) / 1183.7667637078503 > 1e-6:
+if abs(1183.7173503783392 - UNorm) / 1183.7173503783392 > 1e-6:
     print("DAPimpleDyMFoam test failed!")
     exit(1)
 else:

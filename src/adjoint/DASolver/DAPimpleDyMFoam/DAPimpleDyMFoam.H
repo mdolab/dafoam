@@ -39,7 +39,6 @@
 #include "turbulentTransportModel.H"
 #include "pimpleControlDF.H"
 #include "pimpleControl.H"
-#include "dynamicFvMesh.H"
 #include "CorrectPhi.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -75,6 +74,22 @@ public:
 
     /// solve the primal equations
     virtual label solvePrimal();
+
+    /// custom CorrectUf function for DAFoam
+    void correctUfPimpleDyM(
+        autoPtr<surfaceVectorField>& Uf,
+        const volVectorField& U,
+        const surfaceScalarField& phi)
+    {
+        const fvMesh& mesh = U.mesh();
+
+        if (mesh.moving())
+        {
+            Uf() = fvc::interpolate(U);
+            surfaceVectorField n(mesh.Sf() / mesh.magSf());
+            Uf() += n * (phi / mesh.magSf() - (n & Uf()));
+        }
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
