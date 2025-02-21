@@ -1191,6 +1191,41 @@ class PYDAFOAM(object):
 
         return
 
+    def readDynamicMeshPoints(self, timeVal, deltaT, timeIndex, ddtSchemeOrder):
+        """
+        Read the dynamic mesh points saved in the folders 0.001, 0.002
+        NOTE: if the backward scheme is used we need to read the mesh
+        for 3 time levels to get the correct V0, V00 etc
+        NOTE: setting the proper time index is critical because the fvMesh
+        will use timeIndex to calculate meshPhi, V0 etc
+        """
+        if ddtSchemeOrder == 1:
+            # no special treatment
+            pass
+        elif ddtSchemeOrder == 2:
+            # need to read timeVal - 2*deltaT
+            time_2 = timeVal - 2 * deltaT
+            index_2 = timeIndex - 2
+            self.solver.setTime(time_2, index_2)
+            self.solver.readMeshPoints(time_2)
+            self.solverAD.setTime(time_2, index_2)
+            self.solverAD.readMeshPoints(time_2)
+        else:
+            raise Error("ddtSchemeOrder not supported")
+
+        # read timeVal - deltaT points
+        time_1 = timeVal - deltaT
+        index_1 = timeIndex - 1
+        self.solver.setTime(time_1, index_1)
+        self.solver.readMeshPoints(time_1)
+        self.solverAD.setTime(time_1, index_1)
+        self.solverAD.readMeshPoints(time_1)
+        # read timeVal points
+        self.solver.setTime(timeVal, timeIndex)
+        self.solver.readMeshPoints(timeVal)
+        self.solverAD.setTime(timeVal, timeIndex)
+        self.solverAD.readMeshPoints(timeVal)
+
     def readStateVars(self, timeVal, deltaT):
         """
         Read the state variables in to OpenFOAM's state fields

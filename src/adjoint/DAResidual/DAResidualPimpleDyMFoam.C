@@ -136,7 +136,7 @@ void DAResidualPimpleDyMFoam::calcResiduals(const dictionary& options)
         + daTurb_.divDevReff(U_)
         - fvSource_);
 
-    // NOTE: we need to call UEqn.relax here because it does some BC treatment, but we need to 
+    // NOTE: we need to call UEqn.relax here because it does some BC treatment, but we need to
     // force the relaxation factor to be 1.0 because the last pimple loop does not use relaxation
     UEqn.relax(1.0);
 
@@ -171,20 +171,7 @@ void DAResidualPimpleDyMFoam::calcResiduals(const dictionary& options)
         "phiHbyA",
         fvc::flux(HbyA));
 
-    if (p_.needReference())
-    {
-        adjustPhi(phiHbyA, U_, p_);
-    }
-
     tmp<volScalarField> rAtU(rAU);
-
-    if (pimple_.consistent())
-    {
-        rAtU = 1.0 / max(1.0 / rAU - UEqn.H1(), 0.1 / rAU);
-        phiHbyA +=
-            fvc::interpolate(rAtU() - rAU) * fvc::snGrad(p_) * mesh_.magSf();
-        HbyA -= (rAU - rAtU()) * fvc::grad(p_);
-    }
 
     fvScalarMatrix pEqn(
         fvm::laplacian(rAtU(), p_)
@@ -197,7 +184,10 @@ void DAResidualPimpleDyMFoam::calcResiduals(const dictionary& options)
 
     // ******** phi Residuals **********
     // copied and modified from pEqn.H
-    phiRes_ = phiHbyA - pEqn.flux() - phi_;
+    // NOTE: phiRes = phiHbyA - pEqn.flux() - phi; >> needs phi to be absolute instead of relative
+    // But we cannot simply << fvc::makeAbsolute(phi, U); >>, because UEqn still needs phi to be relative
+    // Therefore, we manually add the term fvc::meshPhi(U) to phiRes
+    phiRes_ = phiHbyA - pEqn.flux() - phi_ - fvc::meshPhi(U_);
     // need to normalize phiRes
     normalizePhiResiduals(phiRes);
 
@@ -338,20 +328,7 @@ void DAResidualPimpleDyMFoam::calcPCMatWithFvMatrix(Mat PCMat)
         "phiHbyA",
         fvc::flux(HbyA));
 
-    if (p_.needReference())
-    {
-        adjustPhi(phiHbyA, U_, p_);
-    }
-
     tmp<volScalarField> rAtU(rAU);
-
-    if (pimple_.consistent())
-    {
-        rAtU = 1.0 / max(1.0 / rAU - UEqn.H1(), 0.1 / rAU);
-        phiHbyA +=
-            fvc::interpolate(rAtU() - rAU) * fvc::snGrad(p_) * mesh_.magSf();
-        HbyA -= (rAU - rAtU()) * fvc::grad(p_);
-    }
 
     fvScalarMatrix pEqn(
         fvm::laplacian(rAtU(), p_)

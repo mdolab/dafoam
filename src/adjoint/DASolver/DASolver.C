@@ -2816,6 +2816,28 @@ void DASolver::writeAdjStates(
     }
 }
 
+void DASolver::readMeshPoints(const scalar timeVal)
+{
+    /*
+    Description:
+        read the mesh points from the disk and run movePoints to deform the mesh
+    
+    Inputs:
+        
+        timeVal: Which time to read, i.e., time.timeName()
+    */
+
+    pointIOField readPoints(
+        IOobject(
+            "points",
+            Foam::name(timeVal),
+            "polyMesh",
+            meshPtr_(),
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE));
+
+    meshPtr_->movePoints(readPoints);
+}
 void DASolver::readStateVars(
     scalar timeVal,
     label oldTimeLevel)
