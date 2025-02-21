@@ -38,8 +38,7 @@
 #include "singlePhaseTransportModel.H"
 #include "turbulentTransportModel.H"
 #include "pimpleControlDF.H"
-#include "pimpleControl.H"
-#include "CorrectPhi.H"
+#include "DAFvSource.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -55,6 +54,74 @@ class DAPimpleDyMFoam
 {
 
 protected:
+    /// pimple pointer
+    autoPtr<pimpleControlDF> pimplePtr_;
+
+    /// pressure field pointer
+    autoPtr<volScalarField> pPtr_;
+
+    /// velocity field pointer
+    autoPtr<volVectorField> UPtr_;
+
+    /// surface flux field pointer
+    autoPtr<surfaceScalarField> phiPtr_;
+
+    /// laminar transport properties pointer
+    autoPtr<singlePhaseTransportModel> laminarTransportPtr_;
+
+    /// turbulence pointer
+    autoPtr<incompressible::turbulenceModel> turbulencePtr_;
+
+    /// DATurbulenceModel pointer
+    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+
+    /// DASource pointer
+    autoPtr<DAFvSource> daFvSourcePtr_;
+
+    /// fvSource term
+    autoPtr<volVectorField> fvSourcePtr_;
+
+    /// whether to have fvSource term
+    label hasFvSource_ = 0;
+
+    /// continuity error
+    scalar cumulativeContErr_ = 0.0;
+
+    /// pressure referefence cell id
+    label pRefCell_ = 0;
+
+    /// pressure reference value
+    scalar pRefValue_ = 0.0;
+
+    /// the primal IO interval
+    label IOInterval_ = 1;
+
+    /// whether to write mesh for the reduceIO
+    label reduceIOWriteMesh_ = 0;
+
+    /// Prandtl number pointer
+    autoPtr<dimensionedScalar> PrPtr_;
+
+    /// Turbulence Prandtl pointer
+    autoPtr<dimensionedScalar> PrtPtr_;
+
+    /// temperature field pointer
+    autoPtr<volScalarField> TPtr_;
+
+    /// thermal diffusivity field pointer
+    autoPtr<volScalarField> alphatPtr_;
+
+    autoPtr<surfaceVectorField> UfPtr_;
+
+    /// whether to have the temperature field
+    label hasTField_;
+
+    bool correctPhi = true;
+
+    bool checkMeshCourantNo = false;
+
+    bool moveMeshOuterCorrectors = false;
+
 public:
     TypeName("DAPimpleDyMFoam");
     // Constructors
@@ -77,19 +144,22 @@ public:
 
     /// custom CorrectUf function for DAFoam
     void correctUfPimpleDyM(
-        autoPtr<surfaceVectorField>& Uf,
+        surfaceVectorField& Uf,
         const volVectorField& U,
-        const surfaceScalarField& phi)
-    {
-        const fvMesh& mesh = U.mesh();
+        const surfaceScalarField& phi);
 
-        if (mesh.moving())
-        {
-            Uf() = fvc::interpolate(U);
-            surfaceVectorField n(mesh.Sf() / mesh.magSf());
-            Uf() += n * (phi / mesh.magSf() - (n & Uf()));
-        }
-    }
+    /// custom correctUphiBCs for DAFoam
+    void correctUphiBCsDF(
+        volVectorField& U,
+        surfaceScalarField& phi);
+
+    /// custom CorrectPhi for DAFoam
+    void CorrectPhiDF(
+        volVectorField& U,
+        surfaceScalarField& phi,
+        const volScalarField& p,
+        const dimensionedScalar& rAUf,
+        pimpleControlDF& pimple);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

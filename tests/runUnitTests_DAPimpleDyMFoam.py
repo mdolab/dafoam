@@ -8,10 +8,14 @@ from dafoam import PYDAFOAM
 import os
 import numpy as np
 from pyofm import PYOFM
+from testFuncs import *
 
 gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/NACA0012DynamicMeshV4")
+
+if gcomm.rank == 0:
+    replace_text_in_file("system/controlDict", "SolverPerformance 1;", "SolverPerformance 0;")
 
 # aero setup
 U0 = 10.0
