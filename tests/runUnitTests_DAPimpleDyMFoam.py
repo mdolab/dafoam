@@ -12,8 +12,6 @@ from pyofm import PYOFM
 gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/NACA0012DynamicMeshV4")
-if gcomm.rank == 0:
-    os.system("rm -rf processor* *.bin")
 
 # aero setup
 U0 = 10.0
