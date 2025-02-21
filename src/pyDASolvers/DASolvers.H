@@ -431,6 +431,12 @@ public:
         DASolverPtr_->readStateVars(timeVal, timeLevel);
     }
 
+    /// read the mesh points from the disk and run movePoints to deform the mesh
+    void readMeshPoints(const scalar timeVal)
+    {
+        DASolverPtr_->readMeshPoints(timeVal);
+    }
+
     /// calculate the PC mat using fvMatrix
     void calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly)
     {

@@ -1,21 +1,29 @@
 // Solve the Momentum equation
 
-MRF.correctBoundaryVelocity(U);
+if (hasFvSource_)
+{
+    // update the actuator source term
+    daFvSourcePtr_->calcFvSource(fvSource);
+}
 
 tmp<fvVectorMatrix> tUEqn(
-    fvm::ddt(U) + fvm::div(phi, U)
-        + MRF.DDt(U)
-        + turbulence->divDevReff(U)
-    == fvOptions(U));
+    fvm::ddt(U)
+    + fvm::div(phi, U)
+    + turbulencePtr_->divDevReff(U)
+    - fvSource);
+
 fvVectorMatrix& UEqn = tUEqn.ref();
 
 UEqn.relax();
 
-fvOptions.constrain(UEqn);
-
 if (pimple.momentumPredictor())
 {
-    solve(UEqn == -fvc::grad(p));
+    // get the solver performance info such as initial
+    // and final residuals
+    SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
-    fvOptions.correct(U);
+    DAUtility::primalResidualControl(solverU, pimplePrintToScreen, "U", daGlobalVarPtr_->primalMaxRes);
 }
+
+// bound U
+DAUtility::boundVar(allOptions, U, pimplePrintToScreen);

@@ -210,7 +210,6 @@ void DAField::state2OFField(const scalar* states) const
     }
 }
 
-
 void DAField::ofField2State(scalar* states) const
 {
     /*
@@ -426,7 +425,14 @@ void DAField::point2OFMesh(const scalar* volCoords) const
     // movePoints update the mesh metrics such as volume, surface area and cell centers
     fvMesh& mesh = const_cast<fvMesh&>(mesh_);
     mesh.movePoints(meshPoints);
-    mesh.moving(false);
+    if (daOption_.getAllOptions().getLabel("dynamicMesh"))
+    {
+        mesh.moving(true);
+    }
+    else
+    {
+        mesh.moving(false);
+    }
 }
 
 void DAField::ofMesh2PointVec(Vec xvVec) const

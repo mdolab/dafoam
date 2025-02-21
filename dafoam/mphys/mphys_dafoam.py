@@ -1371,6 +1371,9 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         DASolver.solverAD.setTime(endTime, endTimeIndex)
         # now we can read the variables
         DASolver.readStateVars(endTime, deltaT)
+        # if it is dynamic mesh, read the mesh points
+        if DASolver.getOption("dynamicMesh"):
+            DASolver.readDynamicMeshPoints(endTime, deltaT, endTimeIndex, ddtSchemeOrder)
 
         # now we can print the residual for the endTime state
         DASolver.solverAD.calcPrimalResidualStatistics("print")
@@ -1388,6 +1391,9 @@ class DAFoamSolverUnsteady(ExplicitComponent):
             DASolver.solverAD.setTime(endTime, endTimeIndex)
             # now we can read the variables
             DASolver.readStateVars(endTime, deltaT)
+            # if it is dynamic mesh, read the mesh points
+            if DASolver.getOption("dynamicMesh"):
+                DASolver.readDynamicMeshPoints(endTime, deltaT, endTimeIndex, ddtSchemeOrder)
             # calc the preconditioner mat for endTime
             if self.comm.rank == 0:
                 print("Pre-Computing preconditiner mat for t = %f" % endTime)
@@ -1410,6 +1416,9 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     DASolver.solverAD.setTime(t, timeIndex)
                     # now we can read the variables
                     DASolver.readStateVars(t, deltaT)
+                    # if it is dynamic mesh, read the mesh points
+                    if DASolver.getOption("dynamicMesh"):
+                        DASolver.readDynamicMeshPoints(t, deltaT, timeIndex, ddtSchemeOrder)
                     # calc the preconditioner mat
                     dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
                     DASolver.solver.calcdRdWT(1, dRdWTPC1)
@@ -1479,6 +1488,9 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 # now we can read the variables
                 # read the state, state.oldTime, etc and update self.wVec for this time instance
                 DASolver.readStateVars(timeVal, deltaT)
+                # if it is dynamic mesh, read the mesh points
+                if DASolver.getOption("dynamicMesh"):
+                    DASolver.readDynamicMeshPoints(timeVal, deltaT, n, ddtSchemeOrder)
 
                 # calculate dFdW scaling, if time index is within the unsteady objective function
                 # index range, prescribed in unsteadyAdjointDict, we calculate dFdW

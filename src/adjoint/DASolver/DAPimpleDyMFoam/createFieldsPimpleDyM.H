@@ -1,36 +1,102 @@
 Info << "Reading field p\n"
      << endl;
-volScalarField p(
-    IOobject(
-        "p",
-        runTime.timeName(),
-        mesh,
-        IOobject::MUST_READ,
-        IOobject::AUTO_WRITE),
-    mesh);
+pPtr_.reset(
+    new volScalarField(
+        IOobject(
+            "p",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE),
+        mesh));
+volScalarField& p = pPtr_();
 
 Info << "Reading field U\n"
      << endl;
-volVectorField U(
-    IOobject(
-        "U",
-        runTime.timeName(),
+UPtr_.reset(
+    new volVectorField(
+        IOobject(
+            "U",
+            runTime.timeName(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::AUTO_WRITE),
+        mesh));
+volVectorField& U = UPtr_();
+
+#include "createPhiPython.H"
+phi.write();
+
+Info << "Constructing face velocity Uf\n"
+     << endl;
+
+UfPtr_.reset(
+    new surfaceVectorField(
+        IOobject(
+            "Uf",
+            runTime.timeName(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE),
+        fvc::interpolate(U)));
+
+// actuator related stuff
+Info << "Creating source term. " << endl;
+fvSourcePtr_.reset(
+    new volVectorField(
+        IOobject(
+            "fvSource",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE),
         mesh,
-        IOobject::MUST_READ,
-        IOobject::AUTO_WRITE),
-    mesh);
+        dimensionedVector("fvSource", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
+        zeroGradientFvPatchField<vector>::typeName));
+volVectorField& fvSource = fvSourcePtr_();
 
-#include "createPhi.H"
-
-label pRefCell = 0;
-scalar pRefValue = 0.0;
-setRefCell(p, pimple.dict(), pRefCell, pRefValue);
+setRefCell(p, pimple.dict(), pRefCell_, pRefValue_);
 mesh.setFluxRequired(p.name());
 
-singlePhaseTransportModel laminarTransport(U, phi);
+laminarTransportPtr_.reset(
+    new singlePhaseTransportModel(U, phi));
+singlePhaseTransportModel& laminarTransport = laminarTransportPtr_();
 
-autoPtr<incompressible::turbulenceModel> turbulence(
+turbulencePtr_.reset(
     incompressible::turbulenceModel::New(U, phi, laminarTransport));
 
-#include "createMRF.H"
-#include "createFvOptions.H"
+if (hasTField_)
+{
+    Info << "Reading field T\n"
+         << endl;
+    TPtr_.reset(
+        new volScalarField(
+            IOobject(
+                "T",
+                runTime.timeName(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::AUTO_WRITE),
+            mesh));
+
+    // Laminar Prandtl number
+    PrPtr_.reset(
+        new dimensionedScalar("Pr", dimless, laminarTransport));
+
+    // Turbulent Prandtl number
+    PrtPtr_.reset(
+        new dimensionedScalar("Prt", dimless, laminarTransport));
+
+    // kinematic turbulent thermal thermal conductivity m2/s
+    Info << "Reading field alphat\n"
+         << endl;
+    alphatPtr_.reset(
+        new volScalarField(
+            IOobject(
+                "alphat",
+                runTime.timeName(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::AUTO_WRITE),
+            mesh));
+}
