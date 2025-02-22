@@ -1,6 +1,0 @@
-Dictionary Key: cruise.aero_post.CD
-@value  0.03500643067852981 1e-06 1e-08
-Dictionary Key: cruise.aero_post.CL
-@value   0.2999903028134024 1e-06 1e-08
-Dictionary Key: cruise.ks_vmfailure
-@value   0.4101249247436054 1e-06 1e-08

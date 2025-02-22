@@ -1,3 +1,0 @@
-Dictionary Key: CMZ
-Dictionary Key: MRF
-@value -0.004389085523602902 0.0001 1e-05
