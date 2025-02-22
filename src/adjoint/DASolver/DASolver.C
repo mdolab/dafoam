@@ -10,7 +10,7 @@
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 // initialize the static variable, which will be used in forward mode AD
 // computation for AOA and BC derivatives
-scalar Foam::DAUtility::angleOfAttackRadForwardAD= -9999.0;
+scalar Foam::DAUtility::angleOfAttackRadForwardAD = -9999.0;
 
 // initialize the python call back function static pointers
 void* Foam::DAUtility::pyCalcBeta = NULL;

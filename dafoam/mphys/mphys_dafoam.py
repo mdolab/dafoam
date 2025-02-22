@@ -565,7 +565,8 @@ class DAFoamSolver(ImplicitComponent):
         rArray = np.zeros(self.localAdjSize)
         jacInput = DASolver.getStates()
         seed = DASolver.vec2Array(psi)
-        DASolver.solverAD.calcJacTVecProduct(self.stateName,
+        DASolver.solverAD.calcJacTVecProduct(
+            self.stateName,
             "stateVar",
             jacInput,
             self.residualName,
