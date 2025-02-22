@@ -28,11 +28,10 @@ class DAFunctionTotalPressure
 {
 
 protected:
-
     /// DATurbulenceModel object
     DATurbulenceModel& daTurb_;
 
-    /// density 
+    /// density
     volScalarField rho_;
 
     /// the area of all total pressure patches

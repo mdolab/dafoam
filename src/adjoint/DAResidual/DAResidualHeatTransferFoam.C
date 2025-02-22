@@ -42,7 +42,7 @@ DAResidualHeatTransferFoam::DAResidualHeatTransferFoam(
             "k",
             dimPower / dimLength / dimTemperature,
             solidProperties));
-    
+
     const dictionary& allOptions = daOption.getAllOptions();
     if (allOptions.subDict("fvSource").toc().size() != 0)
     {

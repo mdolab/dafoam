@@ -228,7 +228,7 @@ public:
     /// solve the residual equations and update the state
     virtual void correct(label printToScreen);
 
-    /// save near wall omega values to omegaNearWall_    
+    /// save near wall omega values to omegaNearWall_
     void saveOmegaNearWall();
 
     /// set omegaNearWall_ to near wall omega values
@@ -243,7 +243,7 @@ public:
         scalarField& diag,
         scalarField& upper,
         scalarField& lower);
-    
+
     /// return the value of the destruction term from the turbulence model
     virtual void getTurbProdOverDestruct(volScalarField& PoD) const;
 

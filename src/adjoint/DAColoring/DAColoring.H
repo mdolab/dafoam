@@ -40,15 +40,14 @@ private:
     void operator=(const DAColoring&);
 
 protected:
+    /// fvMesh object
+    const fvMesh& mesh_;
 
-   /// fvMesh object
-   const fvMesh& mesh_;
-
-   /// DAOption object
-   const DAOption& daOption_;
+    /// DAOption object
+    const DAOption& daOption_;
 
     /// DAIndex object
-   const DAIndex& daIndex_;
+    const DAIndex& daIndex_;
 
 public:
     /// Constructors

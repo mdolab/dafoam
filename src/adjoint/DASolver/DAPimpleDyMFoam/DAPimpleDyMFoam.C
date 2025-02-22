@@ -332,7 +332,7 @@ void DAPimpleDyMFoam::CorrectPhiDF(
     pimpleControlDF& pimple)
 {
     // NOTE: we delete the divU input as it is zero
-    
+
     const fvMesh& mesh = U.mesh();
     const Time& runTime = mesh.time();
 

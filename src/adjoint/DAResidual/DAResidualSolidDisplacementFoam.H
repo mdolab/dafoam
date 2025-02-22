@@ -28,7 +28,6 @@ class DAResidualSolidDisplacementFoam
 {
 
 protected:
-
     /// \name These are state variables, state residuals, and partial derivatives
     //@{
     volVectorField& D_;

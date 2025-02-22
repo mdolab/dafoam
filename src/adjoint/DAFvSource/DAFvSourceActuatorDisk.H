@@ -29,7 +29,6 @@ class DAFvSourceActuatorDisk
 {
 
 protected:
-
     /// HashTable that contains lists of cell indices that are within the actuator disk space
     HashTable<labelList> fvSourceCellIndices_;
 

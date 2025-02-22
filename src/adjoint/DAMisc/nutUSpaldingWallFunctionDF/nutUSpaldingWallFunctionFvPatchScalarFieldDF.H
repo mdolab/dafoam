@@ -190,7 +190,8 @@ public:
 
     //- Destructor
     virtual ~nutUSpaldingWallFunctionFvPatchScalarFieldDF()
-    {}
+    {
+    }
 
     // Member functions
 

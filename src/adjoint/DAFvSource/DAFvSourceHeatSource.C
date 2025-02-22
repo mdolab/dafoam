@@ -25,7 +25,7 @@ DAFvSourceHeatSource::DAFvSourceHeatSource(
     : DAFvSource(modelType, mesh, daOption, daModel, daIndex)
 {
     this->initFvSourcePars();
-    
+
     printInterval_ = daOption.getOption<label>("printInterval");
 
     const dictionary& allOptions = daOption_.getAllOptions();

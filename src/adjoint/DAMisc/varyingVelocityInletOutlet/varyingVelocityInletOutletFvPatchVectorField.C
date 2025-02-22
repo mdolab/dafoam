@@ -175,16 +175,12 @@ void Foam::varyingVelocityInletOutletFvPatchVectorField::write(Ostream& os)
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-void Foam::varyingVelocityInletOutletFvPatchVectorField::operator=
-(
-    const fvPatchVectorField& ptf
-)
+void Foam::varyingVelocityInletOutletFvPatchVectorField::operator=(
+    const fvPatchVectorField& ptf)
 {
-    fvPatchVectorField::operator=
-    (
-        this->valueFraction()*this->refValue()
-        + (1 - this->valueFraction())*ptf
-    );
+    fvPatchVectorField::operator=(
+        this->valueFraction() * this->refValue()
+        + (1 - this->valueFraction()) * ptf);
 }
 
 namespace Foam

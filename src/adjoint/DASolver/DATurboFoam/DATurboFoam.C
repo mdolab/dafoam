@@ -50,7 +50,7 @@ void DATurboFoam::initSolver()
 #include "createSimpleControlPython.H"
 #include "createFieldsTurbo.H"
 
-// read the RAS model from constant/turbulenceProperties
+    // read the RAS model from constant/turbulenceProperties
     const word turbModelName(
         IOdictionary(
             IOobject(
@@ -65,7 +65,6 @@ void DATurboFoam::initSolver()
     daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
 
 #include "createAdjoint.H"
-
 }
 
 label DATurboFoam::solvePrimal()
@@ -107,7 +106,7 @@ label DATurboFoam::solvePrimal()
         // compute the regression model and print the feature
         regModelFail_ = daRegressionPtr_->compute();
         daRegressionPtr_->printInputInfo(printToScreen_);
-        // print run time 
+        // print run time
         this->printElapsedTime(runTime, printToScreen_);
 
         runTime.write();

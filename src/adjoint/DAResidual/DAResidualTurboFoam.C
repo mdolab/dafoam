@@ -316,7 +316,6 @@ void DAResidualTurboFoam::correctBoundaryConditions()
     U_.correctBoundaryConditions();
     p_.correctBoundaryConditions();
     T_.correctBoundaryConditions();
-    
 }
 
 } // End namespace Foam

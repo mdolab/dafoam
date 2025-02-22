@@ -117,7 +117,6 @@ DAStateInfoRhoSimpleFoam::DAStateInfoRhoSimpleFoam(
 
     // add physical model residual connectivity
     daModel.addModelResidualCon(stateResConInfo_);
-    
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

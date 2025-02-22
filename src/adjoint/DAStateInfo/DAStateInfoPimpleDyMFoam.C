@@ -106,7 +106,7 @@ DAStateInfoPimpleDyMFoam::DAStateInfoPimpleDyMFoam(
     daModel.correctStateResidualModelCon(stateResConInfo_["phiRes"]);
 
     label hasTField = DAUtility::isFieldReadable(mesh_, "T", "volScalarField");
-    
+
     if (hasTField)
     {
         stateInfo_["volScalarStates"].append("T");
@@ -123,7 +123,6 @@ DAStateInfoPimpleDyMFoam::DAStateInfoPimpleDyMFoam(
 
     // add physical model residual connectivity
     daModel.addModelResidualCon(stateResConInfo_);
-
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

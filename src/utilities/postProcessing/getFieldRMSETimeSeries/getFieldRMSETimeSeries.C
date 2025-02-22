@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
     }
 
     word varRefName = varName + "Data";
-    
+
     word varType;
     if (args.optionFound("varType"))
     {

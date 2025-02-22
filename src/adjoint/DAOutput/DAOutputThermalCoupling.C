@@ -206,7 +206,7 @@ void DAOutputThermalCoupling::run(scalarList& output)
     else
     {
         FatalErrorIn("DAOutputThermalCoupling::run") << " discipline not valid! "
-                                                << abort(FatalError);
+                                                     << abort(FatalError);
     }
 }
 

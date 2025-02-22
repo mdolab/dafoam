@@ -59,7 +59,7 @@ DAFunctionLocation::DAFunctionLocation(
 
         // NOTE: we need to call a self-defined findCell func to make it work correctly in ADR
         snappedCenterCellI_ = DAUtility::myFindCell(mesh_, centerPoint);
-        
+
         label foundCellI = 0;
         if (snappedCenterCellI_ >= 0)
         {
@@ -237,7 +237,7 @@ scalar DAFunctionLocation::calcFunction()
             scalar radius = mag(faceCRadial);
             scalar iRadius = 1.0 / (radius + 1e-12);
 
-            objValTmp +=  exp(coeffKS_ * iRadius);
+            objValTmp += exp(coeffKS_ * iRadius);
 
             if (objValTmp > 1e200)
             {
@@ -284,8 +284,8 @@ scalar DAFunctionLocation::calcFunction()
     else
     {
         FatalErrorIn("DAFunctionLocation") << "mode: " << mode_ << " not supported!"
-                                          << "Options are: maxRadius"
-                                          << abort(FatalError);
+                                           << "Options are: maxRadius"
+                                           << abort(FatalError);
     }
 
     // check if we need to calculate refDiff.

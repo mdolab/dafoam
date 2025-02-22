@@ -28,7 +28,6 @@ class DAFunctionVariableVolSum
 {
 
 protected:
-
     /// name of the variable
     word varName_;
 

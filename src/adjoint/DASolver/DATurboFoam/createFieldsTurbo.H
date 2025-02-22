@@ -62,4 +62,3 @@ initialMass_ = fvc::domainIntegrate(rho);
 
 // create MRF
 MRFPtr_.reset(new IOMRFZoneListDF(mesh));
-

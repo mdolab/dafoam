@@ -136,7 +136,7 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
         + daTurb_.divDevReff(U_)
         - fvSource_);
 
-    // NOTE: we need to call UEqn.relax here because it does some BC treatment, but we need to 
+    // NOTE: we need to call UEqn.relax here because it does some BC treatment, but we need to
     // force the relaxation factor to be 1.0 because the last pimple loop does not use relaxation
     UEqn.relax(1.0);
 
