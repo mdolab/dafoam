@@ -90,7 +90,7 @@ void DALinearEqn::createMLRKSP(
         daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresAbsTol");
     label useNonZeroInitGuess =
         daOption_.getSubDictOption<label>("adjEqnOption", "useNonZeroInitGuess");
-    label useMGSO = 
+    label useMGSO =
         daOption_.getSubDictOption<label>("adjEqnOption", "useMGSO");
     label printInfo =
         daOption_.getSubDictOption<label>("adjEqnOption", "printInfo");

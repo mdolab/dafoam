@@ -44,7 +44,7 @@ scalar DAFunctionPatchMean::calcFunction()
         Calculate the patch mean
     */
 
-    // calculate the area of all the patches. We need to recompute because the surface area 
+    // calculate the area of all the patches. We need to recompute because the surface area
     // may change during the optimization
     areaSum_ = 0.0;
     forAll(faceSources_, idxI)

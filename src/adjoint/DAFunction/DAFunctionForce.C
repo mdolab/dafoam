@@ -66,14 +66,13 @@ DAFunctionForce::DAFunctionForce(
                           << "Options: fixedDirection, parallelToFlow, normalToFlow."
                           << abort(FatalError);
     }
-    
+
     if (fabs(mag(forceDir_) - 1.0) > 1.0e-8)
     {
         FatalErrorIn(" ") << "the magnitude of the direction parameter in "
                           << functionName << " is not 1.0!"
                           << abort(FatalError);
     }
-
 }
 
 /// calculate the value of objective function

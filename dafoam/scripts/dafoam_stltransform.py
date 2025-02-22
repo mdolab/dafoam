@@ -27,12 +27,12 @@ if mode == "scale":
     scaleX = float(sys.argv[4])
     scaleY = float(sys.argv[5])
     scaleZ = float(sys.argv[6])
-    
+
     print(
         "Scaling %s to %s with scaleX: %g scaleY: %g scaleZ: %g ...."
         % (inputFileName, outputFileName, scaleX, scaleY, scaleZ)
     )
-    
+
     myMesh = mesh.Mesh.from_file(inputFileName)
 
     myMesh.x *= scaleX
@@ -40,7 +40,7 @@ if mode == "scale":
     myMesh.z *= scaleZ
 
     myMesh.save(outputFileName)
-    
+
     print(
         "Scaling %s to %s with scaleX: %g scaleY: %g scaleZ: %g Done!"
         % (inputFileName, outputFileName, scaleX, scaleY, scaleZ)
@@ -49,12 +49,9 @@ elif mode == "translate":
     dX = float(sys.argv[4])
     dY = float(sys.argv[5])
     dZ = float(sys.argv[6])
-    
-    print(
-        "Translating %s to %s with dX: %g dY: %g dZ: %g ...."
-        % (inputFileName, outputFileName, dX, dY, dZ)
-    )
-    
+
+    print("Translating %s to %s with dX: %g dY: %g dZ: %g ...." % (inputFileName, outputFileName, dX, dY, dZ))
+
     myMesh = mesh.Mesh.from_file(inputFileName)
 
     myMesh.x += dX
@@ -62,19 +59,13 @@ elif mode == "translate":
     myMesh.z += dZ
 
     myMesh.save(outputFileName)
-    
-    print(
-        "Translating %s to %s with dX: %g dT: %g dZ: %g Done!"
-        % (inputFileName, outputFileName, dX, dY, dZ)
-    )
+
+    print("Translating %s to %s with dX: %g dT: %g dZ: %g Done!" % (inputFileName, outputFileName, dX, dY, dZ))
 elif mode == "rotate":
     axis = str(sys.argv[4])
     deg = float(sys.argv[5])
 
-    print(
-        "Rotating %s to %s wrt to the %s axis by %g degree...."
-        % (inputFileName, outputFileName, axis, deg)
-    )
+    print("Rotating %s to %s wrt to the %s axis by %g degree...." % (inputFileName, outputFileName, axis, deg))
 
     # ************** NOTE ******************
     # we have to add a minus sign here because numpy-stl is known
@@ -82,7 +73,7 @@ elif mode == "rotate":
     # clockwise for a positive angle, which is not consistent with the conventional
     # right-hand-side rule of rotation.
     # Check their documentation https://numpy-stl.readthedocs.io/en/latest/stl.html
-    theta = - deg * np.pi / 180.0
+    theta = -deg * np.pi / 180.0
 
     myMesh = mesh.Mesh.from_file(inputFileName)
 
@@ -93,13 +84,10 @@ elif mode == "rotate":
     elif axis == "z":
         myMesh.rotate([0.0, 0.0, 1.0], theta)
     else:
-        print("Axis %s not supported! Options are: x, y, or z"%s)
+        print("Axis %s not supported! Options are: x, y, or z" % s)
 
     myMesh.save(outputFileName)
 
-    print(
-        "Rotating %s to %s wrt to the %s axis by %g degree Done!"
-        % (inputFileName, outputFileName, axis, deg)
-    )
+    print("Rotating %s to %s wrt to the %s axis by %g degree Done!" % (inputFileName, outputFileName, axis, deg))
 else:
-    print("Mode %s not supported! Options are: scale, translate, or rotate"%s)
+    print("Mode %s not supported! Options are: scale, translate, or rotate" % s)

@@ -69,7 +69,7 @@ daOptionsAero = {
         "pcFillLevel": 1,
         "jacMatReOrdering": "natural",
         "useNonZeroInitGuess": True,
-        "dynAdjustTol": True
+        "dynAdjustTol": True,
     },
     "normalizeStates": {
         "U": U0,
@@ -115,7 +115,7 @@ daOptionsThermal = {
         "pcFillLevel": 1,
         "jacMatReOrdering": "natural",
         "useNonZeroInitGuess": True,
-        "dynAdjustTol": True
+        "dynAdjustTol": True,
     },
     "normalizeStates": {
         "T": 300.0,

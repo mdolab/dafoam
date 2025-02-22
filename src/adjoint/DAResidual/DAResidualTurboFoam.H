@@ -70,7 +70,7 @@ protected:
     /// pressureControl object to set ref pressure
     pressureControl pressureControl_;
 
-    /// Multiple Reference Frame 
+    /// Multiple Reference Frame
     IOMRFZoneListDF& MRF_;
 
     /// \name These are constants to update the intermediate variables

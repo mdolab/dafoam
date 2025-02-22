@@ -110,7 +110,7 @@ public:
 
     /// calculate fvSource based on the latest parameters defined in DAGlobalVar
     void updateFvSource();
-    
+
     /// virtual function for regIOobject
     bool writeData(Ostream& os) const;
 

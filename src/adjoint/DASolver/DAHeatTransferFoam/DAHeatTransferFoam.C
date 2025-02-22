@@ -98,7 +98,7 @@ label DAHeatTransferFoam::solvePrimal()
 
         this->calcAllFunctions(printToScreen_);
 
-        // print run time 
+        // print run time
         this->printElapsedTime(runTime, printToScreen_);
 
         runTime.write();

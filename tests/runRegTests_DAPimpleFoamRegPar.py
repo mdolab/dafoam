@@ -28,7 +28,7 @@ if gcomm.rank == 0:
     os.system("getFIData -refFieldName U -refFieldType vector")
     os.system("getFIData -refFieldName p -refFieldType scalar")
     os.system("getFIData -refFieldName wallShearStress -refFieldType vector")
-    #os.system("getFIData -refFieldName wallHeatFlux -refFieldType scalar")
+    # os.system("getFIData -refFieldName wallHeatFlux -refFieldType scalar")
     os.system("decomposePar -time '0:'")
     os.system("cp constant/turbulenceProperties.sst constant/turbulenceProperties")
     os.system("rm -rf 0.0* 0.1")
@@ -176,7 +176,7 @@ funcNames = [
     "scenario.solver.PVar",
     "scenario.solver.UProbe",
     "scenario.solver.wallShearStressVar",
-    #"scenario.solver.wallHeatFlux"
+    # "scenario.solver.wallHeatFlux"
 ]
 
 # run the adjoint and forward ref

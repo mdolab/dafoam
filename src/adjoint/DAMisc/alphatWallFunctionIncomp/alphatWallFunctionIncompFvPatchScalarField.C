@@ -37,71 +37,51 @@ namespace incompressible
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 alphatWallFunctionIncompressibleFvPatchScalarField::
-alphatWallFunctionIncompressibleFvPatchScalarField
-(
-    const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF
-)
-:
-    fixedValueFvPatchScalarField(p, iF),
-    Prt_(0.85)
+    alphatWallFunctionIncompressibleFvPatchScalarField(
+        const fvPatch& p,
+        const DimensionedField<scalar, volMesh>& iF)
+    : fixedValueFvPatchScalarField(p, iF),
+      Prt_(0.85)
 {
 }
-
 
 alphatWallFunctionIncompressibleFvPatchScalarField::
-alphatWallFunctionIncompressibleFvPatchScalarField
-(
-    const alphatWallFunctionIncompressibleFvPatchScalarField& ptf,
-    const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF,
-    const fvPatchFieldMapper& mapper
-)
-:
-    fixedValueFvPatchScalarField(ptf, p, iF, mapper),
-    Prt_(ptf.Prt_)
+    alphatWallFunctionIncompressibleFvPatchScalarField(
+        const alphatWallFunctionIncompressibleFvPatchScalarField& ptf,
+        const fvPatch& p,
+        const DimensionedField<scalar, volMesh>& iF,
+        const fvPatchFieldMapper& mapper)
+    : fixedValueFvPatchScalarField(ptf, p, iF, mapper),
+      Prt_(ptf.Prt_)
 {
 }
-
 
 alphatWallFunctionIncompressibleFvPatchScalarField::
-alphatWallFunctionIncompressibleFvPatchScalarField
-(
-    const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF,
-    const dictionary& dict
-)
-:
-    fixedValueFvPatchScalarField(p, iF, dict),
-    Prt_(dict.get<scalar>("Prt")) // force read to avoid ambiguity
+    alphatWallFunctionIncompressibleFvPatchScalarField(
+        const fvPatch& p,
+        const DimensionedField<scalar, volMesh>& iF,
+        const dictionary& dict)
+    : fixedValueFvPatchScalarField(p, iF, dict),
+      Prt_(dict.get<scalar>("Prt")) // force read to avoid ambiguity
 {
 }
-
 
 alphatWallFunctionIncompressibleFvPatchScalarField::
-alphatWallFunctionIncompressibleFvPatchScalarField
-(
-    const alphatWallFunctionIncompressibleFvPatchScalarField& wfpsf
-)
-:
-    fixedValueFvPatchScalarField(wfpsf),
-    Prt_(wfpsf.Prt_)
+    alphatWallFunctionIncompressibleFvPatchScalarField(
+        const alphatWallFunctionIncompressibleFvPatchScalarField& wfpsf)
+    : fixedValueFvPatchScalarField(wfpsf),
+      Prt_(wfpsf.Prt_)
 {
 }
-
 
 alphatWallFunctionIncompressibleFvPatchScalarField::
-alphatWallFunctionIncompressibleFvPatchScalarField
-(
-    const alphatWallFunctionIncompressibleFvPatchScalarField& wfpsf,
-    const DimensionedField<scalar, volMesh>& iF
-)
-:
-    fixedValueFvPatchScalarField(wfpsf, iF),
-    Prt_(wfpsf.Prt_)
+    alphatWallFunctionIncompressibleFvPatchScalarField(
+        const alphatWallFunctionIncompressibleFvPatchScalarField& wfpsf,
+        const DimensionedField<scalar, volMesh>& iF)
+    : fixedValueFvPatchScalarField(wfpsf, iF),
+      Prt_(wfpsf.Prt_)
 {
 }
-
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -116,22 +96,17 @@ void alphatWallFunctionIncompressibleFvPatchScalarField::updateCoeffs()
 
     // Retrieve turbulence properties from model
 
-    const turbulenceModel& turbModel = db().lookupObject<turbulenceModel>
-    (
-        IOobject::groupName
-        (
+    const turbulenceModel& turbModel = db().lookupObject<turbulenceModel>(
+        IOobject::groupName(
             turbulenceModel::propertiesName,
-            internalField().group()
-        )
-    );
+            internalField().group()));
 
     const tmp<scalarField> tnutw = turbModel.nut(patchi);
 
-    operator==(tnutw/Prt_);
+    operator==(tnutw / Prt_);
 
     fixedValueFvPatchField<scalar>::updateCoeffs();
 }
-
 
 void alphatWallFunctionIncompressibleFvPatchScalarField::write(Ostream& os) const
 {
@@ -140,14 +115,11 @@ void alphatWallFunctionIncompressibleFvPatchScalarField::write(Ostream& os) cons
     writeEntry("value", os);
 }
 
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-makePatchTypeField
-(
+makePatchTypeField(
     fvPatchScalarField,
-    alphatWallFunctionIncompressibleFvPatchScalarField
-);
+    alphatWallFunctionIncompressibleFvPatchScalarField);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

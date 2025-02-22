@@ -28,7 +28,6 @@ class DAFunctionTotalTemperatureRatio
 {
 
 protected:
-
     /// the area of all inlet patches
     scalar areaSumInlet_ = -9999.0;
 

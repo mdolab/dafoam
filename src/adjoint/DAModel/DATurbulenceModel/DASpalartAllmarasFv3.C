@@ -470,7 +470,7 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
     const volScalarField Stilda(
         this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
         + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
-    
+
     volScalarField rho = this->rho();
 
     tmp<fvScalarMatrix> nuTildaEqn(
@@ -734,7 +734,7 @@ void DASpalartAllmarasFv3::getFvMatrixFields(
     const volScalarField Stilda(
         this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
         + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
-    
+
     volScalarField rho = this->rho();
 
     fvScalarMatrix nuTildaEqn(
@@ -765,7 +765,7 @@ void DASpalartAllmarasFv3::getTurbProdOverDestruct(volScalarField& PoD) const
     const volScalarField Stilda(
         this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
         + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
-    
+
     volScalarField rho = this->rho();
 
     volScalarField P = Cb1_ * phase_ * rho * Stilda * nuTilda_;
@@ -790,7 +790,7 @@ void DASpalartAllmarasFv3::getTurbConvOverProd(volScalarField& CoP) const
     const volScalarField Stilda(
         this->fv3(chi, fv1) * ::sqrt(2.0) * mag(skew(fvc::grad(U_)))
         + this->fv2(chi, fv1) * nuTilda_ / sqr(kappa_ * y_));
-    
+
     volScalarField rho = this->rho();
 
     volScalarField P = Cb1_ * phase_ * rho * Stilda * nuTilda_;

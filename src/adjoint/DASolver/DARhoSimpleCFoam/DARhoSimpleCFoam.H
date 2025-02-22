@@ -54,7 +54,6 @@ class DARhoSimpleCFoam
 {
 
 protected:
-
     /// simple pointer
     autoPtr<simpleControl> simplePtr_;
 
@@ -107,7 +106,6 @@ public:
 
     /// solve the primal equations
     virtual label solvePrimal();
-
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

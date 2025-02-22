@@ -28,7 +28,6 @@ class DAFunctionWallHeatFlux
 {
 
 protected:
-
     /// Cp used in incompressible heatFlux calculation
     scalar Cp_ = -9999.0;
 

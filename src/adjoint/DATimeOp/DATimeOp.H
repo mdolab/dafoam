@@ -72,7 +72,7 @@ public:
         const scalarList& valList,
         const label iStart,
         const label iEnd) = 0;
-    
+
     /// compute the scaling factor for dF/d? calculation.
     virtual scalar dFScaling(
         const scalarList& valList,

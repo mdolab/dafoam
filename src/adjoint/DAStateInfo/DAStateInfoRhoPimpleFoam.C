@@ -117,7 +117,6 @@ DAStateInfoRhoPimpleFoam::DAStateInfoRhoPimpleFoam(
 
     // add physical model residual connectivity
     daModel.addModelResidualCon(stateResConInfo_);
-    
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

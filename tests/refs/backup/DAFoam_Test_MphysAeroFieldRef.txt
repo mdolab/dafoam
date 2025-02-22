@@ -1,9 +1,0 @@
-Dictionary Key: CL
-@value   0.2992762848982257 1e-06 1e-08
-Dictionary Key: CL
-Dictionary Key: alpha
-@value    0.435012393483863 0.0001 1e-06
-Dictionary Key: aoa
-@value  0.0973750318897765 0.0001 1e-06
-Dictionary Key: twist
-@value  0.09790920083964022 0.0001 1e-06

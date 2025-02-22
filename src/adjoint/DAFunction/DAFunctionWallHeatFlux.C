@@ -23,11 +23,11 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
     const DAIndex& daIndex,
     const word functionName)
     : DAFunction(
-          mesh,
-          daOption,
-          daModel,
-          daIndex,
-          functionName),
+        mesh,
+        daOption,
+        daModel,
+        daIndex,
+        functionName),
       wallHeatFlux_(
           IOobject(
               "wallHeatFlux",

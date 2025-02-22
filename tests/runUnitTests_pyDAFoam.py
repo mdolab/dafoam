@@ -54,7 +54,7 @@ if function["CD"]["direction"][1] != 1.0:
     exit(1)
 DASolver.calcPrimalResidualStatistics("print")
 p = np.zeros(DASolver.solver.getNLocalCells())
-U = np.zeros(3*DASolver.solver.getNLocalCells())
+U = np.zeros(3 * DASolver.solver.getNLocalCells())
 DASolver.solver.updateBoundaryConditions("p", "scalar")
 DASolver.solver.updateBoundaryConditions("U", "vector")
 DASolver.solver.getOFField("p", "scalar", p)
@@ -66,9 +66,9 @@ normU = gcomm.allreduce(normU, op=MPI.SUM)
 
 print(normP, normU)
 
-if abs(1779.052677196137-normP) /normP > 1e-8:
+if abs(1779.052677196137 - normP) / normP > 1e-8:
     print("pyDAFoam failed")
-elif abs(546.9793586769085-normU) /normU > 1e-8:
+elif abs(546.9793586769085 - normU) / normU > 1e-8:
     print("pyDAFoam failed")
 else:
     print("pyDAFoam passed!")

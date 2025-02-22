@@ -29,7 +29,6 @@ class DAFunctionMeshQualityKS
 {
 
 protected:
-
     /// coefficient for the KS function
     scalar coeffKS_;
 
@@ -41,7 +40,6 @@ protected:
 
     /// a list of included faces for the mesh quality calculation
     labelList includeFaceList_;
-
 
 public:
     TypeName("meshQualityKS");

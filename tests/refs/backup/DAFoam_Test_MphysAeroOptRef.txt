@@ -1,4 +1,0 @@
-Dictionary Key: cruise.aero_post.CD
-@value  0.03918787297431089 1e-04 1e-06
-Dictionary Key: cruise.aero_post.CL
-@value   0.2999891179061076 1e-04 1e-06

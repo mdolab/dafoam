@@ -28,7 +28,6 @@ class DAFunctionPatchMean
 {
 
 protected:
-
     /// the area of all total pressure patches
     scalar areaSum_ = -9999.0;
 

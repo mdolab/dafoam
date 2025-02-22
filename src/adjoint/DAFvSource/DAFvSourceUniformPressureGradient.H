@@ -28,7 +28,6 @@ class DAFvSourceUniformPressureGradient
 {
 
 protected:
-
 public:
     TypeName("uniformPressureGradient");
     // Constructors
