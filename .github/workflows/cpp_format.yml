@@ -22,5 +22,5 @@ jobs:
       - name: Fail if formatting changes are needed
         if: failure()
         run: |
-          echo "Code is not properly formatted. Please run clang-format and commit the changes."
+          echo "C++ code is not properly formatted. Please run clang-format and commit the changes."
           exit 1
