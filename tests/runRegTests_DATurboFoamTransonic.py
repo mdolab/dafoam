@@ -63,7 +63,7 @@ daOptions = {
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
     },
-    "decomposeParDict": {"preservePatches": ["per1", "per2"]}
+    "decomposeParDict": {"preservePatches": ["per1", "per2"]},
 }
 
 meshOptions = {

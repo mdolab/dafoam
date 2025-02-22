@@ -220,9 +220,7 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
 optFuncs = OptFuncs(daOptions, prob)
 
-optFuncs.findFeasibleDesign(
-    ["cruise.aero_post.CL"], ["patchV"], designVarsComp=[1], targets=[0.3]
-)
+optFuncs.findFeasibleDesign(["cruise.aero_post.CL"], ["patchV"], designVarsComp=[1], targets=[0.3])
 
 prob.run_driver()
 
