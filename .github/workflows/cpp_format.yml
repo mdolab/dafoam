@@ -1,0 +1,26 @@
+name: Cpp_format
+
+on: [push, pull_request]
+
+jobs:
+  Cpp_format:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v3
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format
+
+      - name: Run clang-format
+        run: |
+          find . -regex '.*\.\(C\|H\)' -exec clang-format -style=file -i {} \;
+          git diff --exit-code
+        continue-on-error: false
+
+      - name: Fail if formatting changes are needed
+        if: failure()
+        run: |
+          echo "C++ code is not properly formatted. Please run clang-format and commit the changes."
+          exit 1

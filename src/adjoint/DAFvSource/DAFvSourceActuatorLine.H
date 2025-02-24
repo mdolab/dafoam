@@ -29,8 +29,7 @@ class DAFvSourceActuatorLine
 {
 
 protected:
-
-    /// print interval 
+    /// print interval
     label printIntervalUnsteady_;
 
 public:

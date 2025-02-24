@@ -10,7 +10,7 @@ petsc4py.init(sys.argv)
 from petsc4py import PETSc
 
 
-def printMatValues(mat, rowI, colI, transposed, diffTol = 1e-30):
+def printMatValues(mat, rowI, colI, transposed, diffTol=1e-30):
 
     # read the Jac mat
     jacMat = PETSc.Mat().create(PETSc.COMM_WORLD)

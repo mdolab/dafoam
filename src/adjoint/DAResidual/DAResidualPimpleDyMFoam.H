@@ -4,19 +4,17 @@
     Version : v4
 
     Description:
-        Child class for DATurboFoam
+        Child class for DAPimpleDyMFoam
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAResidualTurboFoam_H
-#define DAResidualTurboFoam_H
+#ifndef DAResidualPimpleDyMFoam_H
+#define DAResidualPimpleDyMFoam_H
 
 #include "DAResidual.H"
 #include "addToRunTimeSelectionTable.H"
-#include "simpleControl.H"
+#include "pimpleControl.H"
 #include "adjustPhi.H"
-#include "thermodynamicConstants.H"
-#include "pressureControl.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -24,13 +22,12 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAResidualTurboFoam Declaration
+      Class DAResidualPimpleDyMFoam Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAResidualTurboFoam
+class DAResidualPimpleDyMFoam
     : public DAResidual
 {
-
 protected:
     /// \name These are state variables, state residuals, and partial derivatives
     //@{
@@ -40,51 +37,37 @@ protected:
     volScalarField& p_;
     volScalarField pRes_;
 
-    volScalarField& T_;
-    volScalarField TRes_;
-
     surfaceScalarField& phi_;
     surfaceScalarField phiRes_;
+
+    autoPtr<volScalarField> TResPtr_;
     //@}
 
-    /// thermophysical property
-    fluidThermo& thermo_;
-
-    /// relative velocity
-    volVectorField& URel_;
-
-    /// \name These are intermediate variables
-    //@{
-    volScalarField& he_;
-    volScalarField& rho_;
-    volScalarField& alphat_;
-    volScalarField& psi_;
-    //@}
+    /// fvSource term
+    volVectorField& fvSource_;
 
     /// DATurbulenceModel object
     DATurbulenceModel& daTurb_;
 
-    /// simpleControl object which will be initialized in this class
-    simpleControl simple_;
+    /// pimpleControl object which will be initialized in this class
+    pimpleControl pimple_;
 
-    /// pressureControl object to set ref pressure
-    pressureControl pressureControl_;
+    /// whether to has fvSource term
+    label hasFvSource_ = 0;
 
-    /// Multiple Reference Frame
-    IOMRFZoneListDF& MRF_;
+    /// whether to include the temperature field
+    label hasTField_ = 0;
 
-    /// \name These are constants to update the intermediate variables
-    //@{
-    scalar molWeight_;
-    scalar Cp_;
-    //@}
+    scalar Pr_;
+
+    scalar Prt_;
 
 public:
-    TypeName("DATurboFoam");
+    TypeName("DAPimpleDyMFoam");
     // Constructors
 
     //- Construct from components
-    DAResidualTurboFoam(
+    DAResidualPimpleDyMFoam(
         const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption,
@@ -92,7 +75,7 @@ public:
         const DAIndex& daIndex);
 
     //- Destructor
-    virtual ~DAResidualTurboFoam()
+    virtual ~DAResidualPimpleDyMFoam()
     {
     }
 
@@ -109,6 +92,8 @@ public:
 
     /// update the boundary condition for all the states in the selected solver
     virtual void correctBoundaryConditions();
+
+    virtual void calcPCMatWithFvMatrix(Mat PCMat);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

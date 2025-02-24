@@ -49,8 +49,8 @@ public:
         autoPtr,
         DARadiationModel,
         dictionary,
-        (const word modelType, 
-         const fvMesh& mesh, 
+        (const word modelType,
+         const fvMesh& mesh,
          const DAOption& daOption),
         (modelType, mesh, daOption));
 

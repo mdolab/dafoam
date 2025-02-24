@@ -64,7 +64,6 @@ DAFunctionMeshQualityKS::DAFunctionMeshQualityKS(
     {
         Info << "includeFaceList " << includeFaceList_ << endl;
     }
-
 }
 
 /// calculate the value of objective function

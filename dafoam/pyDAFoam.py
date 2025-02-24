@@ -329,6 +329,10 @@ class DAOPTION(object):
         ## The adjoint equation solution method. Options are: Krylov or fixedPoint
         self.adjEqnSolMethod = "Krylov"
 
+        ## whether the dynamic mesh is activated. The default is False, but if we need to use
+        ## DAPimpleDyMFoam, we need to set this flaf to True
+        self.dynamicMesh = False
+
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
         ## Setting the bounds increases the robustness of primal solution for compressible solvers.
         ## Also, we set lower bounds for turbulence variables to ensure they are physical
@@ -1186,6 +1190,41 @@ class PYDAFOAM(object):
             self.parallelFlag = "-parallel"
 
         return
+
+    def readDynamicMeshPoints(self, timeVal, deltaT, timeIndex, ddtSchemeOrder):
+        """
+        Read the dynamic mesh points saved in the folders 0.001, 0.002
+        NOTE: if the backward scheme is used we need to read the mesh
+        for 3 time levels to get the correct V0, V00 etc
+        NOTE: setting the proper time index is critical because the fvMesh
+        will use timeIndex to calculate meshPhi, V0 etc
+        """
+        if ddtSchemeOrder == 1:
+            # no special treatment
+            pass
+        elif ddtSchemeOrder == 2:
+            # need to read timeVal - 2*deltaT
+            time_2 = timeVal - 2 * deltaT
+            index_2 = timeIndex - 2
+            self.solver.setTime(time_2, index_2)
+            self.solver.readMeshPoints(time_2)
+            self.solverAD.setTime(time_2, index_2)
+            self.solverAD.readMeshPoints(time_2)
+        else:
+            raise Error("ddtSchemeOrder not supported")
+
+        # read timeVal - deltaT points
+        time_1 = timeVal - deltaT
+        index_1 = timeIndex - 1
+        self.solver.setTime(time_1, index_1)
+        self.solver.readMeshPoints(time_1)
+        self.solverAD.setTime(time_1, index_1)
+        self.solverAD.readMeshPoints(time_1)
+        # read timeVal points
+        self.solver.setTime(timeVal, timeIndex)
+        self.solver.readMeshPoints(timeVal)
+        self.solverAD.setTime(timeVal, timeIndex)
+        self.solverAD.readMeshPoints(timeVal)
 
     def readStateVars(self, timeVal, deltaT):
         """

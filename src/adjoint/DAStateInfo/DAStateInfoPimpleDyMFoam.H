@@ -4,14 +4,14 @@
     Version : v4
 
     Description:
-        Child class for variable volume sum
+        Child class for DAPimpleDyMFoam
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DAFunctionVariableVolSum_H
-#define DAFunctionVariableVolSum_H
+#ifndef DAStateInfoPimpleDyMFoam_H
+#define DAStateInfoPimpleDyMFoam_H
 
-#include "DAFunction.H"
+#include "DAStateInfo.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -20,51 +20,28 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DAFunctionVariableVolSum Declaration
+      Class DAStateInfoPimpleDyMFoam Declaration
 \*---------------------------------------------------------------------------*/
 
-class DAFunctionVariableVolSum
-    : public DAFunction
+class DAStateInfoPimpleDyMFoam
+    : public DAStateInfo
 {
 
-protected:
-    /// name of the variable
-    word varName_;
-
-    /// type of the variable either vector or scalar
-    word varType_;
-
-    /// if vector which element?
-    label component_;
-
-    /// whether to take a square of the variable
-    label isSquare_;
-
-    /// whether to normalize the volume sum with the total volume
-    label divByTotalVol_;
-
-    /// whether to multiply the variable by the volume
-    label multiplyVol_;
-
 public:
-    TypeName("variableVolSum");
+    TypeName("DAPimpleDyMFoam");
     // Constructors
 
     //- Construct from components
-    DAFunctionVariableVolSum(
+    DAStateInfoPimpleDyMFoam(
+        const word modelType,
         const fvMesh& mesh,
         const DAOption& daOption,
-        const DAModel& daModel,
-        const DAIndex& daIndex,
-        const word functionName);
+        const DAModel& daModel);
 
     //- Destructor
-    virtual ~DAFunctionVariableVolSum()
+    virtual ~DAStateInfoPimpleDyMFoam()
     {
     }
-
-    /// calculate the value of objective function
-    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

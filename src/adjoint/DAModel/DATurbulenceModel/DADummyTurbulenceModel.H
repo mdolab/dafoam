@@ -28,7 +28,6 @@ class DADummyTurbulenceModel
 {
 
 protected:
-    
 public:
     TypeName("dummy");
     // Constructors

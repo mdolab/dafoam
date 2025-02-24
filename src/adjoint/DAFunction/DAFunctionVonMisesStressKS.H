@@ -28,7 +28,6 @@ class DAFunctionVonMisesStressKS
 {
 
 protected:
-
     /// coefficient for the KS function
     scalar coeffKS_;
 

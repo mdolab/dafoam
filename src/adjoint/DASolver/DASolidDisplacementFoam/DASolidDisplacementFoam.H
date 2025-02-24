@@ -51,7 +51,6 @@ class DASolidDisplacementFoam
 {
 
 protected:
-
     /// density field pointer
     autoPtr<volScalarField> rhoPtr_;
 

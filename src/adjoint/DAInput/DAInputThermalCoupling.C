@@ -224,7 +224,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
     else
     {
         FatalErrorIn("DAInputThermalCoupling::run") << " discipline not valid! "
-                                               << abort(FatalError);
+                                                    << abort(FatalError);
     }
 
     T.correctBoundaryConditions();

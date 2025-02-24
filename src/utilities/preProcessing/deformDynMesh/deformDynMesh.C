@@ -47,21 +47,20 @@ int main(int argc, char* argv[])
 #include "createTime.H"
 #include "createMesh.H"
 
-
-    vector origin={0.0, 0.0, 0.0};
+    vector origin = {0.0, 0.0, 0.0};
     if (args.readIfPresent("origin", origin))
     {
-        Info<< "The origin to rotate the mesh: " << origin << endl;
+        Info << "The origin to rotate the mesh: " << origin << endl;
     }
     else
     {
         Info << "origin not set!" << endl;
     }
 
-    vector axis={0, 0, 0};
+    vector axis = {0, 0, 0};
     if (args.readIfPresent("axis", axis))
     {
-        Info<< "The axis to rotate the mesh: " << axis << endl;
+        Info << "The axis to rotate the mesh: " << axis << endl;
     }
     else
     {
@@ -71,7 +70,7 @@ int main(int argc, char* argv[])
     scalar omega = 0.0;
     if (args.readIfPresent("omega", omega))
     {
-        Info<< "The angular velocity to rotate the mesh: " << omega << endl;
+        Info << "The angular velocity to rotate the mesh: " << omega << endl;
     }
     else
     {
@@ -101,8 +100,8 @@ int main(int argc, char* argv[])
     while (runTime.run())
     {
         ++runTime;
-        
-        Info<< "Time = " << runTime.timeName() << nl << endl;
+
+        Info << "Time = " << runTime.timeName() << nl << endl;
 
         pointField ourNewPoints(mesh.points());
         scalar theta = omega * runTime.deltaT().value();
@@ -117,23 +116,19 @@ int main(int argc, char* argv[])
             ourNewPoints[pointI][0] = cosTheta * xTemp - sinTheta * yTemp + origin[0];
             ourNewPoints[pointI][1] = sinTheta * xTemp + cosTheta * yTemp + origin[1];
         }
-        
+
         mesh.movePoints(ourNewPoints);
 
-        pointIOField writePoints
-        (
-            IOobject
-            (
+        pointIOField writePoints(
+            IOobject(
                 "points",
                 runTime.timeName(),
                 "polyMesh",
                 mesh,
                 IOobject::NO_READ,
-                IOobject::AUTO_WRITE
-            ),
-            mesh.points()
-        );
-        
+                IOobject::AUTO_WRITE),
+            mesh.points());
+
         runTime.write();
     }
 

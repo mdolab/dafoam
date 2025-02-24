@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAResidualPimpleFoam.H"
+#include "DAResidualPimpleDyMFoam.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAResidualPimpleFoam, 0);
-addToRunTimeSelectionTable(DAResidual, DAResidualPimpleFoam, dictionary);
+defineTypeNameAndDebug(DAResidualPimpleDyMFoam, 0);
+addToRunTimeSelectionTable(DAResidual, DAResidualPimpleDyMFoam, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAResidualPimpleFoam::DAResidualPimpleFoam(
+DAResidualPimpleDyMFoam::DAResidualPimpleDyMFoam(
     const word modelType,
     const fvMesh& mesh,
     const DAOption& daOption,
@@ -73,7 +73,7 @@ DAResidualPimpleFoam::DAResidualPimpleFoam(
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-void DAResidualPimpleFoam::clear()
+void DAResidualPimpleDyMFoam::clear()
 {
     /*
     Description:
@@ -91,7 +91,7 @@ void DAResidualPimpleFoam::clear()
     }
 }
 
-void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
+void DAResidualPimpleDyMFoam::calcResiduals(const dictionary& options)
 {
     /*
     Description:
@@ -171,20 +171,7 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
         "phiHbyA",
         fvc::flux(HbyA));
 
-    if (p_.needReference())
-    {
-        adjustPhi(phiHbyA, U_, p_);
-    }
-
     tmp<volScalarField> rAtU(rAU);
-
-    if (pimple_.consistent())
-    {
-        rAtU = 1.0 / max(1.0 / rAU - UEqn.H1(), 0.1 / rAU);
-        phiHbyA +=
-            fvc::interpolate(rAtU() - rAU) * fvc::snGrad(p_) * mesh_.magSf();
-        HbyA -= (rAU - rAtU()) * fvc::grad(p_);
-    }
 
     fvScalarMatrix pEqn(
         fvm::laplacian(rAtU(), p_)
@@ -197,7 +184,10 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
 
     // ******** phi Residuals **********
     // copied and modified from pEqn.H
-    phiRes_ = phiHbyA - pEqn.flux() - phi_;
+    // NOTE: phiRes = phiHbyA - pEqn.flux() - phi; >> needs phi to be absolute instead of relative
+    // But we cannot simply << fvc::makeAbsolute(phi, U); >>, because UEqn still needs phi to be relative
+    // Therefore, we manually add the term fvc::meshPhi(U) to phiRes
+    phiRes_ = phiHbyA - pEqn.flux() - phi_ - fvc::meshPhi(U_);
     // need to normalize phiRes
     normalizePhiResiduals(phiRes);
 
@@ -226,7 +216,7 @@ void DAResidualPimpleFoam::calcResiduals(const dictionary& options)
     }
 }
 
-void DAResidualPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
+void DAResidualPimpleDyMFoam::calcPCMatWithFvMatrix(Mat PCMat)
 {
     /* 
     Description:
@@ -338,20 +328,7 @@ void DAResidualPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
         "phiHbyA",
         fvc::flux(HbyA));
 
-    if (p_.needReference())
-    {
-        adjustPhi(phiHbyA, U_, p_);
-    }
-
     tmp<volScalarField> rAtU(rAU);
-
-    if (pimple_.consistent())
-    {
-        rAtU = 1.0 / max(1.0 / rAU - UEqn.H1(), 0.1 / rAU);
-        phiHbyA +=
-            fvc::interpolate(rAtU() - rAU) * fvc::snGrad(p_) * mesh_.magSf();
-        HbyA -= (rAU - rAtU()) * fvc::grad(p_);
-    }
 
     fvScalarMatrix pEqn(
         fvm::laplacian(rAtU(), p_)
@@ -493,17 +470,17 @@ void DAResidualPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
     }
 }
 
-void DAResidualPimpleFoam::updateIntermediateVariables()
+void DAResidualPimpleDyMFoam::updateIntermediateVariables()
 {
     /* 
     Description:
         Update the intermediate variables that depend on the state variables
     */
 
-    // nothing to update for DAPimpleFoam
+    // nothing to update for DAPimpleDyMFoam
 }
 
-void DAResidualPimpleFoam::correctBoundaryConditions()
+void DAResidualPimpleDyMFoam::correctBoundaryConditions()
 {
     /* 
     Description:

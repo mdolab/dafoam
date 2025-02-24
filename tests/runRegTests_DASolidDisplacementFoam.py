@@ -57,6 +57,7 @@ meshOptions = {
     "symmetryPlanes": [[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], [[0.0, 0.0, 0.1], [0.0, 0.0, 1.0]]],
 }
 
+
 class Top(Multipoint):
     def setup(self):
         dafoam_builder = DAFoamBuilder(daOptions, meshOptions, scenario="aerodynamic")

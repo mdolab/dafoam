@@ -65,19 +65,19 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
         dictionary lineSubDict = fvSourceSubDict.subDict(lineName);
         // center of the actuator line
         vector center = {
-            actuatorLinePars[lineName][0], 
-            actuatorLinePars[lineName][1], 
+            actuatorLinePars[lineName][0],
+            actuatorLinePars[lineName][1],
             actuatorLinePars[lineName][2]};
         // thrust direction
         vector direction = {
-            actuatorLinePars[lineName][3], 
-            actuatorLinePars[lineName][4], 
+            actuatorLinePars[lineName][3],
+            actuatorLinePars[lineName][4],
             actuatorLinePars[lineName][5]};
         direction = direction / mag(direction);
         // initial vector for the actuator line
         vector initial = {
-            actuatorLinePars[lineName][6], 
-            actuatorLinePars[lineName][7], 
+            actuatorLinePars[lineName][6],
+            actuatorLinePars[lineName][7],
             actuatorLinePars[lineName][8]};
         initial = initial / mag(initial);
         if (fabs(direction & initial) > 1.0e-10)

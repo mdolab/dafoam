@@ -33,4 +33,3 @@ runTimePtr_.reset(
     new Time(
         Time::controlDictName,
         args));
-

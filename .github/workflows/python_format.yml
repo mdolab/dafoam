@@ -1,0 +1,28 @@
+name: Python_format
+
+on: [push, pull_request]
+
+jobs:
+  Python_format:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Install black
+        run: pip install black
+
+      - name: Run black for format check
+        run: black --check --diff .
+
+      - name: Fail if formatting issues are found
+        if: failure()
+        run: |
+          echo "Python code is not properly formatted. Please run 'black .' and commit the changes."
+          exit 1

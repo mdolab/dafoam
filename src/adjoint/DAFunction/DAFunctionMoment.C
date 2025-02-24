@@ -52,7 +52,6 @@ DAFunctionMoment::DAFunctionMoment(
     momentCenter_[0] = center[0];
     momentCenter_[1] = center[1];
     momentCenter_[2] = center[2];
-
 }
 
 /// calculate the value of objective function

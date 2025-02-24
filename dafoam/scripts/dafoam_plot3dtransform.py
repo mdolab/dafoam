@@ -27,21 +27,21 @@ if mode == "scale":
     scaleX = float(sys.argv[4])
     scaleY = float(sys.argv[5])
     scaleZ = float(sys.argv[6])
-    
+
     print(
         "Scaling %s to %s with scaleX: %g scaleY: %g scaleZ: %g ...."
         % (inputFileName, outputFileName, scaleX, scaleY, scaleZ)
     )
-    
+
     ffd = pyBlock("plot3d", fileName=inputFileName, FFD=True)
-    
+
     for ivol in range(ffd.nVol):
         vals = ffd.vols[ivol].coef
         vals[:, :, :, 0] = vals[:, :, :, 0] * scaleX
         vals[:, :, :, 1] = vals[:, :, :, 1] * scaleY
         vals[:, :, :, 2] = vals[:, :, :, 2] * scaleZ
     ffd.writePlot3dCoef(outputFileName)
-    
+
     print(
         "Scaling %s to %s with scaleX: %g scaleY: %g scaleZ: %g Done!"
         % (inputFileName, outputFileName, scaleX, scaleY, scaleZ)
@@ -50,36 +50,27 @@ elif mode == "translate":
     dX = float(sys.argv[4])
     dY = float(sys.argv[5])
     dZ = float(sys.argv[6])
-    
-    print(
-        "Translating %s to %s with dX: %g dY: %g dZ: %g ...."
-        % (inputFileName, outputFileName, dX, dY, dZ)
-    )
-    
+
+    print("Translating %s to %s with dX: %g dY: %g dZ: %g ...." % (inputFileName, outputFileName, dX, dY, dZ))
+
     ffd = pyBlock("plot3d", fileName=inputFileName, FFD=True)
-    
+
     for ivol in range(ffd.nVol):
         vals = ffd.vols[ivol].coef
         vals[:, :, :, 0] = vals[:, :, :, 0] + dX
         vals[:, :, :, 1] = vals[:, :, :, 1] + dY
         vals[:, :, :, 2] = vals[:, :, :, 2] + dZ
     ffd.writePlot3dCoef(outputFileName)
-    
-    print(
-        "Translating %s to %s with dX: %g dT: %g dZ: %g Done!"
-        % (inputFileName, outputFileName, dX, dY, dZ)
-    )
+
+    print("Translating %s to %s with dX: %g dT: %g dZ: %g Done!" % (inputFileName, outputFileName, dX, dY, dZ))
 elif mode == "rotate":
     axis = str(sys.argv[4])
     deg = float(sys.argv[5])
 
-    print(
-        "Rotating %s to %s wrt to the %s axis by %g degree...."
-        % (inputFileName, outputFileName, axis, deg)
-    )
+    print("Rotating %s to %s wrt to the %s axis by %g degree...." % (inputFileName, outputFileName, axis, deg))
 
     ffd = pyBlock("plot3d", fileName=inputFileName, FFD=True)
-    
+
     theta = deg * np.pi / 180.0
 
     for ivol in range(ffd.nVol):
@@ -90,26 +81,23 @@ elif mode == "rotate":
                     if axis == "x":
                         yRef = vals[i, j, k, 1]
                         zRef = vals[i, j, k, 2]
-                        vals[i, j, k, 1] = np.cos(theta) * yRef - np.sin(theta) * zRef 
-                        vals[i, j, k, 2] = np.sin(theta) * yRef + np.cos(theta) * zRef 
+                        vals[i, j, k, 1] = np.cos(theta) * yRef - np.sin(theta) * zRef
+                        vals[i, j, k, 2] = np.sin(theta) * yRef + np.cos(theta) * zRef
                     elif axis == "y":
                         xRef = vals[i, j, k, 0]
                         zRef = vals[i, j, k, 2]
-                        vals[i, j, k, 0] = np.cos(theta) * xRef + np.sin(theta) * zRef 
-                        vals[i, j, k, 2] = -np.sin(theta) * xRef + np.cos(theta) * zRef 
+                        vals[i, j, k, 0] = np.cos(theta) * xRef + np.sin(theta) * zRef
+                        vals[i, j, k, 2] = -np.sin(theta) * xRef + np.cos(theta) * zRef
                     elif axis == "z":
                         xRef = vals[i, j, k, 0]
                         yRef = vals[i, j, k, 1]
-                        vals[i, j, k, 0] = np.cos(theta) * xRef - np.sin(theta) * yRef 
-                        vals[i, j, k, 1] = np.sin(theta) * xRef + np.cos(theta) * yRef 
+                        vals[i, j, k, 0] = np.cos(theta) * xRef - np.sin(theta) * yRef
+                        vals[i, j, k, 1] = np.sin(theta) * xRef + np.cos(theta) * yRef
                     else:
-                        print("Axis %s not supported! Options are: x, y, or z"%s)
-    
+                        print("Axis %s not supported! Options are: x, y, or z" % s)
+
     ffd.writePlot3dCoef(outputFileName)
 
-    print(
-        "Rotating %s to %s wrt to the %s axis by %g degree Done!"
-        % (inputFileName, outputFileName, axis, deg)
-    )
+    print("Rotating %s to %s wrt to the %s axis by %g degree Done!" % (inputFileName, outputFileName, axis, deg))
 else:
-    print("Mode %s not supported! Options are: scale, translate, or rotate"%s)
+    print("Mode %s not supported! Options are: scale, translate, or rotate" % s)

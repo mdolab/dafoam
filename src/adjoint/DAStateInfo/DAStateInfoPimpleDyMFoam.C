@@ -5,18 +5,18 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DAStateInfoRhoSimpleFoam.H"
+#include "DAStateInfoPimpleDyMFoam.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DAStateInfoRhoSimpleFoam, 0);
-addToRunTimeSelectionTable(DAStateInfo, DAStateInfoRhoSimpleFoam, dictionary);
+defineTypeNameAndDebug(DAStateInfoPimpleDyMFoam, 0);
+addToRunTimeSelectionTable(DAStateInfo, DAStateInfoPimpleDyMFoam, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DAStateInfoRhoSimpleFoam::DAStateInfoRhoSimpleFoam(
+DAStateInfoPimpleDyMFoam::DAStateInfoPimpleDyMFoam(
     const word modelType,
     const fvMesh& mesh,
     const DAOption& daOption,
@@ -38,7 +38,6 @@ DAStateInfoRhoSimpleFoam::DAStateInfoRhoSimpleFoam(
     */
 
     stateInfo_["volScalarStates"].append("p");
-    stateInfo_["volScalarStates"].append("T");
     stateInfo_["modelStates"].append("nut");
     stateInfo_["volVectorStates"].append("U");
     stateInfo_["surfaceScalarStates"].append("phi");
@@ -79,41 +78,48 @@ DAStateInfoRhoSimpleFoam::DAStateInfoRhoSimpleFoam(
     stateResConInfo_.set(
         "URes",
         {
-            {"U", "p", "T", "nut", "phi"}, // lv0
-            {"U", "p", "T", "nut"}, // lv1
-            {"U", "T"} // lv2
-        });
-
-    stateResConInfo_.set(
-        "TRes",
-        {
-            {"U", "p", "T", "nut", "phi"}, // lv0
-            {"U", "p", "T", "nut"}, // lv1
-            {"U", "p", "T"} // lv2
+            {"U", "p", "nut", "phi"}, // lv0
+            {"U", "p", "nut"}, // lv1
+            {"U"} // lv2
         });
 
     stateResConInfo_.set(
         "pRes",
         {
-            {"U", "p", "T", "nut", "phi"}, // lv0
-            {"U", "p", "T", "nut", "phi"}, // lv1
-            {"U", "p", "T", "nut"}, // lv2
+            {"U", "p", "nut", "phi"}, // lv0
+            {"U", "p", "nut", "phi"}, // lv1
+            {"U", "p", "nut"}, // lv2
             {"U"} // lv3
         });
 
     stateResConInfo_.set(
         "phiRes",
         {
-            {"U", "p", "T", "nut", "phi"}, // lv0
-            {"U", "p", "T", "nut"}, // lv1
-            {"U", "T"}, // lv2
+            {"U", "p", "nut", "phi"}, // lv0
+            {"U", "p", "nut"}, // lv1
+            {"U"}, // lv2
         });
 
     // need to correct connectivity for physical models for each residual
     daModel.correctStateResidualModelCon(stateResConInfo_["URes"]);
-    daModel.correctStateResidualModelCon(stateResConInfo_["TRes"]);
     daModel.correctStateResidualModelCon(stateResConInfo_["pRes"]);
     daModel.correctStateResidualModelCon(stateResConInfo_["phiRes"]);
+
+    label hasTField = DAUtility::isFieldReadable(mesh_, "T", "volScalarField");
+
+    if (hasTField)
+    {
+        stateInfo_["volScalarStates"].append("T");
+        stateResConInfo_.set(
+            "TRes",
+            {
+                {"T", "nut", "phi"}, // lv0
+                {"T", "nut"}, // lv1
+                {"T"} // lv2
+            });
+
+        daModel.correctStateResidualModelCon(stateResConInfo_["TRes"]);
+    }
 
     // add physical model residual connectivity
     daModel.addModelResidualCon(stateResConInfo_);

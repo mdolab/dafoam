@@ -34,4 +34,3 @@ if __name__ == "__main__":
     print("Example python dafoam_vecgetvalues.py dFdW.bin 100")
     print("NOTE: if rowI=-1, print all elements\n")
     printVecValues(sys.argv[1], sys.argv[2])
-

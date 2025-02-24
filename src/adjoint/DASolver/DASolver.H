@@ -640,6 +640,9 @@ public:
         scalar timeVal,
         label oldTimeLevel = 0);
 
+    /// read the mesh points from the disk and run movePoints to deform the mesh
+    void readMeshPoints(const scalar timeVal);
+
     /// calculate the PC mat using fvMatrix
     void calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly = 0);
 

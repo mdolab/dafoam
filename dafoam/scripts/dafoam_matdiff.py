@@ -53,7 +53,7 @@ def evalMatDiff(mat1, mat2, mode, diffTol=1e-30):
                 valError = valDiff
             else:
                 print("mode not supported! Options are: abs or rel")
-            l2norm = l2norm + valDiff ** 2
+            l2norm = l2norm + valDiff**2
             if abs(valError) > diffTol:
                 if abs(valError) > maxDiff:
                     foundDiff = 1

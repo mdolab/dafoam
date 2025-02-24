@@ -62,30 +62,22 @@ protected:
     /// \name kOmega functions
     //@{
     //- Return the effective diffusivity for k
-        tmp<volScalarField> DkEff() const
-        {
-            return tmp<volScalarField>
-            (
-                new volScalarField
-                (
-                    "DkEff",
-                    alphaK_*this->nut_ + this->nu()
-                )
-            );
-        }
+    tmp<volScalarField> DkEff() const
+    {
+        return tmp<volScalarField>(
+            new volScalarField(
+                "DkEff",
+                alphaK_ * this->nut_ + this->nu()));
+    }
 
-        //- Return the effective diffusivity for omega
-        tmp<volScalarField> DomegaEff() const
-        {
-            return tmp<volScalarField>
-            (
-                new volScalarField
-                (
-                    "DomegaEff",
-                    alphaOmega_*this->nut_ + this->nu()
-                )
-            );
-        }
+    //- Return the effective diffusivity for omega
+    tmp<volScalarField> DomegaEff() const
+    {
+        return tmp<volScalarField>(
+            new volScalarField(
+                "DomegaEff",
+                alphaOmega_ * this->nut_ + this->nu()));
+    }
     //@}
 
     /// \name Augmented variables for adjoint residuals
@@ -169,7 +161,7 @@ public:
         scalarField& diag,
         scalarField& upper,
         scalarField& lower);
-    
+
     /// return the value of the destruction term from the turbulence model
     virtual void getTurbProdOverDestruct(volScalarField& PoD) const;
 
