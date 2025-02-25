@@ -2884,8 +2884,8 @@ void DASolver::writeMeshPoints(const double* points, const scalar timeVal)
             IOobject::NO_READ,
             IOobject::NO_WRITE,
             false),
-            meshPtr_->points());
-    
+        meshPtr_->points());
+
     //pointIOField writePoints = meshPtr_->points();
 
     label counterI = 0;

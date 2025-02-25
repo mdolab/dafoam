@@ -29,7 +29,7 @@ daOptions = {
         "center": [0.25, 0.0, 0.0],
         "axis": "z",
         "omega": -0.5,
-    }
+    },
 }
 
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
