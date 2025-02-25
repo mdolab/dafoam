@@ -214,6 +214,12 @@ public:
 #endif
     }
 
+    /// get the flatten mesh points coordinates
+    void getOFMeshPoints(double* points)
+    {
+        DASolverPtr_->getOFMeshPoints(points);
+    }
+
     /// Assign the OpenFOAM field values to the states array
     void getOFFields(double* states)
     {
@@ -435,6 +441,12 @@ public:
     void readMeshPoints(const scalar timeVal)
     {
         DASolverPtr_->readMeshPoints(timeVal);
+    }
+
+    /// write the mesh points to the disk for the given timeVal
+    void writeMeshPoints(const double* points, const scalar timeVal)
+    {
+        DASolverPtr_->writeMeshPoints(points, timeVal);
     }
 
     /// calculate the PC mat using fvMatrix

@@ -289,6 +289,9 @@ public:
         const word fieldType,
         double* field);
 
+    /// get the flatten mesh points coordinates
+    void getOFMeshPoints(double* points);
+
     /// get the array size of an input type
     label getInputSize(
         const word inputName,
@@ -642,6 +645,9 @@ public:
 
     /// read the mesh points from the disk and run movePoints to deform the mesh
     void readMeshPoints(const scalar timeVal);
+
+    /// write the mesh points to the disk for the given timeVal
+    void writeMeshPoints(const double* points, const scalar timeVal);
 
     /// calculate the PC mat using fvMatrix
     void calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly = 0);

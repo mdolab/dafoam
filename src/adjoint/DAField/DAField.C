@@ -425,7 +425,7 @@ void DAField::point2OFMesh(const scalar* volCoords) const
     // movePoints update the mesh metrics such as volume, surface area and cell centers
     fvMesh& mesh = const_cast<fvMesh&>(mesh_);
     mesh.movePoints(meshPoints);
-    if (daOption_.getAllOptions().getLabel("dynamicMesh"))
+    if (daOption_.getAllOptions().subDict("dynamicMesh").getLabel("active"))
     {
         mesh.moving(true);
     }

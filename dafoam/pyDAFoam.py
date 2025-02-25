@@ -331,7 +331,13 @@ class DAOPTION(object):
 
         ## whether the dynamic mesh is activated. The default is False, but if we need to use
         ## DAPimpleDyMFoam, we need to set this flaf to True
-        self.dynamicMesh = False
+        self.dynamicMesh = {
+            "active": False,
+            "mode": "rotation",
+            "center": [0.25, 0.0, 0.0],
+            "axis": "z",
+            "omega": 0.1,
+        }
 
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
         ## Setting the bounds increases the robustness of primal solution for compressible solvers.
@@ -749,6 +755,9 @@ class PYDAFOAM(object):
         # a KSP object which may be used outside of the pyDAFoam class
         self.ksp = None
 
+        # a flag used in deformDynamicMesh for runMode=runOnce
+        self.dynamicMeshDeformed = 0
+
         if self.getOption("tensorflow")["active"]:
             TensorFlowHelper.options = self.getOption("tensorflow")
             TensorFlowHelper.initialize()
@@ -772,9 +781,9 @@ class PYDAFOAM(object):
         """
 
         self.solverRegistry = {
-            "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam", "DAPimpleFoam", "DAPimpleDyMFoam"],
+            "Incompressible": ["DASimpleFoam", "DAPimpleFoam", "DAPimpleDyMFoam"],
             "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam", "DARhoPimpleFoam"],
-            "Solid": ["DASolidDisplacementFoam", "DALaplacianFoam", "DAHeatTransferFoam", "DAScalarTransportFoam"],
+            "Solid": ["DASolidDisplacementFoam", "DAHeatTransferFoam"],
         }
 
     def __call__(self):
@@ -1190,6 +1199,68 @@ class PYDAFOAM(object):
             self.parallelFlag = "-parallel"
 
         return
+
+    def deformDynamicMesh(self, runMode):
+        """
+        Deform the dynamic mesh and save to them to the disk
+        """
+
+        if not self.getOption("dynamicMesh")["active"]:
+            return
+
+        Info("Deforming dynamic mesh")
+
+        if runMode == "runOnce":
+            if self.dynamicMeshDeformed == 1:
+                return
+        elif runMode == "always":
+            pass
+        else:
+            raise Error("runMode not valid. Options are: runOnce, always")
+
+        mode = self.getOption("dynamicMesh")["mode"]
+
+        deltaT = self.solver.getDeltaT()
+
+        endTime = self.solver.getEndTime()
+        endTimeIndex = round(endTime / deltaT)
+        nLocalPoints = self.solver.getNLocalPoints()
+
+        if mode == "rotation":
+            center = self.getOption("dynamicMesh")["center"]
+            axis = self.getOption("dynamicMesh")["axis"]
+            omega = self.getOption("dynamicMesh")["omega"]
+
+            # always get the initial mesh from OF layer
+            points0 = np.zeros(nLocalPoints * 3)
+            self.solver.getOFMeshPoints(points0)
+            points = np.reshape(points0, (-1, 3))
+
+            for i in range(1, endTimeIndex + 1):
+                t = i * deltaT
+                dTheta = omega * deltaT
+                dCosTheta = np.cos(dTheta)
+                dSinTheta = np.sin(dTheta)
+
+                for pointI in range(nLocalPoints):
+
+                    if axis == "z":
+                        xTemp = points[pointI][0] - center[0]
+                        yTemp = points[pointI][1] - center[1]
+
+                        points[pointI][0] = dCosTheta * xTemp - dSinTheta * yTemp + center[0]
+                        points[pointI][1] = dSinTheta * xTemp + dCosTheta * yTemp + center[1]
+                    else:
+                        raise Error("axis not valid! Options are: z")
+
+                pointsWrite = points.flatten()
+                self.solver.writeMeshPoints(pointsWrite, t)
+        else:
+            raise Error("mode not valid! Options are: rotation")
+
+        # reset the time
+        self.solver.setTime(0.0, 0)
+        self.dynamicMeshDeformed = 1
 
     def readDynamicMeshPoints(self, timeVal, deltaT, timeIndex, ddtSchemeOrder):
         """

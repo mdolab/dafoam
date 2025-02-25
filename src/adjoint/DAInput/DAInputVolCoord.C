@@ -57,7 +57,7 @@ void DAInputVolCoord::run(const scalarList& input)
         }
     }
     mesh_.movePoints(meshPoints);
-    if (daOption_.getAllOptions().getLabel("dynamicMesh"))
+    if (daOption_.getAllOptions().subDict("dynamicMesh").getLabel("active"))
     {
         mesh_.moving(true);
     }

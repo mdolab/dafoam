@@ -63,6 +63,16 @@ DASolver::DASolver(
 
     daOptionPtr_.reset(new DAOption(meshPtr_(), pyOptions_));
 
+    // if the dynamic mesh is used, set moving to true here
+    if (daOptionPtr_->getAllOptions().subDict("dynamicMesh").getLabel("active"))
+    {
+        meshPtr_->moving(true);
+    }
+    else
+    {
+        meshPtr_->moving(false);
+    }
+
     primalMinResTol_ = daOptionPtr_->getOption<scalar>("primalMinResTol");
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
     printInterval_ = daOptionPtr_->getOption<label>("printInterval");
@@ -930,6 +940,21 @@ label DASolver::solveLinearEqn(
     this->calcResiduals();
 
     return error;
+}
+
+void DASolver::getOFMeshPoints(double* points)
+{
+    // get the flatten mesh points coordinates
+    pointField meshPoints(meshPtr_->points());
+    label counterI = 0;
+    forAll(meshPoints, pointI)
+    {
+        for (label i = 0; i < 3; i++)
+        {
+            assignValueCheckAD(points[counterI], meshPoints[pointI][i]);
+            counterI++;
+        }
+    }
 }
 
 void DASolver::getOFField(
@@ -2838,6 +2863,47 @@ void DASolver::readMeshPoints(const scalar timeVal)
 
     meshPtr_->movePoints(readPoints);
 }
+
+void DASolver::writeMeshPoints(const double* points, const scalar timeVal)
+{
+    /*
+    Description:
+        write the mesh points to the disk for the given timeVal
+    
+    Inputs:
+        
+        timeVal: Which time to read, i.e., time.timeName()
+    */
+
+    pointIOField writePoints(
+        IOobject(
+            "points",
+            Foam::name(timeVal),
+            "polyMesh",
+            runTimePtr_(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false),
+            meshPtr_->points());
+    
+    //pointIOField writePoints = meshPtr_->points();
+
+    label counterI = 0;
+    forAll(writePoints, pointI)
+    {
+        for (label i = 0; i < 3; i++)
+        {
+            writePoints[pointI][i] = points[counterI];
+            counterI++;
+        }
+    }
+    // time index is not important here. Users need to reset the time after
+    // calling this function
+    runTimePtr_->setTime(timeVal, 0);
+    //Info << "writing points to " << writePoints.path() << endl;
+    writePoints.write();
+}
+
 void DASolver::readStateVars(
     scalar timeVal,
     label oldTimeLevel)
