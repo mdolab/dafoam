@@ -214,6 +214,12 @@ public:
 #endif
     }
 
+    /// get the flatten mesh points coordinates
+    void getOFMeshPoints(double* points)
+    {
+        DASolverPtr_->getOFMeshPoints(points);
+    }
+
     /// Assign the OpenFOAM field values to the states array
     void getOFFields(double* states)
     {
@@ -361,6 +367,12 @@ public:
         DASolverPtr_->printAllOptions();
     }
 
+    /// whether the volCoord input is defined
+    label hasVolCoordInput()
+    {
+        return DASolverPtr_->hasVolCoordInput();
+    }
+
     /// update the allOptions_ dict in DAOption based on the pyOptions from pyDAFoam
     void updateDAOption(PyObject* pyOptions)
     {
@@ -435,6 +447,12 @@ public:
     void readMeshPoints(const scalar timeVal)
     {
         DASolverPtr_->readMeshPoints(timeVal);
+    }
+
+    /// write the mesh points to the disk for the given timeVal
+    void writeMeshPoints(const double* points, const scalar timeVal)
+    {
+        DASolverPtr_->writeMeshPoints(points, timeVal);
     }
 
     /// calculate the PC mat using fvMatrix

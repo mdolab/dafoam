@@ -65,6 +65,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void updateOFFields(double *)
         void getOFFields(double *)
         void getOFField(char *, char *, double *)
+        void getOFMeshPoints(double *)
         void updateOFMesh(double *)
         int getGlobalXvIndex(int, int)
         int getNLocalAdjointStates()
@@ -97,6 +98,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *, pySetCharInterface, void *)
         void readStateVars(double, int)
         void readMeshPoints(double)
+        void writeMeshPoints(double *, double)
         void calcPCMatWithFvMatrix(PetscMat, int)
         double getEndTime()
         double getDeltaT()
@@ -106,6 +108,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void writeSensMapField(char *, double *, char *, double)
         double getLatestTime()
         void writeAdjointFields(char *, double, double *)
+        int hasVolCoordInput()
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -261,6 +264,11 @@ cdef class pyDASolvers:
         cdef double *states_data = <double*>states.data
         self._thisptr.getOFFields(states_data)
     
+    def getOFMeshPoints(self, np.ndarray[double, ndim=1, mode="c"] points):
+        assert len(points) == self.getNLocalPoints() * 3, "invalid array size!"
+        cdef double *points_data = <double*>points.data
+        self._thisptr.getOFMeshPoints(points_data)
+    
     def getOFField(self, fieldName, fieldType, np.ndarray[double, ndim=1, mode="c"] field):
         if fieldType == "scalar":
             assert len(field) == self.getNLocalCells(), "invalid array size!"
@@ -368,6 +376,12 @@ cdef class pyDASolvers:
     
     def readMeshPoints(self, timeVal):
         self._thisptr.readMeshPoints(timeVal)
+
+    def writeMeshPoints(self, np.ndarray[double, ndim=1, mode="c"] points, timeVal):
+        assert len(points) == self.getNLocalPoints() * 3, "invalid array size!"
+        cdef double *points_data = <double*>points.data
+
+        self._thisptr.writeMeshPoints(points_data, timeVal)
     
     def calcPCMatWithFvMatrix(self, Mat PCMat, turbOnly=0):
         self._thisptr.calcPCMatWithFvMatrix(PCMat.mat, turbOnly)
@@ -435,6 +449,9 @@ cdef class pyDASolvers:
     
     def getLatestTime(self):
         return self._thisptr.getLatestTime()
+    
+    def hasVolCoordInput(self):
+        return self._thisptr.hasVolCoordInput()
     
     def writeAdjointFields(self, function, writeTime, np.ndarray[double, ndim=1, mode="c"] psi):
         nAdjStates = self.getNLocalAdjointStates()
