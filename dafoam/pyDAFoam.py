@@ -1200,7 +1200,7 @@ class PYDAFOAM(object):
 
         return
 
-    def deformDynamicMesh(self, runMode):
+    def deformDynamicMesh(self):
         """
         Deform the dynamic mesh and save to them to the disk
         """
@@ -1210,13 +1210,12 @@ class PYDAFOAM(object):
 
         Info("Deforming dynamic mesh")
 
-        if runMode == "runOnce":
+        # if we do not have the volCoord as the input, we need to run this only once
+        # otherwise, we need to deform the dynamic mesh for each primal solve
+        if self.solver.hasVolCoordInput() == 0:
+            # if the mesh has been deformed, return
             if self.dynamicMeshDeformed == 1:
                 return
-        elif runMode == "always":
-            pass
-        else:
-            raise Error("runMode not valid. Options are: runOnce, always")
 
         mode = self.getOption("dynamicMesh")["mode"]
 
@@ -1234,8 +1233,11 @@ class PYDAFOAM(object):
             # always get the initial mesh from OF layer
             points0 = np.zeros(nLocalPoints * 3)
             self.solver.getOFMeshPoints(points0)
-            points = np.reshape(points0, (-1, 3))
+            # NOTE: we also write the mesh point for t = 0
+            self.solver.writeMeshPoints(points0, 0.0)
 
+            # do a for loop to incrementally deform the mesh by a deltaT
+            points = np.reshape(points0, (-1, 3))
             for i in range(1, endTimeIndex + 1):
                 t = i * deltaT
                 dTheta = omega * deltaT
@@ -1270,12 +1272,16 @@ class PYDAFOAM(object):
         NOTE: setting the proper time index is critical because the fvMesh
         will use timeIndex to calculate meshPhi, V0 etc
         """
+        if timeVal < deltaT:
+            raise Error("timeVal not valid")
+
         if ddtSchemeOrder == 1:
             # no special treatment
             pass
         elif ddtSchemeOrder == 2:
             # need to read timeVal - 2*deltaT
-            time_2 = timeVal - 2 * deltaT
+            time_2 = max(timeVal - 2 * deltaT, 0.0)
+            # NOTE: the index can go to negative, just to force the fvMesh to update V0, V00 etc
             index_2 = timeIndex - 2
             self.solver.setTime(time_2, index_2)
             self.solver.readMeshPoints(time_2)
@@ -1285,7 +1291,7 @@ class PYDAFOAM(object):
             raise Error("ddtSchemeOrder not supported")
 
         # read timeVal - deltaT points
-        time_1 = timeVal - deltaT
+        time_1 = max(timeVal - deltaT, 0.0)
         index_1 = timeIndex - 1
         self.solver.setTime(time_1, index_1)
         self.solver.readMeshPoints(time_1)

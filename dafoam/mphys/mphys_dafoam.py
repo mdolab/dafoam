@@ -1278,9 +1278,6 @@ class DAFoamSolverUnsteady(ExplicitComponent):
 
         self.dRdWTPC = None
 
-        # whether the dynamic mesh has been deformed and saved to disk
-        self.dynamicMeshRunMode = "runOnce"
-
         inputDict = DASolver.getOption("inputInfo")
         for inputName in list(inputDict.keys()):
             # this input is attached to solver comp
@@ -1289,9 +1286,6 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 inputSize = DASolver.solver.getInputSize(inputName, inputType)
                 inputDistributed = DASolver.solver.getInputDistributed(inputName, inputType)
                 self.add_input(inputName, distributed=inputDistributed, shape=inputSize)
-
-                if inputType == "volCoord":
-                    self.dynamicMeshRunMode = "always"
 
         functions = DASolver.getOption("function")
         for functionName in list(functions.keys()):
@@ -1324,7 +1318,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
             if meshOK:
                 DASolver.set_solver_input(inputs, self.DVGeo)
                 # if dyamic mesh is used, we need to deform the mesh points and save them to disk
-                DASolver.deformDynamicMesh(self.dynamicMeshRunMode)
+                DASolver.deformDynamicMesh()
                 DASolver()
             else:
                 DASolver.primalFail = 1

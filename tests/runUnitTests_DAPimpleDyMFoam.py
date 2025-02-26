@@ -33,7 +33,7 @@ daOptions = {
 }
 
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
-DASolver.deformDynamicMesh("runOnce")
+DASolver.deformDynamicMesh()
 DASolver()
 
 # read the U field at  0.01 and verify its norm

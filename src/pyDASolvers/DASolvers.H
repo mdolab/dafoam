@@ -367,6 +367,12 @@ public:
         DASolverPtr_->printAllOptions();
     }
 
+    /// whether the volCoord input is defined
+    label hasVolCoordInput()
+    {
+        return DASolverPtr_->hasVolCoordInput();
+    }
+
     /// update the allOptions_ dict in DAOption based on the pyOptions from pyDAFoam
     void updateDAOption(PyObject* pyOptions)
     {

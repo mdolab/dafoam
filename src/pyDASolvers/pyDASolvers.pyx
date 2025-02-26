@@ -108,6 +108,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void writeSensMapField(char *, double *, char *, double)
         double getLatestTime()
         void writeAdjointFields(char *, double, double *)
+        int hasVolCoordInput()
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -448,6 +449,9 @@ cdef class pyDASolvers:
     
     def getLatestTime(self):
         return self._thisptr.getLatestTime()
+    
+    def hasVolCoordInput(self):
+        return self._thisptr.hasVolCoordInput()
     
     def writeAdjointFields(self, function, writeTime, np.ndarray[double, ndim=1, mode="c"] psi):
         nAdjStates = self.getNLocalAdjointStates()

@@ -71,7 +71,6 @@ void DAPimpleDyMFoam::initSolver()
     Info << "Initializing fields for DAPimpleDyMFoam" << endl;
     Time& runTime = runTimePtr_();
     fvMesh& mesh = meshPtr_();
-    mesh.moving(true);
 #include "createPimpleControlPython.H"
 #include "createFieldsPimpleDyM.H"
     // read the RAS model from constant/turbulenceProperties
@@ -127,6 +126,9 @@ label DAPimpleDyMFoam::solvePrimal()
     */
 
 #include "createRefsPimpleDyM.H"
+
+    // need to initialize the dynamic Mesh for each primal run
+    this->initDynamicMesh();
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();

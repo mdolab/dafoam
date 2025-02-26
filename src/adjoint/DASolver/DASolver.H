@@ -113,6 +113,9 @@ protected:
     /// DAGlobalVar pointer
     autoPtr<DAGlobalVar> daGlobalVarPtr_;
 
+    /// the initial points for dynamicMesh without volCoord inputs
+    autoPtr<pointField> points0Ptr_;
+
     /// the stateInfo_ list from DAStateInfo object
     HashTable<wordList> stateInfo_;
 
@@ -396,6 +399,12 @@ public:
 
     /// initialize the CoDiPack reverse-mode AD global tape for computing dRdWT*psi
     void initializeGlobalADTape4dRdWT();
+
+    /// whether the volCoord input is defined
+    label hasVolCoordInput();
+
+    /// resetting internal info in fvMesh, which is needed for multiple primal runs
+    void initDynamicMesh();
 
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);
