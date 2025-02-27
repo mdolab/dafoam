@@ -243,6 +243,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
             // get the patch id label
             word patchName = patches_[idxI];
             label patchI = mesh_.boundaryMesh().findPatchID(patchName);
+            scalar deltaCoeffs = 0
 
             mixedFvPatchField<scalar>& mixedPatch =
                 refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
