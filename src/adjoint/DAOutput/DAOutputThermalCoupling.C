@@ -26,20 +26,22 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
     DAResidual& daResidual,
     UPtrList<DAFunction>& daFunctionList)
     : DAOutput(
-        outputName,
-        outputType,
-        mesh,
-        daOption,
-        daModel,
-        daIndex,
-        daResidual,
-        daFunctionList)
+          outputName,
+          outputType,
+          mesh,
+          daOption,
+          daModel,
+          daIndex,
+          daResidual,
+          daFunctionList)
 {
     daOption_.getAllOptions().subDict("outputInfo").subDict(outputName_).readEntry("patches", patches_);
     // NOTE: always sort the patch because the order of the patch element matters in CHT coupling
     sort(patches_);
 
+    // check and assign values for discipline and formulation
     discipline_ = daOption_.getAllOptions().getWord("discipline");
+    formMode_ = daOption_.lookupOrDefault<word>("formulation", "default");
 
     size_ = 0;
     forAll(patches_, idxI)
@@ -111,8 +113,19 @@ void DAOutputThermalCoupling::run(scalarList& output)
                 label patchI = mesh_.boundaryMesh().findPatchID(patchName);
                 forAll(mesh_.boundaryMesh()[patchI], faceI)
                 {
-                    // deltaCoeffs = 1 / d
-                    scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                    if (formMode_ == "default")
+                    {
+                        // deltaCoeffs = 1 / d
+                        scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                    }
+                    else if (formMode_ == "daCustom")
+                    {
+                        label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                        vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
+                        vector c2 = mesh_.C()[nearWallCellIndex];
+                        scalar d = mag(c1 - c2);
+                        scalar deltaCoeffs = 1 / d;
+                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     // NOTE: we continue to use the counterI from the first loop
                     output[counterI] = Cp * alphaEffBf * deltaCoeffs;
@@ -165,8 +178,19 @@ void DAOutputThermalCoupling::run(scalarList& output)
                 label patchI = mesh_.boundaryMesh().findPatchID(patchName);
                 forAll(mesh_.boundaryMesh()[patchI], faceI)
                 {
-                    // deltaCoeffs = 1 / d
-                    scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                    if (formMode_ == "default")
+                    {
+                        // deltaCoeffs = 1 / d
+                        scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                    }
+                    else if (formMode_ == "daCustom")
+                    {
+                        label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                        vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
+                        vector c2 = mesh_.C()[nearWallCellIndex];
+                        scalar d = mag(c1 - c2);
+                        scalar deltaCoeffs = 1 / d;
+                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     // NOTE: we continue to use the counterI from the first loop
                     output[counterI] = tmpVal * alphaEffBf * deltaCoeffs;
@@ -195,8 +219,19 @@ void DAOutputThermalCoupling::run(scalarList& output)
             label patchI = mesh_.boundaryMesh().findPatchID(patchName);
             forAll(mesh_.boundaryMesh()[patchI], faceI)
             {
-                // deltaCoeffs = 1 / d
-                scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                if (formMode_ == "default")
+                {
+                    // deltaCoeffs = 1 / d
+                    scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                }
+                else if (formMode_ == "daCustom")
+                {
+                    label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                    vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
+                    vector c2 = mesh_.C()[nearWallCellIndex];
+                    scalar d = mag(c1 - c2);
+                    scalar deltaCoeffs = 1 / d;
+                }
                 // NOTE: we continue to use the counterI from the first loop
                 output[counterI] = k * deltaCoeffs;
                 counterI++;

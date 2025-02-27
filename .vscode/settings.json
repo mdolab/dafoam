@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "DAInputThermalCoupling.C": "cpp",
+        "DAOutputThermalCoupling.C": "cpp",
+        "DAFunctionWallHeatFlux.C": "cpp"
+    }
+}
