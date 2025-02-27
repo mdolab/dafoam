@@ -131,6 +131,13 @@ void DAInputThermalCoupling::run(const scalarList& input)
                         scalar d = mag(c1 - c2);
                         scalar deltaCoeffs = 1 / d;
                     }
+                    else
+                    {
+                        FatalErrorIn(" ") << "formulation: "
+                                          << formMode_ << " not supported!"
+                                          << " Options are: default and daCustom."
+                                          << abort(FatalError);
+                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     scalar myKDeltaCoeffs = Cp * alphaEffBf * deltaCoeffs;
                     // NOTE: we continue to use the counterI from the first loop
@@ -201,6 +208,13 @@ void DAInputThermalCoupling::run(const scalarList& input)
                         scalar d = mag(c1 - c2);
                         scalar deltaCoeffs = 1 / d;
                     }
+                    else
+                    {
+                        FatalErrorIn(" ") << "formulation: "
+                                          << formMode_ << " not supported!"
+                                          << " Options are: default and daCustom."
+                                          << abort(FatalError);
+                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     scalar myKDeltaCoeffs = tmpVal * alphaEffBf * deltaCoeffs;
                     // NOTE: we continue to use the counterI from the first loop
@@ -247,6 +261,13 @@ void DAInputThermalCoupling::run(const scalarList& input)
                     vector c2 = mesh_.C()[nearWallCellIndex];
                     scalar d = mag(c1 - c2);
                     scalar deltaCoeffs = 1 / d;
+                }
+                else
+                {
+                    FatalErrorIn(" ") << "formulation: "
+                                      << formMode_ << " not supported!"
+                                      << " Options are: default and daCustom."
+                                      << abort(FatalError);
                 }
                 scalar myKDeltaCoeffs = k * deltaCoeffs;
                 // NOTE: we continue to use the counterI from the first loop
