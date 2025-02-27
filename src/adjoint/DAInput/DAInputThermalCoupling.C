@@ -245,9 +245,6 @@ void DAInputThermalCoupling::run(const scalarList& input)
             label patchI = mesh_.boundaryMesh().findPatchID(patchName);
             scalar deltaCoeffs = 0
 
-            mixedFvPatchField<scalar>& mixedPatch =
-                refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
-
             forAll(mesh_.boundaryMesh()[patchI], faceI)
             {
                 if (formMode_ == "default")
@@ -270,6 +267,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
                                       << " Options are: default and daCustom."
                                       << abort(FatalError);
                 }
+                mixedFvPatchField<scalar>& mixedPatch = refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
                 scalar myKDeltaCoeffs = k * deltaCoeffs;
                 // NOTE: we continue to use the counterI from the first loop
                 scalar neighKDeltaCoeffs = input[counterI];
