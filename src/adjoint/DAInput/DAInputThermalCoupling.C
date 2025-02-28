@@ -85,14 +85,14 @@ void DAInputThermalCoupling::run(const scalarList& input)
 
     // ********* second loop, set the valueFraction:
     // neighKDeltaCoeffs / ( neighKDeltaCoeffs + myKDeltaCoeffs)
-
+    scalar deltaCoeffs = 0;
+    
     if (discipline_ == "aero")
     {
 
         // for incompressible flow  Q = Cp * alphaEff * dT/dz, so kappa = Cp * alphaEff
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModel_.getDATurbulenceModel());
         word turbModelType = daTurb.getTurbModelType();
-        scalar deltaCoeffs = 0;
 
         if (turbModelType == "incompressible")
         {
