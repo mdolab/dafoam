@@ -21,7 +21,7 @@ function runRegTests()
 {
   rm -rf DAFoam_Test_${1}.txt
   if [ -z "$DF_CHECK_COVERAGE" ]; then
-    mpirun --oversubscribe -np 4 python runRegTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    mpirun -np 4 python runRegTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
       echo "${1}: Failed!"
       exit 1
@@ -37,7 +37,7 @@ function runRegTests()
       echo "${1}: Success!"
     fi
   elif [ "$DF_CHECK_COVERAGE" = "1" ]; then
-    mpirun --oversubscribe -np 4 coverage run runRegTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+    mpirun -np 4 coverage run runRegTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
     if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
       echo "${1}: Failed!"
       exit 1
@@ -84,7 +84,7 @@ function runSerialRegTests()
 function runUnitTests()
 {
   rm -rf DAFoam_Test_${1}.txt
-  mpirun --oversubscribe -np 4 python runUnitTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+  mpirun -np 4 python runUnitTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
     echo "${1}: Failed!"
     exit 1
