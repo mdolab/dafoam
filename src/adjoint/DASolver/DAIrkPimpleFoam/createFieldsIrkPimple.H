@@ -31,4 +31,3 @@ singlePhaseTransportModel laminarTransport(U, phi);
 
 autoPtr<incompressible::turbulenceModel> turbulence(
     incompressible::turbulenceModel::New(U, phi, laminarTransport));
-

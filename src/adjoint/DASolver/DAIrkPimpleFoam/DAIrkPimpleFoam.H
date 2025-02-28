@@ -38,7 +38,7 @@
 #include "singlePhaseTransportModel.H"
 #include "turbulentTransportModel.H"
 //#include "pimpleControlDF.H"    // A modified version of pimpleControl, Basically, we disable the output to the screen
-#include "pimpleControl.H"      // origional pimpleControl
+#include "pimpleControl.H" // origional pimpleControl
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
