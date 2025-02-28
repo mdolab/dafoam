@@ -153,6 +153,9 @@ label DARhoSimpleFoam::solvePrimal()
     // write the mesh to files
     mesh.write();
 
+    // write associated fields such as URel
+    this->writeAssociatedFields();
+
     Info << "End\n"
          << endl;
 
