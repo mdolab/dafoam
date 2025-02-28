@@ -41,7 +41,7 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
 
     // check and assign values for discipline and formulation
     discipline_ = daOption_.getAllOptions().getWord("discipline");
-    formMode_ = daOption_.getAllOptions().subDict("function").lookupOrDefault<word>("formulation", "default");
+    formMode_ = "default";//daOption_.getAllOptions().subDict("function").lookupOrDefault<word>("formulation", "default");
 
     size_ = 0;
     forAll(patches_, idxI)
@@ -84,7 +84,7 @@ void DAOutputThermalCoupling::run(scalarList& output)
 
     // ********* second loop, get the (kappa / d) coefficient
     scalar deltaCoeffs = 0;
-    
+
     if (discipline_ == "aero")
     {
         // for incompressible flow  Q = Cp * alphaEff * dT/dz, so kappa = Cp * alphaEff
