@@ -245,36 +245,6 @@ class DAOPTION(object):
         ## and shows up in the constant/polyMesh/boundary file
         self.designSurfaces = ["ALL_OPENFOAM_WALL_PATCHES"]
 
-        ## MDO coupling information for aerostructural, aerothermal, or aeroacoustic optimization.
-        ## We can have ONLY one coupling scenario active, e.g., aerostructural and aerothermal can't be
-        ## both active. We can have more than one couplingSurfaceGroups, e.g., wingGroup and tailGroup
-        ## or blade1Group, blade2Group, and blade3Group. Each group subdict can have multiple patches.
-        ## These patches should be consistent with the patch names defined in constant/polyMesh/boundary
-        self.couplingInfo = {
-            "aerostructural": {
-                "active": False,
-                "pRef": 0,
-                "propMovement": False,
-                "couplingSurfaceGroups": {
-                    "wingGroup": ["wing", "wing_te"],
-                },
-            },
-            "aerothermal": {
-                "active": False,
-                "couplingSurfaceGroups": {
-                    "wallGroup": ["fin_wall"],
-                },
-            },
-            "aeroacoustic": {
-                "active": False,
-                "pRef": 0,
-                "couplingSurfaceGroups": {
-                    "blade1Group": ["blade1_ps", "blade1_ss"],
-                    "blade2Group": ["blade2"],
-                },
-            },
-        }
-
         # *********************************************************************************************
         # ****************************** Intermediate Options *****************************************
         # *********************************************************************************************
@@ -724,27 +694,6 @@ class PYDAFOAM(object):
         else:
             self.addFamilyGroup(self.designSurfacesGroup, self.getOption("designSurfaces"))
 
-        # Set the couplingSurfacesGroup if any of the MDO scenario is active
-        # otherwise, set the couplingSurfacesGroup to designSurfacesGroup
-        # NOTE: the treatment of aeroacoustic is different because it supports more than
-        # one couplingSurfaceGroups. For other scenarios, only one couplingSurfaceGroup
-        # can be defined. TODO. we need to make them consistent in the future..
-        couplingInfo = self.getOption("couplingInfo")
-        self.couplingSurfacesGroup = self.designSurfacesGroup
-        if couplingInfo["aerostructural"]["active"]:
-            # we support only one aerostructural surfaceGroup for now
-            self.couplingSurfacesGroup = list(couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys())[0]
-            patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
-            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
-        elif couplingInfo["aeroacoustic"]["active"]:
-            for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
-                self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
-        elif couplingInfo["aerothermal"]["active"]:
-            # we support only one aerothermal coupling surfaceGroup for now
-            self.couplingSurfacesGroup = list(couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys())[0]
-            patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
-            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
-
         # By Default we don't have an external mesh object or a
         # geometric manipulation object
         self.mesh = None
@@ -858,26 +807,6 @@ class PYDAFOAM(object):
 
         if self.getOption("discipline") not in ["aero", "thermal"]:
             raise Error("discipline: %s not supported. Options are: aero or thermal" % self.getOption("discipline"))
-
-        # check coupling Info
-        # nActivated = 0
-        # for coupling in self.getOption("couplingInfo"):
-        #    if self.getOption("couplingInfo")[coupling]["active"]:
-        #        nActivated += 1
-        # if nActivated > 1:
-        #    raise Error("Only one coupling scenario can be active, while %i found" % nActivated)
-
-        # nAerothermalSurfaces = len(self.getOption("couplingInfo")["aerothermal"]["couplingSurfaceGroups"].keys())
-        # if nAerothermalSurfaces > 1:
-        #    raise Error(
-        #        "Only one couplingSurfaceGroups is supported for aerothermal, while %i found" % nAerothermalSurfaces
-        #    )
-
-        # nAeroStructSurfaces = len(self.getOption("couplingInfo")["aerostructural"]["couplingSurfaceGroups"].keys())
-        # if nAeroStructSurfaces > 1:
-        #    raise Error(
-        #        "Only one couplingSurfaceGroups is supported for aerostructural, while %i found" % nAeroStructSurfaces
-        #    )
 
         # check the patchNames from primalBC dict
         primalBCDict = self.getOption("primalBC")
