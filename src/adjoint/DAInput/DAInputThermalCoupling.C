@@ -92,7 +92,8 @@ void DAInputThermalCoupling::run(const scalarList& input)
         // for incompressible flow  Q = Cp * alphaEff * dT/dz, so kappa = Cp * alphaEff
         DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModel_.getDATurbulenceModel());
         word turbModelType = daTurb.getTurbModelType();
-
+        scalar deltaCoeffs = 0
+        
         if (turbModelType == "incompressible")
         {
             volScalarField alphaEff = daTurb.alphaEff();
@@ -243,7 +244,6 @@ void DAInputThermalCoupling::run(const scalarList& input)
             // get the patch id label
             word patchName = patches_[idxI];
             label patchI = mesh_.boundaryMesh().findPatchID(patchName);
-            scalar deltaCoeffs = 0
 
             forAll(mesh_.boundaryMesh()[patchI], faceI)
             {
