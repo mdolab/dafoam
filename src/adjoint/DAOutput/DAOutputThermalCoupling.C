@@ -83,7 +83,8 @@ void DAOutputThermalCoupling::run(scalarList& output)
     }
 
     // ********* second loop, get the (kappa / d) coefficient
-
+    scalar deltaCoeffs = 0;
+    
     if (discipline_ == "aero")
     {
         // for incompressible flow  Q = Cp * alphaEff * dT/dz, so kappa = Cp * alphaEff
