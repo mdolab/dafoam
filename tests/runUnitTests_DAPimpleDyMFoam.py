@@ -50,3 +50,21 @@ if abs(1176.2700572104368 - UNorm) / 1176.2700572104368 > 1e-6:
     exit(1)
 else:
     print("DAPimpleDyMFoam test passed!")
+
+states = DASolver.getStates()
+states[0] = 1e100  # np.nan
+states[550] = 1e100  # np.nan
+states[750] = 1e100  # np.nann
+states[950] = 1e100  # np.nan
+DASolver.setStates(states)
+DASolver()
+states = DASolver.getStates()
+stateNorm = np.linalg.norm(states)
+stateNorm = gcomm.allreduce(stateNorm, op=MPI.SUM)
+print("stateNorm", stateNorm)
+
+if abs(1502.297146069408 - stateNorm) / 1502.297146069408 > 1e-6:
+    print("DAPimpleDyMFoam test failed!")
+    exit(1)
+else:
+    print("DAPimpleDyMFoam test passed!")

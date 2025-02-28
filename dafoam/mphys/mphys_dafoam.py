@@ -326,6 +326,7 @@ class DAFoamSolver(ImplicitComponent):
 
             # if the mesh is not OK, do not run the primal
             if meshOK != 1:
+                DASolver.solver.writeFailedMesh()
                 raise AnalysisError("Mesh quality error!")
                 return
 

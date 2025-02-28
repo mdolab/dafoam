@@ -84,6 +84,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void printAllOptions()
         void updateDAOption(object)
         double getPrevPrimalSolTime()
+        void writeFailedMesh()
         void writeMatrixBinary(PetscMat, char *)
         void writeMatrixASCII(PetscMat, char *)
         void readMatrixBinary(PetscMat, char *)
@@ -340,6 +341,9 @@ cdef class pyDASolvers:
     
     def getPrevPrimalSolTime(self):
         return self._thisptr.getPrevPrimalSolTime()
+    
+    def writeFailedMesh(self):
+        self._thisptr.writeFailedMesh()
     
     def writeMatrixBinary(self, Mat magIn, prefix):
         self._thisptr.writeMatrixBinary(magIn.mat, prefix)

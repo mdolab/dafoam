@@ -1018,11 +1018,8 @@ void DASolver::updateOFFields(const scalar* states)
         Info << "Updating the OpenFOAM field..." << endl;
         printInfo = 1;
     }
-    this->setPrimalBoundaryConditions(printInfo);
+    // this->setPrimalBoundaryConditions(printInfo);
     daFieldPtr_->state2OFField(states);
-
-    // if we have regression models, we also need to update them because they will update the fields
-    this->regressionModelCompute();
 
     // We need to call correctBC multiple times to reproduce
     // the exact residual, this is needed for some boundary conditions
@@ -1035,6 +1032,9 @@ void DASolver::updateOFFields(const scalar* states)
         daModelPtr_->correctBoundaryConditions();
         daModelPtr_->updateIntermediateVariables();
     }
+
+    // if we have regression models, we also need to update them because they will update the fields
+    this->regressionModelCompute();
 }
 
 void DASolver::updateOFMesh(const scalar* volCoords)
@@ -3209,16 +3209,28 @@ void DASolver::getInitStateVals(HashTable<scalar>& initState)
 {
     /*
     Description:
-        Get the initial state values from the field's 1st index
+        Get the initial state values from the field's average value
     */
 
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         const word stateName = stateInfo_["volVectorStates"][idxI];
         const volVectorField& state = meshPtr_->thisDb().lookupObject<volVectorField>(stateName);
+        scalarList avgState(3, 0.0);
+        forAll(state, cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                avgState[i] += state[cellI][i] / daIndexPtr_->nGlobalCells;
+            }
+        }
+        reduce(avgState[0], sumOp<scalar>());
+        reduce(avgState[1], sumOp<scalar>());
+        reduce(avgState[2], sumOp<scalar>());
+
         for (label i = 0; i < 3; i++)
         {
-            initState.set(stateName + Foam::name(i), state[0][i]);
+            initState.set(stateName + Foam::name(i), avgState[i]);
         }
     }
 
@@ -3226,21 +3238,38 @@ void DASolver::getInitStateVals(HashTable<scalar>& initState)
     {
         const word stateName = stateInfo_["volScalarStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        initState.set(stateName, state[0]);
+        scalar avgState = 0.0;
+        forAll(state, cellI)
+        {
+            avgState += state[cellI];
+        }
+        avgState /= daIndexPtr_->nGlobalCells;
+        reduce(avgState, sumOp<scalar>());
+
+        initState.set(stateName, avgState);
     }
 
     forAll(stateInfo_["modelStates"], idxI)
     {
         const word stateName = stateInfo_["modelStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        initState.set(stateName, state[0]);
+        scalar avgState = 0.0;
+        forAll(state, cellI)
+        {
+            avgState += state[cellI];
+        }
+        avgState /= daIndexPtr_->nGlobalCells;
+        reduce(avgState, sumOp<scalar>());
+
+        initState.set(stateName, avgState);
     }
 
     forAll(stateInfo_["surfaceScalarStates"], idxI)
     {
         const word stateName = stateInfo_["surfaceScalarStates"][idxI];
-        const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
-        initState.set(stateName, state[0]);
+        //const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
+        // we can reset the flux to zeros
+        initState.set(stateName, 0.0);
     }
 
     Info << "initState: " << initState << endl;
@@ -3266,6 +3295,7 @@ void DASolver::resetStateVals()
                 state[cellI][i] = initStateVals_[stateName + Foam::name(i)];
             }
         }
+        state.correctBoundaryConditions();
     }
 
     forAll(stateInfo_["volScalarStates"], idxI)
@@ -3276,6 +3306,7 @@ void DASolver::resetStateVals()
         {
             state[cellI] = initStateVals_[stateName];
         }
+        state.correctBoundaryConditions();
     }
 
     forAll(stateInfo_["modelStates"], idxI)
@@ -3286,6 +3317,7 @@ void DASolver::resetStateVals()
         {
             state[cellI] = initStateVals_[stateName];
         }
+        state.correctBoundaryConditions();
     }
 
     forAll(stateInfo_["surfaceScalarStates"], idxI)
@@ -3295,6 +3327,13 @@ void DASolver::resetStateVals()
         forAll(state, faceI)
         {
             state[faceI] = initStateVals_[stateName];
+        }
+        forAll(state.boundaryField(), patchI)
+        {
+            forAll(state.boundaryField()[patchI], faceI)
+            {
+                state.boundaryFieldRef()[patchI][faceI] = initStateVals_[stateName];
+            }
         }
     }
 }

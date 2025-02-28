@@ -714,10 +714,9 @@ class PYDAFOAM(object):
             self.solver.initTensorFlowFuncs(
                 TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
             )
-            if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-                self.solverAD.initTensorFlowFuncs(
-                    TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
-                )
+            self.solverAD.initTensorFlowFuncs(
+                TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
+            )
 
         Info("pyDAFoam initialization done!")
 

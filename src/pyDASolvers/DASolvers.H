@@ -387,6 +387,11 @@ public:
         return returnVal;
     }
 
+    void writeFailedMesh()
+    {
+        DASolverPtr_->writeFailedMesh();
+    }
+
     /// write the matrix in binary format
     void writeMatrixBinary(
         const Mat matIn,
