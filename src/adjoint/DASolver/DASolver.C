@@ -3321,7 +3321,7 @@ void DASolver::resetStateVals()
         if (stateName == "phi")
         {
             const volVectorField& U = meshPtr_->thisDb().lookupObject<volVectorField>("U");
-            state = linearInterpolate(U) & meshPtr_.Sf();
+            state = linearInterpolate(U) & meshPtr_->Sf();
         }
     }
 }
