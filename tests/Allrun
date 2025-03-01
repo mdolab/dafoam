@@ -91,6 +91,16 @@ function runUnitTests()
   fi
 }
 
+function runSerialUnitTests()
+{
+  rm -rf DAFoam_Test_${1}.txt
+  python runUnitTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+  if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
+    echo "${1}: Failed!"
+    exit 1
+  fi
+}
+
 # Find all files matching the regression test script pattern
 for file in runRegTests_*.py; do
   # Check if the file exists to avoid wildcard issues
@@ -127,6 +137,19 @@ for file in runUnitTests_*.py; do
     
     # run the regression tests
     runUnitTests "$extracted_name"
+  fi
+done
+
+# Find all files matching the unit test script pattern
+for file in runSerialUnitTests_*.py; do
+  # Check if the file exists to avoid wildcard issues
+  if [[ -f "$file" ]]; then
+    # Extract the part between "runUnitTests_" and ".py"
+    extracted_name="${file#runUnitTests_}"
+    extracted_name="${extracted_name%.py}"
+    
+    # run the regression tests
+    runSerialUnitTests "$extracted_name"
   fi
 done
 

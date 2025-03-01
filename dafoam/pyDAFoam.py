@@ -843,6 +843,9 @@ class PYDAFOAM(object):
         Write the adjoint variables in OpenFOAM field format for post-processing
         """
 
+        if len(self.getOption("function").keys()) > 1:
+            raise Error("writeAdjointFields supports only one function, while multiple are defined!")
+
         if self.getOption("writeAdjointFields"):
             self.solver.writeAdjointFields(function, writeTime, psi)
 

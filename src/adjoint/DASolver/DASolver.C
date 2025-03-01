@@ -3609,6 +3609,8 @@ void DASolver::writeAdjointFields(
         psi: the adjoint vector array, computed in the Python layer
     */
 
+    Info << "Writting adjoint fields " << endl;
+
     runTimePtr_->setTime(writeTime, 0);
 
     forAll(stateInfo_["volVectorStates"], idxI)
