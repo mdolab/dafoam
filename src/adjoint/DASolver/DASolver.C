@@ -3249,7 +3249,7 @@ void DASolver::getInitStateVals(HashTable<scalar>& initState)
     forAll(stateInfo_["surfaceScalarStates"], idxI)
     {
         const word stateName = stateInfo_["surfaceScalarStates"][idxI];
-        //const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
+        // const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
         // we can reset the flux to zeros
         initState.set(stateName, 0.0);
     }
@@ -3316,6 +3316,12 @@ void DASolver::resetStateVals()
             {
                 state.boundaryFieldRef()[patchI][faceI] = initStateVals_[stateName];
             }
+        }
+        // if this is a phi var, we inerpolate U to get phi
+        if (stateName == "phi")
+        {
+            const volVectorField& U = meshPtr_->thisDb().lookupObject<volVectorField>("U");
+            state = linearInterpolate(U) & meshPtr_.Sf();
         }
     }
 }
