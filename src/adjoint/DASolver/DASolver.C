@@ -1018,23 +1018,9 @@ void DASolver::updateOFFields(const scalar* states)
         Info << "Updating the OpenFOAM field..." << endl;
         printInfo = 1;
     }
-    // this->setPrimalBoundaryConditions(printInfo);
     daFieldPtr_->state2OFField(states);
 
-    // We need to call correctBC multiple times to reproduce
-    // the exact residual, this is needed for some boundary conditions
-    // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
-    label maxCorrectBCCalls = daOptionPtr_->getOption<label>("maxCorrectBCCalls");
-    for (label i = 0; i < maxCorrectBCCalls; i++)
-    {
-        daResidualPtr_->correctBoundaryConditions();
-        daResidualPtr_->updateIntermediateVariables();
-        daModelPtr_->correctBoundaryConditions();
-        daModelPtr_->updateIntermediateVariables();
-    }
-
-    // if we have regression models, we also need to update them because they will update the fields
-    this->regressionModelCompute();
+    this->updateStateBoundaryConditions();
 }
 
 void DASolver::updateOFMesh(const scalar* volCoords)
@@ -2595,15 +2581,7 @@ void DASolver::updateStateBoundaryConditions()
         Update the boundary condition and intermediate variables for all state variables
     */
 
-    // if we have regression models, we also need to update them because they will update the fields
-    // NOTE we should have done it in DAInput, no need to call it again.
-    // this->regressionModelCompute();
-
-    label nBCCalls = 1;
-    if (daOptionPtr_->getOption<label>("hasIterativeBC"))
-    {
-        nBCCalls = daOptionPtr_->getOption<label>("maxCorrectBCCalls");
-    }
+    label nBCCalls = daOptionPtr_->getOption<label>("maxCorrectBCCalls");
 
     for (label i = 0; i < nBCCalls; i++)
     {
@@ -2612,6 +2590,10 @@ void DASolver::updateStateBoundaryConditions()
         daModelPtr_->correctBoundaryConditions();
         daModelPtr_->updateIntermediateVariables();
     }
+
+    // if we have regression models, we also need to update them because they will update the fields
+    // NOTE we should have done it in DAInput, no need to call it again.
+    this->regressionModelCompute();
 }
 
 void DASolver::calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly)

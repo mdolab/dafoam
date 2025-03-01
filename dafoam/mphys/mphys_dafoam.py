@@ -112,7 +112,7 @@ class DAFoamBuilder(Builder):
     def get_number_of_nodes(self, groupName=None):
         # Get number of aerodynamic nodes
         if groupName is None:
-            groupName = self.DASolver.couplingSurfacesGroup
+            groupName = self.DASolver.designSurfacesGroup
         nodes = int(self.DASolver.getSurfaceCoordinates(groupName=groupName).size / 3)
 
         return nodes

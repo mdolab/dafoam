@@ -388,11 +388,6 @@ class DAOPTION(object):
         ## Progress in Aerospace Science, 2019.
         self.useAD = {"mode": "reverse", "dvName": "None", "seedIndex": -9999}
 
-        ## whether we have iterative BC such as totaPressure
-        ## If True, we will call the correctBoundaryConditions and updateIntermediateVariables
-        ## multiple times to make sure the AD seeds are propagated properly for the iterative BCs.
-        self.hasIterativeBC = False
-
         ## whether to use the constrainHbyA in the pEqn. The DASolvers are similar to OpenFOAM's native
         ## solvers except that we directly compute the HbyA term without any constraints. In other words,
         ## we comment out the constrainHbyA line in the pEqn. However, some cases may diverge without
@@ -580,7 +575,7 @@ class DAOPTION(object):
         self.writeAdjointFields = False
 
         ## The max number of correctBoundaryConditions calls in the updateOFField function.
-        self.maxCorrectBCCalls = 10
+        self.maxCorrectBCCalls = 2
 
         ## Whether to write the primal solutions for minor iterations (i.e., line search).
         ## The default is False. If set it to True, it will write flow fields (and the deformed geometry)
