@@ -1,50 +1,50 @@
 Dictionary Key: cruise.aero_post.functionals.CD
 Dictionary Key: beta0-Adjoint
-@value         0.0000126017710343 1e-08 1e-12
+@value         0.0000119695589086 1e-08 1e-12
 Dictionary Key: beta0-ForwardAD
-@value         0.0000126017708859 1e-08 1e-12
+@value         0.0000119695589233 1e-08 1e-12
 Dictionary Key: beta200-Adjoint
-@value         0.0000000009022607 1e-08 1e-12
+@value         0.0000000012509341 1e-08 1e-12
 Dictionary Key: beta200-ForwardAD
-@value         0.0000000009022605 1e-08 1e-12
+@value         0.0000000012509341 1e-08 1e-12
 Dictionary Key: fv_source100-Adjoint
-@value         0.0000135611491285 1e-08 1e-12
+@value         0.0000135677550268 1e-08 1e-12
 Dictionary Key: fv_source100-ForwardAD
-@value         0.0000135611491334 1e-08 1e-12
+@value         0.0000135677550275 1e-08 1e-12
 Dictionary Key: fv_source300-Adjoint
-@value        -0.0000330775442338 1e-08 1e-12
+@value        -0.0000251115881422 1e-08 1e-12
 Dictionary Key: fv_source300-ForwardAD
-@value        -0.0000330775442245 1e-08 1e-12
+@value        -0.0000251115880970 1e-08 1e-12
 Dictionary Key: shape0-Adjoint
-@value         1.6554196335419000 1e-08 1e-12
+@value         1.7436786358470828 1e-08 1e-12
 Dictionary Key: shape0-ForwardAD
-@value         1.6554196334494153 1e-08 1e-12
+@value         1.7436786358487191 1e-08 1e-12
 Dictionary Key: u_in0-Adjoint
-@value         0.4557416000769363 1e-08 1e-12
+@value         0.4985516932600363 1e-08 1e-12
 Dictionary Key: u_in0-ForwardAD
-@value         0.4557416000746175 1e-08 1e-12
+@value         0.4985516932595397 1e-08 1e-12
 Dictionary Key: cruise.aero_post.functionals.HFX
 Dictionary Key: beta0-Adjoint
-@value         0.0179107139899085 1e-08 1e-12
+@value         0.0000042851163553 1e-08 1e-12
 Dictionary Key: beta0-ForwardAD
-@value         0.0179107139898643 1e-08 1e-12
+@value         0.0000042851163573 1e-08 1e-12
 Dictionary Key: beta200-Adjoint
-@value         0.0000002979123644 1e-08 1e-12
+@value         0.0000000026745674 1e-08 1e-12
 Dictionary Key: beta200-ForwardAD
-@value         0.0000002979123644 1e-08 1e-12
+@value         0.0000000026745674 1e-08 1e-12
 Dictionary Key: fv_source100-Adjoint
-@value         0.0000009418957218 1e-08 1e-12
+@value        -0.0000000067026781 1e-08 1e-12
 Dictionary Key: fv_source100-ForwardAD
-@value         0.0000009418957234 1e-08 1e-12
+@value        -0.0000000067026780 1e-08 1e-12
 Dictionary Key: fv_source300-Adjoint
-@value        -0.0000278519707056 1e-08 1e-12
+@value         0.0000037159587936 1e-08 1e-12
 Dictionary Key: fv_source300-ForwardAD
-@value        -0.0000278519707040 1e-08 1e-12
+@value         0.0000037159587926 1e-08 1e-12
 Dictionary Key: shape0-Adjoint
-@value         0.1351717879949519 1e-08 1e-12
+@value         0.0185963488471275 1e-08 1e-12
 Dictionary Key: shape0-ForwardAD
-@value         0.1351717879684534 1e-08 1e-12
+@value         0.0185963488470288 1e-08 1e-12
 Dictionary Key: u_in0-Adjoint
-@value         0.0866776420636761 1e-08 1e-12
+@value         0.0146854597738213 1e-08 1e-12
 Dictionary Key: u_in0-ForwardAD
-@value         0.0866776420742752 1e-08 1e-12
+@value         0.0146854597738320 1e-08 1e-12

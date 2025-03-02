@@ -14,16 +14,26 @@ from dafoam.mphys import DAFoamBuilder
 from mphys.scenario_aerodynamic import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
+import pyofm
 
 gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/ConvergentChannel")
 if gcomm.rank == 0:
-    os.system("rm -rf 0/* processor* *.bin")
+    os.system("rm -rf 0/* 0.00* *.bin")
     os.system("cp -r 0.incompressible/* 0/")
     os.system("cp -r system.incompressible/* system/")
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
+
+# aero setup
+U0 = 240.0
+p0 = 101325.0
+T0 = 300.0
+A0 = 0.1
+twist0 = 3.0
+LRef = 1.0
+nuTilda0 = 4.5e-5
 
 # aero setup
 U0 = 10.0
@@ -36,13 +46,12 @@ daOptions = {
     "solverName": "DASimpleFoam",
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1e4,
-    "printDAOptions": False,
-    "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
+    "writeAdjointFields": True,
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [nuTilda0]},
-        "useWallFunction": True,
+        "useWallFunction": False,
         "transport:nu": 1.5e-5,
     },
     "function": {
@@ -54,36 +63,16 @@ daOptions = {
             "direction": [1.0, 0.0, 0.0],
             "scale": 0.1,
         },
-        "HFX": {
-            "type": "wallHeatFlux",
-            "source": "patchToFace",
-            "patches": ["walls"],
-            "scale": 0.001,
-        },
     },
     "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
     "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
-        "beta": {
+        "alpha": {
             "type": "field",
-            "fieldName": "betaFINuTilda",
+            "fieldName": "alphaPorosity",
             "fieldType": "scalar",
             "distributed": False,
-            "components": ["solver", "function"],
-        },
-        "fv_source": {
-            "type": "field",
-            "fieldName": "fvSource",
-            "fieldType": "vector",
-            "distributed": False,
-            "components": ["solver", "function"],
-        },
-        "u_in": {
-            "type": "patchVar",
-            "varName": "U",
-            "varType": "vector",
-            "patches": ["inlet"],
             "components": ["solver", "function"],
         },
     },
@@ -128,50 +117,58 @@ class Top(Multipoint):
         # add pointset
         self.geometry.nom_add_discipline_coords("aero", points)
 
-        # add the dv_geo object to the builder solver. This will be used to write deformed FFDs and forward AD
-        self.cruise.coupling.solver.add_dvgeo(self.geometry.DVGeo)
-
-        # geometry setup
-        pts = self.geometry.DVGeo.getLocalIndex(0)
-        indexList = pts[1, 0, 1].flatten()
-        PS = geo_utils.PointSelect("list", indexList)
-        self.geometry.nom_addLocalDV(dvName="shape", pointSelect=PS)
+        # add the shape dv
+        nShapes = self.geometry.nom_addLocalDV(dvName="shape")
 
         # add the design variables to the dvs component's output
-        self.dvs.add_output("shape", val=np.zeros(1))
-        self.dvs.add_output("beta", val=np.ones(nCells))
-        self.dvs.add_output("fv_source", val=np.zeros(nCells * 3))
-        self.dvs.add_output("u_in", val=np.array([10.0, 0.0, 0.0]))
-
+        self.dvs.add_output("shape", val=np.zeros(nShapes))
+        self.dvs.add_output("alpha", val=np.zeros(nCells))
         # manually connect the dvs output to the geometry and cruise
         self.connect("shape", "geometry.shape")
-        self.connect("beta", "cruise.beta")
-        self.connect("fv_source", "cruise.fv_source")
-        self.connect("u_in", "cruise.u_in")
+        self.connect("alpha", "cruise.alpha")
 
         # define the design variables to the top level
         self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
-        self.add_design_var("beta", lower=-50.0, upper=50.0, scaler=1.0, indices=[0, 200])
-        self.add_design_var("fv_source", lower=-50.0, upper=50.0, scaler=1.0, indices=[100, 300])
-        self.add_design_var("u_in", lower=-50.0, upper=50.0, scaler=1.0, indices=[0])
+        self.add_design_var("alpha", lower=-10.0, upper=10.0, scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
 
 
-funcDict = {}
-derivDict = {}
+prob = om.Problem()
+prob.model = Top()
 
-dvNames = ["shape", "beta", "fv_source", "u_in"]
-dvIndices = [[0], [0, 200], [100, 300], [0]]
-funcNames = [
-    "cruise.aero_post.functionals.CD",
-    "cruise.aero_post.functionals.HFX",
-]
+prob.setup(mode="rev")
+om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-# run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
+# optFuncs = OptFuncs(daOptions, prob)
 
-# write the test results
-if gcomm.rank == 0:
-    reg_write_dict(derivDict, 1e-8, 1e-12)
+# verify the total derivatives against the finite-difference
+prob.run_model()
+results = prob.compute_totals(
+    of=["cruise.aero_post.CD"],
+    wrt=["geometry.x_aero0", "dvs.alpha"],
+    get_remote=True,
+)
+totalsXs = results[("cruise.aero_post.CD", "geometry.x_aero0")][0]
+totalsAlpha = results[("cruise.aero_post.CD", "dvs.alpha")][0]
+
+DASolver = prob.model.cruise.coupling.solver.DASolver
+Xs = DASolver.getSurfaceCoordinates(DASolver.designSurfacesGroup).flatten()
+sizeXs = len(Xs)
+DASolver.solver.writeSensMapSurface("dCD_dXs", totalsXs, Xs, sizeXs, 0.0001)
+DASolver.solver.writeSensMapField("dCD_dAlpha", totalsAlpha, "scalar", 0.0001)
+
+# NOTE: sens map does not work in parallel yet...
+# offset = gcomm.exscan(localSize)
+# if gcomm.rank == 0:
+#     offset = 0
+#
+# totalsLocal = np.zeros(localSize)
+# iStart = offset
+# iEnd = offset + localSize
+# for globalI in range(iStart, iEnd):
+#     localI = globalI - iStart
+#     totalsLocal[localI] = totalsGlobal[globalI]
+
+# DASolver.solver.writeSensMapSurface("dCD_dXs", totalsLocal, Xs, localSize, 9999.0)

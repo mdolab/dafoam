@@ -36,7 +36,7 @@ daOptions = {
     "solverName": "DATurboFoam",
     "primalMinResTol": 1.0e-11,
     "primalMinResTolDiff": 1e4,
-    "hasIterativeBC": True,
+    "maxCorrectBCCalls": 10,
     "useConstrainHbyA": False,
     "primalBC": {
         "useWallFunction": True,

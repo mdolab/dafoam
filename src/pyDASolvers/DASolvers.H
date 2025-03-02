@@ -349,18 +349,6 @@ public:
         return DASolverPtr_->getNRegressionParameters(modelName);
     }
 
-    /// call the compute method of the regression model
-    void regressionModelCompute()
-    {
-        DASolverPtr_->regressionModelCompute();
-    }
-
-    /// set the regression parameter
-    void setRegressionParameter(word modelName, label idxI, double val)
-    {
-        scalar val1 = val;
-        DASolverPtr_->setRegressionParameter(modelName, idxI, val1);
-    }
     /// call DASolver::printAllOptions
     void printAllOptions()
     {
@@ -387,52 +375,9 @@ public:
         return returnVal;
     }
 
-    /// write the matrix in binary format
-    void writeMatrixBinary(
-        const Mat matIn,
-        const word prefix)
+    void writeFailedMesh()
     {
-        DASolverPtr_->writeMatrixBinary(matIn, prefix);
-    }
-
-    /// write the matrix in ASCII format
-    void writeMatrixASCII(
-        const Mat matIn,
-        const word prefix)
-    {
-        DASolverPtr_->writeMatrixASCII(matIn, prefix);
-    }
-
-    /// read petsc matrix in binary format
-    void readMatrixBinary(
-        Mat matIn,
-        const word prefix)
-    {
-        DASolverPtr_->readMatrixBinary(matIn, prefix);
-    }
-
-    /// write petsc vector in ascii format
-    void writeVectorASCII(
-        const Vec vecIn,
-        const word prefix)
-    {
-        DASolverPtr_->writeVectorASCII(vecIn, prefix);
-    }
-
-    /// read petsc vector in binary format
-    void readVectorBinary(
-        Vec vecIn,
-        const word prefix)
-    {
-        DASolverPtr_->readVectorBinary(vecIn, prefix);
-    }
-
-    /// write petsc vector in binary format
-    void writeVectorBinary(
-        const Vec vecIn,
-        const word prefix)
-    {
-        DASolverPtr_->writeVectorBinary(vecIn, prefix);
+        DASolverPtr_->writeFailedMesh();
     }
 
     /// read the state variables from the disk and assign the value to the prescribe time level
