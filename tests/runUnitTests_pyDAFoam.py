@@ -40,7 +40,7 @@ daOptions = {
             "directionMode": "fixedDirection",
             "direction": [1.0, 0.0, 0.0],
             "scale": 0.1,
-            "dummy1": {}
+            "dummy1": {},
         },
     },
 }
