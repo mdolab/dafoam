@@ -175,7 +175,7 @@ daOptions = {
             "varName": "wallHeatFlux",
             "varType": "scalar",
             "components": [0],
-            "timeDependentRefData": False
+            "timeDependentRefData": False,
         },
     },
 }
@@ -205,7 +205,7 @@ funcs_ref = {
     "IRMaxKS": 9.132901616926853,
     "PVolSum": 23.576101529517096,
     "UVolSum": 2004.7819430730992,
-    "HVar": 2528606.237673649
+    "HVar": 2528606.237673649,
 }
 
 fail = 0
@@ -294,7 +294,7 @@ daOptions = {
             "varName": "wallHeatFlux",
             "varType": "scalar",
             "components": [0],
-            "timeDependentRefData": False
+            "timeDependentRefData": False,
         },
     },
 }
@@ -314,7 +314,7 @@ funcs_ref = {
     "TTR": 1.000000415241806,
     "MFR": 128.22449523986853,
     "TPR": 0.9934250594975235,
-    "HVar": 395.9879055163316
+    "HVar": 395.9879055163316,
 }
 
 fail = 0

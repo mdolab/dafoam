@@ -144,8 +144,8 @@ done
 for file in runSerialUnitTests_*.py; do
   # Check if the file exists to avoid wildcard issues
   if [[ -f "$file" ]]; then
-    # Extract the part between "runUnitTests_" and ".py"
-    extracted_name="${file#runUnitTests_}"
+    # Extract the part between "runSerialUnitTests_" and ".py"
+    extracted_name="${file#runSerialUnitTests_}"
     extracted_name="${extracted_name%.py}"
     
     # run the regression tests

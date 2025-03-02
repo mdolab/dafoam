@@ -104,5 +104,3 @@ if (abs(CD - 2.4300457) / (CD + 1e-16)) > 1e-6:
     exit(1)
 else:
     print("ActuatorDisk test passed!")
-
-
