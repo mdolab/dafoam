@@ -74,7 +74,6 @@ daOptions = {
             "directionMode": "fixedDirection",
             "direction": [1.0, 0.0, 0.0],
             "scale": 1.0,
-            "timeOp": "average",
         },
         "CL": {
             "type": "force",
@@ -83,7 +82,6 @@ daOptions = {
             "directionMode": "fixedDirection",
             "direction": [0.0, 1.0, 0.0],
             "scale": 1.0,
-            "timeOp": "average",
         },
     },
 }
@@ -115,7 +113,7 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 prob.run_model()
 CD = prob.get_val("cruise.aero_post.CD")[0]
 print("CD, ", CD)
-if abs(25.76828391600833 - CD) / 25.76828391600833 > 1e-6:
+if abs(25.09280970753588 - CD) / 25.09280970753588 > 1e-6:
     print("externalNN test failed!")
     exit(1)
 else:
