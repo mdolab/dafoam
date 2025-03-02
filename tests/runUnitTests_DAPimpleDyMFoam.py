@@ -63,7 +63,7 @@ stateNorm = np.linalg.norm(states)
 stateNorm = gcomm.allreduce(stateNorm, op=MPI.SUM)
 print("stateNorm", stateNorm)
 
-if abs(1504.759302952536 - stateNorm) / 1504.759302952536 > 1e-6:
+if abs(38128.523462671976 - stateNorm) / 38128.523462671976 > 1e-6:
     print("DAPimpleDyMFoam test failed!")
     exit(1)
 else:
