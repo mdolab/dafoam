@@ -94,7 +94,7 @@ function runUnitTests()
 function runSerialUnitTests()
 {
   rm -rf DAFoam_Test_${1}.txt
-  python runUnitTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
+  python runSerialUnitTests_${1}.py $@ | tee DAFoam_Test_${1}.txt 
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then 
     echo "${1}: Failed!"
     exit 1
