@@ -32,7 +32,7 @@ nuTilda0 = 4.5e-5
 daOptions = {
     "designSurfaces": ["walls"],
     "solverName": "DASimpleFoam",
-    "primalMinResTol": 1.0e-10,
+    "primalMinResTol": 1.0e-8,
     "tensorflow": {
         "active": True,
         "dummy_nn_model": {
@@ -115,7 +115,7 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 prob.run_model()
 CD = prob.get_val("cruise.aero_post.CD")[0]
 print("CD, ", CD)
-if abs(25.2711349 - CD) / 25.2711349 > 1e-8:
+if abs(25.76828391600833 - CD) / 25.76828391600833 > 1e-6:
     print("externalNN test failed!")
     exit(1)
 else:

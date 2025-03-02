@@ -1182,6 +1182,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
         }
 
         // ------ alphat ----------
+        // TODO: need to figure out a way to pass the Prt parameter
+        // to the wall function. The default is 0.85 and is hard coded
         if (db.foundObject<volScalarField>("alphat"))
         {
 
