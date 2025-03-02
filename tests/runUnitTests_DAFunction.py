@@ -130,7 +130,7 @@ daOptions = {
             "center": [0.5, 0.5, 0.5],
             "coeffKS": 20.0,
             "scale": 1.0,
-            "snapCenter2Cell": False,
+            "snapCenter2Cell": True,
         },
         "IRMaxKS": {
             "type": "location",
@@ -177,6 +177,38 @@ daOptions = {
             "components": [0],
             "timeDependentRefData": False,
         },
+        "PVar": {
+            "type": "variance",
+            "source": "allCells",
+            "scale": 1.0,
+            "mode": "field",
+            "varName": "p",
+            "varType": "scalar",
+            "components": [0],
+            "timeDependentRefData": False,
+        },
+        "PProbe": {
+            "type": "variance",
+            "source": "allCells",
+            "scale": 1.0,
+            "mode": "probePoint",
+            "probePointCoords": [[0.51, 0.52, 0.53], [0.2, 0.3, 0.4]],
+            "varName": "p",
+            "varType": "scalar",
+            "components": [0],
+            "timeDependentRefData": False,
+        },
+        "UOutVar": {
+            "type": "variance",
+            "source": "patchToFace",
+            "patches": ["outlet"],
+            "scale": 1.0,
+            "mode": "surface",
+            "varName": "U",
+            "varType": "vector",
+            "components": [0],
+            "timeDependentRefData": False,
+        },
     },
 }
 
@@ -201,11 +233,14 @@ funcs_ref = {
     "nonOrtho": 26.209186150313975,
     "faceOrthogonality": 7.948460246568271,
     "RMax": 1.295712391984845,
-    "RMaxKS": 0.8057075945057248,
+    "RMaxKS": 0.8579812873447494,
     "IRMaxKS": 9.132901616926853,
     "PVolSum": 23.576101529517096,
     "UVolSum": 2004.7819430730992,
     "HVar": 67.87343828312974,
+    "PVar": 2.476982282327677,
+    "PProbe": 3.6866882754983203,
+    "UOutVar": 0.5085431532392312,
 }
 
 fail = 0
