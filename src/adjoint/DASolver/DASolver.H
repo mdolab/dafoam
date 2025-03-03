@@ -486,7 +486,7 @@ public:
     /// get the function value based on timeOp
     double getTimeOpFuncVal(const word functionName);
 
-    /// return the index of a give functionName in daFunctionPtrList_
+    /// return the index of a given functionName in daFunctionPtrList_
     label getFunctionListIndex(const word functionName)
     {
         forAll(daFunctionPtrList_, idxI)

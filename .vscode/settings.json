@@ -1,6 +1,10 @@
 {
     "files.associations": {
         "DAInputThermalCoupling.C": "cpp",
-        "DAOutputThermalCoupling.C": "cpp"
+        "DAOutputThermalCoupling.C": "cpp",
+        "DAInputField.C": "cpp",
+        "DAInputFvSourcePar.C": "cpp",
+        "DAFunction.C": "cpp",
+        "DASolver.C": "cpp"
     }
 }
