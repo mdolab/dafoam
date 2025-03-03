@@ -38,8 +38,8 @@ DAInputThermalCoupling::DAInputThermalCoupling(
 
     // check and assign values for discipline and formulation
     discipline_ = daOption_.getAllOptions().getWord("discipline");
-    word functionName = getFunctionName();
-    formMode_ = daOption_.subDict("function").subDict(functionName).lookupOrDefault<word>("formulation", "default");
+    word functionName = Foam::getFunctionName(); 
+    formMode_ = daOption_.getAllOptions().subDict("function").subDict(functionName).lookupOrDefault<word>("formulation", "default");
 
     size_ = 0;
     forAll(patches_, idxI)
