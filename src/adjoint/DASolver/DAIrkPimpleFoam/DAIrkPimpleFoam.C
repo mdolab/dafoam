@@ -100,45 +100,63 @@ label DAIrkPimpleFoam::solvePrimal()
             "IRKDict",
             mesh.time().system(),
             mesh,
-            IOobject::MUST_READ,
+            IOobject::READ_IF_PRESENT,
             IOobject::NO_WRITE));
 
     scalar relaxU = 1.0;
-    if (IRKDict.getScalar("relaxU") > 0)
+    if (IRKDict.found("relaxU"))
     {
-        relaxU = IRKDict.getScalar("relaxU");
+        if (IRKDict.getScalar("relaxU") > 0)
+        {
+            relaxU = IRKDict.getScalar("relaxU");
+        }
     }
 
     scalar relaxP = 1.0;
-    if (IRKDict.getScalar("relaxP") > 0)
+    if (IRKDict.found("relaxP"))
     {
-        relaxP = IRKDict.getScalar("relaxP");
+        if (IRKDict.getScalar("relaxP") > 0)
+        {
+            relaxP = IRKDict.getScalar("relaxP");
+        }
     }
 
     scalar relaxPhi = 1.0;
-    if (IRKDict.getScalar("relaxPhi") > 0)
+    if (IRKDict.found("relaxPhi"))
     {
-        relaxPhi = IRKDict.getScalar("relaxPhi");
+        if (IRKDict.getScalar("relaxPhi") > 0)
+        {
+            relaxPhi = IRKDict.getScalar("relaxPhi");
+        }
     }
 
     scalar relaxStage1 = 0.8;
-    if (IRKDict.getScalar("relaxStage1") > 0)
+    if (IRKDict.found("relaxStage1"))
     {
-        relaxStage1 = IRKDict.getScalar("relaxStage1");
+        if (IRKDict.getScalar("relaxStage1") > 0)
+        {
+            relaxStage1 = IRKDict.getScalar("relaxStage1");
+        }
     }
 
     scalar relaxStage2 = 0.8;
-    if (IRKDict.getScalar("relaxStage2") > 0)
+    if (IRKDict.found("relaxStage2"))
     {
-        relaxStage2 = IRKDict.getScalar("relaxStage2");
+        if (IRKDict.getScalar("relaxStage2") > 0)
+        {
+            relaxStage2 = IRKDict.getScalar("relaxStage2");
+        }
     }
 
     scalar relaxUEqn = 1.0;
 
     label maxSweep = 10;
-    if (IRKDict.getLabel("maxSweep") > 0)
+    if (IRKDict.found("maxSweep"))
     {
-        maxSweep = IRKDict.getLabel("maxSweep");
+        if (IRKDict.getLabel("maxSweep") > 0)
+        {
+            maxSweep = IRKDict.getLabel("maxSweep");
+        }
     }
 
     // Duplicate state variables for stages
