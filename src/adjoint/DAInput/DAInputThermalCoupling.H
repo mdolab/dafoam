@@ -93,7 +93,7 @@ public:
             }
         }
     }
-    
+
     virtual void run(const scalarList& input);
 
     virtual label size()
