@@ -7,6 +7,12 @@
 
 #include "DAInputThermalCoupling.H"
 
+// Forward declaration of getFunctionName
+namespace Foam
+{
+    word getFunctionName();
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -38,7 +44,7 @@ DAInputThermalCoupling::DAInputThermalCoupling(
 
     // check and assign values for discipline and formulation
     discipline_ = daOption_.getAllOptions().getWord("discipline");
-    word functionName = Foam::getFunctionName(); 
+    word functionName = Foam::getFunctionName();
     formMode_ = daOption_.getAllOptions().subDict("function").subDict(functionName).lookupOrDefault<word>("formulation", "default");
 
     size_ = 0;
