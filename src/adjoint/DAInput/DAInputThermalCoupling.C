@@ -150,9 +150,9 @@ Description:
                     else
                     {
                         FatalErrorIn(" ") << "formulation: "
-                                            << formMode_ << " not supported!"
-                                            << " Options are: default and daCustom."
-                                            << abort(FatalError);
+                                          << formMode_ << " not supported!"
+                                          << " Options are: default and daCustom."
+                                          << abort(FatalError);
                     }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     scalar myKDeltaCoeffs = Cp * alphaEffBf * deltaCoeffs;
@@ -227,9 +227,9 @@ Description:
                     else
                     {
                         FatalErrorIn(" ") << "formulation: "
-                                            << formMode_ << " not supported!"
-                                            << " Options are: default and daCustom."
-                                            << abort(FatalError);
+                                          << formMode_ << " not supported!"
+                                          << " Options are: default and daCustom."
+                                          << abort(FatalError);
                     }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     scalar myKDeltaCoeffs = tmpVal * alphaEffBf * deltaCoeffs;
@@ -278,9 +278,9 @@ Description:
                 else
                 {
                     FatalErrorIn(" ") << "formulation: "
-                                        << formMode_ << " not supported!"
-                                        << " Options are: default and daCustom."
-                                        << abort(FatalError);
+                                      << formMode_ << " not supported!"
+                                      << " Options are: default and daCustom."
+                                      << abort(FatalError);
                 }
                 mixedFvPatchField<scalar>& mixedPatch = refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
                 scalar myKDeltaCoeffs = k * deltaCoeffs;
@@ -300,7 +300,7 @@ Description:
     T.correctBoundaryConditions();
 }
 
-    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
 

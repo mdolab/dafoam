@@ -23,8 +23,7 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
     const DAOption& daOption,
     DAModel& daModel,
     const DAIndex& daIndex,
-    DAResidual& daResidual,
-    UPtrList<DAFunction>& daFunctionList)
+    DAResidual& daResidual)
     : DAOutput(
         outputName,
         outputType,
@@ -39,10 +38,24 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
     // NOTE: always sort the patch because the order of the patch element matters in CHT coupling
     sort(patches_);
 
-    // check and assign values for discipline and formulation
+    // check discipline
     discipline_ = daOption_.getAllOptions().getWord("discipline");
-    word functionName = getFunctionName();
-    formMode_ = daOption_.getAllOptions().subDict("function").subDict(functionName).lookupOrDefault<word>("formulation", "default");
+    
+    // check formulation mode
+    forAll(daFunctionPtrList_, idxI)
+    {
+        DAFunction& daFunction = daFunctionPtrList_[idxI];
+        word functionName = daFunction.getFunctionName();
+
+        if (daOption_.getAllOptions().subDict("function").subDict(functionName).found("formulation"))
+        {
+            formMode_ = daOption_.getAllOptions().subDict("function").subDict(functionName).lookupOrDefault<word>("formulation", "default");
+        }
+        else
+        {
+            formMode_ = "default";
+        }
+    }
 
     size_ = 0;
     forAll(patches_, idxI)

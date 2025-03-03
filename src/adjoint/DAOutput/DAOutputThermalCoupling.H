@@ -67,12 +67,25 @@ public:
         const DAOption& daOption,
         DAModel& daModel,
         const DAIndex& daIndex,
-        DAResidual& daResidual,
-        UPtrList<DAFunction>& daFunctionList);
+        DAResidual& daResidual);
 
     //- Destructor
     virtual ~DAOutputThermalCoupling()
     {
+    }
+
+    /// return the index of a given functionName in daFunctionPtrList_
+    label getFunctionListIndex(const word functionName)
+    {
+        forAll(daFunctionPtrList_, idxI)
+        {
+            DAFunction& daFunction = daFunctionPtrList_[idxI];
+            word functionName1 = daFunction.getFunctionName();
+            if (functionName1 == functionName)
+            {
+                return idxI;
+            }
+        }
     }
 
     virtual void run(scalarList& output);

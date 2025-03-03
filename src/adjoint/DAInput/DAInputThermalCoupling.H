@@ -59,9 +59,6 @@ protected:
     /// if calculating wallHeatFlux by OpenFOAMs snGrad() or DAFOAM's custom (daCustom) formulation
     word formMode_;
 
-    /// a list of DAFunction pointers
-    UPtrList<DAFunction> daFunctionPtrList_;
-
 public:
     TypeName("thermalCouplingInput");
     // Constructors
