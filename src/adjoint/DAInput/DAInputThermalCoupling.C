@@ -10,7 +10,7 @@
 // Forward declaration of getFunctionName
 namespace Foam
 {
-    word getFunctionName();
+word getFunctionName();
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

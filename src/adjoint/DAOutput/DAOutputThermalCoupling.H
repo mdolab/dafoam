@@ -27,6 +27,7 @@
 #include "addToRunTimeSelectionTable.H"
 #include "mixedFvPatchFields.H"
 #include "thermodynamicConstants.H"
+#include "DAFunction.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -72,23 +73,6 @@ public:
     //- Destructor
     virtual ~DAOutputThermalCoupling()
     {
-    }
-
-    /// return the index of a give functionName in daFunctionList
-    label getFunctionListIndex(
-        const word functionName,
-        UPtrList<DAFunction>& daFunctionList)
-    {
-        forAll(daFunctionList, idxI)
-        {
-            DAFunction& daFunction = daFunctionList[idxI];
-            word functionName1 = daFunction.getFunctionName();
-            if (functionName1 == functionName)
-            {
-                return idxI;
-            }
-        }
-        return -9999;
     }
 
     virtual void run(scalarList& output);
