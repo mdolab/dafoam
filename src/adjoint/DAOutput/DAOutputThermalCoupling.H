@@ -70,7 +70,8 @@ public:
         const DAOption& daOption,
         DAModel& daModel,
         const DAIndex& daIndex,
-        DAResidual& daResidual);
+        DAResidual& daResidual,
+        UPtrList<DAFunction>& daFunctionList);
 
     //- Destructor
     virtual ~DAOutputThermalCoupling()
