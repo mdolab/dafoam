@@ -25,7 +25,6 @@ daOptions = {
     "solverName": "DASolidDisplacementFoam",
     "primalMinResTol": 1e-10,
     "primalMinResTolDiff": 1e10,
-    "hasIterativeBC": True,
     "maxCorrectBCCalls": 20,
     "function": {
         "VMS": {

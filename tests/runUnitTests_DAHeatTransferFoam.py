@@ -17,6 +17,8 @@ from pygeo.mphys import OM_DVGEOCOMP
 gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/ChannelConjugateHeatV4/thermal")
+if gcomm.rank == 0:
+    os.system("rm -rf processor*")
 
 daOptions = {
     "designSurfaces": ["channel_outer", "channel_inner", "channel_sides"],
@@ -88,8 +90,12 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
 # verify the total derivatives against the finite-difference
 prob.run_model()
+totals = prob.compute_totals()
 
-if gcomm.rank == 0:
-    funcDict = {}
-    funcDict["HFX"] = prob.get_val("cruise.aero_post.HFX")
-    reg_write_dict(funcDict, 1e-10, 1e-12)
+HFX = prob.get_val("cruise.aero_post.HFX")[0]
+print("HFX", HFX)
+if (abs(HFX - 180000.0) / (HFX + 1e-16)) > 1e-6:
+    print("DAHeatTransferFoam test failed!")
+    exit(1)
+else:
+    print("DAHeatTransferFoam test passed!")

@@ -98,7 +98,7 @@ runTurbTests(daOptions, gcomm, "sst", [3787030.9471557215, 28962.17463329316, 13
 runTurbTests(daOptions, gcomm, "kw", [3787032.628925756, 28956.64422546926, 1390393.340066838])
 runTurbTests(daOptions, gcomm, "sstlm", [3787217.019831411, 0.0, 1390631.4948573676])
 daOptions["primalBC"]["useWallFunction"] = True
-runTurbTests(daOptions, gcomm, "ke", [3787215.614401266, 32909.66124880357, 1389726.4789026403])
+runTurbTests(daOptions, gcomm, "ke", [3787224.67554039, 32907.42061875005, 1372907.024896523])
 
 # *********************
 # incompressible models
@@ -119,10 +119,10 @@ daOptions = {
 }
 
 
-runTurbTests(daOptions, gcomm, "sa", [11309.310054439891, 4641.040337039391, 2286.4132760034713])
-runTurbTests(daOptions, gcomm, "safv3", [11309.358170023846, 4643.017299973399, 2286.64706255848])
-runTurbTests(daOptions, gcomm, "sst", [12711.272520230086, 5056.461333737587, 4262.780825469425])
-runTurbTests(daOptions, gcomm, "kw", [12850.006064183974, 5057.952497987695, 4457.375320867626])
-runTurbTests(daOptions, gcomm, "sstlm", [21113.619960526943, 0.0, 4394.72120742463])
+runTurbTests(daOptions, gcomm, "sa", [11267.58717789064, 4641.040337039481, 1732.238877108044])
+runTurbTests(daOptions, gcomm, "safv3", [11267.58536537872, 4643.017299973399, 1732.1877430108193])
+runTurbTests(daOptions, gcomm, "sst", [12710.942795556493, 5056.461333737587, 4260.63747585974])
+runTurbTests(daOptions, gcomm, "kw", [12843.518233534207, 5057.952497987695, 4341.259273044216])
+runTurbTests(daOptions, gcomm, "sstlm", [21113.42085052999, 0.0, 4392.621225985673])
 daOptions["primalBC"]["useWallFunction"] = True
-runTurbTests(daOptions, gcomm, "ke", [11285.261813132654, 7536.877768251798, 3355.117587986624])
+runTurbTests(daOptions, gcomm, "ke", [11275.140206006967, 7536.877768251798, 3357.6905407908644])

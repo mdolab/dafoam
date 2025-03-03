@@ -513,7 +513,8 @@ label DARegression::compute()
 
             // NOTE: forward mode not supported..
 #if defined(CODI_ADR)
-
+            Info << "WARNINGN...... Regression model for ADR is not implemented..." << endl;
+            /*
             // assign features_ to featuresFlattenArray_
             // here featuresFlattenArray_ should be order like this to facilitate Python layer reshape:
             // [(cell1, feature1), (cell1, feature2), ... (cell2, feature1), (cell2, feature2) ... ]
@@ -559,8 +560,11 @@ label DARegression::compute()
             {
                 outputField[cellI] = outputFieldArray_[cellI];
             }
+            */
 
 #elif defined(CODI_ADF)
+            Info << "WARNINGN...... Regression model for ADF is not implemented..." << endl;
+            /*
             // assign features_ to featuresFlattenArray_
             // here featuresFlattenArray_ should be order like this to facilitate Python layer reshape:
             // [(cell1, feature1), (cell1, feature2), ... (cell2, feature1), (cell2, feature2) ... ]
@@ -589,6 +593,7 @@ label DARegression::compute()
             {
                 outputField[cellI] = outputFieldArrayDouble_[cellI];
             }
+            */
 
 #else
             // assign features_ to featuresFlattenArray_
