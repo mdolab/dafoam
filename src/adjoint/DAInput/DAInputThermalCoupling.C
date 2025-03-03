@@ -22,14 +22,16 @@ DAInputThermalCoupling::DAInputThermalCoupling(
     fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
-    const DAIndex& daIndex)
+    const DAIndex& daIndex,
+    UPtrList<DAFunction>& daFunctionList)
     : DAInput(
           inputName,
           inputType,
           mesh,
           daOption,
           daModel,
-          daIndex)
+          daIndex,
+          daFunctionList)
 {
 
     daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_).readEntry("patches", patches_);
@@ -38,7 +40,8 @@ DAInputThermalCoupling::DAInputThermalCoupling(
 
     // check and assign values for discipline and formulation
     discipline_ = daOption_.getAllOptions().getWord("discipline");
-    formMode_ = "default";//daOption_.getAllOptions().subDict("function").lookupOrDefault<word>("formulation", "default");
+    word functionName = daFunction.getFunctionName();
+    formMode_ = daOption_.subDict("function").subDict(functionName).lookupOrDefault<word>("formulation", "default");
 
     size_ = 0;
     forAll(patches_, idxI)
@@ -122,7 +125,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
                     if (formMode_ == "default")
                     {
                         // deltaCoeffs = 1 / d
-                        scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                        deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
                     }
                     else if (formMode_ == "daCustom")
                     {
@@ -130,7 +133,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
                         vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
                         vector c2 = mesh_.C()[nearWallCellIndex];
                         scalar d = mag(c1 - c2);
-                        scalar deltaCoeffs = 1 / d;
+                        deltaCoeffs = 1 / d;
                     }
                     else
                     {
@@ -199,7 +202,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
                     if (formMode_ == "default")
                     {
                         // deltaCoeffs = 1 / d
-                        scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                        deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
                     }
                     else if (formMode_ == "daCustom")
                     {
@@ -207,7 +210,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
                         vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
                         vector c2 = mesh_.C()[nearWallCellIndex];
                         scalar d = mag(c1 - c2);
-                        scalar deltaCoeffs = 1 / d;
+                        deltaCoeffs = 1 / d;
                     }
                     else
                     {
@@ -250,7 +253,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
                 if (formMode_ == "default")
                 {
                     // deltaCoeffs = 1 / d
-                    scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                    deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
                 }
                 else if (formMode_ == "daCustom")
                 {
@@ -258,7 +261,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
                     vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
                     vector c2 = mesh_.C()[nearWallCellIndex];
                     scalar d = mag(c1 - c2);
-                    scalar deltaCoeffs = 1 / d;
+                    deltaCoeffs = 1 / d;
                 }
                 else
                 {
