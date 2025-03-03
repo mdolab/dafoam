@@ -31,6 +31,7 @@
 #include "addToRunTimeSelectionTable.H"
 #include "mixedFvPatchFields.H"
 #include "thermodynamicConstants.H"
+#include "DAFunction.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
