@@ -69,29 +69,11 @@ public:
         fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
-        const DAIndex& daIndex,
-        UPtrList<DAFunction>& daFunctionList);
+        const DAIndex& daIndex);
 
     //- Destructor
     virtual ~DAInputThermalCoupling()
     {
-    }
-
-    /// return the index of a give functionName in daFunctionList
-    label getFunctionListIndex(
-        const word functionName,
-        UPtrList<DAFunction>& daFunctionList)
-    {
-        forAll(daFunctionList, idxI)
-        {
-            DAFunction& daFunction = daFunctionList[idxI];
-            word functionName1 = daFunction.getFunctionName();
-            if (functionName1 == functionName)
-            {
-                return idxI;
-            }
-        }
-        return -9999;
     }
 
     virtual void run(const scalarList& input);

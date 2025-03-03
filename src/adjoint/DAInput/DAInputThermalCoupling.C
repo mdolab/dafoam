@@ -22,16 +22,14 @@ DAInputThermalCoupling::DAInputThermalCoupling(
     fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
-    const DAIndex& daIndex,
-    UPtrList<DAFunction>& daFunctionList)
+    const DAIndex& daIndex)
     : DAInput(
-          inputName,
-          inputType,
-          mesh,
-          daOption,
-          daModel,
-          daIndex,
-          daFunctionList)
+        inputName,
+        inputType,
+        mesh,
+        daOption,
+        daModel,
+        daIndex)
 {
 
     daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_).readEntry("patches", patches_);
