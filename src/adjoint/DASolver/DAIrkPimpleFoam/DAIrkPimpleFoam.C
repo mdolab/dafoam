@@ -121,13 +121,13 @@ label DAIrkPimpleFoam::solvePrimal()
         relaxPhi = IRKDict.getScalar("relaxPhi");
     }
 
-    scalar relaxStage1 = 1.0;
+    scalar relaxStage1 = 0.8;
     if (IRKDict.getScalar("relaxStage1") > 0)
     {
         relaxStage1 = IRKDict.getScalar("relaxStage1");
     }
 
-    scalar relaxStage2 = 1.0;
+    scalar relaxStage2 = 0.8;
     if (IRKDict.getScalar("relaxStage2") > 0)
     {
         relaxStage2 = IRKDict.getScalar("relaxStage2");
