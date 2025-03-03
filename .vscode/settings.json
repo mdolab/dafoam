@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "DAInputThermalCoupling.C": "cpp"
+        "DAInputThermalCoupling.C": "cpp",
+        "DAOutputThermalCoupling.C": "cpp"
     }
 }
