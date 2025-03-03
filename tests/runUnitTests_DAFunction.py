@@ -215,7 +215,7 @@ daOptions = {
             "scale": 1.0,
             "resWeight": {"URes": 0.1, "pRes": 0.01, "phiRes": 10.0, "TRes": 0.01, "nuTildaRes": 100.0},
             "timeDependentRefData": False,
-            "timeOp": "average"
+            "timeOp": "average",
         },
     },
 }
@@ -249,7 +249,7 @@ funcs_ref = {
     "PVar": 2.476982282327677,
     "PProbe": 3.6866882754983203,
     "UOutVar": 0.5085431532392312,
-    "ResNorm": 0.5124351615581738
+    "ResNorm": 0.5124351615581738,
 }
 
 fail = 0

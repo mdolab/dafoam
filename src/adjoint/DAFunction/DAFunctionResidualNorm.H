@@ -29,7 +29,6 @@ class DAFunctionResidualNorm
 {
 
 protected:
-
     /// weights of the residuals
     HashTable<scalar> resWeight_;
 
