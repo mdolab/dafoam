@@ -40,7 +40,7 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
 
     // check discipline
     discipline_ = daOption_.getAllOptions().getWord("discipline");
-    
+
     // check formulation mode
     forAll(daFunctionPtrList_, idxI)
     {
