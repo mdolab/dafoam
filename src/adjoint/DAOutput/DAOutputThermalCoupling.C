@@ -31,8 +31,7 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
         daOption,
         daModel,
         daIndex,
-        daResidual,
-        daFunctionList)
+        daResidual)
 {
     daOption_.getAllOptions().subDict("outputInfo").subDict(outputName_).readEntry("patches", patches_);
     // NOTE: always sort the patch because the order of the patch element matters in CHT coupling
