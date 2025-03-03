@@ -30,8 +30,14 @@ class DAInputField
 {
 
 protected:
+    /// name of the field
     word fieldName_;
+
+    /// field type, can be either scalar or vector
     word fieldType_;
+
+    /// if it is vector fields, we can also provide components
+    labelList components_;
 
 public:
     TypeName("field");
@@ -68,13 +74,14 @@ public:
         }
         else if (fieldType_ == "vector")
         {
+            label cSize = components_.size();
             if (this->distributed())
             {
-                return daIndex_.nLocalCells * 3;
+                return daIndex_.nLocalCells * cSize;
             }
             else
             {
-                return daIndex_.nGlobalCells * 3;
+                return daIndex_.nGlobalCells * cSize;
             }
         }
         else
