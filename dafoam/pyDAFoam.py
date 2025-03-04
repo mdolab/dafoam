@@ -245,36 +245,6 @@ class DAOPTION(object):
         ## and shows up in the constant/polyMesh/boundary file
         self.designSurfaces = ["ALL_OPENFOAM_WALL_PATCHES"]
 
-        ## MDO coupling information for aerostructural, aerothermal, or aeroacoustic optimization.
-        ## We can have ONLY one coupling scenario active, e.g., aerostructural and aerothermal can't be
-        ## both active. We can have more than one couplingSurfaceGroups, e.g., wingGroup and tailGroup
-        ## or blade1Group, blade2Group, and blade3Group. Each group subdict can have multiple patches.
-        ## These patches should be consistent with the patch names defined in constant/polyMesh/boundary
-        self.couplingInfo = {
-            "aerostructural": {
-                "active": False,
-                "pRef": 0,
-                "propMovement": False,
-                "couplingSurfaceGroups": {
-                    "wingGroup": ["wing", "wing_te"],
-                },
-            },
-            "aerothermal": {
-                "active": False,
-                "couplingSurfaceGroups": {
-                    "wallGroup": ["fin_wall"],
-                },
-            },
-            "aeroacoustic": {
-                "active": False,
-                "pRef": 0,
-                "couplingSurfaceGroups": {
-                    "blade1Group": ["blade1_ps", "blade1_ss"],
-                    "blade2Group": ["blade2"],
-                },
-            },
-        }
-
         # *********************************************************************************************
         # ****************************** Intermediate Options *****************************************
         # *********************************************************************************************
@@ -331,7 +301,13 @@ class DAOPTION(object):
 
         ## whether the dynamic mesh is activated. The default is False, but if we need to use
         ## DAPimpleDyMFoam, we need to set this flaf to True
-        self.dynamicMesh = False
+        self.dynamicMesh = {
+            "active": False,
+            "mode": "rotation",
+            "center": [0.25, 0.0, 0.0],
+            "axis": "z",
+            "omega": 0.1,
+        }
 
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
         ## Setting the bounds increases the robustness of primal solution for compressible solvers.
@@ -411,11 +387,6 @@ class DAOPTION(object):
         ## refer to: Kenway et al. Effective adjoint approach for computational fluid dynamics,
         ## Progress in Aerospace Science, 2019.
         self.useAD = {"mode": "reverse", "dvName": "None", "seedIndex": -9999}
-
-        ## whether we have iterative BC such as totaPressure
-        ## If True, we will call the correctBoundaryConditions and updateIntermediateVariables
-        ## multiple times to make sure the AD seeds are propagated properly for the iterative BCs.
-        self.hasIterativeBC = False
 
         ## whether to use the constrainHbyA in the pEqn. The DASolvers are similar to OpenFOAM's native
         ## solvers except that we directly compute the HbyA term without any constraints. In other words,
@@ -604,7 +575,7 @@ class DAOPTION(object):
         self.writeAdjointFields = False
 
         ## The max number of correctBoundaryConditions calls in the updateOFField function.
-        self.maxCorrectBCCalls = 10
+        self.maxCorrectBCCalls = 2
 
         ## Whether to write the primal solutions for minor iterations (i.e., line search).
         ## The default is False. If set it to True, it will write flow fields (and the deformed geometry)
@@ -718,27 +689,6 @@ class PYDAFOAM(object):
         else:
             self.addFamilyGroup(self.designSurfacesGroup, self.getOption("designSurfaces"))
 
-        # Set the couplingSurfacesGroup if any of the MDO scenario is active
-        # otherwise, set the couplingSurfacesGroup to designSurfacesGroup
-        # NOTE: the treatment of aeroacoustic is different because it supports more than
-        # one couplingSurfaceGroups. For other scenarios, only one couplingSurfaceGroup
-        # can be defined. TODO. we need to make them consistent in the future..
-        couplingInfo = self.getOption("couplingInfo")
-        self.couplingSurfacesGroup = self.designSurfacesGroup
-        if couplingInfo["aerostructural"]["active"]:
-            # we support only one aerostructural surfaceGroup for now
-            self.couplingSurfacesGroup = list(couplingInfo["aerostructural"]["couplingSurfaceGroups"].keys())[0]
-            patchNames = couplingInfo["aerostructural"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
-            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
-        elif couplingInfo["aeroacoustic"]["active"]:
-            for groupName in couplingInfo["aeroacoustic"]["couplingSurfaceGroups"]:
-                self.addFamilyGroup(groupName, couplingInfo["aeroacoustic"]["couplingSurfaceGroups"][groupName])
-        elif couplingInfo["aerothermal"]["active"]:
-            # we support only one aerothermal coupling surfaceGroup for now
-            self.couplingSurfacesGroup = list(couplingInfo["aerothermal"]["couplingSurfaceGroups"].keys())[0]
-            patchNames = couplingInfo["aerothermal"]["couplingSurfaceGroups"][self.couplingSurfacesGroup]
-            self.addFamilyGroup(self.couplingSurfacesGroup, patchNames)
-
         # By Default we don't have an external mesh object or a
         # geometric manipulation object
         self.mesh = None
@@ -749,6 +699,9 @@ class PYDAFOAM(object):
         # a KSP object which may be used outside of the pyDAFoam class
         self.ksp = None
 
+        # a flag used in deformDynamicMesh for runMode=runOnce
+        self.dynamicMeshDeformed = 0
+
         if self.getOption("tensorflow")["active"]:
             TensorFlowHelper.options = self.getOption("tensorflow")
             TensorFlowHelper.initialize()
@@ -756,10 +709,9 @@ class PYDAFOAM(object):
             self.solver.initTensorFlowFuncs(
                 TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
             )
-            if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-                self.solverAD.initTensorFlowFuncs(
-                    TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
-                )
+            self.solverAD.initTensorFlowFuncs(
+                TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
+            )
 
         Info("pyDAFoam initialization done!")
 
@@ -772,9 +724,9 @@ class PYDAFOAM(object):
         """
 
         self.solverRegistry = {
-            "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam", "DAPimpleFoam", "DAPimpleDyMFoam"],
+            "Incompressible": ["DASimpleFoam", "DAPimpleFoam", "DAPimpleDyMFoam"],
             "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam", "DARhoPimpleFoam"],
-            "Solid": ["DASolidDisplacementFoam", "DALaplacianFoam", "DAHeatTransferFoam", "DAScalarTransportFoam"],
+            "Solid": ["DASolidDisplacementFoam", "DAHeatTransferFoam"],
         }
 
     def __call__(self):
@@ -850,26 +802,6 @@ class PYDAFOAM(object):
         if self.getOption("discipline") not in ["aero", "thermal"]:
             raise Error("discipline: %s not supported. Options are: aero or thermal" % self.getOption("discipline"))
 
-        # check coupling Info
-        # nActivated = 0
-        # for coupling in self.getOption("couplingInfo"):
-        #    if self.getOption("couplingInfo")[coupling]["active"]:
-        #        nActivated += 1
-        # if nActivated > 1:
-        #    raise Error("Only one coupling scenario can be active, while %i found" % nActivated)
-
-        # nAerothermalSurfaces = len(self.getOption("couplingInfo")["aerothermal"]["couplingSurfaceGroups"].keys())
-        # if nAerothermalSurfaces > 1:
-        #    raise Error(
-        #        "Only one couplingSurfaceGroups is supported for aerothermal, while %i found" % nAerothermalSurfaces
-        #    )
-
-        # nAeroStructSurfaces = len(self.getOption("couplingInfo")["aerostructural"]["couplingSurfaceGroups"].keys())
-        # if nAeroStructSurfaces > 1:
-        #    raise Error(
-        #        "Only one couplingSurfaceGroups is supported for aerostructural, while %i found" % nAeroStructSurfaces
-        #    )
-
         # check the patchNames from primalBC dict
         primalBCDict = self.getOption("primalBC")
         for bcKey in primalBCDict:
@@ -912,6 +844,8 @@ class PYDAFOAM(object):
         """
 
         if self.getOption("writeAdjointFields"):
+            if len(self.getOption("function").keys()) > 1:
+                raise Error("writeAdjointFields supports only one function, while multiple are defined!")
             self.solver.writeAdjointFields(function, writeTime, psi)
 
     def evalFunctions(self, funcs):
@@ -1191,6 +1125,70 @@ class PYDAFOAM(object):
 
         return
 
+    def deformDynamicMesh(self):
+        """
+        Deform the dynamic mesh and save to them to the disk
+        """
+
+        if not self.getOption("dynamicMesh")["active"]:
+            return
+
+        Info("Deforming dynamic mesh")
+
+        # if we do not have the volCoord as the input, we need to run this only once
+        # otherwise, we need to deform the dynamic mesh for each primal solve
+        if self.solver.hasVolCoordInput() == 0:
+            # if the mesh has been deformed, return
+            if self.dynamicMeshDeformed == 1:
+                return
+
+        mode = self.getOption("dynamicMesh")["mode"]
+
+        deltaT = self.solver.getDeltaT()
+
+        endTime = self.solver.getEndTime()
+        endTimeIndex = round(endTime / deltaT)
+        nLocalPoints = self.solver.getNLocalPoints()
+
+        if mode == "rotation":
+            center = self.getOption("dynamicMesh")["center"]
+            axis = self.getOption("dynamicMesh")["axis"]
+            omega = self.getOption("dynamicMesh")["omega"]
+
+            # always get the initial mesh from OF layer
+            points0 = np.zeros(nLocalPoints * 3)
+            self.solver.getOFMeshPoints(points0)
+            # NOTE: we also write the mesh point for t = 0
+            self.solver.writeMeshPoints(points0, 0.0)
+
+            # do a for loop to incrementally deform the mesh by a deltaT
+            points = np.reshape(points0, (-1, 3))
+            for i in range(1, endTimeIndex + 1):
+                t = i * deltaT
+                dTheta = omega * deltaT
+                dCosTheta = np.cos(dTheta)
+                dSinTheta = np.sin(dTheta)
+
+                for pointI in range(nLocalPoints):
+
+                    if axis == "z":
+                        xTemp = points[pointI][0] - center[0]
+                        yTemp = points[pointI][1] - center[1]
+
+                        points[pointI][0] = dCosTheta * xTemp - dSinTheta * yTemp + center[0]
+                        points[pointI][1] = dSinTheta * xTemp + dCosTheta * yTemp + center[1]
+                    else:
+                        raise Error("axis not valid! Options are: z")
+
+                pointsWrite = points.flatten()
+                self.solver.writeMeshPoints(pointsWrite, t)
+        else:
+            raise Error("mode not valid! Options are: rotation")
+
+        # reset the time
+        self.solver.setTime(0.0, 0)
+        self.dynamicMeshDeformed = 1
+
     def readDynamicMeshPoints(self, timeVal, deltaT, timeIndex, ddtSchemeOrder):
         """
         Read the dynamic mesh points saved in the folders 0.001, 0.002
@@ -1199,12 +1197,16 @@ class PYDAFOAM(object):
         NOTE: setting the proper time index is critical because the fvMesh
         will use timeIndex to calculate meshPhi, V0 etc
         """
+        if timeVal < deltaT:
+            raise Error("timeVal not valid")
+
         if ddtSchemeOrder == 1:
             # no special treatment
             pass
         elif ddtSchemeOrder == 2:
             # need to read timeVal - 2*deltaT
-            time_2 = timeVal - 2 * deltaT
+            time_2 = max(timeVal - 2 * deltaT, 0.0)
+            # NOTE: the index can go to negative, just to force the fvMesh to update V0, V00 etc
             index_2 = timeIndex - 2
             self.solver.setTime(time_2, index_2)
             self.solver.readMeshPoints(time_2)
@@ -1214,7 +1216,7 @@ class PYDAFOAM(object):
             raise Error("ddtSchemeOrder not supported")
 
         # read timeVal - deltaT points
-        time_1 = timeVal - deltaT
+        time_1 = max(timeVal - deltaT, 0.0)
         index_1 = timeIndex - 1
         self.solver.setTime(time_1, index_1)
         self.solver.readMeshPoints(time_1)

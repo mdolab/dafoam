@@ -40,6 +40,7 @@ daOptions = {
             "directionMode": "fixedDirection",
             "direction": [1.0, 0.0, 0.0],
             "scale": 0.1,
+            "dummy1": {},
         },
     },
 }
@@ -50,6 +51,13 @@ DASolver.setOption("function", {"CD": {"direction": [0.0, 1.0, 0.0]}})
 DASolver.updateDAOption()
 function = DASolver.getOption("function")
 if function["CD"]["direction"][1] != 1.0:
+    print("setOption failed")
+    exit(1)
+# test 3 levels of subDict
+DASolver.setOption("function", {"CD": {"dummy1": {"dummy2": {"dummy3": 2.5}}}})
+DASolver.updateDAOption()
+function = DASolver.getOption("function")
+if function["CD"]["dummy1"]["dummy2"]["dummy3"] != 2.5:
     print("setOption failed")
     exit(1)
 DASolver.calcPrimalResidualStatistics("print")

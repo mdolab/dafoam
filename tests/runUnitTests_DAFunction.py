@@ -63,7 +63,7 @@ daOptions = {
             "type": "wallHeatFlux",
             "source": "patchToFace",
             "patches": ["walls"],
-            "scale": 0.001,
+            "scale": 1.0,
         },
         "HFX_custom": {
             "type": "wallHeatFlux",
@@ -130,7 +130,7 @@ daOptions = {
             "center": [0.5, 0.5, 0.5],
             "coeffKS": 20.0,
             "scale": 1.0,
-            "snapCenter2Cell": False,
+            "snapCenter2Cell": True,
         },
         "IRMaxKS": {
             "type": "location",
@@ -166,6 +166,57 @@ daOptions = {
             "divByTotalVol": 1,
             "scale": 1.0,
         },
+        "HVar": {
+            "type": "variance",
+            "source": "patchToFace",
+            "patches": ["walls"],
+            "scale": 1.0,
+            "mode": "surface",
+            "varName": "wallHeatFlux",
+            "varType": "scalar",
+            "components": [0],
+            "timeDependentRefData": False,
+        },
+        "PVar": {
+            "type": "variance",
+            "source": "allCells",
+            "scale": 1.0,
+            "mode": "field",
+            "varName": "p",
+            "varType": "scalar",
+            "components": [0],
+            "timeDependentRefData": False,
+        },
+        "PProbe": {
+            "type": "variance",
+            "source": "allCells",
+            "scale": 1.0,
+            "mode": "probePoint",
+            "probePointCoords": [[0.51, 0.52, 0.53], [0.2, 0.3, 0.4]],
+            "varName": "p",
+            "varType": "scalar",
+            "components": [0],
+            "timeDependentRefData": False,
+        },
+        "UOutVar": {
+            "type": "variance",
+            "source": "patchToFace",
+            "patches": ["outlet"],
+            "scale": 1.0,
+            "mode": "surface",
+            "varName": "U",
+            "varType": "vector",
+            "components": [0],
+            "timeDependentRefData": False,
+        },
+        "ResNorm": {
+            "type": "residualNorm",
+            "source": "allCells",
+            "scale": 1.0,
+            "resWeight": {"URes": 0.1, "pRes": 0.01, "phiRes": 10.0, "TRes": 0.01, "nuTildaRes": 100.0},
+            "timeDependentRefData": False,
+            "timeOp": "average",
+        },
     },
 }
 
@@ -182,18 +233,23 @@ funcs_ref = {
     "CD": 2.2801022493682037,
     "CMZ": 7.1768354637131795,
     "TP1": 2.5561992647012914,
-    "HFX": 1.5730364723151125,
-    "HFX_custom": 5502.596904327625,
+    "HFX": 8.20332195479527,
+    "HFX_custom": 28.645216245520146,
     "PMean": 77.80996323506456,
     "UMean": 15.469850053816028,
     "skewness": 1.3140396235456926,
     "nonOrtho": 26.209186150313975,
     "faceOrthogonality": 7.948460246568271,
     "RMax": 1.295712391984845,
-    "RMaxKS": 0.8057075945057248,
+    "RMaxKS": 0.8579812873447494,
     "IRMaxKS": 9.132901616926853,
     "PVolSum": 23.576101529517096,
     "UVolSum": 2004.7819430730992,
+    "HVar": 67.87343828312974,
+    "PVar": 2.476982282327677,
+    "PProbe": 3.6866882754983203,
+    "UOutVar": 0.5085431532392312,
+    "ResNorm": 0.5124351615581738,
 }
 
 fail = 0
@@ -273,6 +329,17 @@ daOptions = {
             "outletPatches": ["outlet"],
             "scale": 1.0,
         },
+        "HVar": {
+            "type": "variance",
+            "source": "patchToFace",
+            "patches": ["walls"],
+            "scale": 1.0,
+            "mode": "surface",
+            "varName": "wallHeatFlux",
+            "varType": "scalar",
+            "components": [0],
+            "timeDependentRefData": False,
+        },
     },
 }
 
@@ -286,11 +353,12 @@ if gcomm.rank == 0:
     print(funcs)
 
 funcs_ref = {
-    "HFX": 15.494946599784122,
-    "HFX_custom": 54.15546957805019,
-    "TTR": 1.000000415241806,
-    "MFR": 128.22449523986853,
-    "TPR": 0.9934250594975235,
+    "HFX": 2564.397361965973,
+    "HFX_custom": 8967.626339020631,
+    "TTR": 1.0002129350727795,
+    "MFR": 128.2374484095998,
+    "TPR": 0.9933893131111589,
+    "HVar": 12470853.906556124,
 }
 
 fail = 0

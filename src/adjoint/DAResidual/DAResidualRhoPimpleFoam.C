@@ -316,6 +316,11 @@ void DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
         Calculate the diagonal block of the preconditioner matrix dRdWTPC using the fvMatrix
     */
 
+    Info << "************************ WARNING ************************** " << endl;
+    Info << "DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix has bugs and is commented out " << endl;
+
+    /*
+
     const labelUList& owner = mesh_.owner();
     const labelUList& neighbour = mesh_.neighbour();
 
@@ -567,6 +572,7 @@ void DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
         assignValueCheckAD(val, val1);
         MatSetValues(PCMat, 1, &colI, 1, &rowI, &val, INSERT_VALUES);
     }
+    */
 }
 
 } // End namespace Foam

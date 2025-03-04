@@ -220,7 +220,7 @@ public:
     }
 
 #ifdef CODI_ADR
-
+/*
     /// these two functions are for AD external functions
     static void betaCompute(
         const double* x,
@@ -243,6 +243,7 @@ public:
     {
         DAUtility::pyCalcBetaJacVecProdInterface(x, x_b, n, y, y_b, m, DAUtility::pyCalcBetaJacVecProd);
     }
+*/
 #endif
 
     /// this is a virtual function for regIOobject

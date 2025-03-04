@@ -48,7 +48,8 @@ DASolver::DASolver(
       daLinearEqnPtr_(nullptr),
       daResidualPtr_(nullptr),
       daRegressionPtr_(nullptr),
-      daGlobalVarPtr_(nullptr)
+      daGlobalVarPtr_(nullptr),
+      points0Ptr_(nullptr)
 #ifdef CODI_ADR
       ,
       globalADTape_(codi::RealReverse::getTape())
@@ -62,6 +63,30 @@ DASolver::DASolver(
     Info << "Initializing mesh and runtime for DASolver" << endl;
 
     daOptionPtr_.reset(new DAOption(meshPtr_(), pyOptions_));
+
+    // if the dynamic mesh is used, set moving to true here
+    dictionary allOptions = daOptionPtr_->getAllOptions();
+    if (allOptions.subDict("dynamicMesh").getLabel("active"))
+    {
+        meshPtr_->moving(true);
+        // if we have volCoord as the input, there is no need to save the initial
+        // mesh because OpenMDAO will assign a new coordinates (set_solver_input) to OF
+        // before each primal run. however, if we do not have the volCoord as the input,
+        // we need to save the initial mesh, such that we can reset the OF's fvMesh
+        // info for each dynamicMesh primal run.
+        if (!this->hasVolCoordInput())
+        {
+            points0Ptr_.reset(new pointField(meshPtr_->points()));
+        }
+        // we need to initialize the dynamic mesh by calling move points to create V0, V00 etc
+        // this is usually done automatically in primal solution, but for the AD version,
+        // we never cal primal so we need to manually initialize V0 etc here
+        this->initDynamicMesh();
+    }
+    else
+    {
+        meshPtr_->moving(false);
+    }
 
     primalMinResTol_ = daOptionPtr_->getOption<scalar>("primalMinResTol");
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
@@ -932,6 +957,21 @@ label DASolver::solveLinearEqn(
     return error;
 }
 
+void DASolver::getOFMeshPoints(double* points)
+{
+    // get the flatten mesh points coordinates
+    pointField meshPoints(meshPtr_->points());
+    label counterI = 0;
+    forAll(meshPoints, pointI)
+    {
+        for (label i = 0; i < 3; i++)
+        {
+            assignValueCheckAD(points[counterI], meshPoints[pointI][i]);
+            counterI++;
+        }
+    }
+}
+
 void DASolver::getOFField(
     const word fieldName,
     const word fieldType,
@@ -978,23 +1018,9 @@ void DASolver::updateOFFields(const scalar* states)
         Info << "Updating the OpenFOAM field..." << endl;
         printInfo = 1;
     }
-    this->setPrimalBoundaryConditions(printInfo);
     daFieldPtr_->state2OFField(states);
 
-    // if we have regression models, we also need to update them because they will update the fields
-    this->regressionModelCompute();
-
-    // We need to call correctBC multiple times to reproduce
-    // the exact residual, this is needed for some boundary conditions
-    // and intermediate variables (e.g., U for inletOutlet, nut with wall functions)
-    label maxCorrectBCCalls = daOptionPtr_->getOption<label>("maxCorrectBCCalls");
-    for (label i = 0; i < maxCorrectBCCalls; i++)
-    {
-        daResidualPtr_->correctBoundaryConditions();
-        daResidualPtr_->updateIntermediateVariables();
-        daModelPtr_->correctBoundaryConditions();
-        daModelPtr_->updateIntermediateVariables();
-    }
+    this->updateStateBoundaryConditions();
 }
 
 void DASolver::updateOFMesh(const scalar* volCoords)
@@ -2555,15 +2581,7 @@ void DASolver::updateStateBoundaryConditions()
         Update the boundary condition and intermediate variables for all state variables
     */
 
-    // if we have regression models, we also need to update them because they will update the fields
-    // NOTE we should have done it in DAInput, no need to call it again.
-    // this->regressionModelCompute();
-
-    label nBCCalls = 1;
-    if (daOptionPtr_->getOption<label>("hasIterativeBC"))
-    {
-        nBCCalls = daOptionPtr_->getOption<label>("maxCorrectBCCalls");
-    }
+    label nBCCalls = daOptionPtr_->getOption<label>("maxCorrectBCCalls");
 
     for (label i = 0; i < nBCCalls; i++)
     {
@@ -2572,6 +2590,10 @@ void DASolver::updateStateBoundaryConditions()
         daModelPtr_->correctBoundaryConditions();
         daModelPtr_->updateIntermediateVariables();
     }
+
+    // if we have regression models, we also need to update them because they will update the fields
+    // NOTE we should have done it in DAInput, no need to call it again.
+    this->regressionModelCompute();
 }
 
 void DASolver::calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly)
@@ -2838,6 +2860,47 @@ void DASolver::readMeshPoints(const scalar timeVal)
 
     meshPtr_->movePoints(readPoints);
 }
+
+void DASolver::writeMeshPoints(const double* points, const scalar timeVal)
+{
+    /*
+    Description:
+        write the mesh points to the disk for the given timeVal
+    
+    Inputs:
+        
+        timeVal: Which time to read, i.e., time.timeName()
+    */
+
+    pointIOField writePoints(
+        IOobject(
+            "points",
+            Foam::name(timeVal),
+            "polyMesh",
+            runTimePtr_(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false),
+        meshPtr_->points());
+
+    //pointIOField writePoints = meshPtr_->points();
+
+    label counterI = 0;
+    forAll(writePoints, pointI)
+    {
+        for (label i = 0; i < 3; i++)
+        {
+            writePoints[pointI][i] = points[counterI];
+            counterI++;
+        }
+    }
+    // time index is not important here. Users need to reset the time after
+    // calling this function
+    runTimePtr_->setTime(timeVal, 0);
+    //Info << "writing points to " << writePoints.path() << endl;
+    writePoints.write();
+}
+
 void DASolver::readStateVars(
     scalar timeVal,
     label oldTimeLevel)
@@ -3128,16 +3191,28 @@ void DASolver::getInitStateVals(HashTable<scalar>& initState)
 {
     /*
     Description:
-        Get the initial state values from the field's 1st index
+        Get the initial state values from the field's average value
     */
 
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         const word stateName = stateInfo_["volVectorStates"][idxI];
         const volVectorField& state = meshPtr_->thisDb().lookupObject<volVectorField>(stateName);
+        scalarList avgState(3, 0.0);
+        forAll(state, cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                avgState[i] += state[cellI][i] / daIndexPtr_->nGlobalCells;
+            }
+        }
+        reduce(avgState[0], sumOp<scalar>());
+        reduce(avgState[1], sumOp<scalar>());
+        reduce(avgState[2], sumOp<scalar>());
+
         for (label i = 0; i < 3; i++)
         {
-            initState.set(stateName + Foam::name(i), state[0][i]);
+            initState.set(stateName + Foam::name(i), avgState[i]);
         }
     }
 
@@ -3145,21 +3220,38 @@ void DASolver::getInitStateVals(HashTable<scalar>& initState)
     {
         const word stateName = stateInfo_["volScalarStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        initState.set(stateName, state[0]);
+        scalar avgState = 0.0;
+        forAll(state, cellI)
+        {
+            avgState += state[cellI];
+        }
+        avgState /= daIndexPtr_->nGlobalCells;
+        reduce(avgState, sumOp<scalar>());
+
+        initState.set(stateName, avgState);
     }
 
     forAll(stateInfo_["modelStates"], idxI)
     {
         const word stateName = stateInfo_["modelStates"][idxI];
         const volScalarField& state = meshPtr_->thisDb().lookupObject<volScalarField>(stateName);
-        initState.set(stateName, state[0]);
+        scalar avgState = 0.0;
+        forAll(state, cellI)
+        {
+            avgState += state[cellI];
+        }
+        avgState /= daIndexPtr_->nGlobalCells;
+        reduce(avgState, sumOp<scalar>());
+
+        initState.set(stateName, avgState);
     }
 
     forAll(stateInfo_["surfaceScalarStates"], idxI)
     {
         const word stateName = stateInfo_["surfaceScalarStates"][idxI];
-        const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
-        initState.set(stateName, state[0]);
+        // const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
+        // we can reset the flux to zeros
+        initState.set(stateName, 0.0);
     }
 
     Info << "initState: " << initState << endl;
@@ -3185,6 +3277,7 @@ void DASolver::resetStateVals()
                 state[cellI][i] = initStateVals_[stateName + Foam::name(i)];
             }
         }
+        state.correctBoundaryConditions();
     }
 
     forAll(stateInfo_["volScalarStates"], idxI)
@@ -3195,6 +3288,7 @@ void DASolver::resetStateVals()
         {
             state[cellI] = initStateVals_[stateName];
         }
+        state.correctBoundaryConditions();
     }
 
     forAll(stateInfo_["modelStates"], idxI)
@@ -3205,6 +3299,7 @@ void DASolver::resetStateVals()
         {
             state[cellI] = initStateVals_[stateName];
         }
+        state.correctBoundaryConditions();
     }
 
     forAll(stateInfo_["surfaceScalarStates"], idxI)
@@ -3214,6 +3309,19 @@ void DASolver::resetStateVals()
         forAll(state, faceI)
         {
             state[faceI] = initStateVals_[stateName];
+        }
+        forAll(state.boundaryField(), patchI)
+        {
+            forAll(state.boundaryField()[patchI], faceI)
+            {
+                state.boundaryFieldRef()[patchI][faceI] = initStateVals_[stateName];
+            }
+        }
+        // if this is a phi var, we inerpolate U to get phi
+        if (stateName == "phi")
+        {
+            const volVectorField& U = meshPtr_->thisDb().lookupObject<volVectorField>("U");
+            state = linearInterpolate(U) & meshPtr_->Sf();
         }
     }
 }
@@ -3501,6 +3609,8 @@ void DASolver::writeAdjointFields(
         psi: the adjoint vector array, computed in the Python layer
     */
 
+    Info << "Writting adjoint fields " << endl;
+
     runTimePtr_->setTime(writeTime, 0);
 
     forAll(stateInfo_["volVectorStates"], idxI)
@@ -3576,6 +3686,67 @@ void DASolver::writeAdjointFields(
         }
         adjointVar.write();
     }
+}
+
+label DASolver::hasVolCoordInput()
+{
+    // whether the volCoord input is defined
+    dictionary allOptions = daOptionPtr_->getAllOptions();
+    label hasVolCoordInput = 0;
+    forAll(allOptions.subDict("inputInfo").toc(), idxI)
+    {
+        word inputName = allOptions.subDict("inputInfo").toc()[idxI];
+        word inputType = allOptions.subDict("inputInfo").subDict(inputName).getWord("type");
+        if (inputType == "volCoord")
+        {
+            hasVolCoordInput = 1;
+        }
+    }
+    return hasVolCoordInput;
+}
+
+void DASolver::initDynamicMesh()
+{
+    /*
+    Description:
+        Resetting internal info in fvMesh, which is needed for multiple primal runs
+        For example, after one primal run, the mesh points is the final time t = N*dt
+        If we directly start the primal again, the meshPhi from t=dt will use the mesh
+        info from t=N*dt as the previous time step, this is wrong. Similary things happen
+        for V0, V00 calculation. Therefore, to fix this problem, we need to call 
+        movePoints multiple times to rest all the internal info in fvMesh to t=0
+    */
+    label ddtSchemeOrder = this->getDdtSchemeOrder();
+    label hasVolCoordInput = this->hasVolCoordInput();
+
+    if (hasVolCoordInput)
+    {
+        // if we have volCoord as the input, the fvMesh is assigned by external components
+        // such as IDWarap, and it is should be at t=0 already, so
+        // we just call movePoints multiple times (depending on ddtSchemeOrder)
+        // NOTE: we just use the i index starting from 100 to avoid conflict with
+        // the starting timeIndex=1 because if the timeIndex equals the fvMesh's
+        // internal timeIndex counter, it will not reset the internal mesh info
+        pointField points0 = meshPtr_->points();
+        for (label i = 100; i <= 100 + ddtSchemeOrder; i++)
+        {
+            runTimePtr_->setTime(0.0, i);
+            meshPtr_->movePoints(points0);
+        }
+    }
+    else
+    {
+        // if there is no volCoord as the input, the fvMesh is at t=N*dt
+        // in this case, we need to use the initial mesh save in points0Ptr_
+        for (label i = 100; i <= 100 + ddtSchemeOrder; i++)
+        {
+            runTimePtr_->setTime(0.0, i);
+            meshPtr_->movePoints(points0Ptr_());
+        }
+    }
+
+    // finally, reset the time to 0
+    runTimePtr_->setTime(0.0, 0);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

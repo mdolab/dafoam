@@ -425,7 +425,7 @@ void DAField::point2OFMesh(const scalar* volCoords) const
     // movePoints update the mesh metrics such as volume, surface area and cell centers
     fvMesh& mesh = const_cast<fvMesh&>(mesh_);
     mesh.movePoints(meshPoints);
-    if (daOption_.getAllOptions().getLabel("dynamicMesh"))
+    if (daOption_.getAllOptions().subDict("dynamicMesh").getLabel("active"))
     {
         mesh.moving(true);
     }
@@ -1174,6 +1174,95 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                             forAll(epsilon.boundaryFieldRef()[patchI], faceI)
                             {
                                 epsilon.boundaryFieldRef()[patchI][faceI] = 1e-14; // assign uniform field
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ------ alphat ----------
+        // TODO: need to figure out a way to pass the Prt parameter
+        // to the wall function. The default is 0.85 and is hard coded
+        if (db.foundObject<volScalarField>("alphat"))
+        {
+
+            volScalarField& alphat(const_cast<volScalarField&>(
+                db.lookupObject<volScalarField>("alphat")));
+
+            forAll(alphat.boundaryField(), patchI)
+            {
+                if (mesh_.boundaryMesh()[patchI].type() == "wall")
+                {
+
+                    if (printInfo)
+                    {
+                        Info << "Setting alphat wall BC for "
+                             << mesh_.boundaryMesh()[patchI].name() << ". ";
+                    }
+
+                    if (useWallFunction)
+                    {
+
+                        if (mesh_.thisDb().foundObject<incompressible::turbulenceModel>(incompressible::turbulenceModel::propertiesName))
+                        {
+                            // incompressible case
+                            alphat.boundaryFieldRef().set(
+                                patchI,
+                                fvPatchField<scalar>::New("incompressible::alphatWallFunction", mesh_.boundary()[patchI], alphat));
+
+                            if (printInfo)
+                            {
+                                Info << "BCType=incompressible::alphatWallFunction" << endl;
+                            }
+                        }
+                        else if (mesh_.thisDb().foundObject<compressible::turbulenceModel>(compressible::turbulenceModel::propertiesName))
+                        {
+                            // compressible case
+                            // incompressible case
+                            alphat.boundaryFieldRef().set(
+                                patchI,
+                                fvPatchField<scalar>::New("compressible::alphatWallFunction", mesh_.boundary()[patchI], alphat));
+
+                            if (printInfo)
+                            {
+                                Info << "BCType=compressible::alphatWallFunction" << endl;
+                            }
+                        }
+                        else
+                        {
+                            FatalErrorIn("") << "turbModelType_ not valid!" << abort(FatalError);
+                        }
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            scalar wallVal = alphat[0];
+                            forAll(alphat.boundaryFieldRef()[patchI], faceI)
+                            {
+                                alphat.boundaryFieldRef()[patchI][faceI] = wallVal; // assign uniform field
+                            }
+                        }
+                    }
+                    else
+                    {
+                        alphat.boundaryFieldRef().set(
+                            patchI,
+                            fvPatchField<scalar>::New("fixedValue", mesh_.boundary()[patchI], alphat));
+
+                        if (printInfo)
+                        {
+                            Info << "BCType=fixedValue" << endl;
+                        }
+
+                        // set boundary values
+                        // for decomposed domain, don't set BC if the patch is empty
+                        if (mesh_.boundaryMesh()[patchI].size() > 0)
+                        {
+                            forAll(alphat.boundaryFieldRef()[patchI], faceI)
+                            {
+                                alphat.boundaryFieldRef()[patchI][faceI] = 1e-14; // assign uniform field
                             }
                         }
                     }

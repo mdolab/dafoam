@@ -1,0 +1,11 @@
+Dictionary Key: scenario.solver.UVar
+@value         0.0056153879527849 1e-10 1e-12
+Dictionary Key: scenario.solver.UVar
+Dictionary Key: reg_model0-Adjoint
+@value         0.0000000059723022 1e-08 1e-12
+Dictionary Key: reg_model0-ForwardAD
+@value         0.0000000057738552 1e-08 1e-12
+Dictionary Key: reg_model50-Adjoint
+@value         0.0007588147629434 1e-08 1e-12
+Dictionary Key: reg_model50-ForwardAD
+@value         0.0007340967939214 1e-08 1e-12

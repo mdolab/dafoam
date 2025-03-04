@@ -12,7 +12,7 @@ Dictionary Key: reg_model0-Adjoint
 Dictionary Key: reg_model0-ForwardAD
 @value        -0.0000000000202366 1e-08 1e-12
 Dictionary Key: reg_model50-Adjoint
-@value         0.0000008573321987 1e-08 1e-12
+@value         0.0000008573323259 1e-08 1e-12
 Dictionary Key: reg_model50-ForwardAD
 @value        -0.0000000440059541 1e-08 1e-12
 Dictionary Key: scenario.solver.UProbe
@@ -21,7 +21,7 @@ Dictionary Key: reg_model0-Adjoint
 Dictionary Key: reg_model0-ForwardAD
 @value         0.0000000000001869 1e-08 1e-12
 Dictionary Key: reg_model50-Adjoint
-@value         0.0000000285462067 1e-08 1e-12
+@value         0.0000000285462072 1e-08 1e-12
 Dictionary Key: reg_model50-ForwardAD
 @value         0.0000000279303854 1e-08 1e-12
 Dictionary Key: scenario.solver.UVar
@@ -30,7 +30,7 @@ Dictionary Key: reg_model0-Adjoint
 Dictionary Key: reg_model0-ForwardAD
 @value        -0.0000000000013332 1e-08 1e-12
 Dictionary Key: reg_model50-Adjoint
-@value        -0.0000001377158186 1e-08 1e-12
+@value        -0.0000001377158221 1e-08 1e-12
 Dictionary Key: reg_model50-ForwardAD
 @value        -0.0000001376393981 1e-08 1e-12
 Dictionary Key: scenario.solver.wallShearStressVar

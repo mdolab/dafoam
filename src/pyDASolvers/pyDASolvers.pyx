@@ -65,6 +65,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void updateOFFields(double *)
         void getOFFields(double *)
         void getOFField(char *, char *, double *)
+        void getOFMeshPoints(double *)
         void updateOFMesh(double *)
         int getGlobalXvIndex(int, int)
         int getNLocalAdjointStates()
@@ -78,17 +79,10 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getElapsedCpuTime()
         void calcCouplingFaceCoords(double *, double *)
         int getNRegressionParameters(char *)
-        void setRegressionParameter(char *, int, double)
-        void regressionModelCompute()
         void printAllOptions()
         void updateDAOption(object)
         double getPrevPrimalSolTime()
-        void writeMatrixBinary(PetscMat, char *)
-        void writeMatrixASCII(PetscMat, char *)
-        void readMatrixBinary(PetscMat, char *)
-        void writeVectorASCII(PetscVec, char *)
-        void readVectorBinary(PetscVec, char *)
-        void writeVectorBinary(PetscVec, char *)
+        void writeFailedMesh()
         void updateBoundaryConditions(char *, char *)
         void updateStateBoundaryConditions()
         void calcPrimalResidualStatistics(char *)
@@ -97,6 +91,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *, pySetCharInterface, void *)
         void readStateVars(double, int)
         void readMeshPoints(double)
+        void writeMeshPoints(double *, double)
         void calcPCMatWithFvMatrix(PetscMat, int)
         double getEndTime()
         double getDeltaT()
@@ -106,6 +101,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void writeSensMapField(char *, double *, char *, double)
         double getLatestTime()
         void writeAdjointFields(char *, double, double *)
+        int hasVolCoordInput()
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -261,6 +257,11 @@ cdef class pyDASolvers:
         cdef double *states_data = <double*>states.data
         self._thisptr.getOFFields(states_data)
     
+    def getOFMeshPoints(self, np.ndarray[double, ndim=1, mode="c"] points):
+        assert len(points) == self.getNLocalPoints() * 3, "invalid array size!"
+        cdef double *points_data = <double*>points.data
+        self._thisptr.getOFMeshPoints(points_data)
+    
     def getOFField(self, fieldName, fieldType, np.ndarray[double, ndim=1, mode="c"] field):
         if fieldType == "scalar":
             assert len(field) == self.getNLocalCells(), "invalid array size!"
@@ -317,12 +318,6 @@ cdef class pyDASolvers:
 
     def getNRegressionParameters(self, modelName):
         return self._thisptr.getNRegressionParameters(modelName)
-    
-    def setRegressionParameter(self, modelName, idx, val):
-        self._thisptr.setRegressionParameter(modelName, idx, val)
-    
-    def regressionModelCompute(self):
-        self._thisptr.regressionModelCompute()
 
     def printAllOptions(self):
         self._thisptr.printAllOptions()
@@ -333,23 +328,8 @@ cdef class pyDASolvers:
     def getPrevPrimalSolTime(self):
         return self._thisptr.getPrevPrimalSolTime()
     
-    def writeMatrixBinary(self, Mat magIn, prefix):
-        self._thisptr.writeMatrixBinary(magIn.mat, prefix)
-    
-    def writeMatrixASCII(self, Mat magIn, prefix):
-        self._thisptr.writeMatrixASCII(magIn.mat, prefix)
-    
-    def readMatrixBinary(self, Mat magIn, prefix):
-        self._thisptr.readMatrixBinary(magIn.mat, prefix)
-    
-    def writeVectorASCII(self, Vec vecIn, prefix):
-        self._thisptr.writeVectorASCII(vecIn.vec, prefix)
-    
-    def readVectorBinary(self, Vec vecIn, prefix):
-        self._thisptr.readVectorBinary(vecIn.vec, prefix)
-    
-    def writeVectorBinary(self, Vec vecIn, prefix):
-        self._thisptr.writeVectorBinary(vecIn.vec, prefix)
+    def writeFailedMesh(self):
+        self._thisptr.writeFailedMesh()
     
     def updateBoundaryConditions(self, fieldName, fieldType):
         self._thisptr.updateBoundaryConditions(fieldName.encode(), fieldType.encode())
@@ -368,6 +348,12 @@ cdef class pyDASolvers:
     
     def readMeshPoints(self, timeVal):
         self._thisptr.readMeshPoints(timeVal)
+
+    def writeMeshPoints(self, np.ndarray[double, ndim=1, mode="c"] points, timeVal):
+        assert len(points) == self.getNLocalPoints() * 3, "invalid array size!"
+        cdef double *points_data = <double*>points.data
+
+        self._thisptr.writeMeshPoints(points_data, timeVal)
     
     def calcPCMatWithFvMatrix(self, Mat PCMat, turbOnly=0):
         self._thisptr.calcPCMatWithFvMatrix(PCMat.mat, turbOnly)
@@ -435,6 +421,9 @@ cdef class pyDASolvers:
     
     def getLatestTime(self):
         return self._thisptr.getLatestTime()
+    
+    def hasVolCoordInput(self):
+        return self._thisptr.hasVolCoordInput()
     
     def writeAdjointFields(self, function, writeTime, np.ndarray[double, ndim=1, mode="c"] psi):
         nAdjStates = self.getNLocalAdjointStates()

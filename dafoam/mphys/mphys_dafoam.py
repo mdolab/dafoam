@@ -112,7 +112,7 @@ class DAFoamBuilder(Builder):
     def get_number_of_nodes(self, groupName=None):
         # Get number of aerodynamic nodes
         if groupName is None:
-            groupName = self.DASolver.couplingSurfacesGroup
+            groupName = self.DASolver.designSurfacesGroup
         nodes = int(self.DASolver.getSurfaceCoordinates(groupName=groupName).size / 3)
 
         return nodes
@@ -326,6 +326,7 @@ class DAFoamSolver(ImplicitComponent):
 
             # if the mesh is not OK, do not run the primal
             if meshOK != 1:
+                DASolver.solver.writeFailedMesh()
                 raise AnalysisError("Mesh quality error!")
                 return
 
@@ -524,13 +525,6 @@ class DAFoamSolver(ImplicitComponent):
                 # actually solving the adjoint linear equation using Petsc
                 fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
 
-                # optionally write the adjoint vector as OpenFOAM field format for post-processing
-                # update the obj func name for solve_linear later
-                # solveLinearFunctionName = DASolver.getOption("solveLinearFunctionName")
-                # psi_array = DASolver.vec2Array(self.psi)
-                # solTimeFloat = self.solution_counter / 1e4
-                # self.DASolver.writeAdjointFields(solveLinearFunctionName, solTimeFloat, psi_array)
-
             elif adjEqnSolMethod == "fixedPoint":
                 solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
                 if renamed:
@@ -545,6 +539,11 @@ class DAFoamSolver(ImplicitComponent):
                 fail = DASolver.solverAD.runFPAdj(dFdW, self.psi)
             else:
                 raise RuntimeError("adjEqnSolMethod=%s not valid! Options are: Krylov or fixedPoint" % adjEqnSolMethod)
+
+            # optionally write the adjoint vector as OpenFOAM field format for post-processing
+            psi_array = DASolver.vec2Array(self.psi)
+            solTimeFloat = (self.solution_counter - 1) / 1e4
+            DASolver.writeAdjointFields("function", solTimeFloat, psi_array)
 
             # convert the solution vector to array and assign it to d_residuals
             d_residuals[self.stateName] = DASolver.vec2Array(self.psi)
@@ -1317,6 +1316,8 @@ class DAFoamSolverUnsteady(ExplicitComponent):
             # if the mesh is not OK, do not run the primal
             if meshOK:
                 DASolver.set_solver_input(inputs, self.DVGeo)
+                # if dyamic mesh is used, we need to deform the mesh points and save them to disk
+                DASolver.deformDynamicMesh()
                 DASolver()
             else:
                 DASolver.primalFail = 1
@@ -1372,7 +1373,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         # now we can read the variables
         DASolver.readStateVars(endTime, deltaT)
         # if it is dynamic mesh, read the mesh points
-        if DASolver.getOption("dynamicMesh"):
+        if DASolver.getOption("dynamicMesh")["active"]:
             DASolver.readDynamicMeshPoints(endTime, deltaT, endTimeIndex, ddtSchemeOrder)
 
         # now we can print the residual for the endTime state
@@ -1392,7 +1393,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
             # now we can read the variables
             DASolver.readStateVars(endTime, deltaT)
             # if it is dynamic mesh, read the mesh points
-            if DASolver.getOption("dynamicMesh"):
+            if DASolver.getOption("dynamicMesh")["active"]:
                 DASolver.readDynamicMeshPoints(endTime, deltaT, endTimeIndex, ddtSchemeOrder)
             # calc the preconditioner mat for endTime
             if self.comm.rank == 0:
@@ -1417,7 +1418,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     # now we can read the variables
                     DASolver.readStateVars(t, deltaT)
                     # if it is dynamic mesh, read the mesh points
-                    if DASolver.getOption("dynamicMesh"):
+                    if DASolver.getOption("dynamicMesh")["active"]:
                         DASolver.readDynamicMeshPoints(t, deltaT, timeIndex, ddtSchemeOrder)
                     # calc the preconditioner mat
                     dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
@@ -1489,7 +1490,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 # read the state, state.oldTime, etc and update self.wVec for this time instance
                 DASolver.readStateVars(timeVal, deltaT)
                 # if it is dynamic mesh, read the mesh points
-                if DASolver.getOption("dynamicMesh"):
+                if DASolver.getOption("dynamicMesh")["active"]:
                     DASolver.readDynamicMeshPoints(timeVal, deltaT, n, ddtSchemeOrder)
 
                 # calculate dFdW scaling, if time index is within the unsteady objective function
