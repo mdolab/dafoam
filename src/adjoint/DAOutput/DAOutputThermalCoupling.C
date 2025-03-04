@@ -46,9 +46,9 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
     forAll(daFunctionPtrList_, idxI)
     {
         DAFunction& daFunction = daFunctionPtrList_[idxI];
-        word functionName = daFunction.getFunctionName();
+        word functionName_ = daFunction.getFunctionName();
 
-        if (daOption_.getAllOptions().subDict("function").subDict(functionName).found("formulation"))
+        if (daOption_.getAllOptions().subDict("function").subDict(functionName_).found("formulation"))
         {
             formMode_ = daOption_.getAllOptions().subDict("function").subDict(functionName).lookupOrDefault<word>("formulation", "default");
         }
