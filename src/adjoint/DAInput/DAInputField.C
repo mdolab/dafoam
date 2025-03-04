@@ -34,15 +34,16 @@ DAInputField::DAInputField(
     fieldName_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).getWord("fieldName");
     fieldType_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).getWord("fieldType");
 
-    if (daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).found("components"))
+    if (daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).found("varComponents"))
     {
-        daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).readEntry("components", components_);
+        daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).readEntry("varComponents", varComponents_);
     }
     else
     {
+        varComponents_.setSize(3);
         for (label i = 0; i < 3; i++)
         {
-            components_[i] = i;
+            varComponents_[i] = i;
         }
     }
 }
@@ -86,9 +87,9 @@ void DAInputField::run(const scalarList& input)
             label counterI = 0;
             forAll(field, cellI)
             {
-                forAll(components_, idxI)
+                forAll(varComponents_, idxI)
                 {
-                    label comp = components_[idxI];
+                    label comp = varComponents_[idxI];
                     field[cellI][comp] = input[counterI];
                     counterI++;
                 }
@@ -101,9 +102,9 @@ void DAInputField::run(const scalarList& input)
                 if (daIndex_.globalCellNumbering.isLocal(globalCellI))
                 {
                     label localCellI = daIndex_.globalCellNumbering.toLocal(globalCellI);
-                    forAll(components_, idxI)
+                    forAll(varComponents_, idxI)
                     {
-                        label comp = components_[idxI];
+                        label comp = varComponents_[idxI];
                         label inputIdx = globalCellI * 3 + comp;
                         field[localCellI][comp] = input[inputIdx];
                     }

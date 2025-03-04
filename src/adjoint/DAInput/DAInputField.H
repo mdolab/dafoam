@@ -37,7 +37,7 @@ protected:
     word fieldType_;
 
     /// if it is vector fields, we can also provide components
-    labelList components_;
+    labelList varComponents_;
 
 public:
     TypeName("field");
@@ -74,7 +74,7 @@ public:
         }
         else if (fieldType_ == "vector")
         {
-            label cSize = components_.size();
+            label cSize = varComponents_.size();
             if (this->distributed())
             {
                 return daIndex_.nLocalCells * cSize;
