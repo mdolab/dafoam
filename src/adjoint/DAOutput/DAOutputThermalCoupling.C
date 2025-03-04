@@ -43,20 +43,7 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
     discipline_ = daOption_.getAllOptions().getWord("discipline");
 
     // check formulation mode
-    forAll(daFunctionPtrList_, idxI)
-    {
-        DAFunction& daFunction = daFunctionPtrList_[idxI];
-        word functionName_ = daFunction.getFunctionName();
-
-        if (daOption_.getAllOptions().subDict("function").subDict(functionName_).found("formulation"))
-        {
-            formMode_ = daOption_.getAllOptions().subDict("function").subDict(functionName).lookupOrDefault<word>("formulation", "default");
-        }
-        else
-        {
-            formMode_ = "default";
-        }
-    }
+    couplingMode_ = daOption_.getAllOptions().subDict("outputInfo").lookupOrDefault<word>("thermalCouplingScheme", "default");
 
     size_ = 0;
     forAll(patches_, idxI)
@@ -129,12 +116,12 @@ void DAOutputThermalCoupling::run(scalarList& output)
                 label patchI = mesh_.boundaryMesh().findPatchID(patchName);
                 forAll(mesh_.boundaryMesh()[patchI], faceI)
                 {
-                    if (formMode_ == "default")
+                    if (couplingMode_ == "default")
                     {
                         // deltaCoeffs = 1 / d
                         deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
                     }
-                    else if (formMode_ == "daCustom")
+                    else if (couplingMode_ == "daCustom")
                     {
                         label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
                         vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
@@ -144,8 +131,8 @@ void DAOutputThermalCoupling::run(scalarList& output)
                     }
                     else
                     {
-                        FatalErrorIn(" ") << "formulation: "
-                                          << formMode_ << " not supported!"
+                        FatalErrorIn(" ") << "thermalCouplingScheme: "
+                                          << couplingMode_ << " not supported!"
                                           << " Options are: default and daCustom."
                                           << abort(FatalError);
                     }
@@ -201,12 +188,12 @@ void DAOutputThermalCoupling::run(scalarList& output)
                 label patchI = mesh_.boundaryMesh().findPatchID(patchName);
                 forAll(mesh_.boundaryMesh()[patchI], faceI)
                 {
-                    if (formMode_ == "default")
+                    if (couplingMode_ == "default")
                     {
                         // deltaCoeffs = 1 / d
                         deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
                     }
-                    else if (formMode_ == "daCustom")
+                    else if (couplingMode_ == "daCustom")
                     {
                         label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
                         vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
@@ -216,8 +203,8 @@ void DAOutputThermalCoupling::run(scalarList& output)
                     }
                     else
                     {
-                        FatalErrorIn(" ") << "formulation: "
-                                          << formMode_ << " not supported!"
+                        FatalErrorIn(" ") << "thermalCouplingScheme: "
+                                          << couplingMode_ << " not supported!"
                                           << " Options are: default and daCustom."
                                           << abort(FatalError);
                     }
@@ -249,12 +236,12 @@ void DAOutputThermalCoupling::run(scalarList& output)
             label patchI = mesh_.boundaryMesh().findPatchID(patchName);
             forAll(mesh_.boundaryMesh()[patchI], faceI)
             {
-                if (formMode_ == "default")
+                if (couplingMode_ == "default")
                 {
                     // deltaCoeffs = 1 / d
                     deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
                 }
-                else if (formMode_ == "daCustom")
+                else if (couplingMode_ == "daCustom")
                 {
                     label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
                     vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
@@ -264,8 +251,8 @@ void DAOutputThermalCoupling::run(scalarList& output)
                 }
                 else
                 {
-                    FatalErrorIn(" ") << "formulation: "
-                                      << formMode_ << " not supported!"
+                    FatalErrorIn(" ") << "thermalCouplingScheme: "
+                                      << couplingMode_ << " not supported!"
                                       << " Options are: default and daCustom."
                                       << abort(FatalError);
                 }

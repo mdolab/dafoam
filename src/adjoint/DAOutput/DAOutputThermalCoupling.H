@@ -27,7 +27,6 @@
 #include "addToRunTimeSelectionTable.H"
 #include "mixedFvPatchFields.H"
 #include "thermodynamicConstants.H"
-#include "DAFunction.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -53,14 +52,7 @@ protected:
     word discipline_;
 
     /// if calculating wallHeatFlux by OpenFOAMs snGrad() or DAFOAM's custom (daCustom) formulation
-    word formMode_;
-
-    /// name of the objective function
-    word functionName_;
-
-        /// a list of DAFunction pointers
-        UPtrList<DAFunction>
-            daFunctionPtrList_;
+    word couplingMode_;
 
 public:
     TypeName("thermalCouplingOutput");
@@ -80,20 +72,6 @@ public:
     //- Destructor
     virtual ~DAOutputThermalCoupling()
     {
-    }
-
-    /// return the index of a given functionName in daFunctionPtrList_
-    label getFunctionListIndex(const word functionName)
-    {
-        forAll(daFunctionPtrList_, idxI)
-        {
-            DAFunction& daFunction = daFunctionPtrList_[idxI];
-            word functionName1 = daFunction.getFunctionName();
-            if (functionName1 == functionName)
-            {
-                return idxI;
-            }
-        }
     }
 
     virtual void run(scalarList& output);

@@ -58,7 +58,7 @@ protected:
     word discipline_;
 
     /// if calculating wallHeatFlux by OpenFOAMs snGrad() or DAFOAM's custom (daCustom) formulation
-    word formMode_;
+    word couplingMode_;
 
 public:
     TypeName("thermalCouplingInput");
