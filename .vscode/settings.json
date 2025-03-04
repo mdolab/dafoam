@@ -5,6 +5,11 @@
         "DAInputField.C": "cpp",
         "DAInputFvSourcePar.C": "cpp",
         "DAFunction.C": "cpp",
-        "DASolver.C": "cpp"
+        "DASolver.C": "cpp",
+        "DAInputPatchVar.C": "cpp",
+        "DAInputPatchVelocity.C": "cpp",
+        "DAInputRegressionPar.C": "cpp",
+        "DAInputStateVar.C": "cpp",
+        "DAInputVolCoord.C": "cpp"
     }
 }
