@@ -56,10 +56,11 @@ protected:
     word formMode_;
 
     /// name of the objective function
-    word functionName_
+    word functionName_;
 
-    /// a list of DAFunction pointers
-    UPtrList<DAFunction> daFunctionPtrList_;
+        /// a list of DAFunction pointers
+        UPtrList<DAFunction>
+            daFunctionPtrList_;
 
 public:
     TypeName("thermalCouplingOutput");
