@@ -40,7 +40,7 @@ DAInputThermalCoupling::DAInputThermalCoupling(
     discipline_ = daOption_.getAllOptions().getWord("discipline");
 
     // check formulation mode
-    couplingMode_ = daOption_.getAllOptions().subDict("inputInfo").lookupOrDefault<word>("thermalCouplingScheme", "default");
+    couplingMode_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_).lookupOrDefault<word>("thermalCouplingScheme", "default");
 
     size_ = 0;
     forAll(patches_, idxI)

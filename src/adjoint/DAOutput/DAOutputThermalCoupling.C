@@ -43,7 +43,7 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
     discipline_ = daOption_.getAllOptions().getWord("discipline");
 
     // check formulation mode
-    couplingMode_ = daOption_.getAllOptions().subDict("outputInfo").lookupOrDefault<word>("thermalCouplingScheme", "default");
+    couplingMode_ = daOption_.getAllOptions().subDict("outputInfo").subDict(outputName_).lookupOrDefault<word>("thermalCouplingScheme", "default");
 
     size_ = 0;
     forAll(patches_, idxI)
