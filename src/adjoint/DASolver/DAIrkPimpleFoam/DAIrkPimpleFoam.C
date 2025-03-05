@@ -186,14 +186,6 @@ label DAIrkPimpleFoam::solvePrimal()
     p2.oldTime() = p2;
     phi1.oldTime() = phi1;
     phi2.oldTime() = phi2;
-    /*
-    volVectorField U1OldTime("U1OldTime", U1);
-    volVectorField U2OldTime("U2OldTime", U2);
-    volScalarField p1OldTime("p1OldTime", p1);
-    volScalarField p2OldTime("p2OldTime", p2);
-    surfaceScalarField phi1OldTime("phi1OldTime", phi1);
-    surfaceScalarField phi2OldTime("phi2OldTime", phi2);
-    */
 
     // Numerical settings
     word divUScheme = "div(phi,U)";
