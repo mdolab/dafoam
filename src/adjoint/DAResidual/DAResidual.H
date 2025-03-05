@@ -34,6 +34,7 @@ namespace Foam
 \*---------------------------------------------------------------------------*/
 
 class DAResidual
+    : public regIOobject
 {
 
 private:
@@ -123,6 +124,12 @@ public:
 
     /// calculating the adjoint preconditioner matrix using fvMatrix
     virtual void calcPCMatWithFvMatrix(Mat PCMat);
+
+    /// virtual function for regIOobject
+    bool writeData(Ostream& os) const
+    {
+        return true;
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

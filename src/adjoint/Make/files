@@ -40,6 +40,7 @@ DAFunction/DAFunctionVariableVolSum.C
 DAFunction/DAFunctionLocation.C
 DAFunction/DAFunctionMeshQualityKS.C
 DAFunction/DAFunctionVonMisesStressKS.C
+DAFunction/DAFunctionResidualNorm.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C

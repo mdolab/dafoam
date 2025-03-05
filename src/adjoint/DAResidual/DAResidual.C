@@ -25,7 +25,16 @@ DAResidual::DAResidual(
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex)
-    : mesh_(mesh),
+    : regIOobject(
+        IOobject(
+            "DAResidual", // always use DAResidual for the db name
+            mesh.time().timeName(),
+            mesh, // register to mesh
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            true // always register object
+            )),
+      mesh_(mesh),
       daOption_(daOption),
       daModel_(daModel),
       daIndex_(daIndex),
