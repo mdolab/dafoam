@@ -102,6 +102,7 @@ DAResidual/DAResidualSolidDisplacementFoam.C
 DASolver/DASolver.C
 DASolver/DASimpleFoam/DASimpleFoam.C
 DASolver/DAPimpleFoam/DAPimpleFoam.C
+DASolver/DAIrkPimpleFoam/DAIrkPimpleFoam.C
 DASolver/DARhoPimpleFoam/DARhoPimpleFoam.C
 DASolver/DAPimpleDyMFoam/DAPimpleDyMFoam.C
 DASolver/DARhoSimpleFoam/DARhoSimpleFoam.C
