@@ -43,7 +43,7 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
     discipline_ = daOption_.getAllOptions().getWord("discipline");
 
     // check formulation mode
-    couplingMode_ = daOption_.getAllOptions().subDict("outputInfo").subDict(outputName_).lookupOrDefault<word>("thermalCouplingScheme", "default");
+    couplingMode_ = daOption_.getAllOptions().subDict("outputInfo").subDict(outputName_).lookupOrDefault<word>("thermalCouplingMode", "default");
 
     size_ = 0;
     forAll(patches_, idxI)
@@ -131,7 +131,7 @@ void DAOutputThermalCoupling::run(scalarList& output)
                     }
                     else
                     {
-                        FatalErrorIn(" ") << "thermalCouplingScheme: "
+                        FatalErrorIn(" ") << "thermalCouplingMode: "
                                           << couplingMode_ << " not supported!"
                                           << " Options are: default and daCustom."
                                           << abort(FatalError);
@@ -203,7 +203,7 @@ void DAOutputThermalCoupling::run(scalarList& output)
                     }
                     else
                     {
-                        FatalErrorIn(" ") << "thermalCouplingScheme: "
+                        FatalErrorIn(" ") << "thermalCouplingMode: "
                                           << couplingMode_ << " not supported!"
                                           << " Options are: default and daCustom."
                                           << abort(FatalError);
@@ -251,7 +251,7 @@ void DAOutputThermalCoupling::run(scalarList& output)
                 }
                 else
                 {
-                    FatalErrorIn(" ") << "thermalCouplingScheme: "
+                    FatalErrorIn(" ") << "thermalCouplingMode: "
                                       << couplingMode_ << " not supported!"
                                       << " Options are: default and daCustom."
                                       << abort(FatalError);
