@@ -64,6 +64,17 @@ protected:
     scalar w1;
     scalar w2;
 
+    // SA model fv3 coefficients 
+    scalar sigmaNut;
+    scalar kappa;
+    scalar Cb1;
+    scalar Cb2;
+    scalar Cw1;
+    scalar Cw2;
+    scalar Cw3;
+    scalar Cv1;
+    scalar Cv2;
+
 public:
     TypeName("DAIrkPimpleFoam");
     // Constructors
