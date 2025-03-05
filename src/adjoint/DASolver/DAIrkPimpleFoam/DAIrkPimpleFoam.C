@@ -85,14 +85,14 @@ label DAIrkPimpleFoam::solvePrimal()
          << endl;
 
     // Radau23 coefficients and weights
-    scalar D10 = -2;
-    scalar D11 = 3.0 / 2;
-    scalar D12 = 1.0 / 2;
-    scalar D20 = 2;
-    scalar D21 = -9.0 / 2;
-    scalar D22 = 5.0 / 2;
-    scalar w1 = 3.0 / 4;
-    scalar w2 = 1.0 / 4;
+    D10 = -2;
+    D11 = 3.0 / 2;
+    D12 = 1.0 / 2;
+    D20 = 2;
+    D21 = -9.0 / 2;
+    D22 = 5.0 / 2;
+    w1 = 3.0 / 4;
+    w2 = 1.0 / 4;
 
     // get IRKDict settings, default to Radau23 for now
     IOdictionary IRKDict(

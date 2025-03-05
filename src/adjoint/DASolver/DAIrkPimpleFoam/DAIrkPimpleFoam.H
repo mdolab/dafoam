@@ -54,6 +54,16 @@ class DAIrkPimpleFoam
 {
 
 protected:
+    // Radau23 coefficients
+    scalar D10;
+    scalar D11;
+    scalar D12;
+    scalar D20;
+    scalar D21;
+    scalar D22;
+    scalar w1;
+    scalar w2;
+
 public:
     TypeName("DAIrkPimpleFoam");
     // Constructors
