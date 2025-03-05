@@ -180,12 +180,20 @@ label DAIrkPimpleFoam::solvePrimal()
     */
 
     // Initialize oldTime() for under-relaxation
+    U1.oldTime() = U1;
+    U2.oldTime() = U2;
+    p1.oldTime() = p1;
+    p2.oldTime() = p2;
+    phi1.oldTime() = phi1;
+    phi2.oldTime() = phi2;
+    /*
     volVectorField U1OldTime("U1OldTime", U1);
     volVectorField U2OldTime("U2OldTime", U2);
     volScalarField p1OldTime("p1OldTime", p1);
     volScalarField p2OldTime("p2OldTime", p2);
     surfaceScalarField phi1OldTime("phi1OldTime", phi1);
     surfaceScalarField phi2OldTime("phi2OldTime", phi2);
+    */
 
     // Numerical settings
     word divUScheme = "div(phi,U)";
