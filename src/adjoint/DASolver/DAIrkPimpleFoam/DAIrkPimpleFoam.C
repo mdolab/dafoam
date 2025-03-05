@@ -41,10 +41,33 @@ addToRunTimeSelectionTable(DASolver, DAIrkPimpleFoam, dictionary);
 DAIrkPimpleFoam::DAIrkPimpleFoam(
     char* argsAll,
     PyObject* pyOptions)
-    : DASolver(argsAll, pyOptions)
+    : DASolver(argsAll, pyOptions),
+      // Radau23 coefficients and weights
+      D10(-2),
+      D11(3.0 / 2),
+      D12(1.0 / 2),
+      D20(2),
+      D21(-9.0 / 2),
+      D22(5.0 / 2),
+      w1(3.0 / 4),
+      w2(1.0 / 4),
+
+      // SA-fv3 model coefficients
+      sigmaNut(0.66666),
+      kappa(0.41),
+      Cb1(0.1355),
+      Cb2(0.622),
+      Cw1(Cb1 / sqr(kappa) + (1.0 + Cb2) / sigmaNut),
+      Cw2(0.3),
+      Cw3(2.0),
+      Cv1(7.1),
+      Cv2(5.0)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Functions for SA-fv3 model
+#include "mySAModel.H"
 
 void DAIrkPimpleFoam::initSolver()
 {
@@ -83,27 +106,6 @@ label DAIrkPimpleFoam::solvePrimal()
 
     Info << "\nStarting time loop\n"
          << endl;
-
-    // Radau23 coefficients and weights
-    D10 = -2;
-    D11 = 3.0 / 2;
-    D12 = 1.0 / 2;
-    D20 = 2;
-    D21 = -9.0 / 2;
-    D22 = 5.0 / 2;
-    w1 = 3.0 / 4;
-    w2 = 1.0 / 4;
-
-    // SA model fv3 coefficients 
-    sigmaNut = 0.66666;
-    kappa = 0.41;
-    Cb1 = 0.1355;
-    Cb2 = 0.622;
-    Cw1 = Cb1 / sqr(kappa) + (1.0 + Cb2) / sigmaNut;
-    Cw2 = 0.3;
-    Cw3 = 2.0;
-    Cv1 = 7.1;
-    Cv2 = 5.0;
 
     // get IRKDict settings, default to Radau23 for now
     IOdictionary IRKDict(

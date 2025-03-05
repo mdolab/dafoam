@@ -64,7 +64,7 @@ protected:
     scalar w1;
     scalar w2;
 
-    // SA model fv3 coefficients 
+    // SA-fv3 coefficients
     scalar sigmaNut;
     scalar kappa;
     scalar Cb1;
@@ -74,6 +74,36 @@ protected:
     scalar Cw3;
     scalar Cv1;
     scalar Cv2;
+
+    // SA-fv3 functions
+    tmp<volScalarField> chi(
+        volScalarField& nuTilda,
+        const volScalarField& nu);
+
+    tmp<volScalarField> fv1(
+        volScalarField& chi);
+
+    tmp<volScalarField> fv2(
+        volScalarField& chi,
+        volScalarField& fv1);
+
+    tmp<volScalarField> fv3(
+        volScalarField& chi,
+        volScalarField& fv1);
+
+    tmp<volScalarField> fw(
+        volScalarField& Stilda,
+        volScalarField& nuTilda,
+        const volScalarField& y);
+
+    tmp<volScalarField> DnuTildaEff(
+        volScalarField& nuTilda,
+        const volScalarField& nu);
+
+    void correctNut(
+        volScalarField& nut,
+        volScalarField& nuTilda,
+        const volScalarField& nu);
 
 public:
     TypeName("DAIrkPimpleFoam");
