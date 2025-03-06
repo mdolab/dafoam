@@ -1,8 +1,12 @@
+// Get nuEff2
+volScalarField nuEff2("nuEff2", nu + nut2);
+
 // Initialize U2Eqn w/o ddt term
 fvVectorMatrix U2Eqn(
     fvm::div(phi2, U2, divUScheme)
     //+ turbulence->divDevReff(U)
-    - fvm::laplacian(nu, U2));
+    - fvm::laplacian(nuEff2, U2)
+    - fvc::div(nuEff2 * dev2(T(fvc::grad(U2))),divGradUScheme));
 
 // Update U2Eqn with pseudo-spectral terms
 forAll(U2, cellI)

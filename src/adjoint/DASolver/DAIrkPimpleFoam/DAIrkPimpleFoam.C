@@ -194,8 +194,8 @@ label DAIrkPimpleFoam::solvePrimal()
     // SA turbulence model
     volScalarField nuTilda1("nuTilda1", nuTilda);
     volScalarField nuTilda2("nuTilda2", nuTilda);
-    //volScalarField nut1("nut1", nut);
-    //volScalarField nut2("nut2", nut);
+    volScalarField nut1("nut1", nut);
+    volScalarField nut2("nut2", nut);
 
     // Settings for stage pressure
     mesh.setFluxRequired(p1.name());
@@ -271,13 +271,15 @@ label DAIrkPimpleFoam::solvePrimal()
         p = p2;
         phi = phi2;
         nuTilda = nuTilda2;
-        //nut = nut2;
+        nut = nut2;
 
         runTime.write();
         // Also write internal stages to disk (Radau23)
         U1.write();
         p1.write();
         phi1.write();
+        nuTilda1.write();
+        nut1.write();
 
         // Use old step as initial guess for the next step
         U1 = U;
@@ -285,6 +287,10 @@ label DAIrkPimpleFoam::solvePrimal()
         p1 = p;
         p1.correctBoundaryConditions();
         phi1 = phi;
+        nuTilda1 = nuTilda;
+        nuTilda1.correctBoundaryConditions();
+        nut1 = nut;
+        nut1.correctBoundaryConditions();
 
         runTime.printExecutionTime(Info);
     }
