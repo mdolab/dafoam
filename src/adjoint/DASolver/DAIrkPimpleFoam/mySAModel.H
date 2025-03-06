@@ -41,7 +41,7 @@ tmp<volScalarField> DAIrkPimpleFoam::fv3(
 tmp<volScalarField> DAIrkPimpleFoam::fw(
     volScalarField& Stilda,
     volScalarField& nuTilda,
-    const volScalarField& y)
+    volScalarField& y)
 {
     volScalarField r(
         min(

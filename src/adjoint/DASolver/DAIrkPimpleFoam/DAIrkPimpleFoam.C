@@ -99,8 +99,11 @@ label DAIrkPimpleFoam::solvePrimal()
     // Turbulence disabled
     //turbulence->validate();
 
-    // Get nu from memory
+    // Get nu, nut, nuTilda, y
     volScalarField& nu = const_cast<volScalarField&>(mesh.thisDb().lookupObject<volScalarField>("nu"));
+    volScalarField& nut = const_cast<volScalarField&>(mesh.thisDb().lookupObject<volScalarField>("nut"));
+    volScalarField& nuTilda = const_cast<volScalarField&>(mesh.thisDb().lookupObject<volScalarField>("nuTilda"));
+    volScalarField& y = const_cast<volScalarField&>(mesh.thisDb().lookupObject<volScalarField>("yWall"));
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -143,6 +146,15 @@ label DAIrkPimpleFoam::solvePrimal()
         }
     }
 
+    scalar relaxNuTilda = 1.0;
+    if (IRKDict.found("relaxNuTilda"))
+    {
+        if (IRKDict.getScalar("relaxNuTilda") > 0)
+        {
+            relaxNuTilda = IRKDict.getScalar("relaxNuTilda");
+        }
+    }
+
     scalar relaxStage1 = 0.8;
     if (IRKDict.found("relaxStage1"))
     {
@@ -179,6 +191,11 @@ label DAIrkPimpleFoam::solvePrimal()
     volScalarField p2("p2", p);
     surfaceScalarField phi1("phi1", phi);
     surfaceScalarField phi2("phi2", phi);
+    // SA turbulence model
+    volScalarField nuTilda1("nuTilda1", nuTilda);
+    volScalarField nuTilda2("nuTilda2", nuTilda);
+    //volScalarField nut1("nut1", nut);
+    //volScalarField nut2("nut2", nut);
 
     // Settings for stage pressure
     mesh.setFluxRequired(p1.name());
@@ -199,14 +216,17 @@ label DAIrkPimpleFoam::solvePrimal()
     p2.oldTime() = p2;
     phi1.oldTime() = phi1;
     phi2.oldTime() = phi2;
+    nuTilda1.oldTime() = nuTilda1;
+    nuTilda2.oldTime() = nuTilda2;
 
     // Numerical settings
     word divUScheme = "div(phi,U)";
-    //word divGradUScheme = "div((nuEff*dev2(T(grad(U)))))";
+    word divGradUScheme = "div((nuEff*dev2(T(grad(U)))))";
 
     const fvSolution& myFvSolution = mesh.thisDb().lookupObject<fvSolution>("fvSolution");
     dictionary solverDictU = myFvSolution.subDict("solvers").subDict("U");
     dictionary solverDictP = myFvSolution.subDict("solvers").subDict("p");
+    dictionary solverDictNuTilda = myFvSolution.subDict("solvers").subDict("nuTilda");
 
     while (runTime.run())
     {
@@ -250,6 +270,8 @@ label DAIrkPimpleFoam::solvePrimal()
         U = U2;
         p = p2;
         phi = phi2;
+        nuTilda = nuTilda2;
+        //nut = nut2;
 
         runTime.write();
         // Also write internal stages to disk (Radau23)

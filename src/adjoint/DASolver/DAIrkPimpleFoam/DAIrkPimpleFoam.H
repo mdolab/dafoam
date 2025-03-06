@@ -94,7 +94,7 @@ protected:
     tmp<volScalarField> fw(
         volScalarField& Stilda,
         volScalarField& nuTilda,
-        const volScalarField& y);
+        volScalarField& y);
 
     tmp<volScalarField> DnuTildaEff(
         volScalarField& nuTilda,
