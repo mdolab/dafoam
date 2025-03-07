@@ -138,22 +138,17 @@ results = prob.check_totals(
     step_calc="abs",
 )
 
-"""
+
 if gcomm.rank == 0:
     funcDict = {}
-    funcDict["CD"] = prob.get_val("cruise.aero_post.CD")
-    funcDict["CL"] = prob.get_val("cruise.aero_post.CL")
+    funcDict["HFX"] = prob.get_val("cruise.aero_post.HFX")
+    funcDict["TP"] = prob.get_val("cruise.aero_post.TP")
     derivDict = {}
-    derivDict["CD"] = {}
-    derivDict["CD"]["twist-Adjoint"] = results[("cruise.aero_post.CD", "twist")]["J_fwd"][0]
-    derivDict["CD"]["twist-FD"] = results[("cruise.aero_post.CD", "twist")]["J_fd"][0]
-    derivDict["CD"]["patchV-Adjoint"] = results[("cruise.aero_post.CD", "patchV")]["J_fwd"][0]
-    derivDict["CD"]["patchV-FD"] = results[("cruise.aero_post.CD", "patchV")]["J_fd"][0]
-    derivDict["CL"] = {}
-    derivDict["CL"]["twist-Adjoint"] = results[("cruise.aero_post.CL", "twist")]["J_fwd"][0]
-    derivDict["CL"]["twist-FD"] = results[("cruise.aero_post.CL", "twist")]["J_fd"][0]
-    derivDict["CL"]["patchV-Adjoint"] = results[("cruise.aero_post.CL", "patchV")]["J_fwd"][0]
-    derivDict["CL"]["patchV-FD"] = results[("cruise.aero_post.CL", "patchV")]["J_fd"][0]
+    derivDict["HFX"] = {}
+    derivDict["HFX"]["shape-Adjoint"] = results[("cruise.aero_post.HFX", "shape")]["J_fwd"][0]
+    derivDict["HFX"]["shape-FD"] = results[("cruise.aero_post.HFX", "shape")]["J_fd"][0]
+    derivDict["TP"] = {}
+    derivDict["TP"]["shape-Adjoint"] = results[("cruise.aero_post.TP", "shape")]["J_fwd"][0]
+    derivDict["TP"]["shape-FD"] = results[("cruise.aero_post.TP", "shape")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
-"""
