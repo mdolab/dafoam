@@ -1,0 +1,14 @@
+Dictionary Key: HFX
+@value        97.0154406464287717 1e-10 1e-12
+Dictionary Key: TP
+@value        52.1933946629705616 1e-10 1e-12
+Dictionary Key: HFX
+Dictionary Key: shape-Adjoint
+@value        -2.2460159628637375 1e-08 1e-12
+Dictionary Key: shape-FD
+@value        -2.5967078955291072 1e-08 1e-12
+Dictionary Key: TP
+Dictionary Key: shape-Adjoint
+@value        -0.7822872044761080 1e-08 1e-12
+Dictionary Key: shape-FD
+@value        -0.8805549441094627 1e-08 1e-12
