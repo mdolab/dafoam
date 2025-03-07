@@ -338,6 +338,11 @@ class DAFoamSolver(ImplicitComponent):
                 raise AnalysisError("Primal solution failed!")
                 return
 
+            # we can use step-average state variables, this can be useful when the
+            # primal has LCO
+            if DASolver.getOption("useMeanStates"):
+                DASolver.solver.meanStatesToStates()
+
             # after solving the primal, we need to print its residual info
             if DASolver.getOption("useAD")["mode"] == "forward":
                 DASolver.solverAD.calcPrimalResidualStatistics("print")

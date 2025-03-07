@@ -3324,6 +3324,9 @@ void DASolver::resetStateVals()
             state = linearInterpolate(U) & meshPtr_->Sf();
         }
     }
+
+    // we need to also update the BC and update all the intermediate variables
+    this->updateStateBoundaryConditions();
 }
 
 label DASolver::validateStates()
@@ -3747,6 +3750,86 @@ void DASolver::initDynamicMesh()
 
     // finally, reset the time to 0
     runTimePtr_->setTime(0.0, 0);
+}
+
+void DASolver::meanStatesToStates()
+{
+    // assign the mean states values to states
+    forAll(stateInfo_["volVectorStates"], idxI)
+    {
+        const word stateName = stateInfo_["volVectorStates"][idxI];
+        volVectorField& state = const_cast<volVectorField&>(
+            meshPtr_->thisDb().lookupObject<volVectorField>(stateName));
+        word meanStateName = stateName + "Mean";
+        const volVectorField& stateMean =
+            meshPtr_->thisDb().lookupObject<volVectorField>(meanStateName);
+        forAll(state, cellI)
+        {
+            for (label i = 0; i < 3; i++)
+            {
+                state[cellI][i] = stateMean[cellI][i];
+            }
+        }
+        state.correctBoundaryConditions();
+    }
+
+    forAll(stateInfo_["volScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["volScalarStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+        word meanStateName = stateName + "Mean";
+        const volScalarField& stateMean =
+            meshPtr_->thisDb().lookupObject<volScalarField>(meanStateName);
+        forAll(state, cellI)
+        {
+            state[cellI] = stateMean[cellI];
+        }
+        state.correctBoundaryConditions();
+    }
+
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        const word stateName = stateInfo_["modelStates"][idxI];
+        volScalarField& state = const_cast<volScalarField&>(
+            meshPtr_->thisDb().lookupObject<volScalarField>(stateName));
+        word meanStateName = stateName + "Mean";
+        const volScalarField& stateMean =
+            meshPtr_->thisDb().lookupObject<volScalarField>(meanStateName);
+        forAll(state, cellI)
+        {
+            state[cellI] = stateMean[cellI];
+        }
+        state.correctBoundaryConditions();
+    }
+
+    forAll(stateInfo_["surfaceScalarStates"], idxI)
+    {
+        const word stateName = stateInfo_["surfaceScalarStates"][idxI];
+        surfaceScalarField& state = const_cast<surfaceScalarField&>(
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName));
+        word meanStateName = stateName + "Mean";
+        const surfaceScalarField& stateMean =
+            meshPtr_->thisDb().lookupObject<surfaceScalarField>(meanStateName);
+
+        forAll(meshPtr_->faces(), faceI)
+        {
+            if (faceI < daIndexPtr_->nLocalInternalFaces)
+            {
+                state[faceI] = stateMean[faceI];
+            }
+            else
+            {
+                label relIdx = faceI - daIndexPtr_->nLocalInternalFaces;
+                label patchIdx = daIndexPtr_->bFacePatchI[relIdx];
+                label faceIdx = daIndexPtr_->bFaceFaceI[relIdx];
+                state.boundaryFieldRef()[patchIdx][faceIdx] = stateMean.boundaryField()[patchIdx][faceIdx];
+            }
+        }
+    }
+
+    // we need to also update the BC for other variables
+    this->updateStateBoundaryConditions();
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
