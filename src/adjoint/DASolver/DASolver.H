@@ -409,6 +409,9 @@ public:
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);
 
+    /// assign the mean states values to states
+    void meanStatesToStates();
+
     /// basically, we call DAIndex::getGlobalXvIndex
     label getGlobalXvIndex(
         const label idxPoint,
