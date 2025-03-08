@@ -6,7 +6,7 @@ fvVectorMatrix U2Eqn(
     fvm::div(phi2, U2, divUScheme)
     //+ turbulence->divDevReff(U)
     - fvm::laplacian(nuEff2, U2)
-    - fvc::div(nuEff2 * dev2(T(fvc::grad(U2))),divGradUScheme));
+    - fvc::div(nuEff2 * dev2(T(fvc::grad(U2))), divGradUScheme));
 
 // Update U2Eqn with pseudo-spectral terms
 forAll(U2, cellI)
