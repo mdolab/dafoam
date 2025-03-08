@@ -174,6 +174,7 @@ label DAIrkPimpleFoam::solvePrimal()
     }
 
     scalar relaxUEqn = 1.0;
+    scalar relaxNuTildaEqn = 1.0;
 
     label maxSweep = 10;
     if (IRKDict.found("maxSweep"))
@@ -222,6 +223,7 @@ label DAIrkPimpleFoam::solvePrimal()
     // Numerical settings
     word divUScheme = "div(phi,U)";
     word divGradUScheme = "div((nuEff*dev2(T(grad(U)))))";
+    word divNuTildaScheme = "div(phi,nuTilda)";
 
     const fvSolution& myFvSolution = mesh.thisDb().lookupObject<fvSolution>("fvSolution");
     dictionary solverDictU = myFvSolution.subDict("solvers").subDict("U");
@@ -252,6 +254,9 @@ label DAIrkPimpleFoam::solvePrimal()
                 {
 #include "p1EqnIrkPimple.H"
                 }
+
+                // --- Correct turbulence, using our own SAFv3
+#include "nuTilda1EqnIrkPimple.H"
             }
 
             {
@@ -261,6 +266,9 @@ label DAIrkPimpleFoam::solvePrimal()
                 {
 #include "p2EqnIrkPimple.H"
                 }
+
+                // --- Correct turbulence, using our own SAFv3
+#include "nuTilda2EqnIrkPimple.H"
             }
 
             sweepIndex++;
