@@ -17,16 +17,16 @@ p1Eqn.setReference(0, 0.0);
 p1Eqn.solve(solverDictP);
 
 phi1 = phiHbyA1 - p1Eqn.flux();
-phi1 = phi1OldTime + relaxPhi * relaxStage1 * (phi1 - phi1OldTime);
+phi1 = phi1.oldTime() + relaxPhi * relaxStage1 * (phi1 - phi1.oldTime());
 
 // Explicitly relax pressure for momentum corrector
 //p1.relax(relaxP);
-p1 = p1OldTime + relaxP * relaxStage1 * (p1 - p1OldTime);
+p1 = p1.oldTime() + relaxP * relaxStage1 * (p1 - p1.oldTime());
 
 U1 = HbyA1 - rAtU1 * fvc::grad(p1);
-U1 = U1OldTime + relaxU * relaxStage1 * (U1 - U1OldTime);
+U1 = U1.oldTime() + relaxU * relaxStage1 * (U1 - U1.oldTime());
 U1.correctBoundaryConditions();
 
-phi1OldTime = phi1;
-p1OldTime = p1;
-U1OldTime = U1;
+phi1.oldTime() = phi1;
+p1.oldTime() = p1;
+U1.oldTime() = U1;
