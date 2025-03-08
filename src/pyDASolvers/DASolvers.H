@@ -525,6 +525,12 @@ public:
 #endif
         return latestTime;
     };
+
+    /// assign the mean states values to states
+    void meanStatesToStates()
+    {
+        DASolverPtr_->meanStatesToStates();
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

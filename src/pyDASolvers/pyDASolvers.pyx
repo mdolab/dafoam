@@ -102,6 +102,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         double getLatestTime()
         void writeAdjointFields(char *, double, double *)
         int hasVolCoordInput()
+        void meanStatesToStates()
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -433,3 +434,6 @@ cdef class pyDASolvers:
         cdef double *psi_data = <double*>psi.data
 
         return self._thisptr.writeAdjointFields(function.encode(), writeTime, psi_data)
+    
+    def meanStatesToStates(self):
+        self._thisptr.meanStatesToStates()

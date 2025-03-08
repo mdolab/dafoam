@@ -435,6 +435,11 @@ class DAOPTION(object):
             # },
         }
 
+        ## whether to use step-averaged state variables. This can be useful when the primal solution
+        ## exhibits LCO. To make this work, users need to setup function-fieldAverage in system/controlDict
+        ## for all state variables
+        self.useMeanStates = False
+
         # *********************************************************************************************
         # ************************************ Advance Options ****************************************
         # *********************************************************************************************
