@@ -105,6 +105,29 @@ protected:
         volScalarField& nuTilda,
         const volScalarField& nu);
 
+    // Preimal residuals: meanFlow and SA
+    void calcPriResOrigIrk(
+        volVectorField& U0, // oldTime U
+        volVectorField& U1, // 1st stage
+        volScalarField& p1,
+        surfaceScalarField& phi1,
+        volScalarField& nuTilda1,
+        volScalarField& nut1,
+        volVectorField& U2, // 2nd stage
+        volScalarField& p2,
+        surfaceScalarField& phi2,
+        volScalarField& nuTilda2,
+        volScalarField& nut2,
+        const volScalarField& nu,
+        const scalar& deltaT, // current dt
+        volVectorField& U1Res, // Residual for 1st stage
+        volScalarField& p1Res,
+        surfaceScalarField& phi1Res,
+        volVectorField& U2Res, // Residual for end stage
+        volScalarField& p2Res,
+        surfaceScalarField& phi2Res,
+        const scalar& relaxUEqn);
+
 public:
     TypeName("DAIrkPimpleFoam");
     // Constructors
