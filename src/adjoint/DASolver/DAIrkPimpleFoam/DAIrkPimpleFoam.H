@@ -54,6 +54,57 @@ class DAIrkPimpleFoam
 {
 
 protected:
+    // Radau23 coefficients
+    scalar D10;
+    scalar D11;
+    scalar D12;
+    scalar D20;
+    scalar D21;
+    scalar D22;
+    scalar w1;
+    scalar w2;
+
+    // SA-fv3 coefficients
+    scalar sigmaNut;
+    scalar kappa;
+    scalar Cb1;
+    scalar Cb2;
+    scalar Cw1;
+    scalar Cw2;
+    scalar Cw3;
+    scalar Cv1;
+    scalar Cv2;
+
+    // SA-fv3 functions
+    tmp<volScalarField> chi(
+        volScalarField& nuTilda,
+        const volScalarField& nu);
+
+    tmp<volScalarField> fv1(
+        volScalarField& chi);
+
+    tmp<volScalarField> fv2(
+        volScalarField& chi,
+        volScalarField& fv1);
+
+    tmp<volScalarField> fv3(
+        volScalarField& chi,
+        volScalarField& fv1);
+
+    tmp<volScalarField> fw(
+        volScalarField& Stilda,
+        volScalarField& nuTilda,
+        volScalarField& y);
+
+    tmp<volScalarField> DnuTildaEff(
+        volScalarField& nuTilda,
+        const volScalarField& nu);
+
+    void correctNut(
+        volScalarField& nut,
+        volScalarField& nuTilda,
+        const volScalarField& nu);
+
 public:
     TypeName("DAIrkPimpleFoam");
     // Constructors
