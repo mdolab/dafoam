@@ -44,7 +44,7 @@ protected:
     bool calcMode_;
 
     /// if calculating wallHeatFlux by OpenFOAMs snGrad() or DAFOAM's custom (daCustom) formulation
-    word formMode_;
+    word distanceMode_;
 
 public:
     TypeName("wallHeatFlux");

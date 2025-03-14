@@ -65,14 +65,6 @@ daOptions = {
             "patches": ["walls"],
             "scale": 1.0,
         },
-        "HFX_custom": {
-            "type": "wallHeatFlux",
-            "byUnitArea": False,
-            "formulation": "daCustom",
-            "source": "patchToFace",
-            "patches": ["walls"],
-            "scale": 1.0,
-        },
         "PMean": {
             "type": "patchMean",
             "source": "patchToFace",
@@ -234,7 +226,6 @@ funcs_ref = {
     "CMZ": 7.1768354637131795,
     "TP1": 2.5561992647012914,
     "HFX": 8.20332195479527,
-    "HFX_custom": 28.645216245520146,
     "PMean": 77.80996323506456,
     "UMean": 15.469850053816028,
     "skewness": 1.3140396235456926,
@@ -299,14 +290,6 @@ daOptions = {
             "patches": ["walls"],
             "scale": 1.0,
         },
-        "HFX_custom": {
-            "type": "wallHeatFlux",
-            "byUnitArea": False,
-            "formulation": "daCustom",
-            "source": "patchToFace",
-            "patches": ["walls"],
-            "scale": 1.0,
-        },
         "TTR": {
             "type": "totalTemperatureRatio",
             "source": "patchToFace",
@@ -354,7 +337,6 @@ if gcomm.rank == 0:
 
 funcs_ref = {
     "HFX": 2564.397361965973,
-    "HFX_custom": 8967.626339020631,
     "TTR": 1.0002129350727795,
     "MFR": 128.2374484095998,
     "TPR": 0.9933893131111589,

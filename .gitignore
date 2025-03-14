@@ -28,3 +28,4 @@ __pycache__
 reg_test_files*
 tests/*.txt
 tests/*.txt.orig
+.vscode/settings.json
