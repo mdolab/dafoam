@@ -39,8 +39,15 @@ DAInputThermalCoupling::DAInputThermalCoupling(
     // check discipline
     discipline_ = daOption_.getAllOptions().getWord("discipline");
 
-    // check formulation mode
+    // check coupling mode and validate
     couplingMode_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName_).lookupOrDefault<word>("thermalCouplingMode", "default");
+    if (couplingMode_ != "daCustom" && couplingMode_ != "default")
+    {
+        FatalErrorIn(" ") << "thermalCouplingMode: "
+                          << couplingMode_ << " not supported!"
+                          << " Options are: default and daCustom."
+                          << abort(FatalError);
+    }
 
     size_ = 0;
     forAll(patches_, idxI)
@@ -134,13 +141,6 @@ Description:
                         scalar d = mag(c1 - c2);
                         deltaCoeffs = 1 / d;
                     }
-                    else
-                    {
-                        FatalErrorIn(" ") << "thermalCouplingMode "
-                                          << couplingMode_ << " not supported!"
-                                          << " Options are: default and daCustom."
-                                          << abort(FatalError);
-                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     scalar myKDeltaCoeffs = Cp * alphaEffBf * deltaCoeffs;
                     // NOTE: we continue to use the counterI from the first loop
@@ -211,13 +211,6 @@ Description:
                         scalar d = mag(c1 - c2);
                         deltaCoeffs = 1 / d;
                     }
-                    else
-                    {
-                        FatalErrorIn(" ") << "thermalCouplingMode "
-                                          << couplingMode_ << " not supported!"
-                                          << " Options are: default and daCustom."
-                                          << abort(FatalError);
-                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     scalar myKDeltaCoeffs = tmpVal * alphaEffBf * deltaCoeffs;
                     // NOTE: we continue to use the counterI from the first loop
@@ -261,13 +254,6 @@ Description:
                     vector c2 = mesh_.C()[nearWallCellIndex];
                     scalar d = mag(c1 - c2);
                     deltaCoeffs = 1 / d;
-                }
-                else
-                {
-                    FatalErrorIn(" ") << "thermalCouplingMode "
-                                      << couplingMode_ << " not supported!"
-                                      << " Options are: default and daCustom."
-                                      << abort(FatalError);
                 }
                 mixedFvPatchField<scalar>& mixedPatch = refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
                 scalar myKDeltaCoeffs = k * deltaCoeffs;

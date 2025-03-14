@@ -42,8 +42,15 @@ DAOutputThermalCoupling::DAOutputThermalCoupling(
     // check discipline
     discipline_ = daOption_.getAllOptions().getWord("discipline");
 
-    // check formulation mode
+    // check coupling mode and validate
     couplingMode_ = daOption_.getAllOptions().subDict("outputInfo").subDict(outputName_).lookupOrDefault<word>("thermalCouplingMode", "default");
+    if (couplingMode_ != "daCustom" && couplingMode_ != "default")
+    {
+        FatalErrorIn(" ") << "thermalCouplingMode: "
+                          << couplingMode_ << " not supported!"
+                          << " Options are: default and daCustom."
+                          << abort(FatalError);
+    }
 
     size_ = 0;
     forAll(patches_, idxI)
@@ -129,13 +136,6 @@ void DAOutputThermalCoupling::run(scalarList& output)
                         scalar d = mag(c1 - c2);
                         deltaCoeffs = 1 / d;
                     }
-                    else
-                    {
-                        FatalErrorIn(" ") << "thermalCouplingMode: "
-                                          << couplingMode_ << " not supported!"
-                                          << " Options are: default and daCustom."
-                                          << abort(FatalError);
-                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     // NOTE: we continue to use the counterI from the first loop
                     output[counterI] = Cp * alphaEffBf * deltaCoeffs;
@@ -201,13 +201,6 @@ void DAOutputThermalCoupling::run(scalarList& output)
                         scalar d = mag(c1 - c2);
                         deltaCoeffs = 1 / d;
                     }
-                    else
-                    {
-                        FatalErrorIn(" ") << "thermalCouplingMode: "
-                                          << couplingMode_ << " not supported!"
-                                          << " Options are: default and daCustom."
-                                          << abort(FatalError);
-                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     // NOTE: we continue to use the counterI from the first loop
                     output[counterI] = tmpVal * alphaEffBf * deltaCoeffs;
@@ -248,13 +241,6 @@ void DAOutputThermalCoupling::run(scalarList& output)
                     vector c2 = mesh_.C()[nearWallCellIndex];
                     scalar d = mag(c1 - c2);
                     deltaCoeffs = 1 / d;
-                }
-                else
-                {
-                    FatalErrorIn(" ") << "thermalCouplingMode: "
-                                      << couplingMode_ << " not supported!"
-                                      << " Options are: default and daCustom."
-                                      << abort(FatalError);
                 }
                 // NOTE: we continue to use the counterI from the first loop
                 output[counterI] = k * deltaCoeffs;

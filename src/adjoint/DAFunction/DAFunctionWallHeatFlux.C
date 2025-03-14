@@ -42,6 +42,13 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
 
     // check and assign values for scheme and formulation
     formMode_ = functionDict_.lookupOrDefault<word>("formulation", "default");
+    if (formMode_ != "daCustom" && formMode_ != "default")
+    {
+        FatalErrorIn(" ") << "formulation: "
+                          << formMode_ << " not supported!"
+                          << " Options are: default and daCustom."
+                          << abort(FatalError);
+    }
     calcMode_ = functionDict_.lookupOrDefault<bool>("byUnitArea", true);
 
     if (mesh_.thisDb().foundObject<DATurbulenceModel>("DATurbulenceModel"))
@@ -165,14 +172,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                             wallHeatFluxBf[patchI][faceI] = Cp_ * alphaEffBf[patchI][faceI] * dTdz;
                         }
                     }
-                    // error message incase of invalid entry
-                    else
-                    {
-                        FatalErrorIn(" ") << "formulation: "
-                                          << formMode_ << " not supported!"
-                                          << " Options are: default and daCustom."
-                                          << abort(FatalError);
-                    }
                 }
             }
         }
@@ -210,14 +209,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                             wallHeatFluxBf[patchI][faceI] = alphaEffBf[patchI][faceI] * dHedz;
                         }
                     }
-                    // error message incase of invalid entry
-                    else
-                    {
-                        FatalErrorIn(" ") << "formulation: "
-                                          << formMode_ << " not supported!"
-                                          << " Options are: default and daCustom."
-                                          << abort(FatalError);
-                    }
                 }
             }
         }
@@ -254,14 +245,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                         scalar dTdz = (T2 - T1) / d;
                         wallHeatFluxBf[patchI][faceI] = k_ * dTdz;
                     }
-                }
-                // error message incase of invalid entry
-                else
-                {
-                    FatalErrorIn(" ") << "formulation: "
-                                      << formMode_ << " not supported!"
-                                      << " Options are: default and daCustom."
-                                      << abort(FatalError);
                 }
             }
         }
