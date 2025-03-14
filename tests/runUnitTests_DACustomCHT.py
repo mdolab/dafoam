@@ -240,6 +240,7 @@ else:
 # ********************
 # compressible tests
 # ********************
+os.chdir("../ConvergentChannel")
 if gcomm.rank == 0:
     os.system("rm -rf 0/* processor* *.bin")
     os.system("cp -r 0.compressible/* 0/")
