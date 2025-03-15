@@ -601,6 +601,9 @@ class DAOPTION(object):
             # }
         }
 
+        ## Whether to use OpenFOAMs snGrad() function or to manually compute distance for wall interfaces
+        self.wallDistanceMethod = "default"
+
 
 class PYDAFOAM(object):
     """

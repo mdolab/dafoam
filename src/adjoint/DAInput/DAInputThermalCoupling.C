@@ -36,7 +36,18 @@ DAInputThermalCoupling::DAInputThermalCoupling(
     // NOTE: always sort the patch because the order of the patch element matters in CHT coupling
     sort(patches_);
 
+    // check discipline
     discipline_ = daOption_.getAllOptions().getWord("discipline");
+
+    // check coupling mode and validate
+    distanceMode_ = daOption_.getAllOptions().getWord("wallDistanceMethod");
+    if (distanceMode_ != "daCustom" && distanceMode_ != "default")
+    {
+        FatalErrorIn(" ") << "wallDistanceMethod: "
+                          << distanceMode_ << " not supported!"
+                          << " Options are: default and daCustom."
+                          << abort(FatalError);
+    }
 
     size_ = 0;
     forAll(patches_, idxI)
@@ -83,6 +94,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
 
     // ********* second loop, set the valueFraction:
     // neighKDeltaCoeffs / ( neighKDeltaCoeffs + myKDeltaCoeffs)
+    scalar deltaCoeffs = 0;
 
     if (discipline_ == "aero")
     {
@@ -116,8 +128,19 @@ void DAInputThermalCoupling::run(const scalarList& input)
 
                 forAll(mesh_.boundaryMesh()[patchI], faceI)
                 {
-                    // deltaCoeffs = 1 / d
-                    scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                    if (distanceMode_ == "default")
+                    {
+                        // deltaCoeffs = 1 / d
+                        deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                    }
+                    else if (distanceMode_ == "daCustom")
+                    {
+                        label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                        vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
+                        vector c2 = mesh_.C()[nearWallCellIndex];
+                        scalar d = mag(c1 - c2);
+                        deltaCoeffs = 1 / d;
+                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     scalar myKDeltaCoeffs = Cp * alphaEffBf * deltaCoeffs;
                     // NOTE: we continue to use the counterI from the first loop
@@ -175,8 +198,19 @@ void DAInputThermalCoupling::run(const scalarList& input)
 
                 forAll(mesh_.boundaryMesh()[patchI], faceI)
                 {
-                    // deltaCoeffs = 1 / d
-                    scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                    if (distanceMode_ == "default")
+                    {
+                        // deltaCoeffs = 1 / d
+                        deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                    }
+                    else if (distanceMode_ == "daCustom")
+                    {
+                        label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                        vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
+                        vector c2 = mesh_.C()[nearWallCellIndex];
+                        scalar d = mag(c1 - c2);
+                        deltaCoeffs = 1 / d;
+                    }
                     scalar alphaEffBf = alphaEff.boundaryField()[patchI][faceI];
                     scalar myKDeltaCoeffs = tmpVal * alphaEffBf * deltaCoeffs;
                     // NOTE: we continue to use the counterI from the first loop
@@ -206,13 +240,22 @@ void DAInputThermalCoupling::run(const scalarList& input)
             word patchName = patches_[idxI];
             label patchI = mesh_.boundaryMesh().findPatchID(patchName);
 
-            mixedFvPatchField<scalar>& mixedPatch =
-                refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
-
             forAll(mesh_.boundaryMesh()[patchI], faceI)
             {
-                // deltaCoeffs = 1 / d
-                scalar deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                if (distanceMode_ == "default")
+                {
+                    // deltaCoeffs = 1 / d
+                    deltaCoeffs = T.boundaryField()[patchI].patch().deltaCoeffs()[faceI];
+                }
+                else if (distanceMode_ == "daCustom")
+                {
+                    label nearWallCellIndex = mesh_.boundaryMesh()[patchI].faceCells()[faceI];
+                    vector c1 = mesh_.Cf().boundaryField()[patchI][faceI];
+                    vector c2 = mesh_.C()[nearWallCellIndex];
+                    scalar d = mag(c1 - c2);
+                    deltaCoeffs = 1 / d;
+                }
+                mixedFvPatchField<scalar>& mixedPatch = refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
                 scalar myKDeltaCoeffs = k * deltaCoeffs;
                 // NOTE: we continue to use the counterI from the first loop
                 scalar neighKDeltaCoeffs = input[counterI];

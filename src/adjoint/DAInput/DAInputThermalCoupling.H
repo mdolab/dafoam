@@ -55,6 +55,9 @@ protected:
     /// whether this is flow or solid
     word discipline_;
 
+    /// if calculating wallHeatFlux by OpenFOAMs snGrad() or DAFOAM's custom (daCustom) formulation
+    word distanceMode_;
+
 public:
     TypeName("thermalCouplingInput");
     // Constructors

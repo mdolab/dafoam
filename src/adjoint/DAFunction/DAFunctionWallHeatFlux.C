@@ -41,7 +41,14 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
 {
 
     // check and assign values for scheme and formulation
-    formMode_ = functionDict_.lookupOrDefault<word>("formulation", "default");
+    distanceMode_ = daOption_.getAllOptions().getWord("wallDistanceMethod");
+    if (distanceMode_ != "daCustom" && distanceMode_ != "default")
+    {
+        FatalErrorIn(" ") << "wallDistanceMethod: "
+                          << distanceMode_ << " not supported!"
+                          << " Options are: default and daCustom."
+                          << abort(FatalError);
+    }
     calcMode_ = functionDict_.lookupOrDefault<bool>("byUnitArea", true);
 
     if (mesh_.thisDb().foundObject<DATurbulenceModel>("DATurbulenceModel"))
@@ -146,12 +153,12 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                 if (!wallHeatFluxBf[patchI].coupled())
                 {
                     // use OpenFOAM's snGrad()
-                    if (formMode_ == "default")
+                    if (distanceMode_ == "default")
                     {
                         wallHeatFluxBf[patchI] = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
                     }
                     // use DAFOAM's custom formulation
-                    else if (formMode_ == "daCustom")
+                    else if (distanceMode_ == "daCustom")
                     {
                         forAll(wallHeatFluxBf[patchI], faceI)
                         {
@@ -164,14 +171,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                             scalar dTdz = (T2 - T1) / d;
                             wallHeatFluxBf[patchI][faceI] = Cp_ * alphaEffBf[patchI][faceI] * dTdz;
                         }
-                    }
-                    // error message incase of invalid entry
-                    else
-                    {
-                        FatalErrorIn(" ") << "formulation: "
-                                          << formMode_ << " not supported!"
-                                          << " Options are: default and daCustom."
-                                          << abort(FatalError);
                     }
                 }
             }
@@ -191,12 +190,12 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                 if (!wallHeatFluxBf[patchI].coupled())
                 {
                     // use OpenFOAM's snGrad()
-                    if (formMode_ == "default")
+                    if (distanceMode_ == "default")
                     {
                         wallHeatFluxBf[patchI] = alphaEffBf[patchI] * heBf[patchI].snGrad();
                     }
                     // use DAFOAM's custom formulation
-                    else if (formMode_ == "daCustom")
+                    else if (distanceMode_ == "daCustom")
                     {
                         forAll(wallHeatFluxBf[patchI], faceI)
                         {
@@ -209,14 +208,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                             scalar dHedz = (He2 - He1) / d;
                             wallHeatFluxBf[patchI][faceI] = alphaEffBf[patchI][faceI] * dHedz;
                         }
-                    }
-                    // error message incase of invalid entry
-                    else
-                    {
-                        FatalErrorIn(" ") << "formulation: "
-                                          << formMode_ << " not supported!"
-                                          << " Options are: default and daCustom."
-                                          << abort(FatalError);
                     }
                 }
             }
@@ -236,12 +227,12 @@ scalar DAFunctionWallHeatFlux::calcFunction()
             {
 
                 // use OpenFOAM's snGrad()
-                if (formMode_ == "default")
+                if (distanceMode_ == "default")
                 {
                     wallHeatFluxBf[patchI] = k_ * TBf[patchI].snGrad();
                 }
                 // use DAFOAM's custom formulation
-                else if (formMode_ == "daCustom")
+                else if (distanceMode_ == "daCustom")
                 {
                     forAll(wallHeatFluxBf[patchI], faceI)
                     {
@@ -254,14 +245,6 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                         scalar dTdz = (T2 - T1) / d;
                         wallHeatFluxBf[patchI][faceI] = k_ * dTdz;
                     }
-                }
-                // error message incase of invalid entry
-                else
-                {
-                    FatalErrorIn(" ") << "formulation: "
-                                      << formMode_ << " not supported!"
-                                      << " Options are: default and daCustom."
-                                      << abort(FatalError);
                 }
             }
         }
