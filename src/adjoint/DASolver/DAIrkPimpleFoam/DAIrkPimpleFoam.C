@@ -72,7 +72,7 @@ DAIrkPimpleFoam::DAIrkPimpleFoam(
 // Some utilities, move to DAUtility later
 #include "myUtilities.H"
 
-void DAIrkPimpleFoam::calcPriResOrigIrk(
+void DAIrkPimpleFoam::calcPriResIrkOrig(
     volVectorField& U0, // oldTime U
     volVectorField& U1, // 1st stage
     volScalarField& p1,
@@ -204,6 +204,105 @@ void DAIrkPimpleFoam::calcPriResOrigIrk(
 
         // Then do phiRes
         phi2Res = phiHbyA2 - p2Eqn.flux() - phi2;
+    }
+}
+
+void DAIrkPimpleFoam::calcPriSAResIrkOrig(
+    volScalarField& nuTilda0, // oldTime nuTilda
+    volVectorField& U1, // 1st stage
+    surfaceScalarField& phi1,
+    volScalarField& nuTilda1,
+    volVectorField& U2, // 2nd stage
+    surfaceScalarField& phi2,
+    volScalarField& nuTilda2,
+    volScalarField& y,
+    const volScalarField& nu,
+    const scalar& deltaT, // current dt
+    volScalarField& nuTilda1Res, // Residual for 1st stage
+    volScalarField& nuTilda2Res) // Residual for 2nd stage
+{
+    // Numerical settings
+    word divNuTildaScheme = "div(phi,nuTilda)";
+
+    // Update boundaries
+    nuTilda0.correctBoundaryConditions();
+    U1.correctBoundaryConditions();
+    nuTilda1.correctBoundaryConditions();
+    U2.correctBoundaryConditions();
+    nuTilda2.correctBoundaryConditions();
+
+    // --- 1st stage
+    {
+        // Get chi1 and fv11
+        volScalarField chi1("chi1", chi(nuTilda1, nu));
+        volScalarField fv11("fv11", fv1(chi1));
+
+        // Get Stilda1
+        volScalarField Stilda1(
+            "Stilda1",
+            fv3(chi1, fv11) * ::sqrt(2.0) * mag(skew(fvc::grad(U1))) + fv2(chi1, fv11) * nuTilda1 / sqr(kappa * y));
+
+        // Construct nuTilda1Eqn w/o ddt term
+        fvScalarMatrix nuTilda1Eqn(
+            fvm::div(phi1, nuTilda1, divNuTildaScheme)
+                - fvm::laplacian(DnuTildaEff(nuTilda1, nu), nuTilda1)
+                - Cb2 / sigmaNut * magSqr(fvc::grad(nuTilda1))
+            == Cb1 * Stilda1 * nuTilda1 // If field inversion, beta should be multiplied here
+                - fvm::Sp(Cw1 * fw(Stilda1, nuTilda1, y) * nuTilda1 / sqr(y), nuTilda1));
+
+        // Update nuTilda1Eqn with pseudo-spectral terms
+        forAll(nuTilda1, cellI)
+        {
+            scalar meshV = nuTilda1.mesh().V()[cellI];
+
+            // Add D11 / halfDeltaT[i] * V() to diagonal
+            nuTilda1Eqn.diag()[cellI] += D11 / deltaT * meshV;
+
+            // Minus D10 / halfDeltaT[i] * T0 * V() to source term
+            nuTilda1Eqn.source()[cellI] -= D10 / deltaT * nuTilda0[cellI] * meshV;
+
+            // Minus D12 / halfDeltaT[i] * T2 * V() to source term
+            nuTilda1Eqn.source()[cellI] -= D12 / deltaT * nuTilda2[cellI] * meshV;
+        }
+
+        nuTilda1Res = nuTilda1Eqn & nuTilda1;
+    }
+
+    // --- 2nd stage
+    {
+        // Get chi2 and fv12
+        volScalarField chi2("chi2", chi(nuTilda2, nu));
+        volScalarField fv12("fv12", fv1(chi2));
+
+        // Get Stilda2
+        volScalarField Stilda2(
+            "Stilda2",
+            fv3(chi2, fv12) * ::sqrt(2.0) * mag(skew(fvc::grad(U2))) + fv2(chi2, fv12) * nuTilda2 / sqr(kappa * y));
+
+        // Construct nuTilda2Eqn w/o ddt term
+        fvScalarMatrix nuTilda2Eqn(
+            fvm::div(phi2, nuTilda2, divNuTildaScheme)
+                - fvm::laplacian(DnuTildaEff(nuTilda2, nu), nuTilda2)
+                - Cb2 / sigmaNut * magSqr(fvc::grad(nuTilda2))
+            == Cb1 * Stilda2 * nuTilda2 // If field inversion, beta should be multiplied here
+                - fvm::Sp(Cw1 * fw(Stilda2, nuTilda2, y) * nuTilda2 / sqr(y), nuTilda2));
+
+        // Update nuTilda2Eqn with pseudo-spectral terms
+        forAll(nuTilda2, cellI)
+        {
+            scalar meshV = nuTilda2.mesh().V()[cellI];
+
+            // Add D22 / halfDeltaT[i] * V() to diagonal
+            nuTilda2Eqn.diag()[cellI] += D22 / deltaT * meshV;
+
+            // Minus D20 / halfDeltaT[i] * T0 * V() to source term
+            nuTilda2Eqn.source()[cellI] -= D20 / deltaT * nuTilda0[cellI] * meshV;
+
+            // Minus D21 / halfDeltaT[i] * T2 * V() to source term
+            nuTilda2Eqn.source()[cellI] -= D21 / deltaT * nuTilda1[cellI] * meshV;
+        }
+
+        nuTilda2Res = nuTilda2Eqn & nuTilda2;
     }
 }
 
@@ -441,16 +540,14 @@ label DAIrkPimpleFoam::solvePrimal()
 #include "nuTilda2EqnIrkPimple.H"
             }
 
-            
-            calcPriResOrigIrk(U, U1, p1, phi1, nuTilda1, nut1, U2, p2, phi2, nuTilda2, nut2, nu, deltaT, U1Res, p1Res, phi1Res, U2Res, p2Res, phi2Res, relaxUEqn);
-            
+            calcPriResIrkOrig(U, U1, p1, phi1, nuTilda1, nut1, U2, p2, phi2, nuTilda2, nut2, nu, deltaT, U1Res, p1Res, phi1Res, U2Res, p2Res, phi2Res, relaxUEqn);
+
             Info << "L2 norm of U1Res: " << this->L2norm(U1Res.primitiveField()) << endl;
             Info << "L2 norm of U2Res: " << this->L2norm(U2Res.primitiveField()) << endl;
             Info << "L2 norm of p1Res: " << this->L2norm(p1Res.primitiveField()) << endl;
             Info << "L2 norm of p2Res: " << this->L2norm(p2Res.primitiveField()) << endl;
             Info << "L2 norm of phi1Res: " << this->L2norm(phi1Res, phi1.mesh().magSf()) << endl;
             Info << "L2 norm of phi2Res: " << this->L2norm(phi2Res, phi2.mesh().magSf()) << endl;
-            
 
             sweepIndex++;
         }

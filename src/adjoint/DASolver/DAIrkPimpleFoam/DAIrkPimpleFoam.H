@@ -106,7 +106,7 @@ protected:
         const volScalarField& nu);
 
     // Preimal residuals: meanFlow and SA
-    void calcPriResOrigIrk(
+    void calcPriResIrkOrig(
         volVectorField& U0, // oldTime U
         volVectorField& U1, // 1st stage
         volScalarField& p1,
@@ -128,11 +128,25 @@ protected:
         surfaceScalarField& phi2Res,
         const scalar& relaxUEqn);
 
+    void calcPriSAResIrkOrig(
+        volScalarField& nuTilda0, // oldTime nuTilda
+        volVectorField& U1, // 1st stage
+        surfaceScalarField& phi1,
+        volScalarField& nuTilda1,
+        volVectorField& U2, // 2nd stage
+        surfaceScalarField& phi2,
+        volScalarField& nuTilda2,
+        volScalarField& y,
+        const volScalarField& nu,
+        const scalar& deltaT, // current dt
+        volScalarField& nuTilda1Res, // Residual for 1st stage
+        volScalarField& nuTilda2Res); // Residual for 2nd stage
+
     // Some utilities, move to DAUtility later
 
     // Swapping two arrays, used for pseudoEqns
     void swap(List<scalar>& a, List<scalar>& b);
-    
+
     // L2 norm
     scalar L2norm(const List<scalar>& v);
     scalar L2norm(const List<scalar>& v, const List<scalar>& V);
