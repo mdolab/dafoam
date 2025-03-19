@@ -128,6 +128,22 @@ protected:
         surfaceScalarField& phi2Res,
         const scalar& relaxUEqn);
 
+    // Some utilities, move to DAUtility later
+
+    // Swapping two arrays, used for pseudoEqns
+    void swap(List<scalar>& a, List<scalar>& b);
+    
+    // L2 norm
+    scalar L2norm(const List<scalar>& v);
+    scalar L2norm(const List<scalar>& v, const List<scalar>& V);
+    vector L2norm(const List<vector>& U);
+    vector L2norm(const List<vector>& U, const List<scalar>& V);
+    scalar L2norm(const surfaceScalarField& Phi);
+    scalar L2norm(const surfaceScalarField& Phi, const surfaceScalarField& SfArea);
+
+    // LInf norm for a vector
+    vector getMaxAbs(const List<vector>& U);
+
 public:
     TypeName("DAIrkPimpleFoam");
     // Constructors

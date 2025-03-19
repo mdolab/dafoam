@@ -69,6 +69,9 @@ DAIrkPimpleFoam::DAIrkPimpleFoam(
 // Functions for SA-fv3 model
 #include "mySAModel.H"
 
+// Some utilities, move to DAUtility later
+#include "myUtilities.H"
+
 void DAIrkPimpleFoam::calcPriResOrigIrk(
     volVectorField& U0, // oldTime U
     volVectorField& U1, // 1st stage
@@ -337,13 +340,43 @@ label DAIrkPimpleFoam::solvePrimal()
     mesh.setFluxRequired(p1.name());
     mesh.setFluxRequired(p2.name());
 
-    // Note: below is not working somehow...
-    /*
-    // IO settings for internal stages
-    U1.writeOpt() = IOobject::AUTO_WRITE;
-    p1.writeOpt() = IOobject::AUTO_WRITE;
-    phi1.writeOpt() = IOobject::AUTO_WRITE;
-    */
+    // Initialize primal residuals
+    volVectorField U1Res(
+        IOobject(
+            "U1Res",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        mesh,
+        dimensionedVector("U1Res", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
+        zeroGradientFvPatchField<vector>::typeName);
+
+    volVectorField U2Res("U2Res", U1Res);
+
+    volScalarField p1Res(
+        IOobject(
+            "p1Res",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        mesh,
+        dimensionedScalar("p1Res", dimensionSet(0, 0, -1, 0, 0, 0, 0), 0.0),
+        zeroGradientFvPatchField<scalar>::typeName);
+
+    volScalarField p2Res("p2Res", p1Res);
+
+    surfaceScalarField phi1Res(
+        IOobject(
+            "phi1Res",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        phi * 0.0);
+
+    surfaceScalarField phi2Res("phi2Res", phi1Res);
 
     // Initialize oldTime() for under-relaxation
     U1.oldTime() = U1;
@@ -408,54 +441,16 @@ label DAIrkPimpleFoam::solvePrimal()
 #include "nuTilda2EqnIrkPimple.H"
             }
 
-                        // Calculate IRK residuals
-            volVectorField U1Res(
-                IOobject(
-                    "U1Res",
-                    runTime.timeName(),
-                    mesh,
-                    IOobject::NO_READ,
-                    IOobject::NO_WRITE),
-                mesh,
-                dimensionedVector("U1Res", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
-                zeroGradientFvPatchField<vector>::typeName);
-
-            volVectorField U2Res("U2Res", U1Res);
-
-            volScalarField p1Res(
-                IOobject(
-                    "p1Res",
-                    runTime.timeName(),
-                    mesh,
-                    IOobject::NO_READ,
-                    IOobject::NO_WRITE),
-                mesh,
-                dimensionedScalar("p1Res", dimensionSet(0, 0, -1, 0, 0, 0, 0), 0.0),
-                zeroGradientFvPatchField<scalar>::typeName);
-
-            volScalarField p2Res("p2Res", p1Res);
-
-            surfaceScalarField phi1Res(
-                IOobject(
-                    "phi1Res",
-                    runTime.timeName(),
-                    mesh,
-                    IOobject::NO_READ,
-                    IOobject::NO_WRITE),
-                phi * 0.0);
-
-            surfaceScalarField phi2Res("phi2Res", phi1Res);
             
-            /*
             calcPriResOrigIrk(U, U1, p1, phi1, nuTilda1, nut1, U2, p2, phi2, nuTilda2, nut2, nu, deltaT, U1Res, p1Res, phi1Res, U2Res, p2Res, phi2Res, relaxUEqn);
             
-            Info << "L2 norm of U1Res: " << L2norm(U1Res.primitiveField()) << endl;
-            Info << "L2 norm of U2Res: " << L2norm(U2Res.primitiveField()) << endl;
-            Info << "L2 norm of p1Res: " << L2norm(p1Res.primitiveField()) << endl;
-            Info << "L2 norm of p2Res: " << L2norm(p2Res.primitiveField()) << endl;
-            Info << "L2 norm of phi1Res: " << L2norm(phi1Res, phi1.mesh().magSf()) << endl;
-            Info << "L2 norm of phi2Res: " << L2norm(phi2Res, phi2.mesh().magSf()) << endl;
-            */
+            Info << "L2 norm of U1Res: " << this->L2norm(U1Res.primitiveField()) << endl;
+            Info << "L2 norm of U2Res: " << this->L2norm(U2Res.primitiveField()) << endl;
+            Info << "L2 norm of p1Res: " << this->L2norm(p1Res.primitiveField()) << endl;
+            Info << "L2 norm of p2Res: " << this->L2norm(p2Res.primitiveField()) << endl;
+            Info << "L2 norm of phi1Res: " << this->L2norm(phi1Res, phi1.mesh().magSf()) << endl;
+            Info << "L2 norm of phi2Res: " << this->L2norm(phi2Res, phi2.mesh().magSf()) << endl;
+            
 
             sweepIndex++;
         }
