@@ -115,17 +115,17 @@ vector DAIrkPimpleFoam::getMaxAbs(const List<vector>& U)
     vector maxAbsVec = {0.0, 0.0, 0.0};
     forAll(U, cellI)
     {
-        if(maxAbsVec[0] < std::abs(U[cellI][0]))
+        if (maxAbsVec[0] < std::abs(U[cellI][0]))
         {
             maxAbsVec[0] = std::abs(U[cellI][0]);
         }
 
-        if(maxAbsVec[1] < std::abs(U[cellI][1]))
+        if (maxAbsVec[1] < std::abs(U[cellI][1]))
         {
             maxAbsVec[1] = std::abs(U[cellI][1]);
         }
 
-        if(maxAbsVec[2] < std::abs(U[cellI][2]))
+        if (maxAbsVec[2] < std::abs(U[cellI][2]))
         {
             maxAbsVec[2] = std::abs(U[cellI][2]);
         }
