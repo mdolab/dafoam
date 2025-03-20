@@ -431,7 +431,7 @@ void DAResidualPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
             fvm::ddt(T)
             + fvm::div(phi_, T)
             - fvm::laplacian(alphaEff, T));
-        
+
         TEqn.relax(1.0);
 
         scalar TScaling = 1.0;
