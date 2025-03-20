@@ -140,7 +140,8 @@ protected:
         const volScalarField& nu,
         const scalar& deltaT, // current dt
         volScalarField& nuTilda1Res, // Residual for 1st stage
-        volScalarField& nuTilda2Res); // Residual for 2nd stage
+        volScalarField& nuTilda2Res, // Residual for 2nd stage
+        const scalar& relaxNuTildaEqn);
 
     // Some utilities, move to DAUtility later
 

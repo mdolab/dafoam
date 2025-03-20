@@ -219,7 +219,8 @@ void DAIrkPimpleFoam::calcPriSAResIrkOrig(
     const volScalarField& nu,
     const scalar& deltaT, // current dt
     volScalarField& nuTilda1Res, // Residual for 1st stage
-    volScalarField& nuTilda2Res) // Residual for 2nd stage
+    volScalarField& nuTilda2Res, // Residual for 2nd stage
+    const scalar& relaxNuTildaEqn)
 {
     // Numerical settings
     word divNuTildaScheme = "div(phi,nuTilda)";
@@ -265,6 +266,8 @@ void DAIrkPimpleFoam::calcPriSAResIrkOrig(
             nuTilda1Eqn.source()[cellI] -= D12 / deltaT * nuTilda2[cellI] * meshV;
         }
 
+        nuTilda1Eqn.relax(relaxNuTildaEqn);
+
         nuTilda1Res = nuTilda1Eqn & nuTilda1;
     }
 
@@ -301,6 +304,8 @@ void DAIrkPimpleFoam::calcPriSAResIrkOrig(
             // Minus D21 / halfDeltaT[i] * T2 * V() to source term
             nuTilda2Eqn.source()[cellI] -= D21 / deltaT * nuTilda1[cellI] * meshV;
         }
+
+        nuTilda2Eqn.relax(relaxNuTildaEqn);
 
         nuTilda2Res = nuTilda2Eqn & nuTilda2;
     }
@@ -412,6 +417,13 @@ label DAIrkPimpleFoam::solvePrimal()
 
     scalar relaxUEqn = 1.0;
     scalar relaxNuTildaEqn = 1.0;
+    if (IRKDict.found("relaxNuTildaEqn"))
+    {
+        if (IRKDict.getScalar("relaxNuTildaEqn") > 0)
+        {
+            relaxNuTildaEqn = IRKDict.getScalar("relaxNuTildaEqn");
+        }
+    }
 
     label maxSweep = 10;
     if (IRKDict.found("maxSweep"))
@@ -450,7 +462,6 @@ label DAIrkPimpleFoam::solvePrimal()
         mesh,
         dimensionedVector("U1Res", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
         zeroGradientFvPatchField<vector>::typeName);
-
     volVectorField U2Res("U2Res", U1Res);
 
     volScalarField p1Res(
@@ -463,7 +474,6 @@ label DAIrkPimpleFoam::solvePrimal()
         mesh,
         dimensionedScalar("p1Res", dimensionSet(0, 0, -1, 0, 0, 0, 0), 0.0),
         zeroGradientFvPatchField<scalar>::typeName);
-
     volScalarField p2Res("p2Res", p1Res);
 
     surfaceScalarField phi1Res(
@@ -474,8 +484,19 @@ label DAIrkPimpleFoam::solvePrimal()
             IOobject::NO_READ,
             IOobject::NO_WRITE),
         phi * 0.0);
-
     surfaceScalarField phi2Res("phi2Res", phi1Res);
+
+    volScalarField nuTilda1Res(
+        IOobject(
+            "nuTilda1Res",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        mesh,
+        dimensionedScalar("nuTilda1Res", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
+        zeroGradientFvPatchField<scalar>::typeName);
+    volScalarField nuTilda2Res("nuTilda2Res", nuTilda1Res);
 
     // Initialize oldTime() for under-relaxation
     U1.oldTime() = U1;
@@ -540,7 +561,8 @@ label DAIrkPimpleFoam::solvePrimal()
 #include "nuTilda2EqnIrkPimple.H"
             }
 
-            calcPriResIrkOrig(U, U1, p1, phi1, nuTilda1, nut1, U2, p2, phi2, nuTilda2, nut2, nu, deltaT, U1Res, p1Res, phi1Res, U2Res, p2Res, phi2Res, relaxUEqn);
+            this->calcPriResIrkOrig(U, U1, p1, phi1, nuTilda1, nut1, U2, p2, phi2, nuTilda2, nut2, nu, deltaT, U1Res, p1Res, phi1Res, U2Res, p2Res, phi2Res, relaxUEqn);
+            this->calcPriSAResIrkOrig(nuTilda, U1, phi1, nuTilda1, U2, phi2, nuTilda2, y, nu, deltaT, nuTilda1Res, nuTilda2Res, relaxNuTildaEqn);
 
             Info << "L2 norm of U1Res: " << this->L2norm(U1Res.primitiveField()) << endl;
             Info << "L2 norm of U2Res: " << this->L2norm(U2Res.primitiveField()) << endl;
@@ -548,18 +570,25 @@ label DAIrkPimpleFoam::solvePrimal()
             Info << "L2 norm of p2Res: " << this->L2norm(p2Res.primitiveField()) << endl;
             Info << "L2 norm of phi1Res: " << this->L2norm(phi1Res, phi1.mesh().magSf()) << endl;
             Info << "L2 norm of phi2Res: " << this->L2norm(phi2Res, phi2.mesh().magSf()) << endl;
+            Info << "L2 norm of nuTilda1Res: " << this->L2norm(nuTilda1Res.primitiveField()) << endl;
+            Info << "L2 norm of nuTilda2Res: " << this->L2norm(nuTilda2Res.primitiveField()) << endl;
 
             sweepIndex++;
         }
 
         // Update new step values before write-to-disk
         U = U2;
+        U.correctBoundaryConditions();
         p = p2;
+        p.correctBoundaryConditions();
         phi = phi2;
         nuTilda = nuTilda2;
+        nuTilda.correctBoundaryConditions();
         nut = nut2;
+        nut.correctBoundaryConditions();
 
-        runTime.write();
+        // Write to disk
+        runTime.write(); // This writes U, p, phi, nuTilda, nut
         // Also write internal stages to disk (Radau23)
         U1.write();
         p1.write();
