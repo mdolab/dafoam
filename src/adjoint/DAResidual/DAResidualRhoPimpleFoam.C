@@ -137,7 +137,7 @@ void DAResidualRhoPimpleFoam::calcResiduals(const dictionary& options)
         - fvSource_);
     fvVectorMatrix& UEqn = tUEqn.ref();
 
-    UEqn.relax();
+    UEqn.relax(1.0);
 
     URes_ = (UEqn & U_) + fvc::grad(p_);
     normalizeResiduals(URes);
@@ -163,7 +163,7 @@ void DAResidualRhoPimpleFoam::calcResiduals(const dictionary& options)
         - fvm::laplacian(alphaEff, he_)
         - fvSourceEnergy_);
 
-    EEqn.relax();
+    EEqn.relax(1.0);
 
     TRes_ = EEqn & he_;
     normalizeResiduals(TRes);
@@ -316,11 +316,6 @@ void DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
         Calculate the diagonal block of the preconditioner matrix dRdWTPC using the fvMatrix
     */
 
-    Info << "************************ WARNING ************************** " << endl;
-    Info << "DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix has bugs and is commented out " << endl;
-
-    /*
-
     const labelUList& owner = mesh_.owner();
     const labelUList& neighbour = mesh_.neighbour();
 
@@ -330,14 +325,22 @@ void DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
     wordList normResDict = daOption_.getOption<wordList>("normalizeResiduals");
 
     // ******** U Residuals **********
+    if (hasFvSource_)
+    {
+        DAFvSource& daFvSource(const_cast<DAFvSource&>(
+            mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
+        daFvSource.calcFvSource(fvSource_);
+        fvSourceEnergy_ = fvSource_ & U_;
+    }
 
     fvVectorMatrix UEqn(
         fvm::ddt(rho_, U_)
         + fvm::div(phi_, U_, "div(pc)")
-        + daTurb_.divDevReff(U_)
+        + daTurb_.divDevRhoReff(U_)
         - fvSource_);
 
-    // set the val before relaxing UEqn!
+    // force 1.0 relaxation
+    UEqn.relax(1.0);
 
     scalar UScaling = 1.0;
     if (normStateDict.found("U"))
@@ -406,10 +409,14 @@ void DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
         }
     }
 
-    UEqn.relax();
-
+    /*
+    // NOTE: the PCMatFVMatrix calculation for the EEqn is somehow way off
+    // so we comment it out for now...
     // ******** e Residuals **********
     volScalarField alphaEff("alphaEff", thermo_.alphaEff(alphat_));
+
+    K_ = 0.5 * magSqr(U_);
+    dpdt_ = fvc::ddt(p_);
 
     fvScalarMatrix EEqn(
         fvm::ddt(rho_, he_)
@@ -424,6 +431,8 @@ void DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
                : -dpdt_)
         - fvm::laplacian(alphaEff, he_)
         - fvSourceEnergy_);
+
+    EEqn.relax(1.0);
 
     scalar TScaling = 1.0;
     if (normStateDict.found("T"))
@@ -483,8 +492,7 @@ void DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
         assignValueCheckAD(val, val1);
         MatSetValues(PCMat, 1, &colI, 1, &rowI, &val, INSERT_VALUES);
     }
-
-    EEqn.relax();
+    */
 
     // ******** p Residuals **********
     volScalarField rAU(1.0 / UEqn.A());
@@ -572,7 +580,6 @@ void DAResidualRhoPimpleFoam::calcPCMatWithFvMatrix(Mat PCMat)
         assignValueCheckAD(val, val1);
         MatSetValues(PCMat, 1, &colI, 1, &rowI, &val, INSERT_VALUES);
     }
-    */
 }
 
 } // End namespace Foam
