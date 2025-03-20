@@ -54,7 +54,7 @@ daOptionsAero = {
             "type": "totalPressure",
             "source": "patchToFace",
             "patches": ["hot_air_out", "cold_air_out"],
-            "scale": -1.0,
+            "scale": 1.0,
         },
         "HFH": {
             "type": "wallHeatFlux",
@@ -83,7 +83,7 @@ daOptionsAero = {
         "T_convect": {
             "type": "thermalCouplingInput",
             "patches": ["hot_air_inner", "cold_air_outer"],
-            "components": ["solver"],
+            "components": ["solver", "function"],
         },
     },
     "outputInfo": {
@@ -108,6 +108,17 @@ daOptionsThermal = {
             "patches": ["channel_inner"],
             "scale": 1,
         },
+        "TVolSum": {
+            "type": "variableVolSum",
+            "source": "allCells",
+            "varName": "T",
+            "varType": "scalar",
+            "component": 0,
+            "isSquare": 0,
+            "multiplyVol": 1,
+            "divByTotalVol": 0,
+            "scale": 1.0,
+        },
     },
     "adjStateOrdering": "cell",
     "adjEqnOption": {
@@ -125,6 +136,8 @@ daOptionsThermal = {
         "q_conduct": {
             "type": "thermalCouplingInput",
             "patches": ["channel_outer", "channel_inner"],
+            # NOTE. this should include "function" as well. However, the total is worse
+            # with "function"...
             "components": ["solver"],
         },
     },
@@ -239,7 +252,7 @@ om.n2(prob, show_browser=False, outfile="mphys_aerothermal.html")
 
 prob.run_model()
 results = prob.check_totals(
-    of=["PL.val", "scenario.aero_post.HFH", "scenario.thermal_post.HF_INNER"],
+    of=["PL.val", "scenario.aero_post.HFH", "scenario.thermal_post.HF_INNER", "scenario.thermal_post.TVolSum"],
     wrt=["shape"],
     compact_print=True,
     step=1e-3,
@@ -262,5 +275,8 @@ if gcomm.rank == 0:
     derivDict["HF_INNER"] = {}
     derivDict["HF_INNER"]["shape-Adjoint"] = results[("scenario.thermal_post.HF_INNER", "shape")]["J_fwd"][0]
     derivDict["HF_INNER"]["shape-FD"] = results[("scenario.thermal_post.HF_INNER", "shape")]["J_fd"][0]
+    derivDict["TVolSum"] = {}
+    derivDict["TVolSum"]["shape-Adjoint"] = results[("scenario.thermal_post.TVolSum", "shape")]["J_fwd"][0]
+    derivDict["TVolSum"]["shape-FD"] = results[("scenario.thermal_post.TVolSum", "shape")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-8, 1e-10)
     reg_write_dict(derivDict, 1e-4, 1e-10)
