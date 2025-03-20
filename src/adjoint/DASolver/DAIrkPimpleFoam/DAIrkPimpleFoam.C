@@ -219,8 +219,7 @@ void DAIrkPimpleFoam::calcPriSAResIrkOrig(
     const volScalarField& nu,
     const scalar& deltaT, // current dt
     volScalarField& nuTilda1Res, // Residual for 1st stage
-    volScalarField& nuTilda2Res, // Residual for 2nd stage
-    const scalar& relaxNuTildaEqn)
+    volScalarField& nuTilda2Res) // Residual for 2nd stage
 {
     // Numerical settings
     word divNuTildaScheme = "div(phi,nuTilda)";
@@ -266,8 +265,6 @@ void DAIrkPimpleFoam::calcPriSAResIrkOrig(
             nuTilda1Eqn.source()[cellI] -= D12 / deltaT * nuTilda2[cellI] * meshV;
         }
 
-        nuTilda1Eqn.relax(relaxNuTildaEqn);
-
         nuTilda1Res = nuTilda1Eqn & nuTilda1;
     }
 
@@ -304,8 +301,6 @@ void DAIrkPimpleFoam::calcPriSAResIrkOrig(
             // Minus D21 / halfDeltaT[i] * T2 * V() to source term
             nuTilda2Eqn.source()[cellI] -= D21 / deltaT * nuTilda1[cellI] * meshV;
         }
-
-        nuTilda2Eqn.relax(relaxNuTildaEqn);
 
         nuTilda2Res = nuTilda2Eqn & nuTilda2;
     }
@@ -562,7 +557,7 @@ label DAIrkPimpleFoam::solvePrimal()
             }
 
             this->calcPriResIrkOrig(U, U1, p1, phi1, nuTilda1, nut1, U2, p2, phi2, nuTilda2, nut2, nu, deltaT, U1Res, p1Res, phi1Res, U2Res, p2Res, phi2Res, relaxUEqn);
-            this->calcPriSAResIrkOrig(nuTilda, U1, phi1, nuTilda1, U2, phi2, nuTilda2, y, nu, deltaT, nuTilda1Res, nuTilda2Res, relaxNuTildaEqn);
+            this->calcPriSAResIrkOrig(nuTilda, U1, phi1, nuTilda1, U2, phi2, nuTilda2, y, nu, deltaT, nuTilda1Res, nuTilda2Res);
 
             Info << "L2 norm of U1Res: " << this->L2norm(U1Res.primitiveField()) << endl;
             Info << "L2 norm of U2Res: " << this->L2norm(U2Res.primitiveField()) << endl;
