@@ -69,6 +69,243 @@ DAIrkPimpleFoam::DAIrkPimpleFoam(
 // Functions for SA-fv3 model
 #include "mySAModel.H"
 
+// Some utilities, move to DAUtility later
+#include "myUtilities.H"
+
+void DAIrkPimpleFoam::calcPriResIrkOrig(
+    volVectorField& U0, // oldTime U
+    volVectorField& U1, // 1st stage
+    volScalarField& p1,
+    surfaceScalarField& phi1,
+    volScalarField& nuTilda1,
+    volScalarField& nut1,
+    volVectorField& U2, // 2nd stage
+    volScalarField& p2,
+    surfaceScalarField& phi2,
+    volScalarField& nuTilda2,
+    volScalarField& nut2,
+    const volScalarField& nu,
+    const scalar& deltaT, // current dt
+    volVectorField& U1Res, // Residual for 1st stage
+    volScalarField& p1Res,
+    surfaceScalarField& phi1Res,
+    volVectorField& U2Res, // Residual for end stage
+    volScalarField& p2Res,
+    surfaceScalarField& phi2Res,
+    const scalar& relaxUEqn)
+{
+    // Numerical settings
+    word divUScheme = "div(phi,U)";
+    word divGradUScheme = "div((nuEff*dev2(T(grad(U)))))";
+
+    // Update boundaries
+    U0.correctBoundaryConditions(); // oldTime U
+    U1.correctBoundaryConditions(); // 1st stage
+    p1.correctBoundaryConditions();
+    nuTilda1.correctBoundaryConditions();
+    U2.correctBoundaryConditions(); // 2nd stage
+    p2.correctBoundaryConditions();
+    nuTilda2.correctBoundaryConditions();
+
+    // --- 1st stage
+    {
+        // Get nuEff1
+        this->correctNut(nut1, nuTilda1, nu);
+        volScalarField nuEff1("nuEff1", nu + nut1);
+
+        // Initialize U1Eqn w/o ddt term
+        fvVectorMatrix U1Eqn(
+            fvm::div(phi1, U1, divUScheme)
+            //+ turbulence->divDevReff(U)
+            - fvm::laplacian(nuEff1, U1)
+            - fvc::div(nuEff1 * dev2(T(fvc::grad(U1))), divGradUScheme));
+
+        // Update U1Eqn with pseudo-spectral terms
+        forAll(U1, cellI)
+        {
+            scalar meshV = U1.mesh().V()[cellI];
+
+            // Add D11 / halfDeltaT[i] * V() to diagonal
+            U1Eqn.diag()[cellI] += D11 / deltaT * meshV; // Use one seg for now: halfDeltaTList[segI]
+
+            // Minus D10 / halfDeltaT[i] * T0 * V() to source term
+            U1Eqn.source()[cellI] -= D10 / deltaT * U0[cellI] * meshV;
+
+            // Minus D12 / halfDeltaT[i] * T2 * V() to source term
+            U1Eqn.source()[cellI] -= D12 / deltaT * U2[cellI] * meshV;
+        }
+
+        U1Res = (U1Eqn & U1) + fvc::grad(p1);
+
+        // We use relaxation factor = 1.0, cannot skip the step below
+        U1Eqn.relax(relaxUEqn);
+
+        volScalarField rAU1(1.0 / U1Eqn.A());
+        volVectorField HbyA1(constrainHbyA(rAU1 * U1Eqn.H(), U1, p1));
+        surfaceScalarField phiHbyA1(
+            "phiHbyA1",
+            fvc::flux(HbyA1));
+        tmp<volScalarField> rAtU1(rAU1);
+
+        fvScalarMatrix p1Eqn(
+            fvm::laplacian(rAtU1(), p1) == fvc::div(phiHbyA1));
+
+        p1Res = p1Eqn & p1;
+
+        // Then do phiRes
+        phi1Res = phiHbyA1 - p1Eqn.flux() - phi1;
+    }
+
+    // --- 2nd stage
+    {
+        // Get nuEff2
+        this->correctNut(nut2, nuTilda2, nu);
+        volScalarField nuEff2("nuEff2", nu + nut2);
+
+        // Initialize U2Eqn w/o ddt term
+        fvVectorMatrix U2Eqn(
+            fvm::div(phi2, U2, divUScheme)
+            //+ turbulence->divDevReff(U)
+            - fvm::laplacian(nuEff2, U2)
+            - fvc::div(nuEff2 * dev2(T(fvc::grad(U2))), divGradUScheme));
+
+        // Update U2Eqn with pseudo-spectral terms
+        forAll(U2, cellI)
+        {
+            scalar meshV = U2.mesh().V()[cellI];
+
+            // Add D22 / halfDeltaT[i] * V() to diagonal
+            U2Eqn.diag()[cellI] += D22 / deltaT * meshV; // Use one seg for now: halfDeltaTList[segI]
+
+            // Minus D20 / halfDeltaT[i] * T0 * V() to source term
+            U2Eqn.source()[cellI] -= D20 / deltaT * U0[cellI] * meshV;
+
+            // Minus D21 / halfDeltaT[i] * T2 * V() to source term
+            U2Eqn.source()[cellI] -= D21 / deltaT * U1[cellI] * meshV;
+        }
+
+        U2Res = (U2Eqn & U2) + fvc::grad(p2);
+
+        // We use relaxation factor = 1.0, cannot skip the step below
+        U2Eqn.relax(relaxUEqn);
+
+        volScalarField rAU2(1.0 / U2Eqn.A());
+        volVectorField HbyA2(constrainHbyA(rAU2 * U2Eqn.H(), U2, p2));
+        surfaceScalarField phiHbyA2(
+            "phiHbyA2",
+            fvc::flux(HbyA2));
+        tmp<volScalarField> rAtU2(rAU2);
+
+        // Non-orthogonal pressure corrector loop
+        fvScalarMatrix p2Eqn(
+            fvm::laplacian(rAtU2(), p2) == fvc::div(phiHbyA2));
+
+        p2Res = p2Eqn & p2;
+
+        // Then do phiRes
+        phi2Res = phiHbyA2 - p2Eqn.flux() - phi2;
+    }
+}
+
+void DAIrkPimpleFoam::calcPriSAResIrkOrig(
+    volScalarField& nuTilda0, // oldTime nuTilda
+    volVectorField& U1, // 1st stage
+    surfaceScalarField& phi1,
+    volScalarField& nuTilda1,
+    volVectorField& U2, // 2nd stage
+    surfaceScalarField& phi2,
+    volScalarField& nuTilda2,
+    volScalarField& y,
+    const volScalarField& nu,
+    const scalar& deltaT, // current dt
+    volScalarField& nuTilda1Res, // Residual for 1st stage
+    volScalarField& nuTilda2Res) // Residual for 2nd stage
+{
+    // Numerical settings
+    word divNuTildaScheme = "div(phi,nuTilda)";
+
+    // Update boundaries
+    nuTilda0.correctBoundaryConditions();
+    U1.correctBoundaryConditions();
+    nuTilda1.correctBoundaryConditions();
+    U2.correctBoundaryConditions();
+    nuTilda2.correctBoundaryConditions();
+
+    // --- 1st stage
+    {
+        // Get chi1 and fv11
+        volScalarField chi1("chi1", chi(nuTilda1, nu));
+        volScalarField fv11("fv11", fv1(chi1));
+
+        // Get Stilda1
+        volScalarField Stilda1(
+            "Stilda1",
+            fv3(chi1, fv11) * ::sqrt(2.0) * mag(skew(fvc::grad(U1))) + fv2(chi1, fv11) * nuTilda1 / sqr(kappa * y));
+
+        // Construct nuTilda1Eqn w/o ddt term
+        fvScalarMatrix nuTilda1Eqn(
+            fvm::div(phi1, nuTilda1, divNuTildaScheme)
+                - fvm::laplacian(DnuTildaEff(nuTilda1, nu), nuTilda1)
+                - Cb2 / sigmaNut * magSqr(fvc::grad(nuTilda1))
+            == Cb1 * Stilda1 * nuTilda1 // If field inversion, beta should be multiplied here
+                - fvm::Sp(Cw1 * fw(Stilda1, nuTilda1, y) * nuTilda1 / sqr(y), nuTilda1));
+
+        // Update nuTilda1Eqn with pseudo-spectral terms
+        forAll(nuTilda1, cellI)
+        {
+            scalar meshV = nuTilda1.mesh().V()[cellI];
+
+            // Add D11 / halfDeltaT[i] * V() to diagonal
+            nuTilda1Eqn.diag()[cellI] += D11 / deltaT * meshV;
+
+            // Minus D10 / halfDeltaT[i] * T0 * V() to source term
+            nuTilda1Eqn.source()[cellI] -= D10 / deltaT * nuTilda0[cellI] * meshV;
+
+            // Minus D12 / halfDeltaT[i] * T2 * V() to source term
+            nuTilda1Eqn.source()[cellI] -= D12 / deltaT * nuTilda2[cellI] * meshV;
+        }
+
+        nuTilda1Res = nuTilda1Eqn & nuTilda1;
+    }
+
+    // --- 2nd stage
+    {
+        // Get chi2 and fv12
+        volScalarField chi2("chi2", chi(nuTilda2, nu));
+        volScalarField fv12("fv12", fv1(chi2));
+
+        // Get Stilda2
+        volScalarField Stilda2(
+            "Stilda2",
+            fv3(chi2, fv12) * ::sqrt(2.0) * mag(skew(fvc::grad(U2))) + fv2(chi2, fv12) * nuTilda2 / sqr(kappa * y));
+
+        // Construct nuTilda2Eqn w/o ddt term
+        fvScalarMatrix nuTilda2Eqn(
+            fvm::div(phi2, nuTilda2, divNuTildaScheme)
+                - fvm::laplacian(DnuTildaEff(nuTilda2, nu), nuTilda2)
+                - Cb2 / sigmaNut * magSqr(fvc::grad(nuTilda2))
+            == Cb1 * Stilda2 * nuTilda2 // If field inversion, beta should be multiplied here
+                - fvm::Sp(Cw1 * fw(Stilda2, nuTilda2, y) * nuTilda2 / sqr(y), nuTilda2));
+
+        // Update nuTilda2Eqn with pseudo-spectral terms
+        forAll(nuTilda2, cellI)
+        {
+            scalar meshV = nuTilda2.mesh().V()[cellI];
+
+            // Add D22 / halfDeltaT[i] * V() to diagonal
+            nuTilda2Eqn.diag()[cellI] += D22 / deltaT * meshV;
+
+            // Minus D20 / halfDeltaT[i] * T0 * V() to source term
+            nuTilda2Eqn.source()[cellI] -= D20 / deltaT * nuTilda0[cellI] * meshV;
+
+            // Minus D21 / halfDeltaT[i] * T2 * V() to source term
+            nuTilda2Eqn.source()[cellI] -= D21 / deltaT * nuTilda1[cellI] * meshV;
+        }
+
+        nuTilda2Res = nuTilda2Eqn & nuTilda2;
+    }
+}
+
 void DAIrkPimpleFoam::initSolver()
 {
     /*
@@ -175,6 +412,13 @@ label DAIrkPimpleFoam::solvePrimal()
 
     scalar relaxUEqn = 1.0;
     scalar relaxNuTildaEqn = 1.0;
+    if (IRKDict.found("relaxNuTildaEqn"))
+    {
+        if (IRKDict.getScalar("relaxNuTildaEqn") > 0)
+        {
+            relaxNuTildaEqn = IRKDict.getScalar("relaxNuTildaEqn");
+        }
+    }
 
     label maxSweep = 10;
     if (IRKDict.found("maxSweep"))
@@ -202,13 +446,52 @@ label DAIrkPimpleFoam::solvePrimal()
     mesh.setFluxRequired(p1.name());
     mesh.setFluxRequired(p2.name());
 
-    // Note: below is not working somehow...
-    /*
-    // IO settings for internal stages
-    U1.writeOpt() = IOobject::AUTO_WRITE;
-    p1.writeOpt() = IOobject::AUTO_WRITE;
-    phi1.writeOpt() = IOobject::AUTO_WRITE;
-    */
+    // Initialize primal residuals
+    volVectorField U1Res(
+        IOobject(
+            "U1Res",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        mesh,
+        dimensionedVector("U1Res", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
+        zeroGradientFvPatchField<vector>::typeName);
+    volVectorField U2Res("U2Res", U1Res);
+
+    volScalarField p1Res(
+        IOobject(
+            "p1Res",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        mesh,
+        dimensionedScalar("p1Res", dimensionSet(0, 0, -1, 0, 0, 0, 0), 0.0),
+        zeroGradientFvPatchField<scalar>::typeName);
+    volScalarField p2Res("p2Res", p1Res);
+
+    surfaceScalarField phi1Res(
+        IOobject(
+            "phi1Res",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        phi * 0.0);
+    surfaceScalarField phi2Res("phi2Res", phi1Res);
+
+    volScalarField nuTilda1Res(
+        IOobject(
+            "nuTilda1Res",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        mesh,
+        dimensionedScalar("nuTilda1Res", dimensionSet(0, 2, -2, 0, 0, 0, 0), 0.0),
+        zeroGradientFvPatchField<scalar>::typeName);
+    volScalarField nuTilda2Res("nuTilda2Res", nuTilda1Res);
 
     // Initialize oldTime() for under-relaxation
     U1.oldTime() = U1;
@@ -247,6 +530,7 @@ label DAIrkPimpleFoam::solvePrimal()
         {
             Info << "Block GS sweep = " << sweepIndex + 1 << endl;
 
+            // --- 1st stage
             {
 #include "U1EqnIrkPimple.H"
 
@@ -259,6 +543,7 @@ label DAIrkPimpleFoam::solvePrimal()
 #include "nuTilda1EqnIrkPimple.H"
             }
 
+            // --- 2nd stage
             {
 #include "U2EqnIrkPimple.H"
 
@@ -271,17 +556,34 @@ label DAIrkPimpleFoam::solvePrimal()
 #include "nuTilda2EqnIrkPimple.H"
             }
 
+            this->calcPriResIrkOrig(U, U1, p1, phi1, nuTilda1, nut1, U2, p2, phi2, nuTilda2, nut2, nu, deltaT, U1Res, p1Res, phi1Res, U2Res, p2Res, phi2Res, relaxUEqn);
+            this->calcPriSAResIrkOrig(nuTilda, U1, phi1, nuTilda1, U2, phi2, nuTilda2, y, nu, deltaT, nuTilda1Res, nuTilda2Res);
+
+            Info << "L2 norm of U1Res: " << this->L2norm(U1Res.primitiveField()) << endl;
+            Info << "L2 norm of U2Res: " << this->L2norm(U2Res.primitiveField()) << endl;
+            Info << "L2 norm of p1Res: " << this->L2norm(p1Res.primitiveField()) << endl;
+            Info << "L2 norm of p2Res: " << this->L2norm(p2Res.primitiveField()) << endl;
+            Info << "L2 norm of phi1Res: " << this->L2norm(phi1Res, phi1.mesh().magSf()) << endl;
+            Info << "L2 norm of phi2Res: " << this->L2norm(phi2Res, phi2.mesh().magSf()) << endl;
+            Info << "L2 norm of nuTilda1Res: " << this->L2norm(nuTilda1Res.primitiveField()) << endl;
+            Info << "L2 norm of nuTilda2Res: " << this->L2norm(nuTilda2Res.primitiveField()) << endl;
+
             sweepIndex++;
         }
 
         // Update new step values before write-to-disk
         U = U2;
+        U.correctBoundaryConditions();
         p = p2;
+        p.correctBoundaryConditions();
         phi = phi2;
         nuTilda = nuTilda2;
+        nuTilda.correctBoundaryConditions();
         nut = nut2;
+        nut.correctBoundaryConditions();
 
-        runTime.write();
+        // Write to disk
+        runTime.write(); // This writes U, p, phi, nuTilda, nut
         // Also write internal stages to disk (Radau23)
         U1.write();
         p1.write();
