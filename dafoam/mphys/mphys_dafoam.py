@@ -713,6 +713,10 @@ class DAFoamFunctions(ExplicitComponent):
     # get the objective function from DASolver
     def compute(self, inputs, outputs):
 
+        # TODO. We should have added a call to assign inputs to the OF layer.
+        # This will not cause a problem for now because DAFoamFunctions is usually
+        # called right after the primal run.
+
         DASolver = self.DASolver
 
         DASolver.setStates(inputs[self.stateName])

@@ -40,7 +40,7 @@ daOptions = {
     "unsteadyAdjoint": {
         "mode": "timeAccurate",
         "PCMatPrecomputeInterval": 5,
-        "PCMatUpdateInterval": 100,  # TODO. the PCUpdate is not working.  the calcPCMatWithFvMatrix function is problematic for rhoPimple
+        "PCMatUpdateInterval": 1,
         "readZeroFields": True,
     },
     "function": {
