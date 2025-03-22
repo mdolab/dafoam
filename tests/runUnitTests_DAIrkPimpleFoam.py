@@ -34,7 +34,7 @@ UNorm = np.linalg.norm(U)
 UNorm = gcomm.allreduce(UNorm, op=MPI.SUM)
 print("UNorm", UNorm)
 
-if abs(1173.6434679542956 - UNorm) / 1173.6434679542956 > 1e-6:
+if abs(1173.6440797856071 - UNorm) / 1173.6440797856071 > 1e-10:
     print("DAIrkPimpleFoam test failed!")
     exit(1)
 else:

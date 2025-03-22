@@ -39,3 +39,5 @@ nuTilda2 = nuTilda2.oldTime() + relaxNuTilda * relaxStage2 * (nuTilda2 - nuTilda
 
 // Correct nut after solving nuTilda2
 correctNut(nut2, nuTilda2, nu);
+
+nuTilda2.oldTime() = nuTilda2;
