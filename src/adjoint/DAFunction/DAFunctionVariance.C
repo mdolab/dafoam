@@ -38,7 +38,9 @@ DAFunctionVariance::DAFunctionVariance(
     if (mode_ == "surface")
     {
         // check if the faceSources is set
-        if (faceSources_.size() == 0)
+        label size = faceSources_.size();
+        reduce(size, sumOp<label>());
+        if (size == 0)
         {
             FatalErrorIn("") << "surface mode is used but patchToFace is not set!"
                              << abort(FatalError);
