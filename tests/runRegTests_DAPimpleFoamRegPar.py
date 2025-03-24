@@ -134,7 +134,7 @@ daOptions = {
     "inputInfo": {
         "reg_model": {"type": "regressionPar", "components": ["solver", "function"]},
     },
-    "decomposeParDict": {"args": ["-time", "0:"]}
+    "decomposeParDict": {"args": ["-time", "0:"]},
 }
 
 
