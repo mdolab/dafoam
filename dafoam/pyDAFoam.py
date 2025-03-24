@@ -549,7 +549,7 @@ class DAOPTION(object):
             "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001},
             "preservePatches": ["None"],
             "singleProcessorFaceSets": ["None"],
-            "args": [],
+            "args": ["None"],
         }
 
         ## The ordering of state variable. Options are: state or cell. Most of the case, the state
@@ -1382,8 +1382,8 @@ class PYDAFOAM(object):
         command = ["decomposePar"]
         args = self.getOption("decomposeParDict")["args"]
 
-        if len(args) > 0:
-            for arg in args:
+        for arg in args:
+            if arg != "None":
                 command.append(arg)
 
         if self.comm.rank == 0:
