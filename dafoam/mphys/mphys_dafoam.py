@@ -492,8 +492,8 @@ class DAFoamSolver(ImplicitComponent):
 
                         # print the solution counter
                         if self.comm.rank == 0:
-                            print("Driver total derivatives for iteration: %d" % self.solution_counter)
-                            print("---------------------------------------------")
+                            print("Driver total derivatives for iteration: %d" % self.solution_counter, flush=True)
+                            print("---------------------------------------------", flush=True)
                         self.solution_counter += 1
 
                     # compute the preconditioner matrix for the adjoint linear equation solution
@@ -537,8 +537,8 @@ class DAFoamSolver(ImplicitComponent):
                     # DASolver.writeDeformedFFDs(self.solution_counter)
                     # print the solution counter
                     if self.comm.rank == 0:
-                        print("Driver total derivatives for iteration: %d" % self.solution_counter)
-                        print("---------------------------------------------")
+                        print("Driver total derivatives for iteration: %d" % self.solution_counter, flush=True)
+                        print("---------------------------------------------", flush=True)
                     self.solution_counter += 1
                 # solve the adjoint equation using the fixed-point adjoint approach
                 fail = DASolver.solverAD.runFPAdj(dFdW, self.psi)
@@ -1038,10 +1038,10 @@ class DAFoamForces(ExplicitComponent):
         fZTot = self.comm.allreduce(fZSum, op=MPI.SUM)
 
         if self.comm.rank == 0:
-            print("Total force:")
-            print("Fx = %f" % fXTot)
-            print("Fy = %f" % fYTot)
-            print("Fz = %f" % fZTot)
+            print("Total force:", flush=True)
+            print("Fx = %f" % fXTot, flush=True)
+            print("Fy = %f" % fYTot, flush=True)
+            print("Fz = %f" % fZTot, flush=True)
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
 
@@ -1179,15 +1179,15 @@ class OptFuncs(object):
             norm = np.linalg.norm(res / targets)
 
             if self.comm.rank == 0:
-                print("FindFeasibleDesign Iter: ", n)
-                print("DesignVars: ", dv0)
-                print("Constraints: ", con0)
-                print("Residual Norm: ", norm)
+                print("FindFeasibleDesign Iter: ", n, flush=True)
+                print("DesignVars: ", dv0, flush=True)
+                print("Constraints: ", con0, flush=True)
+                print("Residual Norm: ", norm, flush=True)
 
             # break the loop if residual is already smaller than the tolerance
             if norm < tol:
                 if self.comm.rank == 0:
-                    print("FindFeasibleDesign Converged! ")
+                    print("FindFeasibleDesign Converged! ", flush=True)
                 break
 
             # perturb design variables and compute the Jacobian matrix
@@ -1406,7 +1406,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 DASolver.readDynamicMeshPoints(endTime, deltaT, endTimeIndex, ddtSchemeOrder)
             # calc the preconditioner mat for endTime
             if self.comm.rank == 0:
-                print("Pre-Computing preconditiner mat for t = %f" % endTime)
+                print("Pre-Computing preconditiner mat for t = %f" % endTime, flush=True)
 
             dRdWTPC1 = PETSc.Mat().create(PETSc.COMM_WORLD)
             DASolver.solver.calcdRdWT(1, dRdWTPC1)
@@ -1420,7 +1420,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 if timeIndex % PCMatPrecomputeInterval == 0:
                     t = timeIndex * deltaT
                     if self.comm.rank == 0:
-                        print("Pre-Computing preconditiner mat for t = %f" % t)
+                        print("Pre-Computing preconditiner mat for t = %f" % t, flush=True)
                     # read the latest solution
                     DASolver.solver.setTime(t, timeIndex)
                     DASolver.solverAD.setTime(t, timeIndex)
@@ -1488,7 +1488,7 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 timeVal = n * deltaT
 
                 if self.comm.rank == 0:
-                    print("---- Solving unsteady adjoint for %s. t = %f ----" % (functionName, timeVal))
+                    print("---- Solving unsteady adjoint for %s. t = %f ----" % (functionName, timeVal), flush=True)
 
                 # set the time value and index in the OpenFOAM layer. Note: this is critical
                 # because if timeIndex < 2, OpenFOAM will not use the oldTime.oldTime for 2nd
@@ -1535,13 +1535,13 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 # check if we need to update the PC Mat vals or use the pre-computed PC matrix
                 if str(timeVal) in list(self.dRdWTPC.keys()):
                     if self.comm.rank == 0:
-                        print("Using pre-computed KSP PC mat for %f" % timeVal)
+                        print("Using pre-computed KSP PC mat for %f" % timeVal, flush=True)
                     PCMat = self.dRdWTPC[str(timeVal)]
                     DASolver.solverAD.updateKSPPCMat(PCMat, ksp)
                 if n % PCMatUpdateInterval == 0 and n < endTimeIndex:
                     # udpate part of the PC mat
                     if self.comm.rank == 0:
-                        print("Updating dRdWTPC mat value using OF fvMatrix")
+                        print("Updating dRdWTPC mat value using OF fvMatrix", flush=True)
                     DASolver.solver.calcPCMatWithFvMatrix(PCMat)
 
                 # now solve the adjoint eqn
