@@ -2,12 +2,12 @@
 
 """
 
-    DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+DAFoam  : Discrete Adjoint with OpenFOAM
+Version : v4
 
-    Description:
-    The Python interface to DAFoam. It controls the adjoint
-    solvers and external modules for design optimization
+Description:
+The Python interface to DAFoam. It controls the adjoint
+solvers and external modules for design optimization
 
 """
 
@@ -549,6 +549,7 @@ class DAOPTION(object):
             "simpleCoeffs": {"n": [2, 2, 1], "delta": 0.001},
             "preservePatches": ["None"],
             "singleProcessorFaceSets": ["None"],
+            "args": [],
         }
 
         ## The ordering of state variable. Options are: state or cell. Most of the case, the state
@@ -1378,8 +1379,15 @@ class PYDAFOAM(object):
         # write the decomposeParDict file with the correct numberOfSubdomains number
         self._writeDecomposeParDict()
 
+        command = ["decomposePar"]
+        args = self.getOption("decomposeParDict")["args"]
+
+        if len(args) > 0:
+            for arg in args:
+                command.append(arg)
+
         if self.comm.rank == 0:
-            status = subprocess.call("decomposePar", stdout=sys.stdout, stderr=subprocess.STDOUT, shell=False)
+            status = subprocess.call(command, stdout=sys.stdout, stderr=subprocess.STDOUT, shell=False)
             if status != 0:
                 # raise Error('pyDAFoam: status %d: Unable to run decomposePar'%status)
                 print("\nUnable to run decomposePar, the domain has been already decomposed?\n", flush=True)
