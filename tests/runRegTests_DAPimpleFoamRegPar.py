@@ -29,9 +29,9 @@ if gcomm.rank == 0:
     os.system("getFIData -refFieldName p -refFieldType scalar")
     os.system("getFIData -refFieldName wallShearStress -refFieldType vector")
     # os.system("getFIData -refFieldName wallHeatFlux -refFieldType scalar")
-    os.system("decomposePar -time '0:'")
+    # os.system("decomposePar -time '0:'")
     os.system("cp constant/turbulenceProperties.sst constant/turbulenceProperties")
-    os.system("rm -rf 0.0* 0.1")
+    # os.system("rm -rf 0.0* 0.1")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
@@ -134,6 +134,7 @@ daOptions = {
     "inputInfo": {
         "reg_model": {"type": "regressionPar", "components": ["solver", "function"]},
     },
+    "decomposeParDict": {"args": ["-time", "0:"]},
 }
 
 
