@@ -25,9 +25,9 @@ if gcomm.rank == 0:
     replace_text_in_file("system/fvSchemes", "meshWaveFrozen;", "meshWave;")
     os.system("pimpleFoam")
     os.system("getFIData -refFieldName U -refFieldType vector")
-    os.system("decomposePar -time '0:'")
+    # os.system("decomposePar -time '0:'")
     replace_text_in_file("constant/turbulenceProperties", "kOmegaSST;", "SpalartAllmaras;")
-    os.system("rm -rf 0.0* 0.1")
+    # os.system("rm -rf 0.0* 0.1")
     replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 gcomm.Barrier()
@@ -92,6 +92,10 @@ daOptions = {
     "inputInfo": {
         "reg_model": {"type": "regressionPar", "components": ["solver", "function"]},
     },
+    "unsteadyCompOutput": {
+        "UVar": ["UVar"],
+    },
+    "decomposeParDict": {"args": ["-time", "0:"]},
 }
 
 

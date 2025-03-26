@@ -77,6 +77,9 @@ daOptions = {
             "components": ["solver", "function"],
         },
     },
+    "unsteadyCompOutput": {
+        "CD": ["CD"],
+    },
 }
 
 meshOptions = {

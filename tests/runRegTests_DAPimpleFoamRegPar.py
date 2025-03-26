@@ -134,6 +134,11 @@ daOptions = {
     "inputInfo": {
         "reg_model": {"type": "regressionPar", "components": ["solver", "function"]},
     },
+    "unsteadyCompOutput": {
+        "UVar": ["UVar", "UProbe"],
+        "PVar": ["PVar"],
+        "wallShearStressVar": ["wallShearStressVar"],
+    },
     "decomposeParDict": {"args": ["-time", "0:"]},
 }
 
@@ -163,7 +168,6 @@ class Top(Group):
         # add constraints and the objective
         self.add_objective("UVar", scaler=1.0)
         self.add_constraint("PVar", equals=0.3)
-        self.add_constraint("UProbe", equals=0.3)
         self.add_constraint("wallShearStressVar", equals=0.3)
 
 
@@ -175,7 +179,6 @@ dvIndices = [[0, 50]]
 funcNames = [
     "scenario.solver.UVar",
     "scenario.solver.PVar",
-    "scenario.solver.UProbe",
     "scenario.solver.wallShearStressVar",
     # "scenario.solver.wallHeatFlux"
 ]
