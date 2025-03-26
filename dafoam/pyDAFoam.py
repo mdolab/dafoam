@@ -610,7 +610,7 @@ class DAOPTION(object):
         ##
         ## Example
         ##     "unsteadyCompOutput": {"output1": ["function1", "function2"], "output2": ["function3"]}
-        ## 
+        ##
         ## here we have two outputs and they can be used as objective or constraints.
         ## the first output is the summation of function1 and function2, here function1 and function2
         ## should be the function name defined in the function dict in DAOption
