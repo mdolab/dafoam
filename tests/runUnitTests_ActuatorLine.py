@@ -93,6 +93,9 @@ daOptions = {
             "components": ["solver", "function"],
         },
     },
+    "unsteadyCompOutput": {
+        "CD": ["CD"],
+    },
 }
 
 meshOptions = {
@@ -124,7 +127,7 @@ class Top(Group):
 
         # add constraints and the objective
         self.add_objective("CD", scaler=1.0)
-        self.add_constraint("CL", equals=0.3)
+        # self.add_constraint("CL", equals=0.3)
 
 
 prob = om.Problem()
