@@ -69,6 +69,9 @@ daOptions = {
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
     },
+    "unsteadyCompOutput": {
+        "CD": ["CD"],
+    },
 }
 
 meshOptions = {

@@ -605,6 +605,17 @@ class DAOPTION(object):
         ## Whether to use OpenFOAMs snGrad() function or to manually compute distance for wall interfaces
         self.wallDistanceMethod = "default"
 
+        ## the component output for the unsteady solvers. This will be used in mphys_dafoam's
+        ## DAFoamBuilderUnsteady to determine the component's output
+        ##
+        ## Example
+        ##     "unsteadyCompOutput": {"output1": ["function1", "function2"], "output2": ["function3"]}
+        ##
+        ## here we have two outputs and they can be used as objective or constraints.
+        ## the first output is the summation of function1 and function2, here function1 and function2
+        ## should be the function name defined in the function dict in DAOption
+        self.unsteadyCompOutput = {}
+
 
 class PYDAFOAM(object):
     """
