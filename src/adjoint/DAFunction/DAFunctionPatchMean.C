@@ -33,7 +33,7 @@ DAFunctionPatchMean::DAFunctionPatchMean(
 
     functionDict_.readEntry<word>("varType", varType_);
 
-    functionDict_.readEntry<label>("component", component_);
+    functionDict_.readEntry<label>("index", index_);
 }
 
 /// calculate the value of objective function
@@ -89,7 +89,7 @@ scalar DAFunctionPatchMean::calcFunction()
             const label patchI = daIndex_.bFacePatchI[bFaceI];
             const label faceI = daIndex_.bFaceFaceI[bFaceI];
             scalar area = mesh_.magSf().boundaryField()[patchI][faceI];
-            functionValue += scale_ * area * var.boundaryField()[patchI][faceI][component_] / areaSum_;
+            functionValue += scale_ * area * var.boundaryField()[patchI][faceI][index_] / areaSum_;
         }
     }
     else

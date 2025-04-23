@@ -34,7 +34,7 @@ DAFunctionVariableVolSum::DAFunctionVariableVolSum(
 
     functionDict_.readEntry<word>("varType", varType_);
 
-    functionDict_.readEntry<label>("component", component_);
+    functionDict_.readEntry<label>("index", index_);
 
     isSquare_ = functionDict_.lookupOrDefault<label>("isSquare", 0);
 
@@ -104,11 +104,11 @@ scalar DAFunctionVariableVolSum::calcFunction()
             }
             if (isSquare_)
             {
-                functionValue += scale_ * volume * var[cellI][component_] * var[cellI][component_];
+                functionValue += scale_ * volume * var[cellI][index_] * var[cellI][index_];
             }
             else
             {
-                functionValue += scale_ * volume * var[cellI][component_];
+                functionValue += scale_ * volume * var[cellI][index_];
             }
         }
     }

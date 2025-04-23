@@ -81,7 +81,7 @@ daOptions = {
             "mode": "field",
             "varName": "U",
             "varType": "vector",
-            "components": [0, 1],
+            "indices": [0, 1],
             "timeDependentRefData": True,
             "timeOp": "average",
         },
