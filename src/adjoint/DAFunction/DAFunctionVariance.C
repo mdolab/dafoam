@@ -76,7 +76,7 @@ DAFunctionVariance::DAFunctionVariance(
 
     if (varType_ == "vector")
     {
-        functionDict_.readEntry<labelList>("components", components_);
+        functionDict_.readEntry<labelList>("indices", indices_);
     }
 
     timeDependentRefData_ = functionDict_.getLabel("timeDependentRefData");
@@ -271,9 +271,9 @@ DAFunctionVariance::DAFunctionVariance(
                         if (cellI >= 0)
                         {
                             probeCellIndex_.append(cellI);
-                            forAll(components_, idxJ)
+                            forAll(indices_, idxJ)
                             {
-                                label compI = components_[idxJ];
+                                label compI = indices_[idxJ];
                                 refValue_[n].append(varData[cellI][compI]);
                                 nRefPoints_++;
                             }
@@ -289,9 +289,9 @@ DAFunctionVariance::DAFunctionVariance(
                         const label patchI = daIndex_.bFacePatchI[bFaceI];
                         const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
-                        forAll(components_, idxJ)
+                        forAll(indices_, idxJ)
                         {
-                            label compI = components_[idxJ];
+                            label compI = indices_[idxJ];
                             refValue_[n].append(varData.boundaryField()[patchI][faceI][compI]);
                             nRefPoints_++;
                         }
@@ -302,9 +302,9 @@ DAFunctionVariance::DAFunctionVariance(
                     forAll(cellSources_, idxI)
                     {
                         label cellI = cellSources_[idxI];
-                        forAll(components_, idxJ)
+                        forAll(indices_, idxJ)
                         {
-                            label compI = components_[idxJ];
+                            label compI = indices_[idxJ];
                             refValue_[n].append(varData[cellI][compI]);
                             nRefPoints_++;
                         }
@@ -374,9 +374,9 @@ scalar DAFunctionVariance::calcFunction()
 
                 vectorField shearB = (-SfB / magSfB) & ReffB;
 
-                forAll(components_, idxJ)
+                forAll(indices_, idxJ)
                 {
-                    label compI = components_[idxJ];
+                    label compI = indices_[idxJ];
                     scalar varDif = (shearB[faceI][compI] - refValue_[timeIndex - 1][pointI]);
                     functionValue += scale_ * varDif * varDif;
                     pointI++;
@@ -484,9 +484,9 @@ scalar DAFunctionVariance::calcFunction()
                     forAll(probeCellIndex_, idxI)
                     {
                         label cellI = probeCellIndex_[idxI];
-                        forAll(components_, idxJ)
+                        forAll(indices_, idxJ)
                         {
-                            label compI = components_[idxJ];
+                            label compI = indices_[idxJ];
                             scalar varDif = (var[cellI][compI] - refValue_[timeIndex - 1][pointI]);
                             functionValue += scale_ * varDif * varDif;
                             pointI++;
@@ -502,9 +502,9 @@ scalar DAFunctionVariance::calcFunction()
                         label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
                         const label patchI = daIndex_.bFacePatchI[bFaceI];
                         const label faceI = daIndex_.bFaceFaceI[bFaceI];
-                        forAll(components_, idxJ)
+                        forAll(indices_, idxJ)
                         {
-                            label compI = components_[idxJ];
+                            label compI = indices_[idxJ];
                             scalar varDif = (var.boundaryField()[patchI][faceI][compI] - refValue_[timeIndex - 1][pointI]);
                             functionValue += scale_ * varDif * varDif;
                             pointI++;
@@ -517,9 +517,9 @@ scalar DAFunctionVariance::calcFunction()
                     forAll(cellSources_, idxI)
                     {
                         label cellI = cellSources_[idxI];
-                        forAll(components_, idxJ)
+                        forAll(indices_, idxJ)
                         {
-                            label compI = components_[idxJ];
+                            label compI = indices_[idxJ];
                             scalar varDif = (var[cellI][compI] - refValue_[timeIndex - 1][pointI]);
                             functionValue += scale_ * varDif * varDif;
                             pointI++;

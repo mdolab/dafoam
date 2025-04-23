@@ -37,8 +37,8 @@ protected:
     /// type of the variable either vector or scalar
     word varType_;
 
-    /// component of the vector variable
-    List<label> components_;
+    /// components/indices of the vector variable
+    List<label> indices_;
 
     /// cell index of the probe points
     labelList probeCellIndex_;

@@ -36,8 +36,8 @@ protected:
     /// field type, can be either scalar or vector
     word fieldType_;
 
-    /// if it is vector fields, we can also provide components
-    labelList varComponents_;
+    /// if it is vector fields, we can also provide components/indices
+    labelList indices_;
 
 public:
     TypeName("field");
@@ -74,7 +74,7 @@ public:
         }
         else if (fieldType_ == "vector")
         {
-            label cSize = varComponents_.size();
+            label cSize = indices_.size();
             if (this->distributed())
             {
                 return daIndex_.nLocalCells * cSize;

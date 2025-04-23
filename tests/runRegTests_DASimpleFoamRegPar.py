@@ -72,7 +72,7 @@ daOptions = {
             "mode": "field",
             "varName": "U",
             "varType": "vector",
-            "components": [0, 1, 2],
+            "indices": [0, 1, 2],
             "timeDependentRefData": False,
         },
         "PVar": {
@@ -93,7 +93,7 @@ daOptions = {
             "probePointCoords": [[0.51, 0.52, 0.53], [0.2, 0.3, 0.4]],
             "varName": "U",
             "varType": "vector",
-            "components": [0, 1],
+            "indices": [0, 1],
             "timeDependentRefData": False,
         },
     },

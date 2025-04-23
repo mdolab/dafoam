@@ -37,8 +37,8 @@ protected:
     /// type of the variable either vector or scalar
     word varType_;
 
-    /// if vector which element?
-    label component_;
+    /// if vector which element/index?
+    label index_;
 
 public:
     TypeName("patchMean");

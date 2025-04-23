@@ -38,7 +38,7 @@ daOptions = {
             "source": "allCells",
             "varName": "solid:rho",
             "varType": "scalar",
-            "component": 0,
+            "index": 0,
             "scale": 1.0,
         },
     },
