@@ -386,6 +386,10 @@ label DALinearEqn::solveLinearEqn(
     Info << "Solving Linear Equation... Completed! "
          << this->getRunTime() << " s" << endl;
 
+    KSPConvergedReason reason;
+    KSPGetConvergedReason(ksp, &reason);
+    Info << "PetscConvergedReason " << reason << endl;
+
     // now we need to check if the linear equation solution is successful
 
     scalar absResRatio = finalResNorm / daOption_.getSubDictOption<scalar>("adjEqnOption", "gmresAbsTol");
