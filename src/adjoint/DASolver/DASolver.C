@@ -3906,17 +3906,17 @@ void DASolver::updateInputFieldUnsteady()
             {
                 // linear interpolation
                 scalar val1 = globalVar.inputFieldUnsteady[inputName][counterI];
-                label counterINextField = counterI + deltaI;
-                if (counterINextField < globalVar.inputFieldUnsteady[inputName].size())
+                if (remainder == 0)
                 {
-                    // we interpolate using counterI and counterI+deltaI
-                    scalar val2 = globalVar.inputFieldUnsteady[inputName][counterINextField];
-                    field[cellI] = val1 + (val2 - val1) * remainder / stepInterval;
+                    // this should be the anchor field per stepInterval, no need to interpolate.
+                    field[cellI] = val1;
                 }
                 else
                 {
-                    // this should be the last field, do not interpolate.
-                    field[cellI] = val1;
+                    // we interpolate using counterI and counterI+deltaI
+                    label counterINextField = counterI + deltaI;
+                    scalar val2 = globalVar.inputFieldUnsteady[inputName][counterINextField];
+                    field[cellI] = val1 + (val2 - val1) * remainder / stepInterval;
                 }
                 counterI++;
             }
