@@ -103,6 +103,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void writeAdjointFields(char *, double, double *)
         int hasVolCoordInput()
         void meanStatesToStates()
+        void updateInputFieldUnsteady()
     
 # create python wrappers that call cpp functions
 cdef class pyDASolvers:
@@ -437,3 +438,6 @@ cdef class pyDASolvers:
     
     def meanStatesToStates(self):
         self._thisptr.meanStatesToStates()
+    
+    def updateInputFieldUnsteady(self):
+        self._thisptr.updateInputFieldUnsteady()

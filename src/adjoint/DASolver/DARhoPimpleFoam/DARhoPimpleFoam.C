@@ -150,6 +150,9 @@ label DARhoPimpleFoam::solvePrimal()
 
     for (label iter = 1; iter <= nInstances; iter++)
     {
+        // if we have unsteadyField in inputInfo, assign GlobalVar::inputFieldUnsteady to OF fields at each time step
+        this->updateInputFieldUnsteady();
+        
         ++runTime;
 
         printToScreen_ = this->isPrintTime(runTime, printIntervalUnsteady_);

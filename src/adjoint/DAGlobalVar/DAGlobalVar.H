@@ -72,6 +72,9 @@ public:
 
     /// the list of parameters for all the actuator disks
     HashTable<List<scalar>> heatSourcePars;
+
+    /// the unsteady field inputs with the key being the fieldName
+    HashTable<List<scalar>> inputFieldUnsteady;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
