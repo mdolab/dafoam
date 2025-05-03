@@ -93,6 +93,9 @@ DASolver::DASolver(
     printInterval_ = daOptionPtr_->getOption<label>("printInterval");
     printIntervalUnsteady_ = daOptionPtr_->getOption<label>("printIntervalUnsteady");
 
+    // if inputInto has unsteadyField, we need to initial GlobalVar::inputFieldUnsteady here
+    this->initInputFieldUnsteady();
+
     Info << "DAOpton initialized " << endl;
 }
 
@@ -2594,6 +2597,9 @@ void DASolver::updateStateBoundaryConditions()
     // if we have regression models, we also need to update them because they will update the fields
     // NOTE we should have done it in DAInput, no need to call it again.
     this->regressionModelCompute();
+
+    // we also need to update DAGlobaVar::inputUnsteadyField if unsteadyField is used in inputInfo
+    this->updateInputFieldUnsteady();
 }
 
 void DASolver::calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly)
@@ -3830,6 +3836,97 @@ void DASolver::meanStatesToStates()
 
     // we need to also update the BC for other variables
     this->updateStateBoundaryConditions();
+}
+
+void DASolver::initInputFieldUnsteady()
+{
+    /*
+    Description:
+        initialize inputFieldUnsteady from the GlobalVar class
+    */
+
+    DAGlobalVar& globalVar =
+        const_cast<DAGlobalVar&>(meshPtr_->thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+
+    dictionary inputInfoDict = daOptionPtr_->getAllOptions().subDict("inputInfo");
+    forAll(inputInfoDict.toc(), idxI)
+    {
+        word inputName = inputInfoDict.toc()[idxI];
+        word inputType = inputInfoDict.subDict(inputName).getWord("type");
+        if (inputType == "fieldUnsteady")
+        {
+            label stepInterval = inputInfoDict.subDict(inputName).getLabel("stepInterval");
+            scalar endTime = meshPtr_->time().endTime().value();
+            scalar deltaT = meshPtr_->time().deltaT().value();
+            label nSteps = round(endTime / deltaT);
+            label nFields = nSteps / stepInterval + 1;
+
+            // NOTE: inputFieldUnsteady is alway local!
+            scalarList initVal(nFields * meshPtr_->nCells(), 0.0);
+            globalVar.inputFieldUnsteady.set(inputName, initVal);
+        }
+    }
+}
+
+void DASolver::updateInputFieldUnsteady()
+{
+    /*
+    Description:
+        Assign the inputFieldUnsteady values to the OF field vars
+    */
+    DAGlobalVar& globalVar =
+        const_cast<DAGlobalVar&>(meshPtr_->thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+
+    if (globalVar.inputFieldUnsteady.size() == 0)
+    {
+        return;
+    }
+
+    forAll(globalVar.inputFieldUnsteady.toc(), idxI)
+    {
+        word inputName = globalVar.inputFieldUnsteady.toc()[idxI];
+        const dictionary& subDict = daOptionPtr_->getAllOptions().subDict("inputInfo").subDict(inputName);
+        word fieldName = subDict.getWord("fieldName");
+        word fieldType = subDict.getWord("fieldType");
+        label stepInterval = subDict.getLabel("stepInterval");
+
+        label timeIndex = runTimePtr_->timeIndex();
+        label remainder = timeIndex % stepInterval;
+        label fieldI = timeIndex / stepInterval;
+
+        if (fieldType == "scalar")
+        {
+            volScalarField& field =
+                const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
+
+            // set the initial index for the counter
+            label counterI = fieldI * meshPtr_->nCells();
+            label deltaI = meshPtr_->nCells();
+            forAll(field, cellI)
+            {
+                // linear interpolation
+                scalar val1 = globalVar.inputFieldUnsteady[inputName][counterI];
+                if (remainder == 0)
+                {
+                    // this should be the anchor field per stepInterval, no need to interpolate.
+                    field[cellI] = val1;
+                }
+                else
+                {
+                    // we interpolate using counterI and counterI+deltaI
+                    label counterINextField = counterI + deltaI;
+                    scalar val2 = globalVar.inputFieldUnsteady[inputName][counterINextField];
+                    field[cellI] = val1 + (val2 - val1) * remainder / stepInterval;
+                }
+                counterI++;
+            }
+            field.correctBoundaryConditions();
+        }
+        else
+        {
+            FatalErrorIn("") << "fieldType not valid" << exit(FatalError);
+        }
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

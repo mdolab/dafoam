@@ -1,0 +1,15 @@
+Dictionary Key: scenario.solver.CD
+@value        29.2600136192156874 1e-10 1e-12
+Dictionary Key: scenario.solver.CD
+Dictionary Key: beta100-Adjoint
+@value         0.0004189980741925 1e-08 1e-12
+Dictionary Key: beta100-ForwardAD
+@value         0.0002340702819959 1e-08 1e-12
+Dictionary Key: beta400-Adjoint
+@value        -0.0007063001872272 1e-08 1e-12
+Dictionary Key: beta400-ForwardAD
+@value        -0.0007342051310344 1e-08 1e-12
+Dictionary Key: beta700-Adjoint
+@value        -0.0000090245930844 1e-08 1e-12
+Dictionary Key: beta700-ForwardAD
+@value        -0.0000094885909350 1e-08 1e-12

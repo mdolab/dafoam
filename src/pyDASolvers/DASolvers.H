@@ -531,6 +531,12 @@ public:
     {
         DASolverPtr_->meanStatesToStates();
     }
+
+    /// assign the inputFieldUnsteady values to the OF field vars
+    void updateInputFieldUnsteady()
+    {
+        DASolverPtr_->updateInputFieldUnsteady();
+    }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

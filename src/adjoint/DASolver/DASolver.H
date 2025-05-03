@@ -409,6 +409,12 @@ public:
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);
 
+    /// assign the inputFieldUnsteady values to the OF field vars
+    void updateInputFieldUnsteady();
+
+    /// initialize inputFieldUnsteady from the GlobalVar class
+    void initInputFieldUnsteady();
+
     /// assign the mean states values to states
     void meanStatesToStates();
 

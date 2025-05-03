@@ -155,8 +155,10 @@ label DAPimpleDyMFoam::solvePrimal()
     label fail = 0;
     for (label iter = 1; iter <= nInstances; iter++)
     {
-
         ++runTime;
+
+        // if we have unsteadyField in inputInfo, assign GlobalVar::inputFieldUnsteady to OF fields at each time step
+        this->updateInputFieldUnsteady();
 
         printToScreen_ = this->isPrintTime(runTime, printIntervalUnsteady_);
 
