@@ -388,7 +388,7 @@ label DALinearEqn::solveLinearEqn(
 
     KSPConvergedReason reason;
     KSPGetConvergedReason(ksp, &reason);
-    Info << "PetscConvergedReason " << reason << endl;
+    Info << "PetscConvergedReason: " << reason << endl;
 
     // now we need to check if the linear equation solution is successful
 

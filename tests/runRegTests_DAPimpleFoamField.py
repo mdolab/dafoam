@@ -89,9 +89,9 @@ class Top(Group):
 
         # add the design variables to the dvs component's output
         beta0 = np.ones(nCells * nFields)
-        for i in range(nCells, 2*nCells):
+        for i in range(nCells, 2 * nCells):
             beta0[i] = 1.1
-        for i in range(2*nCells, 3*nCells):
+        for i in range(2 * nCells, 3 * nCells):
             beta0[i] = 1.3
         self.dvs.add_output("beta", val=beta0)
 
