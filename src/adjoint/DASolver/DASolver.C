@@ -3859,10 +3859,19 @@ void DASolver::initInputFieldUnsteady()
             scalar endTime = meshPtr_->time().endTime().value();
             scalar deltaT = meshPtr_->time().deltaT().value();
             label nSteps = round(endTime / deltaT);
-            label nFields = nSteps / stepInterval + 1;
+            word interpMethod = inputInfoDict.subDict(inputName).getWord("interpolationMethod");
+            label nParameters = -1;
+            if (interpMethod == "linear")
+            {
+                nParameters = nSteps / stepInterval + 1;
+            }
+            else if (interpMethod == "rbf")
+            {
+                nParameters = 2 * (nSteps / stepInterval + 1);
+            }
 
             // NOTE: inputFieldUnsteady is alway local!
-            scalarList initVal(nFields * meshPtr_->nCells(), 0.0);
+            scalarList initVal(nParameters * meshPtr_->nCells(), 0.0);
             globalVar.inputFieldUnsteady.set(inputName, initVal);
         }
     }
@@ -3873,7 +3882,19 @@ void DASolver::updateInputFieldUnsteady()
     /*
     Description:
         Assign the inputFieldUnsteady values to the OF field vars
+
+        For linear interpolation, the filed u are saved in this format
+
+        ------ t = 0 ------|---- t=1interval ---|---- t=2interval ---
+        u1, u2, u3, ... un | u1, u2, u3, ... un | u1, u2, u3, ... un
+
+        For rbf interpolation, the data are saved in this format, here w and s are the parameters for rbf
+
+       ------ t = 0 ------|---- t=1interval ---|---- t=2interval ---|------ t = 0 ------|---- t=1interval ---|---- t=2interval --
+       w1, w2, w3, ... wn | w1, w2, w3, ... wn | w1, w2, w3, ... wn |s1, s2, s3, ... sn |s1, s2, s3, ... sn  | s1, s2, s3, ... sn|
+
     */
+
     DAGlobalVar& globalVar =
         const_cast<DAGlobalVar&>(meshPtr_->thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
 
@@ -3889,36 +3910,67 @@ void DASolver::updateInputFieldUnsteady()
         word fieldName = subDict.getWord("fieldName");
         word fieldType = subDict.getWord("fieldType");
         label stepInterval = subDict.getLabel("stepInterval");
+        word interpMethod = subDict.getWord("interpolationMethod");
 
         label timeIndex = runTimePtr_->timeIndex();
-        label remainder = timeIndex % stepInterval;
-        label fieldI = timeIndex / stepInterval;
 
         if (fieldType == "scalar")
         {
             volScalarField& field =
                 const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
 
-            // set the initial index for the counter
-            label counterI = fieldI * meshPtr_->nCells();
-            label deltaI = meshPtr_->nCells();
-            forAll(field, cellI)
+            // linear interpolation
+            if (interpMethod == "linear")
             {
-                // linear interpolation
-                scalar val1 = globalVar.inputFieldUnsteady[inputName][counterI];
-                if (remainder == 0)
+                label timeR = timeIndex % stepInterval;
+                label timeI = timeIndex / stepInterval;
+                // set the initial index for the counter
+                label counterI = timeI * meshPtr_->nCells();
+                label deltaI = meshPtr_->nCells();
+                forAll(field, cellI)
                 {
-                    // this should be the anchor field per stepInterval, no need to interpolate.
-                    field[cellI] = val1;
+                    scalar val1 = globalVar.inputFieldUnsteady[inputName][counterI];
+                    if (timeR == 0)
+                    {
+                        // this should be the anchor field per stepInterval, no need to interpolate.
+                        field[cellI] = val1;
+                    }
+                    else
+                    {
+                        // we interpolate using counterI and counterI+deltaI
+                        label counterINextField = counterI + deltaI;
+                        scalar val2 = globalVar.inputFieldUnsteady[inputName][counterINextField];
+                        field[cellI] = val1 + (val2 - val1) * timeR / stepInterval;
+                    }
+                    counterI++;
                 }
-                else
+            }
+            else if (interpMethod == "rbf")
+            {
+                scalar offset = subDict.getScalar("offset");
+                scalar endTime = meshPtr_->time().endTime().value();
+                scalar deltaT = meshPtr_->time().deltaT().value();
+                label nSteps = round(endTime / deltaT);
+                label nFields = nSteps / stepInterval + 1;
+
+                forAll(field, cellI)
                 {
-                    // we interpolate using counterI and counterI+deltaI
-                    label counterINextField = counterI + deltaI;
-                    scalar val2 = globalVar.inputFieldUnsteady[inputName][counterINextField];
-                    field[cellI] = val1 + (val2 - val1) * remainder / stepInterval;
+                    field[cellI] = offset;
                 }
-                counterI++;
+                // rbf interpolation y = f(t)
+                // y = sum_i ( w_i * exp(-s_i^2 * (t-c)^2 ) )
+                // here c is the interpolation point from 0 to T with an interval of stepInterval
+                label halfSize = globalVar.inputFieldUnsteady[inputName].size() / 2;
+                label deltaI = nFields * meshPtr_->nCells();
+                for (label i = 0; i < halfSize; i++)
+                {
+                    label cellI = i % meshPtr_->nCells();
+                    scalar w = globalVar.inputFieldUnsteady[inputName][i];
+                    scalar s = globalVar.inputFieldUnsteady[inputName][i + deltaI];
+                    label interpTimeIndex = i / meshPtr_->nCells() * stepInterval;
+                    scalar d = (timeIndex - interpTimeIndex);
+                    field[cellI] += w * exp(-s * s * d * d);
+                }
             }
             field.correctBoundaryConditions();
         }

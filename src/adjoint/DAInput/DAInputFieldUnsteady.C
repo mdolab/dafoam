@@ -35,6 +35,7 @@ DAInputFieldUnsteady::DAInputFieldUnsteady(
     fieldName_ = subDict.getWord("fieldName");
     fieldType_ = subDict.getWord("fieldType");
     stepInterval_ = subDict.getLabel("stepInterval");
+    interpolationMethod_ = subDict.getWord("interpolationMethod");
 
     scalar endTime = mesh.time().endTime().value();
     scalar deltaT = mesh.time().deltaT().value();
@@ -45,7 +46,17 @@ DAInputFieldUnsteady::DAInputFieldUnsteady(
                                              << nSteps << "is not divisible by stepInterval "
                                              << stepInterval_ << exit(FatalError);
     }
-    nFields_ = nSteps / stepInterval_ + 1;
+
+    if (interpolationMethod_ == "linear")
+    {
+        // the parameter is the field at the interpolation point itself, here we include the field at t=0
+        nParameters_ = nSteps / stepInterval_ + 1;
+    }
+    else if (interpolationMethod_ == "rbf")
+    {
+        // the parameters are weights and sigma for each interpolation point, so we have two parameter for each point at each step
+        nParameters_ = 2 * (nSteps / stepInterval_ + 1);
+    }
 }
 
 void DAInputFieldUnsteady::run(const scalarList& input)
@@ -54,6 +65,16 @@ void DAInputFieldUnsteady::run(const scalarList& input)
     Description:
         Assign the input array to OF's field variables. Note that we need different treatment for distributed and 
         non-distributed field inputs
+
+        For linear interpolation, the filed u are saved in this format
+
+        ------ t = 0 ------|---- t=1interval ---|---- t=2interval ---
+        u1, u2, u3, ... un | u1, u2, u3, ... un | u1, u2, u3, ... un
+
+        For rbf interpolation, the data are saved in this format, here w and s are the parameters for rbf
+
+       ------ t = 0 ------|---- t=1interval ---|---- t=2interval ---|------ t = 0 ------|---- t=1interval ---|---- t=2interval --
+       w1, w2, w3, ... wn | w1, w2, w3, ... wn | w1, w2, w3, ... wn |s1, s2, s3, ... sn |s1, s2, s3, ... sn  | s1, s2, s3, ... sn|
     */
 
     if (input.size() != this->size())
