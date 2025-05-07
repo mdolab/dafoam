@@ -40,8 +40,11 @@ protected:
     /// how many time step interval to use, 1 means updating the field every time step
     label stepInterval_ = 1;
 
-    /// how many fields to interpolate along the time, nSteps/stepInterval=nFields
-    label nFields_ = -1;
+    /// how many parameters to interpolate along the time, they could be the field it self
+    label nParameters_ = -1;
+
+    /// interpolation method
+    word interpolationMethod_ = "linear";
 
 public:
     TypeName("fieldUnsteady");
@@ -69,11 +72,11 @@ public:
         {
             if (this->distributed())
             {
-                return daIndex_.nLocalCells * nFields_;
+                return daIndex_.nLocalCells * nParameters_;
             }
             else
             {
-                return daIndex_.nGlobalCells * nFields_;
+                return daIndex_.nGlobalCells * nParameters_;
             }
         }
         else
