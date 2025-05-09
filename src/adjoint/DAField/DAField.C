@@ -1198,7 +1198,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     if (printInfo)
                     {
                         Info << "Setting alphat wall BC for "
-                             << mesh_.boundaryMesh()[patchI].name() << ". ";
+                             << mesh_.boundaryMesh()[patchI].name() << " with a default Prt of 0.85. ";
                     }
 
                     if (useWallFunction)
