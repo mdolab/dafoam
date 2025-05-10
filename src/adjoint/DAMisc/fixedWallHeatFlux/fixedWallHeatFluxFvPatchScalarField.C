@@ -41,8 +41,6 @@ fixedWallHeatFluxFvPatchScalarField::
         const DimensionedField<scalar, volMesh>& iF)
     : fixedGradientFvPatchScalarField(p, iF)
 {
-    fvPatchScalarField::operator=(patchInternalField());
-    gradient() = 0.0;
 }
 
 fixedWallHeatFluxFvPatchScalarField::
@@ -74,12 +72,7 @@ fixedWallHeatFluxFvPatchScalarField::
 fixedWallHeatFluxFvPatchScalarField::
     fixedWallHeatFluxFvPatchScalarField(
         const fixedWallHeatFluxFvPatchScalarField& tdpvf)
-    : fixedGradientFvPatchScalarField(tdpvf),
-      heatFlux_(tdpvf.heatFlux_),
-      nu_(tdpvf.nu_),
-      Pr_(tdpvf.Pr_),
-      Prt_(tdpvf.Prt_),
-      Cp_(tdpvf.Cp_)
+    : fixedGradientFvPatchScalarField(tdpvf)
 {
 }
 
@@ -87,32 +80,11 @@ fixedWallHeatFluxFvPatchScalarField::
     fixedWallHeatFluxFvPatchScalarField(
         const fixedWallHeatFluxFvPatchScalarField& tdpvf,
         const DimensionedField<scalar, volMesh>& iF)
-    : fixedGradientFvPatchScalarField(tdpvf, iF),
-      heatFlux_(tdpvf.heatFlux_),
-      nu_(tdpvf.nu_),
-      Pr_(tdpvf.Pr_),
-      Prt_(tdpvf.Prt_),
-      Cp_(tdpvf.Cp_)
+    : fixedGradientFvPatchScalarField(tdpvf, iF)
 {
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
-void fixedWallHeatFluxFvPatchScalarField::autoMap(
-    const fvPatchFieldMapper& m)
-{
-
-    fixedGradientFvPatchScalarField::autoMap(m);
-}
-
-void fixedWallHeatFluxFvPatchScalarField::rmap(
-    const fvPatchScalarField& ptf,
-    const labelList& addr)
-{
-
-    fixedGradientFvPatchScalarField::rmap(ptf, addr);
-}
-
 void fixedWallHeatFluxFvPatchScalarField::updateCoeffs()
 {
     if (updated())
