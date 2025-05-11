@@ -51,8 +51,7 @@ alphatWallFunctionIncompressibleFvPatchScalarField::
         const fvPatch& p,
         const DimensionedField<scalar, volMesh>& iF,
         const fvPatchFieldMapper& mapper)
-    : fixedValueFvPatchScalarField(ptf, p, iF, mapper),
-      Prt_(ptf.Prt_)
+    : fixedValueFvPatchScalarField(ptf, p, iF, mapper)
 {
 }
 
@@ -69,8 +68,7 @@ alphatWallFunctionIncompressibleFvPatchScalarField::
 alphatWallFunctionIncompressibleFvPatchScalarField::
     alphatWallFunctionIncompressibleFvPatchScalarField(
         const alphatWallFunctionIncompressibleFvPatchScalarField& wfpsf)
-    : fixedValueFvPatchScalarField(wfpsf),
-      Prt_(wfpsf.Prt_)
+    : fixedValueFvPatchScalarField(wfpsf)
 {
 }
 
@@ -78,8 +76,7 @@ alphatWallFunctionIncompressibleFvPatchScalarField::
     alphatWallFunctionIncompressibleFvPatchScalarField(
         const alphatWallFunctionIncompressibleFvPatchScalarField& wfpsf,
         const DimensionedField<scalar, volMesh>& iF)
-    : fixedValueFvPatchScalarField(wfpsf, iF),
-      Prt_(wfpsf.Prt_)
+    : fixedValueFvPatchScalarField(wfpsf, iF)
 {
 }
 

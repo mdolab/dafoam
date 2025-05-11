@@ -85,30 +85,15 @@ public:
     tractionDisplacementFvPatchVectorField(
         const tractionDisplacementFvPatchVectorField&);
 
-    //- Construct and return a clone
-    virtual tmp<fvPatchVectorField> clone() const
-    {
-        return tmp<fvPatchVectorField>(
-            new tractionDisplacementFvPatchVectorField(*this));
-    }
-
     //- Construct as copy setting internal field reference
     tractionDisplacementFvPatchVectorField(
         const tractionDisplacementFvPatchVectorField&,
         const DimensionedField<vector, volMesh>&);
 
-    //- Construct and return a clone setting internal field reference
-    virtual tmp<fvPatchVectorField> clone(
-        const DimensionedField<vector, volMesh>& iF) const
-    {
-        return tmp<fvPatchVectorField>(
-            new tractionDisplacementFvPatchVectorField(*this, iF));
-    }
-
     // Member functions
 
     // Access
-
+    /*
     virtual const vectorField& traction() const
     {
         return traction_;
@@ -128,18 +113,7 @@ public:
     {
         return pressure_;
     }
-
-    // Mapping functions
-
-    //- Map (and resize as needed) from self given a mapping object
-    virtual void autoMap(
-        const fvPatchFieldMapper&);
-
-    //- Reverse map the given fvPatchField onto this fvPatchField
-    virtual void rmap(
-        const fvPatchVectorField&,
-        const labelList&);
-
+*/
     //- Update the coefficients associated with the patch field
     virtual void updateCoeffs();
 

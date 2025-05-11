@@ -94,25 +94,10 @@ public:
     alphatWallFunctionIncompressibleFvPatchScalarField(
         const alphatWallFunctionIncompressibleFvPatchScalarField&);
 
-    //- Construct and return a clone
-    virtual tmp<fvPatchScalarField> clone() const
-    {
-        return tmp<fvPatchScalarField>(
-            new alphatWallFunctionIncompressibleFvPatchScalarField(*this));
-    }
-
     //- Construct as copy setting internal field reference
     alphatWallFunctionIncompressibleFvPatchScalarField(
         const alphatWallFunctionIncompressibleFvPatchScalarField&,
         const DimensionedField<scalar, volMesh>&);
-
-    //- Construct and return a clone setting internal field reference
-    virtual tmp<fvPatchScalarField> clone(
-        const DimensionedField<scalar, volMesh>& iF) const
-    {
-        return tmp<fvPatchScalarField>(
-            new alphatWallFunctionIncompressibleFvPatchScalarField(*this, iF));
-    }
 
     // Member functions
 

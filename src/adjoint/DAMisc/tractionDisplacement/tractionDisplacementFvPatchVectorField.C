@@ -43,12 +43,8 @@ tractionDisplacementFvPatchVectorField::
     tractionDisplacementFvPatchVectorField(
         const fvPatch& p,
         const DimensionedField<vector, volMesh>& iF)
-    : fixedGradientFvPatchVectorField(p, iF),
-      traction_(p.size(), Zero),
-      pressure_(p.size(), 0.0)
+    : fixedGradientFvPatchVectorField(p, iF)
 {
-    fvPatchVectorField::operator=(patchInternalField());
-    gradient() = Zero;
 }
 
 tractionDisplacementFvPatchVectorField::
@@ -57,9 +53,7 @@ tractionDisplacementFvPatchVectorField::
         const fvPatch& p,
         const DimensionedField<vector, volMesh>& iF,
         const fvPatchFieldMapper& mapper)
-    : fixedGradientFvPatchVectorField(tdpvf, p, iF, mapper),
-      traction_(tdpvf.traction_, mapper),
-      pressure_(tdpvf.pressure_, mapper)
+    : fixedGradientFvPatchVectorField(tdpvf, p, iF, mapper)
 {
 }
 
@@ -79,9 +73,7 @@ tractionDisplacementFvPatchVectorField::
 tractionDisplacementFvPatchVectorField::
     tractionDisplacementFvPatchVectorField(
         const tractionDisplacementFvPatchVectorField& tdpvf)
-    : fixedGradientFvPatchVectorField(tdpvf),
-      traction_(tdpvf.traction_),
-      pressure_(tdpvf.pressure_)
+    : fixedGradientFvPatchVectorField(tdpvf)
 {
 }
 
@@ -89,37 +81,11 @@ tractionDisplacementFvPatchVectorField::
     tractionDisplacementFvPatchVectorField(
         const tractionDisplacementFvPatchVectorField& tdpvf,
         const DimensionedField<vector, volMesh>& iF)
-    : fixedGradientFvPatchVectorField(tdpvf, iF),
-      traction_(tdpvf.traction_),
-      pressure_(tdpvf.pressure_)
+    : fixedGradientFvPatchVectorField(tdpvf, iF)
 {
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
-
-void tractionDisplacementFvPatchVectorField::autoMap(
-    const fvPatchFieldMapper& m)
-{
-
-    fixedGradientFvPatchVectorField::autoMap(m);
-    traction_.autoMap(m);
-    pressure_.autoMap(m);
-}
-
-void tractionDisplacementFvPatchVectorField::rmap(
-    const fvPatchVectorField& ptf,
-    const labelList& addr)
-{
-
-    fixedGradientFvPatchVectorField::rmap(ptf, addr);
-
-    const tractionDisplacementFvPatchVectorField& dmptf =
-        refCast<const tractionDisplacementFvPatchVectorField>(ptf);
-
-    traction_.rmap(dmptf.traction_, addr);
-    pressure_.rmap(dmptf.pressure_, addr);
-}
-
 void tractionDisplacementFvPatchVectorField::updateCoeffs()
 {
     if (updated())
