@@ -1198,7 +1198,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     if (printInfo)
                     {
                         Info << "Setting alphat wall BC for "
-                             << mesh_.boundaryMesh()[patchI].name() << " with a default Prt of 0.85. ";
+                             << mesh_.boundaryMesh()[patchI].name();
                     }
 
                     if (useWallFunction)
@@ -1213,7 +1213,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
 
                             if (printInfo)
                             {
-                                Info << "BCType=incompressible::alphatWallFunction" << endl;
+                                Info << "BCType=incompressible::alphatWallFunction. Default Prt=0.85" << endl;
                             }
                         }
                         else if (mesh_.thisDb().foundObject<compressible::turbulenceModel>(compressible::turbulenceModel::propertiesName))
@@ -1226,7 +1226,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
 
                             if (printInfo)
                             {
-                                Info << "BCType=compressible::alphatWallFunction" << endl;
+                                Info << "BCType=compressible::alphatWallFunction. Default Prt=0.85" << endl;
                             }
                         }
                         else

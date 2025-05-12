@@ -359,6 +359,7 @@ void DASolver::setDAFunctionList()
     forAll(functionDict.toc(), idxI)
     {
         word functionName = functionDict.toc()[idxI];
+        dictionary funcSubDict = functionDict.subDict(functionName);
         daFunctionPtrList_.set(
             idxI,
             DAFunction::New(
@@ -373,7 +374,7 @@ void DASolver::setDAFunctionList()
         word timeOp = daFunctionPtrList_[idxI].getFunctionTimeOp();
         daTimeOpPtrList_.set(
             idxI,
-            DATimeOp::New(timeOp).ptr());
+            DATimeOp::New(timeOp, funcSubDict).ptr());
     }
 
     // here we also initialize the functionTimeSteps lists
