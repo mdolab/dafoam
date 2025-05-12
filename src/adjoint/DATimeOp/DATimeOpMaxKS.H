@@ -4,16 +4,18 @@
     Version : v4
 
     Description:
-        Time operation for functions
+        Child class for the max value for the given valList. The max value
+        is estimated using the K-S aggregation method
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DATimeOp_H
-#define DATimeOp_H
+#ifndef DATimeOpMaxKS_H
+#define DATimeOpMaxKS_H
 
-#include "runTimeSelectionTables.H"
-#include "fvOptions.H"
-#include "DAOption.H"
+#include "DATimeOp.H"
+#include "addToRunTimeSelectionTable.H"
+#include "mixedFvPatchFields.H"
+#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -21,58 +23,28 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                    Class DATimeOp Declaration
+      Class DATimeOpMaxKS Declaration
 \*---------------------------------------------------------------------------*/
 
-class DATimeOp
+class DATimeOpMaxKS
+    : public DATimeOp
 {
 
-private:
-    /// Disallow default bitwise copy construct
-    DATimeOp(const DATimeOp&);
-
-    /// Disallow default bitwise assignment
-    void operator=(const DATimeOp&);
-
 protected:
-    /// type of the timeOp
-    const word timeOpType_;
-
-    /// a dictionary option from DAFunction
-    const dictionary options_;
+    /// the KS coefficient
+    scalar coeffKS_;
 
 public:
-    /// Runtime type information
-    TypeName("DATimeOp");
-
-    // Declare run-time constructor selection table
-    declareRunTimeSelectionTable(
-        autoPtr,
-        DATimeOp,
-        dictionary,
-        (
-            const word timeOpType,
-            const dictionary options),
-        (
-            timeOpType,
-            options));
-
+    TypeName("maxKS");
     // Constructors
 
     //- Construct from components
-    DATimeOp(
-        const word timeOpType,
-        const dictionary options);
-
-    // Selectors
-
-    //- Return a reference to the selected model
-    static autoPtr<DATimeOp> New(
+    DATimeOpMaxKS(
         const word timeOpType,
         const dictionary options);
 
     //- Destructor
-    virtual ~DATimeOp()
+    virtual ~DATimeOpMaxKS()
     {
     }
 
@@ -80,14 +52,14 @@ public:
     virtual scalar compute(
         const scalarList& valList,
         const label iStart,
-        const label iEnd) = 0;
+        const label iEnd);
 
     /// compute the scaling factor for dF/d? calculation.
     virtual scalar dFScaling(
         const scalarList& valList,
         const label iStart,
         const label iEnd,
-        const label timeIdx) = 0;
+        const label timeIdx);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

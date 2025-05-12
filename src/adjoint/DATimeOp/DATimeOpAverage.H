@@ -36,7 +36,8 @@ public:
 
     //- Construct from components
     DATimeOpAverage(
-        const word timeOpType);
+        const word timeOpType,
+        const dictionary options);
 
     //- Destructor
     virtual ~DATimeOpAverage()

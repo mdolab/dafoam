@@ -36,7 +36,8 @@ public:
 
     //- Construct from components
     DATimeOpFinal(
-        const word timeOpType);
+        const word timeOpType,
+        const dictionary options);
 
     //- Destructor
     virtual ~DATimeOpFinal()

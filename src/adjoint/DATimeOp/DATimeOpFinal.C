@@ -17,8 +17,9 @@ addToRunTimeSelectionTable(DATimeOp, DATimeOpFinal, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 DATimeOpFinal::DATimeOpFinal(
-    const word timeOpType)
-    : DATimeOp(timeOpType)
+    const word timeOpType,
+    const dictionary options)
+    : DATimeOp(timeOpType, options)
 {
 }
 

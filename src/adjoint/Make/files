@@ -25,6 +25,7 @@ DARegression/DARegression.C
 DATimeOp/DATimeOp.C
 DATimeOp/DATimeOpFinal.C
 DATimeOp/DATimeOpAverage.C
+DATimeOp/DATimeOpMaxKS.C
 
 DAFunction/DAFunction.C
 DAFunction/DAFunctionForce.C

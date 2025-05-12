@@ -20,15 +20,18 @@ defineRunTimeSelectionTable(DATimeOp, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 DATimeOp::DATimeOp(
-    const word timeOpType)
-    : timeOpType_(timeOpType)
+    const word timeOpType,
+    const dictionary options)
+    : timeOpType_(timeOpType),
+      options_(options)
 {
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
 
 autoPtr<DATimeOp> DATimeOp::New(
-    const word timeOpType)
+    const word timeOpType,
+    const dictionary options)
 {
     // standard setup for runtime selectable classes
 
@@ -42,8 +45,7 @@ autoPtr<DATimeOp> DATimeOp::New(
             "DATimeOp::New"
             "("
             "    const word,"
-            "    fvMesh&,"
-            "    const DAOption&,"
+            "    const dictionary,"
             ")")
             << "Unknown DATimeOp type "
             << timeOpType << nl << nl
@@ -54,7 +56,7 @@ autoPtr<DATimeOp> DATimeOp::New(
 
     // child class found
     return autoPtr<DATimeOp>(
-        cstrIter()(timeOpType));
+        cstrIter()(timeOpType, options));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
