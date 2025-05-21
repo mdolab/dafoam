@@ -480,6 +480,7 @@ class DAFoamSolver(ImplicitComponent):
                                 )
                             else:
                                 self.DVGeo.writeTecplot("deformedFFDs_%d.dat" % self.solution_counter)
+                                self.DVGeo.writePlot3d("deformedFFDs_%d.xyz" % self.solution_counter)
 
                         # write the deformed constraints for post-processing
                         if DASolver.getOption("writeDeformedConstraints"):
