@@ -111,6 +111,11 @@ void fixedWallHeatFluxFvPatchScalarField::write(Ostream& os) const
 {
     fvPatchScalarField::write(os);
     writeEntry("value", os);
+    os.writeEntry("Pr", Pr_);
+    os.writeEntry("Prt", Prt_);
+    os.writeEntry("nu", nu_);
+    os.writeEntry("Cp", Cp_);
+    os.writeEntry("heatFlux", heatFlux_);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
