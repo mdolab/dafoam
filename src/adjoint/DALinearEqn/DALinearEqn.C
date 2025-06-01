@@ -374,7 +374,7 @@ label DALinearEqn::solveLinearEqn(
     PetscScalar finalResNorm = rGMRESHist[its];
     PetscPrintf(
         PETSC_COMM_WORLD,
-        "Main iteration %D KSP Residual norm %14.12e %d s \n",
+        "Main iteration %D KSP Residual norm %14.12e %.2f s \n",
         its,
         finalResNorm,
         this->getRunTime());
@@ -430,25 +430,26 @@ PetscErrorCode DALinearEqn::myKSPMonitor(
 
     // residual print frequency
     PetscInt printFrequency = daLinearEqn->getPrintInterval();
+    PetscScalar runTime = daLinearEqn->getRunTime();
     if (n % printFrequency == 0)
     {
         PetscPrintf(
             PETSC_COMM_WORLD,
-            "Main iteration %D KSP Residual norm %14.12e %d s\n",
+            "Main iteration %D KSP Residual norm %14.12e %.2f s\n",
             n,
             rnorm,
-            daLinearEqn->getRunTime());
+            runTime);
     }
     return 0;
 }
 
-label DALinearEqn::getRunTime()
+double DALinearEqn::getRunTime()
 {
     /*
     Descripton:
         Return the runtime
     */
-    return mesh_.time().elapsedClockTime();
+    return mesh_.time().elapsedCpuTime();
 }
 
 label DALinearEqn::getPrintInterval()
