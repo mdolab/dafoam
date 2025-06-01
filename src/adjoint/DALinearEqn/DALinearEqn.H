@@ -78,7 +78,7 @@ public:
         void*);
 
     /// return the runtime for the adjoint solver
-    label getRunTime();
+    double getRunTime();
 
     /// return printInterval from DAOption
     label getPrintInterval();

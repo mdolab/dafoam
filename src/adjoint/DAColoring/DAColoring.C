@@ -350,7 +350,7 @@ void DAColoring::parallelD2Coloring(
     {
         if (n % printInterval == 0)
         {
-            Info << "ColorSweep: " << n << "   " << mesh_.time().elapsedClockTime() << " s" << endl;
+            Info << "ColorSweep: " << n << "   " << mesh_.time().elapsedCpuTime() << " s" << endl;
         }
 
         /* Set all entries for strictly local columns that are currently -1
@@ -503,7 +503,7 @@ void DAColoring::parallelD2Coloring(
 
         if (notColored == 0)
         {
-            Info << "ColorSweep: " << n << "   " << mesh_.time().elapsedClockTime() << " s" << endl;
+            Info << "ColorSweep: " << n << "   " << mesh_.time().elapsedCpuTime() << " s" << endl;
             Info << "number of uncolored: " << colorCounter << " " << notColored << endl;
             break;
         }
@@ -570,7 +570,7 @@ void DAColoring::parallelD2Coloring(
     {
         if (n % printInterval == 0)
         {
-            Info << "Global ColorSweep: " << n << "   " << mesh_.time().elapsedClockTime() << " s" << endl;
+            Info << "Global ColorSweep: " << n << "   " << mesh_.time().elapsedCpuTime() << " s" << endl;
         }
 
         // Retrieve the local portion of the color vector
@@ -736,7 +736,7 @@ void DAColoring::parallelD2Coloring(
         }
         if (notColored == 0)
         {
-            Info << "Global ColorSweep: " << n << "   " << mesh_.time().elapsedClockTime() << " s" << endl;
+            Info << "Global ColorSweep: " << n << "   " << mesh_.time().elapsedCpuTime() << " s" << endl;
             Info << "Number of Uncolored: " << colorCounter << " " << notColored << endl;
             break;
         }

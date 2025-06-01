@@ -344,7 +344,7 @@ void DAPartDeriv::initializePartDerivMat(
     //MatSetOption(jacMat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetUp(jacMat);
     MatZeroEntries(jacMat);
-    Info << "Partial derivative matrix created. " << mesh_.time().elapsedClockTime() << " s" << endl;
+    Info << "Partial derivative matrix created. " << mesh_.time().elapsedCpuTime() << " s" << endl;
 }
 
 void DAPartDeriv::calcPartDerivMat(
@@ -429,7 +429,7 @@ void DAPartDeriv::calcPartDerivMat(
     label printInterval = daOption_.getOption<label>("printInterval");
     for (label color = 0; color < nColors; color++)
     {
-        label eTime = mesh_.time().elapsedClockTime();
+        scalar eTime = mesh_.time().elapsedCpuTime();
         // print progress
         if (color % printInterval == 0 or color == nColors - 1)
         {

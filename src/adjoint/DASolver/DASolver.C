@@ -549,12 +549,12 @@ void DASolver::runColoring()
 
         // setup dRdWCon
         daJacCon.setupJacCon(options);
-        Info << "dRdWCon Created. " << meshPtr_->time().elapsedClockTime() << " s" << endl;
+        Info << "dRdWCon Created. " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
 
         // compute the coloring
-        Info << "Calculating dRdW Coloring... " << meshPtr_->time().elapsedClockTime() << " s" << endl;
+        Info << "Calculating dRdW Coloring... " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
         daJacCon.calcJacConColoring();
-        Info << "Calculating dRdW Coloring... Completed! " << meshPtr_->time().elapsedClockTime() << " s" << endl;
+        Info << "Calculating dRdW Coloring... Completed! " << meshPtr_->time().elapsedCpuTime() << " s" << endl;
 
         // clean up
         daJacCon.clear();
@@ -805,8 +805,8 @@ void DASolver::calcdRdWT(
         this->calcPrimalResidualStatistics("print");
     }
 
-    Info << "Computing " << matName << " " << runTimePtr_->elapsedClockTime() << " s" << endl;
-    Info << "Initializing dRdWCon. " << runTimePtr_->elapsedClockTime() << " s" << endl;
+    Info << "Computing " << matName << " " << runTimePtr_->elapsedCpuTime() << " s" << endl;
+    Info << "Initializing dRdWCon. " << runTimePtr_->elapsedCpuTime() << " s" << endl;
 
     // initialize DAJacCon object
     word modelType = "dRdW";
@@ -844,7 +844,7 @@ void DASolver::calcdRdWT(
 
     // setup dRdWCon
     daJacCon.setupJacCon(options);
-    Info << "dRdWCon Created. " << runTimePtr_->elapsedClockTime() << " s" << endl;
+    Info << "dRdWCon Created. " << runTimePtr_->elapsedCpuTime() << " s" << endl;
 
     // read the coloring
     daJacCon.readJacConColoring();
@@ -1446,7 +1446,7 @@ void DASolver::calcJacTVecProduct(
         product: the mat-vec product array
     */
 
-    Info << "Computing d[" << outputName << "]/d[" << inputName << "]^T * psi" << endl;
+    Info << "Computing d[" << outputName << "]/d[" << inputName << "]^T * psi " << runTimePtr_->elapsedCpuTime() << " s" << endl;
 
     // initialize the input and output objects
     autoPtr<DAInput> daInput(
@@ -1657,7 +1657,7 @@ void DASolver::calcdRdWOldTPsiAD(
         dRdWOldTPsi: the matrix-vector products dRdWOld^T * Psi
     */
 
-    Info << "Calculating [dRdWOld]^T * Psi using reverse-mode AD with level " << oldTimeLevel << endl;
+    Info << "Computing [dRdWOld]^T * psi: level " << oldTimeLevel << ". " << runTimePtr_->elapsedCpuTime() << " s" << endl;
 
     this->globalADTape_.reset();
     this->globalADTape_.setActive();
