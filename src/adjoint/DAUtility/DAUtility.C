@@ -753,8 +753,9 @@ void DAUtility::primalResidualControl(
 
     if (printToScreen)
     {
-        Info << varName << " Initial residual: " << solverP.initialResidual() << endl
-             << varName << "   Final residual: " << solverP.finalResidual() << endl;
+        Info << varName << " initRes: " << solverP.initialResidual()
+             << " finalRes: " << solverP.finalResidual()
+             << " nIters: " << solverP.nIterations() << endl;
     }
 }
 
@@ -789,8 +790,13 @@ void DAUtility::primalResidualControl(
 
     if (printToScreen)
     {
-        Info << varName << " Initial residual: " << solverP.initialResidual() << endl
-             << varName << "   Final residual: " << solverP.finalResidual() << endl;
+        for (label i = 0; i < 3; i++)
+        {
+            Info << varName << i
+                 << " initRes: " << solverP.initialResidual()[i]
+                 << " finalRes: " << solverP.finalResidual()[i]
+                 << " nIters: " << solverP.nIterations()[i] << endl;
+        }
     }
 }
 
