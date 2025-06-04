@@ -1637,3 +1637,10 @@ class DAFoamSolverUnsteady(ExplicitComponent):
 
             for inputName in list(inputs.keys()):
                 d_inputs[inputName] += totals[inputName]
+
+        # once the adjoint is done, we will assign OF fields with the endTime solution
+        # so, if the next primal does not read fields from the 0 time, we will continue
+        # to use the latest solutions from the previous design as the initial field
+        DASolver.solver.setTime(endTime, endTimeIndex)
+        DASolver.solverAD.setTime(endTime, endTimeIndex)
+        DASolver.readStateVars(endTime, deltaT)
