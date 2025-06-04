@@ -372,23 +372,20 @@ label DALinearEqn::solveLinearEqn(
     KSPGetIterationNumber(ksp, &its);
     PetscScalar initResNorm = rGMRESHist[0];
     PetscScalar finalResNorm = rGMRESHist[its];
+    KSPConvergedReason reason;
+    KSPGetConvergedReason(ksp, &reason);
     PetscPrintf(
         PETSC_COMM_WORLD,
         "Main iteration %D KSP Residual norm %14.12e %.2f s \n",
         its,
         finalResNorm,
         this->getRunTime());
-    PetscPrintf(PETSC_COMM_WORLD, "Total iterations %D\n", its);
+
+    Info << "**Completed**! Total iterations: " << its
+         << ". PetscConvergedReason: " << reason << ". " << this->getRunTime() << " s" << endl;
 
     VecAssemblyBegin(solVec);
     VecAssemblyEnd(solVec);
-
-    Info << "Solving Linear Equation... Completed! "
-         << this->getRunTime() << " s" << endl;
-
-    KSPConvergedReason reason;
-    KSPGetConvergedReason(ksp, &reason);
-    Info << "PetscConvergedReason: " << reason << endl;
 
     // now we need to check if the linear equation solution is successful
 
