@@ -214,6 +214,11 @@ public:
     virtual label runFPAdj(
         Vec dFdW,
         Vec psi);
+    
+    /// solve the adjoint equation using the fixed-point iteration method
+    virtual label solveAdjointFP(
+        double* dFdW,
+        double* psi);
 
     /// setTime for OF fields
     void setTime(scalar time, label timeIndex)

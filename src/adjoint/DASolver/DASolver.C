@@ -237,12 +237,19 @@ void DASolver::calcAllFunctions(label print)
 
         if (print)
         {
+            const dictionary& functionDict = daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
+            label timeOpStartIndex = functionDict.lookupOrDefault<label>("timeOpStartIndex", 0);
+            scalar timeOpVal = 0.0;
+            // if timeOpStartIndex > listIndex, timeOpVal is zero
+            if (timeOpStartIndex <= listIndex)
+            {
+                timeOpVal = daTimeOpPtrList_[idxI].compute(
+                    functionTimeSteps_[idxI], timeOpStartIndex, listIndex);
+            }
+
             Info << functionName
-                 << ": " << functionVal;
-
-            scalar timeOpVal = daTimeOpPtrList_[idxI].compute(functionTimeSteps_[idxI], 0, listIndex);
-
-            Info << " " << timeOpType << ": " << timeOpVal;
+                 << ": " << functionVal
+                 << " " << timeOpType << ": " << timeOpVal;
 #ifdef CODI_ADF
             Info << " ADF-Deriv: " << timeOpVal.getGradient();
 #endif
@@ -260,9 +267,22 @@ double DASolver::getTimeOpFuncVal(const word functionName)
     {
         DAFunction& daFunction = daFunctionPtrList_[idxI];
         word functionName1 = daFunction.getFunctionName();
+
         if (functionName1 == functionName)
         {
-            funcVal = daTimeOpPtrList_[idxI].compute(functionTimeSteps_[idxI], 0, listFinalIndex);
+            const dictionary& functionDict = daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
+            label timeOpStartIndex = functionDict.lookupOrDefault<label>("timeOpStartIndex", 0);
+            // if timeOpStartIndex should not be larger than listFinalIndex
+            if (timeOpStartIndex <= listFinalIndex)
+            {
+                funcVal = daTimeOpPtrList_[idxI].compute(
+                    functionTimeSteps_[idxI], timeOpStartIndex, listFinalIndex);
+            }
+            else
+            {
+                FatalErrorIn("") << "timeOpStartIndex can not be larger than listFinalIndex!"
+                                 << abort(FatalError);
+            }
         }
     }
 #ifdef CODI_ADF
@@ -291,7 +311,14 @@ scalar DASolver::getdFScaling(
         word functionName1 = daFunction.getFunctionName();
         if (functionName1 == functionName)
         {
-            scaling = daTimeOpPtrList_[idxI].dFScaling(functionTimeSteps_[idxI], 0, listFinalIndex, timeIdx);
+            const dictionary& functionDict = daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
+            label timeOpStartIndex = functionDict.lookupOrDefault<label>("timeOpStartIndex", 0);
+            // if timeIdx is outside of [timeOpStartIndex, listFinalIndex], dFScaling is zero
+            if (timeIdx >= timeOpStartIndex && timeIdx <= listFinalIndex)
+            {
+                scaling = daTimeOpPtrList_[idxI].dFScaling(
+                    functionTimeSteps_[idxI], timeOpStartIndex, listFinalIndex, timeIdx);
+            }
             return scaling;
         }
     }
@@ -3188,6 +3215,22 @@ label DASolver::runFPAdj(
     */
 
     FatalErrorIn("DASolver::runFPAdj")
+        << "Child class not implemented!"
+        << abort(FatalError);
+
+    return 1;
+}
+
+label DASolver::solveAdjointFP(
+    double* dFdW,
+    double* psi)
+{
+    /*
+    Description:
+        Solve the adjoint using the fixed-point iteration approach
+    */
+
+    FatalErrorIn("DASolver::solveAdjointFP")
         << "Child class not implemented!"
         << abort(FatalError);
 

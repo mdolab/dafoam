@@ -1,16 +1,16 @@
 Dictionary Key: cruise.solver.CD
-@value        29.2677685918849697 1e-10 1e-12
+@value        22.2785473299452121 1e-10 1e-12
 Dictionary Key: cruise.solver.CL
 @value        48.7883157429262369 1e-10 1e-12
 Dictionary Key: cruise.solver.CD
 Dictionary Key: patchV0-Adjoint
-@value         6.4937666233156657 1e-08 1e-12
+@value         4.4646634206965716 1e-08 1e-12
 Dictionary Key: patchV0-ForwardAD
-@value         6.5159291041000031 1e-08 1e-12
+@value         4.5005451245874895 1e-08 1e-12
 Dictionary Key: shape0-Adjoint
-@value        20.4402142829890714 1e-08 1e-12
+@value        15.2984351723679897 1e-08 1e-12
 Dictionary Key: shape0-ForwardAD
-@value        20.4984299510442156 1e-08 1e-12
+@value        15.2787904164464443 1e-08 1e-12
 Dictionary Key: cruise.solver.CL
 Dictionary Key: patchV0-Adjoint
 @value         7.9772662404742576 1e-08 1e-12
