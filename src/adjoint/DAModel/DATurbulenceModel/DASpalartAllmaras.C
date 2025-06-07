@@ -101,7 +101,9 @@ DASpalartAllmaras::DASpalartAllmaras(
               IOobject::AUTO_WRITE),
           mesh,
           dimensionedScalar("betaFINuTilda", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
-          "zeroGradient")
+          "zeroGradient"),
+      psiNuTildaPC_(nullptr),
+      dPsiNuTilda_("dPsiNuTilda", nuTilda_)
 {
     // we need to reset the nuTildaRes's dimension based on the model type
     if (turbModelType_ == "incompressible")
@@ -524,6 +526,76 @@ void DASpalartAllmaras::getFvMatrixFields(
     diag = nuTildaEqn.D();
     upper = nuTildaEqn.upper();
     lower = nuTildaEqn.lower();
+}
+
+void DASpalartAllmaras::solveAdjointFP(
+    const word varName,
+    const scalarList& rhs,
+    scalarList& dPsi)
+{
+    if (varName != "nuTilda")
+    {
+        FatalErrorIn(
+            "varName not valid. It has to be nuTilda")
+            << exit(FatalError);
+    }
+
+    const fvSolution& myFvSolution = mesh_.thisDb().lookupObject<fvSolution>("fvSolution");
+    dictionary solverDictNuTilda = myFvSolution.subDict("solvers").subDict("nuTilda");
+
+    // solve the fvMatrixT field with given rhs and solution
+    if (psiNuTildaPC_.empty())
+    {
+        dPsiNuTilda_ == nuTilda_;
+        const volScalarField chi(this->chi());
+        const volScalarField fv1(this->fv1(chi));
+
+        const volScalarField Stilda(this->Stilda(chi, fv1));
+
+        volScalarField rho = this->rho();
+
+        // for the PC, we need only fvm:: terms
+        psiNuTildaPC_.reset(new fvScalarMatrix(
+            fvm::ddt(phase_, rho, dPsiNuTilda_)
+            + fvm::div(phaseRhoPhi_, dPsiNuTilda_, "div(phi,nuTilda)")
+            - fvm::laplacian(phase_ * rho * DnuTildaEff(), dPsiNuTilda_)
+            - Cb2_ / sigmaNut_ * phase_ * rho * magSqr(fvc::grad(dPsiNuTilda_))
+            + fvm::Sp(Cw1_ * phase_ * rho * fw(Stilda) * dPsiNuTilda_ / sqr(y_), dPsiNuTilda_)));
+
+        psiNuTildaPC_->relax(0.7);
+
+        DAUtility::swapLists<scalar>(psiNuTildaPC_->upper(), psiNuTildaPC_->lower());
+
+        // make sure the boundary contribution to source hrs is zero
+        forAll(dPsiNuTilda_.boundaryField(), patchI)
+        {
+            forAll(dPsiNuTilda_.boundaryField()[patchI], faceI)
+            {
+                psiNuTildaPC_->boundaryCoeffs()[patchI][faceI] = 0.0;
+            }
+        }
+    }
+
+    // force to use zeros as the initial guess
+    forAll(dPsiNuTilda_, cellI)
+    {
+        dPsiNuTilda_[cellI] = 0.0;
+    }
+
+    // set the rhs
+    forAll(psiNuTildaPC_->source(), cellI)
+    {
+        psiNuTildaPC_->source()[cellI] = rhs[cellI];
+    }
+
+    // solve
+    psiNuTildaPC_->solve(solverDictNuTilda);
+
+    // return the solution
+    forAll(dPsiNuTilda_, cellI)
+    {
+        dPsi[cellI] = dPsiNuTilda_[cellI];
+    }
 }
 
 void DASpalartAllmaras::getTurbProdOverDestruct(volScalarField& PoD) const

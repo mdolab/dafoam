@@ -133,6 +133,17 @@ public:
 
     /// solve the primal equations
     virtual label solvePrimal();
+
+    /// solve the adjoint equation using the fixed-point iteration method
+    virtual label solveAdjointFP(
+        Vec dFdW,
+        Vec psi);
+    
+    scalar calcAdjointResiduals(
+        const double* psi,
+        const double* dFdW,
+        double* adjRes
+    );
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

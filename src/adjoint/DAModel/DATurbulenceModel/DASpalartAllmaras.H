@@ -96,6 +96,10 @@ protected:
     /// whether to solve for turb states
     label solveTurbState_ = 0;
 
+    autoPtr<fvScalarMatrix> psiNuTildaPC_;
+
+    volScalarField dPsiNuTilda_;
+
 public:
     TypeName("SpalartAllmaras");
     // Constructors
@@ -152,6 +156,12 @@ public:
 
     /// return the value of the convective over production term from the turbulence model
     virtual void getTurbConvOverProd(volScalarField& CoP) const;
+
+    /// solve the fvMatrixT field with given rhs and solution
+    virtual void solveAdjointFP(
+        const word varName,
+        const scalarList& rhs,
+        scalarList& dPsi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

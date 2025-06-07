@@ -1287,6 +1287,10 @@ class DAFoamSolverUnsteady(ExplicitComponent):
 
         self.dRdWTPC = None
 
+        self.adjEqnSolMethod = DASolver.getOption("adjEqnSolMethod")
+        if self.adjEqnSolMethod not in ["Krylov", "fixedPoint"]:
+            raise AnalysisError("adjEqnSolMethod is not valid")
+
         inputDict = DASolver.getOption("inputInfo")
         for inputName in list(inputDict.keys()):
             # this input is attached to solver comp
@@ -1379,10 +1383,11 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         DASolver = self.DASolver
 
         # run coloring
-        DASolver.solver.runColoring()
+        if self.adjEqnSolMethod == "Krylov":
+            DASolver.solver.runColoring()
 
-        PCMatPrecomputeInterval = DASolver.getOption("unsteadyAdjoint")["PCMatPrecomputeInterval"]
-        PCMatUpdateInterval = DASolver.getOption("unsteadyAdjoint")["PCMatUpdateInterval"]
+            PCMatPrecomputeInterval = DASolver.getOption("unsteadyAdjoint")["PCMatPrecomputeInterval"]
+            PCMatUpdateInterval = DASolver.getOption("unsteadyAdjoint")["PCMatUpdateInterval"]
 
         # NOTE: this step is critical because we need to compute the residual for
         # self.solverAD once to get the proper oldTime level for unsteady adjoint
@@ -1414,10 +1419,11 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         DASolver.solverAD.calcPrimalResidualStatistics("print")
 
         # init dRdWTMF
-        DASolver.solverAD.initializedRdWTMatrixFree()
+        if self.adjEqnSolMethod == "Krylov":
+            DASolver.solverAD.initializedRdWTMatrixFree()
 
         # precompute the KSP preconditioner Mat and save them to the self.dRdWTPC dict
-        if self.dRdWTPC is None:
+        if self.dRdWTPC is None and self.adjEqnSolMethod == "Krylov":
 
             self.dRdWTPC = {}
 
@@ -1461,10 +1467,11 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     # DASolver.solver.calcPCMatWithFvMatrix(dRdWTPC1)
                     self.dRdWTPC[str(t)] = dRdWTPC1
 
-        # Initialize the KSP object using the PCMat from the endTime
-        PCMat = self.dRdWTPC[str(endTime)]
-        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-        DASolver.solverAD.createMLRKSPMatrixFree(PCMat, ksp)
+        if self.adjEqnSolMethod == "Krylov":
+            # Initialize the KSP object using the PCMat from the endTime
+            PCMat = self.dRdWTPC[str(endTime)]
+            ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
+            DASolver.solverAD.createMLRKSPMatrixFree(PCMat, ksp)
 
         inputDict = DASolver.getOption("inputInfo")
 
@@ -1567,20 +1574,25 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     print("ddtSchemeOrder not valid!" % ddtSchemeOrder)
 
                 # check if we need to update the PC Mat vals or use the pre-computed PC matrix
-                if str(timeVal) in list(self.dRdWTPC.keys()):
-                    if self.comm.rank == 0:
-                        print("Using pre-computed KSP PC mat for %f" % timeVal, flush=True)
-                    PCMat = self.dRdWTPC[str(timeVal)]
-                    DASolver.solverAD.updateKSPPCMat(PCMat, ksp)
-                if n % PCMatUpdateInterval == 0 and n < endTimeIndex:
-                    # udpate part of the PC mat
-                    if self.comm.rank == 0:
-                        print("Updating dRdWTPC mat value using OF fvMatrix", flush=True)
-                    DASolver.solver.calcPCMatWithFvMatrix(PCMat)
+                if self.adjEqnSolMethod == "Krylov":
+                    if str(timeVal) in list(self.dRdWTPC.keys()):
+                        if self.comm.rank == 0:
+                            print("Using pre-computed KSP PC mat for %f" % timeVal, flush=True)
+                        PCMat = self.dRdWTPC[str(timeVal)]
+                        DASolver.solverAD.updateKSPPCMat(PCMat, ksp)
+                    if n % PCMatUpdateInterval == 0 and n < endTimeIndex:
+                        # udpate part of the PC mat
+                        if self.comm.rank == 0:
+                            print("Updating dRdWTPC mat value using OF fvMatrix", flush=True)
+                        DASolver.solver.calcPCMatWithFvMatrix(PCMat)
 
                 # now solve the adjoint eqn
                 DASolver.arrayVal2Vec(dFdWArray, dFdW)
-                adjointFail = DASolver.solverAD.solveLinearEqn(ksp, dFdW, psi)
+
+                if self.adjEqnSolMethod == "Krylov":
+                    adjointFail = DASolver.solverAD.solveLinearEqn(ksp, dFdW, psi)
+                elif self.adjEqnSolMethod == "fixedPoint":
+                    adjointFail = DASolver.solverAD.solveAdjointFP(dFdW, psi)
 
                 # if one adjoint solution fails, return immediate without solving for the rest of steps.
                 if adjointFail > 0:

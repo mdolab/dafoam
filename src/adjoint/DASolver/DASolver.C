@@ -3222,8 +3222,8 @@ label DASolver::runFPAdj(
 }
 
 label DASolver::solveAdjointFP(
-    double* dFdW,
-    double* psi)
+    Vec dFdW,
+    Vec psi)
 {
     /*
     Description:
