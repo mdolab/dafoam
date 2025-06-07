@@ -239,6 +239,238 @@ label DAPimpleFoam::solvePrimal()
     return 0;
 }
 
+scalar DAPimpleFoam::calcAdjointResiduals(
+    const double* psi,
+    const double* dFdW,
+    double* adjRes)
+{
+    scalar adjResNorm = 0.0;
+#ifdef CODI_ADR
+    label localAdjSize = daIndexPtr_->nLocalAdjointStates;
+    // calculate the adjoint residuals  dRdWT*Psi - dFdW
+    this->assignVec2ResidualGradient(psi);
+    this->globalADTape_.evaluate();
+    this->assignStateGradient2Vec(adjRes);
+    // NOTE: we do NOT normalize dRdWOldTPsi!
+    // this->normalizeGradientVec(adjRes);
+    this->globalADTape_.clearAdjoints();
+    for (label i = 0; i < localAdjSize; i++)
+    {
+        adjRes[i] -= dFdW[i];
+        adjResNorm += adjRes[i] * adjRes[i];
+    }
+    reduce(adjResNorm, sumOp<scalar>());
+    adjResNorm = sqrt(adjResNorm);
+#endif
+    return adjResNorm;
+}
+
+label DAPimpleFoam::solveAdjointFP(
+    Vec dFdW,
+    Vec psi)
+{
+    /*
+    Description:
+        Solve the adjoint using the fixed-point iteration approach
+    */
+
+#ifdef CODI_ADR
+
+    Info << "Solving adjoint using fixed-point iterations" << endl;
+
+    PetscScalar* psiArray;
+    PetscScalar* dFdWArray;
+    VecGetArray(psi, &psiArray);
+    VecGetArray(dFdW, &dFdWArray);
+
+    const fvSolution& myFvSolution = meshPtr_->thisDb().lookupObject<fvSolution>("fvSolution");
+    dictionary solverDictU = myFvSolution.subDict("solvers").subDict("U");
+    dictionary solverDictP = myFvSolution.subDict("solvers").subDict("p");
+    scalar fpRelaxation = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<scalar>("fpRelaxation", 1.0);
+    label fpPrintInterval = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("fpPrintInterval", 10);
+    label useNonZeroInitGuess = daOptionPtr_->getAllOptions().subDict("adjEqnOption").getLabel("useNonZeroInitGuess");
+    label fpMaxIters = daOptionPtr_->getAllOptions().subDict("adjEqnOption").getLabel("fpMaxIters");
+
+    label localAdjSize = daIndexPtr_->nLocalAdjointStates;
+    double* adjRes = new double[localAdjSize];
+    for (label i = 0; i < localAdjSize; i++)
+    {
+        adjRes[i] = 0.0;
+        if (!useNonZeroInitGuess)
+        {
+            psiArray[i] = 0.0;
+        }
+    }
+
+    volVectorField& U = const_cast<volVectorField&>(
+        meshPtr_->thisDb().lookupObject<volVectorField>("U"));
+
+    volScalarField& p = const_cast<volScalarField&>(
+        meshPtr_->thisDb().lookupObject<volScalarField>("p"));
+
+    surfaceScalarField& phi = const_cast<surfaceScalarField&>(
+        meshPtr_->thisDb().lookupObject<surfaceScalarField>("phi"));
+
+    DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+
+    volVectorField dPsiU("dPsiU", U);
+    volScalarField dPsiP("dPsiP", p);
+    scalarList turbVar(meshPtr_->nCells(), 0.0);
+    scalarList dPsiTurbVar(meshPtr_->nCells(), 0.0);
+
+    // NOTE: we need only the fvm operators for the fixed-point preconditioner
+    // velocity
+    fvVectorMatrix psiUPC(
+        fvm::ddt(dPsiU)
+        + fvm::div(phi, dPsiU, "div(phi,U)")
+        - fvm::laplacian(daTurb.nuEff(), dPsiU));
+    psiUPC.relax(1.0);
+    // transpose the matrix
+    DAUtility::swapLists<scalar>(psiUPC.upper(), psiUPC.lower());
+    // make sure the boundary contribution to source hrs is zero
+    forAll(psiUPC.boundaryCoeffs(), patchI)
+    {
+        forAll(psiUPC.boundaryCoeffs()[patchI], faceI)
+        {
+            psiUPC.boundaryCoeffs()[patchI][faceI] = vector::zero;
+        }
+    }
+
+    // pressure
+    volScalarField rAU(1.0 / psiUPC.A());
+    fvScalarMatrix psiPPC(
+        fvm::laplacian(rAU, dPsiP));
+    // transpose the matrix
+    DAUtility::swapLists(psiPPC.upper(), psiPPC.lower());
+    // make sure the boundary contribution to source hrs is zero
+    forAll(psiPPC.boundaryCoeffs(), patchI)
+    {
+        forAll(psiPPC.boundaryCoeffs()[patchI], faceI)
+        {
+            psiPPC.boundaryCoeffs()[patchI][faceI] = 0.0;
+        }
+    }
+
+    // first, we setup the AD environment for dRdWT*Psi
+    this->globalADTape_.reset();
+    this->globalADTape_.setActive();
+
+    this->registerStateVariableInput4AD();
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
+    this->registerResidualOutput4AD();
+    this->globalADTape_.setPassive();
+    // AD ready to use
+
+    // print the initial residual
+    scalar adjResL2Norm = this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
+    Info << "Iter: 0. L2 Norm Residual: " << adjResL2Norm << ". "
+         << runTimePtr_->elapsedCpuTime() << " s" << endl;
+
+    for (label n = 1; n <= fpMaxIters; n++)
+    {
+        // U
+        forAll(dPsiU, cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex("U", cellI, comp);
+                psiUPC.source()[cellI][comp] = adjRes[localIdx];
+            }
+        }
+        forAll(dPsiU, cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                dPsiU[cellI][comp] = 0;
+            }
+        }
+        psiUPC.solve(solverDictU);
+
+        forAll(dPsiU, cellI)
+        {
+            for (label comp = 0; comp < 3; comp++)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex("U", cellI, comp);
+                psiArray[localIdx] -= dPsiU[cellI][comp].value() * fpRelaxation.value();
+            }
+        }
+        // update the adjoint residual
+        this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
+
+        // p
+        forAll(dPsiP, cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
+            psiPPC.source()[cellI] = adjRes[localIdx];
+        }
+        forAll(dPsiP, cellI)
+        {
+            dPsiP[cellI] = 0;
+        }
+        psiPPC.solve(solverDictP);
+
+        forAll(dPsiP, cellI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
+            psiArray[localIdx] -= dPsiP[cellI].value() * fpRelaxation.value();
+        }
+        // update the adjoint residual
+        this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
+
+        // phi
+        forAll(meshPtr_->faces(), faceI)
+        {
+            label localIdx = daIndexPtr_->getLocalAdjointStateIndex("phi", faceI);
+            psiArray[localIdx] += adjRes[localIdx];
+        }
+
+        // update the adjoint residual
+        this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
+
+        // turbulence vars
+        forAll(stateInfo_["modelStates"], idxI)
+        {
+
+            const word turbVarName = stateInfo_["modelStates"][idxI];
+            scalar relaxTurbVar = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<scalar>("relax" + turbVarName, 1.0);
+            forAll(turbVar, cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(turbVarName, cellI);
+                turbVar[cellI] = adjRes[localIdx];
+            }
+            daTurbulenceModelPtr_->solveAdjointFP(turbVarName, turbVar, dPsiTurbVar);
+            forAll(dPsiTurbVar, cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex(turbVarName, cellI);
+                psiArray[localIdx] -= dPsiTurbVar[cellI].value() * fpRelaxation.value();
+            }
+        }
+
+        // update the residual and print to the screen
+        adjResL2Norm = this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
+        if (n % fpPrintInterval == 0 || n == fpMaxIters)
+        {
+            Info << "Iter: " << n << ". L2 Norm Residual: " << adjResL2Norm << ". "
+                 << runTimePtr_->elapsedCpuTime() << " s" << endl;
+        }
+    }
+
+    // **********************************************************************************************
+    // clean up OF vars's AD seeds by deactivating the inputs and call the forward func one more time
+    // **********************************************************************************************
+    this->deactivateStateVariableInput4AD();
+    this->updateStateBoundaryConditions();
+    this->calcResiduals();
+
+    delete[] adjRes;
+    VecRestoreArray(psi, &psiArray);
+    VecRestoreArray(dFdW, &dFdWArray);
+#endif
+
+    return 0;
+}
+
 } // End namespace Foam
 
 // ************************************************************************* //

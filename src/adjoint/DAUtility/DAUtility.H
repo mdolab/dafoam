@@ -145,6 +145,10 @@ public:
         const fvMesh& mesh,
         const word fieldName,
         const word fieldType);
+
+    /// swap two lists
+    template<class classType>
+    static void swapLists(List<classType>& a, List<classType>& b);
 };
 
 template<class classType>
@@ -193,6 +197,15 @@ label DAUtility::listDeleteVal(
     listIn = listNew;
 
     return foundVal;
+}
+
+/// swap two lists
+template<class classType>
+void DAUtility::swapLists(List<classType>& a, List<classType>& b)
+{
+    List<classType> temp = a;
+    a = b;
+    b = temp;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -284,6 +284,12 @@ public:
         scalarField& diag,
         scalarField& upper,
         scalarField& lower);
+
+    /// solve the fvMatrixT field with given rhs and solution
+    virtual void solveAdjointFP(
+        const word varName,
+        const scalarList& rhs,
+        scalarList& dPsi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

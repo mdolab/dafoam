@@ -470,6 +470,13 @@ public:
         return DASolverPtr_->runFPAdj(dFdW, psi);
     }
 
+    label solveAdjointFP(
+        Vec dFdW,
+        Vec psi)
+    {
+        return DASolverPtr_->solveAdjointFP(dFdW, psi);
+    }
+
     /// initialize the call back function pointer
     void initTensorFlowFuncs(
         pyComputeInterface computeInterface,

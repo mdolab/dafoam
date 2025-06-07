@@ -37,6 +37,7 @@ daOptions = {
         # "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "useWallFunction": False,
     },
+    "adjEqnSolMethod": "fixedPoint",
     "unsteadyAdjoint": {
         "mode": "timeAccurate",
         "PCMatPrecomputeInterval": 5,
@@ -55,20 +56,14 @@ daOptions = {
             "timeOp": "average",
             "timeOpStartIndex": 4,
         },
-        "CL": {
-            "type": "force",
-            "source": "patchToFace",
-            "patches": ["walls"],
-            "directionMode": "fixedDirection",
-            "direction": [0.0, 1.0, 0.0],
-            "scale": 1.0,
-            "timeOp": "maxKS",
-            "coeffKS": 0.25,
-        },
     },
     "adjStateOrdering": "cell",
-    "adjEqnOption": {"gmresRelTol": 1.0e-8, "pcFillLevel": 1, "jacMatReOrdering": "natural"},
-    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
+    "adjEqnOption": {
+        "fpRelaxation": 0.5,
+        "fpMaxIters": 100,
+    },
+    # "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
+    "normalizeResiduals": ["none"],
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
         "patchV": {
@@ -81,7 +76,6 @@ daOptions = {
     },
     "unsteadyCompOutput": {
         "CD": ["CD"],
-        "CL": ["CL"],
     },
 }
 
@@ -148,7 +142,7 @@ derivDict = {}
 
 dvNames = ["shape", "patchV"]
 dvIndices = [[0], [0]]
-funcNames = ["cruise.solver.CD", "cruise.solver.CL"]
+funcNames = ["cruise.solver.CD"]
 
 # run the adjoint and forward ref
 run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)

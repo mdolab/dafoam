@@ -635,6 +635,17 @@ void DATurbulenceModel::getFvMatrixFields(
         << abort(FatalError);
 }
 
+/// solve the fvMatrixT field with given rhs and solution
+void DATurbulenceModel::solveAdjointFP(
+    const word varName,
+    const scalarList& rhs,
+    scalarList& dPsi)
+{
+    FatalErrorIn("DATurbulenceModel::solveAdjointFP")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
