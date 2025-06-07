@@ -138,12 +138,11 @@ public:
     virtual label solveAdjointFP(
         Vec dFdW,
         Vec psi);
-    
+
     scalar calcAdjointResiduals(
         const double* psi,
         const double* dFdW,
-        double* adjRes
-    );
+        double* adjRes);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
