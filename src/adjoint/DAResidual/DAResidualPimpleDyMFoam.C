@@ -244,7 +244,7 @@ void DAResidualPimpleDyMFoam::calcPCMatWithFvMatrix(Mat PCMat)
         + daTurb_.divDevReff(U_)
         - fvSource_);
 
-    // set the val before relaxing UEqn!
+    UEqn.relax(1.0);
 
     // set diag
     forAll(U_, cellI)
@@ -306,7 +306,6 @@ void DAResidualPimpleDyMFoam::calcPCMatWithFvMatrix(Mat PCMat)
         }
     }
 
-    UEqn.relax(1.0);
     label pRefCell = 0;
     scalar pRefValue = 0.0;
 
@@ -409,6 +408,8 @@ void DAResidualPimpleDyMFoam::calcPCMatWithFvMatrix(Mat PCMat)
             fvm::ddt(T)
             + fvm::div(phi_, T)
             - fvm::laplacian(alphaEff, T));
+
+        TEqn.relax(1.0);
 
         scalar TScaling = 1.0;
         if (normStateDict.found("T"))
