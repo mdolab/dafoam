@@ -59,11 +59,13 @@ daOptions = {
     },
     "adjStateOrdering": "cell",
     "adjEqnOption": {
-        "fpRelaxation": 0.5,
+        "fpRelaxP": 0.9,
+        "fpRelaxU": 1.0,
+        "fpRelaxPhi": 1.0,
+        "fpRelaxnuTilda": 1.0,
         "fpMaxIters": 100,
+        "fpRelTol": 1e-5,
     },
-    # "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3},
-    "normalizeResiduals": ["none"],
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
         "patchV": {
