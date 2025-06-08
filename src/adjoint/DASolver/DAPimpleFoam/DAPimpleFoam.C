@@ -286,10 +286,13 @@ label DAPimpleFoam::solveAdjointFP(
     const fvSolution& myFvSolution = meshPtr_->thisDb().lookupObject<fvSolution>("fvSolution");
     dictionary solverDictU = myFvSolution.subDict("solvers").subDict("U");
     dictionary solverDictP = myFvSolution.subDict("solvers").subDict("p");
-    scalar fpRelaxation = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<scalar>("fpRelaxation", 1.0);
+    scalar fpRelaxU = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<scalar>("fpRelaxU", 1.0);
+    scalar fpRelaxP = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<scalar>("fpRelaxP", 1.0);
+    scalar fpRelaxPhi = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<scalar>("fpRelaxPhi", 1.0);
     label fpPrintInterval = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("fpPrintInterval", 10);
     label useNonZeroInitGuess = daOptionPtr_->getAllOptions().subDict("adjEqnOption").getLabel("useNonZeroInitGuess");
     label fpMaxIters = daOptionPtr_->getAllOptions().subDict("adjEqnOption").getLabel("fpMaxIters");
+    scalar fpRelTol = daOptionPtr_->getAllOptions().subDict("adjEqnOption").getScalar("fpRelTol");
 
     label localAdjSize = daIndexPtr_->nLocalAdjointStates;
     double* adjRes = new double[localAdjSize];
@@ -363,8 +366,8 @@ label DAPimpleFoam::solveAdjointFP(
     // AD ready to use
 
     // print the initial residual
-    scalar adjResL2Norm = this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
-    Info << "Iter: 0. L2 Norm Residual: " << adjResL2Norm << ". "
+    scalar adjResL2Norm0 = this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
+    Info << "Iter: 0. L2 Norm Residual: " << adjResL2Norm0 << ". "
          << runTimePtr_->elapsedCpuTime() << " s" << endl;
 
     for (label n = 1; n <= fpMaxIters; n++)
@@ -392,37 +395,41 @@ label DAPimpleFoam::solveAdjointFP(
             for (label comp = 0; comp < 3; comp++)
             {
                 label localIdx = daIndexPtr_->getLocalAdjointStateIndex("U", cellI, comp);
-                psiArray[localIdx] -= dPsiU[cellI][comp].value() * fpRelaxation.value();
+                psiArray[localIdx] -= dPsiU[cellI][comp].value() * fpRelaxU.value();
             }
         }
-        // update the adjoint residual
-        this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
 
-        // p
-        forAll(dPsiP, cellI)
+        for (label i = 0; i < 2; i++)
         {
-            label localIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
-            psiPPC.source()[cellI] = adjRes[localIdx];
-        }
-        forAll(dPsiP, cellI)
-        {
-            dPsiP[cellI] = 0;
-        }
-        psiPPC.solve(solverDictP);
+            // p
+            // update the adjoint residual
+            this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
 
-        forAll(dPsiP, cellI)
-        {
-            label localIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
-            psiArray[localIdx] -= dPsiP[cellI].value() * fpRelaxation.value();
-        }
-        // update the adjoint residual
-        this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
+            forAll(dPsiP, cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
+                psiPPC.source()[cellI] = adjRes[localIdx];
+            }
+            forAll(dPsiP, cellI)
+            {
+                dPsiP[cellI] = 0;
+            }
+            psiPPC.solve(solverDictP);
 
-        // phi
-        forAll(meshPtr_->faces(), faceI)
-        {
-            label localIdx = daIndexPtr_->getLocalAdjointStateIndex("phi", faceI);
-            psiArray[localIdx] += adjRes[localIdx];
+            forAll(dPsiP, cellI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex("p", cellI);
+                psiArray[localIdx] -= dPsiP[cellI].value() * fpRelaxP.value();
+            }
+            // update the adjoint residual
+            this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
+
+            // phi
+            forAll(meshPtr_->faces(), faceI)
+            {
+                label localIdx = daIndexPtr_->getLocalAdjointStateIndex("phi", faceI);
+                psiArray[localIdx] += adjRes[localIdx] * fpRelaxPhi.value();
+            }
         }
 
         // update the adjoint residual
@@ -433,7 +440,7 @@ label DAPimpleFoam::solveAdjointFP(
         {
 
             const word turbVarName = stateInfo_["modelStates"][idxI];
-            scalar relaxTurbVar = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<scalar>("relax" + turbVarName, 1.0);
+            scalar fpRelaxTurbVar = daOptionPtr_->getAllOptions().subDict("adjEqnOption").lookupOrDefault<scalar>("fpRelax" + turbVarName, 1.0);
             forAll(turbVar, cellI)
             {
                 label localIdx = daIndexPtr_->getLocalAdjointStateIndex(turbVarName, cellI);
@@ -443,16 +450,21 @@ label DAPimpleFoam::solveAdjointFP(
             forAll(dPsiTurbVar, cellI)
             {
                 label localIdx = daIndexPtr_->getLocalAdjointStateIndex(turbVarName, cellI);
-                psiArray[localIdx] -= dPsiTurbVar[cellI].value() * fpRelaxation.value();
+                psiArray[localIdx] -= dPsiTurbVar[cellI].value() * fpRelaxTurbVar.value();
             }
         }
 
         // update the residual and print to the screen
-        adjResL2Norm = this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
-        if (n % fpPrintInterval == 0 || n == fpMaxIters)
+        scalar adjResL2Norm = this->calcAdjointResiduals(psiArray, dFdWArray, adjRes);
+        if (n % fpPrintInterval == 0 || n == fpMaxIters || (adjResL2Norm / adjResL2Norm0) < fpRelTol)
         {
             Info << "Iter: " << n << ". L2 Norm Residual: " << adjResL2Norm << ". "
                  << runTimePtr_->elapsedCpuTime() << " s" << endl;
+
+            if ((adjResL2Norm / adjResL2Norm0) < fpRelTol)
+            {
+                break;
+            }
         }
     }
 
