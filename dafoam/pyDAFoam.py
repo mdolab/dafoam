@@ -733,6 +733,9 @@ class PYDAFOAM(object):
                 TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
             )
 
+        if self.getOption("printDAOptions"):
+            self.solver.printAllOptions()
+
         Info("pyDAFoam initialization done!")
 
         return
@@ -818,6 +821,8 @@ class PYDAFOAM(object):
                 raise Error("Please do not set any normalizeStates for the fixed-point adjoint!")
             # force the normalize residuals to be None; don't normalize any residuals
             self.setOption("normalizeResiduals", ["None"])
+            # update this option to the C++ layer
+            self.updateDAOption()
 
         if self.getOption("discipline") not in ["aero", "thermal"]:
             raise Error("discipline: %s not supported. Options are: aero or thermal" % self.getOption("discipline"))
@@ -1367,9 +1372,6 @@ class PYDAFOAM(object):
 
         self.solver.initSolver()
         self.solverAD.initSolver()
-
-        if self.getOption("printDAOptions"):
-            self.solver.printAllOptions()
 
         Info("Init solver done! ElapsedClockTime %f s" % self.solver.getElapsedClockTime())
         Info("Init solver done! ElapsedCpuTime %f s" % self.solver.getElapsedCpuTime())

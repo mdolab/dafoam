@@ -562,7 +562,7 @@ void DASpalartAllmaras::solveAdjointFP(
             - Cb2_ / sigmaNut_ * phase_ * rho * magSqr(fvc::grad(dPsiNuTilda_))
             + fvm::Sp(Cw1_ * phase_ * rho * fw(Stilda) * dPsiNuTilda_ / sqr(y_), dPsiNuTilda_)));
 
-        psiNuTildaPC_->relax(0.7);
+        psiNuTildaPC_->relax();
 
         DAUtility::swapLists<scalar>(psiNuTildaPC_->upper(), psiNuTildaPC_->lower());
 
