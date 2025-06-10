@@ -1325,6 +1325,21 @@ class DAFoamSolverUnsteady(ExplicitComponent):
 
             DASolver = self.DASolver
 
+            # if readZeroFields, we need to read in the states from the 0 folder every time
+            # we start the primal here we read in all time levels. If readZeroFields is not set,
+            # we will use the latest flow fields (from a previous primal call) as the init conditions
+            readZeroFields = DASolver.getOption("unsteadyAdjoint")["readZeroFields"]
+            if readZeroFields:
+                DASolver.solver.setTime(0.0, 0)
+                deltaT = DASolver.solver.getDeltaT()
+                DASolver.readStateVars(0.0, deltaT)
+
+            # set the solver inputs.
+            # NOTE: we need to set input after we read the zero fields for forward mode
+            DASolver.set_solver_input(inputs, self.DVGeo)
+            # if dyamic mesh is used, we need to deform the mesh points and save them to disk
+            DASolver.deformDynamicMesh()
+
             # before running the primal, we need to check if the mesh
             # quality is good
             meshOK = DASolver.solver.checkMesh()
@@ -1332,19 +1347,6 @@ class DAFoamSolverUnsteady(ExplicitComponent):
             # solve the flow with the current design variable
             # if the mesh is not OK, do not run the primal
             if meshOK:
-                # if readZeroFields, we need to read in the states from the 0 folder every time
-                # we start the primal here we read in all time levels. If readZeroFields is not set,
-                # we will use the latest flow fields (from a previous primal call) as the init conditions
-                readZeroFields = DASolver.getOption("unsteadyAdjoint")["readZeroFields"]
-                if readZeroFields:
-                    DASolver.solver.setTime(0.0, 0)
-                    deltaT = DASolver.solver.getDeltaT()
-                    DASolver.readStateVars(0.0, deltaT)
-
-                # set the solver inputs
-                DASolver.set_solver_input(inputs, self.DVGeo)
-                # if dyamic mesh is used, we need to deform the mesh points and save them to disk
-                DASolver.deformDynamicMesh()
                 # solve the primal
                 DASolver()
             else:
