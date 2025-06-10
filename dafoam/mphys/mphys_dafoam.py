@@ -1325,6 +1325,11 @@ class DAFoamSolverUnsteady(ExplicitComponent):
 
             DASolver = self.DASolver
 
+            # set the solver inputs
+            DASolver.set_solver_input(inputs, self.DVGeo)
+            # if dyamic mesh is used, we need to deform the mesh points and save them to disk
+            DASolver.deformDynamicMesh()
+
             # before running the primal, we need to check if the mesh
             # quality is good
             meshOK = DASolver.solver.checkMesh()
@@ -1341,10 +1346,6 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                     deltaT = DASolver.solver.getDeltaT()
                     DASolver.readStateVars(0.0, deltaT)
 
-                # set the solver inputs
-                DASolver.set_solver_input(inputs, self.DVGeo)
-                # if dyamic mesh is used, we need to deform the mesh points and save them to disk
-                DASolver.deformDynamicMesh()
                 # solve the primal
                 DASolver()
             else:
