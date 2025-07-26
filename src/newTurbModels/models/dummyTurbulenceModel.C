@@ -44,7 +44,8 @@ dummyTurbulenceModel<BasicTurbulenceModel>::dummyTurbulenceModel(
         alphaRhoPhi,
         phi,
         transport,
-        propertiesName)
+        propertiesName),
+      y_(wallDist::New(this->mesh_).y())
 {
     // set turbulence variable to zero
     forAll(this->nut_, idxI) this->nut_[idxI] = 0.0;

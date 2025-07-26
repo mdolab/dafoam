@@ -38,6 +38,11 @@ class dummyTurbulenceModel
 protected:
     virtual void correctNut();
 
+    //- Wall distance
+    //  Note: different to wall distance in parent RASModel
+    //  which is for near-wall cells only
+    const volScalarField& y_;
+
 public:
     typedef typename BasicTurbulenceModel::alphaField alphaField;
     typedef typename BasicTurbulenceModel::rhoField rhoField;
