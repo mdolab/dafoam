@@ -11,7 +11,7 @@ solvers and external modules for design optimization
 
 """
 
-__version__ = "4.0.2"
+__version__ = "4.0.3"
 
 import subprocess
 import os
@@ -2037,6 +2037,17 @@ class PYDAFOAM(object):
         self.solverAD.updateOFMesh(vol_coords)
 
         return
+
+    def getResiduals(self):
+        """
+        Return the residual array owns by this processor
+        """
+        nLocalStateSize = self.solver.getNLocalAdjointStates()
+        residuals = np.zeros(nLocalStateSize, self.dtype)
+
+        self.solver.getResiduals(residuals)
+
+        return residuals
 
     def arrayVal2Vec(self, array1, vec):
         """

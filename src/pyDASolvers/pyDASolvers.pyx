@@ -49,6 +49,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int solvePrimal()
         void runColoring()
         void calcJacTVecProduct(char *, char *, double *, char *, char *, double *, double *)
+        void getResiduals(double *)
         int getInputSize(char *, char *)
         int getOutputSize(char *, char *)
         void calcOutput(char *, char *, double *)
@@ -173,6 +174,14 @@ cdef class pyDASolvers:
             inputSize,
             inputs_data,
             seeds_data)
+    
+    def getResiduals(self, np.ndarray[double, ndim=1, mode="c"] residuals):
+        
+        assert len(residuals) == self.getNLocalAdjointStates(), "invalid input array size!"
+
+        cdef double *residuals_data = <double*>residuals.data
+
+        self._thisptr.getResiduals(residuals_data)
     
     def getInputSize(self, inputName, inputType):
         return self._thisptr.getInputSize(inputName.encode(), inputType.encode())

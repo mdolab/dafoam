@@ -66,6 +66,12 @@ public:
         return DASolverPtr_->solvePrimal();
     }
 
+    /// return the residual arrays own by this processor
+    void getResiduals(double* residuals)
+    {
+        DASolverPtr_->getResiduals(residuals);
+    }
+
     label getInputSize(
         const word inputName,
         const word inputType)

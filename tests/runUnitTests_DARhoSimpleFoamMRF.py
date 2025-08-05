@@ -59,3 +59,16 @@ if abs(funcs["CMZ"] - 0.13739475620718933) / 0.13739475620718933 > 1e-8:
     exit(1)
 else:
     print("DARhoSimpleFoamMRF test passed!")
+
+
+residuals = DASolver.getResiduals()
+resNorm = np.linalg.norm(residuals)
+resNorm = gcomm.allreduce(resNorm, op=MPI.SUM)
+
+print(resNorm)
+
+if abs(resNorm - 0.04318325605871186) / 0.04318325605871186 > 1e-8:
+    print("DARhoSimpleFoamMRF test failed!")
+    exit(1)
+else:
+    print("DARhoSimpleFoamMRF test passed!")
