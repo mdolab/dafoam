@@ -285,6 +285,9 @@ public:
     /// Update the OpenFoam mesh point coordinates based on the volume point coords array
     void updateOFMesh(const scalar* volCoords);
 
+    /// return the residual arrays own by this processor
+    void getResiduals(double* residuals);
+
     /// assign the state variables from OpenFoam layer to the states array
     void getOFFields(scalar* states)
     {
