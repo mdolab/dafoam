@@ -221,6 +221,8 @@ DASolver()
 
 funcs = {}
 DASolver.evalFunctions(funcs)
+CD_calc = DASolver.calcFunction("CD")
+funcs["CD"] = CD_calc
 
 if gcomm.rank == 0:
     print(funcs)
