@@ -76,6 +76,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         int checkMesh()
         double getdFScaling(char *, int)
         double getTimeOpFuncVal(char *)
+        double calcFunction(char *)
         double getElapsedClockTime()
         double getElapsedCpuTime()
         void calcCouplingFaceCoords(double *, double *)
@@ -307,6 +308,9 @@ cdef class pyDASolvers:
     
     def getTimeOpFuncVal(self, functionName):
         return self._thisptr.getTimeOpFuncVal(functionName.encode())
+    
+    def calcFunction(self, functionName):
+        return self._thisptr.calcFunction(functionName.encode())
     
     def getdFScaling(self, functionName, timeIdx=-1):
         return self._thisptr.getdFScaling(functionName.encode(), timeIdx)

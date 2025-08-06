@@ -515,6 +515,9 @@ public:
     /// get the function value based on timeOp
     double getTimeOpFuncVal(const word functionName);
 
+    /// calculate and return the function value
+    double calcFunction(const word functionName);
+
     /// return the index of a give functionName in daFunctionPtrList_
     label getFunctionListIndex(const word functionName)
     {

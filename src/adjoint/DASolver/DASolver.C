@@ -258,6 +258,27 @@ void DASolver::calcAllFunctions(label print)
     }
 }
 
+double DASolver::calcFunction(const word functionName)
+{
+    // calculate and return the function value
+    scalar funcVal = 0.0;
+    forAll(daFunctionPtrList_, idxI)
+    {
+        DAFunction& daFunction = daFunctionPtrList_[idxI];
+        word functionName1 = daFunction.getFunctionName();
+
+        if (functionName1 == functionName)
+        {
+            funcVal = daFunction.calcFunction();
+        }
+    }
+#ifdef CODI_NO_AD
+    return funcVal;
+#else
+    return funcVal.getValue();
+#endif
+}
+
 double DASolver::getTimeOpFuncVal(const word functionName)
 {
     // return the function value based on timeOp

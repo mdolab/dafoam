@@ -313,6 +313,12 @@ public:
         return DASolverPtr_->getTimeOpFuncVal(functionName);
     }
 
+    /// calculate and return the function value
+    double calcFunction(const word functionName)
+    {
+        return DASolverPtr_->calcFunction(functionName);
+    }
+
     /// get the scaling factor for dF/d? computation
     double getdFScaling(const word functionName, const label timeIdx)
     {
