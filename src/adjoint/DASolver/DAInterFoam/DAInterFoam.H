@@ -55,7 +55,6 @@ class DAInterFoam
 {
 
 protected:
-
 public:
     TypeName("DAInterFoam");
     // Constructors
