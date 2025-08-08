@@ -29,17 +29,6 @@
 
 #include "DAInterFoam.H"
 
-#include "fvCFD.H"
-#include "CMULESDF.H"
-#include "EulerDdtScheme.H"
-#include "localEulerDdtScheme.H"
-#include "CrankNicolsonDdtScheme.H"
-#include "subCycle.H"
-#include "immiscibleIncompressibleTwoPhaseMixture.H"
-#include "turbulentTransportModel.H"
-#include "pimpleControl.H"
-#include "fvcSmooth.H"
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -52,7 +41,21 @@ addToRunTimeSelectionTable(DASolver, DAInterFoam, dictionary);
 DAInterFoam::DAInterFoam(
     char* argsAll,
     PyObject* pyOptions)
-    : DASolver(argsAll, pyOptions)
+    : DASolver(argsAll, pyOptions),
+      pimplePtr_(nullptr),
+      p_rghPtr_(nullptr),
+      pPtr_(nullptr),
+      UPtr_(nullptr),
+      rhoPtr_(nullptr),
+      phiPtr_(nullptr),
+      rhoPhiPtr_(nullptr),
+      ghPtr_(nullptr),
+      ghfPtr_(nullptr),
+      alphaPhiUnPtr_(nullptr),
+      alphaPhi10Ptr_(nullptr),
+      mixturePtr_(nullptr),
+      turbulencePtr_(nullptr),
+      daTurbulenceModelPtr_(nullptr)
 {
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -63,6 +66,41 @@ void DAInterFoam::initSolver()
     Description:
         Initialize variables for DASolver
     */
+
+    Info << "Initializing fields for DAInterFoam" << endl;
+    Time& runTime = runTimePtr_();
+    fvMesh& mesh = meshPtr_();
+
+#include "createPimpleControlPython.H"
+#include "createFieldsInter.H"
+
+    // read the RAS model from constant/turbulenceProperties
+    const word turbModelName(
+        IOdictionary(
+            IOobject(
+                "turbulenceProperties",
+                mesh.time().constant(),
+                mesh,
+                IOobject::MUST_READ,
+                IOobject::NO_WRITE,
+                false))
+            .subDict("RAS")
+            .lookup("RASModel"));
+    daTurbulenceModelPtr_.reset(DATurbulenceModel::New(turbModelName, mesh, daOptionPtr_()));
+
+#include "createAdjoint.H"
+
+    // reduceIO does not write mesh, but if there is a shape variable, set writeMesh to 1
+    dictionary dvSubDict = daOptionPtr_->getAllOptions().subDict("inputInfo");
+    forAll(dvSubDict.toc(), idxI)
+    {
+        word dvName = dvSubDict.toc()[idxI];
+        if (dvSubDict.subDict(dvName).getWord("type") == "volCoord")
+        {
+            reduceIOWriteMesh_ = 1;
+            break;
+        }
+    }
 }
 
 label DAInterFoam::solvePrimal()
@@ -72,18 +110,10 @@ label DAInterFoam::solvePrimal()
         Call the primal solver to get converged state variables
     */
 
-    Foam::argList& args = argsPtr_();
+#include "createRefsInter.H"
 
-#include "createTime.H"
-#include "createMesh.H"
-#include "initContinuityErrs.H"
-#include "createControl.H"
-#include "createFieldsInter.H"
-#include "createAlphaFluxes.H"
-
-    turbulence->validate();
-
-#include "CourantNo.H"
+    // call correctNut, this is equivalent to turbulence->validate();
+    daTurbulenceModelPtr_->updateIntermediateVariables();
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     Info << "\nStarting time loop\n"
@@ -121,10 +151,7 @@ label DAInterFoam::solvePrimal()
 #include "pEqnInter.H"
             }
 
-            if (pimple.turbCorr())
-            {
-                turbulence->correct();
-            }
+            turbulencePtr_->correct();
         }
 
         runTime.write();
@@ -134,7 +161,6 @@ label DAInterFoam::solvePrimal()
 
     Info << "End\n"
          << endl;
-
     return 0;
 }
 

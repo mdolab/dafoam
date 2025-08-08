@@ -275,7 +275,7 @@ tmp<volScalarField> DATurbulenceModel::nu() const
 
     if (turbModelType_ == "incompressible")
     {
-        const volScalarField& nu = mesh_.thisDb().lookupObject<singlePhaseTransportModel>("transportProperties").nu();
+        const volScalarField& nu = mesh_.thisDb().lookupObject<transportModel>("transportProperties").nu();
         return nu;
     }
     else if (turbModelType_ == "compressible")

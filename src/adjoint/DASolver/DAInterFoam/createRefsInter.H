@@ -1,0 +1,24 @@
+Time& runTime = runTimePtr_();
+// reset time to 0
+runTime.setTime(0.0, 0);
+fvMesh& mesh = meshPtr_();
+pimpleControlDF& pimple = pimplePtr_();
+volScalarField& p = pPtr_();
+volScalarField& p_rgh = p_rghPtr_();
+volVectorField& U = UPtr_();
+volScalarField& rho = rhoPtr_();
+volScalarField& gh = ghPtr_();
+surfaceScalarField& ghf = ghfPtr_();
+surfaceScalarField& phi = phiPtr_();
+surfaceScalarField& rhoPhi = rhoPhiPtr_();
+surfaceScalarField& alphaPhiUn = alphaPhiUnPtr_();
+surfaceScalarField& alphaPhi10 = alphaPhi10Ptr_();
+immiscibleIncompressibleTwoPhaseMixture& mixture = mixturePtr_();
+const dimensionedScalar& rho1 = mixture.rho1();
+const dimensionedScalar& rho2 = mixture.rho2();
+volScalarField& alpha1(mixture.alpha1());
+volScalarField& alpha2(mixture.alpha2());
+scalar& cumulativeContErr = cumulativeContErr_;
+label& pRefCell = pRefCell_;
+scalar& pRefValue = pRefValue_;
+const dictionary& allOptions = daOptionPtr_->getAllOptions();

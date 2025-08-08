@@ -28,7 +28,7 @@
             }
 
             if (
-                alphaRestart
+                alphaRestart_
                 || mesh.time().timeIndex() > mesh.time().startTimeIndex() + 1)
             {
                 ocCoeff =
@@ -102,9 +102,7 @@
 
     fvScalarMatrix alpha1Eqn(
         (
-            LTS
-                ? fv::localEulerDdtScheme<scalar>(mesh).fvmDdt(alpha1)
-                : fv::EulerDdtScheme<scalar>(mesh).fvmDdt(alpha1))
+            fv::EulerDdtScheme<scalar>(mesh).fvmDdt(alpha1))
             + fv::gaussConvectionScheme<scalar>(
                   mesh,
                   phiCN,
@@ -124,17 +122,6 @@
 
     tmp<surfaceScalarField> talphaPhi1UD(alpha1Eqn.flux());
     alphaPhi10 = talphaPhi1UD();
-
-    if (alphaApplyPrevCorr && talphaPhi1Corr0.valid())
-    {
-        Info << "Applying the previous iteration compression flux" << endl;
-        MULESDF::correct(alpha1, alphaPhi10, talphaPhi1Corr0.ref(), 1, 0);
-
-        alphaPhi10 += talphaPhi1Corr0();
-    }
-
-    // Cache the upwind-flux
-    talphaPhi1Corr0 = talphaPhi1UD;
 
     alpha2 = 1.0 - alpha1;
 
@@ -184,16 +171,6 @@
         alpha2 = 1.0 - alpha1;
 
         mixture.correct();
-    }
-
-    if (alphaApplyPrevCorr)
-    {
-        talphaPhi1Corr0 = alphaPhi10 - talphaPhi1Corr0;
-        talphaPhi1Corr0.ref().rename("alphaPhi1Corr0");
-    }
-    else
-    {
-        talphaPhi1Corr0.clear();
     }
 
 #include "rhofs.H"

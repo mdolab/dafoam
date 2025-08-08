@@ -35,11 +35,17 @@
 
 #include "DASolver.H"
 #include "addToRunTimeSelectionTable.H"
-#include "fluidThermo.H"
-#include "turbulentFluidThermoModel.H"
-#include "simpleControl.H"
-#include "pressureControl.H"
-#include "DAFvSource.H"
+#include "fvCFD.H"
+#include "CMULESDF.H"
+#include "EulerDdtScheme.H"
+#include "localEulerDdtScheme.H"
+#include "CrankNicolsonDdtScheme.H"
+#include "subCycle.H"
+#include "immiscibleIncompressibleTwoPhaseMixture.H"
+#include "turbulentTransportModel.H"
+#include "pimpleControl.H"
+#include "pimpleControlDF.H"
+#include "fvcSmooth.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -55,6 +61,66 @@ class DAInterFoam
 {
 
 protected:
+    /// pimple pointer
+    autoPtr<pimpleControlDF> pimplePtr_;
+
+    /// pressure - rho*g*h field pointer
+    autoPtr<volScalarField> p_rghPtr_;
+
+    /// pressure field pointer
+    autoPtr<volScalarField> pPtr_;
+
+    /// velocity field pointer
+    autoPtr<volVectorField> UPtr_;
+
+    /// density field pointer
+    autoPtr<volScalarField> rhoPtr_;
+
+    /// surface flux field pointer
+    autoPtr<surfaceScalarField> phiPtr_;
+
+    /// density times surface flux field pointer
+    autoPtr<surfaceScalarField> rhoPhiPtr_;
+
+    /// g*h field pointer
+    autoPtr<volScalarField> ghPtr_;
+
+    /// g*h face field pointer
+    autoPtr<surfaceScalarField> ghfPtr_;
+
+    /// MULES compressed flux pointer
+    autoPtr<surfaceScalarField> alphaPhiUnPtr_;
+
+    /// MULES flux from previous time-step pointer
+    autoPtr<surfaceScalarField> alphaPhi10Ptr_;
+
+    /// laminar transport properties pointer
+    autoPtr<immiscibleIncompressibleTwoPhaseMixture> mixturePtr_;
+
+    /// turbulence pointer
+    autoPtr<incompressible::turbulenceModel> turbulencePtr_;
+
+    /// DATurbulenceModel pointer
+    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+
+    /// continuity error
+    scalar cumulativeContErr_ = 0.0;
+
+    /// pressure referefence cell id
+    label pRefCell_ = 0;
+
+    /// pressure reference value
+    scalar pRefValue_ = 0.0;
+
+    /// the primal IO interval
+    label IOInterval_ = 1;
+
+    /// whether to write mesh for the reduceIO
+    label reduceIOWriteMesh_ = 0;
+
+    /// whether is a restart run
+    bool alphaRestart_ = false;
+
 public:
     TypeName("DAInterFoam");
     // Constructors

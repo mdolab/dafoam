@@ -89,6 +89,7 @@ DAStateInfo/DAStateInfoRhoSimpleCFoam.C
 DAStateInfo/DAStateInfoTurboFoam.C
 DAStateInfo/DAStateInfoHeatTransferFoam.C
 DAStateInfo/DAStateInfoSolidDisplacementFoam.C
+DAStateInfo/DAStateInfoInterFoam.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualSimpleFoam.C
@@ -100,6 +101,7 @@ DAResidual/DAResidualRhoSimpleCFoam.C
 DAResidual/DAResidualTurboFoam.C
 DAResidual/DAResidualHeatTransferFoam.C
 DAResidual/DAResidualSolidDisplacementFoam.C
+DAResidual/DAResidualInterFoam.C
 
 DASolver/DASolver.C
 DASolver/DASimpleFoam/DASimpleFoam.C

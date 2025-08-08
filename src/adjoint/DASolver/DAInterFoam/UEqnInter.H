@@ -2,7 +2,7 @@
 fvVectorMatrix UEqn(
     fvm::ddt(rho, U)
     + fvm::div(rhoPhi, U)
-    + turbulence->divDevRhoReff(rho, U));
+    + turbulencePtr_->divDevRhoReff(rho, U));
 
 UEqn.relax();
 
