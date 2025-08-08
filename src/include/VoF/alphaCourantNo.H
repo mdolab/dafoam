@@ -29,9 +29,6 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
-scalar maxAlphaCo(
-    readScalar(runTime.controlDict().lookup("maxAlphaCo")));
-
 scalar alphaCoNum = 0.0;
 scalar meanAlphaCoNum = 0.0;
 

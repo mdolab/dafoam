@@ -46,10 +46,18 @@ SourceFiles
 #ifndef CMULESDF_H
 #define CMULESDF_H
 
-#include "MULESDF.H"
+//#include "MULESDF.H"
 #include "EulerDdtScheme.H"
 #include "localEulerDdtScheme.H"
 #include "gaussConvectionScheme.H"
+#include "volFieldsFwd.H"
+#include "surfaceFieldsFwd.H"
+#include "primitiveFieldsFwd.H"
+#include "geometricOneField.H"
+#include "zero.H"
+#include "zeroField.H"
+#include "UPtrList.H"
+#include "upwind.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

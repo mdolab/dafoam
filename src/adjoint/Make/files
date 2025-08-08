@@ -123,6 +123,5 @@ DAMisc/tractionDisplacement/tractionDisplacementFvPatchVectorField.C
 DAMisc/alphatWallFunctionIncomp/alphatWallFunctionIncompFvPatchScalarField.C
 DAMisc/fixedWallHeatFlux/fixedWallHeatFluxFvPatchScalarField.C
 DAMisc/MULESDF/CMULESDF.C
-DAMisc/MULESDF/MULESDF.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDASolver$(WM_CODI_AD_LIB_POSTFIX)
