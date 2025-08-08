@@ -1,10 +1,12 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2013-2015 OpenFOAM Foundation
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
+
+    DAFoam  : Discrete Adjoint with OpenFOAM
+    Version : v4
+
+    Description:
+        A modified version of CMULES from
+        src/finiteVolume/fvMatrices/solvers/MULES
+
 License
     This file is part of OpenFOAM.
 
@@ -27,25 +29,22 @@ License
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-void Foam::MULESDF::correct
-(
+void Foam::MULESDF::correct(
     volScalarField& psi,
     const surfaceScalarField& phi,
     surfaceScalarField& phiPsiCorr,
     const scalar psiMax,
-    const scalar psiMin
-)
+    const scalar psiMin)
 {
-    correct
-    (
+    correct(
         geometricOneField(),
         psi,
         phi,
         phiPsiCorr,
-        zeroField(), zeroField(),
-        psiMax, psiMin
-    );
+        zeroField(),
+        zeroField(),
+        psiMax,
+        psiMin);
 }
-
 
 // ************************************************************************* //

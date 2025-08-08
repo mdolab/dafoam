@@ -4,7 +4,7 @@
     Version : v4
 
     This class is modified from OpenFOAM's source code
-    applications/solvers/compressible/rhoSimpleFoam
+    applications/solvers/multiphase/interFoam
 
     OpenFOAM: The Open Source CFD Toolbox
 

@@ -1,10 +1,12 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2013-2016 OpenFOAM Foundation
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
+
+    DAFoam  : Discrete Adjoint with OpenFOAM
+    Version : v4
+
+    Description:
+        A modified version of CMULES from
+        src/finiteVolume/fvMatrices/solvers/MULES
+        
 License
     This file is part of OpenFOAM.
 
@@ -69,20 +71,17 @@ namespace MULESDF
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 template<class RdeltaTType, class RhoType, class SpType, class SuType>
-void correct
-(
+void correct(
     const RdeltaTType& rDeltaT,
     const RhoType& rho,
     volScalarField& psi,
     const surfaceScalarField& phi,
     const surfaceScalarField& phiCorr,
     const SpType& Sp,
-    const SuType& Su
-);
+    const SuType& Su);
 
 template<class RhoType, class SpType, class SuType>
-void correct
-(
+void correct(
     const RhoType& rho,
     volScalarField& psi,
     const surfaceScalarField& phi,
@@ -90,21 +89,17 @@ void correct
     const SpType& Sp,
     const SuType& Su,
     const scalar psiMax,
-    const scalar psiMin
-);
+    const scalar psiMin);
 
-void correct
-(
+void correct(
     volScalarField& psi,
     const surfaceScalarField& phi,
     surfaceScalarField& phiCorr,
     const scalar psiMax,
-    const scalar psiMin
-);
+    const scalar psiMin);
 
 template<class RdeltaTType, class RhoType, class SpType, class SuType>
-void limiterCorr
-(
+void limiterCorr(
     scalarField& allLambda,
     const RdeltaTType& rDeltaT,
     const RhoType& rho,
@@ -114,12 +109,10 @@ void limiterCorr
     const SpType& Sp,
     const SuType& Su,
     const scalar psiMax,
-    const scalar psiMin
-);
+    const scalar psiMin);
 
 template<class RdeltaTType, class RhoType, class SpType, class SuType>
-void limitCorr
-(
+void limitCorr(
     const RdeltaTType& rDeltaT,
     const RhoType& rho,
     const volScalarField& psi,
@@ -128,9 +121,7 @@ void limitCorr
     const SpType& Sp,
     const SuType& Su,
     const scalar psiMax,
-    const scalar psiMin
-);
-
+    const scalar psiMin);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -140,7 +131,7 @@ void limitCorr
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "CMULESDFTemplates.C"
+#include "CMULESDFTemplates.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
