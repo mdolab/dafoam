@@ -110,5 +110,3 @@ surfaceScalarField alphaPhiUn(
         IOobject::NO_WRITE),
     mesh,
     dimensionedScalar("zero", phi.dimensions(), 0.0));
-
-#include "createMRF.H"
