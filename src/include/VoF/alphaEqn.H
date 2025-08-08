@@ -129,7 +129,7 @@
         if (alphaApplyPrevCorr && talphaPhi1Corr0.valid())
         {
             Info << "Applying the previous iteration compression flux" << endl;
-            MULES::correct(alpha1, alphaPhi10, talphaPhi1Corr0.ref(), 1, 0);
+            MULESDF::correct(alpha1, alphaPhi10, talphaPhi1Corr0.ref(), 1, 0);
 
             alphaPhi10 += talphaPhi1Corr0();
         }
@@ -163,7 +163,7 @@
             tmp<surfaceScalarField> talphaPhi1Corr(talphaPhi1Un() - alphaPhi10);
             volScalarField alpha10("alpha10", alpha1);
 
-            MULES::correct(
+            MULESDF::correct(
                 geometricOneField(),
                 alpha1,
                 talphaPhi1Un(),
@@ -188,7 +188,7 @@
         {
             alphaPhi10 = talphaPhi1Un;
 
-            MULES::explicitSolve(
+            MULESDF::explicitSolve(
                 geometricOneField(),
                 alpha1,
                 phiCN,

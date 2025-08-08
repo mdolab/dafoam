@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2011-2017 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2013-2015 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -21,29 +21,31 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
-Global
-    setDeltaT
-
-Description
-    Reset the timestep to maintain a constant maximum courant Number.
-    Reduction of time-step is immediate, but increase is damped to avoid
-    unstable oscillations.
-
 \*---------------------------------------------------------------------------*/
 
-if (adjustTimeStep)
+#include "CMULESDF.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+void Foam::MULESDF::correct
+(
+    volScalarField& psi,
+    const surfaceScalarField& phi,
+    surfaceScalarField& phiPsiCorr,
+    const scalar psiMax,
+    const scalar psiMin
+)
 {
-    scalar maxDeltaTFact =
-        min(maxCo / (CoNum + SMALL), maxAlphaCo / (alphaCoNum + SMALL));
-
-    scalar deltaTFact = min(min(maxDeltaTFact, 1.0 + 0.1 * maxDeltaTFact), 1.2);
-
-    runTime.setDeltaT(
-        min(
-            deltaTFact * runTime.deltaTValue(),
-            maxDeltaT));
-
-    Info << "deltaT = " << runTime.deltaTValue() << endl;
+    correct
+    (
+        geometricOneField(),
+        psi,
+        phi,
+        phiPsiCorr,
+        zeroField(), zeroField(),
+        psiMax, psiMin
+    );
 }
+
 
 // ************************************************************************* //

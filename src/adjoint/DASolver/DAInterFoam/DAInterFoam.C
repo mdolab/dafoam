@@ -30,7 +30,7 @@
 #include "DAInterFoam.H"
 
 #include "fvCFD.H"
-#include "CMULES.H"
+#include "CMULESDF.H"
 #include "EulerDdtScheme.H"
 #include "localEulerDdtScheme.H"
 #include "CrankNicolsonDdtScheme.H"
@@ -38,7 +38,6 @@
 #include "immiscibleIncompressibleTwoPhaseMixture.H"
 #include "turbulentTransportModel.H"
 #include "pimpleControl.H"
-#include "fvOptions.H"
 #include "fvcSmooth.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -79,16 +78,12 @@ label DAInterFoam::solvePrimal()
 #include "createMesh.H"
 #include "initContinuityErrs.H"
 #include "createControl.H"
-#include "createTimeControls.H"
 #include "createFieldsInter.H"
 #include "createAlphaFluxes.H"
-#include "createFvOptions.H"
 
     turbulence->validate();
 
-#include "readTimeControls.H"
 #include "CourantNo.H"
-#include "setInitialDeltaT.H"
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     Info << "\nStarting time loop\n"
@@ -97,10 +92,8 @@ label DAInterFoam::solvePrimal()
     while (runTime.run())
     {
 
-#include "readTimeControls.H"
 #include "CourantNo.H"
 #include "alphaCourantNo.H"
-#include "setDeltaT.H"
 
         runTime++;
 
