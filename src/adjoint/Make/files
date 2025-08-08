@@ -112,6 +112,7 @@ DASolver/DARhoSimpleCFoam/DARhoSimpleCFoam.C
 DASolver/DATurboFoam/DATurboFoam.C
 DASolver/DAHeatTransferFoam/DAHeatTransferFoam.C
 DASolver/DASolidDisplacementFoam/DASolidDisplacementFoam.C
+DASolver/DAInterFoam/DAInterFoam.C
 
 DAMisc/MRFDF/MRFZoneDF.C
 DAMisc/MRFDF/MRFZoneListDF.C
