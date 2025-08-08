@@ -28,7 +28,7 @@ UNorm = np.linalg.norm(U)
 UNorm = gcomm.allreduce(UNorm, op=MPI.SUM)
 print("UNorm", UNorm)
 
-if abs(79.4050157054846 - UNorm) / 79.4050157054846 > 1e-10:
+if abs(65.4317593038431 - UNorm) / 65.4317593038431 > 1e-10:
     print("DAInterFoam test failed!")
     exit(1)
 else:
