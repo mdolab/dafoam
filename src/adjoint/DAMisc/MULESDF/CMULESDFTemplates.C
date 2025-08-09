@@ -44,7 +44,7 @@ void Foam::MULESDF::correct(
     const SpType& Sp,
     const SuType& Su)
 {
-    Info << "MULESDF: Correcting " << psi.name() << endl;
+    // Info << "MULESDF: Correcting " << psi.name() << endl;
 
     const fvMesh& mesh = psi.mesh();
 

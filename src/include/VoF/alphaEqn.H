@@ -112,13 +112,17 @@
         //           + fvc::div(phiCN), alpha1)
         == Su + fvm::Sp(Sp + divU, alpha1));
 
-    alpha1Eqn.solve();
+    SolverPerformance<scalar> solverAlpha = alpha1Eqn.solve();
+    DAUtility::primalResidualControl(solverAlpha, pimplePrintToScreen, "alpha", daGlobalVarPtr_->primalMaxRes);
 
-    Info << "Phase-1 volume fraction = "
-         << alpha1.weightedAverage(mesh.Vsc()).value()
-         << "  Min(" << alpha1.name() << ") = " << min(alpha1).value()
-         << "  Max(" << alpha1.name() << ") = " << max(alpha1).value()
-         << endl;
+    if (pimplePrintToScreen)
+    {
+        Info << alpha1.name() << " Mean: "
+             << alpha1.weightedAverage(mesh.Vsc()).value()
+             << "  Min: " << gMin(alpha1)
+             << "  Max: " << gMax(alpha1)
+             << endl;
+    }
 
     tmp<surfaceScalarField> talphaPhi1UD(alpha1Eqn.flux());
     alphaPhi10 = talphaPhi1UD();
@@ -196,9 +200,12 @@
         rhoPhi = alphaPhi10 * (rho1f - rho2f) + phi * rho2f;
     }
 
-    Info << "Phase-1 volume fraction = "
-         << alpha1.weightedAverage(mesh.Vsc()).value()
-         << "  Min(" << alpha1.name() << ") = " << min(alpha1).value()
-         << "  Max(" << alpha1.name() << ") = " << max(alpha1).value()
-         << endl;
+    if (pimplePrintToScreen)
+    {
+        Info << alpha1.name() << " Mean: "
+             << alpha1.weightedAverage(mesh.Vsc()).value()
+             << "  Min: " << gMin(alpha1)
+             << "  Max: " << gMax(alpha1)
+             << endl;
+    }
 }
