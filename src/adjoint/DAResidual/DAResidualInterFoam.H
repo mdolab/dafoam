@@ -29,7 +29,6 @@ class DAResidualInterFoam
     : public DAResidual
 {
 protected:
-
 public:
     TypeName("DAInterFoam");
     // Constructors

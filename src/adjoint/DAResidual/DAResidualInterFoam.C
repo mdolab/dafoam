@@ -36,7 +36,6 @@ void DAResidualInterFoam::clear()
         multiple objects of DAResidual. Here we need to delete all members
         in the parent and child classes
     */
-
 }
 
 void DAResidualInterFoam::calcResiduals(const dictionary& options)
@@ -60,8 +59,6 @@ void DAResidualInterFoam::calcResiduals(const dictionary& options)
 
     // ******** U Residuals **********
     // copied and modified from UEqn.H
-
-    
 }
 
 void DAResidualInterFoam::calcPCMatWithFvMatrix(Mat PCMat)
@@ -70,8 +67,6 @@ void DAResidualInterFoam::calcPCMatWithFvMatrix(Mat PCMat)
     Description:
         Calculate the diagonal block of the preconditioner matrix dRdWTPC using the fvMatrix
     */
-
-    
 }
 
 void DAResidualInterFoam::updateIntermediateVariables()
