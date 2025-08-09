@@ -111,6 +111,7 @@ label DAInterFoam::solvePrimal()
     */
 
 #include "createRefsInter.H"
+#include "alphaControlsDF.H"
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
@@ -119,29 +120,56 @@ label DAInterFoam::solvePrimal()
     Info << "\nStarting time loop\n"
          << endl;
 
-    while (runTime.run())
-    {
+    label pimplePrintToScreen = 0;
 
-#include "CourantNo.H"
-#include "alphaCourantNo.H"
+    // we need to reduce the number of files written to the disk to minimize the file IO load
+    label reduceIO = allOptions.subDict("unsteadyAdjoint").getLabel("reduceIO");
+    wordList additionalOutput;
+    if (reduceIO)
+    {
+        allOptions.subDict("unsteadyAdjoint").readEntry<wordList>("additionalOutput", additionalOutput);
+    }
+
+    scalar endTime = runTime.endTime().value();
+    scalar deltaT = runTime.deltaT().value();
+    label nInstances = round(endTime / deltaT);
+
+    // main loop
+    label regModelFail = 0;
+    label fail = 0;
+    for (label iter = 1; iter <= nInstances; iter++)
+    {
 
         runTime++;
 
-        Info << "Time = " << runTime.timeName() << nl << endl;
+        // if we have unsteadyField in inputInfo, assign GlobalVar::inputFieldUnsteady to OF fields at each time step
+        this->updateInputFieldUnsteady();
+
+        printToScreen_ = this->isPrintTime(runTime, printIntervalUnsteady_);
+
+        if (printToScreen_)
+        {
+            Info << "Time = " << runTime.timeName() << nl << endl;
+#include "CourantNo.H"
+#include "alphaCourantNo.H"
+        }
 
         // --- Pressure-velocity PIMPLE corrector loop
         while (pimple.loop())
         {
 
-#include "alphaControls.H"
+            if (pimple.finalIter() && printToScreen_)
+            {
+                pimplePrintToScreen = 1;
+            }
+            else
+            {
+                pimplePrintToScreen = 0;
+            }
+
 #include "alphaEqnSubCycle.H"
 
             mixture.correct();
-
-            if (pimple.frozenFlow())
-            {
-                continue;
-            }
 
 #include "UEqnInter.H"
 
@@ -151,16 +179,54 @@ label DAInterFoam::solvePrimal()
 #include "pEqnInter.H"
             }
 
+            //daTurbulenceModelPtr_->correct(pimplePrintToScreen);
             turbulencePtr_->correct();
+
+            // update the output field value at each iteration, if the regression model is active
+            fail = daRegressionPtr_->compute();
         }
 
-        runTime.write();
+        regModelFail += fail;
 
-        runTime.printExecutionTime(Info);
+        if (this->validateStates())
+        {
+            // write data to files and quit
+            runTime.writeNow();
+            mesh.write();
+            return 1;
+        }
+
+        this->calcAllFunctions(printToScreen_);
+        daRegressionPtr_->printInputInfo(printToScreen_);
+        daTurbulenceModelPtr_->printYPlus(printToScreen_);
+        this->printElapsedTime(runTime, printToScreen_);
+
+        if (reduceIO && iter < nInstances)
+        {
+            this->writeAdjStates(reduceIOWriteMesh_, additionalOutput);
+            daRegressionPtr_->writeFeatures();
+        }
+        else
+        {
+            runTime.write();
+            daRegressionPtr_->writeFeatures();
+        }
     }
+
+    if (regModelFail != 0)
+    {
+        return 1;
+    }
+
+    // need to save primalFinalTimeIndex_.
+    primalFinalTimeIndex_ = runTime.timeIndex();
+
+    // write the mesh to files
+    mesh.write();
 
     Info << "End\n"
          << endl;
+
     return 0;
 }
 

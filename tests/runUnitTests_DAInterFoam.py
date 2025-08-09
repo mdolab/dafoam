@@ -14,10 +14,30 @@ if gcomm.rank == 0:
 
 daOptions = {
     "solverName": "DAInterFoam",
+    "function": {
+        "CD": {
+            "type": "force",
+            "source": "patchToFace",
+            "patches": ["lowerWall"],
+            "directionMode": "fixedDirection",
+            "direction": [1.0, 0.0, 0.0],
+            "scale": 1.0,
+            "timeOp": "average",
+        },
+    },
 }
 
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
 DASolver()
+
+funcs = {}
+DASolver.evalFunctions(funcs)
+
+if abs(0.7632884460292433 - funcs["CD"]) / 0.7632884460292433 > 1e-10:
+    print("DAInterFoam test failed!")
+    exit(1)
+else:
+    print("DAInterFoam test passed!")
 
 # read the U field at  2 and verify its norm
 nLocalCells = DASolver.solver.getNLocalCells()
@@ -28,7 +48,7 @@ UNorm = np.linalg.norm(U)
 UNorm = gcomm.allreduce(UNorm, op=MPI.SUM)
 print("UNorm", UNorm)
 
-if abs(65.4317593038431 - UNorm) / 65.4317593038431 > 1e-10:
+if abs(54.038566122685 - UNorm) / 54.038566122685 > 1e-10:
     print("DAInterFoam test failed!")
     exit(1)
 else:

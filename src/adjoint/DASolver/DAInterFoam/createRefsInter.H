@@ -11,7 +11,6 @@ volScalarField& gh = ghPtr_();
 surfaceScalarField& ghf = ghfPtr_();
 surfaceScalarField& phi = phiPtr_();
 surfaceScalarField& rhoPhi = rhoPhiPtr_();
-surfaceScalarField& alphaPhiUn = alphaPhiUnPtr_();
 surfaceScalarField& alphaPhi10 = alphaPhi10Ptr_();
 immiscibleIncompressibleTwoPhaseMixture& mixture = mixturePtr_();
 const dimensionedScalar& rho1 = mixture.rho1();

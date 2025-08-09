@@ -62,7 +62,6 @@ rhoPhiPtr_.reset(
             IOobject::NO_READ,
             IOobject::NO_WRITE),
         fvc::interpolate(rho) * phi));
-surfaceScalarField& rhoPhi = rhoPhiPtr_();
 
 // Construct incompressible turbulence model
 turbulencePtr_.reset(
