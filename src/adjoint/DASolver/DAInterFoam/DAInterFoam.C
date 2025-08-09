@@ -179,8 +179,7 @@ label DAInterFoam::solvePrimal()
 #include "pEqnInter.H"
             }
 
-            //daTurbulenceModelPtr_->correct(pimplePrintToScreen);
-            turbulencePtr_->correct();
+            daTurbulenceModelPtr_->correct(pimplePrintToScreen);
 
             // update the output field value at each iteration, if the regression model is active
             fail = daRegressionPtr_->compute();

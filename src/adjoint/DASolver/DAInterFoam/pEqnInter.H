@@ -4,10 +4,7 @@
 
     volVectorField HbyA(constrainHbyA(rAU * UEqn.H(), U, p_rgh));
 
-    surfaceScalarField phiHbyA(
-        "phiHbyA",
-        fvc::flux(HbyA)
-            + fvc::interpolate(rho * rAU) * fvc::ddtCorr(U, phi));
+    surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
 
     adjustPhi(phiHbyA, U, p_rgh);
 
