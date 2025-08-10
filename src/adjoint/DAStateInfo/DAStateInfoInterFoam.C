@@ -37,9 +37,24 @@ DAStateInfoInterFoam::DAStateInfoInterFoam(
         models at runtime.
     */
 
-    stateInfo_["volScalarStates"].append("p");
+    // read the alpha1 name
+    IOdictionary transportProperties(
+        IOobject(
+            "transportProperties",
+            mesh.time().constant(),
+            mesh,
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE,
+            false));
+
+    wordList phaseNames;
+    transportProperties.readEntry<wordList>("phases", phaseNames);
+    word alphaStateName = "alpha." + phaseNames[0];
+
+    stateInfo_["volScalarStates"].append("p_rgh");
     stateInfo_["modelStates"].append("nut");
     stateInfo_["volVectorStates"].append("U");
+    stateInfo_["volScalarStates"].append(alphaStateName);
     stateInfo_["surfaceScalarStates"].append("phi");
 
     // correct the names for model states based on the selected physical model at runtime
@@ -78,48 +93,41 @@ DAStateInfoInterFoam::DAStateInfoInterFoam(
     stateResConInfo_.set(
         "URes",
         {
-            {"U", "p", "nut", "phi"}, // lv0
-            {"U", "p", "nut"}, // lv1
-            {"U"} // lv2
+            {"U", "p_rgh", "nut", alphaStateName, "phi"}, // lv0
+            {"U", "p_rgh", alphaStateName, "nut"}, // lv1
+            {"U", alphaStateName} // lv2
         });
 
     stateResConInfo_.set(
-        "pRes",
+        "p_rghRes",
         {
-            {"U", "p", "nut", "phi"}, // lv0
-            {"U", "p", "nut", "phi"}, // lv1
-            {"U", "p", "nut"}, // lv2
+            {"U", "p_rgh", "nut", alphaStateName, "phi"}, // lv0
+            {"U", "p_rgh", "nut", alphaStateName, "phi"}, // lv1
+            {"U", "p_rgh", "nut", alphaStateName}, // lv2
             {"U"} // lv3
         });
 
     stateResConInfo_.set(
         "phiRes",
         {
-            {"U", "p", "nut", "phi"}, // lv0
-            {"U", "p", "nut"}, // lv1
+            {"U", "p_rgh", "nut", alphaStateName, "phi"}, // lv0
+            {"U", "p_rgh", "nut", alphaStateName}, // lv1
             {"U"}, // lv2
+        });
+
+    stateResConInfo_.set(
+        "alpha.waterRes",
+        {
+            {"U", "p_rgh", alphaStateName, "phi"}, // lv0
+            {"U", "p_rgh", alphaStateName}, // lv1
+            {"U", alphaStateName} // lv2
         });
 
     // need to correct connectivity for physical models for each residual
     daModel.correctStateResidualModelCon(stateResConInfo_["URes"]);
-    daModel.correctStateResidualModelCon(stateResConInfo_["pRes"]);
+    daModel.correctStateResidualModelCon(stateResConInfo_["p_rghRes"]);
     daModel.correctStateResidualModelCon(stateResConInfo_["phiRes"]);
-
-    label hasTField = DAUtility::isFieldReadable(mesh_, "T", "volScalarField");
-
-    if (hasTField)
-    {
-        stateInfo_["volScalarStates"].append("T");
-        stateResConInfo_.set(
-            "TRes",
-            {
-                {"T", "nut", "phi"}, // lv0
-                {"T", "nut"}, // lv1
-                {"T"} // lv2
-            });
-
-        daModel.correctStateResidualModelCon(stateResConInfo_["TRes"]);
-    }
+    daModel.correctStateResidualModelCon(stateResConInfo_[alphaStateName + "Res"]);
 
     // add physical model residual connectivity
     daModel.addModelResidualCon(stateResConInfo_);

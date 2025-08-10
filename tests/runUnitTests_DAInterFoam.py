@@ -29,6 +29,7 @@ daOptions = {
 
 DASolver = PYDAFOAM(options=daOptions, comm=gcomm)
 DASolver()
+DASolver.solver.calcPrimalResidualStatistics("print")
 
 funcs = {}
 DASolver.evalFunctions(funcs)

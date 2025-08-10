@@ -15,6 +15,11 @@
 #include "addToRunTimeSelectionTable.H"
 #include "pimpleControl.H"
 #include "adjustPhi.H"
+#include "immiscibleIncompressibleTwoPhaseMixture.H"
+#include "constrainPressure.H"
+#include "EulerDdtScheme.H"
+#include "gaussConvectionScheme.H"
+#include "upwind.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -29,6 +34,37 @@ class DAResidualInterFoam
     : public DAResidual
 {
 protected:
+    /// \name These are state variables, state residuals, and partial derivatives
+    //@{
+    volVectorField& U_;
+    volVectorField URes_;
+
+    volScalarField& p_rgh_;
+    volScalarField p_rghRes_;
+
+    volScalarField& alpha1_;
+    volScalarField alpha1Res_;
+
+    surfaceScalarField& phi_;
+    surfaceScalarField phiRes_;
+    //@}
+
+    volScalarField& rho_;
+    surfaceScalarField& rhoPhi_;
+    volScalarField& gh_;
+    surfaceScalarField& ghf_;
+    surfaceScalarField& alphaPhi10_;
+
+    immiscibleIncompressibleTwoPhaseMixture& mixture_;
+
+    incompressible::turbulenceModel& turbulence_;
+
+    /// DATurbulenceModel object
+    DATurbulenceModel& daTurb_;
+
+    /// pimpleControl object which will be initialized in this class
+    pimpleControl pimple_;
+
 public:
     TypeName("DAInterFoam");
     // Constructors
