@@ -756,7 +756,7 @@ class PYDAFOAM(object):
         self.solverRegistry = {
             "Incompressible": ["DASimpleFoam", "DAPimpleFoam", "DAPimpleDyMFoam", "DAInterFoam"],
             "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam", "DARhoPimpleFoam"],
-            "Solid": ["DASolidDisplacementFoam", "DAHeatTransferFoam"],
+            "Solid": ["DASolidDisplacementFoam", "DAHeatTransferFoam", "DAScalarTransportFoam"],
         }
 
     def __call__(self):
