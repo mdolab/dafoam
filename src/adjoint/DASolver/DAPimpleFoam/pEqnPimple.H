@@ -22,7 +22,7 @@ surfaceScalarField phiHbyA(
 label useDdtCorr = daOptionPtr_->getOption<label>("useDdtCorr");
 if (useDdtCorr)
 {
-    phiHbyA += fvc::interpolate(rAU)*fvc::ddtCorr(U, phi);
+    phiHbyA += fvc::interpolate(rAU) * fvc::ddtCorr(U, phi);
 }
 
 if (p.needReference())
