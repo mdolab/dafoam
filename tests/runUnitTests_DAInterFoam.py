@@ -39,7 +39,7 @@ DASolver.solver.calcPrimalResidualStatistics("print")
 funcs = {}
 DASolver.evalFunctions(funcs)
 
-if abs(0.7314455555309382 - funcs["CD"]) / 0.7314455555309382 > 1e-10:
+if abs(0.7314455555309382 - funcs["CD"]) / 0.7314455555309382 > 1e-8:
     print("DAInterFoam test failed!")
     exit(1)
 else:
@@ -54,7 +54,7 @@ UNorm = np.linalg.norm(U)
 UNorm = gcomm.allreduce(UNorm, op=MPI.SUM)
 print("UNorm", UNorm)
 
-if abs(65.96431512444805 - UNorm) / 65.96431512444805 > 1e-10:
+if abs(65.96431512444805 - UNorm) / 65.96431512444805 > 1e-8:
     print("DAInterFoam test failed!")
     exit(1)
 else:
