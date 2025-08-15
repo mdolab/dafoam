@@ -3269,6 +3269,113 @@ void DASolver::readStateVars(
 
     // update the BC and intermediate variables. This is important, e.g., for turbulent cases
     this->updateStateBoundaryConditions();
+
+    wordList additionalOldTime;
+    daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").readEntry<wordList>("additionalOldTime", additionalOldTime);
+    forAll(additionalOldTime, idxI)
+    {
+        word oldTimeStateName = additionalOldTime[idxI];
+        if (oldTimeStateName == "None")
+        {
+            continue;
+        }
+        else if (meshPtr_->thisDb().foundObject<volScalarField>(oldTimeStateName))
+        {
+            volScalarField& state = meshPtr_->thisDb().lookupObjectRef<volScalarField>(oldTimeStateName);
+
+            volScalarField stateRead(
+                IOobject(
+                    oldTimeStateName,
+                    timeName,
+                    mesh,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE),
+                mesh);
+
+            if (oldTimeLevel == 0)
+            {
+                // NOTE: do nothing if oldTimeLevel = 0. We assign only oldTime
+                continue;
+            }
+            else if (oldTimeLevel == 1)
+            {
+                state.oldTime() == stateRead;
+            }
+            else if (oldTimeLevel == 2)
+            {
+                if (timeVal < 0)
+                {
+                    volScalarField state0Read(
+                        IOobject(
+                            oldTimeStateName + "_0",
+                            timeName,
+                            mesh,
+                            IOobject::READ_IF_PRESENT,
+                            IOobject::NO_WRITE),
+                        stateRead);
+                    state.oldTime().oldTime() == state0Read;
+                }
+                else
+                {
+                    state.oldTime().oldTime() == stateRead;
+                }
+            }
+            else
+            {
+                FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
+            }
+        }
+        else if (meshPtr_->thisDb().foundObject<volVectorField>(oldTimeStateName))
+        {
+            volVectorField& state = meshPtr_->thisDb().lookupObjectRef<volVectorField>(oldTimeStateName);
+
+            volVectorField stateRead(
+                IOobject(
+                    oldTimeStateName,
+                    timeName,
+                    mesh,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE),
+                mesh);
+
+            if (oldTimeLevel == 0)
+            {
+                // NOTE: do nothing if oldTimeLevel = 0. We assign only oldTime
+                continue;
+            }
+            else if (oldTimeLevel == 1)
+            {
+                state.oldTime() == stateRead;
+            }
+            else if (oldTimeLevel == 2)
+            {
+                if (timeVal < 0)
+                {
+                    volVectorField state0Read(
+                        IOobject(
+                            oldTimeStateName + "_0",
+                            timeName,
+                            mesh,
+                            IOobject::READ_IF_PRESENT,
+                            IOobject::NO_WRITE),
+                        stateRead);
+                    state.oldTime().oldTime() == state0Read;
+                }
+                else
+                {
+                    state.oldTime().oldTime() == stateRead;
+                }
+            }
+            else
+            {
+                FatalErrorIn("") << "oldTimeLevel can only be 0, 1, and 2!" << abort(FatalError);
+            }
+        }
+        else
+        {
+            FatalErrorIn("") << "The prescribed additionalOldTime not found in the Db" << abort(FatalError);
+        }
+    }
 }
 
 void DASolver::writeFailedMesh()

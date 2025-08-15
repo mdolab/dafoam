@@ -50,6 +50,7 @@ DAStateInfoInterFoam::DAStateInfoInterFoam(
     wordList phaseNames;
     transportProperties.readEntry<wordList>("phases", phaseNames);
     word alphaStateName = "alpha." + phaseNames[0];
+    word alphaResidualName = "alpha." + phaseNames[0] + "Res";
 
     stateInfo_["volScalarStates"].append("p_rgh");
     stateInfo_["modelStates"].append("nut");
@@ -112,14 +113,14 @@ DAStateInfoInterFoam::DAStateInfoInterFoam(
         {
             {"U", "p_rgh", "nut", alphaStateName, "phi"}, // lv0
             {"U", "p_rgh", "nut", alphaStateName}, // lv1
-            {"U"}, // lv2
+            {"U", alphaStateName}, // lv2
         });
 
     stateResConInfo_.set(
-        "alpha.waterRes",
+        alphaResidualName,
         {
-            {"U", "p_rgh", alphaStateName, "phi"}, // lv0
-            {"U", "p_rgh", alphaStateName}, // lv1
+            {"U", "p_rgh", "nut", alphaStateName, "phi"}, // lv0
+            {"U", "p_rgh", "nut", alphaStateName}, // lv1
             {"U", alphaStateName} // lv2
         });
 
@@ -127,7 +128,7 @@ DAStateInfoInterFoam::DAStateInfoInterFoam(
     daModel.correctStateResidualModelCon(stateResConInfo_["URes"]);
     daModel.correctStateResidualModelCon(stateResConInfo_["p_rghRes"]);
     daModel.correctStateResidualModelCon(stateResConInfo_["phiRes"]);
-    daModel.correctStateResidualModelCon(stateResConInfo_[alphaStateName + "Res"]);
+    daModel.correctStateResidualModelCon(stateResConInfo_[alphaResidualName]);
 
     // add physical model residual connectivity
     daModel.addModelResidualCon(stateResConInfo_);

@@ -1537,6 +1537,10 @@ class DAFoamSolverUnsteady(ExplicitComponent):
                 if DASolver.getOption("dynamicMesh")["active"]:
                     DASolver.readDynamicMeshPoints(timeVal, deltaT, n, ddtSchemeOrder)
 
+                # print out residuals for debugging
+                if self.DASolver.getOption("debug"):
+                    DASolver.solverAD.calcPrimalResidualStatistics("print")
+
                 # calculate dFd? scaling, if time index is within the unsteady objective function
                 # index range, prescribed in unsteadyAdjointDict, we calculate dFdW
                 # otherwise, we use dFdW=0 because the unsteady obj does not depend

@@ -368,6 +368,7 @@ class DAOPTION(object):
             "PCMatUpdateInterval": 1,
             "reduceIO": True,
             "additionalOutput": ["None"],
+            "additionalOldTime": ["None"],
             "readZeroFields": True,
         }
 
@@ -511,6 +512,7 @@ class DAOPTION(object):
             "kRes",
             "omegaRes",
             "epsilonRes",
+            "alpha.waterRes"
         ]
 
         ## The maximal connectivity level for the dRdWTPC matrix. Reducing the connectivity level
@@ -529,6 +531,7 @@ class DAOPTION(object):
             "DRes": 2,
             "gammaIntRes": 2,
             "ReThetatRes": 2,
+            "alpha.waterRes": 2,
         }
 
         ## The min bound for Jacobians, any value that is smaller than the bound will be set to 0

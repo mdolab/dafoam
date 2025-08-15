@@ -84,8 +84,101 @@ void DAResidualInterFoam::calcResiduals(const dictionary& options)
         URes_, pRes_, phiRes_: residual field variables
     */
 
-    // We dont support MRF and fvOptions so all the related lines are commented
-    // out for now
+    // ******** alpha1 Residuals **********
+    // copied and modified from alphaEqn.H
+
+    volScalarField& alpha1(mixture_.alpha1());
+    volScalarField& alpha2(mixture_.alpha2());
+    const dimensionedScalar& rho1 = mixture_.rho1();
+    const dimensionedScalar& rho2 = mixture_.rho2();
+
+    surfaceScalarField phic(mixture_.cAlpha() * mag(phi_ / mesh_.magSf()));
+
+    surfaceScalarField::Boundary& phicBf =
+        phic.boundaryFieldRef();
+
+    // Do not compress interface at non-coupled boundary faces
+    // (inlets, outlets etc.)
+    forAll(phic.boundaryField(), patchi)
+    {
+        fvsPatchScalarField& phicp = phicBf[patchi];
+
+        if (!phicp.coupled())
+        {
+            phicp == 0;
+        }
+    }
+
+    tmp<surfaceScalarField> phiCN(phi_);
+
+#include "alphaSuSp.H"
+
+    fvScalarMatrix alpha1Eqn(
+        (
+            fv::EulerDdtScheme<scalar>(mesh_).fvmDdt(alpha1))
+            + fv::gaussConvectionScheme<scalar>(
+                  mesh_,
+                  phiCN,
+                  upwind<scalar>(mesh_, phiCN))
+                  .fvmDiv(phiCN, alpha1)
+        == Su + fvm::Sp(Sp + divU, alpha1));
+
+    /*
+    tmp<surfaceScalarField> talphaPhi1UD(alpha1Eqn.flux());
+    alphaPhi10_ = talphaPhi1UD();
+
+    for (int aCorr = 0; aCorr < 2; aCorr++)
+    {
+        surfaceScalarField phir(phic * mixture_.nHatf());
+
+        word alphaScheme("div(phi,alpha)");
+        word alpharScheme("div(phirb,alpha)");
+
+        tmp<surfaceScalarField> talphaPhi1Un(
+            fvc::flux(
+                phiCN(),
+                alpha1,
+                alphaScheme)
+            + fvc::flux(
+                -fvc::flux(-phir, alpha2, alpharScheme),
+                alpha1,
+                alpharScheme));
+
+        tmp<surfaceScalarField> talphaPhi1Corr(talphaPhi1Un() - alphaPhi10_);
+        volScalarField alpha10("alpha10", alpha1);
+
+        const scalar rDeltaT = 1.0 / mesh_.time().deltaTValue();
+
+        MULESDF::limitCorr(
+            rDeltaT,
+            geometricOneField(),
+            alpha1,
+            talphaPhi1Un(),
+            talphaPhi1Corr.ref(),
+            Sp,
+            (-Sp * alpha1)(),
+            1,
+            0);
+
+        // Under-relax the correction for all but the 1st corrector
+        if (aCorr == 0)
+        {
+            alphaPhi10_ += talphaPhi1Corr();
+        }
+        else
+        {
+            //alpha1 = 0.5 * alpha1 + 0.5 * alpha10;
+            alphaPhi10_ += 0.5 * talphaPhi1Corr();
+        }
+    }
+
+#include "rhofs.H"
+
+    rhoPhi_ = alphaPhi10_ * (rho1f - rho2f) + phiCN * rho2f;
+*/
+
+    alpha1Res_ = alpha1Eqn & alpha1_;
+    normalizeResiduals(alpha1Res);
 
     // ******** U Residuals **********
     // copied and modified from UEqn.H
@@ -170,80 +263,6 @@ void DAResidualInterFoam::calcResiduals(const dictionary& options)
     phiRes_ = phiHbyA - p_rghEqn.flux() - phi_;
     // need to normalize phiRes
     normalizePhiResiduals(phiRes);
-
-    // ******** alpha1 Residuals **********
-    // copied and modified from alphaEqn.H
-
-    volScalarField& alpha1(mixture_.alpha1());
-
-    // modified from the alphaControls.H
-    const dictionary& alphaControls = mesh_.solverDict(alpha1.name());
-
-    // Isotropic compression coefficient
-    scalar icAlpha(
-        alphaControls.lookupOrDefault<scalar>("icAlpha", 0));
-
-    // Shear compression coefficient
-    scalar scAlpha(
-        alphaControls.lookupOrDefault<scalar>("scAlpha", 0));
-
-    surfaceScalarField phic(mixture_.cAlpha() * mag(phi_ / mesh_.magSf()));
-
-    // Add the optional isotropic compression contribution
-    if (icAlpha > 0)
-    {
-        forAll(phic, faceI)
-        {
-            phic[faceI] *= (1.0 - icAlpha);
-        }
-        forAll(phic.boundaryField(), patchI)
-        {
-            forAll(phic.boundaryField()[patchI], faceI)
-            {
-                phic.boundaryFieldRef()[patchI][faceI] *= (1.0 - icAlpha);
-            }
-        }
-        phic += (mixture_.cAlpha() * icAlpha) * fvc::interpolate(mag(U_));
-    }
-
-    // Add the optional shear compression contribution
-    if (scAlpha > 0)
-    {
-        phic +=
-            scAlpha * mag(mesh_.delta() & fvc::interpolate(symm(fvc::grad(U_))));
-    }
-
-    surfaceScalarField::Boundary& phicBf =
-        phic.boundaryFieldRef();
-
-    // Do not compress interface at non-coupled boundary faces
-    // (inlets, outlets etc.)
-    forAll(phic.boundaryField(), patchi)
-    {
-        fvsPatchScalarField& phicp = phicBf[patchi];
-
-        if (!phicp.coupled())
-        {
-            phicp == 0;
-        }
-    }
-
-    tmp<surfaceScalarField> phiCN(phi_);
-
-#include "alphaSuSp.H"
-
-    fvScalarMatrix alpha1Eqn(
-        (
-            fv::EulerDdtScheme<scalar>(mesh_).fvmDdt(alpha1))
-            + fv::gaussConvectionScheme<scalar>(
-                  mesh_,
-                  phiCN,
-                  upwind<scalar>(mesh_, phiCN))
-                  .fvmDiv(phiCN, alpha1)
-        == Su + fvm::Sp(Sp + divU, alpha1));
-
-    alpha1Res_ = alpha1Eqn & alpha1_;
-    normalizeResiduals(alpha1Res);
 }
 
 void DAResidualInterFoam::calcPCMatWithFvMatrix(Mat PCMat)
@@ -261,19 +280,20 @@ void DAResidualInterFoam::updateIntermediateVariables()
         Update the intermediate variables that depend on the state variables
     */
 
-    mixture_.correct();
-
     const dimensionedScalar& rho1 = mixture_.rho1();
     const dimensionedScalar& rho2 = mixture_.rho2();
 
     volScalarField& alpha1(mixture_.alpha1());
     volScalarField& alpha2(mixture_.alpha2());
     alpha2 = 1.0 - alpha1;
+    mixture_.correct();
     rho_ == alpha1* rho1 + alpha2* rho2;
 
+    // TODO this is a simplification for now.
     rhoPhi_ = fvc::interpolate(rho_) * phi_;
 
-    // p_ == p_rgh_ + rho_* gh_;
+    volScalarField& p = mesh_.thisDb().lookupObjectRef<volScalarField>("p");
+    p == p_rgh_ + rho_* gh_;
 }
 
 void DAResidualInterFoam::correctBoundaryConditions()

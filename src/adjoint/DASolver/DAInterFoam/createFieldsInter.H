@@ -47,10 +47,12 @@ rhoPtr_.reset(
             "rho",
             runTime.timeName(),
             mesh,
-            IOobject::READ_IF_PRESENT),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE),
         alpha1* rho1 + alpha2 * rho2));
 volScalarField& rho = rhoPtr_();
 rho.oldTime();
+rho.write();
 
 // Mass flux
 rhoPhiPtr_.reset(

@@ -20,6 +20,7 @@
 #include "EulerDdtScheme.H"
 #include "gaussConvectionScheme.H"
 #include "upwind.H"
+#include "CMULESDF.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
