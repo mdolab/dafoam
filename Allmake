@@ -23,21 +23,23 @@ function makeDAFoam()
 echo "***************** Compiling original mode **************"
 . $DAFOAM_ROOT_PATH/loadDAFoam.sh
 makeDAFoam
-# compile ADR mode
-echo "***************** Compiling ADR mode **************"
-. $DAFOAM_ROOT_PATH/loadDAFoam.sh
-. $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc
-makeDAFoam
-# if COMPILE_DAFOAM_ADF is set, compile ADF mode
-if [ -z "$COMPILE_DAFOAM_ADF" ]; then
-  echo "COMPILE_DAFOAM_ADF is not set. skip the ADF mode"
-else
-  echo "***************** Compiling ADF mode **************"
+# if we set COMPILE_DAFOAM_NOAD, we can skip the compilation of AD modes
+if [ -z "$COMPILE_DAFOAM_NOAD" ]; then
+  # compile ADR mode
+  echo "***************** Compiling ADR mode **************"
   . $DAFOAM_ROOT_PATH/loadDAFoam.sh
-  . $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-v1812-ADF/etc/bashrc
+  . $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc
   makeDAFoam
+  # if COMPILE_DAFOAM_ADF is set, compile ADF mode
+  if [ -z "$COMPILE_DAFOAM_ADF" ]; then
+    echo "COMPILE_DAFOAM_ADF is not set. skip the ADF mode"
+  else
+    echo "***************** Compiling ADF mode **************"
+    . $DAFOAM_ROOT_PATH/loadDAFoam.sh
+    . $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-v1812-ADF/etc/bashrc
+    makeDAFoam
+  fi
 fi
-
 # reset the OpenFOAM environment to the original mode
 . $DAFOAM_ROOT_PATH/loadDAFoam.sh
 

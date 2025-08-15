@@ -90,6 +90,7 @@ DAStateInfo/DAStateInfoRhoSimpleCFoam.C
 DAStateInfo/DAStateInfoTurboFoam.C
 DAStateInfo/DAStateInfoHeatTransferFoam.C
 DAStateInfo/DAStateInfoSolidDisplacementFoam.C
+DAStateInfo/DAStateInfoInterFoam.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualScalarTransportFoam.C
@@ -102,6 +103,7 @@ DAResidual/DAResidualRhoSimpleCFoam.C
 DAResidual/DAResidualTurboFoam.C
 DAResidual/DAResidualHeatTransferFoam.C
 DAResidual/DAResidualSolidDisplacementFoam.C
+DAResidual/DAResidualInterFoam.C
 
 DASolver/DASolver.C
 DASolver/DAScalarTransportFoam/DAScalarTransportFoam.C
@@ -125,5 +127,6 @@ DAMisc/pimpleControlDF/pimpleControlDF.C
 DAMisc/tractionDisplacement/tractionDisplacementFvPatchVectorField.C
 DAMisc/alphatWallFunctionIncomp/alphatWallFunctionIncompFvPatchScalarField.C
 DAMisc/fixedWallHeatFlux/fixedWallHeatFluxFvPatchScalarField.C
+DAMisc/MULESDF/CMULESDF.C
 
 LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDASolver$(WM_CODI_AD_LIB_POSTFIX)

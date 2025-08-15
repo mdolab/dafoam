@@ -368,6 +368,7 @@ class DAOPTION(object):
             "PCMatUpdateInterval": 1,
             "reduceIO": True,
             "additionalOutput": ["None"],
+            "additionalOldTime": ["None"],
             "readZeroFields": True,
         }
 
@@ -394,6 +395,10 @@ class DAOPTION(object):
         ## the constrainHbyA, e.g., the MRF cases with the SST model. Here we have an option to add the
         ## constrainHbyA back to the primal and adjoint solvers.
         self.useConstrainHbyA = True
+
+        ## whether to use the ddtCorr term for unsteady solvers. We notice that adding this term
+        ## will degrade the adjoint accuracy, so it is set to false by default.
+        self.useDdtCorr = False
 
         ## parameters for regression models
         ## we support defining multiple regression models. Each regression model can have only one output
@@ -511,6 +516,7 @@ class DAOPTION(object):
             "kRes",
             "omegaRes",
             "epsilonRes",
+            "alpha.waterRes",
         ]
 
         ## The maximal connectivity level for the dRdWTPC matrix. Reducing the connectivity level
@@ -529,6 +535,7 @@ class DAOPTION(object):
             "DRes": 2,
             "gammaIntRes": 2,
             "ReThetatRes": 2,
+            "alpha.waterRes": 2,
         }
 
         ## The min bound for Jacobians, any value that is smaller than the bound will be set to 0
@@ -747,7 +754,7 @@ class PYDAFOAM(object):
         """
 
         self.solverRegistry = {
-            "Incompressible": ["DASimpleFoam", "DAPimpleFoam", "DAPimpleDyMFoam"],
+            "Incompressible": ["DASimpleFoam", "DAPimpleFoam", "DAPimpleDyMFoam", "DAInterFoam"],
             "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam", "DARhoPimpleFoam"],
             "Solid": ["DASolidDisplacementFoam", "DAHeatTransferFoam", "DAScalarTransportFoam"],
         }

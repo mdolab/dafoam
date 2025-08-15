@@ -28,7 +28,7 @@
             }
 
             if (
-                alphaRestart
+                alphaRestart_
                 || mesh.time().timeIndex() > mesh.time().startTimeIndex() + 1)
             {
                 ocCoeff =
@@ -97,50 +97,39 @@
         phiCN = cnCoeff * phi + (1.0 - cnCoeff) * phi.oldTime();
     }
 
-    if (MULESCorr)
-    {
+    //if (MULESCorr)
 #include "alphaSuSp.H"
 
-        fvScalarMatrix alpha1Eqn(
-            (
-                LTS
-                    ? fv::localEulerDdtScheme<scalar>(mesh).fvmDdt(alpha1)
-                    : fv::EulerDdtScheme<scalar>(mesh).fvmDdt(alpha1))
-                + fv::gaussConvectionScheme<scalar>(
-                      mesh,
-                      phiCN,
-                      upwind<scalar>(mesh, phiCN))
-                      .fvmDiv(phiCN, alpha1)
-            // - fvm::Sp(fvc::ddt(dimensionedScalar("1", dimless, 1), mesh)
-            //           + fvc::div(phiCN), alpha1)
-            == Su + fvm::Sp(Sp + divU, alpha1));
+    fvScalarMatrix alpha1Eqn(
+        (
+            fv::EulerDdtScheme<scalar>(mesh).fvmDdt(alpha1))
+            + fv::gaussConvectionScheme<scalar>(
+                  mesh,
+                  phiCN,
+                  upwind<scalar>(mesh, phiCN))
+                  .fvmDiv(phiCN, alpha1)
+        // - fvm::Sp(fvc::ddt(dimensionedScalar("1", dimless, 1), mesh)
+        //           + fvc::div(phiCN), alpha1)
+        == Su + fvm::Sp(Sp + divU, alpha1));
 
-        alpha1Eqn.solve();
+    SolverPerformance<scalar> solverAlpha = alpha1Eqn.solve();
+    DAUtility::primalResidualControl(solverAlpha, pimplePrintToScreen, "alpha", daGlobalVarPtr_->primalMaxRes);
 
-        Info << "Phase-1 volume fraction = "
+    if (pimplePrintToScreen)
+    {
+        Info << alpha1.name() << " Mean: "
              << alpha1.weightedAverage(mesh.Vsc()).value()
-             << "  Min(" << alpha1.name() << ") = " << min(alpha1).value()
-             << "  Max(" << alpha1.name() << ") = " << max(alpha1).value()
+             << "  Min: " << gMin(alpha1)
+             << "  Max: " << gMax(alpha1)
              << endl;
-
-        tmp<surfaceScalarField> talphaPhi1UD(alpha1Eqn.flux());
-        alphaPhi10 = talphaPhi1UD();
-
-        if (alphaApplyPrevCorr && talphaPhi1Corr0.valid())
-        {
-            Info << "Applying the previous iteration compression flux" << endl;
-            MULES::correct(alpha1, alphaPhi10, talphaPhi1Corr0.ref(), 1, 0);
-
-            alphaPhi10 += talphaPhi1Corr0();
-        }
-
-        // Cache the upwind-flux
-        talphaPhi1Corr0 = talphaPhi1UD;
-
-        alpha2 = 1.0 - alpha1;
-
-        mixture.correct();
     }
+
+    tmp<surfaceScalarField> talphaPhi1UD(alpha1Eqn.flux());
+    alphaPhi10 = talphaPhi1UD();
+
+    alpha2 = 1.0 - alpha1;
+
+    mixture.correct();
 
     for (int aCorr = 0; aCorr < nAlphaCorr; aCorr++)
     {
@@ -158,60 +147,34 @@
                 alpha1,
                 alpharScheme));
 
-        if (MULESCorr)
+        //if (MULESCorr)
+        tmp<surfaceScalarField> talphaPhi1Corr(talphaPhi1Un() - alphaPhi10);
+        volScalarField alpha10("alpha10", alpha1);
+
+        MULESDF::correct(
+            geometricOneField(),
+            alpha1,
+            talphaPhi1Un(),
+            talphaPhi1Corr.ref(),
+            Sp,
+            (-Sp * alpha1)(),
+            1,
+            0);
+
+        // Under-relax the correction for all but the 1st corrector
+        if (aCorr == 0)
         {
-            tmp<surfaceScalarField> talphaPhi1Corr(talphaPhi1Un() - alphaPhi10);
-            volScalarField alpha10("alpha10", alpha1);
-
-            MULES::correct(
-                geometricOneField(),
-                alpha1,
-                talphaPhi1Un(),
-                talphaPhi1Corr.ref(),
-                Sp,
-                (-Sp * alpha1)(),
-                1,
-                0);
-
-            // Under-relax the correction for all but the 1st corrector
-            if (aCorr == 0)
-            {
-                alphaPhi10 += talphaPhi1Corr();
-            }
-            else
-            {
-                alpha1 = 0.5 * alpha1 + 0.5 * alpha10;
-                alphaPhi10 += 0.5 * talphaPhi1Corr();
-            }
+            alphaPhi10 += talphaPhi1Corr();
         }
         else
         {
-            alphaPhi10 = talphaPhi1Un;
-
-            MULES::explicitSolve(
-                geometricOneField(),
-                alpha1,
-                phiCN,
-                alphaPhi10,
-                Sp,
-                (Su + divU * min(alpha1(), scalar(1)))(),
-                1,
-                0);
+            alpha1 = 0.5 * alpha1 + 0.5 * alpha10;
+            alphaPhi10 += 0.5 * talphaPhi1Corr();
         }
 
         alpha2 = 1.0 - alpha1;
 
         mixture.correct();
-    }
-
-    if (alphaApplyPrevCorr && MULESCorr)
-    {
-        talphaPhi1Corr0 = alphaPhi10 - talphaPhi1Corr0;
-        talphaPhi1Corr0.ref().rename("alphaPhi1Corr0");
-    }
-    else
-    {
-        talphaPhi1Corr0.clear();
     }
 
 #include "rhofs.H"
@@ -237,9 +200,12 @@
         rhoPhi = alphaPhi10 * (rho1f - rho2f) + phi * rho2f;
     }
 
-    Info << "Phase-1 volume fraction = "
-         << alpha1.weightedAverage(mesh.Vsc()).value()
-         << "  Min(" << alpha1.name() << ") = " << min(alpha1).value()
-         << "  Max(" << alpha1.name() << ") = " << max(alpha1).value()
-         << endl;
+    if (pimplePrintToScreen)
+    {
+        Info << alpha1.name() << " Mean: "
+             << alpha1.weightedAverage(mesh.Vsc()).value()
+             << "  Min: " << gMin(alpha1)
+             << "  Max: " << gMax(alpha1)
+             << endl;
+    }
 }

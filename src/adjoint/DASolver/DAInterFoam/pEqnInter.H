@@ -2,13 +2,31 @@
     volScalarField rAU("rAU", 1.0 / UEqn.A());
     surfaceScalarField rAUf("rAUf", fvc::interpolate(rAU));
 
-    volVectorField HbyA(constrainHbyA(rAU * UEqn.H(), U, p_rgh));
+    //***************** NOTE *******************
+    // constrainHbyA has been used since OpenFOAM-v1606; however, it may degrade the accuracy of derivatives
+    // because constraining variables will create discontinuity. Here we have a option to use the old
+    // implementation in OpenFOAM-3.0+ and before (no constraint for HbyA)
+    autoPtr<volVectorField> HbyAPtr = nullptr;
+    label useConstrainHbyA = daOptionPtr_->getOption<label>("useConstrainHbyA");
+    if (useConstrainHbyA)
+    {
+        HbyAPtr.reset(new volVectorField(constrainHbyA(rAU * UEqn.H(), U, p_rgh)));
+    }
+    else
+    {
+        HbyAPtr.reset(new volVectorField("HbyA", U));
+        HbyAPtr() = rAU * UEqn.H();
+    }
+    volVectorField& HbyA = HbyAPtr();
 
-    surfaceScalarField phiHbyA(
-        "phiHbyA",
-        fvc::flux(HbyA)
-            + fvc::interpolate(rho * rAU) * fvc::ddtCorr(U, phi));
-    MRF.makeRelative(phiHbyA);
+    surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
+
+    label useDdtCorr = daOptionPtr_->getOption<label>("useDdtCorr");
+    if (useDdtCorr)
+    {
+        phiHbyA += fvc::interpolate(rho * rAU) * fvc::ddtCorr(U, phi);
+    }
+
     adjustPhi(phiHbyA, U, p_rgh);
 
     surfaceScalarField phig(
@@ -20,7 +38,7 @@
     phiHbyA += phig;
 
     // Update the pressure BCs to ensure flux consistency
-    constrainPressure(p_rgh, U, phiHbyA, rAUf, MRF);
+    constrainPressure(p_rgh, U, phiHbyA, rAUf);
 
     while (pimple.correctNonOrthogonal())
     {
@@ -29,7 +47,10 @@
 
         p_rghEqn.setReference(pRefCell, getRefCellValue(p_rgh, pRefCell));
 
-        p_rghEqn.solve(mesh.solver(p_rgh.select(pimple.finalInnerIter())));
+        SolverPerformance<scalar> solverP =
+            p_rghEqn.solve(mesh.solver(p_rgh.select(pimple.finalInnerIter())));
+
+        DAUtility::primalResidualControl(solverP, pimplePrintToScreen, "p_rgh", daGlobalVarPtr_->primalMaxRes);
 
         if (pimple.finalNonOrthogonalIter())
         {
@@ -37,13 +58,20 @@
 
             p_rgh.relax();
 
+            // bound p
+            DAUtility::boundVar(allOptions, p_rgh, pimplePrintToScreen);
+
             U = HbyA + rAU * fvc::reconstruct((phig - p_rghEqn.flux()) / rAUf);
+            // bound U
+            DAUtility::boundVar(allOptions, U, pimplePrintToScreen);
             U.correctBoundaryConditions();
-            fvOptions.correct(U);
         }
     }
 
-#include "continuityErrs.H"
+    if (pimplePrintToScreen)
+    {
+#include "continuityErrsPython.H"
+    }
 
     p == p_rgh + rho* gh;
 

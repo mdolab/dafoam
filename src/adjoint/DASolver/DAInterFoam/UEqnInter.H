@@ -1,18 +1,14 @@
-MRF.correctBoundaryVelocity(U);
 
 fvVectorMatrix UEqn(
-    fvm::ddt(rho, U) + fvm::div(rhoPhi, U)
-        + MRF.DDt(rho, U)
-        + turbulence->divDevRhoReff(rho, U)
-    == fvOptions(rho, U));
+    fvm::ddt(rho, U)
+    + fvm::div(rhoPhi, U)
+    + turbulencePtr_->divDevRhoReff(rho, U));
 
 UEqn.relax();
 
-fvOptions.constrain(UEqn);
-
 if (pimple.momentumPredictor())
 {
-    solve(
+    SolverPerformance<vector> solverU = solve(
         UEqn
         == fvc::reconstruct(
             (
@@ -21,5 +17,9 @@ if (pimple.momentumPredictor())
                 - fvc::snGrad(p_rgh))
             * mesh.magSf()));
 
-    fvOptions.correct(U);
+    DAUtility::primalResidualControl(
+        solverU, pimplePrintToScreen, "U", daGlobalVarPtr_->primalMaxRes);
 }
+
+// bound U
+DAUtility::boundVar(allOptions, U, pimplePrintToScreen);
