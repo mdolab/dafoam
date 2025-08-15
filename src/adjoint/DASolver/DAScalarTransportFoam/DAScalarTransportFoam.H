@@ -49,7 +49,6 @@ class DAScalarTransportFoam
 {
 
 protected:
- 
     /// temperature field pointer
     autoPtr<volScalarField> TPtr_;
 
