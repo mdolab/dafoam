@@ -396,6 +396,10 @@ class DAOPTION(object):
         ## constrainHbyA back to the primal and adjoint solvers.
         self.useConstrainHbyA = True
 
+        ## whether to use the ddtCorr term for unsteady solvers. We notice that adding this term
+        ## will degrade the adjoint accuracy, so it is set to false by default.
+        self.useDdtCorr = False
+
         ## parameters for regression models
         ## we support defining multiple regression models. Each regression model can have only one output
         ## but it can have multiple input features. Refer to src/adjoint/DARegression/DARegression.C for
@@ -512,7 +516,7 @@ class DAOPTION(object):
             "kRes",
             "omegaRes",
             "epsilonRes",
-            "alpha.waterRes"
+            "alpha.waterRes",
         ]
 
         ## The maximal connectivity level for the dRdWTPC matrix. Reducing the connectivity level

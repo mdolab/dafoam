@@ -19,6 +19,12 @@ surfaceScalarField phiHbyA(
     "phiHbyA",
     fvc::flux(HbyA));
 
+label useDdtCorr = daOptionPtr_->getOption<label>("useDdtCorr");
+if (useDdtCorr)
+{
+    phiHbyA += fvc::interpolate(rAU) * fvc::ddtCorr(U, phi, UfPtr_);
+}
+
 tmp<volScalarField> rAtU(rAU);
 
 if (pimple.nCorrPISO() <= 1)

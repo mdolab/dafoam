@@ -122,13 +122,11 @@ void DAResidualInterFoam::calcResiduals(const dictionary& options)
                   upwind<scalar>(mesh_, phiCN))
                   .fvmDiv(phiCN, alpha1)
         == Su + fvm::Sp(Sp + divU, alpha1));
-
     /*
     tmp<surfaceScalarField> talphaPhi1UD(alpha1Eqn.flux());
     alphaPhi10_ = talphaPhi1UD();
 
-    for (int aCorr = 0; aCorr < 2; aCorr++)
-    {
+
         surfaceScalarField phir(phic * mixture_.nHatf());
 
         word alphaScheme("div(phi,alpha)");
@@ -170,13 +168,12 @@ void DAResidualInterFoam::calcResiduals(const dictionary& options)
             //alpha1 = 0.5 * alpha1 + 0.5 * alpha10;
             alphaPhi10_ += 0.5 * talphaPhi1Corr();
         }
-    }
 
-#include "rhofs.H"
 
-    rhoPhi_ = alphaPhi10_ * (rho1f - rho2f) + phiCN * rho2f;
+    // #include "rhofs.H"
+
+    // rhoPhi_ = alphaPhi10_ * (rho1f - rho2f) + phiCN * rho2f;
 */
-
     alpha1Res_ = alpha1Eqn & alpha1_;
     normalizeResiduals(alpha1Res);
 
@@ -236,7 +233,7 @@ void DAResidualInterFoam::calcResiduals(const dictionary& options)
         "phiHbyA",
         fvc::flux(HbyA));
 
-    adjustPhi(phiHbyA, U_, p_rgh_);
+    //adjustPhi(phiHbyA, U_, p_rgh_);
 
     surfaceScalarField phig(
         (
@@ -247,7 +244,7 @@ void DAResidualInterFoam::calcResiduals(const dictionary& options)
     phiHbyA += phig;
 
     // Update the pressure BCs to ensure flux consistency
-    constrainPressure(p_rgh_, U_, phiHbyA, rAUf);
+    //constrainPressure(p_rgh_, U_, phiHbyA, rAUf);
 
     fvScalarMatrix p_rghEqn(
         fvm::laplacian(rAUf, p_rgh_)

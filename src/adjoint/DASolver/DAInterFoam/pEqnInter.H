@@ -21,6 +21,12 @@
 
     surfaceScalarField phiHbyA("phiHbyA", fvc::flux(HbyA));
 
+    label useDdtCorr = daOptionPtr_->getOption<label>("useDdtCorr");
+    if (useDdtCorr)
+    {
+        phiHbyA += fvc::interpolate(rho * rAU) * fvc::ddtCorr(U, phi);
+    }
+
     adjustPhi(phiHbyA, U, p_rgh);
 
     surfaceScalarField phig(
