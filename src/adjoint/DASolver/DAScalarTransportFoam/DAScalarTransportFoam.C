@@ -84,7 +84,7 @@ label DAScalarTransportFoam::solvePrimal()
     for (label iter = 1; iter <= nInstances; iter++)
     {
         ++runTime;
-        
+
         printToScreen_ = this->isPrintTime(runTime, printIntervalUnsteady_);
 
         if (printToScreen_)
