@@ -80,6 +80,7 @@ DAModel/DARadiationModel/DARadiationModel.C
 DAModel/DARadiationModel/DAP1.C
 
 DAStateInfo/DAStateInfo.C
+DAStateInfo/DAStateInfoScalarTransportFoam.C
 DAStateInfo/DAStateInfoSimpleFoam.C
 DAStateInfo/DAStateInfoPimpleFoam.C
 DAStateInfo/DAStateInfoPimpleDyMFoam.C
@@ -91,6 +92,7 @@ DAStateInfo/DAStateInfoHeatTransferFoam.C
 DAStateInfo/DAStateInfoSolidDisplacementFoam.C
 
 DAResidual/DAResidual.C
+DAResidual/DAResidualScalarTransportFoam.C
 DAResidual/DAResidualSimpleFoam.C
 DAResidual/DAResidualPimpleFoam.C
 DAResidual/DAResidualPimpleDyMFoam.C
@@ -102,6 +104,7 @@ DAResidual/DAResidualHeatTransferFoam.C
 DAResidual/DAResidualSolidDisplacementFoam.C
 
 DASolver/DASolver.C
+DASolver/DAScalarTransportFoam/DAScalarTransportFoam.C
 DASolver/DASimpleFoam/DASimpleFoam.C
 DASolver/DAPimpleFoam/DAPimpleFoam.C
 DASolver/DAIrkPimpleFoam/DAIrkPimpleFoam.C
