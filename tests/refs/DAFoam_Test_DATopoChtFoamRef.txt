@@ -1,0 +1,22 @@
+Dictionary Key: scenario1.aero_post.functionals.TMean
+@value       300.8994023713212300 1e-08 1e-12
+Dictionary Key: scenario1.aero_post.functionals.TP2
+@value         0.0049091843693682 1e-08 1e-12
+Dictionary Key: scenario1.aero_post.functionals.TMean
+Dictionary Key: eta0-Adjoint
+@value        -8.3899358085940321 1e-08 1e-12
+Dictionary Key: eta0-ForwardAD
+@value        43.1276611981181617 1e-08 1e-12
+Dictionary Key: u_in0-Adjoint
+@value        -2.8912882594030176 1e-08 1e-12
+Dictionary Key: u_in0-ForwardAD
+@value        -4.4366909764701177 1e-08 1e-12
+Dictionary Key: scenario1.aero_post.functionals.TP2
+Dictionary Key: eta0-Adjoint
+@value         0.1291201961040544 1e-08 1e-12
+Dictionary Key: eta0-ForwardAD
+@value         0.1290905265775970 1e-08 1e-12
+Dictionary Key: u_in0-Adjoint
+@value         0.0972312778329251 1e-08 1e-12
+Dictionary Key: u_in0-ForwardAD
+@value         0.0972312778242853 1e-08 1e-12
