@@ -91,6 +91,7 @@ DAStateInfo/DAStateInfoTurboFoam.C
 DAStateInfo/DAStateInfoHeatTransferFoam.C
 DAStateInfo/DAStateInfoSolidDisplacementFoam.C
 DAStateInfo/DAStateInfoInterFoam.C
+DAStateInfo/DAStateInfoTopoChtFoam.C
 
 DAResidual/DAResidual.C
 DAResidual/DAResidualScalarTransportFoam.C
@@ -104,6 +105,7 @@ DAResidual/DAResidualTurboFoam.C
 DAResidual/DAResidualHeatTransferFoam.C
 DAResidual/DAResidualSolidDisplacementFoam.C
 DAResidual/DAResidualInterFoam.C
+DAResidual/DAResidualTopoChtFoam.C
 
 DASolver/DASolver.C
 DASolver/DAScalarTransportFoam/DAScalarTransportFoam.C
@@ -118,6 +120,7 @@ DASolver/DATurboFoam/DATurboFoam.C
 DASolver/DAHeatTransferFoam/DAHeatTransferFoam.C
 DASolver/DASolidDisplacementFoam/DASolidDisplacementFoam.C
 DASolver/DAInterFoam/DAInterFoam.C
+DASolver/DATopoChtFoam/DATopoChtFoam.C
 
 DAMisc/MRFDF/MRFZoneDF.C
 DAMisc/MRFDF/MRFZoneListDF.C
