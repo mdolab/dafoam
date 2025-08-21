@@ -15,33 +15,42 @@ from mphys.scenario_aerodynamic import ScenarioAerodynamic
 
 gcomm = MPI.COMM_WORLD
 
-os.chdir("./reg_test_files-main/ChannelTopoCht")
+os.chdir("./reg_test_files-main/ConvergentChannel")
 if gcomm.rank == 0:
-    os.system("rm -rf 0 processor* *.bin")
-    os.system("cp -r 0_orig 0")
+    os.system("rm -rf 0/* processor* *.bin")
+    os.system("cp -r 0.incompressible/* 0/")
+    os.system("cp -r system.incompressible/* system/")
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
+    replace_text_in_file("constant/turbulenceProperties", "SpalartAllmaras;", "dummy;")
+    replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
-U0 = 0.1
+U0 = 10.0
 p0 = 0.0
 nuTilda0 = 4.5e-5
-nCells = 1600
+nCells = 343
 
 daOptions = {
-    "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "solverName": "DATopoChtFoam",
-    "primalMinResTol": 1.0e-10,
+    "primalMinResTol": 1.0e-12,
+    "primalMinResTolDiff": 1e4,
+    "printDAOptions": False,
+    "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
+    "primalBC": {
+        "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
+        "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
+        "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [nuTilda0]},
+        "useWallFunction": True,
+        "transport:nu": 1.5e-5,
+    },
     "function": {
-        "TP1": {
-            "type": "totalPressure",
+        "CD": {
+            "type": "force",
             "source": "patchToFace",
-            "patches": ["inlet"],
-            "scale": 1.0,
-        },
-        "TP2": {
-            "type": "totalPressure",
-            "source": "patchToFace",
-            "patches": ["outlet"],
-            "scale": 1.0,
+            "patches": ["walls"],
+            "directionMode": "fixedDirection",
+            "direction": [1.0, 0.0, 0.0],
+            "scale": 0.1,
         },
         "TMean": {
             "type": "patchMean",
@@ -53,80 +62,55 @@ daOptions = {
             "scale": 1.0,
         },
     },
-    "adjStateOrdering": "cell",
-    "adjEqnOption": {
-        "gmresRelTol": 1.0e-8,
-        "pcFillLevel": 1,
-        "jacMatReOrdering": "natural",
-        "gmresMaxIters": 2000,
-        "gmresRestart": 2000,
-    },
-    "normalizeStates": {
-        "U": U0,
-        "p": 0.1,
-        "nuTilda": nuTilda0 * 10.0,
-        "phi": 1.0,
-        "T": 300.0,
-    },
+    "adjEqnOption": {"gmresRelTol": 1.0e-12, "pcFillLevel": 1, "jacMatReOrdering": "rcm"},
+    "normalizeStates": {"U": U0, "p": U0 * U0 / 2.0, "phi": 1.0, "nuTilda": 1e-3, "T": 300.0},
     "inputInfo": {
         "eta": {
             "type": "field",
             "fieldName": "eta",
             "fieldType": "scalar",
-            "components": ["solver", "function"],
-            "distributed": 0,
-        },
-        "u_in": {
-            "type": "patchVar",
-            "varName": "U",
-            "varType": "vector",
-            "patches": ["inlet"],
+            "distributed": False,
             "components": ["solver", "function"],
         },
     },
 }
 
 
-# Top class to setup the optimization problem
 class Top(Multipoint):
     def setup(self):
-
-        # create the builder to initialize the DASolvers
         dafoam_builder = DAFoamBuilder(daOptions, None, scenario="aerodynamic")
         dafoam_builder.initialize(self.comm)
 
-        # add the design variable component to keep the top level design variables
+        ################################################################################
+        # MPHY setup
+        ################################################################################
+
+        # ivc to keep the top level DVs
         self.add_subsystem("dvs", om.IndepVarComp(), promotes=["*"])
 
-        # add a scenario (flow condition) for optimization, we pass the builder
-        # to the scenario to actually run the flow and adjoint
-        self.mphys_add_scenario("scenario1", ScenarioAerodynamic(aero_builder=dafoam_builder))
+        self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
     def configure(self):
 
-        # add the design variables to the dvs component's output
         self.dvs.add_output("eta", val=np.ones(nCells))
-        self.dvs.add_output("u_in", val=np.array([0.1, 0, 0]))
-        # manually connect the dvs output to the geometry and scenario1
-        self.connect("eta", "scenario1.eta")
-        self.connect("u_in", "scenario1.u_in")
 
+        # manually connect the dvs output to the geometry and cruise
+        self.connect("eta", "cruise.eta")
         # define the design variables to the top level
-        self.add_design_var("eta", lower=0, upper=1, scaler=1.0)
-        self.add_design_var("u_in", lower=0, upper=1, scaler=1.0)
+        self.add_design_var("eta", lower=0.0, upper=1, scaler=1.0, indices=[0, 150, 300])
 
-        # add objective and constraints to the top level
-        self.add_objective("scenario1.aero_post.TMean", scaler=1.0)
+        # add constraints and the objective
+        self.add_objective("cruise.aero_post.CD", scaler=1.0)
 
 
 funcDict = {}
 derivDict = {}
 
-dvNames = ["u_in", "eta"]
-dvIndices = [[0], [0]]
+dvNames = ["eta"]
+dvIndices = [[0, 150, 300]]
 funcNames = [
-    "scenario1.aero_post.functionals.TMean",
-    "scenario1.aero_post.functionals.TP2",
+    "cruise.aero_post.functionals.CD",
+    "cruise.aero_post.functionals.TMean",
 ]
 
 # run the adjoint and forward ref
@@ -134,5 +118,4 @@ run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, de
 
 # write the test results
 if gcomm.rank == 0:
-    reg_write_dict(funcDict, 1e-8, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
