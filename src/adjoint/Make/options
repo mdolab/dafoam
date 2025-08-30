@@ -26,6 +26,7 @@ EXE_INC = \
     -I./lnInclude \
     -I../include \
     -I../include/VoF \
+    -I$(DAFOAM_ROOT_PATH)/OpenFOAM/HiSA4DAFoam/src/lnInclude \
     -I$(PETSC_DIR)/include \
     -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
     $(shell mpicc -show | grep -o '\-I[^ ]*') \
@@ -49,6 +50,7 @@ LIB_LIBS = \
     -ltopoChangerFvMesh$(WM_CODI_AD_LIB_POSTFIX) \
     -ldynamicMesh$(WM_CODI_AD_LIB_POSTFIX) \
     -lfvOptions$(WM_CODI_AD_LIB_POSTFIX) \
+    -L$(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs -lHiSA$(WM_CODI_AD_LIB_POSTFIX) \
     -L$(PETSC_LIB) -lpetsc \
     $(shell mpicc -show | grep -o '\-L[^ ]*') \
     $(shell python3-config --ldflags) \
