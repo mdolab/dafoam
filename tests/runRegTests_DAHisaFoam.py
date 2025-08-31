@@ -114,24 +114,6 @@ class Top(Multipoint):
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
 
-"""
-funcDict = {}
-derivDict = {}
-
-dvNames = ["shape"]
-dvIndices = [[0]]
-funcNames = [
-    "cruise.aero_post.CD",
-]
-
-# run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
-
-# write the test results
-if gcomm.rank == 0:
-    reg_write_dict(funcDict, 1e-8, 1e-12)
-    reg_write_dict(derivDict, 1e-8, 1e-12)
-"""
 
 prob = om.Problem()
 prob.model = Top()

@@ -38,7 +38,6 @@ class DAHisaFoam
 {
 
 protected:
-    
     autoPtr<solverModule> hisaSolverPtr_;
 
     /// turbulence pointer
