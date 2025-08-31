@@ -106,6 +106,22 @@ DAStateInfoHisaFoam::DAStateInfoHisaFoam(
 
     // add physical model residual connectivity
     daModel.addModelResidualCon(stateResConInfo_);
+
+    // need to remove the phi state for turbModel because DAHisaFoam does not use phi as
+    // the state variable
+    forAll(stateInfo_["modelStates"], idxI)
+    {
+        word modelStateName = stateInfo_["modelStates"][idxI];
+        word modeResName = modelStateName + "Res";
+        forAll(stateResConInfo_[modeResName], idxJ)
+        {
+            if (stateResConInfo_[modeResName][idxJ].found("phi"))
+            {
+                DAUtility::listDeleteVal<word>(stateResConInfo_[modeResName][idxJ], "phi");
+            }
+        }
+    }
+    // Info << "stateResConInfo " << stateResConInfo_ << endl;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -22,10 +22,7 @@ if gcomm.rank == 0:
     os.system("rm -rf 0/* processor* *.bin")
     os.system("cp -r 0.hisa/* 0/")
     os.system("cp -r system.hisa/* system/")
-    os.system("cp -r constant/turbulenceProperties.dummy constant/turbulenceProperties")
-    replace_text_in_file(
-        "constant/thermophysicalProperties", "mu                  0.000018;", "mu                  0.0;"
-    )
+    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
 
 # aero setup
 U0 = 100.0
@@ -37,6 +34,7 @@ daOptions = {
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
+        "useWallFunction": False,
     },
     "function": {
         "CD": {

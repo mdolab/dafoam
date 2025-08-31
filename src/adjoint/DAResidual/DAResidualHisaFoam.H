@@ -104,6 +104,9 @@ public:
 
     /// update the boundary condition for all the states in the selected solver
     virtual void correctBoundaryConditions();
+
+    /// remove the off diagonal elements for the tensor field
+    void removeOffDiagonals(volTensorField&);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

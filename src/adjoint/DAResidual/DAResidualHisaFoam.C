@@ -86,6 +86,8 @@ void DAResidualHisaFoam::calcResiduals(const dictionary& options)
         URes_, pRes_, TRes_, phiRes_: residual field variables
     */
 
+    label isPC = options.getLabel("isPC");
+
     pRes_ = -fvc::div(phi_);
 
     URes_ = -fvc::div(phiUp_);
@@ -101,6 +103,11 @@ void DAResidualHisaFoam::calcResiduals(const dictionary& options)
         volTensorField tauMC = mesh_.lookupObjectRef<volTensorField>("tauMC");
 
         tauMC = muEff * dev2(Foam::T(fvc::grad(U_)));
+
+        if (isPC)
+        {
+            this->removeOffDiagonals(tauMC);
+        }
 
         URes_ += fvc::laplacian(muEff, U_);
         URes_ += fvc::div(tauMC);
@@ -254,6 +261,31 @@ void DAResidualHisaFoam::correctBoundaryConditions()
     U_.correctBoundaryConditions();
     p_.correctBoundaryConditions();
     T_.correctBoundaryConditions();
+}
+
+void DAResidualHisaFoam::removeOffDiagonals(volTensorField& tauMC)
+{
+    forAll(tauMC, cellI)
+    {
+        tauMC[cellI].xy() = 0.0;
+        tauMC[cellI].xz() = 0.0;
+        tauMC[cellI].yx() = 0.0;
+        tauMC[cellI].yz() = 0.0;
+        tauMC[cellI].zx() = 0.0;
+        tauMC[cellI].zy() = 0.0;
+    }
+    forAll(tauMC.boundaryField(), patchI)
+    {
+        forAll(tauMC.boundaryField()[patchI], faceI)
+        {
+            tauMC.boundaryFieldRef()[patchI][faceI].xy() = 0.0;
+            tauMC.boundaryFieldRef()[patchI][faceI].xz() = 0.0;
+            tauMC.boundaryFieldRef()[patchI][faceI].yx() = 0.0;
+            tauMC.boundaryFieldRef()[patchI][faceI].yz() = 0.0;
+            tauMC.boundaryFieldRef()[patchI][faceI].zx() = 0.0;
+            tauMC.boundaryFieldRef()[patchI][faceI].zy() = 0.0;
+        }
+    }
 }
 
 } // End namespace Foam
