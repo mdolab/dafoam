@@ -1,0 +1,7 @@
+Dictionary Key: CD
+@value     39435.4830379218692542 1e-10 1e-12
+Dictionary Key: CD
+Dictionary Key: shape-Adjoint
+@value      3439.6800704072520602 1e-08 1e-12
+Dictionary Key: shape-FD
+@value      3260.1314052948728204 1e-08 1e-12
