@@ -54,6 +54,9 @@ DAResidualHisaFoam::DAResidualHisaFoam(
         Info << "molWeight " << molWeight_ << endl;
         Info << "Cp " << Cp_ << endl;
     }
+
+    usePCFlux_ = daOption.getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("hisaUsePCFlux", 1);
+    removeTauMCOff_ = daOption.getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("hisaRemoveTauMCOff", 1);
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -88,7 +91,7 @@ void DAResidualHisaFoam::calcResiduals(const dictionary& options)
 
     label isPC = options.getLabel("isPC");
 
-    if (isPC)
+    if (isPC && usePCFlux_)
     {
         // force to use the first order FluxLaxFriedrichs scheme for PC mat
         this->calcFluxLaxFriedrichs(phi_, phiUp_, phiEp_, Up_);
@@ -114,7 +117,7 @@ void DAResidualHisaFoam::calcResiduals(const dictionary& options)
 
         tauMC = muEff * dev2(Foam::T(fvc::grad(U_)));
 
-        if (isPC)
+        if (isPC && removeTauMCOff_)
         {
             this->removeOffDiagonals(tauMC);
         }

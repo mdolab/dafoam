@@ -75,6 +75,9 @@ protected:
     scalar Cp_;
     //@}
 
+    label usePCFlux_ = 1;
+    label removeTauMCOff_ = 1;
+
 public:
     TypeName("DAHisaFoam");
     // Constructors
