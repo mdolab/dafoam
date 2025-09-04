@@ -96,14 +96,6 @@ label DAHisaFoam::solvePrimal()
     solverModule& solver = hisaSolverPtr_();
     Time& runTime = runTimePtr_();
     runTime.setTime(0.0, 0);
-    //fvMesh& mesh = meshPtr_();
-    //Info << mesh.thisDb().classes() << endl;
-
-    //solverModule& solver1 = mesh.thisDb().lookupObjectRef<solverModule>("hisaSolver");
-
-    //Info << solver1.steadyState() << endl;
-
-    //fluxScheme& flux = mesh.thisDb().lookupObjectRef<fluxScheme>("fluxScheme");
 
     bool steadyState = solver.steadyState();
 
@@ -143,6 +135,8 @@ label DAHisaFoam::solvePrimal()
 #include "setDeltaT.H"
         }
 
+        solver.preTimeIncrement();
+
         runTime++;
 
         printToScreen_ = this->isPrintTime(runTime, printInterval_);
@@ -157,10 +151,7 @@ label DAHisaFoam::solvePrimal()
 
         // --- Outer corrector loop
         bool notFinished;
-#ifndef FOAM_VERSION_6
-        while ((notFinished = solver.solnControl().loop()))
-        {
-#else
+#if FOUNDATION >= 6
         while (true)
         {
             // loop() function was removed from the base class
@@ -176,6 +167,9 @@ label DAHisaFoam::solvePrimal()
             {
                 break;
             }
+#else
+        while ((notFinished = solver.solnControl().loop()))
+        {
 #endif
             solver.outerIteration();
             if (steadyState)

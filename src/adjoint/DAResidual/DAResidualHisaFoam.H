@@ -20,6 +20,7 @@
 #include "constrainPressure.H"
 #include "fluxScheme.H"
 #include "solverModule.H"
+#include "orthogonalSnGrad.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -107,6 +108,13 @@ public:
 
     /// remove the off diagonal elements for the tensor field
     void removeOffDiagonals(volTensorField&);
+
+    /// calculate the flux using laxFriedrichs scheme for PC mat
+    void calcFluxLaxFriedrichs(
+        surfaceScalarField& phi,
+        surfaceVectorField& phiUp,
+        surfaceScalarField& phiEp,
+        surfaceVectorField& Up);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

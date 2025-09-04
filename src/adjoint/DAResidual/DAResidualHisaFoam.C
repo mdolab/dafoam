@@ -88,6 +88,16 @@ void DAResidualHisaFoam::calcResiduals(const dictionary& options)
 
     label isPC = options.getLabel("isPC");
 
+    if (isPC)
+    {
+        // force to use the first order FluxLaxFriedrichs scheme for PC mat
+        this->calcFluxLaxFriedrichs(phi_, phiUp_, phiEp_, Up_);
+    }
+    else
+    {
+        fluxScheme_.calcFlux(phi_, phiUp_, phiEp_, Up_);
+    }
+
     pRes_ = -fvc::div(phi_);
 
     URes_ = -fvc::div(phiUp_);
@@ -132,50 +142,41 @@ void DAResidualHisaFoam::calcResiduals(const dictionary& options)
     scalar TRef = daOption_.getSubDictOption<scalar>("normalizeStates", "T");
     URes_ = URes_ / URef;
     TRes_ = TRes_ / TRef / Cp_;
+}
 
-    /*
-    volVectorField& rhoUR = mesh_.lookupObjectRef<volVectorField>("rhoUR");
+void DAResidualHisaFoam::calcFluxLaxFriedrichs(
+    surfaceScalarField& phi,
+    surfaceVectorField& phiUp,
+    surfaceScalarField& phiEp,
+    surfaceVectorField& Up)
+{
+    // calculate the flux using laxFriedrichs scheme for PC mat
 
-    vector vecResMax(0, 0, 0);
-    vector vecResNorm2(0, 0, 0);
-    vector vecResMean(0, 0, 0);
-    forAll(rhoUR, cellI)
-    {
-        vecResNorm2.x() += pow(rhoUR[cellI].x(), 2.0);
-        vecResNorm2.y() += pow(rhoUR[cellI].y(), 2.0);
-        vecResNorm2.z() += pow(rhoUR[cellI].z(), 2.0);
-        vecResMean.x() += fabs(rhoUR[cellI].x());
-        vecResMean.y() += fabs(rhoUR[cellI].y());
-        vecResMean.z() += fabs(rhoUR[cellI].z());
-        if (fabs(rhoUR[cellI].x()) > vecResMax.x())
-        {
-            vecResMax.x() = fabs(rhoUR[cellI].x());
-        }
-        if (fabs(rhoUR[cellI].y()) > vecResMax.y())
-        {
-            vecResMax.y() = fabs(rhoUR[cellI].y());
-        }
-        if (fabs(rhoUR[cellI].z()) > vecResMax.z())
-        {
-            vecResMax.z() = fabs(rhoUR[cellI].z());
-        }
-    }
-    vecResMean = vecResMean / rhoUR.size();
-    reduce(vecResMean, sumOp<vector>());
-    vecResMean = vecResMean / Pstream::nProcs();
-    reduce(vecResNorm2, sumOp<vector>());
-    reduce(vecResMax, maxOp<vector>());
-    vecResNorm2.x() = pow(vecResNorm2.x(), 0.5);
-    vecResNorm2.y() = pow(vecResNorm2.y(), 0.5);
-    vecResNorm2.z() = pow(vecResNorm2.z(), 0.5);
+    const volScalarField& p = thermo_.p();
+    const fvMesh& mesh = mesh_;
 
-    Info << "rhoUR "
-         << " Residual Norm2: " << vecResNorm2 << endl;
-    Info << "rhoUR "
-         << " Residual Mean: " << vecResMean << endl;
-    Info << "rhoUR "
-         << " Residual Max: " << vecResMax << endl;
-         */
+    phi = linearInterpolate(rhoU_) & mesh.Sf();
+    phiUp = linearInterpolate(rhoU_ * U_ + p * tensor::I) & mesh.Sf();
+    phiEp = linearInterpolate((rhoE_ + p) * U_) & mesh.Sf();
+
+    phi.setOriented();
+    phiUp.setOriented();
+    phiEp.setOriented();
+
+    // Wave speed: Lax-Friedrich flux approximation of left-hand side Jacobian
+    volScalarField c(sqrt(thermo_.gamma() / thermo_.psi()));
+    tmp<surfaceScalarField> lambdaConv;
+
+    lambdaConv = (fvc::interpolate(c) + mag(fvc::interpolate(U_) & mesh_.Sf() / mesh_.magSf())) / mesh_.deltaCoeffs();
+
+    lambdaConv->setOriented(false);
+
+    phi -= 0.5 * lambdaConv() * fv::orthogonalSnGrad<scalar>(mesh).snGrad(rho_) * mesh.magSf();
+    phiUp -= 0.5 * lambdaConv() * fv::orthogonalSnGrad<vector>(mesh).snGrad(rhoU_) * mesh.magSf();
+    phiEp -= 0.5 * lambdaConv() * fv::orthogonalSnGrad<scalar>(mesh).snGrad(rhoE_) * mesh.magSf();
+
+    // Face velocity for sigmaDotU (turbulence term)
+    Up = linearInterpolate(U_) * mesh_.magSf();
 }
 
 void DAResidualHisaFoam::updateIntermediateVariables()
@@ -248,8 +249,6 @@ void DAResidualHisaFoam::updateIntermediateVariables()
     rho_.correctBoundaryConditions();
     rhoU_.boundaryFieldRef() = rho_.boundaryField() * U_.boundaryField();
     rhoE_.boundaryFieldRef() = rho_.boundaryField() * (he_.boundaryField() + 0.5 * magSqr(U_.boundaryField()));
-
-    fluxScheme_.calcFlux(phi_, phiUp_, phiEp_, Up_);
 }
 
 void DAResidualHisaFoam::correctBoundaryConditions()

@@ -23,6 +23,7 @@ if gcomm.rank == 0:
     os.system("cp -r 0.hisa/* 0/")
     os.system("cp -r system.hisa/* system/")
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
+    replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
 U0 = 100.0
@@ -142,7 +143,22 @@ if gcomm.rank == 0:
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
 
+
+"""
+# NOTE: the forward mode does not work in parallel..
+funcDict = {}
+derivDict = {}
+
+dvNames = ["shape"]
+dvIndices = [[0]]
+funcNames = [
+    "cruise.aero_post.CD",
+]
+
+# run the adjoint and forward ref
+run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
+
+# write the test results
 if gcomm.rank == 0:
-    replace_text_in_file(
-        "constant/thermophysicalProperties", "mu                  0.0;", "mu                  0.000018;"
-    )
+    reg_write_dict(derivDict, 1e-8, 1e-12)
+"""

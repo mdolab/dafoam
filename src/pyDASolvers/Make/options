@@ -21,7 +21,7 @@ EXE_INC = \
     -I$(LIB_SRC)/surfMesh/lnInclude \
     -I../adjoint/lnInclude \
     -I../include \
-    -I$(DAFOAM_ROOT_PATH)/OpenFOAM/HiSA4DAFoam/src/lnInclude \
+    -I$(DAFOAM_ROOT_PATH)/OpenFOAM/Hisa4DAFoam/src/lnInclude \
     -I$(PETSC_DIR)/include \
     -I$(PETSC_DIR)/$(PETSC_ARCH)/include \
     $(shell mpicc -show | grep -o '\-I[^ ]*') \
@@ -49,7 +49,7 @@ LIB_LIBS = \
     -lDANewTurbModelsIncompressible$(WM_CODI_AD_LIB_POSTFIX) \
     -lDANewTurbModelsCompressible$(WM_CODI_AD_LIB_POSTFIX) \
     -lDASolver$(WM_CODI_AD_LIB_POSTFIX) \
-    -L$(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs -lHiSA$(WM_CODI_AD_LIB_POSTFIX) \
+    -L$(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs -lHisaSolver$(WM_CODI_AD_LIB_POSTFIX) \
     -L$(PETSC_LIB) -lpetsc \
     -L$(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs \
     $(shell mpicc -show | grep -o '\-L[^ ]*') \
