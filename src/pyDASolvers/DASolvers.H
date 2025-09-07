@@ -475,6 +475,16 @@ public:
         DASolverPtr_->setPrimalBoundaryConditions(printInfo);
     }
 
+    void setPrimalInitialConditions(const label printInfo = 1)
+    {
+        DASolverPtr_->setPrimalInitialConditions(printInfo);
+    }
+
+    void getInitStateVals(const label printInfo)
+    {
+        DASolverPtr_->getInitStateVals(printInfo);
+    }
+
     label runFPAdj(
         Vec dFdW,
         Vec psi)

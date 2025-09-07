@@ -6,6 +6,7 @@
 \*---------------------------------------------------------------------------*/
 
 #include "DAInputPatchVelocity.H"
+#include "characteristicBase.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -99,6 +100,15 @@ void DAInputPatchVelocity::run(const scalarList& input)
                     inletOutletPatch.refValue()[faceI][flowAxisIndex] = UxNew;
                     inletOutletPatch.refValue()[faceI][normalAxisIndex] = UyNew;
                 }
+            }
+            else if (U.boundaryFieldRef()[patchI].type() == "characteristicFarfieldVelocity")
+            {
+                // set URef value
+                characteristicBase& stateBase =
+                    refCast<characteristicBase>(U.boundaryFieldRef()[patchI]);
+
+                stateBase.URef()[flowAxisIndex] = UxNew;
+                stateBase.URef()[normalAxisIndex] = UyNew;
             }
             else
             {

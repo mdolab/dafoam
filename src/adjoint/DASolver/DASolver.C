@@ -3414,6 +3414,27 @@ void DASolver::setPrimalBoundaryConditions(const label printInfo)
     }
 }
 
+void DASolver::setPrimalInitialConditions(const label printInfo)
+{
+    /*
+    Description:
+        Update the state initial conditions based on the ones defined in primalBC
+    */
+
+    // first check if we need to change the ini conditions based on
+    // the primalBC dict in DAOption. NOTE: this will overwrite whatever
+    // ini conditions defined in the "0" folder
+    dictionary iniDict = daOptionPtr_->getAllOptions().subDict("primalInitCondition");
+    if (iniDict.toc().size() != 0)
+    {
+        if (printInfo)
+        {
+            Info << "Setting up primal initial conditions based on pyOptions: " << endl;
+        }
+        daFieldPtr_->setPrimalInitialConditions(printInfo);
+    }
+}
+
 label DASolver::runFPAdj(
     Vec dFdW,
     Vec psi)
@@ -3446,7 +3467,7 @@ label DASolver::solveAdjointFP(
     return 1;
 }
 
-void DASolver::getInitStateVals(HashTable<scalar>& initState)
+void DASolver::getInitStateVals(const label printInfo)
 {
     /*
     Description:
@@ -3471,7 +3492,7 @@ void DASolver::getInitStateVals(HashTable<scalar>& initState)
 
         for (label i = 0; i < 3; i++)
         {
-            initState.set(stateName + Foam::name(i), avgState[i]);
+            initStateVals_.set(stateName + Foam::name(i), avgState[i]);
         }
     }
 
@@ -3487,7 +3508,7 @@ void DASolver::getInitStateVals(HashTable<scalar>& initState)
         avgState /= daIndexPtr_->nGlobalCells;
         reduce(avgState, sumOp<scalar>());
 
-        initState.set(stateName, avgState);
+        initStateVals_.set(stateName, avgState);
     }
 
     forAll(stateInfo_["modelStates"], idxI)
@@ -3502,7 +3523,7 @@ void DASolver::getInitStateVals(HashTable<scalar>& initState)
         avgState /= daIndexPtr_->nGlobalCells;
         reduce(avgState, sumOp<scalar>());
 
-        initState.set(stateName, avgState);
+        initStateVals_.set(stateName, avgState);
     }
 
     forAll(stateInfo_["surfaceScalarStates"], idxI)
@@ -3510,10 +3531,13 @@ void DASolver::getInitStateVals(HashTable<scalar>& initState)
         const word stateName = stateInfo_["surfaceScalarStates"][idxI];
         // const surfaceScalarField& state = meshPtr_->thisDb().lookupObject<surfaceScalarField>(stateName);
         // we can reset the flux to zeros
-        initState.set(stateName, 0.0);
+        initStateVals_.set(stateName, 0.0);
     }
 
-    Info << "initState: " << initState << endl;
+    if (printInfo)
+    {
+        Info << "initState: " << initStateVals_ << endl;
+    }
 }
 
 void DASolver::resetStateVals()

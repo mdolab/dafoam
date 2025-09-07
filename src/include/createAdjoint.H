@@ -30,5 +30,3 @@ daLinearEqnPtr_.reset(new DALinearEqn(mesh, daOptionPtr_()));
 
 this->setDAFunctionList();
 
-// calculate the initial (default) value for validate state func
-this->getInitStateVals(initStateVals_);

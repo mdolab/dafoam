@@ -98,6 +98,9 @@ public:
     /// set the boundary conditions based on parameters defined in DAOption
     void setPrimalBoundaryConditions(const label printInfo = 1);
 
+    /// set the initial conditions based on parameters defined in DAOption
+    void setPrimalInitialConditions(const label printInfo = 1);
+
     /// apply special treatment for boundary conditions
     void specialBCTreatment();
 

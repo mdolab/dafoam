@@ -89,6 +89,8 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void updateStateBoundaryConditions()
         void calcPrimalResidualStatistics(char *)
         void setPrimalBoundaryConditions(int)
+        void setPrimalInitialConditions(int)
+        void getInitStateVals(int)
         int runFPAdj(PetscVec, PetscVec)
         int solveAdjointFP(PetscVec, PetscVec)
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *, pySetCharInterface, void *)
@@ -358,6 +360,12 @@ cdef class pyDASolvers:
     
     def setPrimalBoundaryConditions(self, printInfo):
         self._thisptr.setPrimalBoundaryConditions(printInfo)
+    
+    def setPrimalInitialConditions(self, printInfo):
+        self._thisptr.setPrimalInitialConditions(printInfo)
+    
+    def getInitStateVals(self, printInfo):
+        self._thisptr.getInitStateVals(printInfo)
     
     def readStateVars(self, timeVal, timeLevel):
         self._thisptr.readStateVars(timeVal, timeLevel)
