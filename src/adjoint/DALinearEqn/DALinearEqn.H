@@ -45,6 +45,9 @@ protected:
     /// Foam::DAOption object
     const DAOption& daOption_;
 
+    /// whether to compute and print the singular values and print to the screen
+    label KSPCalcSingularVal_ = 0;
+
 public:
     /// Constructors
     DALinearEqn(
@@ -79,6 +82,12 @@ public:
 
     /// return the runtime for the adjoint solver
     double getRunTime();
+
+    /// whether to compute and print the singular values and print to the screen
+    label KSPCalcSingularVal()
+    {
+        return KSPCalcSingularVal_;
+    }
 
     /// return printInterval from DAOption
     label getPrintInterval();
