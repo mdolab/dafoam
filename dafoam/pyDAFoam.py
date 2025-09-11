@@ -514,6 +514,7 @@ class DAOPTION(object):
             "dynAdjustTol": False,
             "KSPCalcEigen": 0,
             "KSPCalcSingularVal": 0,
+            "readPCMat": 0,
         }
 
         ## Normalization for residuals. We should normalize all residuals!
