@@ -87,6 +87,16 @@ class DAOPTION(object):
         ##    },
         self.primalBC = {}
 
+        ## A general function to read the initial values from DAOption, and set
+        ## the corresponding values to the initial field.
+        ## Example
+        ## "primalInitCondition":
+        ## {
+        ##     "U": [10.0, 0.0, 0.0],
+        ##     "p": 101325.0
+        ## }
+        self.primalInitCondition = {}
+
         ## State normalization for dRdWT computation. Typically, we set far field value for each state
         ## variable. NOTE: If you forget to set normalization value for a state variable, the adjoint
         ## may not converge or it may be inaccurate! For "phi", use 1.0 to normalization
@@ -502,6 +512,9 @@ class DAOPTION(object):
             "fpMinResTolDiff": 1.0e2,
             "fpPCUpwind": False,
             "dynAdjustTol": False,
+            "KSPCalcEigen": 0,
+            "KSPCalcSingularVal": 0,
+            "readPCMat": 0,
         }
 
         ## Normalization for residuals. We should normalize all residuals!
@@ -682,7 +695,8 @@ class PYDAFOAM(object):
         self.solverInitialized = 0
         self._initSolver()
 
-        # set the primal boundary condition after initializing the solver
+        # set the primal initial and boundary condition after initializing the solver
+        self.setPrimalInitialConditions()
         self.setPrimalBoundaryConditions()
 
         # initialize the number of primal and adjoint calls
@@ -1597,6 +1611,15 @@ class PYDAFOAM(object):
         """
         self.solver.setPrimalBoundaryConditions(printInfo)
         self.solverAD.setPrimalBoundaryConditions(printInfoAD)
+
+    def setPrimalInitialConditions(self, printInfo=1, printInfoAD=0):
+        """
+        Assign the initial condition defined in primalInitCondition to the OF fields
+        """
+        self.solver.setPrimalInitialConditions(printInfo)
+        self.solver.getInitStateVals(printInfo)
+        self.solverAD.setPrimalInitialConditions(printInfoAD)
+        self.solverAD.getInitStateVals(printInfoAD)
 
     def _computeBasicFamilyInfo(self):
         """

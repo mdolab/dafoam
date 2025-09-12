@@ -6,6 +6,7 @@
 \*---------------------------------------------------------------------------*/
 
 #include "DAField.H"
+#include "characteristicBase.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -630,6 +631,66 @@ void DAField::specialBCTreatment()
     // *******************************************************************
 }
 
+void DAField::setPrimalInitialConditions(const label printInfo)
+{
+    /*
+    Description:
+        A general function to read the initial values from DAOption, and set
+        the corresponding values to the initial field.
+        Example
+        "primalInitCondition":
+        {
+            "U": [10.0, 0.0, 0.0],
+            "p": 101325.0 
+        }
+    */
+
+    const objectRegistry& db = mesh_.thisDb();
+
+    const dictionary& allOptions = daOption_.getAllOptions();
+    dictionary initDict = allOptions.subDict("primalInitCondition");
+
+    forAll(initDict.toc(), idxI)
+    {
+        word fieldName = initDict.toc()[idxI];
+        if (db.foundObject<volScalarField>(fieldName))
+        {
+
+            volScalarField& field = db.lookupObjectRef<volScalarField>(fieldName);
+            scalar initValue = initDict.getScalar(fieldName);
+            if (printInfo)
+            {
+                Info << "Setting initial condition for " << fieldName << ". InitVal: " << initValue << endl;
+            }
+            forAll(field, cellI)
+            {
+                field[cellI] = initValue;
+            }
+        }
+        else if (db.foundObject<volVectorField>(fieldName))
+        {
+            volVectorField& field = db.lookupObjectRef<volVectorField>(fieldName);
+            scalarList initValue;
+            initDict.readEntry<scalarList>(fieldName, initValue);
+            if (printInfo)
+            {
+                Info << "Setting initial condition for " << fieldName << ". InitVal: " << initValue << endl;
+            }
+            forAll(field, cellI)
+            {
+                field[cellI][0] = initValue[0];
+                field[cellI][1] = initValue[1];
+                field[cellI][2] = initValue[2];
+            }
+        }
+        else
+        {
+            FatalErrorIn("setPrimalInitialConditions") << "initial field " << fieldName << " not found!"
+                                                       << abort(FatalError);
+        }
+    }
+}
+
 void DAField::setPrimalBoundaryConditions(const label printInfo)
 {
     /*
@@ -816,10 +877,36 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                             grad[idxI] = value[0];
                         }
                     }
+                    else if (state.boundaryFieldRef()[patchI].type() == "characteristicFarfieldPressure")
+                    {
+                        // set value
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI] = value[0];
+                        }
+                        // set pRef
+                        characteristicBase& stateBase =
+                            refCast<characteristicBase>(state.boundaryFieldRef()[patchI]);
+                        stateBase.pRef() = value[0];
+                    }
+                    else if (state.boundaryFieldRef()[patchI].type() == "characteristicFarfieldTemperature")
+                    {
+                        // set value
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI] = value[0];
+                        }
+                        // set TRef
+                        characteristicBase& stateBase =
+                            refCast<characteristicBase>(state.boundaryFieldRef()[patchI]);
+                        stateBase.TRef() = value[0];
+                    }
                     else
                     {
                         FatalErrorIn("") << "only support fixedValues, inletOutlet, "
-                                         << "outletInlet, fixedGradient!" << abort(FatalError);
+                                         << "outletInlet, fixedGradient, "
+                                         << "characteristicFarfieldPressure, and characteristicFarfieldTemperature!"
+                                         << abort(FatalError);
                     }
                 }
             }
@@ -870,6 +957,18 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                             refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
                         inletOutletPatch.refValue() = valVec;
                     }
+                    else if (state.boundaryFieldRef()[patchI].type() == "characteristicFarfieldVelocity")
+                    {
+                        // set value
+                        forAll(state.boundaryFieldRef()[patchI], faceI)
+                        {
+                            state.boundaryFieldRef()[patchI][faceI] = valVec;
+                        }
+                        // set URef
+                        characteristicBase& stateBase =
+                            refCast<characteristicBase>(state.boundaryFieldRef()[patchI]);
+                        stateBase.URef() = valVec;
+                    }
                     else if (state.boundaryFieldRef()[patchI].type() == "fixedGradient")
                     {
                         fixedGradientFvPatchField<vector>& patchBC =
@@ -885,7 +984,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     else
                     {
                         FatalErrorIn("") << "only support fixedValues, inletOutlet, "
-                                         << "fixedGradient, and tractionDisplacement!"
+                                         << "fixedGradient, tractionDisplacement, "
+                                         << "characteristicFarfieldVelocity!"
                                          << abort(FatalError);
                     }
                 }
