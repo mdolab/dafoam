@@ -3474,6 +3474,11 @@ void DASolver::getInitStateVals(const label printInfo)
         Get the initial state values from the field's average value
     */
 
+    if (stateInfo_.size() < 1)
+    {
+        return;
+    }
+
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         const word stateName = stateInfo_["volVectorStates"][idxI];
