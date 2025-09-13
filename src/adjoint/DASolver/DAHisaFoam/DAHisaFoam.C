@@ -177,14 +177,6 @@ label DAHisaFoam::solvePrimal()
                 break;
             }
         }
-        if (steadyState && !notFinished)
-        {
-            runTime.writeAndEnd();
-        }
-        else
-        {
-            runTime.write();
-        }
 
         // calculate all functions
         this->calcAllFunctions(printToScreen_);
@@ -193,7 +185,20 @@ label DAHisaFoam::solvePrimal()
 
         // print run time
         this->printElapsedTime(runTime, printToScreen_);
+
+        if (steadyState && !notFinished)
+        {
+            runTime.writeNow();
+            break;
+        }
+        else
+        {
+            runTime.write();
+        }
     }
+
+    // write the mesh to files
+    meshPtr_->write();
 
     primalFinalTimeIndex_ = runTime.timeIndex();
 
