@@ -55,8 +55,13 @@ DAResidualHisaFoam::DAResidualHisaFoam(
         Info << "Cp " << Cp_ << endl;
     }
 
-    usePCFlux_ = daOption.getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("hisaUsePCFlux", 1);
+    usePCFlux_ = daOption.getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("hisaPCFlux", 1);
+    forceJSTFlux_ = daOption.getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("hisaForceJSTFlux", 0);
     removeTauMCOff_ = daOption.getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("hisaRemoveTauMCOff", 1);
+
+    const IOdictionary& fvSchemes = mesh_.thisDb().lookupObject<IOdictionary>("fvSchemes");
+    jst_k2_ = fvSchemes.lookupOrDefault<scalar>("jst_k2", 0.5);
+    jst_k4_ = fvSchemes.lookupOrDefault<scalar>("jst_k4", 0.02);
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -91,14 +96,27 @@ void DAResidualHisaFoam::calcResiduals(const dictionary& options)
 
     label isPC = options.getLabel("isPC");
 
-    if (isPC && usePCFlux_)
+    // forceJSTFlux_: force to use JST flux for the adjoint residual
+    // the adjoint for AUSM flux does not converge well, so to bypass this issue
+    // we can still use AUSM for primal, but the flux in the residuals will always be JST
+    // this will obviously downgrade the adjoint accuracy, but it will allow the adjoint
+    // to converge at least
+    if (forceJSTFlux_)
     {
-        // force to use the first order FluxLaxFriedrichs scheme for PC mat
-        this->calcFluxLaxFriedrichs(phi_, phiUp_, phiEp_, Up_);
+        // no matter what scheme is defined in fvSchemes, always use JST flux
+        this->calcFluxJST(phi_, phiUp_, phiEp_, Up_);
     }
     else
     {
-        fluxScheme_.calcFlux(phi_, phiUp_, phiEp_, Up_);
+        if (isPC && usePCFlux_)
+        {
+            // force to use the first order FluxLaxFriedrichs scheme for PC mat
+            this->calcFluxLaxFriedrichs(phi_, phiUp_, phiEp_, Up_);
+        }
+        else
+        {
+            fluxScheme_.calcFlux(phi_, phiUp_, phiEp_, Up_);
+        }
     }
 
     pRes_ = -fvc::div(phi_);
@@ -177,6 +195,91 @@ void DAResidualHisaFoam::calcFluxLaxFriedrichs(
     phi -= 0.5 * lambdaConv() * fv::orthogonalSnGrad<scalar>(mesh).snGrad(rho_) * mesh.magSf();
     phiUp -= 0.5 * lambdaConv() * fv::orthogonalSnGrad<vector>(mesh).snGrad(rhoU_) * mesh.magSf();
     phiEp -= 0.5 * lambdaConv() * fv::orthogonalSnGrad<scalar>(mesh).snGrad(rhoE_) * mesh.magSf();
+
+    // Face velocity for sigmaDotU (turbulence term)
+    Up = linearInterpolate(U_) * mesh_.magSf();
+}
+
+void DAResidualHisaFoam::calcFluxJST(
+    surfaceScalarField& phi,
+    surfaceVectorField& phiUp,
+    surfaceScalarField& phiEp,
+    surfaceVectorField& Up)
+{
+    // calculate the flux using the JST scheme
+
+    const volScalarField& p = thermo_.p();
+    const fvMesh& mesh = mesh_;
+
+    // add the central term
+    phi = linearInterpolate(rhoU_) & mesh.Sf();
+    phiUp = linearInterpolate(rhoU_ * U_ + p * tensor::I) & mesh.Sf();
+    phiEp = linearInterpolate((rhoE_ + p) * U_) & mesh.Sf();
+
+    // force to use oriented fluxes with signs
+    phi.setOriented();
+    phiUp.setOriented();
+    phiEp.setOriented();
+
+    // local spectral radius at faces  c + |U| * n
+    volScalarField c(sqrt(thermo_.gamma() / thermo_.psi()));
+    surfaceScalarField specR = (fvc::interpolate(c) + mag(fvc::interpolate(U_) & mesh_.Sf() / mesh_.magSf()));
+    // specR should have no signs
+    specR.setOriented(false);
+
+    // shock sensor field: it can be pressure or entropy
+    volScalarField sField("sField", p);
+    // calculate the sensor = |s_N - s_P | / |s_N + s_P + eps| we use the first order difference
+    dimensionedScalar smallS(
+        "smallS",
+        sField.dimensions(),
+        1e-16);
+    // |s_N - s_P |
+    surfaceScalarField sDiff = mag(fv::orthogonalSnGrad<scalar>(mesh).snGrad(sField)) / mesh.deltaCoeffs();
+    // |s_N + s_P |
+    surfaceScalarField sSum = 2.0 * linearInterpolate(sField);
+    surfaceScalarField sensor = sDiff / (sSum + smallS);
+    sensor.setOriented(false);
+    // bound it between 0 and 1
+    sensor = min(max(sensor, scalar(0)), scalar(1));
+
+    // JST artificial dissipation coefficients
+    surfaceScalarField eps2 = jst_k2_ * sensor;
+    eps2.setOriented(false);
+    surfaceScalarField eps4 = max(scalar(0.0), jst_k4_ - eps2);
+    eps4.setOriented(false);
+
+    // dPhi = snGrad * d. we have to force to use the ortho snGrad without any corrections
+    surfaceScalarField dRho = fv::orthogonalSnGrad<scalar>(mesh).snGrad(rho_) / mesh.deltaCoeffs();
+    surfaceVectorField dRhoU = fv::orthogonalSnGrad<vector>(mesh).snGrad(rhoU_) / mesh.deltaCoeffs();
+    surfaceScalarField dRhoE = fv::orthogonalSnGrad<scalar>(mesh).snGrad(rhoE_) / mesh.deltaCoeffs();
+    dRho.setOriented();
+    dRhoU.setOriented();
+    dRhoE.setOriented();
+
+    // sum over all face to get d2Rho_dx for each cell
+    // NOTE: the fvc::div operator sums over all the face (without multiplying the area) and then divide it by the volume
+    // So we have to manually multiply the surface area
+    volScalarField d2Rho_dx = fvc::div(dRho * mesh.magSf());
+    volVectorField d2RhoU_dx = fvc::div(dRhoU * mesh.magSf());
+    volScalarField d2RhoE_dx = fvc::div(dRhoE * mesh.magSf());
+
+    // apply the snGrad on the d2Rho_dx to get 3rd order differences
+    // Note we have to do two mesh.deltaCoeffs() here because the first one is for snGrad and the 2nd one
+    // is for d2Rho_dx (we want difference d2Rho, not d2Rho/dx). This makes sure the unit for d3Rho is the same as rho
+    surfaceScalarField d3Rho = fv::orthogonalSnGrad<scalar>(mesh).snGrad(d2Rho_dx) / mesh.deltaCoeffs() / mesh.deltaCoeffs();
+    surfaceVectorField d3RhoU = fv::orthogonalSnGrad<vector>(mesh).snGrad(d2RhoU_dx) / mesh.deltaCoeffs() / mesh.deltaCoeffs();
+    surfaceScalarField d3RhoE = fv::orthogonalSnGrad<scalar>(mesh).snGrad(d2RhoE_dx) / mesh.deltaCoeffs() / mesh.deltaCoeffs();
+    d3Rho.setOriented();
+    d3RhoU.setOriented();
+    d3RhoE.setOriented();
+
+    // add the artificial fluxes:
+    // Note when integrating the dRho fluxes over the control volume, we get d2Rho/dx2 (2nd order dissipation)
+    // same applies to d3Rho, integrating it will get d4Rho/dx4 (fourth order dissipation)
+    phi -= (eps2 * dRho - eps4 * d3Rho) * mesh.magSf() * specR;
+    phiUp -= (eps2 * dRhoU - eps4 * d3RhoU) * mesh.magSf() * specR;
+    phiEp -= (eps2 * dRhoE - eps4 * d3RhoE) * mesh.magSf() * specR;
 
     // Face velocity for sigmaDotU (turbulence term)
     Up = linearInterpolate(U_) * mesh_.magSf();

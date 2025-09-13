@@ -77,6 +77,9 @@ protected:
 
     label usePCFlux_ = 1;
     label removeTauMCOff_ = 1;
+    label forceJSTFlux_ = 1;
+    scalar jst_k2_;
+    scalar jst_k4_;
 
 public:
     TypeName("DAHisaFoam");
@@ -114,6 +117,12 @@ public:
 
     /// calculate the flux using laxFriedrichs scheme for PC mat
     void calcFluxLaxFriedrichs(
+        surfaceScalarField& phi,
+        surfaceVectorField& phiUp,
+        surfaceScalarField& phiEp,
+        surfaceVectorField& Up);
+
+    void calcFluxJST(
         surfaceScalarField& phi,
         surfaceVectorField& phiUp,
         surfaceScalarField& phiEp,
