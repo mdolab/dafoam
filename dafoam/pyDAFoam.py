@@ -584,13 +584,6 @@ class DAOPTION(object):
             "maxIncorrectlyOrientedFaces": 0,
         }
 
-        ## The sensitivity map will be saved to disk during optimization for the given design variable
-        ## names in the list. Currently only support design variable type FFD and Field
-        ## NOTE: this function only supports useAD->mode:reverse
-        ## Example:
-        ##     "writeSensMap" : ["shapex", "shapey"]
-        self.writeSensMap = ["NONE"]
-
         ## Whether to write deformed FFDs to the disk during optimization, i.e., DVGeo.writeTecplot
         self.writeDeformedFFDs = False
 
@@ -827,10 +820,6 @@ class PYDAFOAM(object):
 
         if not self.getOption("useAD")["mode"] in ["reverse", "forward"]:
             raise Error("useAD->mode only supports reverse, or forward!")
-
-        if "NONE" not in self.getOption("writeSensMap"):
-            if not self.getOption("useAD")["mode"] in ["reverse"]:
-                raise Error("writeSensMap is only compatible with useAD->mode=reverse")
 
         if self.getOption("adjEqnSolMethod") == "fixedPoint":
             # for the fixed-point adjoint, we should not normalize the states and residuals

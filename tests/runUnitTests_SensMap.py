@@ -18,9 +18,12 @@ import pyofm
 
 gcomm = MPI.COMM_WORLD
 
+# force the optimizer to print all elements for the numpy arrays
+np.set_printoptions(threshold=100000000)
+
 os.chdir("./reg_test_files-main/ConvergentChannel")
 if gcomm.rank == 0:
-    os.system("rm -rf 0/* 0.00* *.bin")
+    os.system("rm -rf 0/* 0.00* *.bin processor*")
     os.system("cp -r 0.incompressible/* 0/")
     os.system("cp -r system.incompressible/* system/")
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
@@ -120,9 +123,17 @@ class Top(Multipoint):
         # add the shape dv
         nShapes = self.geometry.nom_addLocalDV(dvName="shape")
 
+        # Design variable values. For the baseline design, they
+        # are all zeros. If you need to plot the sensMap for an
+        # intermediate design during optimization, you can record
+        # the design variable for that opt iteration and manually
+        # assign the design variable here.
+        shape0 = np.zeros(nShapes)
+        alpha0 = np.zeros(nCells)
+
         # add the design variables to the dvs component's output
-        self.dvs.add_output("shape", val=np.zeros(nShapes))
-        self.dvs.add_output("alpha", val=np.zeros(nCells))
+        self.dvs.add_output("shape", val=shape0)
+        self.dvs.add_output("alpha", val=alpha0)
         # manually connect the dvs output to the geometry and cruise
         self.connect("shape", "geometry.shape")
         self.connect("alpha", "cruise.alpha")
@@ -143,32 +154,51 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
 # optFuncs = OptFuncs(daOptions, prob)
 
-# verify the total derivatives against the finite-difference
+# compute the totals of the obj wrt the surface coordinates x_aero0
+# and a field variable alpha.
 prob.run_model()
 results = prob.compute_totals(
     of=["cruise.aero_post.CD"],
     wrt=["geometry.x_aero0", "dvs.alpha"],
     get_remote=True,
 )
+# extract the sensitivity
 totalsXs = results[("cruise.aero_post.CD", "geometry.x_aero0")][0]
 totalsAlpha = results[("cruise.aero_post.CD", "dvs.alpha")][0]
 
+# plot the sens map for the surface coordinates
+# first get the size of the surface
 DASolver = prob.model.cruise.coupling.solver.DASolver
 Xs = DASolver.getSurfaceCoordinates(DASolver.designSurfacesGroup).flatten()
-sizeXs = len(Xs)
-DASolver.solver.writeSensMapSurface("dCD_dXs", totalsXs, Xs, sizeXs, 0.0001)
-DASolver.solver.writeSensMapField("dCD_dAlpha", totalsAlpha, "scalar", 0.0001)
+localSize = len(Xs)
+# the totalXs is in global format, so we need to assign totalXs to each
+# processor, if running in parallel
+offset = gcomm.exscan(localSize)
+if gcomm.rank == 0:
+    offset = 0
+totalsLocal = np.zeros(localSize)
+iStart = offset
+iEnd = offset + localSize
+for globalI in range(iStart, iEnd):
+    localI = globalI - iStart
+    totalsLocal[localI] = totalsXs[globalI]
+# call the writeSensMap API. Note here totalsLocal should be the sens owned by each proc
+# the 0.0001 is the folder to write the sens
+DASolver.solver.writeSensMapSurface("dCD_dXs", totalsLocal, Xs, localSize, 0.0001)
 
-# NOTE: sens map does not work in parallel yet...
-# offset = gcomm.exscan(localSize)
-# if gcomm.rank == 0:
-#     offset = 0
-#
-# totalsLocal = np.zeros(localSize)
-# iStart = offset
-# iEnd = offset + localSize
-# for globalI in range(iStart, iEnd):
-#     localI = globalI - iStart
-#     totalsLocal[localI] = totalsGlobal[globalI]
-
-# DASolver.solver.writeSensMapSurface("dCD_dXs", totalsLocal, Xs, localSize, 9999.0)
+# plot the sens map for the alpha field
+localSize = prob.model.cruise.coupling.solver.DASolver.solver.getNLocalCells()
+# the totalXs is in global format, so we need to assign totalXs to each
+# processor, if running in parallel
+offset = gcomm.exscan(localSize)
+if gcomm.rank == 0:
+    offset = 0
+totalsLocal = np.zeros(localSize)
+iStart = offset
+iEnd = offset + localSize
+for globalI in range(iStart, iEnd):
+    localI = globalI - iStart
+    totalsLocal[localI] = totalsAlpha[globalI]
+# call the writeSensMap API. Note here totalsLocal should be the sens owned by each proc
+# the 0.0001 is the folder to write the sens
+DASolver.solver.writeSensMapField("dCD_dAlpha", totalsLocal, "scalar", 0.0001)
