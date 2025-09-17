@@ -97,6 +97,7 @@ void DAInputField::run(const scalarList& input)
         }
         else
         {
+            label cSize = indices_.size();
             for (label globalCellI = 0; globalCellI < daIndex_.nGlobalCells; globalCellI++)
             {
                 if (daIndex_.globalCellNumbering.isLocal(globalCellI))
@@ -105,7 +106,7 @@ void DAInputField::run(const scalarList& input)
                     forAll(indices_, idxI)
                     {
                         label comp = indices_[idxI];
-                        label inputIdx = globalCellI * 3 + comp;
+                        label inputIdx = globalCellI * cSize + comp;
                         field[localCellI][comp] = input[inputIdx];
                     }
                 }
