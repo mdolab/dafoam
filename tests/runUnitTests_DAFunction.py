@@ -213,6 +213,15 @@ daOptions = {
             "timeDependentRefData": False,
             "timeOp": "average",
         },
+        "ResNorm1": {
+            "type": "residualNorm",
+            "source": "allCells",
+            "resMode": "L1Norm",
+            "scale": 1.0,
+            "resWeight": {"URes": 1.0, "pRes": 1.0, "phiRes": 10.0, "TRes": 1.0, "nuTildaRes": 1.0},
+            "timeDependentRefData": False,
+            "timeOp": "average",
+        },
     },
 }
 
@@ -246,7 +255,8 @@ funcs_ref = {
     "PVar": 2.476982282327677,
     "PProbe": 3.6866882754983203,
     "UOutVar": 0.5085431532392312,
-    "ResNorm": 0.5124351660034533,
+    "ResNorm": 5.638190253290434,
+    "ResNorm1": 1255.3018729729918,
 }
 
 fail = 0

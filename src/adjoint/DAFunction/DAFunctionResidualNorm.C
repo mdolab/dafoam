@@ -42,7 +42,10 @@ DAFunctionResidualNorm::DAFunctionResidualNorm(
         scalar weight = resWeightDict.getScalar(resName);
         resWeight_.set(resName, weight);
     }
+
+    resMode_ = daOption.getAllOptions().subDict("function").subDict(functionName).lookupOrDefault<word>("resMode", "L2Norm");
     Info << "residual weights for DAFunctionResidualNorm " << resWeight_;
+    Info << "residual mode " << resMode_;
 }
 
 /// calculate the value of objective function
@@ -76,7 +79,19 @@ scalar DAFunctionResidualNorm::calcFunction()
         {
             for (label i = 0; i < 3; i++)
             {
-                functionValue += weight2 * stateRes[cellI][i] * stateRes[cellI][i];
+                if (resMode_ == "L2Norm")
+                {
+                    functionValue += weight2 * stateRes[cellI][i] * stateRes[cellI][i];
+                }
+                else if (resMode_ == "L1Norm")
+                {
+                    functionValue += sqrt(weight2 * stateRes[cellI][i] * stateRes[cellI][i]);
+                }
+                else
+                {
+                    FatalErrorIn(" ") << "resMode not supported! options are L2Norm or L2Norm "
+                                      << abort(FatalError);
+                }
             }
         }
     }
@@ -90,7 +105,14 @@ scalar DAFunctionResidualNorm::calcFunction()
 
         forAll(stateRes, cellI)
         {
-            functionValue += weight2 * stateRes[cellI] * stateRes[cellI];
+            if (resMode_ == "L2Norm")
+            {
+                functionValue += weight2 * stateRes[cellI] * stateRes[cellI];
+            }
+            else if (resMode_ == "L1Norm")
+            {
+                functionValue += sqrt(weight2 * stateRes[cellI] * stateRes[cellI]);
+            }
         }
     }
 
@@ -103,7 +125,14 @@ scalar DAFunctionResidualNorm::calcFunction()
 
         forAll(stateRes, cellI)
         {
-            functionValue += weight2 * stateRes[cellI] * stateRes[cellI];
+            if (resMode_ == "L2Norm")
+            {
+                functionValue += weight2 * stateRes[cellI] * stateRes[cellI];
+            }
+            else if (resMode_ == "L1Norm")
+            {
+                functionValue += sqrt(weight2 * stateRes[cellI] * stateRes[cellI]);
+            }
         }
     }
 
@@ -123,7 +152,14 @@ scalar DAFunctionResidualNorm::calcFunction()
             forAll(stateRes.boundaryField()[patchI], faceI)
             {
                 scalar bPhiRes = stateRes.boundaryField()[patchI][faceI];
-                functionValue += weight2 * bPhiRes * bPhiRes;
+                if (resMode_ == "L2Norm")
+                {
+                    functionValue += weight2 * bPhiRes * bPhiRes;
+                }
+                else if (resMode_ == "L1Norm")
+                {
+                    functionValue += sqrt(weight2 * bPhiRes * bPhiRes);
+                }
             }
         }
     }
@@ -131,7 +167,10 @@ scalar DAFunctionResidualNorm::calcFunction()
     // need to reduce the sum of force across all processors
     reduce(functionValue, sumOp<scalar>());
 
-    functionValue /= daIndex_.nGlobalAdjointStates;
+    if (resMode_ == "L2Norm")
+    {
+        functionValue = sqrt(functionValue);
+    }
 
     // check if we need to calculate refDiff.
     this->calcRefVar(functionValue);

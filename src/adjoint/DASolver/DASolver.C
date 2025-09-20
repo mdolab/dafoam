@@ -634,6 +634,8 @@ void DASolver::calcPrimalResidualStatistics(
 
     this->calcResiduals();
 
+    scalar totalResNorm2 = 0.0;
+
     forAll(stateInfo_["volVectorStates"], idxI)
     {
         const word stateName = stateInfo_["volVectorStates"][idxI];
@@ -669,6 +671,7 @@ void DASolver::calcPrimalResidualStatistics(
         vecResMean = vecResMean / Pstream::nProcs();
         reduce(vecResNorm2, sumOp<vector>());
         reduce(vecResMax, maxOp<vector>());
+        totalResNorm2 += vecResNorm2.x() + vecResNorm2.y() + vecResNorm2.z();
         vecResNorm2.x() = pow(vecResNorm2.x(), 0.5);
         vecResNorm2.y() = pow(vecResNorm2.y(), 0.5);
         vecResNorm2.z() = pow(vecResNorm2.z(), 0.5);
@@ -704,6 +707,7 @@ void DASolver::calcPrimalResidualStatistics(
         scalarResMean = scalarResMean / Pstream::nProcs();
         reduce(scalarResNorm2, sumOp<scalar>());
         reduce(scalarResMax, maxOp<scalar>());
+        totalResNorm2 += scalarResNorm2;
         scalarResNorm2 = pow(scalarResNorm2, 0.5);
         if (mode == "print")
         {
@@ -737,6 +741,7 @@ void DASolver::calcPrimalResidualStatistics(
         scalarResMean = scalarResMean / Pstream::nProcs();
         reduce(scalarResNorm2, sumOp<scalar>());
         reduce(scalarResMax, maxOp<scalar>());
+        totalResNorm2 += scalarResNorm2;
         scalarResNorm2 = pow(scalarResNorm2, 0.5);
         if (mode == "print")
         {
@@ -781,6 +786,7 @@ void DASolver::calcPrimalResidualStatistics(
         phiResMean = phiResMean / Pstream::nProcs();
         reduce(phiResNorm2, sumOp<scalar>());
         reduce(phiResMax, maxOp<scalar>());
+        totalResNorm2 += phiResNorm2;
         phiResNorm2 = pow(phiResNorm2, 0.5);
         if (mode == "print")
         {
@@ -793,6 +799,12 @@ void DASolver::calcPrimalResidualStatistics(
         {
             stateRes.write();
         }
+    }
+
+    totalResNorm2 = pow(totalResNorm2, 0.5);
+    if (mode == "print")
+    {
+        Info << "Total Residual Norm2: " << totalResNorm2 << endl;
     }
 
     Info << " " << endl;
