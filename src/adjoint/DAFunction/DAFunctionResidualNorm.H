@@ -35,6 +35,8 @@ protected:
     /// the stateInfo_ list from DAStateInfo object
     HashTable<wordList> stateInfo_;
 
+    word resMode_ = "L2Norm";
+
 public:
     TypeName("residualNorm");
     // Constructors
