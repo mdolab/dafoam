@@ -407,7 +407,7 @@ class DAOPTION(object):
         self.useConstrainHbyA = True
 
         ## force to use meshWaveFrozen in fvSchemes->wallDist->method, regardless what is actually
-        ## set in fvSchemes. meshWaveFrozen improves the parallel adjoint accuracy. 
+        ## set in fvSchemes. meshWaveFrozen improves the parallel adjoint accuracy.
         self.forceMeshWaveFrozen = True
 
         ## whether to use the ddtCorr term for unsteady solvers. We notice that adding this term
