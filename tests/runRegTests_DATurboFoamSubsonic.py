@@ -28,7 +28,7 @@ if gcomm.rank == 0:
     os.system("cp -r system/fvSolution.subsonic system/fvSolution")
     os.system("cp -r system/fvSchemes.subsonic system/fvSchemes")
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
-    replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
+    # replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 daOptions = {
     "designSurfaces": ["blade"],

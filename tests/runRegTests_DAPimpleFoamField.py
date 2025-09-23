@@ -23,7 +23,7 @@ if gcomm.rank == 0:
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
     os.system("cp -r 0.incompressible/* 0/")
     os.system("cp -r system.incompressible.unsteady/* system/")
-    replace_text_in_file("system/fvSchemes", "meshWaveFrozen;", "meshWave;")
+    # replace_text_in_file("system/fvSchemes", "meshWaveFrozen;", "meshWave;")
 
 # aero setup
 U0 = 10.0
