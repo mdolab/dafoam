@@ -772,6 +772,9 @@ public:
         const word function,
         const double writeTime,
         const double* psi);
+    
+    /// force to use meshWaveFrozen for wallDist->method, regardless what is actually set in fvSchemes
+    void forceMeshWaveFrozen();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
