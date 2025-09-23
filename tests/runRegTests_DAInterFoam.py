@@ -21,7 +21,7 @@ gcomm = MPI.COMM_WORLD
 os.chdir("./reg_test_files-main/DamBreak")
 if gcomm.rank == 0:
     os.system("rm -rf processor* *.bin")
-    replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
+    # replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
     replace_text_in_file("system/controlDict", "endTime         0.2;", "endTime         0.04;")
     replace_text_in_file("system/controlDict", "deltaT          0.01;", "deltaT          0.004;")
 

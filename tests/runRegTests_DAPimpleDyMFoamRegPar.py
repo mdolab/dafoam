@@ -22,13 +22,13 @@ if gcomm.rank == 0:
     os.system("rm -rf processor* *.bin")
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
     replace_text_in_file("constant/turbulenceProperties", "SpalartAllmaras;", "kOmegaSST;")
-    replace_text_in_file("system/fvSchemes", "meshWaveFrozen;", "meshWave;")
+    # replace_text_in_file("system/fvSchemes", "meshWaveFrozen;", "meshWave;")
     os.system("pimpleFoam")
     os.system("getFIData -refFieldName U -refFieldType vector")
     # os.system("decomposePar -time '0:'")
     replace_text_in_file("constant/turbulenceProperties", "kOmegaSST;", "SpalartAllmaras;")
     # os.system("rm -rf 0.0* 0.1")
-    replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
+    # replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 gcomm.Barrier()
 

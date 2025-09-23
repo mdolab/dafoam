@@ -23,7 +23,7 @@ if gcomm.rank == 0:
     os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
     os.system("cp -r 0.incompressible/* 0/")
     os.system("cp -r system.incompressible.unsteady/* system/")
-    replace_text_in_file("system/fvSchemes", "meshWaveFrozen;", "meshWave;")
+    # replace_text_in_file("system/fvSchemes", "meshWaveFrozen;", "meshWave;")
     os.system("pimpleFoam")
     os.system("getFIData -refFieldName U -refFieldType vector")
     os.system("getFIData -refFieldName p -refFieldType scalar")
@@ -32,7 +32,7 @@ if gcomm.rank == 0:
     # os.system("decomposePar -time '0:'")
     os.system("cp constant/turbulenceProperties.sst constant/turbulenceProperties")
     # os.system("rm -rf 0.0* 0.1")
-    replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
+    # replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
 
 # aero setup
 U0 = 10.0

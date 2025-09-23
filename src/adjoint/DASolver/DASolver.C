@@ -58,11 +58,15 @@ DASolver::DASolver(
     // initialize fvMesh and Time object pointer
 #include "setArgs.H"
 #include "setRootCasePython.H"
+
+    Info << "Initializing mesh and runtime for DASolver" << endl;
 #include "createTimePython.H"
 #include "createMeshPython.H"
-    Info << "Initializing mesh and runtime for DASolver" << endl;
 
     daOptionPtr_.reset(new DAOption(meshPtr_(), pyOptions_));
+
+    // force to use meshWaveFrozen for wallDist->method, regardless what is actually set in fvSchemes
+    this->forceMeshWaveFrozen();
 
     // if the dynamic mesh is used, set moving to true here
     dictionary allOptions = daOptionPtr_->getAllOptions();
@@ -4273,6 +4277,57 @@ void DASolver::updateInputFieldUnsteady()
             FatalErrorIn("") << "fieldType not valid" << exit(FatalError);
         }
     }
+}
+
+void DASolver::forceMeshWaveFrozen()
+{
+    /*
+    Description:
+        replace meshWave with meshWaveFrozen for wallDist->method, regardless what is actually set in fvSchemes
+    */
+
+    label forceMeshWaveFrozen = daOptionPtr_->getAllOptions().getLabel("forceMeshWaveFrozen");
+
+    if (!forceMeshWaveFrozen)
+    {
+        return;
+    }
+
+    // Get fvSchemes dictionary from the object registry
+    IOdictionary& fvSchemes =
+        const_cast<IOdictionary&>(
+            meshPtr_->lookupObject<IOdictionary>("fvSchemes"));
+
+    // Prepare a working copy of the wallDist subdict (or a fresh one)
+    dictionary wallDistDict;
+    if (fvSchemes.found("wallDist"))
+    {
+        wallDistDict = fvSchemes.subDict("wallDist");
+    }
+
+    // Read current method (default empty)
+    word method("meshWave");
+    if (wallDistDict.found("method"))
+    {
+        method = word(wallDistDict.lookup("method"));
+    }
+
+    // If user asked for meshWave, silently upgrade to meshWaveFrozen
+    if (method == "meshWave")
+    {
+        Info << "Replacing wallDist.method meshWave -> meshWaveFrozen" << nl;
+        wallDistDict.set("method", word("meshWaveFrozen"));
+        // write back to fvSchemes in-memory dictionary
+        if (fvSchemes.found("wallDist"))
+        {
+            fvSchemes.set("wallDist", wallDistDict);
+        }
+        else
+        {
+            fvSchemes.add("wallDist", wallDistDict);
+        }
+    }
+    // else: leave meshWaveFrozen or any other method untouched
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
