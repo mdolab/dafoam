@@ -55,6 +55,9 @@ protected:
     /// name of the regression models
     wordList modelNames_;
 
+    /// an internal time index for time-dependent features
+    HashTable<labelList> inputTimeIndexInternal_;
+
     /// the type of regression model
     HashTable<word> modelType_;
 
@@ -175,6 +178,15 @@ public:
 
     /// check if the output values are valid otherwise bound or fix them
     label checkOutput(word modelName, volScalarField& outputField);
+
+    /// return the inputName index
+    label findInputNameIndex(word modelName, word inputName);
+
+    /// calculate the time derivatives for features
+    void calcFeatureTimeDeriv(word modelName, word inputName);
+
+    /// set oldTime for features and get ready for feature time derivatives
+    void setFeatureOldTime(word modelName, word inputName);
 
     /// print the input
     void printInputInfo(const label printToScreen)

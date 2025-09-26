@@ -60,6 +60,9 @@ DARegression::DARegression(
             modelSubDict.readEntry<wordList>("inputNames", tempWordList);
             inputNames_.set(modelName, tempWordList);
 
+            labelList tempIdx(tempWordList.size(), -1);
+            inputTimeIndexInternal_.set(modelName, tempIdx);
+
             outputName_.set(modelName, modelSubDict.getWord("outputName"));
 
             modelSubDict.readEntry<scalarList>("inputShift", tempScalarList);
@@ -174,6 +177,8 @@ void DARegression::calcInputFeatures(word modelName)
     forAll(features_[modelName], idxI)
     {
         word inputName = inputNames_[modelName][idxI];
+        // if time-derivative is defined, set oldTime before updating features
+        this->setFeatureOldTime(modelName, inputName);
         if (inputName == "VoS")
         {
             // vorticity / strain
@@ -330,10 +335,19 @@ void DARegression::calcInputFeatures(word modelName)
             }
             features_[modelName][idxI].correctBoundaryConditions();
         }
+        else if (inputName.find("_dt"))
+        {
+            // if it is a time-deriv features such as PoD_dt, pass
+            // NOTE: we do not directly compute PoD_dt here, instead we
+            // compute PoD_dt when computing PoD by using (PoD-PoD.oldTime)/dt
+            continue;
+        }
         else
         {
-            FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: VoS, PoD, chiSA, pGradStream, PSoSS, SCurv, UOrth, KoU2, ReWall, CoP, TauoK" << abort(FatalError);
+            FatalErrorIn("") << "inputName: " << inputName << " not supported. Options are: VoS, PoD, chiSA, pGradStream, PSoSS, SCurv, UOrth, KoU2, ReWall, CoP, TauoK, and their *_dt derivatives" << abort(FatalError);
         }
+        // if time-derivative is defined, calculate them (U-U_old)/dt here
+        this->calcFeatureTimeDeriv(modelName, inputName);
     }
 }
 
@@ -756,6 +770,66 @@ label DARegression::checkOutput(word modelName, volScalarField& outputField)
     reduce(fail, sumOp<label>());
 
     return fail;
+}
+
+label DARegression::findInputNameIndex(
+    word modelName,
+    word inputName)
+{
+    forAll(inputNames_[modelName], idxI)
+    {
+        word name = inputNames_[modelName][idxI];
+        if (name == inputName)
+        {
+            return idxI;
+        }
+    }
+    FatalErrorIn("findInputNameIndex") << "inputName " << inputName << " not found in " << inputNames_[modelName] << abort(FatalError);
+    return -1;
+}
+
+void DARegression::calcFeatureTimeDeriv(
+    word modelName,
+    word inputName)
+{
+    word inputDerivName = inputName + "_dt";
+    if (!inputNames_[modelName].found(inputDerivName))
+    {
+        return;
+    }
+    // calculate (U - U_old) / deltaT.
+    // NOTE: we use inputDerivIndex for feature time-derivative!
+    scalar deltaT = mesh_.time().deltaT().value();
+    label inputIndex = this->findInputNameIndex(modelName, inputName);
+    label inputDerivIndex = this->findInputNameIndex(modelName, inputDerivName);
+    forAll(features_[modelName][inputDerivIndex], cellI)
+    {
+        // calculate derivative
+        features_[modelName][inputDerivIndex][cellI] = (features_[modelName][inputIndex][cellI] - features_[modelName][inputIndex].oldTime()[cellI]) / deltaT;
+        // normalize it
+        features_[modelName][inputDerivIndex][cellI] = (features_[modelName][inputDerivIndex][cellI] + inputShift_[modelName][inputDerivIndex]) * inputScale_[modelName][inputDerivIndex];
+    }
+    features_[modelName][inputDerivIndex].correctBoundaryConditions();
+}
+
+void DARegression::setFeatureOldTime(
+    word modelName,
+    word inputName)
+{
+    // check if we need to assign oldTime, if any _dt features are defined, e.g., PoD_dt
+    word inputDerivName = inputName + "_dt";
+    if (!inputNames_[modelName].found(inputDerivName))
+    {
+        return;
+    }
+
+    // we assign oldTime only when the time index changes.
+    label inputIndex = this->findInputNameIndex(modelName, inputName);
+    if (mesh_.time().timeIndex() != inputTimeIndexInternal_[modelName][inputIndex])
+    {
+        features_[modelName][inputIndex].oldTime() = features_[modelName][inputIndex];
+        inputTimeIndexInternal_[modelName][inputIndex] = mesh_.time().timeIndex();
+    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
