@@ -29,6 +29,7 @@ if gcomm.rank == 0:
 U0 = 50.0
 p0 = 101325.0
 nuTilda0 = 4.5e-4
+nPatchFaces = 49
 
 daOptions = {
     "designSurfaces": ["walls"],
@@ -102,6 +103,14 @@ daOptions = {
             "patches": ["inlet"],
             "components": ["solver", "function"],
         },
+        "patchPField": {
+            "type": "patchField",
+            "patches": ["outlet"],
+            "fieldName": "p",
+            "fieldType": "scalar",
+            "distributed": False,
+            "components": ["solver", "function"],
+        },
     },
 }
 
@@ -153,15 +162,18 @@ class Top(Multipoint):
         self.dvs.add_output("actuator_disk", val=np.array([0.5, 0.4]))
         self.dvs.add_output("patchV", val=np.array([50.0, 0.0]))
         self.dvs.add_output("nutilda_in", val=np.array([nuTilda0]))
+        self.dvs.add_output("patchPField", val=np.ones(nPatchFaces) * p0)
         # manually connect the dvs output to the geometry and cruise
         self.connect("actuator_disk", "cruise.actuator_disk")
         self.connect("patchV", "cruise.patchV")
         self.connect("nutilda_in", "cruise.nutilda_in")
+        self.connect("patchPField", "cruise.patchPField")
 
         # define the design variables to the top level
         self.add_design_var("actuator_disk", lower=-50.0, upper=50.0, scaler=1.0)
         self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0)
         self.add_design_var("nutilda_in", lower=-50.0, upper=50.0, scaler=1.0)
+        self.add_design_var("patchPField", lower=-1000000.0, upper=1000000.0, scaler=1.0, indices=[20])
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.TP1", scaler=1.0)
@@ -170,8 +182,8 @@ class Top(Multipoint):
 funcDict = {}
 derivDict = {}
 
-dvNames = ["actuator_disk", "patchV", "nutilda_in"]
-dvIndices = [[0, 1], [0, 1], [0]]
+dvNames = ["actuator_disk", "patchV", "nutilda_in", "patchPField"]
+dvIndices = [[0, 1], [0, 1], [0], [20]]
 funcNames = [
     "cruise.aero_post.functionals.TP1",
     "cruise.aero_post.functionals.CMZ",
