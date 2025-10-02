@@ -55,6 +55,7 @@ DAInput/DAInputVolCoord.C
 DAInput/DAInputStateVar.C
 DAInput/DAInputPatchVelocity.C
 DAInput/DAInputPatchVar.C
+DAInput/DAInputPatchField.C
 DAInput/DAInputField.C
 DAInput/DAInputFieldUnsteady.C
 DAInput/DAInputThermalCoupling.C
