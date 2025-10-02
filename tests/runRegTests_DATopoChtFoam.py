@@ -29,6 +29,7 @@ U0 = 10.0
 p0 = 0.0
 nuTilda0 = 4.5e-5
 nCells = 343
+nPatchFaces = 49
 
 daOptions = {
     "solverName": "DATopoChtFoam",
@@ -72,6 +73,15 @@ daOptions = {
             "distributed": False,
             "components": ["solver", "function"],
         },
+        "patchUField": {
+            "type": "patchField",
+            "patches": ["inlet"],
+            "fieldName": "U",
+            "fieldType": "vector",
+            "distributed": False,
+            "indices": [0],
+            "components": ["solver", "function"],
+        },
     },
 }
 
@@ -93,11 +103,14 @@ class Top(Multipoint):
     def configure(self):
 
         self.dvs.add_output("eta", val=np.ones(nCells))
+        self.dvs.add_output("patchUField", val=np.ones(nPatchFaces) * U0)
 
         # manually connect the dvs output to the geometry and cruise
         self.connect("eta", "cruise.eta")
+        self.connect("patchUField", "cruise.patchUField")
         # define the design variables to the top level
         self.add_design_var("eta", lower=0.0, upper=1, scaler=1.0, indices=[0, 150, 300])
+        self.add_design_var("patchUField", lower=-100, upper=100, scaler=1.0, indices=[20])
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
@@ -106,8 +119,8 @@ class Top(Multipoint):
 funcDict = {}
 derivDict = {}
 
-dvNames = ["eta"]
-dvIndices = [[0, 150, 300]]
+dvNames = ["eta", "patchUField"]
+dvIndices = [[0, 150, 300], [20]]
 funcNames = [
     "cruise.aero_post.functionals.CD",
     "cruise.aero_post.functionals.TMean",

@@ -147,8 +147,9 @@ void DAInputPatchField::run(const scalarList& input)
             {
                 forAll(var.boundaryField()[patchI], faceI)
                 {
-                    for (label i = 0; i < 3; i++)
+                    forAll(indices_, j)
                     {
+                        label idxJ = indices_[j];
                         if (this->distributed())
                         {
                             inputIdx = localIdx;
@@ -157,7 +158,7 @@ void DAInputPatchField::run(const scalarList& input)
                         {
                             inputIdx = globalPatchFaceNumbering_.toGlobal(localIdx);
                         }
-                        var.boundaryFieldRef()[patchI][faceI][i] = input[inputIdx];
+                        var.boundaryFieldRef()[patchI][faceI][idxJ] = input[inputIdx];
                         localIdx++;
                     }
                 }
@@ -169,8 +170,9 @@ void DAInputPatchField::run(const scalarList& input)
 
                 forAll(var.boundaryField()[patchI], faceI)
                 {
-                    for (label i = 0; i < 3; i++)
+                    forAll(indices_, j)
                     {
+                        label idxJ = indices_[j];
                         if (this->distributed())
                         {
                             inputIdx = localIdx;
@@ -179,7 +181,7 @@ void DAInputPatchField::run(const scalarList& input)
                         {
                             inputIdx = globalPatchFaceNumbering_.toGlobal(localIdx);
                         }
-                        inletOutletPatch.refValue()[faceI][i] = input[inputIdx];
+                        inletOutletPatch.refValue()[faceI][idxJ] = input[inputIdx];
                         localIdx++;
                     }
                 }
