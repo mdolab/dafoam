@@ -35,6 +35,8 @@ DAFunctionVariance::DAFunctionVariance(
 
     functionDict_.readEntry<word>("mode", mode_);
 
+    useGeoWeight_ = functionDict_.lookupOrDefault<label>("useGeoWeight", 0);
+
     if (mode_ == "surface")
     {
         // check if the faceSources is set
@@ -340,6 +342,8 @@ scalar DAFunctionVariance::calcFunction()
 
     // initialize objFunValue
     scalar functionValue = 0.0;
+    scalar geoWeight = 1.0;
+    scalar geoWeightTotal = 0.0;
 
     if (isRefData_)
     {
@@ -376,9 +380,15 @@ scalar DAFunctionVariance::calcFunction()
 
                 forAll(indices_, idxJ)
                 {
+                    if (useGeoWeight_)
+                    {
+                        geoWeight = mesh_.magSf().boundaryField()[patchI][faceI];
+                        geoWeightTotal += geoWeight;
+                    }
+
                     label compI = indices_[idxJ];
                     scalar varDif = (shearB[faceI][compI] - refValue_[timeIndex - 1][pointI]);
-                    functionValue += scale_ * varDif * varDif;
+                    functionValue += geoWeight * scale_ * varDif * varDif;
                     pointI++;
                 }
             }
@@ -401,10 +411,16 @@ scalar DAFunctionVariance::calcFunction()
                     const label patchI = daIndex_.bFacePatchI[bFaceI];
                     const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
+                    if (useGeoWeight_)
+                    {
+                        geoWeight = mesh_.magSf().boundaryField()[patchI][faceI];
+                        geoWeightTotal += geoWeight;
+                    }
+
                     scalarField hfx = Cp_ * alphaEffBf[patchI] * TBf[patchI].snGrad();
 
                     scalar varDif = (hfx[faceI] - refValue_[timeIndex - 1][pointI]);
-                    functionValue += scale_ * varDif * varDif;
+                    functionValue += geoWeight * scale_ * varDif * varDif;
                     pointI++;
                 }
             }
@@ -427,10 +443,16 @@ scalar DAFunctionVariance::calcFunction()
                     const label patchI = daIndex_.bFacePatchI[bFaceI];
                     const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
+                    if (useGeoWeight_)
+                    {
+                        geoWeight = mesh_.magSf().boundaryField()[patchI][faceI];
+                        geoWeightTotal += geoWeight;
+                    }
+
                     scalarField hfx = alphaEffBf[patchI] * heBf[patchI].snGrad();
 
                     scalar varDif = (hfx[faceI] - refValue_[timeIndex - 1][pointI]);
-                    functionValue += scale_ * varDif * varDif;
+                    functionValue += geoWeight * scale_ * varDif * varDif;
                     pointI++;
                 }
             }
@@ -446,8 +468,15 @@ scalar DAFunctionVariance::calcFunction()
                     forAll(probeCellIndex_, idxI)
                     {
                         label cellI = probeCellIndex_[idxI];
+
+                        if (useGeoWeight_)
+                        {
+                            geoWeight = mesh_.V()[cellI];
+                            geoWeightTotal += geoWeight;
+                        }
+
                         scalar varDif = (var[cellI] - refValue_[timeIndex - 1][idxI]);
-                        functionValue += scale_ * varDif * varDif;
+                        functionValue += geoWeight * scale_ * varDif * varDif;
                     }
                 }
                 else if (mode_ == "surface")
@@ -459,8 +488,15 @@ scalar DAFunctionVariance::calcFunction()
                         label bFaceI = functionFaceI - daIndex_.nLocalInternalFaces;
                         const label patchI = daIndex_.bFacePatchI[bFaceI];
                         const label faceI = daIndex_.bFaceFaceI[bFaceI];
+
+                        if (useGeoWeight_)
+                        {
+                            geoWeight = mesh_.magSf().boundaryField()[patchI][faceI];
+                            geoWeightTotal += geoWeight;
+                        }
+
                         scalar varDif = (var.boundaryField()[patchI][faceI] - refValue_[timeIndex - 1][pointI]);
-                        functionValue += scale_ * varDif * varDif;
+                        functionValue += geoWeight * scale_ * varDif * varDif;
                         pointI++;
                     }
                 }
@@ -469,8 +505,15 @@ scalar DAFunctionVariance::calcFunction()
                     forAll(cellSources_, idxI)
                     {
                         label cellI = cellSources_[idxI];
+
+                        if (useGeoWeight_)
+                        {
+                            geoWeight = mesh_.V()[cellI];
+                            geoWeightTotal += geoWeight;
+                        }
+
                         scalar varDif = (var[cellI] - refValue_[timeIndex - 1][cellI]);
-                        functionValue += scale_ * varDif * varDif;
+                        functionValue += geoWeight * scale_ * varDif * varDif;
                     }
                 }
             }
@@ -486,9 +529,15 @@ scalar DAFunctionVariance::calcFunction()
                         label cellI = probeCellIndex_[idxI];
                         forAll(indices_, idxJ)
                         {
+                            if (useGeoWeight_)
+                            {
+                                geoWeight = mesh_.V()[cellI];
+                                geoWeightTotal += geoWeight;
+                            }
+
                             label compI = indices_[idxJ];
                             scalar varDif = (var[cellI][compI] - refValue_[timeIndex - 1][pointI]);
-                            functionValue += scale_ * varDif * varDif;
+                            functionValue += geoWeight * scale_ * varDif * varDif;
                             pointI++;
                         }
                     }
@@ -504,9 +553,15 @@ scalar DAFunctionVariance::calcFunction()
                         const label faceI = daIndex_.bFaceFaceI[bFaceI];
                         forAll(indices_, idxJ)
                         {
+                            if (useGeoWeight_)
+                            {
+                                geoWeight = mesh_.magSf().boundaryField()[patchI][faceI];
+                                geoWeightTotal += geoWeight;
+                            }
+
                             label compI = indices_[idxJ];
                             scalar varDif = (var.boundaryField()[patchI][faceI][compI] - refValue_[timeIndex - 1][pointI]);
-                            functionValue += scale_ * varDif * varDif;
+                            functionValue += geoWeight * scale_ * varDif * varDif;
                             pointI++;
                         }
                     }
@@ -519,9 +574,15 @@ scalar DAFunctionVariance::calcFunction()
                         label cellI = cellSources_[idxI];
                         forAll(indices_, idxJ)
                         {
+                            if (useGeoWeight_)
+                            {
+                                geoWeight = mesh_.V()[cellI];
+                                geoWeightTotal += geoWeight;
+                            }
+
                             label compI = indices_[idxJ];
                             scalar varDif = (var[cellI][compI] - refValue_[timeIndex - 1][pointI]);
-                            functionValue += scale_ * varDif * varDif;
+                            functionValue += geoWeight * scale_ * varDif * varDif;
                             pointI++;
                         }
                     }
@@ -537,9 +598,17 @@ scalar DAFunctionVariance::calcFunction()
         // need to reduce the sum of force across all processors
         reduce(functionValue, sumOp<scalar>());
 
-        if (nRefPoints_ != 0)
+        if (useGeoWeight_)
         {
-            functionValue /= nRefPoints_;
+            reduce(geoWeightTotal, sumOp<scalar>());
+            functionValue /= geoWeightTotal;
+        }
+        else
+        {
+            if (nRefPoints_ != 0)
+            {
+                functionValue /= nRefPoints_;
+            }
         }
     }
 
