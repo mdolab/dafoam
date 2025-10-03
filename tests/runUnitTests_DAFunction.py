@@ -171,6 +171,7 @@ daOptions = {
             "varName": "wallHeatFlux",
             "varType": "scalar",
             "indices": [0],
+            "useGeoWeight": True,
             "timeDependentRefData": False,
         },
         "PVar": {
@@ -181,6 +182,7 @@ daOptions = {
             "varName": "p",
             "varType": "scalar",
             "indices": [0],
+            "useGeoWeight": True,
             "timeDependentRefData": False,
         },
         "PProbe": {
@@ -192,6 +194,7 @@ daOptions = {
             "varName": "p",
             "varType": "scalar",
             "indices": [0],
+            "useGeoWeight": True,
             "timeDependentRefData": False,
         },
         "UOutVar": {
@@ -203,6 +206,7 @@ daOptions = {
             "varName": "U",
             "varType": "vector",
             "indices": [0],
+            "useGeoWeight": True,
             "timeDependentRefData": False,
         },
         "ResNorm": {
@@ -251,10 +255,10 @@ funcs_ref = {
     "IRMaxKS": 9.132901616926853,
     "PVolSum": 23.576101529517096,
     "UVolSum": 2004.7819430730992,
-    "HVar": 67.2400000627573,
-    "PVar": 2.476982282327677,
-    "PProbe": 3.6866882754983203,
-    "UOutVar": 0.5085431532392312,
+    "HVar": 67.24000006275729,
+    "PVar": 2.665633473846215,
+    "PProbe": 3.8532589372849655,
+    "UOutVar": 0.09531526371396179,
     "ResNorm": 5.638190253290434,
     "ResNorm1": 1255.3018729729918,
 }

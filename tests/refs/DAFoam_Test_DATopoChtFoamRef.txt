@@ -11,6 +11,10 @@ Dictionary Key: eta300-Adjoint
 @value      -267.3452447888811889 1e-08 1e-12
 Dictionary Key: eta300-ForwardAD
 @value      -266.9675657598672274 1e-08 1e-12
+Dictionary Key: patchUField20-Adjoint
+@value         0.0319148702493826 1e-08 1e-12
+Dictionary Key: patchUField20-ForwardAD
+@value         0.0319148702493836 1e-08 1e-12
 Dictionary Key: cruise.aero_post.functionals.TMean
 Dictionary Key: eta0-Adjoint
 @value        -0.0405231842458794 1e-08 1e-12
@@ -24,3 +28,7 @@ Dictionary Key: eta300-Adjoint
 @value         0.0713991238692877 1e-08 1e-12
 Dictionary Key: eta300-ForwardAD
 @value         0.0715807790088326 1e-08 1e-12
+Dictionary Key: patchUField20-Adjoint
+@value        -0.0000115017923717 1e-08 1e-12
+Dictionary Key: patchUField20-ForwardAD
+@value        -0.0000116089743958 1e-08 1e-12

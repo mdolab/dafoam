@@ -40,6 +40,9 @@ protected:
     /// components/indices of the vector variable
     List<label> indices_;
 
+    /// weight the variance based on surface area or cell volume
+    label useGeoWeight_ = 0;
+
     /// cell index of the probe points
     labelList probeCellIndex_;
 
