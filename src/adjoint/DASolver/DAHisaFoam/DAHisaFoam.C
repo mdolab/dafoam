@@ -124,54 +124,57 @@ label DAHisaFoam::solvePrimal()
     //scalar prevCpuTime = runTime.elapsedCpuTime();
     while (runTime.run())
     {
+
         if (!steadyState)
         {
 #include "createTimeControls.H"
 
-            //Find out what to scale deltaT by
+            // Scale deltaT
             scalar scale = solver.timeStepScaling(maxCo);
-            //Generate a pretend Courant number so we can use setDeltaT.H unmodified
-            scalar CoNum = maxCo / scale;
-#include "setDeltaT.H"
+            if (adjustTimeStep)
+            {
+                scalar deltaT = scale * runTime.deltaTValue();
+                deltaT = min(
+                    min(deltaT, runTime.deltaTValue() + 0.1 * deltaT),
+                    1.2 * runTime.deltaTValue());
+                runTime.setDeltaT(min(deltaT, maxDeltaT));
+
+                Info << "deltaT = " << runTime.deltaTValue() << endl;
+            }
         }
 
         solver.preTimeIncrement();
 
         runTime++;
 
-        printToScreen_ = this->isPrintTime(runTime, printInterval_);
+        if (steadyState)
+        {
+            printToScreen_ = this->isPrintTime(runTime, printInterval_);
+        }
+        else
+        {
+            printToScreen_ = 1;
+        }
 
         if (printToScreen_)
         {
             Info << "Time = " << runTime.timeName() << nl << endl;
-            this->calcPrimalResidualStatistics("print");
+            // this->calcPrimalResidualStatistics("print");
         }
 
         solver.beginTimeStep();
 
         // --- Outer corrector loop
         bool notFinished;
-#if FOUNDATION >= 6
-        while (true)
-        {
-            // loop() function was removed from the base class
-            if (isA<pimpleControl>(solver.solnControl()))
-            {
-                notFinished = refCast<pimpleControl>(solver.solnControl()).loop();
-            }
-            else
-            {
-                notFinished = refCast<pseudotimeControl>(solver.solnControl()).loop();
-            }
-            if (!notFinished)
-            {
-                break;
-            }
-#else
+
         while ((notFinished = solver.solnControl().loop()))
         {
-#endif
             solver.outerIteration();
+
+            // NOTE: we removed the turbulence correct in hisaModule, so we need to call it here
+            // NOTE: this trick works for ESI version of OpenFOAM only!
+            daTurbulenceModelPtr_->correct(printToScreen_);
+
             if (steadyState)
             {
                 break;
