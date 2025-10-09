@@ -25,7 +25,7 @@ DARegression/DARegression.C
 DATimeOp/DATimeOp.C
 DATimeOp/DATimeOpFinal.C
 DATimeOp/DATimeOpAverage.C
-DATimeOp/DATimeOpMaxKS.C
+DATimeOp/DATimeOpMax.C
 
 DAFunction/DAFunction.C
 DAFunction/DAFunctionForce.C
@@ -42,6 +42,7 @@ DAFunction/DAFunctionLocation.C
 DAFunction/DAFunctionMeshQualityKS.C
 DAFunction/DAFunctionVonMisesStressKS.C
 DAFunction/DAFunctionResidualNorm.C
+DAFunction/DAFunctionFieldMax.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C

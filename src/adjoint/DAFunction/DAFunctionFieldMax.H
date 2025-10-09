@@ -4,18 +4,15 @@
     Version : v4
 
     Description:
-        Child class for the max value for the given valList. The max value
-        is estimated using the K-S aggregation method
+        Child class for the max value of a field 
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DATimeOpMaxKS_H
-#define DATimeOpMaxKS_H
+#ifndef DAFunctionFieldMax_H
+#define DAFunctionFieldMax_H
 
-#include "DATimeOp.H"
+#include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
-#include "mixedFvPatchFields.H"
-#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -23,43 +20,42 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DATimeOpMaxKS Declaration
+      Class DAFunctionFieldMax Declaration
 \*---------------------------------------------------------------------------*/
 
-class DATimeOpMaxKS
-    : public DATimeOp
+class DAFunctionFieldMax
+    : public DAFunction
 {
 
 protected:
-    /// the KS coefficient
-    scalar coeffKS_;
+    /// name of the variable
+    word fieldName_;
+
+    /// type of the variable
+    word fieldType_;
+
+    /// if it is a vector, prescribe the indices
+    labelList indices_;
 
 public:
-    TypeName("maxKS");
+    TypeName("fieldMax");
     // Constructors
 
     //- Construct from components
-    DATimeOpMaxKS(
-        const word timeOpType,
-        const dictionary options);
+    DAFunctionFieldMax(
+        const fvMesh& mesh,
+        const DAOption& daOption,
+        const DAModel& daModel,
+        const DAIndex& daIndex,
+        const word functionName);
 
     //- Destructor
-    virtual ~DATimeOpMaxKS()
+    virtual ~DAFunctionFieldMax()
     {
     }
 
-    /// compute the timeOp value based on valList
-    virtual scalar compute(
-        const scalarList& valList,
-        const label iStart,
-        const label iEnd);
-
-    /// compute the scaling factor for dF/d? calculation.
-    virtual scalar dFScaling(
-        const scalarList& valList,
-        const label iStart,
-        const label iEnd,
-        const label timeIdx);
+    /// calculate the value of objective function
+    virtual scalar calcFunction();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

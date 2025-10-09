@@ -214,7 +214,6 @@ daOptions = {
             "source": "allCells",
             "scale": 1.0,
             "resWeight": {"URes": 0.1, "pRes": 0.01, "phiRes": 10.0, "TRes": 0.01, "nuTildaRes": 100.0},
-            "timeDependentRefData": False,
             "timeOp": "average",
         },
         "ResNorm1": {
@@ -223,8 +222,29 @@ daOptions = {
             "resMode": "L1Norm",
             "scale": 1.0,
             "resWeight": {"URes": 1.0, "pRes": 1.0, "phiRes": 10.0, "TRes": 1.0, "nuTildaRes": 1.0},
-            "timeDependentRefData": False,
             "timeOp": "average",
+        },
+        # max pressure on the wall across all time instances
+        "PWallMax": {
+            "type": "fieldMax",
+            "source": "patchToFace",
+            "patches": ["walls"],
+            "fieldName": "p",
+            "fieldType": "scalar",
+            "scale": 1.0,
+            "timeOp": "max",
+            "timeOpMaxMode": "orig",
+        },
+        # max velocity at the outlet at the last time instance
+        "UOutMax": {
+            "type": "fieldMax",
+            "source": "patchToFace",
+            "patches": ["outlet"],
+            "fieldName": "U",
+            "fieldType": "vector",
+            "indices": [0, 1],
+            "scale": 1.0,
+            "timeOp": "final",
         },
     },
 }
@@ -261,6 +281,8 @@ funcs_ref = {
     "UOutVar": 0.09531526371396179,
     "ResNorm": 5.638190253290434,
     "ResNorm1": 1255.3018729729918,
+    "PWallMax": 257.455157993952,
+    "UOutMax": 18.428979794738936,
 }
 
 fail = 0
