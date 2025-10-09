@@ -5,48 +5,73 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "DATimeOpMaxKS.H"
+#include "DATimeOpMax.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(DATimeOpMaxKS, 0);
-addToRunTimeSelectionTable(DATimeOp, DATimeOpMaxKS, dictionary);
+defineTypeNameAndDebug(DATimeOpMax, 0);
+addToRunTimeSelectionTable(DATimeOp, DATimeOpMax, dictionary);
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-DATimeOpMaxKS::DATimeOpMaxKS(
+DATimeOpMax::DATimeOpMax(
     const word timeOpType,
     const dictionary options)
     : DATimeOp(timeOpType, options)
 {
-    coeffKS_ = options.getScalar("coeffKS");
+    mode_ = options.lookupOrDefault<word>("timeOpMaxMode", "KS");
+    if (mode_ == "KS")
+    {
+        coeffKS_ = options.getScalar("timeOpMaxKSCoeff");
+    }
 }
 
-scalar DATimeOpMaxKS::compute(
+scalar DATimeOpMax::compute(
     const scalarList& valList,
     const label iStart,
     const label iEnd)
 {
     // return the estimated max value from valList
     // KS = log( sum( exp(x_i*c) ) )/c
-    scalar maxKS = 0.0;
-    // NOTE. We need to use <= here
-    for (label i = iStart; i <= iEnd; i++)
+
+    if (mode_ == "KS")
     {
-        maxKS += exp(coeffKS_ * valList[i]);
+        scalar maxKS = 0.0;
+        // NOTE. We need to use <= here
+        for (label i = iStart; i <= iEnd; i++)
+        {
+            maxKS += exp(coeffKS_ * valList[i]);
+        }
+        if (maxKS > 1e200)
+        {
+            FatalErrorIn(" ") << "KS function summation term too large! "
+                              << "Reduce coeffKS! " << abort(FatalError);
+        }
+        maxKS = log(maxKS) / coeffKS_;
+        return maxKS;
     }
-    if (maxKS > 1e200)
+    else if (mode_ == "orig")
     {
-        FatalErrorIn(" ") << "KS function summation term too large! "
-                          << "Reduce coeffKS! " << abort(FatalError);
+        scalar maxVal = -1e16;
+        for (label i = iStart; i <= iEnd; i++)
+        {
+            if (valList[i] > maxVal)
+            {
+                maxVal = valList[i];
+            }
+        }
+        return maxVal;
     }
-    maxKS = log(maxKS) / coeffKS_;
-    return maxKS;
+    else
+    {
+        FatalErrorIn(" ") << "mode not supported! Options are orig or KS " << abort(FatalError);
+        return -1e16;
+    }
 }
 
-scalar DATimeOpMaxKS::dFScaling(
+scalar DATimeOpMax::dFScaling(
     const scalarList& valList,
     const label iStart,
     const label iEnd,
@@ -56,6 +81,11 @@ scalar DATimeOpMaxKS::dFScaling(
     // dF/dx = 1/(sum(exp(f_i*c))) * exp(f_i*c) * df_i/dx
     // so the scaling is 1/(sum(exp(f_i*c))) * exp(f_i*c)
     // NOTE: the scaling depends on timeIdx!
+
+    if (mode_ != "KS")
+    {
+        FatalErrorIn(" ") << "mode orig is selected! You should not run the adjoint! " << abort(FatalError);
+    }
 
     scalar sum = 0.0;
     for (label i = iStart; i <= iEnd; i++)

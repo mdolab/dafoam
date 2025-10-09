@@ -9,8 +9,8 @@
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef DATimeOpMaxKS_H
-#define DATimeOpMaxKS_H
+#ifndef DATimeOpMax_H
+#define DATimeOpMax_H
 
 #include "DATimeOp.H"
 #include "addToRunTimeSelectionTable.H"
@@ -23,10 +23,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-      Class DATimeOpMaxKS Declaration
+      Class DATimeOpMax Declaration
 \*---------------------------------------------------------------------------*/
 
-class DATimeOpMaxKS
+class DATimeOpMax
     : public DATimeOp
 {
 
@@ -34,17 +34,20 @@ protected:
     /// the KS coefficient
     scalar coeffKS_;
 
+    /// max value mode
+    word mode_ = "KS";
+
 public:
-    TypeName("maxKS");
+    TypeName("max");
     // Constructors
 
     //- Construct from components
-    DATimeOpMaxKS(
+    DATimeOpMax(
         const word timeOpType,
         const dictionary options);
 
     //- Destructor
-    virtual ~DATimeOpMaxKS()
+    virtual ~DATimeOpMax()
     {
     }
 
