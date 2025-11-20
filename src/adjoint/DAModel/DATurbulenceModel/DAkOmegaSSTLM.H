@@ -215,8 +215,7 @@ protected:
     const volScalarField& y_;
 
     /// beta field for field inversion
-    volScalarField betaFIK_;
-    volScalarField betaFIOmega_;
+    volScalarField betaFI_;
 
     /// cell-center omega values near the wall, this is to fix the issue that the
     /// omegaWallFunction will try to modify omega values for the cells near walls
@@ -319,10 +318,10 @@ public:
         scalarField& lower);
     
     /// return the value of the destruction term from the turbulence model
-    virtual void getTurbProdOverDestruct(volScalarField& PoD) const;
+    virtual void getTurbProdOverDestruct(scalarList& PoD) const;
 
     /// return the value of the convective over production term from the turbulence model
-    virtual void getTurbConvOverProd(volScalarField& CoP) const;
+    virtual void getTurbConvOverProd(scalarList& CoP) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -65,34 +65,6 @@ DAObjFuncLocation::DAObjFuncLocation(
         center_ = {centerRead[0], centerRead[1], centerRead[2]};
     }
 
-    snapCenter2Cell_ = objFuncDict_.lookupOrDefault<label>("snapCenter2Cell", 0);
-    if (snapCenter2Cell_)
-    {
-        point centerPoint = {center_[0], center_[1], center_[2]};
-
-        // NOTE: we need to call a self-defined findCell func to make it work correctly in ADR
-        snappedCenterCellI_ = DAUtility::myFindCell(mesh_, centerPoint);
-        
-        label foundCellI = 0;
-        if (snappedCenterCellI_ >= 0)
-        {
-            foundCellI = 1;
-        }
-        reduce(foundCellI, sumOp<label>());
-        if (foundCellI != 1)
-        {
-            FatalErrorIn(" ") << "There should be only one cell found globally while "
-                              << foundCellI << " was returned."
-                              << " Please adjust center such that it is located completely"
-                              << " within a cell in the mesh domain. The center should not "
-                              << " be outside of the mesh domain or on a mesh face "
-                              << abort(FatalError);
-        }
-        vector snappedCenter = vector::zero;
-        this->findGlobalSnappedCenter(snappedCenterCellI_, snappedCenter);
-        Info << "snap to center " << snappedCenter << endl;
-    }
-
     if (mode_ == "maxRadius")
     {
         // we need to identify the patchI and faceI that has maxR
@@ -100,7 +72,7 @@ DAObjFuncLocation::DAObjFuncLocation(
         // we assume the patchI and faceI do not change during the optimization
         // otherwise, we should use maxRadiusKS instead
         scalar maxR = -100000;
-        label maxRPatchI = -999, maxRFaceI = -999;
+        label maxRPatchI, maxRFaceI;
         forAll(objFuncFaceSources_, idxI)
         {
             const label& objFuncFaceI = objFuncFaceSources_[idxI];
@@ -137,29 +109,7 @@ DAObjFuncLocation::DAObjFuncLocation(
             maxRFaceI_ = maxRFaceI;
         }
     }
-}
 
-void DAObjFuncLocation::findGlobalSnappedCenter(
-    label snappedCenterCellI,
-    vector& center)
-{
-    scalar centerX = 0.0;
-    scalar centerY = 0.0;
-    scalar centerZ = 0.0;
-
-    if (snappedCenterCellI >= 0)
-    {
-        centerX = mesh_.C()[snappedCenterCellI][0];
-        centerY = mesh_.C()[snappedCenterCellI][1];
-        centerZ = mesh_.C()[snappedCenterCellI][2];
-    }
-    reduce(centerX, sumOp<scalar>());
-    reduce(centerY, sumOp<scalar>());
-    reduce(centerZ, sumOp<scalar>());
-
-    center[0] = centerX;
-    center[1] = centerY;
-    center[2] = centerZ;
 }
 
 /// calculate the value of objective function
@@ -202,12 +152,6 @@ void DAObjFuncLocation::calcObjFunc(
         // calculate Location
         scalar objValTmp = 0.0;
 
-        vector center = center_;
-        if (snapCenter2Cell_)
-        {
-            this->findGlobalSnappedCenter(snappedCenterCellI_, center);
-        }
-
         forAll(objFuncFaceSources, idxI)
         {
             const label& objFuncFaceI = objFuncFaceSources[idxI];
@@ -215,7 +159,7 @@ void DAObjFuncLocation::calcObjFunc(
             const label patchI = daIndex_.bFacePatchI[bFaceI];
             const label faceI = daIndex_.bFaceFaceI[bFaceI];
 
-            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center;
+            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center_;
 
             tensor faceCTensor(tensor::zero);
             faceCTensor.xx() = faceC.x();
@@ -241,71 +185,17 @@ void DAObjFuncLocation::calcObjFunc(
         // need to reduce the sum of force across all processors
         reduce(objValTmp, sumOp<scalar>());
 
-        objFuncValue = log(objValTmp) / coeffKS_;
-    }
-    else if (mode_ == "maxInverseRadiusKS")
-    {
-        // this is essentially minimal radius using KS
-
-        // calculate Location
-        scalar objValTmp = 0.0;
-
-        vector center = center_;
-        if (snapCenter2Cell_)
-        {
-            this->findGlobalSnappedCenter(snappedCenterCellI_, center);
-        }
-
-        forAll(objFuncFaceSources, idxI)
-        {
-            const label& objFuncFaceI = objFuncFaceSources[idxI];
-            label bFaceI = objFuncFaceI - daIndex_.nLocalInternalFaces;
-            const label patchI = daIndex_.bFacePatchI[bFaceI];
-            const label faceI = daIndex_.bFaceFaceI[bFaceI];
-
-            vector faceC = mesh_.Cf().boundaryField()[patchI][faceI] - center;
-
-            tensor faceCTensor(tensor::zero);
-            faceCTensor.xx() = faceC.x();
-            faceCTensor.yy() = faceC.y();
-            faceCTensor.zz() = faceC.z();
-
-            vector faceCAxial = faceCTensor & axis_;
-            vector faceCRadial = faceC - faceCAxial;
-
-            scalar radius = mag(faceCRadial);
-            scalar iRadius = 1.0 / (radius + 1e-12);
-
-            objFuncFaceValues[idxI] = exp(coeffKS_ * iRadius);
-
-            objValTmp += objFuncFaceValues[idxI];
-
-            if (objValTmp > 1e200)
-            {
-                FatalErrorIn(" ") << "KS function summation term too large! "
-                                  << "Reduce coeffKS! " << abort(FatalError);
-            }
-        }
-
-        // need to reduce the sum of force across all processors
-        reduce(objValTmp, sumOp<scalar>());
+        // expSumKS stores sum[exp(coeffKS*x_i)], it will be used to scale dFdW
+        expSumKS = objValTmp;
 
         objFuncValue = log(objValTmp) / coeffKS_;
     }
     else if (mode_ == "maxRadius")
     {
         scalar radius = 0.0;
-
-        vector center = center_;
-        if (snapCenter2Cell_)
-        {
-            this->findGlobalSnappedCenter(snappedCenterCellI_, center);
-        }
-
         if (maxRPatchI_ >= 0 && maxRFaceI_ >= 0)
         {
-
-            vector faceC = mesh_.Cf().boundaryField()[maxRPatchI_][maxRFaceI_] - center;
+            vector faceC = mesh_.Cf().boundaryField()[maxRPatchI_][maxRFaceI_] - center_;
 
             tensor faceCTensor(tensor::zero);
             faceCTensor.xx() = faceC.x();
@@ -328,9 +218,6 @@ void DAObjFuncLocation::calcObjFunc(
                                           << "Options are: maxRadius"
                                           << abort(FatalError);
     }
-
-    // check if we need to calculate refDiff.
-    this->calcRefVar(objFuncValue);
 
     return;
 }

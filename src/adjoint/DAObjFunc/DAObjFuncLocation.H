@@ -46,12 +46,6 @@ protected:
     /// maxRadius patchI
     label maxRFaceI_ = -1;
 
-    /// whether to snap the center to a cell in the mesh if yes the center will move with the mesh
-    label snapCenter2Cell_ = 0;
-
-    /// the cell index for the center if snapCenter2Cell_ = 1
-    label snappedCenterCellI_ = -1;
-
 public:
     TypeName("location");
     // Constructors
@@ -79,10 +73,6 @@ public:
         scalarList& objFuncFaceValues,
         scalarList& objFuncCellValues,
         scalar& objFuncValue);
-
-    void findGlobalSnappedCenter(
-        label snappedCenterCellI,
-        vector& center);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

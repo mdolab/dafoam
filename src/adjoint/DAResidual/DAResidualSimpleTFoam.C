@@ -30,8 +30,6 @@ DAResidualSimpleTFoam::DAResidualSimpleTFoam(
       setResidualClassMemberPhi(phi),
       alphaPorosity_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("alphaPorosity"))),
-      fTSource_(const_cast<volScalarField&>(
-          mesh_.thisDb().lookupObject<volScalarField>("fTSource"))),
       fvSource_(const_cast<volVectorField&>(
           mesh_.thisDb().lookupObject<volVectorField>("fvSource"))),
       fvOptions_(fv::options::New(mesh)),
@@ -123,10 +121,6 @@ void DAResidualSimpleTFoam::calcResiduals(const dictionary& options)
         DAFvSource& daFvSource(const_cast<DAFvSource&>(
             mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
         daFvSource.calcFvSource(fvSource_);
-
-        DAFvSource& daFTSource(const_cast<DAFvSource&>(
-            mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
-        daFTSource.calcFvSource(fTSource_);
     }
 
     tmp<fvVectorMatrix> tUEqn(
@@ -208,8 +202,7 @@ void DAResidualSimpleTFoam::calcResiduals(const dictionary& options)
 
     fvScalarMatrix TEqn(
         fvm::div(phi_, T_)
-        - fvm::laplacian(alphaEff, T_)
-        - fTSource_);
+        - fvm::laplacian(alphaEff, T_));
 
     TEqn.relax();
 

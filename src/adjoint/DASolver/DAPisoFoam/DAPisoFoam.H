@@ -73,9 +73,18 @@ protected:
 
     /// turbulence pointer
     autoPtr<incompressible::turbulenceModel> turbulencePtr_;
+    
+    /// laminar transport properties pointer for target mesh Uttam 20251107
+    autoPtr<singlePhaseTransportModel> laminarTransportPtr_Coarse_;
+
+    /// turbulence pointer for target mesh Uttam 20251107
+    autoPtr<incompressible::turbulenceModel> turbulencePtr_Coarse_;
 
     /// DATurbulenceModel pointer
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+    
+    /// DATurbulenceModel pointer target Uttam 20251107
+    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_Coarse_;
 
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;

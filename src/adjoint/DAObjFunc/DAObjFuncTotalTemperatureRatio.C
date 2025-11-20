@@ -207,9 +207,6 @@ void DAObjFuncTotalTemperatureRatio::calcObjFunc(
         }
     }
 
-    // check if we need to calculate refDiff.
-    this->calcRefVar(objFuncValue);
-
     return;
 }
 

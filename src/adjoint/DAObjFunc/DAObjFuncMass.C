@@ -38,9 +38,12 @@ DAObjFuncMass::DAObjFuncMass(
     // Assign type, this is common for all objectives
     objFuncDict_.readEntry<word>("type", objFuncType_);
 
+    // setup the connectivity for mass. It does actually not depends on D
+    // here we set zero level of D as a place holder.
+    objFuncConInfo_ = {{"D"}};
+
     objFuncDict_.readEntry<scalar>("scale", scale_);
 
-    rho_ = objFuncDict_.lookupOrDefault<scalar>("rho", -1.0);
 }
 
 /// calculate the value of objective function
@@ -79,37 +82,19 @@ void DAObjFuncMass::calcObjFunc(
     objFuncValue = 0.0;
 
     const objectRegistry& db = mesh_.thisDb();
+    const volScalarField& rho = db.lookupObject<volScalarField>("solid:rho");
 
-    if (rho_ < 0.0)
+    // calculate mass
+    forAll(objFuncCellSources, idxI)
     {
-        const volScalarField& rho = db.lookupObject<volScalarField>("solid:rho");
-
-        // calculate mass
-        forAll(objFuncCellSources, idxI)
-        {
-            const label& cellI = objFuncCellSources[idxI];
-            scalar volume = mesh_.V()[cellI];
-            objFuncCellValues[idxI] = scale_ * volume * rho[cellI];
-            objFuncValue += objFuncCellValues[idxI];
-        }
-    }
-    else
-    {
-        // calculate mass
-        forAll(objFuncCellSources, idxI)
-        {
-            const label& cellI = objFuncCellSources[idxI];
-            scalar volume = mesh_.V()[cellI];
-            objFuncCellValues[idxI] = scale_ * volume * rho_;
-            objFuncValue += objFuncCellValues[idxI];
-        }
+        const label& cellI = objFuncCellSources[idxI];
+        scalar volume = mesh_.V()[cellI];
+        objFuncCellValues[idxI] = scale_ * volume * rho[cellI];
+        objFuncValue += objFuncCellValues[idxI];
     }
 
     // need to reduce the sum of force across all processors
     reduce(objFuncValue, sumOp<scalar>());
-
-    // check if we need to calculate refDiff.
-    this->calcRefVar(objFuncValue);
 
     return;
 }

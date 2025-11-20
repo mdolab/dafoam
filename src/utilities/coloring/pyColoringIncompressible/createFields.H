@@ -1,7 +1,7 @@
 // add dummy U, phi, and laminarTransport
 
 Time& runTime = runTimePtr_();
-fvMesh& mesh = meshPtr_();
+//fvMesh& mesh = meshPtr_();
 
 volVectorField U(
     IOobject(

@@ -465,7 +465,11 @@ void DASpalartAllmarasFv3FieldInversion::calcResiduals(const dictionary& options
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverNuTilda = solve(nuTildaEqn);
-        DAUtility::primalResidualControl(solverNuTilda, printToScreen, "nuTilda");
+        if (printToScreen)
+        {
+            Info << "nuTilda Initial residual: " << solverNuTilda.initialResidual() << endl
+                 << "          Final residual: " << solverNuTilda.finalResidual() << endl;
+        }
 
         DAUtility::boundVar(allOptions_, nuTilda_, printToScreen);
         nuTilda_.correctBoundaryConditions();
@@ -487,7 +491,7 @@ void DASpalartAllmarasFv3FieldInversion::calcResiduals(const dictionary& options
     return;
 }
 
-void DASpalartAllmarasFv3FieldInversion::getTurbProdTerm(volScalarField& prodTerm) const
+void DASpalartAllmarasFv3FieldInversion::getTurbProdTerm(scalarList& prodTerm) const
 {
     /*
     Description:

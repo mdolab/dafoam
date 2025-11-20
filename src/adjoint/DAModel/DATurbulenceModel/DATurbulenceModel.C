@@ -480,7 +480,7 @@ label DATurbulenceModel::isPrintTime(
     }
 }
 
-void DATurbulenceModel::getTurbProdTerm(volScalarField& prodTerm) const
+void DATurbulenceModel::getTurbProdTerm(scalarList& prodTerm) const
 {
     /*
     Description:
@@ -492,7 +492,19 @@ void DATurbulenceModel::getTurbProdTerm(volScalarField& prodTerm) const
         << abort(FatalError);
 }
 
-void DATurbulenceModel::getTurbProdOverDestruct(volScalarField& PoD) const
+void DATurbulenceModel::getTurbDestructTerm(scalarList& destructTerm) const
+{
+    /*
+    Description:
+        Return the value of the production term from the turbulence model 
+    */
+
+    FatalErrorIn("DATurbulenceModel::getTurbProdTerm")
+        << "Child class not implemented!"
+        << abort(FatalError);
+}
+
+void DATurbulenceModel::getTurbProdOverDestruct(scalarList& PoD) const
 {
     /*
     Description:
@@ -504,7 +516,7 @@ void DATurbulenceModel::getTurbProdOverDestruct(volScalarField& PoD) const
         << abort(FatalError);
 }
 
-void DATurbulenceModel::getTurbConvOverProd(volScalarField& CoP) const
+void DATurbulenceModel::getTurbConvOverProd(scalarList& CoP) const
 {
     /*
     Description:

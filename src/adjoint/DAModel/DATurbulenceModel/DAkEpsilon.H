@@ -87,11 +87,11 @@ protected:
     volScalarField epsilonRes_;
     volScalarField& k_;
     volScalarField kRes_;
+        volVectorField UData_; 
     //@}
 
     /// beta field for field inversion
-    volScalarField betaFIK_;
-    volScalarField betaFIEpsilon_;
+    volScalarField betaFI_;
 
     /// cell-center epsilon values near the wall, this is to fix the issue that the
     /// epsilonWallFunction will try to modify epsilon values for the cells near walls
@@ -160,10 +160,10 @@ public:
         scalarField& lower);
     
     /// return the value of the destruction term from the turbulence model
-    virtual void getTurbProdOverDestruct(volScalarField& PoD) const;
+    virtual void getTurbProdOverDestruct(scalarList& PoD) const;
 
     /// return the value of the convective over production term from the turbulence model
-    virtual void getTurbConvOverProd(volScalarField& CoP) const;
+    virtual void getTurbConvOverProd(scalarList& CoP) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

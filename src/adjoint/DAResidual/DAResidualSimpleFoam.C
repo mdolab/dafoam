@@ -103,6 +103,23 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
             mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
         daFvSource.calcFvSource(fvSource_);
     }
+    scalar dp_val = daOption_.getOption<scalar>("dp_val");
+
+
+    volVectorField dp
+        (
+                IOobject
+                (
+                "dp",                    // This is label asigned to the object in the register.
+                mesh_.time().timeName(),     // This is the place where the object will be saved 
+                mesh_,                   // This is the object which will act as register.
+                IOobject::NO_READ,      // Reading options (in case it founds a file named "B" do not read it")
+                IOobject::AUTO_WRITE    // Writing options
+                ),
+        mesh_,
+        dimensionedVector("dp", dimensionSet(0,1,-2,0,0,0,0), Foam::vector(dp_val, 0.0, 0.0))  // This is used to "size" the field to mesh domain.
+        ); 
+    
 
     tmp<fvVectorMatrix> tUEqn(
         fvm::div(phi_, U_, divUScheme)
@@ -110,6 +127,7 @@ void DAResidualSimpleFoam::calcResiduals(const dictionary& options)
         + MRF_.DDt(U_)
         + daTurb_.divDevReff(U_)
         - fvSource_
+        - dp
         - fvOptions_(U_));
     fvVectorMatrix& UEqn = tUEqn.ref();
 

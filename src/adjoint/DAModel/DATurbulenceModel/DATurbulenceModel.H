@@ -211,14 +211,18 @@ public:
     /// solve the residual equations and update the state
     virtual void correct(label printToScreen) = 0;
 
+    /// user defined function
     /// return the value of the production term from the turbulence model
-    virtual void getTurbProdTerm(volScalarField& prodTerm) const;
+    virtual void getTurbDestructTerm(scalarList& destructTerm) const;
+    
+    /// return the value of the production term from the turbulence model
+    virtual void getTurbProdTerm(scalarList& prodTerm) const;
 
     /// return the ratio of the production over destruction term from the turbulence model
-    virtual void getTurbProdOverDestruct(volScalarField& PoD) const;
+    virtual void getTurbProdOverDestruct(scalarList& PoD) const;
 
     /// return the value of the convective over production term from the turbulence model
-    virtual void getTurbConvOverProd(volScalarField& CoP) const;
+    virtual void getTurbConvOverProd(scalarList& CoP) const;
 
     /// dev terms
     tmp<volSymmTensorField> devRhoReff() const;

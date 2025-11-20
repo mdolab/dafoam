@@ -193,7 +193,49 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
           mesh.thisDb().lookupObject<volVectorField>("UData"))),
       USingleComponentData_(const_cast<volScalarField&>(
           mesh.thisDb().lookupObject<volScalarField>("USingleComponentData"))),
-      y_(mesh_.thisDb().lookupObject<volScalarField>("yWall"))
+      y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")),
+          lambda2_
+            (
+                IOobject
+                (
+                    "lambda2",
+                    mesh.time().timeName(),
+                    mesh,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh,
+                dimensionedScalar("lambda2", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0)
+            ),
+        lambda5_
+            (
+                IOobject
+                (
+                    "lambda5",
+                    mesh.time().timeName(),
+                    mesh,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh,
+                dimensionedScalar("lambda5", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0)
+            ),
+        reOmega_
+            (
+                IOobject
+                (
+                    "reOmega",
+                    mesh.time().timeName(),
+                    mesh,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh,
+                dimensionedScalar("reOmega", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0)
+            ),
+        low_eps_omg("low_eps_omg", dimensionSet(0,0,-1,0,0,0,0), 1e-14),
+        low_eps_nu("low_eps_nu", dimensionSet(0,2,-1,0,0,0,0), 1e-14),
+        low_eps_epsilon("low_eps_epsilon", dimensionSet(0,2,-3,0,0,0,0), 1e-14)
 {
 
     // calculate the size of omegaWallFunction faces
@@ -215,6 +257,45 @@ DAkOmegaSSTFieldInversion::DAkOmegaSSTFieldInversion(
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+volScalarField DAkOmegaSSTFieldInversion::chiSR() 
+{
+    volVectorField U = mesh_.thisDb().lookupObject<volVectorField>("U");
+    volTensorField R(-skew(fvc::grad(U)));
+    volSymmTensorField  S(symm(fvc::grad(U)));
+    // R_{ij}R_{ij} = -tr(R^2) = -tr(R_{ik}R_{kj}) = -R_{ik}R_{ki}, given that R_{ij} = -R_{ji}
+    lambda2_ = -scalar(1.0) * magSqr(R) / ((betaStar_ * omega_ + low_eps_omg)
+                                *(betaStar_ * omega_ + low_eps_omg));
+    
+    lambda5_ = -scalar(0.5) * magSqr(R) * magSqr(S) / ((betaStar_ * omega_ + low_eps_omg)
+                                *(betaStar_ * omega_ + low_eps_omg)
+                                *(betaStar_ * omega_ + low_eps_omg)
+                                *(betaStar_ * omega_ + low_eps_omg));
+    reOmega_ = mag(R) * sqr(y_) / (this->nu() + low_eps_nu);
+
+    volScalarField epsilon = betaStar_ * k_ * omega_;
+    volScalarField PbyE = max(scalar(-1.0) * ((((scalar(2.0)/scalar(3.0))*I)*k_ - nut_*dev(twoSymm(fvc::grad(U)))) && S) / (epsilon + low_eps_epsilon), scalar(0.0));
+
+    volScalarField expr = tanh((lambda2_ * lambda5_) / (reOmega_ + 1e-10)) * (PbyE - scalar(0.244));
+
+    return expr;
+}
+
+volScalarField DAkOmegaSSTFieldInversion::sLambda5() 
+{
+    return 0.5 * tanh(C_lamba5_1 * (lambda5_ - C_lamba5_2)) + 0.5;
+}
+
+volScalarField DAkOmegaSSTFieldInversion::sI() 
+{
+    const volVectorField& U = mesh_.thisDb().lookupObject<volVectorField>("U");
+    const volScalarField I = k_ / (magSqr(U) + 1e-01);
+    return 0.5 * tanh(C_I_1 * (I - C_I_2)) + 0.5;
+}
+
+volScalarField DAkOmegaSSTFieldInversion::betaSR() 
+{
+    return chiSR() * sLambda5() * sI() + 1.0;
+}
 
 // SA member functions. these functions are copied from
 tmp<volScalarField> DAkOmegaSSTFieldInversion::F1(
@@ -773,7 +854,7 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
                 - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
             == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFieldInversion_()
                 - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
-                - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
+                - fvm::Sp(phase_() * rho_() * beta * omega_() * betaSR(), omega_)
                 - fvm::SuSp(
                     phase_() * rho_() * (F1() - scalar(1)) * CDkOmega() / omega_(),
                     omega_)
@@ -792,7 +873,11 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
             // get the solver performance info such as initial
             // and final residuals
             SolverPerformance<scalar> solverOmega = solve(omegaEqn);
-            DAUtility::primalResidualControl(solverOmega, printToScreen, "omega");
+            if (printToScreen)
+            {
+                Info << "omega Initial residual: " << solverOmega.initialResidual() << endl
+                     << "        Final residual: " << solverOmega.finalResidual() << endl;
+            }
 
             DAUtility::boundVar(allOptions_, omega_, printToScreen);
         }
@@ -829,7 +914,11 @@ void DAkOmegaSSTFieldInversion::calcResiduals(const dictionary& options)
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverK = solve(kEqn);
-        DAUtility::primalResidualControl(solverK, printToScreen, "k");
+        if (printToScreen)
+        {
+            Info << "k Initial residual: " << solverK.initialResidual() << endl
+                 << "    Final residual: " << solverK.finalResidual() << endl;
+        }
 
         DAUtility::boundVar(allOptions_, k_, printToScreen);
 

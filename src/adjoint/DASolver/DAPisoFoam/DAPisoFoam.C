@@ -169,6 +169,7 @@ label DAPisoFoam::solvePrimal(
     // right after mesh.movePoints() calls.
     //mesh.moving(false);
 
+    primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
     label timeInstanceI = 0;
@@ -176,8 +177,6 @@ label DAPisoFoam::solvePrimal(
     // main loop
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        DAUtility::primalMaxInitRes_ = -1e16;
-        
         printToScreen = this->isPrintTime(runTime, printInterval);
 
         if (printToScreen)

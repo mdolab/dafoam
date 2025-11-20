@@ -14,7 +14,7 @@ UEqn.relax();
 // and final residuals
 SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
-DAUtility::primalResidualControl(solverU, printToScreen, "U");
+this->primalResidualControl<vector>(solverU, printToScreen, printInterval, "U");
 
 // bound U
 DAUtility::boundVar(allOptions, U, printToScreen);

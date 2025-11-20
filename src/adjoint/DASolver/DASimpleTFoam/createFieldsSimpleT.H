@@ -50,22 +50,10 @@ alphaPorosityPtr_.reset(
         mesh,
         dimensionedScalar("alphaPorosity", dimensionSet(0, 0, -1, 0, 0, 0, 0), pTraits<scalar>::zero),
         zeroGradientFvPatchField<scalar>::typeName));
-/*
-// actuator related stuff
-Info << "Creating source term. " << endl;
-fvSourcePtr_.reset(
-    new volVectorField(
-        IOobject(
-            "fvSource",
-            runTime.timeName(),
-            mesh,
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE),
-        mesh,
-        dimensionedVector("fvSource", dimensionSet(0, 1, -2, 0, 0, 0, 0), vector::zero),
-        zeroGradientFvPatchField<vector>::typeName));
-*/
 
+// actuator related stuff
+// dont make it mustread - make it read if present
+Info << "Creating source term. " << endl;
 fvSourcePtr_.reset(
     new volVectorField(
         IOobject(
@@ -78,19 +66,6 @@ fvSourcePtr_.reset(
 
 volVectorField& fvSource = fvSourcePtr_();
 
-Info << "Creating scalar source term. " << endl;
-
-fTSourcePtr_.reset(
-    new volScalarField(
-        IOobject(
-            "fTSource",
-            runTime.timeName(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::AUTO_WRITE),
-        mesh));
-
-volScalarField& fTSource = fTSourcePtr_();
 
 setRefCell(p, simple.dict(), pRefCell_, pRefValue_);
 mesh.setFluxRequired(p.name());

@@ -67,7 +67,18 @@ public:
     {
         return DASolverPtr_->solvePrimal(xvVec, wVec);
     }
-
+    
+    /// Uttam 20251111
+    void interpolateControlToTarget()
+    {
+        DASolverPtr_->interpolateControlToTarget();
+    }
+    
+    void interpolateStateToTarget()
+    {
+        DASolverPtr_->interpolateStateToTarget();
+    }
+    
     /// compute dRdWT
     void calcdRdWT(
         const Vec xvVec,
@@ -76,6 +87,16 @@ public:
         Mat dRdWT)
     {
         DASolverPtr_->calcdRdWT(xvVec, wVec, isPC, dRdWT);
+    }
+    
+    /// Uttam 20251113 compute dRdWT
+    void calcdRdWT_Coarse(
+        const Vec xvVec,
+        const Vec wVec,
+        const label isPC,
+        Mat dRdWT)
+    {
+        DASolverPtr_->calcdRdWT_Coarse(xvVec, wVec, isPC, dRdWT);
     }
 
     /// compute dFdW
@@ -96,6 +117,17 @@ public:
         Vec dFdW)
     {
         DASolverPtr_->calcdFdWAD(xvVec, wVec, objFuncName, dFdW);
+    }
+    
+    /// Uttam 20251113
+    /// compute dFdW using reverse-mode AD for coarse mesh
+    void calcdFdWAD_Coarse(
+        const Vec xvVec,
+        const Vec wVec,
+        const word objFuncName,
+        Vec dFdW)
+    {
+        DASolverPtr_->calcdFdWAD_Coarse(xvVec, wVec, objFuncName, dFdW);
     }
 
     /// compute dFdXv using reverse-mode AD
@@ -150,17 +182,6 @@ public:
         Vec dRdActTPsi)
     {
         DASolverPtr_->calcdRdActTPsiAD(xvVec, wVec, psi, designVarName, dRdActTPsi);
-    }
-
-    /// compute dRdHSC^T*Psi
-    void calcdRdHSCTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdHSCTPsi)
-    {
-        DASolverPtr_->calcdRdHSCTPsiAD(xvVec, wVec, psi, designVarName, dRdHSCTPsi);
     }
 
     /// compute dForcedW
@@ -220,6 +241,18 @@ public:
     {
         DASolverPtr_->createMLRKSPMatrixFree(jacPCMat, ksp);
     }
+    
+    
+    /// Uttam 20251111
+    void createMLRKSPMatrixFree_Coarse(
+        const Mat jacPCMat_coarse,
+        KSP ksp)
+    {
+        DASolverPtr_->createMLRKSPMatrixFree_Coarse(jacPCMat_coarse, ksp);
+    }
+
+
+
 
     /// initialize matrix free dRdWT
     void initializedRdWTMatrixFree(
@@ -228,20 +261,43 @@ public:
     {
         DASolverPtr_->initializedRdWTMatrixFree(xvVec, wVec);
     }
+    
+    /// Uttam 20251111
+    void initializedRdWTMatrixFree_Coarse(
+        const Vec xvVec_coarse,
+        const Vec wVec_coarse)
+    {
+        DASolverPtr_->initializedRdWTMatrixFree_Coarse(xvVec_coarse, wVec_coarse);
+    }
 
     /// destroy matrix free dRdWT
     void destroydRdWTMatrixFree()
     {
         DASolverPtr_->destroydRdWTMatrixFree();
     }
+    
+    /// Uttam 20251111
+    void destroydRdWTMatrixFree_Coarse()
+    {
+        DASolverPtr_->destroydRdWTMatrixFree_Coarse();
+    }
 
     /// solve the linear equation
-    label solveLinearEqn(
+    void solveLinearEqn(
         const KSP ksp,
         const Vec rhsVec,
         Vec solVec)
     {
-        return DASolverPtr_->solveLinearEqn(ksp, rhsVec, solVec);
+        DASolverPtr_->solveLinearEqn(ksp, rhsVec, solVec);
+    }
+    
+    /// Uttam 20251111
+    void solveLinearEqn_Coarse(
+        const KSP ksp,
+        const Vec rhsVec_coarse,
+        Vec solVec_coarse)
+    {
+        DASolverPtr_->solveLinearEqn_Coarse(ksp, rhsVec_coarse, solVec_coarse);
     }
 
     /// convert the mpi vec to a seq vec
@@ -359,17 +415,6 @@ public:
         DASolverPtr_->calcdFdACTAD(xvVec, wVec, objFuncName, designVarName, dFdACT);
     }
 
-    /// compute dFdHSC
-    void calcdFdHSCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdHSC)
-    {
-        DASolverPtr_->calcdFdHSCAD(xvVec, wVec, objFuncName, designVarName, dFdHSC);
-    }
-
     /// compute dFdACT
     void calcdFdACT(
         const Vec xvVec,
@@ -392,6 +437,17 @@ public:
     {
         DASolverPtr_->calcdRdFieldTPsiAD(xvVec, wVec, psi, designVarName, dRdFieldTPsi);
     }
+    
+    /// Uttam 20251114 compute dRdField
+    void calcdRdFieldTPsiAD_Coarse(
+        const Vec xvVec_coarse,
+        const Vec wVec_coarse,
+        const Vec psi_coarse,
+        const word designVarName,
+        Vec dRdFieldTPsi_coarse)
+    {
+        DASolverPtr_->calcdRdFieldTPsiAD_Coarse(xvVec_coarse, wVec_coarse, psi_coarse, designVarName, dRdFieldTPsi_coarse);
+    }
 
     /// compute dFdField
     void calcdFdFieldAD(
@@ -402,6 +458,17 @@ public:
         Vec dFdField)
     {
         DASolverPtr_->calcdFdFieldAD(xvVec, wVec, objFuncName, designVarName, dFdField);
+    }
+
+    /// Uttam 20251114 compute dFdField for coarse mesh
+    void calcdFdFieldAD_Coarse(
+        const Vec xvVec_coarse,
+        const Vec wVec_coarse,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdField_coarse)
+    {
+        DASolverPtr_->calcdFdFieldAD_Coarse(xvVec_coarse, wVec_coarse, objFuncName, designVarName, dFdField_coarse);
     }
 
     /// compute dRdWOld^T*Psi
@@ -436,17 +503,31 @@ public:
     }
 
     /// basically, we call DAIndex::getGlobalXvIndex
+    label getGlobalXvIndex_Coarse(
+        const label idxPoint,
+        const label idxCoord) const
+    {
+        return DASolverPtr_->getGlobalXvIndex_Coarse(idxPoint, idxCoord);
+    }
+
+    /// basically, we call DAIndex::getGlobalXvIndex
     label getGlobalXvIndex(
         const label idxPoint,
         const label idxCoord) const
     {
         return DASolverPtr_->getGlobalXvIndex(idxPoint, idxCoord);
     }
-
+    
     /// basically, we call DASolver::ofField2StateVec
     void ofField2StateVec(Vec stateVec) const
     {
         DASolverPtr_->ofField2StateVec(stateVec);
+    }
+    
+    /// basically, we call DASolver::ofField2StateVec Uttam 20251107
+    void ofField2StateVec_Coarse(Vec stateVec) const
+    {
+        DASolverPtr_->ofField2StateVec_Coarse(stateVec);
     }
 
     /// basically, we call DASolver::stateVec2OFField
@@ -472,7 +553,22 @@ public:
     {
         return DASolverPtr_->getNCouplingPoints();
     }
-
+    //20250916
+    label getNLocalFaces(const word& patchName) const
+    {
+        return DASolverPtr_->getNLocalFaces(patchName);
+    }
+    //20251029
+    /*label getNlocalSubDomainCells(const word& name) const
+    {
+        return DASolverPtr_->getNlocalSubDomainCells(name);
+    }
+    //20251029
+    void registerCellSet(const word& name)
+    {
+        DASolverPtr_->registerCellSet(name);
+    }
+    */
     // return the number of local mesh points
     label getNLocalPoints() const
     {
@@ -483,6 +579,12 @@ public:
     label getNLocalAdjointStates() const
     {
         return DASolverPtr_->getNLocalAdjointStates();
+    }
+    
+    /// return the number of local adjoint states for coarse mesh Uttam 20251107
+    label getNLocalAdjointStates_Coarse() const
+    {
+        return DASolverPtr_->getNLocalAdjointStates_Coarse();
     }
 
     /// return the number of local adjoint boundary states
@@ -495,6 +597,12 @@ public:
     label getNLocalCells() const
     {
         return DASolverPtr_->getNLocalCells();
+    }
+    
+    /// Uttam 20251114 return the number of local cells for coarse mesh
+    label getNLocalCells_Coarse() const
+    {
+        return DASolverPtr_->getNLocalCells_Coarse();
     }
 
     /// synchronize the values in DAOption and actuatorDiskDVs_
@@ -608,9 +716,9 @@ public:
     }
 
     /// get the number of regression model parameters
-    label getNRegressionParameters(word modelName)
+    label getNRegressionParameters()
     {
-        return DASolverPtr_->getNRegressionParameters(modelName);
+        return DASolverPtr_->getNRegressionParameters();
     }
 
     /// call the compute method of the regression model
@@ -620,10 +728,10 @@ public:
     }
 
     /// set the regression parameter
-    void setRegressionParameter(word modelName, label idxI, double val)
+    void setRegressionParameter(label idxI, double val)
     {
         scalar val1 = val;
-        DASolverPtr_->setRegressionParameter(modelName, idxI, val1);
+        DASolverPtr_->setRegressionParameter(idxI, val1);
     }
 
     /// calculte [dR/dRegParameters]^T * psi
@@ -632,10 +740,9 @@ public:
         const double* states,
         const double* parameters,
         const double* seeds,
-        const word modelName,
         double* product)
     {
-        DASolverPtr_->calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, modelName, product);
+        DASolverPtr_->calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, product);
     }
 
     /// compute dFdRegPar AD
@@ -645,10 +752,9 @@ public:
         const double* parameters,
         const word objFuncName,
         const word designVarName,
-        const word modelName,
         double* dFdRegPar)
     {
-        DASolverPtr_->calcdFdRegParAD(volCoords, states, parameters, objFuncName, designVarName, modelName, dFdRegPar);
+        DASolverPtr_->calcdFdRegParAD(volCoords, states, parameters, objFuncName, designVarName, dFdRegPar);
     }
 
     void calcdRdThermalTPsiAD(
@@ -669,6 +775,16 @@ public:
     {
         DASolverPtr_->getOFField(fieldName, fieldType, field);
     }
+    
+    /// get a variable from OF layer
+    void getOFField_Coarse(
+        const word fieldName,
+        const word fieldType,
+        Vec field)
+    {
+        DASolverPtr_->getOFField_Coarse(fieldName, fieldType, field);
+    }
+
 
     /// return the acoustic data values
     void getAcousticData(Vec x, Vec y, Vec z, Vec nX, Vec nY, Vec nZ, Vec a, Vec fX, Vec fY, Vec fZ, word groupName)
@@ -882,6 +998,16 @@ public:
     {
         DASolverPtr_->setFieldValue4GlobalCellI(fieldName, val, globalCellI, compI);
     }
+    
+    /// 20251114 set the field value for coarse mesh
+    void setFieldValue4GlobalCellI_Coarse(
+        const word fieldName,
+        const scalar val,
+        const label globalCellI,
+        const label compI = 0)
+    {
+        DASolverPtr_->setFieldValue4GlobalCellI_Coarse(fieldName, val, globalCellI, compI);
+    }
 
     /// set the field value
     void setFieldValue4LocalCellI(
@@ -899,12 +1025,6 @@ public:
         const word fieldType)
     {
         DASolverPtr_->updateBoundaryConditions(fieldName, fieldType);
-    }
-
-    /// update the boundary conditions for all states and intermediate variables
-    void updateStateBoundaryConditions()
-    {
-        DASolverPtr_->updateStateBoundaryConditions();
     }
 
     /// Calculate the mean, max, and norm2 for all residuals and print it to screen
@@ -1005,21 +1125,9 @@ public:
         pyComputeInterface computeInterface,
         void* compute,
         pyJacVecProdInterface jacVecProdInterface,
-        void* jacVecProd,
-        pySetCharInterface setModelNameInterface,
-        void* setModelName)
+        void* jacVecProd)
     {
-        DASolverPtr_->initTensorFlowFuncs(
-            computeInterface, compute, jacVecProdInterface, jacVecProd, setModelNameInterface, setModelName);
-    }
-
-    /// write the adjoint variables for all states
-    void writeAdjointFields(
-        const word objFunc,
-        const double writeTime,
-        const double* psi)
-    {
-        DASolverPtr_->writeAdjointFields(objFunc, writeTime, psi);
+        DASolverPtr_->initTensorFlowFuncs(computeInterface, compute, jacVecProdInterface, jacVecProd);
     }
 
     /// write the sensitivity map for all wall surfaces
@@ -1043,6 +1151,15 @@ public:
         DASolverPtr_->writeSensMapField(name, dFdField, fieldType, timeName);
     }
 
+    /// Uttam 20251114 write the sensitivity map for the entire field for coarse mesh
+    void writeSensMapField_Coarse(
+        const word name,
+        const double* dFdField,
+        const word fieldType,
+        const double timeName)
+    {
+        DASolverPtr_->writeSensMapField_Coarse(name, dFdField, fieldType, timeName);
+    }
     /// get the latest solution time
     double getLatestTime()
     {

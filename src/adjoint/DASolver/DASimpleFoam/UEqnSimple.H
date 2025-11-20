@@ -2,17 +2,18 @@
 
 MRF.correctBoundaryVelocity(U);
 
-if (hasFvSource_)
+/*if (hasFvSource_)
 {
     daFvSourcePtr_->calcFvSource(fvSource);
 }
-
+*/
 tmp<fvVectorMatrix> tUEqn(
     fvm::div(phi, U, divUScheme)
     + fvm::Sp(alphaPorosity, U)
     + MRF.DDt(U)
     + turbulencePtr_->divDevReff(U)
     - fvSource
+    - dp
     - fvOptions(U));
 fvVectorMatrix& UEqn = tUEqn.ref();
 
@@ -26,7 +27,7 @@ if (simple.momentumPredictor())
     // and final residuals
     SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
-    DAUtility::primalResidualControl(solverU, printToScreen, "U");
+    this->primalResidualControl<vector>(solverU, printToScreen, printInterval, "U");
 
     fvOptions.correct(U);
 }

@@ -45,6 +45,19 @@ protected:
 
     /// coordinates of the probe points
     List<List<scalar>> probePointCoords_;
+    
+    /// list of velocities
+    List<List<scalar>> velocity_;
+    
+    
+    //List<List<scalar>> uBoxAvg;
+
+    
+    /// list of the CFD points that are inside a given experimental cell
+    List<List<label>> points_;
+    
+    /// list of spacing in the three directions
+    List<scalar> spacing_;
 
     /// names of the surfaces for ref data
     List<word> surfaceNames_;

@@ -54,6 +54,35 @@ class DAkOmegaSSTFieldInversion
 protected:
     /// \name SST parameters
     //@{
+    
+        const scalar C_lamba5_1 = -5.0;
+    const scalar C_lamba5_2 = -27.0;
+    const scalar C_I_1 = 800.0;
+    const scalar C_I_2 = 0.007;
+    
+    volScalarField lambda2_;
+    volScalarField lambda5_;
+    volScalarField reOmega_;
+
+
+
+    
+    volScalarField chiSR();
+
+    
+    volScalarField sLambda5();
+    
+    volScalarField sI();
+    
+    volScalarField betaSR();
+    
+
+    const dimensionedScalar low_eps_omg;
+    
+    const dimensionedScalar low_eps_nu;
+    
+    const dimensionedScalar low_eps_epsilon;
+
     dimensionedScalar alphaK1_;
     dimensionedScalar alphaK2_;
 

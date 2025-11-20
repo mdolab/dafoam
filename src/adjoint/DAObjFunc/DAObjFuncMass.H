@@ -31,9 +31,6 @@ public:
     TypeName("mass");
     // Constructors
 
-    /// user-defined density
-    scalar rho_ = -1.0;
-
     //- Construct from components
     DAObjFuncMass(
         const fvMesh& mesh,

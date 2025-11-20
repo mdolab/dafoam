@@ -107,15 +107,15 @@ DASpalartAllmarasFv3::DASpalartAllmarasFv3(
           nuTilda_),
       pseudoNuTildaEqn_(fvm::div(phi_, pseudoNuTilda_, "div(phi,nuTilda)")),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall")),
-      betaFINuTilda_(
+      betaFI_(
           IOobject(
-              "betaFINuTilda",
+              "betaFI",
               mesh.time().timeName(),
               mesh,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
           mesh,
-          dimensionedScalar("betaFINuTilda", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           "zeroGradient")
 {
 
@@ -467,7 +467,7 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
             + fvm::div(phaseRhoPhi_, nuTilda_, divNuTildaScheme)
             - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFINuTilda_
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.ref().relax();
@@ -479,7 +479,11 @@ void DASpalartAllmarasFv3::calcResiduals(const dictionary& options)
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverNuTilda = solve(nuTildaEqn);
-        DAUtility::primalResidualControl(solverNuTilda, printToScreen, "nuTilda");
+        if (printToScreen)
+        {
+            Info << "nuTilda Initial residual: " << solverNuTilda.initialResidual() << endl
+                 << "          Final residual: " << solverNuTilda.finalResidual() << endl;
+        }
 
         DAUtility::boundVar(allOptions_, nuTilda_, printToScreen);
         nuTilda_.correctBoundaryConditions();
@@ -666,7 +670,7 @@ void DASpalartAllmarasFv3::calcLduResidualTurb(volScalarField& nuTildaRes)
         fvm::div(phi_, nuTilda_, "div(phi,nuTilda)")
             - fvm::laplacian(DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * Stilda * nuTilda_ * betaFINuTilda_
+        == Cb1_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     List<scalar>& nuTildaSource = nuTildaEqn.source();
@@ -731,7 +735,7 @@ void DASpalartAllmarasFv3::getFvMatrixFields(
             + fvm::div(phaseRhoPhi_, nuTilda_, "div(pc)")
             - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFINuTilda_
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.relax();
@@ -741,7 +745,7 @@ void DASpalartAllmarasFv3::getFvMatrixFields(
     lower = nuTildaEqn.lower();
 }
 
-void DASpalartAllmarasFv3::getTurbProdOverDestruct(volScalarField& PoD) const
+void DASpalartAllmarasFv3::getTurbProdOverDestruct(scalarList& PoD) const
 {
     /*
     Description:
@@ -764,7 +768,7 @@ void DASpalartAllmarasFv3::getTurbProdOverDestruct(volScalarField& PoD) const
     }
 }
 
-void DASpalartAllmarasFv3::getTurbConvOverProd(volScalarField& CoP) const
+void DASpalartAllmarasFv3::getTurbConvOverProd(scalarList& CoP) const
 {
     /*
     Description:

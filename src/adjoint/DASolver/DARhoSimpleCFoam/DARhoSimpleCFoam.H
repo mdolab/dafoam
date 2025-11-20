@@ -83,6 +83,9 @@ protected:
 
     /// DATurbulenceModel pointer
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+    
+    /// DATurbulenceModel pointer target Uttam 20251107
+    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_Coarse_;
 
     /// initial mass
     dimensionedScalar initialMass_;

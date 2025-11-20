@@ -12,7 +12,6 @@ scalar& cumulativeContErr = cumulativeContErr_;
 label& pRefCell = pRefCell_;
 scalar& pRefValue = pRefValue_;
 volVectorField& fvSource = fvSourcePtr_();
-volScalarField& fTSource = fTSourcePtr_();
 IOMRFZoneListDF& MRF = MRFPtr_();
 volScalarField& T = TPtr_();
 dimensionedScalar Pr = PrPtr_();

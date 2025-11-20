@@ -39,6 +39,41 @@ void ColoringIncompressible::run()
 #include "setRootCasePython.H"
 #include "createTimePython.H"
 #include "createMeshPython.H"
+// 1. This is our dumb file. It creates 
+// meshPtr_ only.
+
+    DAOption daOption_t(meshPtr_(), pyOptions_);
+    bool multiMeshMode = (daOption_t.getOption<word>("multiMesh") == "yes");
+
+    // 3. Create 'targetPtr_' (coarse mesh) *only* if in multi-mesh mode
+    //    (DASolver constructor does this, but this is a
+    //    SEPARATE program, so it must do it too).
+    if (multiMeshMode)
+    {
+        Info << "Multi-mesh mode: Loading target mesh for coloring." << endl;
+        const word newRegion = "target";
+        targetPtr_.reset( // 'targetPtr_' is a class member
+            new fvMesh(
+                IOobject(
+                    newRegion,
+                    runTimePtr_().timeName(),
+                    runTimePtr_(),
+                    IOobject::MUST_READ)));
+    }
+
+    // 4. THE HIJACK
+    //    Create the 'mesh' reference that subsequent files will use.
+    fvMesh& mesh = (multiMeshMode ? targetPtr_() : meshPtr_());
+
+    if (multiMeshMode)
+    {
+        Info << "ColoringIncompressible: Hijack successful. Coloring will run on " << mesh.name() << endl;
+    }
+    
+    // --- END OF MODIFICATION ---
+
+
+    // 5. Now, these files will use the *hijacked* 'mesh' reference
 #include "createFields.H"
 #include "createAdjoint.H"
 

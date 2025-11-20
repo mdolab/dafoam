@@ -6,3 +6,17 @@
 
 # PyCharm specific
 /.idea
+
+# Build artifacts
+build/
+*.so
+*.egg-info/
+__pycache__/
+
+# OpenFOAM specific symlinks and makes
+src/adjoint/lnInclude/
+src/adjoint/Make/linux64GccDPInt32Opt/
+
+# Temporary files
+status
+run.sh

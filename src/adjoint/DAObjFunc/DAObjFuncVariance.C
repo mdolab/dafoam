@@ -59,6 +59,32 @@ DAObjFuncVariance::DAObjFuncVariance(
         objFuncDict_.readEntry<List<List<scalar>>>("probePointCoords", probePointCoords_);
     }
 
+    if (mode_ == "probePointData")
+    {
+        Info << "Reading probePointCoords..." <<endl;
+        objFuncDict_.readEntry<List<List<scalar>>>("probePointCoords", probePointCoords_);
+        Info << "Done!" <<endl;
+        Info << "Reading velocity..." <<endl;
+        objFuncDict_.readEntry<List<List<scalar>>>("velocity", velocity_);
+        Info << "Done!" <<endl;
+    }
+    if (mode_ == "probePointAverage")
+    {
+        Info << "Reading probePointCoords..." <<endl;
+        objFuncDict_.readEntry<List<List<scalar>>>("probePointCoords", probePointCoords_);
+        Info << "Done!" <<endl;
+        Info << "Reading velocity..." <<endl;
+        objFuncDict_.readEntry<List<List<scalar>>>("velocity", velocity_);
+        Info << "Done!" <<endl;
+        Info << "Reading spacing..." <<endl;
+        objFuncDict_.readEntry<List<scalar>>("spacing", spacing_);
+        Info << "Done!" <<endl;
+    }
+
+//forAll(points)
+
+
+
     objFuncDict_.readEntry<word>("varName", varName_);
 
     if (varName_ == "wallHeatFlux")
@@ -145,10 +171,10 @@ DAObjFuncVariance::DAObjFuncVariance(
             dimensionedVector("dummy", dimensionSet(0, 0, 0, 0, 0, 0, 0), {1e16, 1e16, 1e16}),
             "zeroGradient");
 
-        if (mag(gSumCmptMag(varData)) > 1e16)
+        /*if (mag(gSumCmptMag(varData)) > 1e16)
         {
             isRefData_ = 0;
-        }
+        }*/
     }
     else
     {
@@ -199,7 +225,7 @@ DAObjFuncVariance::DAObjFuncVariance(
                     mesh_);
 
                 nRefPoints_ = 0;
-
+                Info << "Number of reference points set to 0 here " << endl ;
                 if (mode_ == "probePoint")
                 {
                     probeCellIndex_.setSize(0);
@@ -278,7 +304,7 @@ DAObjFuncVariance::DAObjFuncVariance(
                     mesh_);
 
                 nRefPoints_ = 0;
-
+                Info << "Number of reference points set to 0 here " << endl ;
                 if (mode_ == "probePoint")
                 {
                     probeCellIndex_.setSize(0);
@@ -298,6 +324,92 @@ DAObjFuncVariance::DAObjFuncVariance(
                             }
                         }
                     }
+                }
+                else if (mode_ == "probePointAverage")
+                {
+                    Info << "Entered probePointAverage condition" << endl;
+                    const vectorField centers = mesh_.C();
+                    probeCellIndex_.setSize(0);
+                    points_.setSize(0);
+                    List<label> temp_pts;
+                    List<label> temp_probe;
+
+                    label nPoints = 0;
+                    forAll(probePointCoords_, idxI)
+                    {
+                        label flag = 0;
+                        //Info << "Entered probePointCoords_ condition" << endl;
+                        //Info << "The number of objFuncCellSources: " << objFuncCellSources_.size() << endl;
+                        forAll(centers, idxJ)
+                        {
+                            if (centers[idxJ][0] < (probePointCoords_[idxI][0] +  0.5*spacing_[0]) 
+                            and centers[idxJ][0] > (probePointCoords_[idxI][0] -  0.5*spacing_[0]) 
+                            and centers[idxJ][1] < (probePointCoords_[idxI][1] +  0.5*spacing_[1]) 
+                            and centers[idxJ][1] > (probePointCoords_[idxI][1] -  0.5*spacing_[1]))
+                            {
+                            if (flag == 0)
+                                {
+                                    probeCellIndex_.append(idxI);
+                                    flag = 1;
+                                }
+                            temp_pts.append(idxJ);
+                            }
+                        }
+                        if (temp_pts.size()!=0)
+                            points_.append(temp_pts);
+                        temp_pts.clear();
+                        nPoints++;
+                    }
+                    Info << "Probeindex is " << probeCellIndex_ << endl;
+
+                    Info << "Exited probePointCoords_ condition" << endl;
+
+                    forAll (probeCellIndex_, idxI)
+                    {
+                        const label refIndex = probeCellIndex_[idxI];
+                        forAll(components_, idxJ)
+                        {
+                            //Info << "Entered components_ condition" << endl;
+                            const label compI = components_[idxJ];
+                            refValue_[n].append(velocity_[refIndex][compI]);
+                            nRefPoints_++;
+                        }
+                    }
+                    reduce(nPoints, sumOp<label>());
+                    Info << "Exiting probePointAverage condition" << endl;
+                    Info << "The number of reference points is: " << nRefPoints_ << endl;
+                    Info << "Size of points is: " << nPoints << endl;
+                    Info << "Size of the reference data set is: " << refValue_[0].size() << endl;
+
+                }
+                    
+                else if (mode_ == "probePointData")
+                {
+                    Info <<"Entered probePointData condition " << endl;
+                    probeCellIndex_.setSize(0);
+
+
+                    forAll(probePointCoords_, idxI)
+                    {
+                        Info <<" Entered the for loop" << endl;
+                        point pointCoord = {probePointCoords_[idxI][0], probePointCoords_[idxI][1], probePointCoords_[idxI][2]};
+                        Info << "Point has been initialized:" << "("<< pointCoord[0] << " , " <<  
+                        pointCoord[1]  << " , " << 
+                        pointCoord[2] << " ) " << endl ;
+                        label cellI = DAUtility::myFindCell(mesh_, pointCoord);
+                        Info <<"cellI has been found " << cellI << endl;
+                        if (cellI >= 0)
+                        {
+                            probeCellIndex_.append(cellI);
+                            forAll(components_, idxJ)
+                            {
+                                label compI = components_[idxJ];
+                                refValue_[n].append(velocity_[idxI][compI]);
+                                nRefPoints_++;
+                            }
+                            
+                        }
+                    } Info << "Reference points is " << nRefPoints_ << endl;
                 }
                 else if (mode_ == "surface")
                 {
@@ -494,9 +606,9 @@ void DAObjFuncVariance::calcObjFunc(
         {
             if (varType_ == "scalar")
             {
-                const volScalarField& var = db.lookupObject<volScalarField>(varName_);
+                const volScalarField var = db.lookupObject<volScalarField>(varName_);
 
-                if (mode_ == "probePoint")
+                if (mode_ == "probePoint" || mode_ == "probePointData")
                 {
                     forAll(probeCellIndex_, idxI)
                     {
@@ -531,9 +643,9 @@ void DAObjFuncVariance::calcObjFunc(
             }
             else if (varType_ == "vector")
             {
-                const volVectorField& var = db.lookupObject<volVectorField>(varName_);
+                const volVectorField var = db.lookupObject<volVectorField>(varName_);
 
-                if (mode_ == "probePoint")
+                if (mode_ == "probePoint" || mode_ == "probePointData")
                 {
                     label pointI = 0;
                     forAll(probeCellIndex_, idxI)
@@ -548,6 +660,80 @@ void DAObjFuncVariance::calcObjFunc(
                         }
                     }
                 }
+                else if (mode_ == "probePointAverage")
+                {
+                    Info << "entered obj func calculation: " << endl;
+                    scalarList ux(var.size());
+                    scalarList uy(var.size());
+                    scalarList uz(var.size());
+                
+                    ux = var.component(0);
+                    uy = var.component(1);
+                    uz = var.component(2);
+                
+
+                    // allocate all box average lists
+                    List<scalar> volAvg;
+                    List<List<scalar>> uBoxAvg;
+
+                    Info << "uBoxAvg initialized "<< endl;
+                    forAll(points_, idxI)
+                    {
+                        scalar avgU = 0.0;
+                        scalar avgV = 0.0;
+                        scalar avgW = 0.0;
+                        scalar volavg = 0.0;
+                        List<label> tmp_ = points_[idxI];
+
+                        if (tmp_.size()>0)
+                        {
+                            forAll(tmp_, idxJ)
+                            {
+                                label tmpTmp_ = tmp_[idxJ];
+                                avgU = avgU + mesh_.V()[tmpTmp_]*ux[tmpTmp_];
+                                avgV = avgV + mesh_.V()[tmpTmp_]*uy[tmpTmp_];
+                                avgW = avgW + mesh_.V()[tmpTmp_]*uz[tmpTmp_];
+                                volavg = volavg + mesh_.V()[tmpTmp_];
+                            }
+                            uBoxAvg[idxI].append(avgU/volavg);
+                            uBoxAvg[idxI].append(avgV/volavg);
+                            uBoxAvg[idxI].append(avgW/volavg);
+                        }
+                        
+
+                    }
+                    Info << "Volume averaging done, size of uBoxAvg is: "<< uBoxAvg.size() << endl;
+
+                    label pointI = 0;
+                    Info << " entering obj func calc" << endl;
+                    forAll(uBoxAvg, idxI)
+                    {
+                        //label cellI = probeCellIndex_[idxI];
+                        forAll(components_, idxJ)
+                        {
+                            label compI = components_[idxJ];
+                            scalar varDif = (uBoxAvg[idxI][compI] - refValue_[timeIndex - 1][pointI]);
+                            objFuncValue += scale_ * varDif * varDif;
+                            pointI++;
+                        }
+                    }
+                    Info << "obj func calc done" << endl;
+                }               
+                /*else if (mode_ == "probePointData")
+                {
+                    label pointI = 0;
+                    forAll(probeCellIndex_, idxI)
+                    {
+                        label cellI = probeCellIndex_[idxI];
+                        forAll(components_, idxJ)
+                        {
+                            label compI = components_[idxJ];
+                            scalar varDif = (var[cellI][compI] - refValue_[timeIndex - 1][pointI]);
+                            objFuncValue += scale_ * varDif * varDif;
+                            pointI++;
+                        }
+                    }
+                }*/
                 else if (mode_ == "surface")
                 {
                     label pointI = 0;

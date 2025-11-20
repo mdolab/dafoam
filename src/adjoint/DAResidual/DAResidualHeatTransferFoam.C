@@ -42,12 +42,6 @@ DAResidualHeatTransferFoam::DAResidualHeatTransferFoam(
             "k",
             dimPower / dimLength / dimTemperature,
             transportProperties));
-    
-    const dictionary& allOptions = daOption.getAllOptions();
-    if (allOptions.subDict("fvSource").toc().size() != 0)
-    {
-        hasFvSource_ = 1;
-    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -77,13 +71,6 @@ void DAResidualHeatTransferFoam::calcResiduals(const dictionary& options)
     Output:
         URes_, pRes_, TRes_, phiRes_: residual field variables
     */
-
-    if (hasFvSource_)
-    {
-        DAFvSource& daFvSource(const_cast<DAFvSource&>(
-            mesh_.thisDb().lookupObject<DAFvSource>("DAFvSource")));
-        daFvSource.calcFvSource(fvSource_);
-    }
 
     fvScalarMatrix TEqn(
         fvm::laplacian(kPtr_(), T_)

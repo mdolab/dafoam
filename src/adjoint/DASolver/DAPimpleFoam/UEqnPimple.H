@@ -22,7 +22,7 @@ if (pimple.momentumPredictor())
     // and final residuals
     SolverPerformance<vector> solverU = solve(UEqn == -fvc::grad(p));
 
-    DAUtility::primalResidualControl(solverU, pimplePrintToScreen, "U");
+    this->primalResidualControl<vector>(solverU, pimplePrintToScreen, printInterval, "U");
 }
 
 // bound U

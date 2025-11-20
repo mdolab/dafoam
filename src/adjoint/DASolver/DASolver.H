@@ -37,6 +37,9 @@
 #include "volPointInterpolation.H"
 #include "IOMRFZoneListDF.H"
 #include "interpolateSplineXY.H"
+#include "meshSearch.H"
+#include "meshToMesh.H"
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -73,17 +76,47 @@ protected:
     /// fvMesh pointer
     autoPtr<fvMesh> meshPtr_;
 
+    /// This will store our persistent, parallel-safe interpolator
+    /// Uttam 20251103
+    autoPtr<meshToMesh> interpolatorPtr_;
+    
+    /// Uttam 20251105
+    autoPtr<meshToMesh> scalarInterpolatorPtr_; // This is for 'p' and 'nuTilda'
+    
+    /// Uttam 20251111
+    autoPtr<meshToMesh> controlInterpolatorPtr_;
+    
+    // Uttam  20251103
+    autoPtr<fvMesh> targetPtr_;
+    
+    // Uttam 20251103
+    autoPtr<DAObjFunc> multiMeshObjFuncPtr_;
+
     /// DAOption pointer
     autoPtr<DAOption> daOptionPtr_;
+    
+    /// DAOption pointer target Uttam 20251107
+    autoPtr<DAOption> daOptionPtr_Coarse_;
 
     /// DAModel pointer
     autoPtr<DAModel> daModelPtr_;
+    
+    /// DAModel pointer target Uttam 20251107
+    autoPtr<DAModel> daModelPtr_Coarse_;
 
     /// DAIndex pointer
     autoPtr<DAIndex> daIndexPtr_;
+    
+    /// DAIndex pointer target Uttam 20251107
+    autoPtr<DAIndex> daIndexPtr_Coarse_;
 
     /// DAField pointer
     autoPtr<DAField> daFieldPtr_;
+    
+    /// DAField pointer target Uttam 20251107
+    autoPtr<DAField> daFieldPtr_Coarse_;
+    
+    
 
     /// a list of DAObjFunc pointers
     UPtrList<DAObjFunc> daObjFuncPtrList_;
@@ -93,18 +126,33 @@ protected:
 
     /// DALinearEqn pointer
     autoPtr<DALinearEqn> daLinearEqnPtr_;
+    
+    /// DALinearEqn pointer target Uttam 20251112
+    autoPtr<DALinearEqn> daLinearEqnPtr_Coarse_;
 
     /// DAResidual pointer
     autoPtr<DAResidual> daResidualPtr_;
 
+    /// DAResidual pointer target Uttam 20251107
+    autoPtr<DAResidual> daResidualPtr_Coarse_;
+
     /// DAStateInfo pointer
     autoPtr<DAStateInfo> daStateInfoPtr_;
+    
+    /// DAStateInfo pointer target Uttam 20251107
+    autoPtr<DAStateInfo> daStateInfoPtr_Coarse_;
 
     /// DARegression pointer
     autoPtr<DARegression> daRegressionPtr_;
+    
+    // coarse mesh MRF pointer Uttam 20251110
+    autoPtr<IOMRFZoneListDF> MRFPtr_Coarse_;
 
     /// the stateInfo_ list from DAStateInfo object
     HashTable<wordList> stateInfo_;
+    
+    /// Uttam 20251114 the stateInfo_ list from DAStateInfo object COARSE mesh
+    HashTable<wordList> stateInfo_Coarse;
 
     /// the list of objective function names that requires adjoint solution
     wordList objFuncNames4Adj_;
@@ -139,8 +187,19 @@ protected:
     /// the derivative value computed by the forward mode primal solution.
     HashTable<PetscScalar> forwardADDerivVal_;
 
+    /// the maximal residual for primal solution
+    scalar primalMinRes_ = 1e10;
+
     /// the solution time for the previous primal solution
     scalar prevPrimalSolTime_ = -1e10;
+
+    /// setup maximal residual control and print the residual as needed
+    template<class classType>
+    void primalResidualControl(
+        const SolverPerformance<classType>& solverP,
+        const label printToScreen,
+        const label printInterval,
+        const word varName);
 
     label isPrintTime(
         const Time& runTime,
@@ -159,9 +218,15 @@ protected:
 
     /// matrix-free dRdWT matrix used in GMRES solution
     Mat dRdWTMF_;
+    
+    /// matrix-free dRdWT matrix used in GMRES solution on COARSE mesh Uttam 20251112
+    Mat dRdWTMF_Coarse_;
 
     /// a flag in dRdWTMatVecMultFunction to determine if the global tap is initialized
     label globalADTape4dRdWTInitialized = 0;
+    
+    /// a flag in dRdWTMatVecMultFunction to determine if the global tap is initialized for COARSE mesh Uttam 20251113
+    label globalADTape4dRdWTInitialized_Coarse = 0;
 
     /// state variable list for all instances (unsteady)
     List<List<scalar>> stateAllInstances_;
@@ -205,37 +270,6 @@ protected:
     /// initial values for validateStates
     HashTable<scalar> initStateVals_;
 
-    /// whether to use mean states for steady-solvers
-    label useMeanStates_ = 0;
-    /// if the meanStates is used, what is the step-averaging start
-    scalar meanStateStart_ = 0.5;
-    /// whether we have calculated the meanStates, if not (flow converge before meanStateStart_), we will not use meanStates
-    label meanStatesCalculated_ = 0;
-
-    /// step-averaged scalar states
-    PtrList<volScalarField> meanVolScalarStates_;
-
-    /// step-averaged model states
-    PtrList<volScalarField> meanModelStates_;
-
-    /// step-averaged vector states
-    PtrList<volVectorField> meanVolVectorStates_;
-
-    /// step-averaged surfaceScalar states
-    PtrList<surfaceScalarField> meanSurfaceScalarStates_;
-
-    /// whether to use the primal's std as the convergence criterion
-    label primalObjStdActive_;
-
-    /// the step series of the primal objective, used if primalObjStdTol->active is True
-    scalarList primalObjSeries_;
-
-    /// the standard deviation of the primal objective, used if primalObjStdTol->active is True
-    scalar primalObjStd_;
-
-    /// the tolerance of the primal objective std, used if primalObjStdTol->active is True
-    scalar primalObjStdTol_;
-
 public:
     /// Runtime type information
     TypeName("DASolver");
@@ -271,6 +305,12 @@ public:
 
     // Member functions
 
+    // Uttam 20251103
+    virtual void interpolateStateToTarget();
+    
+    // Uttam 20251111
+    void interpolateControlToTarget();
+    
     /// initialize fields and variables
     virtual void initSolver() = 0;
 
@@ -285,18 +325,6 @@ public:
         const Vec wVec,
         Vec dFdW,
         Vec psi);
-
-    /// calculate the step-averaged mean states for steady solvers
-    void calcMeanStates();
-
-    /// initialize the meanStates if needed
-    void initMeanStates();
-
-    /// zero out the mean states before calculating the meanStates
-    void zeroMeanStates();
-
-    /// assign meanStates to states when the primal is done.
-    void assignMeanStatesToStates();
 
     /// assign primal variables based on the current time instance
     void setTimeInstanceField(const label instanceI);
@@ -355,6 +383,13 @@ public:
         const Vec wVec,
         const label isPC,
         Mat dRdWT);
+    
+    /// Uttam 20251113 compute dRdWT
+    void calcdRdWT_Coarse(
+        const Vec xvVec,
+        const Vec wVec,
+        const label isPC,
+        Mat dRdWT);
 
     /// compute [dRdW]^T*Psi
     void calcdRdWTPsiAD(
@@ -381,6 +416,7 @@ public:
         const Mat jacMat,
         const Mat jacPCMat,
         KSP ksp);
+       
 
     /// Update the preconditioner matrix for the ksp object
     void updateKSPPCMat(
@@ -392,6 +428,13 @@ public:
         const KSP ksp,
         const Vec rhsVec,
         Vec solVec);
+    
+    
+    /// Uttam 20251111
+    label solveLinearEqn_Coarse(
+        const KSP ksp, 
+        const Vec rhsVec_coarse, 
+        Vec solVec_coarse);
 
     /// convert the mpi vec to a seq vec
     void convertMPIVec2SeqVec(
@@ -400,15 +443,27 @@ public:
 
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec
     void updateOFField(const Vec wVec);
+    
+    /// Uttam 20251112 Update the OpenFOAM field values (including both internal and boundary fields) based on the state vector wVec for coarse mesh
+    void updateOFField_Coarse(const Vec wVec);
 
     /// Update the OpenFoam mesh point coordinates based on the point vector xvVec
     void updateOFMesh(const Vec xvVec);
 
+    /// Uttam 20251112 Update the OpenFoam mesh point coordinates based on the point vector xvVec for coarse mesh
+    void updateOFMesh_Coarse(const Vec xvVec);
+
     /// Update the OpenFOAM field values (including both internal and boundary fields) based on the state array
     void updateOFField(const scalar* volCoords);
+    
+    /// Uttam 20251112 Update the OpenFOAM field values (including both internal and boundary fields) based on the state array for coarse mesh
+    void updateOFField_Coarse(const scalar* volCoords);
 
     /// Update the OpenFoam mesh point coordinates based on the volume point coords array
     void updateOFMesh(const scalar* states);
+    
+    /// Uttam 20251114 Update the OpenFoam mesh point coordinates based on the volume point coords array for coarse mesh
+    void updateOFMesh_Coarse(const scalar* states);
 
     /// reset the seeds (gradient to zeros) for all OpenFOAM variables
     void resetOFSeeds();
@@ -524,10 +579,30 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdField);
+        
+    /// Uttam 20251114 compute dFdField and dRdFieldTPsiAD on coarse mesh
+    void calcdFdFieldAD_Coarse(
+        const Vec xvVec_coarse,
+        const Vec wVec_coarse,
+        const word objFuncName,
+        const word designVarName,
+        Vec dFdField_coarse);
+
+    void calcdRdFieldTPsiAD_Coarse(
+        const Vec xvVec_coarse,
+        const Vec wVec_coarse,
+        const Vec psi_coarse,
+        const word designVarName,
+        Vec dRdFieldTPsi_coarse);
 
     /// create a multi-level, Richardson KSP object with matrix-free Jacobians
     void createMLRKSPMatrixFree(
         const Mat jacPCMat,
+        KSP ksp);
+        
+        /// Uttam 20251111
+    void createMLRKSPMatrixFree_Coarse(
+        const Mat jacPCMat_coarse, 
         KSP ksp);
 
     /// compute dFdW using AD
@@ -536,6 +611,14 @@ public:
         const Vec wVec,
         const word objFuncName,
         Vec dFdW);
+
+        
+    /// Uttam 20251111
+    void calcdFdWAD_Coarse(
+        const Vec xvVec_coarse, 
+        const Vec wVec_coarse, 
+        const word objFuncName, 
+        Vec dFdW_coarse);
 
     void calcdRdThermalTPsiAD(
         const double* volCoords,
@@ -581,13 +664,6 @@ public:
         const Vec psi,
         const word designVarName,
         Vec dRdActTPsi);
-    
-    void calcdRdHSCTPsiAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const Vec psi,
-        const word designVarName,
-        Vec dRdHSCTPsi);
 
     void calcdForcedWAD(
         const Vec xvVec,
@@ -610,14 +686,6 @@ public:
         const word objFuncName,
         const word designVarName,
         Vec dFdACT);
-    
-    /// compute dFdHSC AD
-    void calcdFdHSCAD(
-        const Vec xvVec,
-        const Vec wVec,
-        const word objFuncName,
-        const word designVarName,
-        Vec dFdHSC);
 
     /// compute dFdRegPar AD
     void calcdFdRegParAD(
@@ -626,7 +694,6 @@ public:
         const double* parameters,
         const word objFuncName,
         const word designVarName,
-        const word modelName,
         double* dFdRegPar);
 
     /// compute dRdWOld^T*Psi
@@ -643,20 +710,40 @@ public:
         Mat dRdWT,
         Vec vecX,
         Vec vecY);
+        
+    /// Uttam 20251113 matrix free matrix-vector product function to compute vecY=dRdWT*vecX for Coarse Mesh
+    static PetscErrorCode dRdWTMatVecMultFunction_Coarse(
+        Mat dRdWT,
+        Vec vecX,
+        Vec vecY);
 
     /// initialize matrix free dRdWT
     void initializedRdWTMatrixFree(
         const Vec xvVec,
         const Vec wVec);
+        
+    /// Uttam 20251111
+    void initializedRdWTMatrixFree_Coarse(
+        const Vec xvVec_coarse, 
+        const Vec wVec_coarse);
 
     /// destroy the matrix free dRdWT
     void destroydRdWTMatrixFree();
+    
+    /// Uttam 20251111
+    void destroydRdWTMatrixFree_Coarse();
 
     /// register all state variables as the input for reverse-mode AD
     void registerStateVariableInput4AD(const label oldTimeLevel = 0);
+    
+    /// Uttam 20251113 register all state variables as the input for reverse-mode AD for Coarse Mesh
+    void registerStateVariableInput4AD_Coarse(const label oldTimeLevel = 0);
 
     /// deactivate all state variables as the input for reverse-mode AD
     void deactivateStateVariableInput4AD(const label oldTimeLevel = 0);
+    
+    /// Uttam 20251112 deactivate all state variables as the input for reverse-mode AD for Coarse Mesh 
+    void deactivateStateVariableInput4AD_Coarse(const label oldTimeLevel = 0);
 
     /// register field variables as the input for reverse-mode AD
     void registerFieldVariableInput4AD(
@@ -667,9 +754,22 @@ public:
     void deactivateFieldVariableInput4AD(
         const word fieldName,
         const word fieldType);
+        
+    /// Uttam 20251114 register field variables as the input for reverse-mode AD for Coarse Mesh
+    void registerFieldVariableInput4AD_Coarse(
+        const word fieldName,
+        const word fieldType);
+
+    /// 20251114 deactivate the field variables for reverse-mode AD for Coarse Mesh
+    void deactivateFieldVariableInput4AD_Coarse(
+        const word fieldName,
+        const word fieldType);
 
     /// register all residuals as the output for reverse-mode AD
     void registerResidualOutput4AD();
+    
+    /// Uttam 20251113 register all residuals as the output for reverse-mode AD for coarse mesh
+    void registerResidualOutput4AD_Coarse();
 
     /// register all force as the ouptut for referse-mod AD
     void registerForceOutput4AD(List<scalar>& fX, List<scalar>& fY, List<scalar>& fZ);
@@ -679,6 +779,9 @@ public:
 
     /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
     void assignVec2ResidualGradient(Vec vecX);
+    
+    /// Uttam 20251113 assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM for Coarse mesh
+    void assignVec2ResidualGradient_Coarse(Vec vecX);
 
     /// assign the reverse-mode AD input seeds from vecX to the residuals in OpenFOAM
     void assignSeeds2ResidualGradient(const double* seeds);
@@ -693,18 +796,35 @@ public:
     void assignStateGradient2Vec(
         Vec vecY,
         const label oldTimeLevel = 0);
+        
+    /// Uttam 20251113 set the reverse-mode AD derivatives from the state variables in OpenFOAM to vecY for Coarse Nesg
+    void assignStateGradient2Vec_Coarse(
+        Vec vecY,
+        const label oldTimeLevel = 0);
 
     /// set the reverse-mode AD derivatives from the field variables in OpenFOAM to vecY
     void assignFieldGradient2Vec(
         const word fieldName,
         const word fieldType,
         Vec vecY);
+        
+    /// Uttam 20251114 set the reverse-mode AD derivatives from the field variables in OpenFOAM to vecY
+    void assignFieldGradient2Vec_Coarse(
+        const word fieldName,
+        const word fieldType,
+        Vec vecY);
 
     /// normalize the reverse-mode AD derivatives stored in vecY
     void normalizeGradientVec(Vec vecY);
+    
+    /// Uttam 20251113 normalize the reverse-mode AD derivatives stored in vecY for coarse mesh
+    void normalizeGradientVec_Coarse(Vec vecY);
 
     /// initialize the CoDiPack reverse-mode AD global tape for computing dRdWT*psi
     void initializeGlobalADTape4dRdWT();
+    
+    /// Uttam 20251113 initialize the CoDiPack reverse-mode AD global tape for computing dRdWT*psi 
+    void initializeGlobalADTape4dRdWT_Coarse();
 
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);
@@ -715,6 +835,22 @@ public:
         const label idxCoord) const
     {
         return daIndexPtr_->getGlobalXvIndex(idxPoint, idxCoord);
+    }
+    
+    /// call DAIndex::getGlobalXvIndex for the COARSE mesh
+    /// Uttam 20251111
+    label getGlobalXvIndex_Coarse(
+        const label idxPoint,
+        const label idxCoord) const
+    {
+        if (!daIndexPtr_Coarse_.valid())
+        {
+            FatalErrorIn("getGlobalXvIndex_Coarse")
+                << "Coarse adjoint index pointer (daIndexPtr_Coarse_) is not valid!"
+                << abort(FatalError);
+        }
+        // This calls the getGlobalXvIndex function on your COARSE index object
+        return daIndexPtr_Coarse_->getGlobalXvIndex(idxPoint, idxCoord);
     }
 
     /// set the state vector based on the latest fields in OpenFOAM
@@ -755,6 +891,12 @@ public:
 
     /// get a variable from OF layer
     void getOFField(
+        const word fieldName,
+        const word fieldType,
+        Vec field) const;
+        
+    /// Uttam 20251114 get a variable from OF layer for coarse mesh
+    void getOFField_Coarse(
         const word fieldName,
         const word fieldType,
         Vec field) const;
@@ -812,6 +954,29 @@ public:
     {
         return daIndexPtr_->nLocalAdjointStates;
     }
+    
+    /// Uttam 20251107
+    /// return the number of local adjoint states for the COARSE mesh
+    label getNLocalAdjointStates_Coarse() const
+    {
+        // Add a check in case the pointer wasn't created
+        if (!daIndexPtr_Coarse_.valid())
+        {
+            FatalErrorIn("getNLocalAdjointStates_Coarse")
+                << "Coarse adjoint index pointer (daIndexPtr_Coarse_) is not valid!"
+                << abort(FatalError);
+        }
+        return daIndexPtr_Coarse_->nLocalAdjointStates;
+    }
+    
+    /// Utta, 20251107
+    /// set the COARSE state vector based on the latest fields in targetPtr_
+    void ofField2StateVec_Coarse(Vec stateVec) const
+    {
+        // This calls the ofField2StateVec function
+        // on the COARSE DAField object
+        daFieldPtr_Coarse_->ofField2StateVec(stateVec);
+    }
 
     /// return the number of local adjoint boundary states
     label getNLocalAdjointBoundaryStates() const
@@ -824,7 +989,17 @@ public:
     {
         return meshPtr_->nCells();
     }
-
+    
+    /// Uttam 20251114 return the number of local cells for coarse mesh
+    label getNLocalCells_Coarse() const
+    {
+        return targetPtr_->nCells();
+    }
+    
+    
+    //20250916
+    label getNLocalFaces(const word& patchName) const;
+	
     /// return the number of local points
     label getNLocalPoints() const
     {
@@ -1073,6 +1248,11 @@ public:
     void calcPrimalResidualStatistics(
         const word mode,
         const label writeRes = 0);
+        
+    /// Uttam 20251112 calculate the norms of all residuals and print to screen for coarse mesh
+    void calcPrimalResidualStatistics_Coarse(
+        const word mode,
+        const label writeRes = 0);
 
     /// set the value for DASolver::dXvdFFDMat_
     void setdXvdFFDMat(const Mat dXvdFFDMat);
@@ -1098,6 +1278,13 @@ public:
         const scalar val,
         const label globalCellI,
         const label compI = 0);
+        
+    /// Uttam 20251114 set the field value for coarse mesh
+    void setFieldValue4GlobalCellI_Coarse(
+        const word fieldName,
+        const scalar val,
+        const label globalCellI,
+        const label compI = 0);
 
     void setFieldValue4LocalCellI(
         const word fieldName,
@@ -1109,12 +1296,23 @@ public:
     void updateBoundaryConditions(
         const word fieldName,
         const word fieldType);
+        
+    /// Uttam 20251114 update the boundary condition for a field for coarse mesh
+    void updateBoundaryConditions_Coarse(
+        const word fieldName,
+        const word fieldType);
 
     /// update the boundary conditions for all states and intermediate variables
     void updateStateBoundaryConditions();
+    
+    /// update the boundary conditions for all states and intermediate variables for Coarse mesh Uttam 20251112
+    void updateStateBoundaryConditions_Coarse();
 
     /// calculate the residuals
     void calcResiduals(label isPC = 0);
+    
+    /// calculate the residuals for Coarse Mesh Uttam 20251112
+    void calcResiduals_Coarse(label isPC = 0);
 
     /// synchronize the values in DAOption and actuatorDiskDVs_
     void syncDAOptionToActuatorDVs()
@@ -1192,30 +1390,30 @@ public:
     }
 
     /// get the number of regression model parameters
-    label getNRegressionParameters(word modelName)
+    label getNRegressionParameters()
     {
 #ifdef SolidDASolver
         return 0;
 #else
-        return daRegressionPtr_->nParameters(modelName);
+        return daRegressionPtr_->nParameters();
 #endif
     }
 
     /// get the regression parameter
-    scalar getRegressionParameter(word modelName, const label idxI)
+    scalar getRegressionParameter(const label idxI)
     {
 #ifdef SolidDASolver
         return 0.0;
 #else
-        return daRegressionPtr_->getParameter(modelName, idxI);
+        return daRegressionPtr_->getParameter(idxI);
 #endif
     }
 
     /// set the regression parameter
-    void setRegressionParameter(word modelName, const label idxI, scalar val)
+    void setRegressionParameter(const label idxI, scalar val)
     {
 #ifndef SolidDASolver
-        daRegressionPtr_->setParameter(modelName, idxI, val);
+        daRegressionPtr_->setParameter(idxI, val);
 #endif
     }
 
@@ -1233,11 +1431,13 @@ public:
         const double* states,
         const double* parameters,
         const double* seeds,
-        const word modelName,
         double* product);
 
     /// update the primal state boundary condition based on the primalBC dict
     void setPrimalBoundaryConditions(const label printInfo = 1);
+    
+    /// Uttam 20251112 update the primal state boundary condition based on the primalBC dict for coarse mesh
+    void setPrimalBoundaryConditions_Coarse(const label printInfo = 1);
 
     /// calculate the residual and assign it to the resVec vector
     void calcResidualVec(Vec resVec);
@@ -1258,24 +1458,20 @@ public:
         pyComputeInterface computeInterface,
         void* compute,
         pyJacVecProdInterface jacVecProdInterface,
-        void* jacVecProd,
-        pySetCharInterface setModelNameInterface,
-        void* setModelName)
+        void* jacVecProd)
     {
         DAUtility::pyCalcBetaInterface = computeInterface;
         DAUtility::pyCalcBeta = compute;
 
         DAUtility::pyCalcBetaJacVecProdInterface = jacVecProdInterface;
         DAUtility::pyCalcBetaJacVecProd = jacVecProd;
-
-        DAUtility::pySetModelNameInterface = setModelNameInterface;
-        DAUtility::pySetModelName = setModelName;
     }
 
+    /// set state variables to NO_WRITE
+    void disableStateAutoWrite();
+
     /// write state variables that are NO_WRITE to disk
-    void writeAdjStates(
-        const label writeMesh,
-        const wordList& additionalOutput);
+    void writeAdjStates(const label writeMesh);
 
     /// return the elapsed clock time for testing speed
     scalar getElapsedClockTime()
@@ -1293,6 +1489,9 @@ public:
 
     /// global tape for reverse-mode AD
     codi::RealReverse::Tape& globalADTape_;
+    
+    /// global tape for reverse-mode AD
+    codi::RealReverse::Tape& globalADTape_Coarse_;
 
 #endif
 
@@ -1327,29 +1526,47 @@ public:
         const double* dFdField,
         const word fieldType,
         const double timeName);
+        
+    /// Uttam 20251114 write the sensitivity map for the entire field for coarse mesh
+    void writeSensMapField_Coarse(
+        const word name,
+        const double* dFdField_Coarse,
+        const word fieldType,
+        const double timeName);
 
-    /// get the latest time solution from the case folder.
+
     scalar getLatestTime()
     {
+        // get the latest time solution from the case folder.
         instantList timeDirs = runTimePtr_->findTimes(runTimePtr_->path(), runTimePtr_->constant());
         scalar latestTime = timeDirs.last().value();
         return latestTime;
     }
-
-    /// initialize the objStd vars
-    void initObjStd();
-
-    /// calculate the objective function's std
-    void calcObjStd(Time& runTime);
-
-    /// write the adjoint variables for all states
-    void writeAdjointFields(
-        const word objFunc,
-        const double writeTime,
-        const double* psi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+template<class classType>
+void DASolver::primalResidualControl(
+    const SolverPerformance<classType>& solverP,
+    const label printToScreen,
+    const label printInterval,
+    const word varName)
+{
+    /*
+    Description:
+        Setup maximal residual control and print the residual as needed
+    */
+    if (mag(solverP.initialResidual()) < primalMinRes_)
+    {
+        primalMinRes_ = mag(solverP.initialResidual());
+    }
+    if (printToScreen)
+    {
+        Info << varName << " Initial residual: " << solverP.initialResidual() << endl
+             << varName << "   Final residual: " << solverP.finalResidual() << endl;
+    }
+}
 
 template<class classType>
 label DASolver::validateField(const classType& field)

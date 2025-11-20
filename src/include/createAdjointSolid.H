@@ -9,8 +9,6 @@
 
 daModelPtr_.reset(new DAModel(mesh, daOptionPtr_()));
 
-daRegressionPtr_.reset(new DARegression(mesh, daOptionPtr_(), daModelPtr_()));
-
 word solverName = daOptionPtr_->getOption<word>("solverName");
 daStateInfoPtr_.reset(DAStateInfo::New(solverName, mesh, daOptionPtr_(), daModelPtr_()));
 stateInfo_ = daStateInfoPtr_->getStateInfo();

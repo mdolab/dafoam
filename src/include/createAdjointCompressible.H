@@ -43,6 +43,3 @@ daResidualPtr_.reset(DAResidual::New(solverName, mesh, daOptionPtr_(), daModelPt
 
 // calculate the initial (default) value for validate state func
 this->getInitStateVals(initStateVals_);
-
-// initialize the mean states if needed
-this->initMeanStates();

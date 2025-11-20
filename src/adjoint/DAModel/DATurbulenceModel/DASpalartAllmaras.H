@@ -91,7 +91,7 @@ protected:
     const volScalarField& y_;
 
     /// beta field for field inversion
-    volScalarField betaFINuTilda_;
+    volScalarField betaFI_;
 
     /// whether to solve for turb states
     label solveTurbState_ = 0;
@@ -148,10 +148,17 @@ public:
         scalarField& lower);
     
     /// return the value of the destruction term from the turbulence model
-    virtual void getTurbProdOverDestruct(volScalarField& PoD) const;
+    virtual void getTurbProdOverDestruct(scalarList& PoD) const;
 
     /// return the value of the convective over production term from the turbulence model
-    virtual void getTurbConvOverProd(volScalarField& CoP) const;
+    virtual void getTurbConvOverProd(scalarList& CoP) const;
+    
+    /// return the value of the production term from the turbulence model 
+    virtual void getTurbProdTerm(scalarList& prodTerm) const;
+
+    /// user defined function
+    /// return the value of the production term from the turbulence model 
+    virtual void getTurbDestructTerm(scalarList& destructTerm) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

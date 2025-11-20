@@ -97,15 +97,15 @@ DASpalartAllmaras::DASpalartAllmaras(
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
       y_(mesh.thisDb().lookupObject<volScalarField>("yWall")),
-      betaFINuTilda_(
+      betaFI_(
           IOobject(
-              "betaFINuTilda",
+              "betaFI",
               mesh.time().timeName(),
               mesh,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
           mesh,
-          dimensionedScalar("betaFINuTilda", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           "zeroGradient")
 {
 }
@@ -442,7 +442,7 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
             + fvm::div(phaseRhoPhi_, nuTilda_, divNuTildaScheme)
             - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFINuTilda_
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.ref().relax();
@@ -454,8 +454,11 @@ void DASpalartAllmaras::calcResiduals(const dictionary& options)
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverNuTilda = solve(nuTildaEqn);
-
-        DAUtility::primalResidualControl(solverNuTilda, printToScreen, "nuTilda");
+        if (printToScreen)
+        {
+            Info << "nuTilda Initial residual: " << solverNuTilda.initialResidual() << endl
+                 << "          Final residual: " << solverNuTilda.finalResidual() << endl;
+        }
 
         DAUtility::boundVar(allOptions_, nuTilda_, printToScreen);
         nuTilda_.correctBoundaryConditions();
@@ -506,7 +509,7 @@ void DASpalartAllmaras::getFvMatrixFields(
             + fvm::div(phaseRhoPhi_, nuTilda_, "div(pc)")
             - fvm::laplacian(phase_ * rho_ * DnuTildaEff(), nuTilda_)
             - Cb2_ / sigmaNut_ * phase_ * rho_ * magSqr(fvc::grad(nuTilda_))
-        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFINuTilda_
+        == Cb1_ * phase_ * rho_ * Stilda * nuTilda_ * betaFI_
             - fvm::Sp(Cw1_ * phase_ * rho_ * fw(Stilda) * nuTilda_ / sqr(y_), nuTilda_));
 
     nuTildaEqn.relax();
@@ -516,7 +519,7 @@ void DASpalartAllmaras::getFvMatrixFields(
     lower = nuTildaEqn.lower();
 }
 
-void DASpalartAllmaras::getTurbProdOverDestruct(volScalarField& PoD) const
+void DASpalartAllmaras::getTurbProdOverDestruct(scalarList& PoD) const
 {
     /*
     Description:
@@ -537,7 +540,7 @@ void DASpalartAllmaras::getTurbProdOverDestruct(volScalarField& PoD) const
     }
 }
 
-void DASpalartAllmaras::getTurbConvOverProd(volScalarField& CoP) const
+void DASpalartAllmaras::getTurbConvOverProd(scalarList& CoP) const
 {
     /*
     Description:
@@ -555,6 +558,47 @@ void DASpalartAllmaras::getTurbConvOverProd(volScalarField& CoP) const
     forAll(P, cellI)
     {
         CoP[cellI] = C[cellI] / (P[cellI] + 1e-16);
+    }
+}
+
+// User defined functions
+void DASpalartAllmaras::getTurbProdTerm(scalarList& prodTerm) const
+{
+    /*
+    Description:
+        Return the value of the production term from the Spalart Allmaras model 
+    */
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    const volScalarField Stilda(this->Stilda(chi,fv1));
+    
+    volScalarField SAProdTerm = Cb1_ * phase_ * rho_ * Stilda * nuTilda_;
+
+    forAll(SAProdTerm, cellI)
+    {
+        prodTerm[cellI] = SAProdTerm[cellI];
+    }
+}
+// User defined function destruction term
+void DASpalartAllmaras::getTurbDestructTerm(scalarList& destructTerm) const
+{
+    /*
+    Description:
+        Return the value of the production over destruction term from the turbulence model 
+    */
+
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    const volScalarField Stilda(this->Stilda(chi, fv1));
+
+    volScalarField D = Cw1_ * phase_ * rho_ * fw(Stilda) * sqr(nuTilda_ / y_);
+
+    forAll(D, cellI)
+    {
+        destructTerm[cellI] = D[cellI];
     }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

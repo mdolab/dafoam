@@ -136,15 +136,15 @@ label DASimpleTFoam::solvePrimal(
     // if the forwardModeAD is active, we need to set the seed here
 #include "setForwardADSeeds.H"
 
-    // if useMeanStates is used, we need to zero meanStates before the primal run
-    this->zeroMeanStates();
+    // check if the parameters are set in the Python layer
+    daRegressionPtr_->validate();
 
+    primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
     label regModelFail = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        DAUtility::primalMaxInitRes_ = -1e16;
 
         printToScreen = this->isPrintTime(runTime, printInterval);
 
@@ -162,11 +162,11 @@ label DASimpleTFoam::solvePrimal(
 #include "TEqnSimpleT.H"
         }
 
-        laminarTransport.correct();
-        daTurbulenceModelPtr_->correct(printToScreen);
-
         // update the output field value at each iteration, if the regression model is active
         regModelFail = daRegressionPtr_->compute();
+
+        laminarTransport.correct();
+        daTurbulenceModelPtr_->correct(printToScreen);
 
         if (this->validateStates())
         {
@@ -189,9 +189,6 @@ label DASimpleTFoam::solvePrimal(
                  << nl << endl;
         }
 
-        // if useMeanStates is used, we need to calculate the meanStates
-        this->calcMeanStates();
-
         runTime.write();
     }
 
@@ -199,9 +196,6 @@ label DASimpleTFoam::solvePrimal(
     {
         return 1;
     }
-
-    // if useMeanStates is used, we need to assign meanStates to states right after the case converges
-    this->assignMeanStatesToStates();
 
     this->calcPrimalResidualStatistics("print");
 

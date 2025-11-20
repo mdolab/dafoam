@@ -88,6 +88,8 @@ DAkEpsilon::DAkEpsilon(
           zeroGradientFvPatchField<scalar>::typeName),
       k_(const_cast<volScalarField&>(
           mesh_.thisDb().lookupObject<volScalarField>("k"))),
+           UData_(const_cast<volVectorField&>(
+          mesh.thisDb().lookupObject<volVectorField>("UData"))),
       kRes_(
           IOobject(
               "kRes",
@@ -103,25 +105,15 @@ DAkEpsilon::DAkEpsilon(
           dimensionedScalar("kRes", dimensionSet(0, 2, -3, 0, 0, 0, 0), 0.0),
 #endif
           zeroGradientFvPatchField<scalar>::typeName),
-      betaFIK_(
+      betaFI_(
           IOobject(
-              "betaFIK",
+              "betaFI",
               mesh.time().timeName(),
               mesh,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
           mesh,
-          dimensionedScalar("betaFIK", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
-          "zeroGradient"),
-      betaFIEpsilon_(
-          IOobject(
-              "betaFIEpsilon",
-              mesh.time().timeName(),
-              mesh,
-              IOobject::READ_IF_PRESENT,
-              IOobject::AUTO_WRITE),
-          mesh,
-          dimensionedScalar("betaFIEpsilon", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           "zeroGradient")
 {
 
@@ -566,7 +558,7 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, epsilon_)
             + fvm::div(phaseRhoPhi_, epsilon_, divEpsilonScheme)
             - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
-        == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFIEpsilon_()
+        == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFI_()
             - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
             - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
             + epsilonSource());
@@ -582,7 +574,11 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverEpsilon = solve(epsEqn);
-        DAUtility::primalResidualControl(solverEpsilon, printToScreen, "epsilon");
+        if (printToScreen)
+        {
+            Info << "epsilon Initial residual: " << solverEpsilon.initialResidual() << endl
+                 << "          Final residual: " << solverEpsilon.finalResidual() << endl;
+        }
 
         DAUtility::boundVar(allOptions_, epsilon_, printToScreen);
     }
@@ -602,7 +598,7 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         fvm::ddt(phase_, rho_, k_)
             + fvm::div(phaseRhoPhi_, k_, divKScheme)
             - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-        == phase_() * rho_() * G * betaFIK_()
+        == phase_() * rho_() * G
             - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
             - fvm::Sp(phase_() * rho_() * epsilon_() / k_(), k_)
             + kSource());
@@ -616,7 +612,11 @@ void DAkEpsilon::calcResiduals(const dictionary& options)
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverK = solve(kEqn);
-        DAUtility::primalResidualControl(solverK, printToScreen, "k");
+        if (printToScreen)
+        {
+            Info << "k Initial residual: " << solverK.initialResidual() << endl
+                 << "    Final residual: " << solverK.finalResidual() << endl;
+        }
 
         DAUtility::boundVar(allOptions_, k_, printToScreen);
 
@@ -674,7 +674,7 @@ void DAkEpsilon::getFvMatrixFields(
             fvm::ddt(phase_, rho_, epsilon_)
                 + fvm::div(phaseRhoPhi_, epsilon_, "div(pc)")
                 - fvm::laplacian(phase_ * rho_ * DepsilonEff(), epsilon_)
-            == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFIEpsilon_()
+            == C1_ * phase_() * rho_() * G * epsilon_() / k_() * betaFI_()
                 - fvm::SuSp((scalar(2.0 / 3.0) * C1_ - C3_) * phase_() * rho_() * divU, epsilon_)
                 - fvm::Sp(C2_ * phase_() * rho_() * epsilon_() / k_(), epsilon_)
                 + epsilonSource());
@@ -694,7 +694,7 @@ void DAkEpsilon::getFvMatrixFields(
             fvm::ddt(phase_, rho_, k_)
                 + fvm::div(phaseRhoPhi_, k_, "div(pc)")
                 - fvm::laplacian(phase_ * rho_ * DkEff(), k_)
-            == phase_() * rho_() * G * betaFIK_()
+            == phase_() * rho_() * G
                 - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
                 - fvm::Sp(phase_() * rho_() * epsilon_() / k_(), k_)
                 + kSource());
@@ -707,7 +707,7 @@ void DAkEpsilon::getFvMatrixFields(
     }
 }
 
-void DAkEpsilon::getTurbProdOverDestruct(volScalarField& PoD) const
+void DAkEpsilon::getTurbProdOverDestruct(scalarList& PoD) const
 {
     /*
     Description:
@@ -718,8 +718,8 @@ void DAkEpsilon::getTurbProdOverDestruct(volScalarField& PoD) const
         "kEpsilon:G",
         nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
 
-    volScalarField::Internal P = phase_() * rho_() * G;
-    volScalarField::Internal D = phase_() * rho_() * epsilon_();
+    volScalarField::Internal P = C1_ * phase_() * rho_() * G * epsilon_() / k_();
+    volScalarField::Internal D = C2_ * phase_() * rho_() * sqr(epsilon_()) / k_();
 
     forAll(P, cellI)
     {
@@ -727,7 +727,7 @@ void DAkEpsilon::getTurbProdOverDestruct(volScalarField& PoD) const
     }
 }
 
-void DAkEpsilon::getTurbConvOverProd(volScalarField& CoP) const
+void DAkEpsilon::getTurbConvOverProd(scalarList& CoP) const
 {
     /*
     Description:
@@ -739,8 +739,8 @@ void DAkEpsilon::getTurbConvOverProd(volScalarField& CoP) const
         "kEpsilon:G",
         nut_.v() * (dev(twoSymm(tgradU().v())) && tgradU().v()));
 
-    volScalarField::Internal P = phase_() * rho_() * G;
-    volScalarField C = fvc::div(phaseRhoPhi_, k_);
+    volScalarField::Internal P = C1_ * phase_() * rho_() * G * epsilon_() / k_();
+    volScalarField C = fvc::div(phaseRhoPhi_, epsilon_);
 
     forAll(P, cellI)
     {

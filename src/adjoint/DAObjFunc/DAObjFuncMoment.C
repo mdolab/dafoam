@@ -165,9 +165,6 @@ void DAObjFuncMoment::calcObjFunc(
     // need to reduce the sum of force across all processors
     reduce(objFuncValue, sumOp<scalar>());
 
-    // check if we need to calculate refDiff.
-    this->calcRefVar(objFuncValue);
-
     return;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

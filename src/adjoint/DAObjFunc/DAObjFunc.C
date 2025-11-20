@@ -36,8 +36,24 @@ DAObjFunc::DAObjFunc(
       objFuncName_(objFuncName),
       objFuncPart_(objFuncPart),
       objFuncDict_(objFuncDict),
-      daField_(mesh, daOption, daModel, daIndex)
+      daField_(mesh, daOption, daModel, daIndex),
+      targetPtr_(nullptr)
+      
 {
+    if (daOption.getOption<word>("use3D") == "yes")
+    {
+        targetPtr_.reset(
+          new fvMesh(
+              IOobject(
+                  "target",
+                    mesh_.time().timeName(),
+                    mesh_.time(),
+                    Foam::IOobject::MUST_READ
+              )
+          )
+      );
+    }
+    
 
     // calcualte the face and cell indices that are associated with this objective
     this->calcObjFuncSources(objFuncFaceSources_, objFuncCellSources_);
@@ -54,12 +70,6 @@ DAObjFunc::DAObjFunc(
     forAll(objFuncCellValues_, idxI)
     {
         objFuncCellValues_[idxI] = 0.0;
-    }
-
-    calcRefVar_ = objFuncDict_.lookupOrDefault<label>("calcRefVar", 0);
-    if (calcRefVar_)
-    {
-        objFuncDict_.readEntry<scalarList>("ref", ref_);
     }
 }
 
@@ -123,6 +133,10 @@ autoPtr<DAObjFunc> DAObjFunc::New(
                    objFuncPart,
                    objFuncDict));
 }
+
+// Static variables that were forward declared in the class are "initialized" here
+List<label> DAObjFunc::exp_final;
+List<List<label>> DAObjFunc::cfd_final;
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -316,28 +330,6 @@ scalar DAObjFunc::getObjFuncValue()
 
     // return
     return objFuncValue_;
-}
-
-void DAObjFunc::calcRefVar(scalar& objFuncValue)
-{
-    /*
-    Description:
-        Call the variable difference with respect to a given reference and take a square of it.
-        This can be used in FIML. This function is for calcRefVar == 1
-    */
-
-    if (calcRefVar_)
-    {
-        if (ref_.size() == 1)
-        {
-            objFuncValue = (objFuncValue - ref_[0]) * (objFuncValue - ref_[0]);
-        }
-        else
-        {
-            label idxI = mesh_.time().timeIndex() - 1;
-            objFuncValue = (objFuncValue - ref_[idxI]) * (objFuncValue - ref_[idxI]);
-        }
-    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

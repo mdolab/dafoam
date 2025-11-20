@@ -195,25 +195,15 @@ DAkOmegaSSTLM::DAkOmegaSSTLM(
       gammaIntEff_(const_cast<volScalarField::Internal&>(
           mesh_.thisDb().lookupObject<volScalarField::Internal>("gammaIntEff"))),
       y_(mesh_.thisDb().lookupObject<volScalarField>("yWall")),
-      betaFIK_(
+      betaFI_(
           IOobject(
-              "betaFIK",
+              "betaFI",
               mesh.time().timeName(),
               mesh,
               IOobject::READ_IF_PRESENT,
               IOobject::AUTO_WRITE),
           mesh,
-          dimensionedScalar("betaFIK", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
-          "zeroGradient"),
-      betaFIOmega_(
-          IOobject(
-              "betaFIOmega",
-              mesh.time().timeName(),
-              mesh,
-              IOobject::READ_IF_PRESENT,
-              IOobject::AUTO_WRITE),
-          mesh,
-          dimensionedScalar("betaFIOmega", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
+          dimensionedScalar("betaFI", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
           "zeroGradient")
 {
 
@@ -1094,7 +1084,7 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
                 fvm::ddt(phase_, rho_, omega_)
                     + fvm::div(phaseRhoPhi_, omega_, divOmegaScheme)
                     - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
-                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFIOmega_()
+                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFI_()
                     - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
                     - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
                     - fvm::SuSp(
@@ -1115,7 +1105,11 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
                 // get the solver performance info such as initial
                 // and final residuals
                 SolverPerformance<scalar> solverOmega = solve(omegaEqn);
-                DAUtility::primalResidualControl(solverOmega, printToScreen, "omega");
+                if (printToScreen)
+                {
+                    Info << "omega Initial residual: " << solverOmega.initialResidual() << endl
+                         << "        Final residual: " << solverOmega.finalResidual() << endl;
+                }
 
                 DAUtility::boundVar(allOptions_, omega_, printToScreen);
             }
@@ -1136,7 +1130,7 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
             fvm::ddt(phase_, rho_, k_)
                 + fvm::div(phaseRhoPhi_, k_, divKScheme)
                 - fvm::laplacian(phase_ * rho_ * DkEff(F1), k_)
-            == phase_() * rho_() * Pk(G) * betaFIK_()
+            == phase_() * rho_() * Pk(G)
                 - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * divU, k_)
                 - fvm::Sp(phase_() * rho_() * epsilonByk(F1, tgradU()), k_)
                 + kSource());
@@ -1152,7 +1146,11 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
             // get the solver performance info such as initial
             // and final residuals
             SolverPerformance<scalar> solverK = solve(kEqn);
-            DAUtility::primalResidualControl(solverK, printToScreen, "k");
+            if (printToScreen)
+            {
+                Info << "k Initial residual: " << solverK.initialResidual() << endl
+                     << "    Final residual: " << solverK.finalResidual() << endl;
+            }
 
             DAUtility::boundVar(allOptions_, k_, printToScreen);
 
@@ -1209,7 +1207,11 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
                 // get the solver performance info such as initial
                 // and final residuals
                 SolverPerformance<scalar> solverReThetat = solve(ReThetatEqn);
-                DAUtility::primalResidualControl(solverReThetat, printToScreen, "ReThetat");
+                if (printToScreen)
+                {
+                    Info << "ReThetat Initial residual: " << solverReThetat.initialResidual() << endl
+                         << "        Final residual: " << solverReThetat.finalResidual() << endl;
+                }
 
                 DAUtility::boundVar(allOptions_, ReThetat_, printToScreen);
             }
@@ -1257,7 +1259,11 @@ void DAkOmegaSSTLM::calcResiduals(const dictionary& options)
                 // get the solver performance info such as initial
                 // and final residuals
                 SolverPerformance<scalar> solverGammaInt = solve(gammaIntEqn);
-                DAUtility::primalResidualControl(solverGammaInt, printToScreen, "gammaInt");
+                if (printToScreen)
+                {
+                    Info << "gammaInt Initial residual: " << solverGammaInt.initialResidual() << endl
+                         << "        Final residual: " << solverGammaInt.finalResidual() << endl;
+                }
 
                 DAUtility::boundVar(allOptions_, gammaInt_, printToScreen);
 
@@ -1353,7 +1359,7 @@ void DAkOmegaSSTLM::getFvMatrixFields(
                 fvm::ddt(phase_, rho_, omega_)
                     + fvm::div(phaseRhoPhi_, omega_, "div(pc)")
                     - fvm::laplacian(phase_ * rho_ * DomegaEff(F1), omega_)
-                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFIOmega_()
+                == phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2()) * betaFI_()
                     - fvm::SuSp((2.0 / 3.0) * phase_() * rho_() * gamma * divU, omega_)
                     - fvm::Sp(phase_() * rho_() * beta * omega_(), omega_)
                     - fvm::SuSp(
@@ -1472,7 +1478,7 @@ void DAkOmegaSSTLM::getFvMatrixFields(
     }
 }
 
-void DAkOmegaSSTLM::getTurbProdOverDestruct(volScalarField& PoD) const
+void DAkOmegaSSTLM::getTurbProdOverDestruct(scalarList& PoD) const
 {
     /*
     Description:
@@ -1487,9 +1493,13 @@ void DAkOmegaSSTLM::getTurbProdOverDestruct(volScalarField& PoD) const
         (scalar(2) * alphaOmega2_) * (fvc::grad(k_) & fvc::grad(omega_)) / omega_);
 
     volScalarField F1(this->F1(CDkOmega));
+    volScalarField F23(this->F23());
 
-    volScalarField::Internal P = phase_() * rho_() * Pk(G);
-    volScalarField::Internal D = phase_() * rho_() * epsilonByk(F1, tgradU()) * k_();
+    volScalarField::Internal gamma(this->gamma(F1));
+    volScalarField::Internal beta(this->beta(F1));
+
+    volScalarField::Internal P = phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2());
+    volScalarField::Internal D = phase_() * rho_() * beta * sqr(omega_());
 
     forAll(P, cellI)
     {
@@ -1497,7 +1507,7 @@ void DAkOmegaSSTLM::getTurbProdOverDestruct(volScalarField& PoD) const
     }
 }
 
-void DAkOmegaSSTLM::getTurbConvOverProd(volScalarField& CoP) const
+void DAkOmegaSSTLM::getTurbConvOverProd(scalarList& CoP) const
 {
     /*
     Description:
@@ -1513,9 +1523,13 @@ void DAkOmegaSSTLM::getTurbConvOverProd(volScalarField& CoP) const
         (scalar(2) * alphaOmega2_) * (fvc::grad(k_) & fvc::grad(omega_)) / omega_);
 
     volScalarField F1(this->F1(CDkOmega));
+    volScalarField F23(this->F23());
 
-    volScalarField::Internal P = phase_() * rho_() * Pk(G);
-    volScalarField C = fvc::div(phaseRhoPhi_, k_);
+    volScalarField::Internal gamma(this->gamma(F1));
+    volScalarField::Internal beta(this->beta(F1));
+
+    volScalarField::Internal P = phase_() * rho_() * gamma * GbyNu(GbyNu0, F23(), S2());
+    volScalarField C = fvc::div(phaseRhoPhi_, omega_);
 
     forAll(P, cellI)
     {

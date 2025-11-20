@@ -80,6 +80,15 @@ protected:
 
     /// DATurbulenceModel pointer
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+    
+    /// DATurbulenceModel pointer target Uttam 20251107
+    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_Coarse_;
+    
+    /// laminar transport properties pointer for target mesh Uttam 20251107
+    autoPtr<singlePhaseTransportModel> laminarTransportPtr_Coarse_;
+
+    /// turbulence pointer for target mesh Uttam 20251107
+    autoPtr<incompressible::turbulenceModel> turbulencePtr_Coarse_;
 
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;
@@ -87,8 +96,9 @@ protected:
     /// fvSource term 
     autoPtr<volVectorField> fvSourcePtr_;
     
-    /// fTSource term 
+        /// fTSource term 
     autoPtr<volScalarField> fTSourcePtr_;
+
 
     /// MRF pointer
     autoPtr<IOMRFZoneListDF> MRFPtr_;

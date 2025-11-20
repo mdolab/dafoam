@@ -121,15 +121,11 @@ label DAPimpleFoam::solvePrimal(
     // change the run status
     daOptionPtr_->setOption<word>("runStatus", "solvePrimal");
 
+    // we need to read in the states from the 0 folder every time we start the primal
+    // here we read in all time levels
     runTime.setTime(0.0, 0);
-    // if readZeroFields, we need to read in the states from the 0 folder every time 
-    // we start the primal here we read in all time levels
-    label readZeroFields = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("readZeroFields");
-    if (readZeroFields)
-    {
-        this->readStateVars(0.0, 0);
-        this->readStateVars(0.0, 1);
-    }
+    this->readStateVars(0.0, 0);
+    this->readStateVars(0.0, 1);
 
     // call correctNut, this is equivalent to turbulence->validate();
     daTurbulenceModelPtr_->updateIntermediateVariables();
@@ -158,8 +154,10 @@ label DAPimpleFoam::solvePrimal(
     // right after mesh.movePoints() calls.
     //mesh.moving(false);
 
+    primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     label printToScreen = 0;
+    label timeInstanceI = 0;
     label pimplePrintToScreen = 0;
 
     // reset the unsteady obj func to zeros
@@ -167,15 +165,18 @@ label DAPimpleFoam::solvePrimal(
 
     // we need to reduce the number of files written to the disk to minimize the file IO load
     label reduceIO = daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").getLabel("reduceIO");
-    wordList additionalOutput;
     if (reduceIO)
     {
-        daOptionPtr_->getAllOptions().subDict("unsteadyAdjoint").readEntry<wordList>("additionalOutput", additionalOutput);
+        // set all states and vars to NO_WRITE
+        this->disableStateAutoWrite();
     }
 
     scalar endTime = runTime.endTime().value();
     scalar deltaT = runTime.deltaT().value();
     label nInstances = round(endTime / deltaT);
+
+    // check if the parameters are set in the Python layer
+    daRegressionPtr_->validate();
 
     // main loop
     label regModelFail = 0;
@@ -212,11 +213,11 @@ label DAPimpleFoam::solvePrimal(
 #include "pEqnPimple.H"
             }
 
-            laminarTransport.correct();
-            daTurbulenceModelPtr_->correct(pimplePrintToScreen);
-
             // update the output field value at each iteration, if the regression model is active
             fail = daRegressionPtr_->compute();
+
+            laminarTransport.correct();
+            daTurbulenceModelPtr_->correct(pimplePrintToScreen);
         }
 
         regModelFail += fail;
@@ -251,15 +252,13 @@ label DAPimpleFoam::solvePrimal(
                  << nl << endl;
         }
 
-        if (reduceIO && iter < nInstances)
+        if (reduceIO)
         {
-            this->writeAdjStates(reduceIOWriteMesh_, additionalOutput);
-            daRegressionPtr_->writeFeatures();
+            this->writeAdjStates(reduceIOWriteMesh_);
         }
         else
         {
             runTime.write();
-            daRegressionPtr_->writeFeatures();
         }
     }
 

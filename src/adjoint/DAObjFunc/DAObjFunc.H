@@ -43,6 +43,9 @@ private:
 protected:
     /// fvMesh
     const fvMesh& mesh_;
+    
+    autoPtr<fvMesh> targetPtr_;
+    
 
     /// DAOption object
     const DAOption& daOption_;
@@ -91,12 +94,8 @@ protected:
 
     /// the connectivity information for the objective function
     List<List<word>> objFuncConInfo_;
+    
 
-    /// whether to calculate (obj-ref)^2
-    label calcRefVar_;
-
-    /// if calcRefVar_ is True, set the reference value list
-    scalarList ref_;
 
 public:
     /// Runtime type information
@@ -242,9 +241,11 @@ public:
 
     /// whether to compute reference coefficients for special objFunc treatment such as totalPressureRatio
     label calcRefCoeffs = 1;
+    
+    static List<label> exp_final;
+    static List<List<label>> cfd_final;
+    
 
-    /// calculate (var-ref)^2
-    void calcRefVar(scalar& objFuncValue);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

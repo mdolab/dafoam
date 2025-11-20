@@ -64,6 +64,16 @@ protected:
 
     /// velocity field pointer
     autoPtr<volVectorField> UPtr_;
+    
+    /// destruction term
+    autoPtr<volScalarField> destructionPtr_;
+
+    /// production term
+    autoPtr<volScalarField> productionPtr_;
+    
+    /// user defined
+    //autoPtr<volVectorField> ubDataPtr_;
+    
 
     /// surface flux field pointer
     autoPtr<surfaceScalarField> phiPtr_;
@@ -76,9 +86,18 @@ protected:
 
     /// turbulence pointer
     autoPtr<incompressible::turbulenceModel> turbulencePtr_;
+    
+    /// laminar transport properties pointer for target mesh Uttam 20251107
+    autoPtr<singlePhaseTransportModel> laminarTransportPtr_Coarse_;
+
+    /// turbulence pointer for target mesh Uttam 20251107
+    autoPtr<incompressible::turbulenceModel> turbulencePtr_Coarse_;
 
     /// DATurbulenceModel pointer
     autoPtr<DATurbulenceModel> daTurbulenceModelPtr_;
+    
+    /// DATurbulenceModel pointer target Uttam 20251107
+    autoPtr<DATurbulenceModel> daTurbulenceModelPtr_Coarse_;
 
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;
@@ -100,6 +119,12 @@ protected:
 
     /// pressure reference value
     scalar pRefValue_ = 0.0;
+    
+    // Declare a method to assign the destruction term
+    void assignDestructionTerm(volScalarField& destruct) const;
+
+    // Declare a method to assign the production term
+    void assignProductionTerm(volScalarField& production) const;
 
 #ifdef CODI_AD_REVERSE
     /// tape positions for consistent fixed-point adjoint

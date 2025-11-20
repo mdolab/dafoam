@@ -163,6 +163,10 @@ public:
 
     /// return the value of the production term from the turbulence model 
     virtual void getTurbProdTerm(scalarList& prodTerm) const;
+
+    /// user defined function
+    /// return the value of the production term from the turbulence model 
+    virtual void getTurbDestructTerm(scalarList& destructTerm) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

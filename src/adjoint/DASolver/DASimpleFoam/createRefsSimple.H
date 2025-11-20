@@ -2,6 +2,16 @@ Time& runTime = runTimePtr_();
 // reset time to 0
 runTime.setTime(0.0, 0);
 fvMesh& mesh = meshPtr_();
+// user defined
+volScalarField& destruction = destructionPtr_();
+volScalarField& production = productionPtr_();
+//volSymmTensorField& strainRate = strainRatePtr_();
+//volTensorField& rotationRate = rotationRatePtr_();
+/// user defined
+/*if (daOptionPtr_->getOption<word>("use3D") == "yes")
+{
+volVectorField& ubData = ubDataPtr_();
+}*/
 simpleControl& simple = simplePtr_();
 volScalarField& p = pPtr_();
 volVectorField& U = UPtr_();

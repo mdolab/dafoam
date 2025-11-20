@@ -21,7 +21,7 @@ while (piso.correctNonOrthogonal())
     // and final residuals
     SolverPerformance<scalar> solverP = pEqn.solve(mesh.solver(p.select(piso.finalInnerIter())));
 
-    DAUtility::primalResidualControl(solverP, printToScreen, "p");
+    this->primalResidualControl<scalar>(solverP, printToScreen, printInterval, "p");
 
     if (piso.finalNonOrthogonalIter())
     {

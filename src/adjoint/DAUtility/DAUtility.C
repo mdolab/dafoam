@@ -730,68 +730,6 @@ label DAUtility::isValueCloseToRef(
         return 0;
     }
 }
-
-void DAUtility::primalResidualControl(
-    const SolverPerformance<scalar>& solverP,
-    const label printToScreen,
-    const word varName)
-{
-    /*
-    Description:
-        Setup maximal residual control and print the residual as needed
-    */
-
-    // calculate the initial residual mag and set it to primalResidualNorms_
-
-    scalar initRes = solverP.initialResidual();
-
-    if (initRes > DAUtility::primalMaxInitRes_)
-    {
-        DAUtility::primalMaxInitRes_ = initRes;
-    }
-
-    if (printToScreen)
-    {
-        Info << varName << " Initial residual: " << solverP.initialResidual() << endl
-             << varName << "   Final residual: " << solverP.finalResidual() << endl;
-    }
-}
-
-void DAUtility::primalResidualControl(
-    const SolverPerformance<vector>& solverP,
-    const label printToScreen,
-    const word varName)
-{
-    /*
-    Description:
-        Setup maximal residual control and print the residual as needed
-    */
-
-    // calculate the initial residual mag and set it to primalResidualNorms_
-
-    // for vectors, we need to use the median value for the residual
-    // this is because we often need to run 2D simulations with symmetry
-    // BC, so one component of the residual vector, which is related to the symmetry BC,
-    // may be high while the other two components' residuals are low.
-    // In this case, we can use the median value for the residual vector, which better
-    // represents the convergence.
-
-    vector initRes = solverP.initialResidual();
-    scalarList initResList = {initRes[0], initRes[1], initRes[2]};
-    sort(initResList);
-
-    if (initResList[1] > DAUtility::primalMaxInitRes_)
-    {
-        DAUtility::primalMaxInitRes_ = initResList[1];
-    }
-
-    if (printToScreen)
-    {
-        Info << varName << " Initial residual: " << solverP.initialResidual() << endl
-             << varName << "   Final residual: " << solverP.finalResidual() << endl;
-    }
-}
-
 label DAUtility::myFindCell(
     const primitiveMesh& mesh,
     const point& point)
@@ -805,7 +743,6 @@ label DAUtility::myFindCell(
     label cellI = mesh.findCell(point);
     return cellI;
 }
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

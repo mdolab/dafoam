@@ -657,20 +657,10 @@ class DAFoamSolver(ImplicitComponent):
                 if "comps" in list(designVariables[dvName].keys()):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
-            elif dvType == "HSC":  # add heat source parameter variables
-                nHSCVars = 9
-                if "comps" in list(designVariables[dvName].keys()):
-                    nHSCVars = len(designVariables[dvName]["comps"])
-                self.add_input(dvName, distributed=False, shape=nHSCVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
-                # user can prescribe whether the field var is distributed. Default is True
-                distributed = True
-                if "distributed" in designVariables[dvName]:
-                    distributed = designVariables[dvName]["distributed"]
-                self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
+                self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "RegPar":
-                modelName = designVariables[dvName]["modelName"]
-                nParameters = self.DASolver.solver.getNRegressionParameters(modelName.encode())
+                nParameters = self.DASolver.solver.getNRegressionParameters()
                 self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
@@ -707,12 +697,7 @@ class DAFoamSolver(ImplicitComponent):
     # calculate the residual
     def apply_nonlinear(self, inputs, outputs, residuals):
         DASolver = self.DASolver
-        # NOTE: we do not pass the states from inputs to the OF layer.
-        # this can cause potential convergence issue because the initial states
-        # in the inputs are set to all ones. So passing this all-ones states
-        # into the OF layer may diverge the primal solver. Here we can always
-        # use the states from the OF layer to compute the residuals.
-        # DASolver.setStates(outputs["%s_states" % self.discipline])
+        DASolver.setStates(outputs["%s_states" % self.discipline])
 
         # get flow residuals from DASolver
         residuals["%s_states" % self.discipline] = DASolver.getResiduals()
@@ -893,26 +878,6 @@ class DAFoamSolver(ImplicitComponent):
                             d_inputs[inputName] += ACTDBarSub
                         else:
                             d_inputs[inputName] += ACTDBar
-                    
-                    # compute [dRdHSC]^T*Psi using reverse mode AD
-                    elif self.dvType[inputName] == "HSC":
-                        prodVec = PETSc.Vec().create(self.comm)
-                        prodVec.setSizes((PETSc.DECIDE, 9), bsize=1)
-                        prodVec.setFromOptions()
-                        DASolver.solverAD.calcdRdHSCTPsiAD(
-                            DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
-                        )
-                        # we will convert the MPI prodVec to seq array for all procs
-                        HSCBar = DASolver.convertMPIVec2SeqArray(prodVec)
-                        if "comps" in list(designVariables[inputName].keys()):
-                            nHSCVars = len(designVariables[inputName]["comps"])
-                            HSCBarSub = np.zeros(nHSCVars, "d")
-                            for i in range(nHSCVars):
-                                comp = designVariables[inputName]["comps"][i]
-                                HSCBarSub[i] = HSCBar[comp]
-                            d_inputs[inputName] += HSCBarSub
-                        else:
-                            d_inputs[inputName] += HSCBar
 
                     # compute dRdFieldT*Psi using reverse mode AD
                     elif self.dvType[inputName] == "Field":
@@ -928,15 +893,7 @@ class DAFoamSolver(ImplicitComponent):
                         DASolver.solverAD.calcdRdFieldTPsiAD(
                             DASolver.xvVec, DASolver.wVec, resBarVec, inputName.encode(), prodVec
                         )
-                        # user can prescribe whether the field var is distributed. Default is True
-                        distributed = True
-                        if "distributed" in designVariables[inputName]:
-                            distributed = designVariables[inputName]["distributed"]
-
-                        if distributed:
-                            fieldBar = DASolver.vec2Array(prodVec)
-                        else:
-                            fieldBar = DASolver.convertMPIVec2SeqArray(prodVec)
+                        fieldBar = DASolver.vec2Array(prodVec)
                         d_inputs[inputName] += fieldBar
 
                     elif self.dvType[inputName] == "RegPar":
@@ -946,11 +903,7 @@ class DAFoamSolver(ImplicitComponent):
                         product = np.zeros_like(parameters)
                         seeds = d_residuals["%s_states" % self.discipline]
 
-                        modelName = designVariables[inputName]["modelName"]
-
-                        DASolver.solverAD.calcdRdRegParTPsiAD(
-                            volCoords, states, parameters, seeds, modelName.encode(), product
-                        )
+                        DASolver.solverAD.calcdRdRegParTPsiAD(volCoords, states, parameters, seeds, product)
 
                         # reduce to make sure all procs get the same product
                         product = self.comm.allreduce(product, op=MPI.SUM)
@@ -1009,27 +962,27 @@ class DAFoamSolver(ImplicitComponent):
                     # to check if a recompute is needed. In other words, we only recompute the PC for the first obj func
                     # adjoint solution
 
+                    if DASolver.getOption("writeDeformedFFDs"):
+                        if self.DVGeo is None:
+                            raise RuntimeError(
+                                "writeDeformedFFDs is set but no DVGeo object found! Please call add_dvgeo in the run script!"
+                            )
+                        else:
+                            self.DVGeo.writeTecplot("deformedFFDs_%d.dat" % self.solution_counter)
+
+                    if DASolver.getOption("writeDeformedConstraints"):
+                        if self.DVCon is None:
+                            raise RuntimeError(
+                                "writeDeformedConstraints is set but no DVCon object found! Please call add_dvcon in the run script!"
+                            )
+                        else:
+                            self.DVCon.writeTecplot("deformedConstraints_%d.dat" % self.solution_counter)
+
                     solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
 
                     if renamed:
                         # write the deformed FFD for post-processing
-                        if DASolver.getOption("writeDeformedFFDs"):
-                            if self.DVGeo is None:
-                                raise RuntimeError(
-                                    "writeDeformedFFDs is set but no DVGeo object found! Please call add_dvgeo in the run script!"
-                                )
-                            else:
-                                self.DVGeo.writeTecplot("deformedFFDs_%d.dat" % self.solution_counter)
-
-                        # write the deformed constraints for post-processing
-                        if DASolver.getOption("writeDeformedConstraints"):
-                            if self.DVCon is None:
-                                raise RuntimeError(
-                                    "writeDeformedConstraints is set but no DVCon object found! Please call add_dvcon in the run script!"
-                                )
-                            else:
-                                self.DVCon.writeTecplot("deformedConstraints_%d.dat" % self.solution_counter)
-
+                        # DASolver.writeDeformedFFDs(self.solution_counter)
                         # print the solution counter
                         if self.comm.rank == 0:
                             print("Driver total derivatives for iteration: %d" % self.solution_counter)
@@ -1057,9 +1010,6 @@ class DAFoamSolver(ImplicitComponent):
                 # in the next line
                 if not self.DASolver.getOption("adjEqnOption")["useNonZeroInitGuess"]:
                     self.psi.set(0)
-                else:
-                    # if useNonZeroInitGuess is True, we will assign the OM's psi to self.psi
-                    self.psi = DASolver.array2Vec(d_residuals["%s_states" % self.discipline].copy())
 
                 if self.DASolver.getOption("adjEqnOption")["dynAdjustTol"]:
                     # if we want to dynamically adjust the tolerance, call this function. This is mostly used
@@ -1069,13 +1019,6 @@ class DAFoamSolver(ImplicitComponent):
 
                 # actually solving the adjoint linear equation using Petsc
                 fail = DASolver.solverAD.solveLinearEqn(DASolver.ksp, dFdW, self.psi)
-
-                # optionally write the adjoint vector as OpenFOAM field format for post-processing
-                # update the obj func name for solve_linear later
-                solveLinearObjFuncName = DASolver.getOption("solveLinearObjFuncName")
-                psi_array = DASolver.vec2Array(self.psi)
-                self.DASolver.writeAdjointFields(solveLinearObjFuncName, float(solutionTime), psi_array)
-
             elif adjEqnSolMethod == "fixedPoint":
                 solutionTime, renamed = DASolver.renameSolution(self.solution_counter)
                 if renamed:
@@ -1276,20 +1219,10 @@ class DAFoamFunctions(ExplicitComponent):
                 if "comps" in list(designVariables[dvName].keys()):
                     nACTDVars = len(designVariables[dvName]["comps"])
                 self.add_input(dvName, distributed=False, shape=nACTDVars, tags=["mphys_coupling"])
-            elif dvType == "HSC":  # add heat source parameter variables
-                nHSCVars = 9
-                if "comps" in list(designVariables[dvName].keys()):
-                    nHSCVars = len(designVariables[dvName]["comps"])
-                self.add_input(dvName, distributed=False, shape=nHSCVars, tags=["mphys_coupling"])
             elif dvType == "Field":  # add field variables
-                # user can prescribe whether the field var is distributed. Default is True
-                distributed = True
-                if "distributed" in designVariables[dvName]:
-                    distributed = designVariables[dvName]["distributed"]
-                self.add_input(dvName, distributed=distributed, shape_by_conn=True, tags=["mphys_coupling"])
+                self.add_input(dvName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
             elif dvType == "RegPar":
-                modelName = designVariables[dvName]["modelName"]
-                nParameters = self.DASolver.solver.getNRegressionParameters(modelName.encode())
+                nParameters = self.DASolver.solver.getNRegressionParameters()
                 self.add_input(dvName, distributed=False, shape=nParameters, tags=["mphys_coupling"])
             else:
                 raise AnalysisError("designVarType %s not supported! " % dvType)
@@ -1393,10 +1326,6 @@ class DAFoamFunctions(ExplicitComponent):
 
         if self.comm.rank == 0:
             print("Computing partials for ", list(funcsBar.keys()))
-        
-        # update the obj func name for solve_linear later
-        DASolver.setOption("solveLinearObjFuncName", list(funcsBar.keys())[0])
-        DASolver.updateDAOption()
 
         # loop over all d_inputs keys and compute the partials accordingly
         for objFuncName in list(funcsBar.keys()):
@@ -1477,26 +1406,6 @@ class DAFoamFunctions(ExplicitComponent):
                             d_inputs[inputName] += ACTDBarSub * fBar
                         else:
                             d_inputs[inputName] += ACTDBar * fBar
-                    
-                    # compute dFdHSC
-                    elif self.dvType[inputName] == "HSC":
-                        dFdHSC = PETSc.Vec().create(self.comm)
-                        dFdHSC.setSizes((PETSc.DECIDE, 9), bsize=1)
-                        dFdHSC.setFromOptions()
-                        DASolver.solverAD.calcdFdHSCAD(
-                            DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdHSC
-                        )
-                        # we will convert the MPI dFdHSC to seq array for all procs
-                        HSCBar = DASolver.convertMPIVec2SeqArray(dFdHSC)
-                        if "comps" in list(designVariables[inputName].keys()):
-                            nHSCVars = len(designVariables[inputName]["comps"])
-                            HSCBarSub = np.zeros(nHSCVars, "d")
-                            for i in range(nHSCVars):
-                                comp = designVariables[inputName]["comps"][i]
-                                HSCBarSub[i] = HSCBar[comp]
-                            d_inputs[inputName] += HSCBarSub * fBar
-                        else:
-                            d_inputs[inputName] += HSCBar * fBar
 
                     # compute dFdField
                     elif self.dvType[inputName] == "Field":
@@ -1512,17 +1421,7 @@ class DAFoamFunctions(ExplicitComponent):
                         DASolver.solverAD.calcdFdFieldAD(
                             DASolver.xvVec, DASolver.wVec, objFuncName.encode(), inputName.encode(), dFdField
                         )
-
-                        # user can prescribe whether the field var is distributed. Default is True
-                        distributed = True
-                        if "distributed" in designVariables[inputName]:
-                            distributed = designVariables[inputName]["distributed"]
-
-                        if distributed:
-                            fieldBar = DASolver.vec2Array(dFdField)
-                        else:
-                            fieldBar = DASolver.convertMPIVec2SeqArray(dFdField)
-
+                        fieldBar = DASolver.vec2Array(dFdField)
                         d_inputs[inputName] += fieldBar * fBar
 
                     elif self.dvType[inputName] == "RegPar":
@@ -1531,16 +1430,8 @@ class DAFoamFunctions(ExplicitComponent):
                         parameters = inputs[inputName]
                         product = np.zeros_like(parameters)
 
-                        modelName = designVariables[inputName]["modelName"]
-
                         DASolver.solverAD.calcdFdRegParAD(
-                            volCoords,
-                            states,
-                            parameters,
-                            objFuncName.encode(),
-                            inputName.encode(),
-                            modelName.encode(),
-                            product,
+                            volCoords, states, parameters, objFuncName.encode(), inputName.encode(), product
                         )
 
                         d_inputs[inputName] += product * fBar

@@ -11,7 +11,7 @@
 
 """
 
-__version__ = "3.1.3"
+__version__ = "3.1.0"
 
 import subprocess
 import os
@@ -69,14 +69,95 @@ class DAOPTION(object):
         ## - DATurboFoam:             Compressible steady-state flow solver for Navier-Stokes equations (turbomachinery)
         ## - DASolidDisplacementFoam: Steady-state structural solver for linear elastic equations
         self.solverName = "DASimpleFoam"
+        
+        # UBulk
+        self.Ubulk = 0.0
+        
+        self.dp_val = 0.0
+        
+        # experimental U averaged field
+        self.UAv = ["None"]
+        
+        # experimental V averaged field
+        self.VAv = ["None"]
+        
+        # experimental X points 
+        self.Xpts = ["None"]
+        
+        # experimental Y points
+        self.Ypts = ["None"]
+        
+        # experimental rows
+        self.exp_rows = 0
+        
+        # experimental columns
+        self.exp_columns = 0
+        
+        # start of the experimental grid X co-oridnate
+        self.start_x = 0.0
+        
+        # start of the experimental grid Y co-ordinate
+        self.start_y = 0.0
+        
+        # spacing in X direction
+        self.dx = 0.0
+        
+        # spacing in Y direction
+        self.dy = 0.0
+        
+        # 3D data assimilation
+        # experimental U averaged field
+        self.UAv3D = ["None"]
+        
+        # experimental V averaged field
+        self.VAv3D = ["None"]
+        
+        # experimental X points 
+        self.Xpts3D = ["None"]
+        
+        # experimental Y points
+        self.Ypts3D = ["None"]
+        
+        # experimental rows
+        self.exp_rows3D = ["None"]
+        
+        # experimental columns
+        self.exp_columns3D = ["None"]
+        
+        # start of the experimental grid X co-oridnate
+        self.start_x3D = ["None"]
+        
+        # start of the experimental grid Y co-ordinate
+        self.start_y3D = ["None"]
+        
+        # spacing in X direction
+        self.dx3D = ["None"]
+        
+        # spacing in Y direction
+        self.dy3D = ["None"]
+        
+        # number of planes
+        self.planes3D = 1
+        
+        # spanwise extent information
+        self.z_min3D = ["None"]
+        
+        # spanwise extent information
+        self.z_max3D = ["None"]
+        
+        self.zmax = -0.05
+        
+        self.zmin = 0.05
+        
+        self.use3D = "no"
+        
+        self.multiMesh = "no"
+        
+        #self.printToScreen = 1
 
         ## The convergence tolerance for the primal solver. If the primal can not converge to 2 orders
         ## of magnitude (default) higher than this tolerance, the primal solution will return fail=True
         self.primalMinResTol = 1.0e-8
-
-        ## The convergence tolerance based on the selected objective function's standard deviation
-        ## The standard deviation is calculated based on the last N (default 200) steps of the objective function series
-        self.primalObjStdTol = {"active": False, "objFuncName": "None", "steps": 200, "tol": 1e-5, "tolDiff": 1e2}
 
         ## The boundary condition for primal solution. The keys should include "variable", "patch",
         ## and "value". For turbulence variable, one can also set "useWallFunction" [bool].
@@ -425,7 +506,7 @@ class DAOPTION(object):
             "kMax": 1e16,
             "kMin": 1e-16,
             "omegaMax": 1e16,
-            "omegaMin": 1e-16,
+            "omegaMin": -1e-16,
             "epsilonMax": 1e16,
             "epsilonMin": 1e-16,
             "ReThetatMax": 1e16,
@@ -473,8 +554,6 @@ class DAOPTION(object):
             "PCMatPrecomputeInterval": 100,
             "PCMatUpdateInterval": 1,
             "reduceIO": True,
-            "additionalOutput": ["None"],
-            "readZeroFields": True,
         }
 
         ## At which iteration should we start the averaging of objective functions.
@@ -515,54 +594,22 @@ class DAOPTION(object):
         self.useConstrainHbyA = False
 
         ## parameters for regression models
-        ## we support defining multiple regression models. Each regression model can have only one output
-        ## but it can have multiple input features. Refer to src/adjoint/DARegression/DARegression.C for
-        ## a full list of supported input features. There are two supported regression model types:
-        ## neural network and radial basis function. We can shift and scale the inputs and outputs
-        ## we can also prescribe a default output value. The default output will be used in resetting
-        ## when they are nan, inf, or out of the prescribe upper and lower bounds
         self.regressionModel = {
             "active": False,
-            # "model1": {
-            #    "modelType": "neuralNetwork",
-            #    "inputNames": ["PoD", "VoS", "PSoSS", "chiSA"],
-            #    "outputName": "betaFINuTilda",
-            #    "hiddenLayerNeurons": [20, 20],
-            #    "inputShift": [0.0],
-            #    "inputScale": [1.0],
-            #    "outputShift": 1.0,
-            #    "outputScale": 1.0,
-            #    "outputUpperBound": 1e1,
-            #    "outputLowerBound": -1e1,
-            #    "activationFunction": "sigmoid",  # other options are relu and tanh
-            #    "printInputInfo": True,
-            #    "defaultOutputValue": 1.0,
-            # },
-            # "model2": {
-            #    "modelType": "radialBasisFunction",
-            #    "inputNames": ["KoU2", "ReWall", "CoP", "TauoK"],
-            #    "outputName": "betaFIOmega",
-            #    "nRBFs": 50,
-            #    "inputShift": [0.0],
-            #    "inputScale": [1.0],
-            #    "outputShift": 1.0,
-            #    "outputScale": 1.0,
-            #    "outputUpperBound": 1e1,
-            #    "outputLowerBound": -1e1,
-            #    "printInputInfo": True,
-            #    "defaultOutputValue": 1.0,
-            # },
+            "modelType": "neuralNetwork",
+            "inputNames": ["None"],
+            "outputName": "None",
+            "hiddenLayerNeurons": [0],
+            "inputShift": [0.0],
+            "inputScale": [1.0],
+            "outputShift": 0.0,
+            "outputScale": 1.0,
+            "outputUpperBound": 1e8,
+            "outputLowerBound": -1e8,
+            "activationFunction": "sigmoid",
+            "printInputInfo": True,
+            "defaultOutputValue": 0.0,
         }
-
-        ## whether to use averaged states
-        ## This is useful for cases when steady-state solvers do not converge very well, e.g., flow
-        ## separation. In these cases, the flow field and the objective function will oscillate and
-        ## to get a better flow field and obj func value, we can use step-averaged (mean) states
-        ## the start can be from 0 to 1. 0 means we use all time steps for averaging, while 1 means
-        ## we use no time steps for averaging. 0.8 means we use the last 20% of the time step for averaging.
-        ## We usually don't use 0 because the flow will need some spin up time, so using the spin-up
-        ## flow field for meanStates will be slightly inaccurate.
-        self.useMeanStates = {"active": False, "start": 0.5}
 
         # *********************************************************************************************
         # ************************************ Advance Options ****************************************
@@ -571,10 +618,6 @@ class DAOPTION(object):
         ## The run status which can be solvePrimal, solveAdjoint, or calcTotalDeriv. This parameter is
         ## used internally, so users should never change this option in the Python layer.
         self.runStatus = "None"
-
-        ## The current objective function name. This variable will be reset in DAFoamFunctions
-        ## Then, we know which objective function is used in solve_linear in DAFoamSolver
-        self.solveLinearObjFuncName = "None"
 
         ## Whether to print all options defined in pyDAFoam to screen before optimization.
         self.printPYDAFOAMOptions = False
@@ -699,6 +742,11 @@ class DAOPTION(object):
 
         ## The sensitivity map will be saved to disk during optimization for the given design variable
         ## names in the list. Currently only support design variable type FFD and Field
+        ## The surface sensitivity map is separated from the primal solution because they only have surface mesh.
+        ## They will be saved to folders such as 1e-11, 2e-11, 3e-11, etc,
+        ## When loading in paraview, you need to uncheck the "internalMesh", and check "allWalls" on the left panel
+        ## If your design variable is of field type, the sensitivity map will be saved along with the primal
+        ## solution because they share the same mesh. The sensitivity files read sens_objFuncName_designVarName
         ## NOTE: this function only supports useAD->mode:reverse
         ## Example:
         ##     "writeSensMap" : ["shapex", "shapey"]
@@ -709,9 +757,6 @@ class DAOPTION(object):
 
         ## Whether to write deformed constraints to disk during optimization, i.e., DVCon.writeTecplot
         self.writeDeformedConstraints = False
-
-        ## Whether to write adjoint variables in OpenFOAM field format for post-processing
-        self.writeAdjointFields = False
 
         ## The max number of correctBoundaryConditions calls in the updateOFField function.
         self.maxCorrectBCCalls = 10
@@ -744,15 +789,16 @@ class DAOPTION(object):
         }
 
         ## number of minimal primal iterations. The primal has to run this many iterations, even the primal residual
-        ## has reduced below the tolerance. The default is 1: the primal has to run for at least one iteration
-        self.primalMinIters = 1
+        ## has reduced below the tolerance. The default is a negative value (always satisfied).
+        self.primalMinIters = -1
 
         ## tensorflow related functions
         self.tensorflow = {
             "active": False,
-            # "model1": {
-            #    "predictBatchSize": 1000
-            # }
+            "modelName": "model",
+            "nInputs": 1,
+            "nOutputs": 1,
+            "batchSize": 1000,
         }
 
 
@@ -789,7 +835,7 @@ class PYDAFOAM(object):
 
         # name
         self.name = "PYDAFOAM"
-
+        
         # register solver names and set their types
         self._solverRegistry()
 
@@ -841,6 +887,10 @@ class PYDAFOAM(object):
 
         # initialize mesh information and read grids
         self._readMeshInfo()
+        
+        # Uttam 20251111 
+        if self.getOption("multiMesh") == "yes":
+            self._readTargetMeshInfo()
 
         # check if the combination of options is valid.
         self._checkOptions()
@@ -908,7 +958,13 @@ class PYDAFOAM(object):
         # dictionary to save the total derivative vectors
         # NOTE: this function need to be called after initializing self.objFuncNames4Adj
         self.adjTotalDeriv = self._initializeAdjTotalDeriv()
-
+        
+        if self.getOption("multiMesh") == "yes":
+            Info("Multi-mesh: Initializing COARSE gradient dictionary (adjTotalDeriv_Coarse)")
+            # We can re-use the same factory, it just creates an empty dict structure
+            self.adjTotalDeriv_Coarse = self._initializeAdjTotalDeriv()
+            
+        
         # preconditioner matrix
         self.dRdWTPC = None
 
@@ -934,13 +990,9 @@ class PYDAFOAM(object):
             TensorFlowHelper.options = self.getOption("tensorflow")
             TensorFlowHelper.initialize()
             # pass this helper function to the C++ layer
-            self.solver.initTensorFlowFuncs(
-                TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
-            )
+            self.solver.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd)
             if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-                self.solverAD.initTensorFlowFuncs(
-                    TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd, TensorFlowHelper.setModelName
-                )
+                self.solverAD.initTensorFlowFuncs(TensorFlowHelper.predict, TensorFlowHelper.calcJacVecProd)
 
         Info("pyDAFoam initialization done!")
 
@@ -953,8 +1005,8 @@ class PYDAFOAM(object):
         """
 
         self.solverRegistry = {
-            "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam", "DAPimpleFoam", "DAPimpleDyMFoam"],
-            "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam", "DARhoPimpleFoam"],
+            "Incompressible": ["DASimpleFoam", "DASimpleTFoam", "DAPisoFoam", "DAPimpleFoam", "DAPimpleDyMFoam", "DAMySimpleTFoam"],
+            "Compressible": ["DARhoSimpleFoam", "DARhoSimpleCFoam", "DATurboFoam"],
             "Solid": ["DASolidDisplacementFoam", "DALaplacianFoam", "DAHeatTransferFoam", "DAScalarTransportFoam"],
         }
 
@@ -1050,8 +1102,16 @@ class PYDAFOAM(object):
             A dict that contains adjoint vectors, stored in Petsc format
         """
 
-        wSize = self.solver.getNLocalAdjointStates()
-
+        if self.getOption("multiMesh") == "yes":
+            Info("Multi-mesh mode: Initializing COARSE adjoint vectors.")
+            # Get the state size from our NEW coarse-mesh C++ function
+            wSize = self.solver.getNLocalAdjointStates_Coarse()
+        else:
+            # This is the original code
+            wSize = self.solver.getNLocalAdjointStates()
+        
+        #wSize = self.solver.getNLocalAdjointStates()
+        
         objFuncDict = self.getOption("objFunc")
 
         adjVectors = {}
@@ -1339,14 +1399,6 @@ class PYDAFOAM(object):
                 self.DVGeo.writeTecplot("deformedFFD_%d.dat" % self.nSolveAdjoints)
             else:
                 self.DVGeo.writeTecplot("deformedFFD_%d.dat" % counter)
-
-    def writeAdjointFields(self, objFunc, writeTime, psi):
-        """
-        Write the adjoint variables in OpenFOAM field format for post-processing
-        """
-
-        if self.getOption("writeAdjointFields"):
-            self.solver.writeAdjointFields(objFunc, writeTime, psi)
 
     def writeTotalDeriv(self, fileName, sens, evalFuncs):
         """
@@ -2075,7 +2127,7 @@ class PYDAFOAM(object):
                 dFdXsFlatten = dFdXs.flatten()
                 XsFlatten = Xs.flatten()
                 size = len(dFdXsFlatten)
-                timeName = float(self.nSolveAdjoints) / 1e4
+                timeName = float(self.nSolveAdjoints) / 1e8
                 name = "sens_" + objFuncName + "_" + designVarName
                 self.solver.writeSensMapSurface(name, dFdXsFlatten, XsFlatten, size, timeName)
             # assign the total derivative to self.adjTotalDeriv
@@ -2088,67 +2140,200 @@ class PYDAFOAM(object):
                 else:
                     self.adjTotalDeriv[objFuncName][designVarName][i] = dFdFFD[designVarName][0][i]
 
+    
+    # In your pyDAFoam.py file...
     def calcTotalDerivsField(self, objFuncName, designVarName, fieldType, dFScaling=1.0, accumulateTotal=False):
-
+        """
+        Calculate total derivatives for field design variables (volumetric or patch-based).
+        """
+        
+        # --- NEW: Logic to determine if it's a patch field and get the correct entity count ---
+        originalFieldType = fieldType
+        designVarDict = self.getOption("designVar")
+        nLocalEntities = 0
+        patchName = None
+        isPatchField = False
+        
+        if designVarName in designVarDict:
+            dvSubDict = designVarDict[designVarName]
+            if "patches" in dvSubDict:
+                isPatchField = True
+                patchName = dvSubDict["patches"][0]
+                nLocalEntities = self.solver.getNLocalFaces(patchName.encode())
+                print(f"Calculating total derivatives for patch field '{designVarName}' on patch '{patchName}' ({nLocalEntities} faces).")
+                # Determine the patch-specific fieldType for C++ calls if needed later
+                if "vector" in originalFieldType:
+                    fieldType = "vectorPatch"
+                elif "scalar" in originalFieldType:
+                    fieldType = "scalarPatch"
+        
+        if not isPatchField:
+            nLocalEntities = self.solver.getNLocalCells()
+            print(f"Calculating total derivatives for volumetric field '{designVarName}' ({nLocalEntities} cells).")
+        
+        # --- Determine fieldComp based on the potentially modified fieldType ---
+        if "scalar" in fieldType:
+            fieldComp = 1
+        elif "vector" in fieldType: # Handles "vector" and "vectorPatch"
+            fieldComp = 3
+        else:
+            # Raise error using the *original* fieldType for clarity
+            raise ValueError(f"Original fieldType '{originalFieldType}' provided for {designVarName} is not valid!")
+            
+        # --- Determine nDVs (total number of design variables for this group) ---
+        # This part remains the same, assuming DVGeo handles the global count correctly
         nDVs = 0
         if self.DVGeo is not None:
             xDV = self.DVGeo.getValues()
-            if designVarName in xDV:
-                nDVs = len(xDV[designVarName])
+        if designVarName in xDV:
+            nDVs = len(xDV[designVarName])
         elif designVarName in self.internalDV:
             nDVs = len(self.internalDV[designVarName]["init"])
         else:
-            raise Error("design variable %s not found..." % designVarName)
-
-        if fieldType == "scalar":
-            fieldComp = 1
-        elif fieldType == "vector":
-            fieldComp = 3
-        else:
-            raise Error("fieldType not valid!")
-        nLocalCells = self.solver.getNLocalCells()
-
-        # calculate dFdField
+            raise ValueError("design variable %s not found..." % designVarName)
+        
+        # Check if the number of DVs matches the expected size (important sanity check)
+        if nDVs != fieldComp * nLocalEntities:
+            print(f"Warning: Mismatch between expected DVs ({fieldComp * nLocalEntities}) "
+              f"and registered DVs ({nDVs}) for {designVarName}.")
+        # Depending on how pyOptSparse/DVGeo handles indexing, this might still work,
+        # but it's worth investigating if you encounter further issues.
+        
+        # --- Size PETSc vectors using the correct nLocalEntities ---
+        vecSize = fieldComp * nLocalEntities
+        
+        # Calculate dFdField
         dFdField = PETSc.Vec().create(PETSc.COMM_WORLD)
-        dFdField.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
+        dFdField.setSizes((vecSize, PETSc.DECIDE), bsize=1)
         dFdField.setFromOptions()
+        # NOTE: Ensure self.solverAD.calcdFdFieldAD is correctly implemented for patch fields in C++
         self.solverAD.calcdFdFieldAD(self.xvVec, self.wVec, objFuncName.encode(), designVarName.encode(), dFdField)
-
         dFdField.scale(dFScaling)
-
-        # call the total deriv
+        
+        # Calculate dRdFieldT*Psi
         totalDeriv = PETSc.Vec().create(PETSc.COMM_WORLD)
-        totalDeriv.setSizes((fieldComp * nLocalCells, PETSc.DECIDE), bsize=1)
+        totalDeriv.setSizes((vecSize, PETSc.DECIDE), bsize=1)
         totalDeriv.setFromOptions()
-        # calculate dRdFieldT*Psi and save it to totalDeriv
+        # NOTE: Ensure self.solverAD.calcdRdFieldTPsiAD is correctly implemented for patch fields in C++
         self.solverAD.calcdRdFieldTPsiAD(
-            self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
+        self.xvVec, self.wVec, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv
         )
-
+        
         # totalDeriv = dFdField - dRdFieldT*psi
         totalDeriv.scale(-1.0)
         totalDeriv.axpy(1.0, dFdField)
-
-        # check if we need to save the sensitivity maps
+        
+        # --- Write sensitivity map if requested ---
         if designVarName in self.getOption("writeSensMap"):
-            timeName = float(self.nSolveAdjoints) / 1e4
-            dFdFieldArray = self.vec2Array(totalDeriv)
+            timeName = float(self.nSolveAdjoints) / 1e8
+            dFdFieldArray = self.vec2Array(totalDeriv) # Gather parallel data
             name = "sens_" + objFuncName + "_" + designVarName
-            self.solver.writeSensMapField(name, dFdFieldArray, fieldType, timeName)
-
-        # assign the total derivative to self.adjTotalDeriv
+            # NOTE: Ensure self.solver.writeSensMapField can handle patch fields in C++
+            self.solver.writeSensMapField(name, dFdFieldArray, fieldType, timeName) # Pass potentially modified fieldType
+        
+        # --- Assign total derivatives ---
         if self.adjTotalDeriv[objFuncName][designVarName] is None:
+            # Use nDVs (total number of DVs) for the final numpy array size
             self.adjTotalDeriv[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
-
-        # we need to convert the parallel vec to seq vec
+                    
+        # Convert the parallel PETSc vector to a sequential one for pyOptSparse
         totalDerivSeq = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
         self.solver.convertMPIVec2SeqVec(totalDeriv, totalDerivSeq)
-
+        
+        # Assign values to the final numpy array
         for i in range(nDVs):
             if accumulateTotal is True:
                 self.adjTotalDeriv[objFuncName][designVarName][i] += totalDerivSeq[i]
             else:
                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
+        
+        # Clean up PETSc objects
+        #dFdField.destroy()
+        #totalDeriv.destroy()
+        #totalDerivSeq.destroy()
+
+    def calcTotalDerivsField_Coarse(self, objFuncName, designVarName, fieldType, dFScaling=1.0, accumulateTotal=False):
+        """
+        Calculate total derivatives for field design variables (volumetric) for coarse mesh.
+        """
+        
+        Info(f"Multi-mesh: Computing COARSE gradient for {designVarName}...")
+        
+        
+        # --- Get COARSE mesh setting ---
+        if "scalar" in fieldType:
+            fieldComp = 1
+        elif "vector" in fieldType: # Handles "vector"
+            fieldComp = 3
+        else:
+            # Raise error using the *original* fieldType for clarity
+            raise ValueError(f"Original fieldType '{originalFieldType}' provided for {designVarName} is not valid!")
+            
+        # Get local entity count *from the coarse mesh*
+        nLocalEntities = self.solver.getNLocalCells_Coarse()
+        vecSize_coarse = fieldComp * nLocalEntities
+        
+        # --- Determine nDVs (total number of design variables for this group) ---
+        # This part remains the same, assuming DVGeo handles the global count correctly
+        nDVs = 0
+        if self.DVGeo is not None:
+            xDV = self.DVGeo.getValues()
+        if designVarName in xDV:
+            nDVs = len(xDV[designVarName])
+        elif designVarName in self.internalDV:
+            nDVs = len(self.internalDV[designVarName]["init"])
+        else:
+            raise ValueError("design variable %s not found..." % designVarName)
+                
+        # Calculate dFdField coarse
+        dFdField_coarse = PETSc.Vec().create(PETSc.COMM_WORLD)
+        dFdField_coarse.setSizes((vecSize_coarse, PETSc.DECIDE), bsize=1)
+        dFdField_coarse.setFromOptions()
+        # NOTE: Ensure self.solverAD.calcdFdFieldAD_Coarse is correctly implemented 
+        self.solverAD.calcdFdFieldAD_Coarse(self.xvVec_coarse, self.wVec_coarse, objFuncName.encode(), designVarName.encode(), dFdField_coarse)
+        dFdField_coarse.scale(dFScaling)
+        
+        # Calculate dRdFieldT*Psi
+        totalDeriv_Coarse = PETSc.Vec().create(PETSc.COMM_WORLD)
+        totalDeriv_Coarse.setSizes((vecSize_coarse, PETSc.DECIDE), bsize=1)
+        totalDeriv_Coarse.setFromOptions()
+        # NOTE: Ensure self.solverAD.calcdRdFieldTPsiAD is correctly implemented for patch fields in C++
+        self.solverAD.calcdRdFieldTPsiAD_Coarse(
+        self.xvVec_coarse, self.wVec_coarse, self.adjVectors[objFuncName], designVarName.encode(), totalDeriv_Coarse
+        )
+        
+        # totalDeriv = dFdField - dRdFieldT*psi
+        totalDeriv_Coarse.scale(-1.0)
+        totalDeriv_Coarse.axpy(1.0, dFdField_coarse)
+        
+        # --- Write sensitivity map if requested ---
+        if designVarName in self.getOption("writeSensMap"):
+            timeName = float(self.nSolveAdjoints) / 1e8
+            dFdFieldArray_Coarse = self.vec2Array(totalDeriv_Coarse) # Gather parallel data
+            name = "sens_" + objFuncName + "_" + designVarName + "_coarse"
+            # NOTE: Ensure self.solver.writeSensMapField can handle patch fields in C++
+            self.solver.writeSensMapField_Coarse(name, dFdFieldArray_Coarse, fieldType, timeName) # Pass potentially modified fieldType
+        
+        # --- Assign total derivatives ---
+        if self.adjTotalDeriv_Coarse[objFuncName][designVarName] is None:
+            # Use nDVs (total number of DVs) for the final numpy array size
+            self.adjTotalDeriv_Coarse[objFuncName][designVarName] = np.zeros(nDVs, self.dtype)
+                    
+        # Convert the parallel PETSc vector to a sequential one for pyOptSparse
+        totalDerivSeq_Coarse = PETSc.Vec().createSeq(nDVs, bsize=1, comm=PETSc.COMM_SELF)
+        self.solver.convertMPIVec2SeqVec(totalDeriv_Coarse, totalDerivSeq_Coarse)
+        
+        # Assign values to the final numpy array
+        for i in range(nDVs):
+            if accumulateTotal is True:
+                self.adjTotalDeriv_Coarse[objFuncName][designVarName][i] += totalDerivSeq_Coarse[i]
+            else:
+                self.adjTotalDeriv_Coarse[objFuncName][designVarName][i] = totalDerivSeq_Coarse[i]
+        
+
+
+
+
 
     def calcTotalDerivsAOA(self, objFuncName, designVarName, dFScaling=1.0, accumulateTotal=False):
 
@@ -2219,7 +2404,7 @@ class PYDAFOAM(object):
             else:
                 self.adjTotalDeriv[objFuncName][designVarName][i] = totalDerivSeq[i]
 
-    def calcTotalDerivsRegPar(self, objFuncName, designVarName, modelName, dFScaling=1.0, accumulateTotal=False):
+    def calcTotalDerivsRegPar(self, objFuncName, designVarName, dFScaling=1.0, accumulateTotal=False):
 
         nDVs = 0
         parameters = None
@@ -2233,7 +2418,7 @@ class PYDAFOAM(object):
             nDVs = len(self.internalDV[designVarName]["init"])
             parameters = self.internalDV[designVarName]["value"]
 
-        nParameters = self.getNRegressionParameters(modelName)
+        nParameters = self.solver.getNRegressionParameters()
         if nDVs != nParameters:
             raise Error("number of parameters not valid!")
 
@@ -2245,12 +2430,12 @@ class PYDAFOAM(object):
 
         # calc dFdRegPar
         self.solverAD.calcdFdRegParAD(
-            xvArray, wArray, parameters, objFuncName.encode(), designVarName.encode(), modelName.encode(), dFdRegPar
+            xvArray, wArray, parameters, objFuncName.encode(), designVarName.encode(), dFdRegPar
         )
         dFdRegPar *= dFScaling
 
         # calculate dRdFieldT*Psi and save it to totalDeriv
-        self.solverAD.calcdRdRegParTPsiAD(xvArray, wArray, parameters, seedArray, modelName.encode(), totalDerivArray)
+        self.solverAD.calcdRdRegParTPsiAD(xvArray, wArray, parameters, seedArray, totalDerivArray)
         # all reduce because parameters is a global DV
         totalDerivArray = self.comm.allreduce(totalDerivArray, op=MPI.SUM)
 
@@ -2308,7 +2493,6 @@ class PYDAFOAM(object):
 
         # NOTE: this step is critical because we need to compute the residual for
         # self.solverAD once to get the proper oldTime level for unsteady adjoint
-        self.solverAD.updateStateBoundaryConditions()
         self.solverAD.calcPrimalResidualStatistics("calc".encode())
 
         # call the internal design var function to update DASolver parameters
@@ -2398,7 +2582,6 @@ class PYDAFOAM(object):
         self.adjTotalDeriv = self._initializeAdjTotalDeriv()
 
         # loop over all objFunc, calculate dFdW, and solve the adjoint
-        self.adjointFail = 0
         for objFuncName in objFuncDict:
             if objFuncName in self.objFuncNames4Adj:
                 # zero the vecs
@@ -2458,7 +2641,7 @@ class PYDAFOAM(object):
                         self.solver.calcPCMatWithFvMatrix(PCMat)
 
                     # now solve the adjoint eqn
-                    self.adjointFail += self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
+                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
 
                     # loop over all the design vars and accumulate totals
                     for designVarName in designVarDict:
@@ -2476,8 +2659,7 @@ class PYDAFOAM(object):
                             fieldType = designVarDict[designVarName]["fieldType"]
                             self.calcTotalDerivsField(objFuncName, designVarName, fieldType, dFScaling, True)
                         elif designVarDict[designVarName]["designVarType"] == "RegPar":
-                            modelName = designVarDict[designVarName]["modelName"]
-                            self.calcTotalDerivsRegPar(objFuncName, designVarName, modelName, dFScaling, True)
+                            self.calcTotalDerivsRegPar(objFuncName, designVarName, dFScaling, True)
                         else:
                             raise Error("designVarType not valid!")
 
@@ -2490,15 +2672,12 @@ class PYDAFOAM(object):
                         self.solverAD.calcdRdWOldTPsiAD(1, self.adjVectors[objFuncName], dRdW0TPsi)
                         self.solverAD.calcdRdWOldTPsiAD(2, self.adjVectors[objFuncName], dRdW00TPsiBuffer)
 
-                    # if one adjoint solution fails, return immediate without solving for the rest of steps.
-                    if self.adjointFail > 0:
-                        break
-
         self.nSolveAdjoints += 1
 
     def solveAdjoint(self):
         """
-        Run adjoint solver to compute the adjoint vector psiVec
+        Run adjoint solver to compute the adjoint vector psiVec.
+        (MODIFIED for multi-mesh)
 
         Input:
         ------
@@ -2529,7 +2708,7 @@ class PYDAFOAM(object):
         if not self.getOption("writeMinorIterations"):
             self.renameSolution(self.nSolveAdjoints)
 
-        Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
+        #Info("Running adjoint Solver %03d" % self.nSolveAdjoints)
 
         self.setOption("runStatus", "solveAdjoint")
         self.updateDAOption()
@@ -2543,57 +2722,141 @@ class PYDAFOAM(object):
         self.runInternalDVFunc()
 
         self.adjointFail = 0
+        
+        # Uttam 20251111
+        # ---------- Start of multi mesh block -------------- #
+        
+        if self.getOption("multiMesh") == "yes":
+            # --- 1. MULTI-MESH (COARSE) ADJOINT PATH ---
+            Info("Running adjoint Solver %03d (Multi-Mesh COARSE Path)" % self.nSolveAdjoints)
+            # Interpolate State (U, p, nuTilda, phi)
+            self.solver.interpolateStateToTarget()
+            
+            # Interpolate Control (fvSource)
+            self.solver.interpolateControlToTarget()
+            
+            # Create and Pack COARSE State Vector (wVec_coarse)            
+            Info("Multi-mesh: Packing COARSE state and geometry vectors...")
+            self.solver.ofField2StateVec_Coarse(self.wVec_coarse)
+            #self.solver.ofField2XvVec_Coarse(self.xvVec_coarse)
+            Info("COARSE state and geometry vectors are ready.")
 
-        # calculate dRdWT
-        if self.getOption("useAD")["mode"] == "fd":
-            dRdWT = PETSc.Mat().create(PETSc.COMM_WORLD)
-            self.solver.calcdRdWT(self.xvVec, self.wVec, 0, dRdWT)
-        elif self.getOption("useAD")["mode"] == "reverse":
-            self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
-
-        # calculate dRdWTPC. If runLowOrderPrimal4PC is true, we compute the PC mat
-        # before solving the primal, so we will skip it here
-        if not self.getOption("runLowOrderPrimal4PC")["active"]:
+            
+            # 2a. calculate dRdWT_Coarse
+            
+            # We now need to call the C++ functions that use these coarse vectors to solve the adjoint.
+            # 2. calculate dRdWT_Coarse
+            if self.getOption("useAD")["mode"] == "fd":
+                raise Error("multiMesh mode only supports useAD->mode=reverse")
+            elif self.getOption("useAD")["mode"] == "reverse":
+                self.solverAD.initializedRdWTMatrixFree_Coarse(self.xvVec_coarse, self.wVec_coarse)
+                
+            # self.solverAD.initializedRdWTMatrixFree_Coarse(xvVec_coarse, wVec_coarse)
+            
+            # 2b. calculate dRdWTPC_Coarse (Preconditioner)
             adjPCLag = self.getOption("adjPCLag")
-            if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
-                self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
-                self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
+            if not self.getOption("runLowOrderPrimal4PC")["active"]:
+                if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
+                    self.dRdWTPC_coarse = PETSc.Mat().create(PETSc.COMM_WORLD)
+                    # We need to add calcdRdWT_Coarse to C++/Cython
+                    self.solver.calcdRdWT_Coarse(self.xvVec_coarse, self.wVec_coarse, 1, self.dRdWTPC_coarse)
 
-        # Initialize the KSP object
-        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-        if self.getOption("useAD")["mode"] == "fd":
-            self.solver.createMLRKSP(dRdWT, self.dRdWTPC, ksp)
-        elif self.getOption("useAD")["mode"] == "reverse":
-            self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
+            
+            # 3. calculate dRdWTPC_Coarse
+            # self.solver.calcdRdWT_Coarse(xvVec_coarse, wVec_coarse, 1, self.dRdWTPC_coarse)
+            
+            # 2c. Initialize the KSP object using the COARSE PC
+            ksp_coarse = PETSc.KSP().create(PETSc.COMM_WORLD)
+            if self.getOption("useAD")["mode"] == "reverse":
+                self.solverAD.createMLRKSPMatrixFree_Coarse(self.dRdWTPC_coarse, ksp_coarse)
+            
+            # 2d. loop over objFunc, calculate dFdW_Coarse, and solve
+            wSize_coarse = self.solver.getNLocalAdjointStates_Coarse()
+            objFuncDict = self.getOption("objFunc")
+            for objFuncName in objFuncDict:
+                if objFuncName in self.objFuncNames4Adj:
+                    dFdW_coarse = PETSc.Vec().create(PETSc.COMM_WORLD)
+                    dFdW_coarse.setSizes((wSize_coarse, PETSc.DECIDE), bsize=1)
+                    dFdW_coarse.setFromOptions()
+                    
+                    if self.getOption("useAD")["mode"] == "reverse":
+                        self.solverAD.calcdFdWAD_Coarse(self.xvVec_coarse, self.wVec_coarse, objFuncName.encode(), dFdW_coarse)
+                    # Solve coarse system, store psi_coarse in self.adjVectors
+                    self.adjointFail = self.solverAD.solveLinearEqn_Coarse(ksp_coarse, dFdW_coarse, self.adjVectors[objFuncName])
+                    dFdW_coarse.destroy()
+            
+            # 2e. Clean up the coarse solve objects
+            ksp_coarse.destroy()
+            if self.getOption("useAD")["mode"] == "reverse":
+                self.solverAD.destroydRdWTMatrixFree_Coarse()
+            
+            # 2f. Clean up preconditioner
+            if not self.getOption("runLowOrderPrimal4PC")["active"] and (self.nSolveAdjoints - 1) % adjPCLag == 0:
+                if hasattr(self, "dRdWTPC_coarse"):
+                    self.dRdWTPC_coarse.destroy()
+            
+            
+            #wVec_coarse.destroy()
+            #xvVec_coarse.destroy()
+        
+        
+        else:
+            
+            Info("Running adjoint Solver %03d (Standard FINE Path)" % self.nSolveAdjoints)
+            
+            # calculate dRdWT
+            if self.getOption("useAD")["mode"] == "fd":
+                dRdWT = PETSc.Mat().create(PETSc.COMM_WORLD)
+                self.solver.calcdRdWT(self.xvVec, self.wVec, 0, dRdWT)
+            elif self.getOption("useAD")["mode"] == "reverse":
+                self.solverAD.initializedRdWTMatrixFree(self.xvVec, self.wVec)
 
-        # loop over all objFunc, calculate dFdW, and solve the adjoint
-        objFuncDict = self.getOption("objFunc")
-        wSize = self.solver.getNLocalAdjointStates()
-        for objFuncName in objFuncDict:
-            if objFuncName in self.objFuncNames4Adj:
-                dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
-                dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
-                dFdW.setFromOptions()
-                if self.getOption("useAD")["mode"] == "fd":
-                    self.solver.calcdFdW(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
-                elif self.getOption("useAD")["mode"] == "reverse":
-                    self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
+            # calculate dRdWTPC. If runLowOrderPrimal4PC is true, we compute the PC mat
+            # before solving the primal, so we will skip it here
+            if not self.getOption("runLowOrderPrimal4PC")["active"]:
+                adjPCLag = self.getOption("adjPCLag")
+                if self.nSolveAdjoints == 1 or (self.nSolveAdjoints - 1) % adjPCLag == 0:
+                    self.dRdWTPC = PETSc.Mat().create(PETSc.COMM_WORLD)
+                    self.solver.calcdRdWT(self.xvVec, self.wVec, 1, self.dRdWTPC)
 
-                # Initialize the adjoint vector psi and solve for it
-                if self.getOption("useAD")["mode"] == "fd":
-                    self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
-                elif self.getOption("useAD")["mode"] == "reverse":
-                    self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
+            # Initialize the KSP object
+            ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
+            if self.getOption("useAD")["mode"] == "fd":
+                self.solver.createMLRKSP(dRdWT, self.dRdWTPC, ksp)
+            elif self.getOption("useAD")["mode"] == "reverse":
+                self.solverAD.createMLRKSPMatrixFree(self.dRdWTPC, ksp)
 
-                dFdW.destroy()
+            # loop over all objFunc, calculate dFdW, and solve the adjoint
+            objFuncDict = self.getOption("objFunc")
+            wSize = self.solver.getNLocalAdjointStates()
+            for objFuncName in objFuncDict:
+                if objFuncName in self.objFuncNames4Adj:
+                    dFdW = PETSc.Vec().create(PETSc.COMM_WORLD)
+                    dFdW.setSizes((wSize, PETSc.DECIDE), bsize=1)
+                    dFdW.setFromOptions()
+                    if self.getOption("useAD")["mode"] == "fd":
+                        self.solver.calcdFdW(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
+                    elif self.getOption("useAD")["mode"] == "reverse":
+                        self.solverAD.calcdFdWAD(self.xvVec, self.wVec, objFuncName.encode(), dFdW)
 
-        ksp.destroy()
-        if self.getOption("useAD")["mode"] == "fd":
-            dRdWT.destroy()
-        elif self.getOption("useAD")["mode"] == "reverse":
-            self.solverAD.destroydRdWTMatrixFree()
-        # we destroy dRdWTPC only when we need to recompute it next time
-        # see the bottom of this function
+                    # Initialize the adjoint vector psi and solve for it
+                    if self.getOption("useAD")["mode"] == "fd":
+                        self.adjointFail = self.solver.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
+                    elif self.getOption("useAD")["mode"] == "reverse":
+                        self.adjointFail = self.solverAD.solveLinearEqn(ksp, dFdW, self.adjVectors[objFuncName])
+
+                    dFdW.destroy()
+
+            ksp.destroy()
+            if self.getOption("useAD")["mode"] == "fd":
+                dRdWT.destroy()
+            elif self.getOption("useAD")["mode"] == "reverse":
+                self.solverAD.destroydRdWTMatrixFree()
+            # we destroy dRdWTPC only when we need to recompute it next time
+            #if (self.nSolveAdjoints - 1) % adjPCLag == 0:
+            #    self.dRdWTPC.destroy()
+            
+            # see the bottom of this function
 
         # ************ Now compute the total derivatives **********************
         Info("Computing total derivatives....")
@@ -2771,7 +3034,10 @@ class PYDAFOAM(object):
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            self.calcTotalDerivsField(objFuncName, designVarName, fieldType)
+                            if self.getOption("multiMesh") == "yes":
+                                self.calcTotalDerivsField_Coarse(objFuncName, designVarName, fieldType)
+                            else:
+                                self.calcTotalDerivsField(objFuncName, designVarName, fieldType)
                 else:
                     raise Error("For Field design variable type, we only support useAD->mode=reverse")
             ################### RegPar: regression model's parameters ###################
@@ -2780,8 +3046,7 @@ class PYDAFOAM(object):
                     # loop over all objectives
                     for objFuncName in objFuncDict:
                         if objFuncName in self.objFuncNames4Adj:
-                            modelName = designVarDict[designVarName]["modelName"]
-                            self.calcTotalDerivsRegPar(objFuncName, designVarName, modelName)
+                            self.calcTotalDerivsRegPar(objFuncName, designVarName)
                 else:
                     raise Error("For Field design variable type, we only support useAD->mode=reverse")
             else:
@@ -3021,11 +3286,55 @@ class PYDAFOAM(object):
             fieldComp = 1
         elif fieldType == "vector":
             fieldComp = 3
+        elif fieldType == "vectorPatch":
+            fieldComp = 3
+        elif fieldType == "scalarPatch":
+            fieldComp = 1
         else:
             raise Error("fieldType not valid!")
-        nLocalCells = self.solver.getNLocalCells()
+        #nLocalCells = self.solver.getNLocalCells()
+        #20250916: just like number of local cells, we need local patches!
+         # --- NEW LOGIC: Check the designVar dictionary ---
+        designVarDict = self.getOption("designVar")
+        nLocalEntities = 0
+        isPatchField = False
 
-        vecSize = fieldComp * nLocalCells
+        if fieldName in designVarDict:
+            dvSubDict = designVarDict[fieldName]
+            if "patches" in dvSubDict:
+                isPatchField = True
+                # Get the first patch name from the list
+                patchName = dvSubDict["patches"][0]
+                # Call your C++ function to get the number of faces for that patch
+                nLocalEntities = self.solver.getNLocalFaces(patchName.encode())
+                print(f"Detected patch field '{fieldName}' on patch '{patchName}' with {nLocalEntities} faces.")
+
+        if not isPatchField:
+            # If it's not a patch field, assume it's a volumetric field
+            nLocalEntities = self.solver.getNLocalCells()
+            print(f"Detected volumetric field '{fieldName}' with {nLocalEntities} cells.")
+
+        # --- The rest of the function is the same ---
+        vecSize = fieldComp * nLocalEntities
+        fieldVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+        fieldVec.setSizes((vecSize, PETSc.DECIDE), bsize=1)
+        fieldVec.setFromOptions()
+        fieldVec.zeroEntries()
+    
+        # NOTE: As you identified, your C++ getOFField function needs to be
+        # updated to handle "vectorPatch" and actually get the patch data.
+        # This Python code correctly handles the *sizing* of the vector.
+        self.solver.getOFField(fieldName.encode(), fieldType.encode(), fieldVec)
+
+        if distributed:
+            field = self.vec2Array(fieldVec)
+        else:
+            field = self.convertMPIVec2SeqArray(fieldVec)
+
+        return field
+        """
+        nLocalFaces = self.solver.getNLocalFaces()
+        vecSize = fieldComp * nLocalCells # fieldcomp * nLocalFaces
         fieldVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         fieldVec.setSizes((vecSize, PETSc.DECIDE), bsize=1)
         fieldVec.setFromOptions()
@@ -3039,6 +3348,7 @@ class PYDAFOAM(object):
             field = self.convertMPIVec2SeqArray(fieldVec)
 
         return field
+        """
 
     def calcTotalDeriv(self, dRdX, dFdX, psi, totalDeriv):
         """
@@ -3090,23 +3400,6 @@ class PYDAFOAM(object):
 
         # if it is a forceObj, use the analytical approach to calculate dFdAOA, otherwise set it to zero
         if isForceObj == 1:
-            # First, we need to check if a pair of lift and drag forces
-            # is defined. If not, return an error.
-            nParallelToFlows = 0
-            nNormalToFlows = 0
-            for objFuncName in objFuncDict:
-                for objFuncPart in objFuncDict[objFuncName]:
-                    if objFuncDict[objFuncName][objFuncPart]["type"] == "force":
-                        if objFuncDict[objFuncName][objFuncPart]["directionMode"] == "parallelToFlow":
-                            nParallelToFlows += 1
-                        if objFuncDict[objFuncName][objFuncPart]["directionMode"] == "normalToFlow":
-                            nNormalToFlows += 1
-
-            if nParallelToFlows != 1 or nNormalToFlows != 1:
-                raise Error(
-                    "calcdFdAOAAnalytical supports only one pair of force: one with normalToFlow and the other with parallelToFlow"
-                )
-
             # loop over all objectives again to find the neededMode
             # Note that if the neededMode == "parallelToFlow", we need to add a minus sign
             for objFuncNameNeeded in objFuncDict:
@@ -3298,7 +3591,7 @@ class PYDAFOAM(object):
     def renameSolution(self, solIndex):
         """
         Rename the primal solution folder to specific format for post-processing. The renamed time has the
-        format like 0.0001, 0.0002, etc. One can load these intermediate shapes and fields and
+        format like 1e-8, 2e-8, etc. One can load these intermediate shapes and fields and
         plot them in paraview.
         The way it is implemented is that we sort the solution folder and consider the largest time folder
         as the solution folder and rename it
@@ -3317,12 +3610,12 @@ class PYDAFOAM(object):
 
         latestTime = self.solver.getLatestTime()
 
-        if latestTime < 1.0:
-            Info("Latest solution time %g less than 1, not renamed." % latestTime)
+        if latestTime < 1e-4:
+            Info("Latest solution time %g less than 1e-4, not renamed." % latestTime)
             renamed = False
             return latestTime, renamed
 
-        distTime = "%g" % (solIndex / 1e4)
+        distTime = "%g" % (solIndex / 1e8)
         targetTime = "%g" % latestTime
 
         src = os.path.join(checkPath, targetTime)
@@ -3495,6 +3788,38 @@ class PYDAFOAM(object):
         self.xv = copy.copy(self.xv0)
 
         return
+
+    # Uttam 20251111
+    def _readTargetMeshInfo(self):
+        """
+        Read mesh info from the 'target' directory
+        by temporarily changing the working directory.
+        """
+        Info("Reading COARSE OpenFOAM mesh information (target)...")
+ 
+        mainDir = os.getcwd()
+        targetDir = os.path.join(mainDir, "target")
+
+        if not os.path.isdir(targetDir):
+            raise Error(f"Target mesh directory not found. "
+                        f"Please run your bash script to create it at: {targetDir}")
+
+        try:
+            # 1. Jump into the target directory
+            os.chdir(targetDir)
+     
+            # 2. Call _readOFGrid. It will now read from 'target'
+            #    because it *thinks* it's the main directory.
+            #    We pass 'targetDir' so getFileNames() works.
+            self.fileNames_coarse, self.xv0_coarse, self.faces_coarse, self.boundaries_coarse, self.owners_coarse, self.neighbours_coarse = self._readOFGrid(targetDir)
+            self.xv_coarse = copy.copy(self.xv0_coarse)
+
+        finally:
+            # 3. CRITICAL: Jump back to the main directory
+            #    no matter what happens.
+            os.chdir(mainDir)
+            Info("...Done reading coarse mesh.")
+
 
     def setSurfaceCoordinates(self, coordinates, groupName=None):
         """
@@ -3785,18 +4110,37 @@ class PYDAFOAM(object):
                 vec2counter += npts
 
         return vec2
-
+        
+    # Uttam 20251111
     def _initializeMeshPointVec(self):
         """
         Initialize the mesh point vec: xvVec
         """
-
+        
+        Info("Initializing FINE geometry vector (xvVec)...")
+        
         xvSize = len(self.xv) * 3
         self.xvVec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         self.xvVec.setSizes((xvSize, PETSc.DECIDE), bsize=1)
         self.xvVec.setFromOptions()
 
         self.xv2XvVec(self.xv, self.xvVec)
+        
+        # --- START OF MODIFICATION ---
+        # If multiMesh, ALSO create the coarse-mesh xvVec_coarse
+        if self.getOption("multiMesh") == "yes":
+            Info("Multi-mesh mode: Initializing COARSE geometry vector (xvVec_coarse)...")
+            
+            # 1. Get size from our new Python variable
+            xvSize_coarse = len(self.xv_coarse) * 3
+            
+            # 2. Create the new PETSc vector
+            self.xvVec_coarse = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+            self.xvVec_coarse.setSizes((xvSize_coarse, PETSc.DECIDE), bsize=1)
+            self.xvVec_coarse.setFromOptions()
+            
+            # 3. Pack it using our new Python packer
+            self.xv2XvVec_Coarse(self.xv_coarse, self.xvVec_coarse)
 
         # viewer = PETSc.Viewer().createASCII("xvVec", comm=PETSc.COMM_WORLD)
         # viewer(self.xvVec)
@@ -3827,6 +4171,22 @@ class PYDAFOAM(object):
                 self.wVecMPList[i].setSizes((wSize, PETSc.DECIDE), bsize=1)
                 self.wVecMPList[i].setFromOptions()
 
+        # Uttam 20251114
+        if self.getOption("multiMesh") == "yes":
+            Info("Multi-mesh mode: Initializing COARSE state vector (wVec_coarse)...")
+            
+            # 1. Get size from our new C++ getter
+            wSize_coarse = self.solver.getNLocalAdjointStates_Coarse()
+            
+            # 2. Create the new PETSc vector as a class member
+            self.wVec_coarse = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+            self.wVec_coarse.setSizes((wSize_coarse, PETSc.DECIDE), bsize=1)
+            self.wVec_coarse.setFromOptions()
+            
+            # 3. We DO NOT pack it here. The data is stale.
+            # We will pack it in solveAdjoint() after interpolation.
+            Info("...Coarse state vector (wVec_coarse) created.")
+        
         return
 
     def xv2XvVec(self, xv, xvVec):
@@ -3845,6 +4205,23 @@ class PYDAFOAM(object):
         xvVec.assemblyEnd()
 
         return
+        
+    # Uttam 20251111
+    def xv2XvVec_Coarse(self, xv, xvVec):
+        """
+        Convert a Nx3 COARSE mesh point numpy array to a Petsc xvVec
+        """
+        xSize = len(xv)
+        
+        for i in range(xSize):
+            for j in range(3):
+                # --- This is the KEY ---
+                # We call our new C++ function that uses daIndexPtr_Coarse_
+                globalIdx = self.solver.getGlobalXvIndex_Coarse(i, j)
+                xvVec[globalIdx] = xv[i][j]
+        
+        xvVec.assemblyBegin()
+        xvVec.assemblyEnd()
 
     def xvFlatten2XvVec(self, xv, xvVec):
         """
@@ -4058,7 +4435,7 @@ class PYDAFOAM(object):
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
             self.solverAD.setThermal(thermalArray)
 
-    def setRegressionParameter(self, modelName, idx, val):
+    def setRegressionParameter(self, idx, val):
         """
         Update the regression parameters
 
@@ -4071,16 +4448,9 @@ class PYDAFOAM(object):
             the parameter value to set
         """
 
-        self.solver.setRegressionParameter(modelName.encode(), idx, val)
+        self.solver.setRegressionParameter(idx, val)
         if self.getOption("useAD")["mode"] in ["forward", "reverse"]:
-            self.solverAD.setRegressionParameter(modelName.encode(), idx, val)
-
-    def getNRegressionParameters(self, modelName):
-        """
-        Get the number of regression model parameters
-        """
-        nParameters = self.solver.getNRegressionParameters(modelName.encode())
-        return nParameters
+            self.solverAD.setRegressionParameter(idx, val)
 
     def setFieldValue4GlobalCellI(self, fieldName, val, globalCellI, compI=0):
         """
@@ -4509,13 +4879,7 @@ class TensorFlowHelper:
 
     options = {}
 
-    model = {}
-
-    modelName = None
-
-    predictBatchSize = {}
-
-    nInputs = {}
+    model = None
 
     @staticmethod
     def initialize():
@@ -4523,19 +4887,14 @@ class TensorFlowHelper:
         Initialize parameters and load models
         """
         Info("Initializing the TensorFlowHelper")
-        for key in list(TensorFlowHelper.options.keys()):
-            if key != "active":
-                modelName = key
-                TensorFlowHelper.predictBatchSize[modelName] = TensorFlowHelper.options[modelName]["predictBatchSize"]
-                TensorFlowHelper.nInputs[modelName] = TensorFlowHelper.options[modelName]["nInputs"]
-                TensorFlowHelper.model[modelName] = tf.keras.models.load_model(modelName)
+        TensorFlowHelper.modelName = TensorFlowHelper.options["modelName"]
+        TensorFlowHelper.nInputs = TensorFlowHelper.options["nInputs"]
+        TensorFlowHelper.nOutputs = TensorFlowHelper.options["nOutputs"]
+        TensorFlowHelper.batchSize = TensorFlowHelper.options["batchSize"]
+        TensorFlowHelper.model = tf.keras.models.load_model(TensorFlowHelper.modelName)
 
-    @staticmethod
-    def setModelName(modelName):
-        """
-        Set the model name from the C++ to Python layer
-        """
-        TensorFlowHelper.modelName = modelName.decode()
+        if TensorFlowHelper.nOutputs != 1:
+            raise Error("current version supports nOutputs=1 only!")
 
     @staticmethod
     def predict(inputs, n, outputs, m):
@@ -4543,12 +4902,8 @@ class TensorFlowHelper:
         Calculate the outputs based on the inputs using the saved model
         """
 
-        modelName = TensorFlowHelper.modelName
-        nInputs = TensorFlowHelper.nInputs[modelName]
-
-        inputs_tf = np.reshape(inputs, (-1, nInputs))
-        batchSize = TensorFlowHelper.predictBatchSize[modelName]
-        outputs_tf = TensorFlowHelper.model[modelName].predict(inputs_tf, verbose=False, batch_size=batchSize)
+        inputs_tf = np.reshape(inputs, (-1, TensorFlowHelper.nInputs))
+        outputs_tf = TensorFlowHelper.model.predict(inputs_tf, verbose=False, batch_size=TensorFlowHelper.batchSize)
 
         for i in range(m):
             outputs[i] = outputs_tf[i, 0]
@@ -4559,14 +4914,11 @@ class TensorFlowHelper:
         Calculate the gradients of the outputs wrt the inputs
         """
 
-        modelName = TensorFlowHelper.modelName
-        nInputs = TensorFlowHelper.nInputs[modelName]
-
-        inputs_tf = np.reshape(inputs, (-1, nInputs))
+        inputs_tf = np.reshape(inputs, (-1, TensorFlowHelper.nInputs))
         inputs_tf_var = tf.Variable(inputs_tf, dtype=tf.float32)
 
         with tf.GradientTape() as tape:
-            outputs_tf = TensorFlowHelper.model[modelName](inputs_tf_var)
+            outputs_tf = TensorFlowHelper.model(inputs_tf_var)
 
         gradients_tf = tape.gradient(outputs_tf, inputs_tf_var)
 

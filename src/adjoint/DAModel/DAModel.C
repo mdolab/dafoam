@@ -270,7 +270,7 @@ void DAModel::updateIntermediateVariables()
 
 }
 
-void DAModel::getTurbProdTerm(volScalarField& prodTerm) const
+void DAModel::getTurbProdTerm(scalarList& prodTerm) const
 {
     /*
     Description: 
@@ -292,7 +292,31 @@ void DAModel::getTurbProdTerm(volScalarField& prodTerm) const
 
 }
 
-void DAModel::getTurbProdOverDestruct(volScalarField& PoD) const
+// User defined function
+void DAModel::getTurbDestructTerm(scalarList& destructTerm) const
+{
+    /*
+    Description: 
+        Return the value of the production/destruction term from the turbulence model 
+    */
+
+#ifndef SolidDASolver
+    if (hasTurbulenceModel_)
+    {
+        DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(
+            mesh_.thisDb().lookupObject<DATurbulenceModel>("DATurbulenceModel"));
+        daTurb.getTurbDestructTerm(destructTerm);
+    }
+
+    if (hasRadiationModel_)
+    {
+    }
+#endif
+
+}
+
+
+void DAModel::getTurbProdOverDestruct(scalarList& PoD) const
 {
     /*
     Description: 
@@ -314,7 +338,7 @@ void DAModel::getTurbProdOverDestruct(volScalarField& PoD) const
 
 }
 
-void DAModel::getTurbConvOverProd(volScalarField& CoP) const
+void DAModel::getTurbConvOverProd(scalarList& CoP) const
 {
     /*
     Description: 
@@ -352,6 +376,9 @@ const fluidThermo& DAModel::getThermo() const
     return daTurb.getThermo();
 }
 #endif
+
+
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

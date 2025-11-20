@@ -102,6 +102,7 @@ void DASimpleFoam::initSolver()
         daFvSourcePtr_.reset(DAFvSource::New(
             fvSourceType, mesh, daOptionPtr_(), daModelPtr_(), daIndexPtr_()));
     }
+
 }
 
 label DASimpleFoam::solvePrimal(
@@ -156,15 +157,46 @@ label DASimpleFoam::solvePrimal(
         }
     }
 
-    // if useMeanStates is used, we need to zero meanStates before the primal run
-    this->zeroMeanStates();
+/*
+  User defined section starts here
+  */
+   Info <<"Check what value of body force should be added "<<endl;
 
+    scalar dp_val = daOptionPtr_->getOption<scalar>("dp_val");
+
+    Info << "Value of body force to be added is " << dp_val << endl;
+
+
+    volVectorField dp
+        (
+                IOobject
+                (
+                "dp",                    // This is label asigned to the object in the register.
+                runTime.timeName(),     // This is the place where the object will be saved 
+                mesh,                   // This is the object which will act as register.
+                IOobject::NO_READ,      // Reading options (in case it founds a file named "B" do not read it")
+                IOobject::AUTO_WRITE    // Writing options
+                ),
+        mesh,
+        dimensionedVector("dp", dimensionSet(0,1,-2,0,0,0,0), Foam::vector(dp_val, 0.0, 0.0)) 
+ // This is used to "size" the field to mesh domain.
+        ); 
+    
+
+/*
+  User defined section ends here
+  */
+
+
+    // check if the parameters are set in the Python layer
+    daRegressionPtr_->validate();
+
+    primalMinRes_ = 1e10;
     label printInterval = daOptionPtr_->getOption<label>("printInterval");
     label printToScreen = 0;
     label regModelFail = 0;
     while (this->loop(runTime)) // using simple.loop() will have seg fault in parallel
     {
-        DAUtility::primalMaxInitRes_ = -1e16;
 
         printToScreen = this->isPrintTime(runTime, printInterval);
 
@@ -181,11 +213,11 @@ label DASimpleFoam::solvePrimal(
 #include "pEqnSimple.H"
         }
 
-        laminarTransport.correct();
-        daTurbulenceModelPtr_->correct(printToScreen);
-
         // update the output field value at each iteration, if the regression model is active
         regModelFail = daRegressionPtr_->compute();
+
+        laminarTransport.correct();
+        daTurbulenceModelPtr_->correct(printToScreen);
 
         if (this->validateStates())
         {
@@ -199,7 +231,20 @@ label DASimpleFoam::solvePrimal(
         {
             daTurbulenceModelPtr_->printYPlus();
 
-            this->printAllObjFuncs();
+            // Uttam 20251103
+            //bool multiMeshMode = false;
+            if (daOptionPtr_->getOption<word>("multiMesh") == "yes") // Check if the key exists
+            {
+                // The objective will be calculated manually in DASolver::getObjFuncValue
+                // *after* this solver loop is finished.
+                Info << "Multi-mesh mode: Skipping in-loop objective calculation." << nl;
+            }
+            else
+            {
+                this->printAllObjFuncs();
+            }
+
+            //this->printAllObjFuncs();
 
             daRegressionPtr_->printInputInfo();
 
@@ -208,9 +253,6 @@ label DASimpleFoam::solvePrimal(
                  << nl << endl;
         }
 
-        // if useMeanStates is used, we need to calculate the meanStates
-        this->calcMeanStates();
-
         runTime.write();
     }
 
@@ -218,9 +260,6 @@ label DASimpleFoam::solvePrimal(
     {
         return 1;
     }
-
-    // if useMeanStates is used, we need to assign meanStates to states right after the case converges
-    this->assignMeanStatesToStates();
 
     this->writeAssociatedFields();
 

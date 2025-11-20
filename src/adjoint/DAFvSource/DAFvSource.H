@@ -104,8 +104,8 @@ public:
 
     /// compute the FvSource term
     virtual void calcFvSource(volVectorField& fvSource);
-
-    /// overloaded function for scalar fields
+  
+    /// compute the FvSource term
     virtual void calcFvSource(volScalarField& fvSource);
 
     /// set a new value to the actuator disk design variable
@@ -128,25 +128,9 @@ public:
     /// calculate fvSource based on the latest actuatorDVs
     void updateFvSource()
     {
-        if (mesh_.thisDb().foundObject<volVectorField>("fvSource"))
-        {
-            volVectorField& fvSource = const_cast<volVectorField&>(
-                mesh_.thisDb().lookupObject<volVectorField>("fvSource"));
-
-            this->calcFvSource(fvSource);
-        }
-        else if (mesh_.thisDb().foundObject<volScalarField>("fvSource"))
-        {
-            volScalarField& fvSource = const_cast<volScalarField&>(
-                mesh_.thisDb().lookupObject<volScalarField>("fvSource"));
-
-            this->calcFvSource(fvSource);
-        }
-        else
-        {
-            FatalErrorIn("") << "fvSource not found! "
-                             << abort(FatalError);
-        }
+        volVectorField& fvSource = const_cast<volVectorField&>(
+            mesh_.thisDb().lookupObject<volVectorField>("fvSource"));
+        this->calcFvSource(fvSource);
     }
 
     /// synchronize the values in DAOption and actuatorDiskDVs_
@@ -154,10 +138,6 @@ public:
 
     /// virtual function for regIOobject
     bool writeData(Ostream& os) const;
-
-    void findGlobalSnappedCenter(
-        label snappedCenterCellI,
-        vector& center);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

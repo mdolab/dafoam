@@ -60,6 +60,9 @@ private:
 
     /// fvMesh pointer
     autoPtr<fvMesh> meshPtr_;
+    
+    /// fvMesh pointer for the second mesh
+    autoPtr<fvMesh> targetPtr_;
 
 public:
     // Constructors

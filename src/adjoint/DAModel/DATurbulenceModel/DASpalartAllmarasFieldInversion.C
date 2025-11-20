@@ -535,7 +535,26 @@ void DASpalartAllmarasFieldInversion::getTurbProdTerm(scalarList& prodTerm) cons
         prodTerm[cellI] = SAProdTerm[cellI];
     }
 }
+// User defined function destruction term
+void DASpalartAllmarasFieldInversion::getTurbDestructTerm(scalarList& destructTerm) const
+{
+    /*
+    Description:
+        Return the value of the production over destruction term from the turbulence model 
+    */
 
+    const volScalarField chi(this->chi());
+    const volScalarField fv1(this->fv1(chi));
+
+    const volScalarField Stilda(this->Stilda(chi, fv1));
+
+    volScalarField D = Cw1_ * phase_ * rho_ * fw(Stilda) * sqr(nuTilda_ / y_);
+
+    forAll(D, cellI)
+    {
+        destructTerm[cellI] = D[cellI];
+    }
+}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

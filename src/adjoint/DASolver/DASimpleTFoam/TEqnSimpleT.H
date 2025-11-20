@@ -1,9 +1,4 @@
 {
-        if (hasFvSource_)
-	{
-    	daFvSourcePtr_->calcFvSource(fTSource);
-	}
-	
     alphat = turbulencePtr_->nut() / Prt;
     alphat.correctBoundaryConditions();
 
@@ -11,8 +6,7 @@
 
     fvScalarMatrix TEqn(
         fvm::div(phi, T)
-        - fvm::laplacian(alphaEff, T)
-        - fTSource);
+        - fvm::laplacian(alphaEff, T));
 
     TEqn.relax();
 
@@ -20,7 +14,7 @@
     // and final residuals
     SolverPerformance<scalar> solverT = TEqn.solve();
 
-    DAUtility::primalResidualControl(solverT, printToScreen, "T");
+    this->primalResidualControl<scalar>(solverT, printToScreen, printInterval, "T");
 
     // bound T
     DAUtility::boundVar(allOptions, T, printToScreen);
