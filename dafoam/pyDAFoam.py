@@ -317,6 +317,8 @@ class DAOPTION(object):
             "center": [0.25, 0.0, 0.0],
             "axis": "z",
             "omega": 0.1,
+            "s": 2.0,
+            "t0": 0.35,
         }
 
         ## The variable upper and lower bounds for primal solution. The key is variable+"Max/Min".
@@ -1205,6 +1207,40 @@ class PYDAFOAM(object):
             for i in range(1, endTimeIndex + 1):
                 t = i * deltaT
                 dTheta = omega * deltaT
+                dCosTheta = np.cos(dTheta)
+                dSinTheta = np.sin(dTheta)
+
+                for pointI in range(nLocalPoints):
+
+                    if axis == "z":
+                        xTemp = points[pointI][0] - center[0]
+                        yTemp = points[pointI][1] - center[1]
+
+                        points[pointI][0] = dCosTheta * xTemp - dSinTheta * yTemp + center[0]
+                        points[pointI][1] = dSinTheta * xTemp + dCosTheta * yTemp + center[1]
+                    else:
+                        raise Error("axis not valid! Options are: z")
+
+                pointsWrite = points.flatten()
+                self.solver.writeMeshPoints(pointsWrite, t)
+        elif mode == "rotation_ramp":
+            center = self.getOption("dynamicMesh")["center"]
+            axis = self.getOption("dynamicMesh")["axis"]
+            omega = self.getOption("dynamicMesh")["omega"]
+            s = self.getOption("dynamicMesh")["s"]
+            t0 = self.getOption("dynamicMesh")["t0"]
+
+            # always get the initial mesh from OF layer
+            points0 = np.zeros(nLocalPoints * 3)
+            self.solver.getOFMeshPoints(points0)
+            # NOTE: we also write the mesh point for t = 0
+            self.solver.writeMeshPoints(points0, 0.0)
+
+            # do a for loop to incrementally deform the mesh by a deltaT
+            points = np.reshape(points0, (-1, 3))
+            for i in range(1, endTimeIndex + 1):
+                t = i * deltaT
+                dTheta = omega * (np.tanh(s * ((2 * t / t0) - 1)) + np.tanh(s)) / (1 + np.tanh(s)) * deltaT
                 dCosTheta = np.cos(dTheta)
                 dSinTheta = np.sin(dTheta)
 
