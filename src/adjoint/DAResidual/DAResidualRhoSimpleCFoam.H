@@ -67,12 +67,6 @@ protected:
     /// pressureControl object to set ref pressure
     pressureControl pressureControl_;
 
-    /// \name These are constants to update the intermediate variables
-    //@{
-    scalar molWeight_;
-    scalar Cp_;
-    //@}
-
 public:
     TypeName("DARhoSimpleCFoam");
     // Constructors

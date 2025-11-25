@@ -73,12 +73,6 @@ protected:
     /// Multiple Reference Frame
     IOMRFZoneListDF& MRF_;
 
-    /// \name These are constants to update the intermediate variables
-    //@{
-    scalar molWeight_;
-    scalar Cp_;
-    //@}
-
 public:
     TypeName("DATurboFoam");
     // Constructors

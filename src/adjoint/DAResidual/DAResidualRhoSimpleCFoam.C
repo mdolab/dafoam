@@ -42,20 +42,6 @@ DAResidualRhoSimpleCFoam::DAResidualRhoSimpleCFoam(
       simple_(const_cast<fvMesh&>(mesh)),
       pressureControl_(p_, rho_, simple_.dict())
 {
-
-    // get molWeight and Cp from thermophysicalProperties
-    const IOdictionary& thermoDict = mesh.thisDb().lookupObject<IOdictionary>("thermophysicalProperties");
-    dictionary mixSubDict = thermoDict.subDict("mixture");
-    dictionary specieSubDict = mixSubDict.subDict("specie");
-    molWeight_ = specieSubDict.getScalar("molWeight");
-    dictionary thermodynamicsSubDict = mixSubDict.subDict("thermodynamics");
-    Cp_ = thermodynamicsSubDict.getScalar("Cp");
-
-    if (daOption_.getOption<label>("debug"))
-    {
-        Info << "molWeight " << molWeight_ << endl;
-        Info << "Cp " << Cp_ << endl;
-    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -208,73 +194,13 @@ void DAResidualRhoSimpleCFoam::updateIntermediateVariables()
     /* 
     Description:
         Update the intermediate variables that depend on the state variables
-
-        ********************** NOTE *****************
-        we assume hePsiThermo, pureMixture, perfectGas, hConst, and const transport
-        TODO: need to do this using built-in openfoam functions.
-    
         we need to:
-        1, update psi based on T, psi=1/(R*T)
-        2, update rho based on p and psi, rho=psi*p
-        3, update E based on T, p and rho, E=Cp*T-p/rho
-        4, update velocity boundary based on MRF (not yet implemented)
+        1, update psi, rho, he, and optionally mu and alpha by calling updateThermoVars
+        2, update velocity boundary based on MRF
+        3, update fvOptions
     */
 
-    // 8314.4700665  gas constant in OpenFOAM
-    // src/OpenFOAM/global/constants/thermodynamic/thermodynamicConstants.H
-    scalar RR = Foam::constant::thermodynamic::RR;
-
-    // R = RR/molWeight
-    // Foam::specie::R() function in src/thermophysicalModels/specie/specie/specieI.H
-    dimensionedScalar R(
-        "R1",
-        dimensionSet(0, 2, -2, -1, 0, 0, 0),
-        RR / molWeight_);
-
-    // psi = 1/T/R
-    // see src/thermophysicalModels/specie/equationOfState/perfectGas/perfectGasI.H
-    psi_ = 1.0 / T_ / R;
-
-    // rho = psi*p
-    // see src/thermophysicalModels/basic/psiThermo/psiThermo.C
-    rho_ = psi_ * p_;
-
-    // **************** NOTE ****************
-    // need to relax rho to be consistent with the primal solver
-    // However, the rho.relax() will mess up perturbation
-    // That being said, we comment out the rho.relax() call to
-    // get the correct perturbed rho; however, the E residual will
-    // be a bit off compared with the ERes at the converged state
-    // from the primal solver. TODO. Need to figure out how to improve this
-    // **************** NOTE ****************
-    // rho_.relax();
-
-    dimensionedScalar Cp(
-        "Cp1",
-        dimensionSet(0, 2, -2, -1, 0, 0, 0),
-        Cp_);
-
-    // Hs = Cp*T
-    // see Hs() in src/thermophysicalModels/specie/thermo/hConst/hConstThermoI.H
-    // here the H departure EquationOfState::H(p, T) will be zero for perfectGas
-    // Es = Hs - p/rho = Hs - T * R;
-    // see Es() in src/thermophysicalModels/specie/thermo/thermo/thermoI.H
-    // **************** NOTE ****************
-    // See the comment from the rho.relax() call, if we write he_=Cp*T-p/rho, the
-    // accuracy of he_ may be impact by the inaccurate rho. So here we want to
-    // rewrite he_ as he_ = Cp * T_ - T_ * R instead, such that we dont include rho
-    // **************** NOTE ****************
-    if (he_.name() == "e")
-    {
-        he_ = Cp * T_ - T_ * R;
-    }
-    else
-    {
-        he_ = Cp * T_;
-    }
-    he_.correctBoundaryConditions();
-
-    // NOTE: alphat is updated in the correctNut function in DATurbulenceModel child classes
+    this->updateThermoVars();
 }
 
 void DAResidualRhoSimpleCFoam::correctBoundaryConditions()

@@ -41,20 +41,6 @@ DAResidualHisaFoam::DAResidualHisaFoam(
       he_(thermo_.he()),
       turbulence_(mesh.thisDb().lookupObjectRef<compressible::turbulenceModel>("turbulenceProperties"))
 {
-    // get molWeight and Cp from thermophysicalProperties
-    const IOdictionary& thermoDict = mesh.thisDb().lookupObject<IOdictionary>("thermophysicalProperties");
-    dictionary mixSubDict = thermoDict.subDict("mixture");
-    dictionary specieSubDict = mixSubDict.subDict("specie");
-    molWeight_ = specieSubDict.getScalar("molWeight");
-    dictionary thermodynamicsSubDict = mixSubDict.subDict("thermodynamics");
-    Cp_ = thermodynamicsSubDict.getScalar("Cp");
-
-    if (daOption_.getOption<label>("debug"))
-    {
-        Info << "molWeight " << molWeight_ << endl;
-        Info << "Cp " << Cp_ << endl;
-    }
-
     usePCFlux_ = daOption.getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("hisaPCFlux", 1);
     forceJSTFlux_ = daOption.getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("hisaForceJSTFlux", 0);
     removeTauMCOff_ = daOption.getAllOptions().subDict("adjEqnOption").lookupOrDefault<label>("hisaRemoveTauMCOff", 1);
@@ -290,63 +276,13 @@ void DAResidualHisaFoam::updateIntermediateVariables()
     /* 
     Description:
         Update the intermediate variables that depend on the state variables
-
-        ********************** NOTE *****************
-        we assume hePsiThermo, pureMixture, perfectGas, hConst, and const transport
-        TODO: need to do this using built-in openfoam functions.
-    
         we need to:
-        1, update psi based on T, psi=1/(R*T)
-        2, update rho based on p and psi, rho=psi*p
-        3, update E based on T, p and rho, E=Cp*T-p/rho
-        4, update velocity boundary based on MRF
+        1, update psi, rho, he, and optionally mu and alpha by calling updateThermoVars
+        2, update velocity boundary based on MRF
+        3, update fvOptions
     */
 
-    // 8314.4700665  gas constant in OpenFOAM
-    // src/OpenFOAM/global/constants/thermodynamic/thermodynamicConstants.H
-    scalar RR = Foam::constant::thermodynamic::RR;
-
-    // R = RR/molWeight
-    // Foam::specie::R() function in src/thermophysicalModels/specie/specie/specieI.H
-    dimensionedScalar R(
-        "R1",
-        dimensionSet(0, 2, -2, -1, 0, 0, 0),
-        RR / molWeight_);
-
-    // psi = 1/T/R
-    // see src/thermophysicalModels/specie/equationOfState/perfectGas/perfectGasI.H
-    psi_ = 1.0 / T_ / R;
-
-    // rho = psi*p
-    // see src/thermophysicalModels/basic/psiThermo/psiThermo.C
-    rho_ = psi_ * p_;
-
-    dimensionedScalar Cp(
-        "Cp1",
-        dimensionSet(0, 2, -2, -1, 0, 0, 0),
-        Cp_);
-
-    // Hs = Cp*T
-    // see Hs() in src/thermophysicalModels/specie/thermo/hConst/hConstThermoI.H
-    // here the H departure EquationOfState::H(p, T) will be zero for perfectGas
-    // Es = Hs - p/rho = Hs - T * R;
-    // see Es() in src/thermophysicalModels/specie/thermo/thermo/thermoI.H
-    // **************** NOTE ****************
-    // See the comment from the rho.relax() call, if we write he_=Cp*T-p/rho, the
-    // accuracy of he_ may be impact by the inaccurate rho. So here we want to
-    // rewrite he_ as he_ = Cp * T_ - T_ * R instead, such that we dont include rho
-    // **************** NOTE ****************
-    if (he_.name() == "e")
-    {
-        he_ = Cp * T_ - T_ * R;
-    }
-    else
-    {
-        FatalErrorInFunction
-            << "Only energy type internalEnergy supported."
-            << nl << exit(FatalError);
-    }
-    he_.correctBoundaryConditions();
+    this->updateThermoVars();
 
     rhoU_.ref() = rho_.internalField() * U_.internalField();
 
