@@ -19,7 +19,7 @@ gcomm = MPI.COMM_WORLD
 
 os.chdir("./reg_test_files-main/CompressorFluid")
 if gcomm.rank == 0:
-    os.system("rm -rf 0 processor*")
+    os.system("rm -rf 0 processor* *.bin")
     os.system("cp -r 0.compressible 0")
     os.system("cp -r 0/U.transonic 0/U")
     os.system("cp -r 0/p.transonic 0/p")
