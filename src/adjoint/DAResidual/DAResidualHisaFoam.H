@@ -69,12 +69,6 @@ protected:
 
     compressible::turbulenceModel& turbulence_;
 
-    /// \name These are constants to update the intermediate variables
-    //@{
-    scalar molWeight_;
-    scalar Cp_;
-    //@}
-
     label usePCFlux_ = 1;
     label removeTauMCOff_ = 1;
     label forceJSTFlux_ = 1;

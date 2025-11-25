@@ -56,20 +56,6 @@ DAResidualRhoPimpleFoam::DAResidualRhoPimpleFoam(
     {
         hasFvSource_ = 1;
     }
-
-    // get molWeight and Cp from thermophysicalProperties
-    const IOdictionary& thermoDict = mesh.thisDb().lookupObject<IOdictionary>("thermophysicalProperties");
-    dictionary mixSubDict = thermoDict.subDict("mixture");
-    dictionary specieSubDict = mixSubDict.subDict("specie");
-    molWeight_ = specieSubDict.getScalar("molWeight");
-    dictionary thermodynamicsSubDict = mixSubDict.subDict("thermodynamics");
-    Cp_ = thermodynamicsSubDict.getScalar("Cp");
-
-    if (daOption_.getOption<label>("debug"))
-    {
-        Info << "molWeight " << molWeight_ << endl;
-        Info << "Cp " << Cp_ << endl;
-    }
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

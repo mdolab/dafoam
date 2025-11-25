@@ -23,6 +23,7 @@
 #include "DAFvSource.H"
 #include "IOMRFZoneListDF.H"
 #include "constrainHbyA.H"
+#include "thermodynamicConstants.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -59,6 +60,15 @@ protected:
 
     /// DAField object
     DAField daField_;
+
+    /// \name These are constants to update the intermediate variables
+    //@{
+    scalar molWeight_;
+    scalar Cp_;
+    scalar As_;
+    scalar Ts_;
+    word transportType_;
+    //@}
 
 public:
     /// Runtime type information
@@ -130,6 +140,8 @@ public:
     {
         return true;
     }
+
+    void updateThermoVars();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
