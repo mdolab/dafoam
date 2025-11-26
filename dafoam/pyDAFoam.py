@@ -70,9 +70,16 @@ class DAOPTION(object):
         ## - DASolidDisplacementFoam: Steady-state structural solver for linear elastic equations
         self.solverName = "DASimpleFoam"
 
-        ## The convergence tolerance for the primal solver. If the primal can not converge to 2 orders
+        ## The convergence residual tolerance for the primal solver. If the primal can not converge to 2 orders
         ## of magnitude (default) higher than this tolerance, the primal solution will return fail=True
         self.primalMinResTol = 1.0e-8
+
+        ## The convergence function std oscillation tolerance for the primal solver.
+        ## tol: the tolerance of the function oscillation standard deviation, -1 means it is deactivated
+        ## funcName: which function to use to calculate the std.
+        ## nSteps: how many (latest) function samples/steps to use for calculating the std, here
+        ##          100 means we always use the last 100 step's function values to compute the std
+        self.primalFuncStdTol = {"tol": -1.0, "funcName": "CD", "nSteps": 100}
 
         ## The boundary condition for primal solution. The keys should include "variable", "patch",
         ## and "value". For turbulence variable, one can also set "useWallFunction" [bool].

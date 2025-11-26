@@ -146,6 +146,18 @@ protected:
     /// primal residual tolerance
     scalar primalMinResTol_ = 0.0;
 
+    /// the function std tolerance
+    scalar primalFuncStdTol_ = -1.0;
+
+    /// the function name for the std tolerance
+    word primalFuncStdName_ = "CD";
+
+    /// the number of last steps to compute std
+    label primalFuncStdSteps_ = 100;
+
+    /// the std of a function, default to be -1
+    scalar funcStd_ = 1e16;
+
     /// whether to print primal information to the screen
     label printToScreen_ = 0;
 
@@ -417,6 +429,9 @@ public:
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);
 
+    /// calculate the function std
+    void calcFuncStd();
+
     /// assign the inputFieldUnsteady values to the OF field vars
     void updateInputFieldUnsteady();
 
@@ -530,6 +545,9 @@ public:
                 return idxI;
             }
         }
+        FatalErrorIn("getFunctionListIndex") << "functionName " << functionName << " not found!"
+                                             << abort(FatalError);
+        return -1;
     }
 
     /// check the mesh quality and return meshOK
