@@ -96,6 +96,9 @@ DASolver::DASolver(
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
     printInterval_ = daOptionPtr_->getOption<label>("printInterval");
     printIntervalUnsteady_ = daOptionPtr_->getOption<label>("printIntervalUnsteady");
+    primalFuncStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "tol");
+    primalFuncStdName_ = daOptionPtr_->getSubDictOption<word>("primalFuncStdTol", "funcName");
+    primalFuncStdSteps_ = daOptionPtr_->getSubDictOption<label>("primalFuncStdTol", "nSteps");
 
     // if inputInto has unsteadyField, we need to initial GlobalVar::inputFieldUnsteady here
     this->initInputFieldUnsteady();
@@ -171,13 +174,27 @@ label DASolver::loop(Time& runTime)
         funcObj.execute();
     }
 
+    // if we want to use the function std as the convergence criteria, we need to compute the std
+    if (primalFuncStdTol_ > 0)
+    {
+        this->calcFuncStd();
+    }
+
     // check exit condition, we need to satisfy both the residual and function std condition
-    if (daGlobalVarPtr_->primalMaxRes < primalMinResTol_ && runTime.timeIndex() > primalMinIters_)
+    if ((daGlobalVarPtr_->primalMaxRes < primalMinResTol_ || funcStd_ < primalFuncStdTol_) && runTime.timeIndex() > primalMinIters_)
     {
         Info << "Time = " << t << endl;
 
-        Info << "Minimal residual " << daGlobalVarPtr_->primalMaxRes << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
-             << endl;
+        if (daGlobalVarPtr_->primalMaxRes < primalMinResTol_)
+        {
+            Info << "Minimal residual " << daGlobalVarPtr_->primalMaxRes << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
+                 << endl;
+        }
+        else if (funcStd_ < primalFuncStdTol_)
+        {
+            Info << "Function " << primalFuncStdName_ << " std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl
+                 << endl;
+        }
 
         this->calcAllFunctions(1);
         runTime.writeNow();
@@ -203,6 +220,38 @@ label DASolver::loop(Time& runTime)
         printToScreen_ = this->isPrintTime(runTime, printInterval_);
         return 1;
     }
+}
+
+void DASolver::calcFuncStd()
+{
+    /*
+    Description:
+        Calculate the function std.
+    */
+    label timeIndex = runTimePtr_->timeIndex();
+    label listIndex = timeIndex - 1;
+    label funcIdx = this->getFunctionListIndex(primalFuncStdName_);
+    label startIdx = max(0, listIndex - primalFuncStdSteps_ + 1);
+
+    scalar mean = 0.0;
+    label nActualSteps = listIndex - startIdx + 1;
+    for (label i = listIndex; i >= startIdx; i--)
+    {
+        mean += functionTimeSteps_[funcIdx][i];
+    }
+    mean /= nActualSteps;
+
+    funcStd_ = 0.0;
+    for (label i = listIndex; i >= startIdx; i--)
+    {
+        funcStd_ += (functionTimeSteps_[funcIdx][i] - mean) * (functionTimeSteps_[funcIdx][i] - mean);
+    }
+    funcStd_ /= nActualSteps;
+    funcStd_ = sqrt(funcStd_) / mean;
+    //Info << "funcTS " << functionTimeSteps_[funcIdx] << endl;
+    //Info << "mean " << mean << endl;
+    //Info << "nActualSteps " << nActualSteps << endl;
+    //Info << "funcStd " << funcStd_ << endl;
 }
 
 void DASolver::calcAllFunctions(label print)
@@ -2596,8 +2645,14 @@ label DASolver::checkPrimalFailure()
         - Check whether the regression model computation fails
     */
 
-    // when checking the tolerance, we relax the criteria by tolMax
+    // if the funcStd mode is used for convergence, we always return 0 without checking primalMinResTolDiff
+    scalar stdTol = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "tol");
+    if (stdTol > 0)
+    {
+        return 0;
+    }
 
+    // when checking the tolerance, we relax the criteria by tolMax
     if (regModelFail_ != 0)
     {
         Info << "Regression model computation has invalid values. Primal solution failed!" << endl;
