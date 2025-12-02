@@ -92,7 +92,20 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
                 IOobject::NO_WRITE,
                 false));
         // for solid, we need to read k from transportProperties
-        kCoeffs_ = solidProperties.lookup("kCoeffs");
+        if (solidProperties.found("k"))
+        {
+            kCoeffs_ = List<scalar>(1, solidProperties.getScalar("k"));
+        }
+        else if (solidProperties.found("kCoeffs"))
+        {
+            kCoeffs_ = solidProperties.lookup("kCoeffs");
+        }
+        else
+        {
+            FatalErrorInFunction
+                << "Neither 'k' nor 'kCoeffs' found in dictionary: "
+                << solidProperties.name() << exit(FatalError);
+        }
 
         wallHeatFlux_.dimensions().reset(dimensionSet(1, -2, 1, 1, 0, 0, 0));
     }
