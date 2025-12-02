@@ -247,7 +247,7 @@ void DASolver::calcFuncStd()
         funcStd_ += (functionTimeSteps_[funcIdx][i] - mean) * (functionTimeSteps_[funcIdx][i] - mean);
     }
     funcStd_ /= nActualSteps;
-    funcStd_ = sqrt(funcStd_) / mean;
+    funcStd_ = sqrt(funcStd_) / mag(mean);
     //Info << "funcTS " << functionTimeSteps_[funcIdx] << endl;
     //Info << "mean " << mean << endl;
     //Info << "nActualSteps " << nActualSteps << endl;
