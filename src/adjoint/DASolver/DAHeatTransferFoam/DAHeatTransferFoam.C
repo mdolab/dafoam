@@ -96,7 +96,7 @@ label DAHeatTransferFoam::solvePrimal()
         SolverPerformance<scalar> solverT = TEqn.solve();
         DAUtility::primalResidualControl(solverT, printToScreen_, "T", daGlobalVarPtr_->primalMaxRes);
 
-        /// update k
+        // update k
         this->correctKappa();
 
         this->calcAllFunctions(printToScreen_);
@@ -128,7 +128,7 @@ void DAHeatTransferFoam::correctKappa()
             k[cellI] += kCoeffs[order] * pow(T[cellI], order);
         }
     }
-    /// update boundary
+    // update boundary
     forAll(k.boundaryField(), patchI)
     {
         forAll(k.boundaryField()[patchI], faceI)
@@ -136,7 +136,7 @@ void DAHeatTransferFoam::correctKappa()
             k.boundaryFieldRef()[patchI][faceI] = 0;
             forAll(kCoeffs, order)
             {
-                k.boundaryFieldRef()[patchI][faceI] += kCoeffs[order]* pow(T.boundaryField()[patchI][faceI], order);
+                k.boundaryFieldRef()[patchI][faceI] += kCoeffs[order] * pow(T.boundaryField()[patchI][faceI], order);
             }
         }
     }

@@ -77,128 +77,99 @@ namespace Foam
 \*---------------------------------------------------------------------------*/
 
 class wallHeatFluxTransferFvPatchScalarField
-:
-    public mixedFvPatchScalarField
+    : public mixedFvPatchScalarField
 {
 
 private:
-
     // Private data
 
-        //- Heat transfer coefficient [W/m2K]
-        scalarField h_;
+    //- Heat transfer coefficient [W/m2K]
+    scalarField h_;
 
-        //- Ambient temperature [K]
-        const scalar Ta_;
+    //- Ambient temperature [K]
+    const scalar Ta_;
 
 public:
-
     //- Runtime type information
     TypeName("wallHeatFluxTransfer");
 
-
     // Constructors
 
-        //- Construct from patch and internal field
-        wallHeatFluxTransferFvPatchScalarField
-        (
-            const fvPatch&,
-            const DimensionedField<scalar, volMesh>&
-        );
+    //- Construct from patch and internal field
+    wallHeatFluxTransferFvPatchScalarField(
+        const fvPatch&,
+        const DimensionedField<scalar, volMesh>&);
 
-        //- Construct from patch, internal field and dictionary
-        wallHeatFluxTransferFvPatchScalarField
-        (
-            const fvPatch&,
-            const DimensionedField<scalar, volMesh>&,
-            const dictionary&
-        );
+    //- Construct from patch, internal field and dictionary
+    wallHeatFluxTransferFvPatchScalarField(
+        const fvPatch&,
+        const DimensionedField<scalar, volMesh>&,
+        const dictionary&);
 
-        //- Construct by mapping given
-        //  externalWallHeatFluxTemperatureFvPatchScalarField
-        //  onto a new patch
-        wallHeatFluxTransferFvPatchScalarField
-        (
-            const wallHeatFluxTransferFvPatchScalarField&,
-            const fvPatch&,
-            const DimensionedField<scalar, volMesh>&,
-            const fvPatchFieldMapper&
-        );
+    //- Construct by mapping given
+    //  externalWallHeatFluxTemperatureFvPatchScalarField
+    //  onto a new patch
+    wallHeatFluxTransferFvPatchScalarField(
+        const wallHeatFluxTransferFvPatchScalarField&,
+        const fvPatch&,
+        const DimensionedField<scalar, volMesh>&,
+        const fvPatchFieldMapper&);
 
-        //- Construct as copy
-        wallHeatFluxTransferFvPatchScalarField
-        (
-            const wallHeatFluxTransferFvPatchScalarField&
-        );
+    //- Construct as copy
+    wallHeatFluxTransferFvPatchScalarField(
+        const wallHeatFluxTransferFvPatchScalarField&);
 
-        //- Construct and return a clone
-        virtual tmp<fvPatchScalarField> clone() const
-        {
-            return tmp<fvPatchScalarField>
-            (
-                new wallHeatFluxTransferFvPatchScalarField(*this)
-            );
-        }
+    //- Construct and return a clone
+    virtual tmp<fvPatchScalarField> clone() const
+    {
+        return tmp<fvPatchScalarField>(
+            new wallHeatFluxTransferFvPatchScalarField(*this));
+    }
 
-        //- Construct as copy setting internal field reference
-        wallHeatFluxTransferFvPatchScalarField
-        (
-            const wallHeatFluxTransferFvPatchScalarField&,
-            const DimensionedField<scalar, volMesh>&
-        );
+    //- Construct as copy setting internal field reference
+    wallHeatFluxTransferFvPatchScalarField(
+        const wallHeatFluxTransferFvPatchScalarField&,
+        const DimensionedField<scalar, volMesh>&);
 
-        //- Construct and return a clone setting internal field reference
-        virtual tmp<fvPatchScalarField> clone
-        (
-            const DimensionedField<scalar, volMesh>& iF
-        ) const
-        {
-            return tmp<fvPatchScalarField>
-            (
-                new wallHeatFluxTransferFvPatchScalarField(*this, iF)
-            );
-        }
-
+    //- Construct and return a clone setting internal field reference
+    virtual tmp<fvPatchScalarField> clone(
+        const DimensionedField<scalar, volMesh>& iF) const
+    {
+        return tmp<fvPatchScalarField>(
+            new wallHeatFluxTransferFvPatchScalarField(*this, iF));
+    }
 
     // Member functions
 
-        // Access
+    // Access
 
-            //- Allow manipulation of the boundary values
-            virtual bool fixesValue() const
-            {
-                return false;
-            }
+    //- Allow manipulation of the boundary values
+    virtual bool fixesValue() const
+    {
+        return false;
+    }
 
+    // Mapping functions
 
-        // Mapping functions
+    //- Map (and resize as needed) from self given a mapping object
+    virtual void autoMap(
+        const fvPatchFieldMapper&);
 
-            //- Map (and resize as needed) from self given a mapping object
-            virtual void autoMap
-            (
-                const fvPatchFieldMapper&
-            );
+    //- Reverse map the given fvPatchField onto this fvPatchField
+    virtual void rmap(
+        const fvPatchScalarField&,
+        const labelList&);
 
-            //- Reverse map the given fvPatchField onto this fvPatchField
-            virtual void rmap
-            (
-                const fvPatchScalarField&,
-                const labelList&
-            );
+    // Evaluation functions
 
+    //- Update the coefficients associated with the patch field
+    virtual void updateCoeffs();
 
-        // Evaluation functions
+    // I-O
 
-            //- Update the coefficients associated with the patch field
-            virtual void updateCoeffs();
-
-
-        // I-O
-
-            //- Write
-            void write(Ostream&) const;
+    //- Write
+    void write(Ostream&) const;
 };
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

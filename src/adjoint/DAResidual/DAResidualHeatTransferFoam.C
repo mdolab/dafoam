@@ -114,10 +114,10 @@ void DAResidualHeatTransferFoam::updateIntermediateVariables()
         k_[cellI] = 0.0;
         forAll(kCoeffs_, order)
         {
-            k_[cellI] += kCoeffs_[order]*pow(T_[cellI], order);
+            k_[cellI] += kCoeffs_[order] * pow(T_[cellI], order);
         }
     }
-    /// update boundary
+    // update boundary
     forAll(k_.boundaryField(), patchI)
     {
         forAll(k_.boundaryField()[patchI], faceI)
@@ -125,7 +125,7 @@ void DAResidualHeatTransferFoam::updateIntermediateVariables()
             k_.boundaryFieldRef()[patchI][faceI] = 0;
             forAll(kCoeffs_, order)
             {
-                k_.boundaryFieldRef()[patchI][faceI] += kCoeffs_[order]* pow(T_.boundaryField()[patchI][faceI], order);
+                k_.boundaryFieldRef()[patchI][faceI] += kCoeffs_[order] * pow(T_.boundaryField()[patchI][faceI], order);
             }
         }
     }

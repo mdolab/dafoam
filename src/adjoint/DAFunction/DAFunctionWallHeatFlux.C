@@ -237,13 +237,13 @@ scalar DAFunctionWallHeatFlux::calcFunction()
         {
             if (!wallHeatFluxBf[patchI].coupled())
             {
-                /// update k from T 
+                // update k from T
                 forAll(wallHeatFluxBf[patchI], faceI)
                 {
                     kBf[patchI][faceI] = 0;
                     forAll(kCoeffs_, order)
                     {
-                        kBf[patchI][faceI] += kCoeffs_[order]* pow(TBf[patchI][faceI], order);
+                        kBf[patchI][faceI] += kCoeffs_[order] * pow(TBf[patchI][faceI], order);
                     }
                 }
 

@@ -282,7 +282,7 @@ void DAResidual::updateThermoVars()
             mu[cellI] = As_ * sqrt(T[cellI]) / (1.0 + Ts_ / T[cellI]);
             alpha[cellI] = mu[cellI] * Cv.value() * (1.32 + 1.77 * R.value() / Cv.value()) / Cp.value();
         }
-        // should manually update boundary field. 
+        // should manually update boundary field.
         // see calculate() function in src/thermophysicalModels/basic/psiThermo/hePsiThermo.C.
         forAll(mu.boundaryField(), patchI)
         {

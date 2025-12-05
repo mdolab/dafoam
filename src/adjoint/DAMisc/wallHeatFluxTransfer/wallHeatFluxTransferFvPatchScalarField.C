@@ -31,33 +31,26 @@ License
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::wallHeatFluxTransferFvPatchScalarField::
-wallHeatFluxTransferFvPatchScalarField
-(
-    const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF
-)
-:
-    mixedFvPatchScalarField(p, iF),
-    h_(),
-    Ta_(293.0)
+    wallHeatFluxTransferFvPatchScalarField(
+        const fvPatch& p,
+        const DimensionedField<scalar, volMesh>& iF)
+    : mixedFvPatchScalarField(p, iF),
+      h_(),
+      Ta_(293.0)
 {
     refValue() = 0.0;
     refGrad() = 0.0;
     valueFraction() = 1.0;
 }
 
-
 Foam::wallHeatFluxTransferFvPatchScalarField::
-wallHeatFluxTransferFvPatchScalarField
-(
-    const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF,
-    const dictionary& dict
-)
-:
-    mixedFvPatchScalarField(p, iF),
-    h_(),
-    Ta_(dict.lookupOrDefault<scalar>("Ta", 293.0))
+    wallHeatFluxTransferFvPatchScalarField(
+        const fvPatch& p,
+        const DimensionedField<scalar, volMesh>& iF,
+        const dictionary& dict)
+    : mixedFvPatchScalarField(p, iF),
+      h_(),
+      Ta_(dict.lookupOrDefault<scalar>("Ta", 293.0))
 {
 
     h_ = scalarField("h", dict, p.size());
@@ -80,81 +73,61 @@ wallHeatFluxTransferFvPatchScalarField
     }
 }
 
-
 Foam::wallHeatFluxTransferFvPatchScalarField::
-wallHeatFluxTransferFvPatchScalarField
-(
-    const wallHeatFluxTransferFvPatchScalarField& ptf,
-    const fvPatch& p,
-    const DimensionedField<scalar, volMesh>& iF,
-    const fvPatchFieldMapper& mapper
-)
-:
-    mixedFvPatchScalarField(ptf, p, iF, mapper),
-    h_(),
-    Ta_(ptf.Ta_)
+    wallHeatFluxTransferFvPatchScalarField(
+        const wallHeatFluxTransferFvPatchScalarField& ptf,
+        const fvPatch& p,
+        const DimensionedField<scalar, volMesh>& iF,
+        const fvPatchFieldMapper& mapper)
+    : mixedFvPatchScalarField(ptf, p, iF, mapper),
+      h_(),
+      Ta_(ptf.Ta_)
 {
 
     h_.setSize(mapper.size());
     h_.map(ptf.h_, mapper);
-
 }
 
+Foam::wallHeatFluxTransferFvPatchScalarField::
+    wallHeatFluxTransferFvPatchScalarField(
+        const wallHeatFluxTransferFvPatchScalarField& ewhftpsf)
+    : mixedFvPatchScalarField(ewhftpsf),
+      h_(ewhftpsf.h_),
+      Ta_(ewhftpsf.Ta_)
+{
+}
 
 Foam::wallHeatFluxTransferFvPatchScalarField::
-wallHeatFluxTransferFvPatchScalarField
-(
-    const wallHeatFluxTransferFvPatchScalarField& ewhftpsf
-)
-:
-    mixedFvPatchScalarField(ewhftpsf),
-    h_(ewhftpsf.h_),
-    Ta_(ewhftpsf.Ta_)
-{}
-
-
-Foam::wallHeatFluxTransferFvPatchScalarField::
-wallHeatFluxTransferFvPatchScalarField
-(
-    const wallHeatFluxTransferFvPatchScalarField& ewhftpsf,
-    const DimensionedField<scalar, volMesh>& iF
-)
-:
-    mixedFvPatchScalarField(ewhftpsf, iF),
-    h_(ewhftpsf.h_),
-    Ta_(ewhftpsf.Ta_)
-{}
-
+    wallHeatFluxTransferFvPatchScalarField(
+        const wallHeatFluxTransferFvPatchScalarField& ewhftpsf,
+        const DimensionedField<scalar, volMesh>& iF)
+    : mixedFvPatchScalarField(ewhftpsf, iF),
+      h_(ewhftpsf.h_),
+      Ta_(ewhftpsf.Ta_)
+{
+}
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::wallHeatFluxTransferFvPatchScalarField::autoMap
-(
-    const fvPatchFieldMapper& m
-)
+void Foam::wallHeatFluxTransferFvPatchScalarField::autoMap(
+    const fvPatchFieldMapper& m)
 {
     mixedFvPatchScalarField::autoMap(m);
-
 
     h_.autoMap(m);
 }
 
-
-void Foam::wallHeatFluxTransferFvPatchScalarField::rmap
-(
+void Foam::wallHeatFluxTransferFvPatchScalarField::rmap(
     const fvPatchScalarField& ptf,
-    const labelList& addr
-)
+    const labelList& addr)
 {
     mixedFvPatchScalarField::rmap(ptf, addr);
 
     const wallHeatFluxTransferFvPatchScalarField& ewhftpsf =
         refCast<const wallHeatFluxTransferFvPatchScalarField>(ptf);
 
-
     h_.rmap(ewhftpsf.h_, addr);
 }
-
 
 void Foam::wallHeatFluxTransferFvPatchScalarField::updateCoeffs()
 {
@@ -165,34 +138,25 @@ void Foam::wallHeatFluxTransferFvPatchScalarField::updateCoeffs()
 
     const scalarField& Tp(*this);
 
-    /// not sure how to deal this, directly get kappa from filed K? or recalculate kappa from T? 
     const volScalarField& kappa = db().lookupObject<volScalarField>("k");
     const fvPatchField<scalar>& kappaBF = kappa.boundaryField()[patch().index()];
 
-
-    const scalarField kappaDeltaCoeffs
-    (
-        kappaBF*patch().deltaCoeffs()
-    );
+    const scalarField kappaDeltaCoeffs(
+        kappaBF * patch().deltaCoeffs());
 
     refGrad() = 0.0;
 
     forAll(Tp, i)
     {
         refValue()[i] = Ta_;
-        valueFraction()[i] = h_[i]/(h_[i] + kappaDeltaCoeffs[i]);
+        valueFraction()[i] = h_[i] / (h_[i] + kappaDeltaCoeffs[i]);
     }
-
-
 
     mixedFvPatchScalarField::updateCoeffs();
 }
 
-
-void Foam::wallHeatFluxTransferFvPatchScalarField::write
-(
-    Ostream& os
-) const
+void Foam::wallHeatFluxTransferFvPatchScalarField::write(
+    Ostream& os) const
 {
     fvPatchScalarField::write(os);
 
@@ -206,16 +170,13 @@ void Foam::wallHeatFluxTransferFvPatchScalarField::write
     writeEntry("value", os);
 }
 
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    makePatchTypeField
-    (
-        fvPatchScalarField,
-        wallHeatFluxTransferFvPatchScalarField
-    );
+makePatchTypeField(
+    fvPatchScalarField,
+    wallHeatFluxTransferFvPatchScalarField);
 }
 
 // ************************************************************************* //
