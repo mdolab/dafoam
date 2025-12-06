@@ -35,7 +35,8 @@ protected:
     volScalarField& fvSource_;
     //@}
 
-    autoPtr<dimensionedScalar> kPtr_;
+    volScalarField& k_;
+    List<scalar> kCoeffs_;
 
     label hasFvSource_ = 0;
 

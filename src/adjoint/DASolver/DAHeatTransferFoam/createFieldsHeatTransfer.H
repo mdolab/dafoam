@@ -22,11 +22,31 @@ IOdictionary solidProperties(
 
 // thermal conductivity unit: W/(m*K)
 Info << "Reading thermal conductivity" << endl;
+if (solidProperties.found("k"))
+{
+    kCoeffs = List<scalar>(1, solidProperties.getScalar("k"));
+}
+else if (solidProperties.found("kCoeffs"))
+{
+    kCoeffs = solidProperties.lookup("kCoeffs");
+}
+else
+{
+    FatalErrorInFunction
+        << "Neither 'k' nor 'kCoeffs' found in dictionary: "
+        << solidProperties.name() << exit(FatalError);
+}
+
 kPtr_.reset(
-    new dimensionedScalar(
-        "k",
-        dimPower / dimLength / dimTemperature,
-        solidProperties));
+    new volScalarField(
+        IOobject(
+            "k",
+            runTime.timeName(),
+            mesh,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE),
+        mesh,
+        dimensionedScalar(dimPower / dimLength / dimTemperature, Zero)));
 
 // heat source unit: W/(m^3)
 Info << "Creating source term. " << endl;
