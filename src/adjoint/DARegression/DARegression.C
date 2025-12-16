@@ -335,7 +335,7 @@ void DARegression::calcInputFeatures(word modelName)
             }
             features_[modelName][idxI].correctBoundaryConditions();
         }
-        else if (inputName.find("_dt") == 1)
+        else if (inputName.find("_dt") > 0)
         {
             // if it is a time-deriv feature such as PoD_dt, pass
             // NOTE: we do not directly compute PoD_dt here, instead we
