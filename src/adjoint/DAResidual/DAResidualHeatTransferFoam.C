@@ -26,7 +26,7 @@ DAResidualHeatTransferFoam::DAResidualHeatTransferFoam(
       // initialize and register state variables and their residuals, we use macros defined in macroFunctions.H
       setResidualClassMemberScalar(T, dimPower / dimLength / dimLength / dimLength),
       fvSource_(const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>("fvSource"))),
-      k_(const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>("k")))
+      kappa_(const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>("kappa")))
 
 {
     IOdictionary solidProperties(
@@ -37,18 +37,18 @@ DAResidualHeatTransferFoam::DAResidualHeatTransferFoam(
             IOobject::MUST_READ,
             IOobject::NO_WRITE));
 
-    if (solidProperties.found("k"))
+    if (solidProperties.found("kappa"))
     {
-        kCoeffs_ = List<scalar>(1, solidProperties.getScalar("k"));
+        kappaCoeffs_ = List<scalar>(1, solidProperties.getScalar("kappa"));
     }
-    else if (solidProperties.found("kCoeffs"))
+    else if (solidProperties.found("kappaCoeffs"))
     {
-        kCoeffs_ = solidProperties.lookup("kCoeffs");
+        kappaCoeffs_ = solidProperties.lookup("kappaCoeffs");
     }
     else
     {
         FatalErrorInFunction
-            << "Neither 'k' nor 'kCoeffs' found in dictionary: "
+            << "Neither 'kappa' nor 'kappaCoeffs' found in dictionary: "
             << solidProperties.name() << exit(FatalError);
     }
 
@@ -95,7 +95,7 @@ void DAResidualHeatTransferFoam::calcResiduals(const dictionary& options)
     }
 
     fvScalarMatrix TEqn(
-        fvm::laplacian(k_, T_)
+        fvm::laplacian(kappa_, T_)
         + fvSource_);
 
     TRes_ = TEqn & T_;
@@ -109,23 +109,23 @@ void DAResidualHeatTransferFoam::updateIntermediateVariables()
         Update the intermediate variables that depend on the state variables
     */
     // update k
-    forAll(k_, cellI)
+    forAll(kappa_, cellI)
     {
-        k_[cellI] = 0.0;
-        forAll(kCoeffs_, order)
+        kappa_[cellI] = 0.0;
+        forAll(kappaCoeffs_, order)
         {
-            k_[cellI] += kCoeffs_[order] * pow(T_[cellI], order);
+            kappa_[cellI] += kappaCoeffs_[order] * pow(T_[cellI], order);
         }
     }
     // update boundary
-    forAll(k_.boundaryField(), patchI)
+    forAll(kappa_.boundaryField(), patchI)
     {
-        forAll(k_.boundaryField()[patchI], faceI)
+        forAll(kappa_.boundaryField()[patchI], faceI)
         {
-            k_.boundaryFieldRef()[patchI][faceI] = 0;
-            forAll(kCoeffs_, order)
+            kappa_.boundaryFieldRef()[patchI][faceI] = 0;
+            forAll(kappaCoeffs_, order)
             {
-                k_.boundaryFieldRef()[patchI][faceI] += kCoeffs_[order] * pow(T_.boundaryField()[patchI][faceI], order);
+                kappa_.boundaryFieldRef()[patchI][faceI] += kappaCoeffs_[order] * pow(T_.boundaryField()[patchI][faceI], order);
             }
         }
     }

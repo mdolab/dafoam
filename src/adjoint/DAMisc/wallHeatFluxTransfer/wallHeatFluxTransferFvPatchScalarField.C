@@ -138,7 +138,7 @@ void Foam::wallHeatFluxTransferFvPatchScalarField::updateCoeffs()
 
     const scalarField& Tp(*this);
 
-    const volScalarField& kappa = db().lookupObject<volScalarField>("k");
+    const volScalarField& kappa = db().lookupObject<volScalarField>("kappa");
     const fvPatchField<scalar>& kappaBF = kappa.boundaryField()[patch().index()];
 
     const scalarField kappaDeltaCoeffs(

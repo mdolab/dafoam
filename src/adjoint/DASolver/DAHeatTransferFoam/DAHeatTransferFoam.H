@@ -35,8 +35,8 @@ protected:
     autoPtr<volScalarField> fvSourcePtr_;
 
     /// h pointer
-    autoPtr<volScalarField> kPtr_;
-    List<scalar> kCoeffs;
+    autoPtr<volScalarField> kappaPtr_;
+    List<scalar> kappaCoeffs;
 
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;

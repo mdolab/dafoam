@@ -35,8 +35,8 @@ protected:
     volScalarField& fvSource_;
     //@}
 
-    volScalarField& k_;
-    List<scalar> kCoeffs_;
+    volScalarField& kappa_;
+    List<scalar> kappaCoeffs_;
 
     label hasFvSource_ = 0;
 

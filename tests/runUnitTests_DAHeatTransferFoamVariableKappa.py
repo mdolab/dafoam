@@ -22,7 +22,7 @@ if gcomm.rank == 0:
     os.system("rm -rf processor*")
     os.system("rm 0.00* -fr")
     # set the kappa = 200 + 20*T
-    os.system("sed -i 's/k  200;/kCoeffs (200 20);/g' constant/solidProperties")
+    os.system("sed -i 's/kappa  200;/kappaCoeffs (200 20);/g' constant/solidProperties")
     # set channerl_outer boundary type to wallHeatFluxTransfer
     # os.system("cp 0/T 0/T.old")
     # sed_changeBoundary = sed_cmd = (
@@ -128,7 +128,7 @@ totals = prob.check_totals(
 
 if MPI.COMM_WORLD.rank == 0:
     # restore the kappa
-    os.system("sed -i 's/kCoeffs (200 20);/k  200;/g' constant/solidProperties")
+    os.system("sed -i 's/kappaCoeffs (200 20);/kappa  200;/g' constant/solidProperties")
     # restore the boundary
     # os.system("mv 0/T.old 0/T")
 if abs(totals[("cruise.aero_post.HFX", "shape")]["rel error"][0]) < 1e-5:

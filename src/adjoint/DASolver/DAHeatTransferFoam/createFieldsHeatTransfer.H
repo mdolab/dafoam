@@ -22,25 +22,25 @@ IOdictionary solidProperties(
 
 // thermal conductivity unit: W/(m*K)
 Info << "Reading thermal conductivity" << endl;
-if (solidProperties.found("k"))
+if (solidProperties.found("kappa"))
 {
-    kCoeffs = List<scalar>(1, solidProperties.getScalar("k"));
+    kappaCoeffs = List<scalar>(1, solidProperties.getScalar("kappa"));
 }
-else if (solidProperties.found("kCoeffs"))
+else if (solidProperties.found("kappaCoeffs"))
 {
-    kCoeffs = solidProperties.lookup("kCoeffs");
+    kappaCoeffs = solidProperties.lookup("kappaCoeffs");
 }
 else
 {
     FatalErrorInFunction
-        << "Neither 'k' nor 'kCoeffs' found in dictionary: "
+        << "Neither 'kappa' nor 'kappaCoeffs' found in dictionary: "
         << solidProperties.name() << exit(FatalError);
 }
 
-kPtr_.reset(
+kappaPtr_.reset(
     new volScalarField(
         IOobject(
-            "k",
+            "kappa",
             runTime.timeName(),
             mesh,
             IOobject::NO_READ,

@@ -224,7 +224,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
     else if (discipline_ == "thermal")
     {
         // for solid solvers Q = k * dT/dz, so kappa = k
-        const volScalarField& k = const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>("k"));
+        const volScalarField& kappa = const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>("kappa"));
 
         forAll(patches_, idxI)
         {
@@ -248,7 +248,7 @@ void DAInputThermalCoupling::run(const scalarList& input)
                     deltaCoeffs = 1 / d;
                 }
                 mixedFvPatchField<scalar>& mixedPatch = refCast<mixedFvPatchField<scalar>>(T.boundaryFieldRef()[patchI]);
-                scalar myKDeltaCoeffs = k.boundaryField()[patchI][faceI] * deltaCoeffs;
+                scalar myKDeltaCoeffs = kappa.boundaryField()[patchI][faceI] * deltaCoeffs;
                 // NOTE: we continue to use the counterI from the first loop
                 scalar neighKDeltaCoeffs = input[counterI];
                 mixedPatch.valueFraction()[faceI] = neighKDeltaCoeffs / (myKDeltaCoeffs + neighKDeltaCoeffs);

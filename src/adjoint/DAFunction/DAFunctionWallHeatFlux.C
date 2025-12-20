@@ -92,18 +92,18 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
                 IOobject::NO_WRITE,
                 false));
         // for solid, we need to read k from transportProperties
-        if (solidProperties.found("k"))
+        if (solidProperties.found("kappa"))
         {
-            kCoeffs_ = List<scalar>(1, solidProperties.getScalar("k"));
+            kappaCoeffs_ = List<scalar>(1, solidProperties.getScalar("kappa"));
         }
-        else if (solidProperties.found("kCoeffs"))
+        else if (solidProperties.found("kappaCoeffs"))
         {
-            kCoeffs_ = solidProperties.lookup("kCoeffs");
+            kappaCoeffs_ = solidProperties.lookup("kappaCoeffs");
         }
         else
         {
             FatalErrorInFunction
-                << "Neither 'k' nor 'kCoeffs' found in dictionary: "
+                << "Neither 'kappa' nor 'kappaCoeffs' found in dictionary: "
                 << solidProperties.name() << exit(FatalError);
         }
 
@@ -230,27 +230,17 @@ scalar DAFunctionWallHeatFlux::calcFunction()
         const objectRegistry& db = mesh_.thisDb();
         const volScalarField& T = db.lookupObject<volScalarField>("T");
         const volScalarField::Boundary& TBf = T.boundaryField();
-        const volScalarField k = db.lookupObject<volScalarField>("k");
-        volScalarField::Boundary kBf = k.boundaryField();
+        const volScalarField kappa = db.lookupObject<volScalarField>("kappa");
+        volScalarField::Boundary kappaBf = kappa.boundaryField();
 
         forAll(wallHeatFluxBf, patchI)
         {
             if (!wallHeatFluxBf[patchI].coupled())
             {
-                // update k from T
-                forAll(wallHeatFluxBf[patchI], faceI)
-                {
-                    kBf[patchI][faceI] = 0;
-                    forAll(kCoeffs_, order)
-                    {
-                        kBf[patchI][faceI] += kCoeffs_[order] * pow(TBf[patchI][faceI], order);
-                    }
-                }
-
                 // use OpenFOAM's snGrad()
                 if (distanceMode_ == "default")
                 {
-                    wallHeatFluxBf[patchI] = kBf[patchI] * TBf[patchI].snGrad();
+                    wallHeatFluxBf[patchI] = kappaBf[patchI] * TBf[patchI].snGrad();
                 }
                 // use DAFOAM's custom formulation
                 else if (distanceMode_ == "daCustom")
@@ -264,7 +254,7 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                         vector c2 = mesh_.C()[nearWallCellIndex];
                         scalar d = mag(c1 - c2);
                         scalar dTdz = (T2 - T1) / d;
-                        wallHeatFluxBf[patchI][faceI] = kBf[patchI][faceI] * dTdz;
+                        wallHeatFluxBf[patchI][faceI] = kappaBf[patchI][faceI] * dTdz;
                     }
                 }
             }
