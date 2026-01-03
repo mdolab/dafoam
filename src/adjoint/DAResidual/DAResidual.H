@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     Description:
         Compute the residual for a given solver

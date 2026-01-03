@@ -3,7 +3,7 @@
 """
 
 DAFoam  : Discrete Adjoint with OpenFOAM
-Version : v4
+Version : v5
 
 Description:
 The Python interface to DAFoam. It controls the adjoint
@@ -11,7 +11,7 @@ solvers and external modules for design optimization
 
 """
 
-__version__ = "4.0.3"
+__version__ = "5.0.0"
 
 import subprocess
 import os

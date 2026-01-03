@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     This file is modified from OpenFOAM's source code
     src/finiteVolume/cfdTools/general/solutionControl/pimpleControl/pimpleControl.C

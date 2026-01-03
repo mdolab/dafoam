@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     This class is modified from OpenFOAM's source code
     applications/solvers/stressAnalysis/solidDisplacementFoam

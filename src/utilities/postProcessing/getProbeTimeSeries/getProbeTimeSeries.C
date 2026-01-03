@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     Description:
         Extract time-series data at a given probe point for unsteady simulations
