@@ -4,10 +4,10 @@ on: [push, pull_request]
 
 env:
   REPO_NAME: 'dafoam'
-  DOCKER_WORKING_DIR: '/home/dafoamuser/dafoam/$REPO_NAME'
-  DOCKER_MOUNT_DIR: '/home/dafoamuser/mount/$REPO_NAME'
+  DOCKER_WORKING_DIR: '/home/dockeruser/dafoam/$REPO_NAME'
+  DOCKER_MOUNT_DIR: '/home/dockeruser/mount/$REPO_NAME'
   DOCKER_TAG: 'v5'
-  DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
+  DOCKER_ENV_FILE: '/home/dockeruser/dafoam/loadDAFoam.sh'
 
 jobs:
 
@@ -19,7 +19,7 @@ jobs:
     - name: Create the docker container and run the tests
       run: |
         docker pull dafoam/opt-packages:${{env.DOCKER_TAG}}
-        docker run -i -d -u dafoamuser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
+        docker run -i -d -u dockeruser --name regtest -v $GITHUB_WORKSPACE:${{env.DOCKER_MOUNT_DIR}} dafoam/opt-packages:${{env.DOCKER_TAG}} /bin/bash
         docker exec -i regtest /bin/bash -c "rm -rf ${{env.DOCKER_WORKING_DIR}} && cp -r ${{env.DOCKER_MOUNT_DIR}} ${{env.DOCKER_WORKING_DIR}}"
         docker exec -i -e COMPILE_DAFOAM_ADF=1 regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}} && ./Allmake"
         #docker exec -i regtest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd ${{env.DOCKER_WORKING_DIR}}/tests && ./Allrun"
