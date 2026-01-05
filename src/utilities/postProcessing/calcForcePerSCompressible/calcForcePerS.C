@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
 #include "setRootCase.H"
 #include "createTime.H"
 
-    if (!args.optionFound("time"))
+    if (!args.found("time"))
     {
         Info << "Time not set, running all times." << endl;
     }
@@ -55,9 +55,9 @@ int main(int argc, char* argv[])
     const instantList timeDirs(timeSelector::select(timePaths->times(), args));
 
     List<wordRe> patchNames;
-    if (args.optionFound("patchNames"))
+    if (args.found("patchNames"))
     {
-        patchNames = wordReList(args.optionLookup("patchNames")());
+        patchNames = wordReList(args.lookup("patchNames")());
     }
     else
     {

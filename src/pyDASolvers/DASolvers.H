@@ -438,6 +438,7 @@ public:
 #endif
         FatalErrorIn("getEndTime") << "should not call this func in AD mode!"
                                    << abort(FatalError);
+        return 0.0;
     }
 
     /// return the deltaT
@@ -448,6 +449,7 @@ public:
 #endif
         FatalErrorIn("getDeltaT") << "should not call this func in AD mode!"
                                   << abort(FatalError);
+        return 0.0;
     }
 
     /// update the boundary condition for a field

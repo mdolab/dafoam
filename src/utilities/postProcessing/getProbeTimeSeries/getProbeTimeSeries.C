@@ -51,15 +51,15 @@ int main(int argc, char* argv[])
 #include "createMesh.H"
 
     word outputName = "VarTimeSeries";
-    if (args.optionFound("outputName"))
+    if (args.found("outputName"))
     {
-        outputName = word(args.optionLookup("outputName")());
+        outputName = word(args.lookup("outputName")());
     }
 
     List<scalar> coords;
-    if (args.optionFound("coords"))
+    if (args.found("coords"))
     {
-        coords = scalarList(args.optionLookup("coords")());
+        coords = scalarList(args.lookup("coords")());
     }
     else
     {
@@ -70,9 +70,9 @@ int main(int argc, char* argv[])
     label probeCellI = mesh.findCell(coordPoint);
 
     word varName;
-    if (args.optionFound("varName"))
+    if (args.found("varName"))
     {
-        varName = word(args.optionLookup("varName")());
+        varName = word(args.lookup("varName")());
     }
     else
     {
@@ -81,9 +81,9 @@ int main(int argc, char* argv[])
     }
 
     word varType;
-    if (args.optionFound("varType"))
+    if (args.found("varType"))
     {
-        varType = word(args.optionLookup("varType")());
+        varType = word(args.lookup("varType")());
     }
     else
     {
@@ -107,9 +107,9 @@ int main(int argc, char* argv[])
     scalar endTime = runTime.endTime().value();
     scalar deltaT = runTime.deltaT().value();
 
-    if (args.optionFound("deltaT"))
+    if (args.found("deltaT"))
     {
-        deltaT = readScalar(args.optionLookup("deltaT")());
+        deltaT = readScalar(args.lookup("deltaT")());
     }
     Info << "Extracting " << varName << " time series" << endl;
 

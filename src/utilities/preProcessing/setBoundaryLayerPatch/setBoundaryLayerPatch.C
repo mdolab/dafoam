@@ -56,9 +56,9 @@ int main(int argc, char* argv[])
 #include "createMesh.H"
 
     word mode = "parabolic";
-    if (args.optionFound("mode"))
+    if (args.found("mode"))
     {
-        mode = word(args.optionLookup("mode")());
+        mode = word(args.lookup("mode")());
         Info << "Using mode: " << mode << endl;
     }
     else
@@ -68,9 +68,9 @@ int main(int argc, char* argv[])
 
     scalar blHeight = 0.0;
 
-    if (args.optionFound("blHeight"))
+    if (args.found("blHeight"))
     {
-        blHeight = readScalar(args.optionLookup("blHeight")());
+        blHeight = readScalar(args.lookup("blHeight")());
         Info << "Using blHeight: " << blHeight << endl;
     }
     else
@@ -80,9 +80,9 @@ int main(int argc, char* argv[])
     }
 
     scalar U0 = 0.0;
-    if (args.optionFound("U0"))
+    if (args.found("U0"))
     {
-        U0 = readScalar(args.optionLookup("U0")());
+        U0 = readScalar(args.lookup("U0")());
         Info << "Using U0: " << U0 << endl;
     }
     else
@@ -92,9 +92,9 @@ int main(int argc, char* argv[])
     }
 
     word flowAxis = "x";
-    if (args.optionFound("flowAxis"))
+    if (args.found("flowAxis"))
     {
-        flowAxis = word(args.optionLookup("flowAxis")());
+        flowAxis = word(args.lookup("flowAxis")());
         Info << "Using flowAxis: " << flowAxis << endl;
     }
     else

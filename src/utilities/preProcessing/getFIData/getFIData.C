@@ -43,9 +43,9 @@ int main(int argc, char* argv[])
 #include "createMesh.H"
 
     word refFieldName;
-    if (args.optionFound("refFieldName"))
+    if (args.found("refFieldName"))
     {
-        refFieldName = word(args.optionLookup("refFieldName")());
+        refFieldName = word(args.lookup("refFieldName")());
     }
     else
     {
@@ -54,9 +54,9 @@ int main(int argc, char* argv[])
     }
 
     word refFieldType;
-    if (args.optionFound("refFieldType"))
+    if (args.found("refFieldType"))
     {
-        refFieldType = word(args.optionLookup("refFieldType")());
+        refFieldType = word(args.lookup("refFieldType")());
     }
     else
     {
@@ -65,9 +65,9 @@ int main(int argc, char* argv[])
     }
 
     scalar time = -1.0;
-    if (args.optionFound("time"))
+    if (args.found("time"))
     {
-        time = readScalar(args.optionLookup("time")());
+        time = readScalar(args.lookup("time")());
         if (time == 9999)
         {
             Info << "Extract latestTime" << endl;

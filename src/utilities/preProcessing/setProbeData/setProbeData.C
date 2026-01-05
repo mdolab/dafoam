@@ -56,9 +56,9 @@ int main(int argc, char* argv[])
 #include "createMesh.H"
 
     word fieldName;
-    if (args.optionFound("fieldName"))
+    if (args.found("fieldName"))
     {
-        fieldName = word(args.optionLookup("fieldName")());
+        fieldName = word(args.lookup("fieldName")());
     }
     else
     {
@@ -67,9 +67,9 @@ int main(int argc, char* argv[])
     }
 
     word fieldType;
-    if (args.optionFound("fieldType"))
+    if (args.found("fieldType"))
     {
-        fieldType = word(args.optionLookup("fieldType")());
+        fieldType = word(args.lookup("fieldType")());
     }
     else
     {
@@ -78,9 +78,9 @@ int main(int argc, char* argv[])
     }
 
     word mode = "findCell";
-    if (args.optionFound("mode"))
+    if (args.found("mode"))
     {
-        mode = word(args.optionLookup("mode")());
+        mode = word(args.lookup("mode")());
     }
     else
     {
@@ -108,9 +108,9 @@ int main(int argc, char* argv[])
     }
 
     scalar time = -1.0;
-    if (args.optionFound("time"))
+    if (args.found("time"))
     {
-        time = readScalar(args.optionLookup("time")());
+        time = readScalar(args.lookup("time")());
         if (time == 9999)
         {
             Info << "Extract latestTime" << endl;
