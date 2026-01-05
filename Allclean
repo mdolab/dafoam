@@ -22,7 +22,8 @@ cleanDAFoam
 # clean ADR mode
 echo "***************** Cleaning ADR mode **************"
 . $DAFOAM_ROOT_PATH/loadDAFoam.sh
-. $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc
+sed -i 's/export WM_AD_MODE=.*/export WM_AD_MODE=ADR/' $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-AD/etc/bashrc
+. $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-AD/etc/bashrc
 cleanDAFoam
 # if COMPILE_DAFOAM_ADF is set, compile ADF mode
 if [ -z "$COMPILE_DAFOAM_ADF" ]; then
@@ -30,7 +31,8 @@ if [ -z "$COMPILE_DAFOAM_ADF" ]; then
 else
   echo "***************** Cleaning ADF mode **************"
   . $DAFOAM_ROOT_PATH/loadDAFoam.sh
-  . $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-v1812-ADF/etc/bashrc
+  sed -i 's/export WM_AD_MODE=.*/export WM_AD_MODE=ADF/' $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-AD/etc/bashrc
+  . $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-AD/etc/bashrc
   cleanDAFoam
 fi
 

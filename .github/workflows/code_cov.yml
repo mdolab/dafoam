@@ -1,6 +1,6 @@
 name: codecov
 
-on: [push, pull_request]
+on: []
 
 env:
   REPO_NAME: 'dafoam'

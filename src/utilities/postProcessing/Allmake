@@ -5,9 +5,9 @@ if [ -z "$WM_PROJECT" ]; then
   exit 1
 fi
 
-if [ "$WM_CODI_AD_LIB_POSTFIX" = "ADR" ]; then
+if [ "$WM_AD_MODE" = "ADR" ]; then
   echo "ADR mode found. Skip the postProcessing build"
-elif [ "$WM_CODI_AD_LIB_POSTFIX" = "ADF" ]; then
+elif [ "$WM_AD_MODE" = "ADF" ]; then
   echo "ADF mode found. Skip the postProcessing build"
 else
   for d in ./*/ ; do 

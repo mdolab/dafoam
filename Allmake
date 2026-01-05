@@ -7,14 +7,15 @@ fi
 
 function makeDAFoam()
 { 
+  export WM_QUIET=true
   # the script will exit if there is any error
   set -e
   wmakeLnInclude src/adjoint
   cd src/adjoint && wmake -j && cd -
-  cd src/newTurbModels && ./Allmake && cd -
+  #cd src/newTurbModels && ./Allmake && cd -
   cd src/pyUnitTests && ./Allmake && cd -
-  cd src/pyDASolvers && ./Allmake && cd -
-  cd src/utilities/preProcessing && ./Allmake && cd -
+  #cd src/pyDASolvers && ./Allmake && cd -
+  #cd src/utilities/preProcessing && ./Allmake && cd -
   # disable the -e flag
   set +e
 }
@@ -28,7 +29,8 @@ if [ -z "$COMPILE_DAFOAM_NOAD" ]; then
   # compile ADR mode
   echo "***************** Compiling ADR mode **************"
   . $DAFOAM_ROOT_PATH/loadDAFoam.sh
-  . $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-v1812-ADR/etc/bashrc
+  sed -i 's/export WM_AD_MODE=.*/export WM_AD_MODE=ADR/' $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-AD/etc/bashrc
+  . $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-AD/etc/bashrc
   makeDAFoam
   # if COMPILE_DAFOAM_ADF is set, compile ADF mode
   if [ -z "$COMPILE_DAFOAM_ADF" ]; then
@@ -36,7 +38,8 @@ if [ -z "$COMPILE_DAFOAM_NOAD" ]; then
   else
     echo "***************** Compiling ADF mode **************"
     . $DAFOAM_ROOT_PATH/loadDAFoam.sh
-    . $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-v1812-ADF/etc/bashrc
+    sed -i 's/export WM_AD_MODE=.*/export WM_AD_MODE=ADF/' $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-AD/etc/bashrc
+    . $DAFOAM_ROOT_PATH/OpenFOAM/OpenFOAM-AD/etc/bashrc
     makeDAFoam
   fi
 fi

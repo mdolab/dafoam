@@ -1,4 +1,4 @@
 makeSpalartAllmarasFv3Compressible.C
 makeDummyTurbulenceModelCompressible.C
 
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDANewTurbModelsCompressible$(WM_CODI_AD_LIB_POSTFIX)
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDANewTurbModelsCompressible$(WM_AD_MODE)

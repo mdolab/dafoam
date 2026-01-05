@@ -12,10 +12,22 @@
 #define DACheckMesh_H
 
 #include "DAOption.H"
+#include "timeSelector.H"
 #include "Time.H"
 #include "fvMesh.H"
+#include "globalMeshData.H"
+#include "vtkCoordSetWriter.H"
+#include "vtkSurfaceWriter.H"
 #include "IOdictionary.H"
+#include "regionProperties.H"
+#include "polyMeshTools.H"
+
+#include "checkTools.H"
 #include "checkGeometry.H"
+#include "writeFields.H"
+
+#include "OFstream.H"
+#include "JSONformatter.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -61,16 +73,13 @@ private:
     autoPtr<surfaceWriter> surfWriter;
 
     /// set writer pointer for failed mesh
-    autoPtr<writer<scalar>> setWriter;
+    autoPtr<coordSetWriter> setWriter;
 
 public:
     // Constructors
 
     /// Construct from components
-    DACheckMesh(
-        const DAOption& daOption,
-        const Time& runTime1,
-        const fvMesh& mesh1);
+    DACheckMesh(const fvMesh& mesh);
 
     /// Destructor
     virtual ~DACheckMesh();
