@@ -28,7 +28,7 @@
 \*---------------------------------------------------------------------------*/
 
 #include "PatchTools.H"
-#include "checkGeometry.H"
+#include "DACheckGeometry.H"
 #include "polyMesh.H"
 #include "cellSet.H"
 #include "faceSet.H"
@@ -37,7 +37,7 @@
 #include "wedgePolyPatch.H"
 #include "unitConversion.H"
 #include "polyMeshTetDecomposition.H"
-#include "checkTools.H"
+#include "DACheckTools.H"
 #include "functionObject.H"
 
 #include "vtkCoordSetWriter.H"

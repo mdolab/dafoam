@@ -27,7 +27,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "checkTools.H"
+#include "DACheckTools.H"
 #include "polyMesh.H"
 #include "globalMeshData.H"
 #include "hexMatcher.H"

@@ -22,8 +22,8 @@
 #include "regionProperties.H"
 #include "polyMeshTools.H"
 
-#include "checkTools.H"
-#include "checkGeometry.H"
+#include "DACheckTools.H"
+#include "DACheckGeometry.H"
 #include "writeFields.H"
 
 #include "OFstream.H"
