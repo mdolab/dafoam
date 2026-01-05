@@ -71,35 +71,23 @@ autoPtr<DAFunction> DAFunction::New(
         Info << "Selecting type: " << modelType << " for DAFunction. Name: " << functionName << endl;
     }
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(modelType);
+    auto* ctorPtr = dictionaryConstructorTable(modelType);
 
-    // if the solver name is not found in any child class, print an error
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!ctorPtr)
     {
-        FatalErrorIn(
-            "DAFunction::New"
-            "("
-            "    const fvMesh&,"
-            "    const DAOption&,"
-            "    const DAModel&,"
-            "    const DAIndex&,"
-            "    const word,"
-            ")")
-            << "Unknown DAFunction type "
-            << modelType << nl << nl
-            << "Valid DAFunction types:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
+        FatalErrorInLookup(
+            "DAFunction",
+            modelType,
+            *dictionaryConstructorTablePtr_)
             << exit(FatalError);
     }
 
-    // child class found
     return autoPtr<DAFunction>(
-        cstrIter()(mesh,
-                   daOption,
-                   daModel,
-                   daIndex,
-                   functionName));
+        ctorPtr(mesh,
+                daOption,
+                daModel,
+                daIndex,
+                functionName));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

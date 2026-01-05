@@ -1,6 +1,6 @@
 DACheckMesh/DACheckMesh.C
-DACheckMesh/checkGeometry.C
-DACheckMesh/checkTools.C
+DACheckMesh/DACheckGeometry.C
+DACheckMesh/DACheckTools.C
 
 DAOption/DAOption.C
 

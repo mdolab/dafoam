@@ -544,7 +544,7 @@ void DASpalartAllmaras::solveAdjointFP(
     dictionary solverDictNuTilda = myFvSolution.subDict("solvers").subDict("nuTilda");
 
     // solve the fvMatrixT field with given rhs and solution
-    if (psiNuTildaPC_.empty())
+    if (!psiNuTildaPC_)
     {
         dPsiNuTilda_ == nuTilda_;
         const volScalarField chi(this->chi());

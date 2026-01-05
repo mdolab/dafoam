@@ -17,6 +17,7 @@
 #include "fvCFD.H"
 #include "fvMesh.H"
 #include "runTimeSelectionTables.H"
+#include "addToRunTimeSelectionTable.H"
 #include "OFstream.H"
 #include "functionObjectList.H"
 #include "fvOptions.H"

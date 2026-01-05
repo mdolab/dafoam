@@ -168,27 +168,19 @@ autoPtr<DATurbulenceModel> DATurbulenceModel::New(
         Info << "Selecting " << modelType << " for DATurbulenceModel" << endl;
     }
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(modelType);
+    auto* ctorPtr = dictionaryConstructorTable(modelType);
 
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!ctorPtr)
     {
-        FatalErrorIn(
-            "DATurbulenceModel::New"
-            "("
-            "    const word,"
-            "    const fvMesh&,"
-            "    const DAOption&"
-            ")")
-            << "Unknown DATurbulenceModel type "
-            << modelType << nl << nl
-            << "Valid DATurbulenceModel types:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
+        FatalErrorInLookup(
+            "DATurbulenceModel",
+            modelType,
+            *dictionaryConstructorTablePtr_)
             << exit(FatalError);
     }
 
     return autoPtr<DATurbulenceModel>(
-        cstrIter()(modelType, mesh, daOption));
+        ctorPtr(modelType, mesh, daOption));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -275,12 +267,12 @@ tmp<volScalarField> DATurbulenceModel::nu() const
 
     if (turbModelType_ == "incompressible")
     {
-        const volScalarField& nu = mesh_.thisDb().lookupObject<transportModel>("transportProperties").nu();
+        volScalarField nu = mesh_.thisDb().lookupObject<transportModel>("transportProperties").nu();
         return nu;
     }
     else if (turbModelType_ == "compressible")
     {
-        const volScalarField& mu = mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").mu();
+        volScalarField mu = mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").mu();
         return mu / this->rho();
     }
     else
@@ -357,7 +349,7 @@ tmp<Foam::volScalarField> DATurbulenceModel::mu() const
 
     if (turbModelType_ == "compressible")
     {
-        const volScalarField& mu = mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").mu();
+        volScalarField mu = mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").mu();
         return mu;
     }
     else

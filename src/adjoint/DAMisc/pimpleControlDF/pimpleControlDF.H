@@ -89,7 +89,7 @@ protected:
     // Protected Member Functions
 
     //- Read controls from fvSolution dictionary
-    virtual void read();
+    virtual bool read();
 
     //- Return true if all convergence checks are satisfied
     virtual bool criteriaSatisfied();

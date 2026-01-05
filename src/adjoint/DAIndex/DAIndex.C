@@ -1203,8 +1203,8 @@ void DAIndex::printMatChars(const Mat matIn) const
     gatheredList[myProc] = matCharInfo;
     // gather all info to the master proc
     Pstream::gatherList(gatheredList);
-    // scatter all info to every procs
-    Pstream::scatterList(gatheredList);
+    // scatter all info to every procs. NOTE: change from scatter to broadcast for of2506
+    Pstream::broadcastList(gatheredList);
 
     scalar maxRatioGathered = -1.0;
     label procI = -1;

@@ -38,7 +38,7 @@ defineTypeNameAndDebug(pimpleControlDF, 0);
 
 // * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
 
-void Foam::pimpleControlDF::read()
+bool Foam::pimpleControlDF::read()
 {
     solutionControl::read(false);
 
@@ -50,6 +50,8 @@ void Foam::pimpleControlDF::read()
     SIMPLErho_ = pimpleDict.lookupOrDefault("SIMPLErho", false);
     turbOnFinalIterOnly_ =
         pimpleDict.lookupOrDefault("turbOnFinalIterOnly", true);
+
+    return true;
 }
 
 bool Foam::pimpleControlDF::criteriaSatisfied()
@@ -65,7 +67,7 @@ bool Foam::pimpleControlDF::criteriaSatisfied()
     bool achieved = true;
     bool checked = false; // safety that some checks were indeed performed
 
-    const dictionary& solverDict = mesh_.solverPerformanceDict();
+    const dictionary& solverDict = mesh_.data().solverPerformanceDict();
     forAllConstIters(solverDict, iter)
     {
         const entry& solverPerfDictEntry = *iter;
@@ -204,7 +206,7 @@ bool Foam::pimpleControlDF::loop()
         }
 
         corr_ = 0;
-        mesh_.data::remove("finalIteration");
+        mesh_.data().setFinalIteration(false);
         return false;
     }
 
@@ -219,7 +221,7 @@ bool Foam::pimpleControlDF::loop()
                      << " iterations" << endl;
             }
 
-            mesh_.data::remove("finalIteration");
+            mesh_.data().setFinalIteration(false);
             corr_ = 0;
             converged_ = false;
 
@@ -233,7 +235,7 @@ bool Foam::pimpleControlDF::loop()
             }
             storePrevIterFields();
 
-            mesh_.data::add("finalIteration", true);
+            mesh_.data().setFinalIteration(true);
             converged_ = true;
         }
     }
@@ -241,7 +243,7 @@ bool Foam::pimpleControlDF::loop()
     {
         if (finalIter())
         {
-            mesh_.data::add("finalIteration", true);
+            mesh_.data().setFinalIteration(true);
         }
 
         if (corr_ <= nCorrPIMPLE_)

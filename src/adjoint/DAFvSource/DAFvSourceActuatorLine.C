@@ -163,7 +163,7 @@ void DAFvSourceActuatorLine::calcFvSource(volVectorField& fvSource)
             for (label bb = 0; bb < nBlades; bb++)
             {
                 scalar thetaBlade = bb * 2.0 * pi / nBlades + radPerS * t + phase;
-#ifdef CODI_NO_AD
+#if !defined(CODI_ADF) && !defined(CODI_ADR)
                 if (cellI == 0)
                 {
                     if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0

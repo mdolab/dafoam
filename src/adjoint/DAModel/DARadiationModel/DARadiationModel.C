@@ -49,27 +49,19 @@ autoPtr<DARadiationModel> DARadiationModel::New(
         Info << "Selecting " << modelType << " for DARadiationModel" << endl;
     }
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(modelType);
+    auto* ctorPtr = dictionaryConstructorTable(modelType);
 
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!ctorPtr)
     {
-        FatalErrorIn(
-            "DARadiationModel::New"
-            "("
-            "    const word,"
-            "    const fvMesh&,"
-            "    const DAOption&"
-            ")")
-            << "Unknown DARadiationModel type "
-            << modelType << nl << nl
-            << "Valid DARadiationModel types:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
+        FatalErrorInLookup(
+            "DARadiationModel",
+            modelType,
+            *dictionaryConstructorTablePtr_)
             << exit(FatalError);
     }
 
     return autoPtr<DARadiationModel>(
-        cstrIter()(modelType, mesh, daOption));
+        ctorPtr(modelType, mesh, daOption));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
