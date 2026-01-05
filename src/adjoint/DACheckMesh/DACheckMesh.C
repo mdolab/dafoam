@@ -40,7 +40,6 @@ DACheckMesh::DACheckMesh(const fvMesh& mesh1)
     word surfaceFormat = "vtk";
     surfWriter = surfaceWriter::New(surfaceFormat);
     setWriter = coordSetWriter::New("vtk");
-
 }
 
 DACheckMesh::~DACheckMesh()
