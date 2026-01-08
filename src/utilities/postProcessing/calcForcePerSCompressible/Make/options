@@ -16,5 +16,6 @@ EXE_LIBS = \
     -lfiniteVolume \
     -lsampling \
     -lmeshTools \
+    -lthermoTools \
     -lfvOptions 
     

@@ -41,6 +41,7 @@ LIB_LIBS = \
     -lfiniteVolume$(WM_AD_MODE) \
     -lsampling$(WM_AD_MODE) \
     -lmeshTools$(WM_AD_MODE) \
+    -lthermoTools$(WM_AD_MODE) \
     -ldynamicFvMesh$(WM_AD_MODE) \
     -ltopoChangerFvMesh$(WM_AD_MODE) \
     -ldynamicMesh$(WM_AD_MODE) \

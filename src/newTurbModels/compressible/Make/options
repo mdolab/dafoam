@@ -30,6 +30,7 @@ LIB_LIBS = \
     -lfiniteVolume$(WM_AD_MODE) \
     -lsampling$(WM_AD_MODE) \
     -lmeshTools$(WM_AD_MODE) \
+    -lthermoTools$(WM_AD_MODE) \
     -lfvOptions$(WM_AD_MODE) \
     -L$(PETSC_LIB) -lpetsc \
     $(shell mpicc -show | grep -o '\-L[^ ]*') \
