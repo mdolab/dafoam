@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     Description:
         A modified version of pimpleControl
@@ -89,7 +89,7 @@ protected:
     // Protected Member Functions
 
     //- Read controls from fvSolution dictionary
-    virtual void read();
+    virtual bool read();
 
     //- Return true if all convergence checks are satisfied
     virtual bool criteriaSatisfied();

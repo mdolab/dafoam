@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     Description:
         A modified version of Poisson method for computing wall distance
@@ -54,11 +54,11 @@ Foam::patchDistMethods::meshWaveFrozen::meshWaveFrozen(
     : patchDistMethod(mesh, patchIDs),
       correctWalls_(dict.lookupOrDefault("correctWalls", true)),
       nUnset_(0),
-      y_(IOobject("yWallFrozen", mesh.time().timeName(), mesh),
+      y_(IOobject("yWall", mesh.time().timeName(), mesh),
          mesh,
-         dimensionedScalar("yWallFrozen", dimLength, SMALL),
+         dimensionedScalar("yWall", dimLength, SMALL),
          patchDistMethod::patchTypes<scalar>(mesh, patchIDs)),
-      n_(IOobject("nWallFrozen", mesh.time().timeName(), mesh),
+      n_(IOobject("nWall", mesh.time().timeName(), mesh),
          mesh,
          dimensionedVector(dimless, Zero),
          patchDistMethod::patchTypes<vector>(mesh, patchIDs))
@@ -72,11 +72,11 @@ Foam::patchDistMethods::meshWaveFrozen::meshWaveFrozen(
     : patchDistMethod(mesh, patchIDs),
       correctWalls_(correctWalls),
       nUnset_(0),
-      y_(IOobject("yWallFrozen", mesh.time().timeName(), mesh),
+      y_(IOobject("yWall", mesh.time().timeName(), mesh),
          mesh,
-         dimensionedScalar("yWallFrozen", dimLength, SMALL),
+         dimensionedScalar("yWall", dimLength, SMALL),
          patchDistMethod::patchTypes<scalar>(mesh, patchIDs)),
-      n_(IOobject("nWallFrozen", mesh.time().timeName(), mesh),
+      n_(IOobject("nWall", mesh.time().timeName(), mesh),
          mesh,
          dimensionedVector(dimless, Zero),
          patchDistMethod::patchTypes<vector>(mesh, patchIDs))

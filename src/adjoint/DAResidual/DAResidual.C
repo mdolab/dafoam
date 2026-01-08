@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
 \*---------------------------------------------------------------------------*/
 
@@ -80,31 +80,19 @@ autoPtr<DAResidual> DAResidual::New(
         Info << "Selecting " << modelType << " for DAResidual" << endl;
     }
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(modelType);
+    auto* ctorPtr = dictionaryConstructorTable(modelType);
 
-    // if the solver name is not found in any child class, print an error
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!ctorPtr)
     {
-        FatalErrorIn(
-            "DAResidual::New"
-            "("
-            "    const word,"
-            "    const fvMesh&,"
-            "    const DAOption&,"
-            "    const DAModel&,"
-            "    const DAIndex&"
-            ")")
-            << "Unknown DAResidual type "
-            << modelType << nl << nl
-            << "Valid DAResidual types:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
+        FatalErrorInLookup(
+            "DAResidual",
+            modelType,
+            *dictionaryConstructorTablePtr_)
             << exit(FatalError);
     }
 
-    // child class found
     return autoPtr<DAResidual>(
-        cstrIter()(modelType, mesh, daOption, daModel, daIndex));
+        ctorPtr(modelType, mesh, daOption, daModel, daIndex));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -256,13 +244,20 @@ void DAResidual::updateThermoVars()
     // accuracy of he_ may be impact by the inaccurate rho. So here we want to
     // rewrite he_ as he_ = Cp * T_ - T_ * R instead, such that we dont include rho
     // **************** NOTE ****************
+    // OpenFOAM 2506 uses relative temperature in the e and h calculations
+    // **************** NOTE ****************
+    dimensionedScalar TRef(
+        "TRef1",
+        dimensionSet(0, 0, 0, 1, 0, 0, 0),
+        298.15);
+
     if (he.name() == "e")
     {
-        he = Cp * T - T * R;
+        he = Cp * (T - TRef) - T * R;
     }
     else
     {
-        he = Cp * T;
+        he = Cp * (T - TRef);
     }
     he.correctBoundaryConditions();
 

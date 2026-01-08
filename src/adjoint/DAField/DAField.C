@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
 \*---------------------------------------------------------------------------*/
 
@@ -1012,7 +1012,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                 false));
 
         dictionary coeffDict(turbDict.subDict("RAS"));
-        word turbModelType = word(coeffDict["RASModel"]);
+        word turbModelType = coeffDict.getWord("RASModel");
         //Info<<"turbModelType: "<<turbModelType<<endl;
 
         // create word regular expression for SA model

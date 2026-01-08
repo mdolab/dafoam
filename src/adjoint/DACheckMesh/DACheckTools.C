@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     This file is modified from OpenFOAM's source code
     applications/utilities/mesh/manipulation/checkMesh/checkTools.C
@@ -27,7 +27,7 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "checkTools.H"
+#include "DACheckTools.H"
 #include "polyMesh.H"
 #include "globalMeshData.H"
 #include "hexMatcher.H"
@@ -37,10 +37,12 @@
 #include "tetWedgeMatcher.H"
 #include "tetMatcher.H"
 #include "IOmanip.H"
+#include "OFstream.H"
 #include "pointSet.H"
 #include "faceSet.H"
 #include "cellSet.H"
 #include "Time.H"
+#include "coordSetWriter.H"
 #include "surfaceWriter.H"
 #include "syncTools.H"
 #include "globalIndex.H"
@@ -56,48 +58,14 @@ void Foam::mergeAndWrite(
     const indirectPrimitivePatch& setPatch,
     const fileName& outputDir)
 {
-    if (Pstream::parRun())
-    {
-        labelList pointToGlobal;
-        labelList uniqueMeshPointLabels;
-        autoPtr<globalIndex> globalPoints;
-        autoPtr<globalIndex> globalFaces;
-        faceList mergedFaces;
-        pointField mergedPoints;
-        Foam::PatchTools::gatherAndMerge(
-            mesh,
-            setPatch.localFaces(),
-            setPatch.meshPoints(),
-            setPatch.meshPointMap(),
+    surfaceWriter& writerRef = const_cast<surfaceWriter&>(writer);
+    writerRef.open(
+        setPatch.localPoints(),
+        setPatch.localFaces(),
+        (outputDir / name));
 
-            pointToGlobal,
-            uniqueMeshPointLabels,
-            globalPoints,
-            globalFaces,
-
-            mergedFaces,
-            mergedPoints);
-
-        // Write
-        if (Pstream::master())
-        {
-            writer.write(
-                outputDir,
-                name,
-                meshedSurfRef(
-                    mergedPoints,
-                    mergedFaces));
-        }
-    }
-    else
-    {
-        writer.write(
-            outputDir,
-            name,
-            meshedSurfRef(
-                setPatch.localPoints(),
-                setPatch.localFaces()));
-    }
+    writerRef.write();
+    writerRef.clear();
 }
 
 void Foam::mergeAndWrite(
@@ -115,7 +83,7 @@ void Foam::mergeAndWrite(
         / functionObject::outputPrefix
         / mesh.pointsInstance()
         / set.name());
-    outputDir.clean();
+    outputDir.clean(); // Remove unneeded ".."
 
     mergeAndWrite(mesh, writer, set.name(), setPatch, outputDir);
 }
@@ -129,16 +97,16 @@ void Foam::mergeAndWrite(
 
     // Determine faces on outside of cellSet
     bitSet isInSet(mesh.nCells());
-    forAllConstIter(cellSet, set, iter)
+    for (const label celli : set)
     {
-        isInSet.set(iter.key());
+        isInSet.set(celli);
     }
 
     boolList bndInSet(mesh.nBoundaryFaces());
     forAll(pbm, patchi)
     {
         const polyPatch& pp = pbm[patchi];
-        const labelList& fc = pp.faceCells();
+        const labelUList& fc = pp.faceCells();
         forAll(fc, i)
         {
             bndInSet[pp.start() + i - mesh.nInternalFaces()] = isInSet[fc[i]];
@@ -161,7 +129,7 @@ void Foam::mergeAndWrite(
     forAll(pbm, patchi)
     {
         const polyPatch& pp = pbm[patchi];
-        const labelList& fc = pp.faceCells();
+        const labelUList& fc = pp.faceCells();
         if (pp.coupled())
         {
             forAll(fc, i)
@@ -196,9 +164,8 @@ void Foam::mergeAndWrite(
         / functionObject::outputPrefix
         / mesh.pointsInstance()
         / set.name());
-    outputDir.clean();
+    outputDir.clean(); // Remove unneeded ".."
 
     mergeAndWrite(mesh, writer, set.name(), setPatch, outputDir);
 }
-
 // ************************************************************************* //

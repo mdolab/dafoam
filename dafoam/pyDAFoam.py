@@ -3,7 +3,7 @@
 """
 
 DAFoam  : Discrete Adjoint with OpenFOAM
-Version : v4
+Version : v5
 
 Description:
 The Python interface to DAFoam. It controls the adjoint
@@ -11,7 +11,7 @@ solvers and external modules for design optimization
 
 """
 
-__version__ = "4.0.3"
+__version__ = "5.0.0"
 
 import subprocess
 import os
@@ -340,12 +340,12 @@ class DAOPTION(object):
             "pMin": 20000.0,
             "p_rghMax": 500000.0,
             "p_rghMin": 20000.0,
-            "eMax": 500000.0,
-            "eMin": 100000.0,
+            "eMax": 55000.0,  # e = Cp*(T-Tref) - T*R in OF2506
+            "eMin": -220000.0,
             "TMax": 1000.0,
             "TMin": 100.0,
-            "hMax": 500000.0,
-            "hMin": 100000.0,
+            "hMax": 200000.0,  # h = Cp*(T-Tref) in OF2506
+            "hMin": -200000.0,
             "DMax": 1e16,
             "DMin": -1e16,
             "rhoMax": 5.0,

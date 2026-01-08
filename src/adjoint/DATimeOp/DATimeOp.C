@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
 \*---------------------------------------------------------------------------*/
 
@@ -33,30 +33,18 @@ autoPtr<DATimeOp> DATimeOp::New(
     const word timeOpType,
     const dictionary options)
 {
-    // standard setup for runtime selectable classes
+    auto* ctorPtr = dictionaryConstructorTable(timeOpType);
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(timeOpType);
-
-    // if the solver name is not found in any child class, print an error
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!ctorPtr)
     {
-        FatalErrorIn(
-            "DATimeOp::New"
-            "("
-            "    const word,"
-            "    const dictionary,"
-            ")")
-            << "Unknown DATimeOp type "
-            << timeOpType << nl << nl
-            << "Valid DATimeOp types:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
+        FatalErrorInLookup(
+            "DATimeOp",
+            timeOpType,
+            *dictionaryConstructorTablePtr_)
             << exit(FatalError);
     }
 
-    // child class found
-    return autoPtr<DATimeOp>(
-        cstrIter()(timeOpType, options));
+    return autoPtr<DATimeOp>(ctorPtr(timeOpType, options));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     Description:
         Solver class that calls primal and adjoint solvers,
@@ -17,6 +17,7 @@
 #include "fvCFD.H"
 #include "fvMesh.H"
 #include "runTimeSelectionTables.H"
+#include "addToRunTimeSelectionTable.H"
 #include "OFstream.H"
 #include "functionObjectList.H"
 #include "fvOptions.H"

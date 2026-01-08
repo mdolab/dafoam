@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
 \*---------------------------------------------------------------------------*/
 
@@ -125,28 +125,19 @@ autoPtr<DASolver> DASolver::New(
         Info << "Selecting " << modelType << " for DASolver" << endl;
     }
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(modelType);
+    auto* ctorPtr = dictionaryConstructorTable(modelType);
 
-    // if the solver name is not found in any child class, print an error
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!ctorPtr)
     {
-        FatalErrorIn(
-            "DASolver::New"
-            "("
-            "    char*,"
-            "    PyObject*"
-            ")")
-            << "Unknown DASolver type "
-            << modelType << nl << nl
-            << "Valid DASolver types:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
+        FatalErrorInLookup(
+            "DASolver",
+            modelType,
+            *dictionaryConstructorTablePtr_)
             << exit(FatalError);
     }
 
-    // child class found
     return autoPtr<DASolver>(
-        cstrIter()(argsAll, pyOptions));
+        ctorPtr(argsAll, pyOptions));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -325,10 +316,10 @@ double DASolver::calcFunction(const word functionName)
             funcVal = daFunction.calcFunction();
         }
     }
-#ifdef CODI_NO_AD
-    return funcVal;
-#else
+#if defined(CODI_ADF) || defined(CODI_ADR)
     return funcVal.getValue();
+#else
+    return funcVal;
 #endif
 }
 
@@ -359,15 +350,11 @@ double DASolver::getTimeOpFuncVal(const word functionName)
             }
         }
     }
-#ifdef CODI_ADF
+#if defined(CODI_ADF)
     return funcVal.getGradient();
-#endif
-
-#ifdef CODI_ADR
+#elif defined(CODI_ADR)
     return funcVal.getValue();
-#endif
-
-#ifdef CODI_NO_AD
+#else
     return funcVal;
 #endif
 }
@@ -1210,11 +1197,9 @@ void DASolver::getOFField(
 
 void DASolver::updateOFFields(const scalar* states)
 {
-    label printInfo = 0;
     if (daOptionPtr_->getOption<label>("debug"))
     {
         Info << "Updating the OpenFOAM field..." << endl;
-        printInfo = 1;
     }
     daFieldPtr_->state2OFField(states);
 
@@ -1730,7 +1715,11 @@ void DASolver::calcJacTVecProduct(
         // make sure the product is consistent among all processors
         if (!daInput().distributed())
         {
-            reduce(product[idxI], sumOp<double>());
+            // NOTE: We can't directly reduce double as it will cause seg fault (invalid pointer)
+            // for OpenFOAM-AD's MPI interfaces. So we need to use scalar here.
+            scalar tmpVal = product[idxI];
+            reduce(tmpVal, sumOp<scalar>());
+            product[idxI] = tmpVal.getValue();
         }
     }
 

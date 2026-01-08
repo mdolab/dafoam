@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
 Description
     Deform the mesh for field inversion
@@ -78,9 +78,9 @@ int main(int argc, char* argv[])
     }
 
     scalar time = -1.0;
-    if (args.optionFound("time"))
+    if (args.found("time"))
     {
-        time = readScalar(args.optionLookup("time")());
+        time = readScalar(args.lookup("time")());
         if (time == 9999)
         {
             Info << "Deform latestTime" << endl;

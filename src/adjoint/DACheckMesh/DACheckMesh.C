@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
 \*---------------------------------------------------------------------------*/
 
@@ -13,12 +13,9 @@ namespace Foam
 {
 
 // Constructors
-DACheckMesh::DACheckMesh(
-    const DAOption& daOption,
-    const Time& runTime1,
-    const fvMesh& mesh1)
-    : daOption_(daOption),
-      runTime(runTime1),
+DACheckMesh::DACheckMesh(const fvMesh& mesh1)
+    : daOption_(mesh1.thisDb().lookupObject<DAOption>("DAOption")),
+      runTime(mesh1.time()),
       mesh(mesh1),
       surfWriter(nullptr),
       setWriter(nullptr)
@@ -41,8 +38,8 @@ DACheckMesh::DACheckMesh(
     Info << "maxIncorrectlyOrientedFaces: " << maxIncorrectlyOrientedFaces_ << endl;
 
     word surfaceFormat = "vtk";
-    surfWriter.reset(surfaceWriter::New(surfaceFormat));
-    setWriter.reset(writer<scalar>::New(vtkSetWriter<scalar>::typeName));
+    surfWriter = surfaceWriter::New(surfaceFormat);
+    setWriter = coordSetWriter::New("vtk");
 }
 
 DACheckMesh::~DACheckMesh()

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     Description:
         Extract time-series for field RMSE for unsteady simulations
@@ -56,15 +56,15 @@ int main(int argc, char* argv[])
 #include "createMesh.H"
 
     word outputName = "fieldRefStdTimeSeries";
-    if (args.optionFound("outputName"))
+    if (args.found("outputName"))
     {
-        outputName = word(args.optionLookup("outputName")());
+        outputName = word(args.lookup("outputName")());
     }
 
     word varName;
-    if (args.optionFound("varName"))
+    if (args.found("varName"))
     {
-        varName = word(args.optionLookup("varName")());
+        varName = word(args.lookup("varName")());
     }
     else
     {
@@ -75,9 +75,9 @@ int main(int argc, char* argv[])
     word varRefName = varName + "Data";
 
     word varType;
-    if (args.optionFound("varType"))
+    if (args.found("varType"))
     {
-        varType = word(args.optionLookup("varType")());
+        varType = word(args.lookup("varType")());
     }
     else
     {
@@ -86,9 +86,9 @@ int main(int argc, char* argv[])
     }
 
     word fieldType;
-    if (args.optionFound("fieldType"))
+    if (args.found("fieldType"))
     {
-        fieldType = word(args.optionLookup("fieldType")());
+        fieldType = word(args.lookup("fieldType")());
     }
     else
     {
@@ -99,9 +99,9 @@ int main(int argc, char* argv[])
     word patchName;
     if (fieldType == "surface")
     {
-        if (args.optionFound("patchName"))
+        if (args.found("patchName"))
         {
-            patchName = word(args.optionLookup("patchName")());
+            patchName = word(args.lookup("patchName")());
         }
         else
         {
@@ -115,9 +115,9 @@ int main(int argc, char* argv[])
     scalar endTime = runTime.endTime().value();
     scalar deltaT = runTime.deltaT().value();
 
-    if (args.optionFound("deltaT"))
+    if (args.found("deltaT"))
     {
-        deltaT = readScalar(args.optionLookup("deltaT")());
+        deltaT = readScalar(args.lookup("deltaT")());
     }
     Info << "Extracting " << fieldType << " time series for " << varName << endl;
 

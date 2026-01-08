@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     This file is modified from OpenFOAM's source code
     applications/utilities/mesh/manipulation/checkMesh/checkMeshGeometry.C
@@ -27,7 +27,25 @@
 
 \*---------------------------------------------------------------------------*/
 
-#include "checkGeometry.H"
+#include "PatchTools.H"
+#include "DACheckGeometry.H"
+#include "polyMesh.H"
+#include "cellSet.H"
+#include "faceSet.H"
+#include "pointSet.H"
+#include "edgeHashes.H"
+#include "wedgePolyPatch.H"
+#include "unitConversion.H"
+#include "polyMeshTetDecomposition.H"
+#include "DACheckTools.H"
+#include "functionObject.H"
+
+#include "vtkCoordSetWriter.H"
+#include "vtkSurfaceWriter.H"
+
+#include "cyclicACMIPolyPatch.H"
+#include "mappedPatchBase.H"
+#include "Time.H"
 
 namespace Foam
 {
@@ -38,16 +56,18 @@ public:
     //- Transform patch-based field
     void operator()(
         const coupledPolyPatch& cpp,
-        List<pointField>& pts) const
+        UList<pointField>& pts) const
     {
-        // Each element of pts is all the points in the face. Convert into
-        // lists of size cpp to transform.
+        // Each element of pts is all the points in the face.
+        // Convert into lists of size cpp to transform.
 
         List<pointField> newPts(pts.size());
         forAll(pts, facei)
         {
-            newPts[facei].setSize(pts[facei].size());
+            newPts[facei].resize(pts[facei].size());
         }
+
+        pointField ptsAtIndex(pts.size());
 
         label index = 0;
         while (true)
@@ -55,7 +75,7 @@ public:
             label n = 0;
 
             // Extract for every face the i'th position
-            pointField ptsAtIndex(pts.size(), Zero);
+            ptsAtIndex = Zero;
             forAll(cpp, facei)
             {
                 const pointField& facePts = pts[facei];
@@ -88,7 +108,8 @@ public:
             index++;
         }
 
-        pts.transfer(newPts);
+        // Transfer newPts -> pts
+        std::move(newPts.begin(), newPts.end(), pts.begin());
     }
 };
 }
@@ -111,8 +132,7 @@ bool Foam::checkCoupledPoints(
     {
         if (patches[patchi].coupled())
         {
-            const coupledPolyPatch& cpp = refCast<const coupledPolyPatch>(
-                patches[patchi]);
+            const auto& cpp = refCast<const coupledPolyPatch>(patches[patchi]);
 
             forAll(cpp, i)
             {
@@ -142,8 +162,7 @@ bool Foam::checkCoupledPoints(
     {
         if (patches[patchi].coupled())
         {
-            const coupledPolyPatch& cpp =
-                refCast<const coupledPolyPatch>(patches[patchi]);
+            const auto& cpp = refCast<const coupledPolyPatch>(patches[patchi]);
 
             if (cpp.owner())
             {
@@ -218,22 +237,20 @@ bool Foam::checkCoupledPoints(
 
         return true;
     }
-    else
-    {
-        if (report)
-        {
-            Info << "    Coupled point location match (average "
-                 << avgMismatch << ") OK." << endl;
-        }
 
-        return false;
+    if (report)
+    {
+        Info << "    Coupled point location match (average "
+             << avgMismatch << ") OK." << endl;
     }
+
+    return false;
 }
 
 Foam::label Foam::checkGeometry(
     const polyMesh& mesh,
     const autoPtr<surfaceWriter>& surfWriter,
-    const autoPtr<writer<scalar>>& setWriter,
+    const autoPtr<coordSetWriter>& setWriter,
     const label maxIncorrectlyOrientedFaces)
 {
     label noFailedChecks = 0;
@@ -247,17 +264,14 @@ Foam::label Foam::checkGeometry(
          << globalBb.min() << " " << globalBb.max() << endl;
 
     // Geometric directions
-    const Vector<label> validDirs = (mesh.geometricD() + Vector<label>::one);
-    labelList tmpList(3);
-    forAll(tmpList, idxI) tmpList[idxI] = validDirs[idxI] / 2;
+    const Vector<label> validDirs = (mesh.geometricD() + Vector<label>::one) / 2;
     Info << "    Mesh has " << mesh.nGeometricD()
-         << " geometric (non-empty/wedge) directions " << tmpList << endl;
+         << " geometric (non-empty/wedge) directions " << validDirs << endl;
 
     // Solution directions
-    const Vector<label> solDirs = (mesh.solutionD() + Vector<label>::one);
-    forAll(tmpList, idxI) tmpList[idxI] = solDirs[idxI] / 2;
+    const Vector<label> solDirs = (mesh.solutionD() + Vector<label>::one) / 2;
     Info << "    Mesh has " << mesh.nSolutionD()
-         << " solution (non-empty) directions " << tmpList << endl;
+         << " solution (non-empty) directions " << solDirs << endl;
 
     if (mesh.nGeometricD() < 3)
     {
@@ -291,9 +305,9 @@ Foam::label Foam::checkGeometry(
                      << " non closed cells to set " << cells.name() << endl;
                 cells.instance() = mesh.pointsInstance();
                 cells.write();
-                if (surfWriter.valid())
+                if (surfWriter && surfWriter->enabled())
                 {
-                    mergeAndWrite(surfWriter(), cells);
+                    mergeAndWrite(*surfWriter, cells);
                 }
             }
         }
@@ -307,9 +321,9 @@ Foam::label Foam::checkGeometry(
                  << aspectCells.name() << endl;
             aspectCells.instance() = mesh.pointsInstance();
             aspectCells.write();
-            if (surfWriter.valid())
+            if (surfWriter && surfWriter->enabled())
             {
-                mergeAndWrite(surfWriter(), aspectCells);
+                mergeAndWrite(*surfWriter, aspectCells);
             }
         }
     }
@@ -328,9 +342,9 @@ Foam::label Foam::checkGeometry(
                      << " zero area faces to set " << faces.name() << endl;
                 faces.instance() = mesh.pointsInstance();
                 faces.write();
-                if (surfWriter.valid())
+                if (surfWriter && surfWriter->enabled())
                 {
-                    mergeAndWrite(surfWriter(), faces);
+                    mergeAndWrite(*surfWriter, faces);
                 }
             }
         }
@@ -350,9 +364,9 @@ Foam::label Foam::checkGeometry(
                      << " zero volume cells to set " << cells.name() << endl;
                 cells.instance() = mesh.pointsInstance();
                 cells.write();
-                if (surfWriter.valid())
+                if (surfWriter && surfWriter->enabled())
                 {
-                    mergeAndWrite(surfWriter(), cells);
+                    mergeAndWrite(*surfWriter, cells);
                 }
             }
         }
@@ -373,9 +387,9 @@ Foam::label Foam::checkGeometry(
                  << " non-orthogonal faces to set " << faces.name() << endl;
             faces.instance() = mesh.pointsInstance();
             faces.write();
-            if (surfWriter.valid())
+            if (surfWriter && surfWriter->enabled())
             {
-                mergeAndWrite(surfWriter(), faces);
+                mergeAndWrite(*surfWriter, faces);
             }
         }
     }
@@ -407,9 +421,9 @@ Foam::label Foam::checkGeometry(
                      << faces.name() << endl;
                 faces.instance() = mesh.pointsInstance();
                 faces.write();
-                if (surfWriter.valid())
+                if (surfWriter && surfWriter->enabled())
                 {
-                    mergeAndWrite(surfWriter(), faces);
+                    mergeAndWrite(*surfWriter, faces);
                 }
             }
         }
@@ -429,9 +443,9 @@ Foam::label Foam::checkGeometry(
                      << " skew faces to set " << faces.name() << endl;
                 faces.instance() = mesh.pointsInstance();
                 faces.write();
-                if (surfWriter.valid())
+                if (surfWriter && surfWriter->enabled())
                 {
-                    mergeAndWrite(surfWriter(), faces);
+                    mergeAndWrite(*surfWriter, faces);
                 }
             }
         }
@@ -453,9 +467,9 @@ Foam::label Foam::checkGeometry(
                      << faces.name() << endl;
                 faces.instance() = mesh.pointsInstance();
                 faces.write();
-                if (surfWriter.valid())
+                if (surfWriter && surfWriter->enabled())
                 {
-                    mergeAndWrite(surfWriter(), faces);
+                    mergeAndWrite(*surfWriter, faces);
                 }
             }
         }

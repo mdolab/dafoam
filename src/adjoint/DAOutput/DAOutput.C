@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
 \*---------------------------------------------------------------------------*/
 
@@ -62,40 +62,26 @@ autoPtr<DAOutput> DAOutput::New(
         Info << "Selecting output: " << outputType << " for DAOutput." << endl;
     }
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(outputType);
+    auto* ctorPtr = dictionaryConstructorTable(outputType);
 
-    // if the solver name is not found in any child class, print an error
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!ctorPtr)
     {
-        FatalErrorIn(
-            "DAOutput::New"
-            "("
-            "    const word,"
-            "    fvMesh&,"
-            "    const DAOption&,"
-            "    DAModel&,"
-            "    const DAIndex&,"
-            "    DAResidual&,"
-            "    UPtrList<DAFunction>&"
-            ")")
-            << "Unknown DAOutput type "
-            << outputType << nl << nl
-            << "Valid DAOutput types:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
+        FatalErrorInLookup(
+            "DAOutput",
+            outputType,
+            *dictionaryConstructorTablePtr_)
             << exit(FatalError);
     }
 
-    // child class found
     return autoPtr<DAOutput>(
-        cstrIter()(outputName,
-                   outputType,
-                   mesh,
-                   daOption,
-                   daModel,
-                   daIndex,
-                   daResidual,
-                   daFunctionList));
+        ctorPtr(outputName,
+                outputType,
+                mesh,
+                daOption,
+                daModel,
+                daIndex,
+                daResidual,
+                daFunctionList));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

@@ -1,4 +1,4 @@
 UnitTests.C
 pyUnitTests.cpp
 
-LIB = pyUnitTests$(WM_CODI_AD_LIB_POSTFIX)
+LIB = pyUnitTests$(WM_AD_MODE)

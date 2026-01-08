@@ -1,6 +1,6 @@
 DACheckMesh/DACheckMesh.C
-DACheckMesh/checkGeometry.C
-DACheckMesh/checkTools.C
+DACheckMesh/DACheckGeometry.C
+DACheckMesh/DACheckTools.C
 
 DAOption/DAOption.C
 
@@ -137,4 +137,4 @@ DAMisc/alphatWallFunctionIncomp/alphatWallFunctionIncompFvPatchScalarField.C
 DAMisc/fixedWallHeatFlux/fixedWallHeatFluxFvPatchScalarField.C
 DAMisc/MULESDF/CMULESDF.C
 
-LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDASolver$(WM_CODI_AD_LIB_POSTFIX)
+LIB = $(DAFOAM_ROOT_PATH)/OpenFOAM/sharedLibs/libDASolver$(WM_AD_MODE)

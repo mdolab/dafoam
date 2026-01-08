@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
 \*---------------------------------------------------------------------------*/
 
@@ -56,36 +56,24 @@ autoPtr<DAInput> DAInput::New(
         Info << "Selecting input: " << inputType << " for DAInput." << endl;
     }
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(inputType);
+    auto* ctorPtr = dictionaryConstructorTable(inputType);
 
-    // if the solver name is not found in any child class, print an error
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!ctorPtr)
     {
-        FatalErrorIn(
-            "DAInput::New"
-            "("
-            "    const word,"
-            "    fvMesh&,"
-            "    const DAOption&,"
-            "    const DAModel&,"
-            "    const DAIndex&"
-            ")")
-            << "Unknown DAInput type "
-            << inputType << nl << nl
-            << "Valid DAInput types:" << endl
-            << dictionaryConstructorTablePtr_->sortedToc()
+        FatalErrorInLookup(
+            "DAInput",
+            inputType,
+            *dictionaryConstructorTablePtr_)
             << exit(FatalError);
     }
 
-    // child class found
     return autoPtr<DAInput>(
-        cstrIter()(inputName,
-                   inputType,
-                   mesh,
-                   daOption,
-                   daModel,
-                   daIndex));
+        ctorPtr(inputName,
+                inputType,
+                mesh,
+                daOption,
+                daModel,
+                daIndex));
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

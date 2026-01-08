@@ -1,5 +1,4 @@
 EXE_INC = \
-    -std=c++11 \
     -Wno-old-style-cast \
     -Wno-conversion-null \
     -Wno-deprecated-copy \
@@ -22,16 +21,17 @@ EXE_INC = \
     
 
 LIB_LIBS = \
-    -lcompressibleTransportModels$(WM_CODI_AD_LIB_POSTFIX) \
-    -lfluidThermophysicalModels$(WM_CODI_AD_LIB_POSTFIX) \
-    -lspecie$(WM_CODI_AD_LIB_POSTFIX) \
-    -lradiationModels$(WM_CODI_AD_LIB_POSTFIX) \
-    -lturbulenceModels$(WM_CODI_AD_LIB_POSTFIX) \
-    -lcompressibleTurbulenceModels$(WM_CODI_AD_LIB_POSTFIX) \
-    -lfiniteVolume$(WM_CODI_AD_LIB_POSTFIX) \
-    -lsampling$(WM_CODI_AD_LIB_POSTFIX) \
-    -lmeshTools$(WM_CODI_AD_LIB_POSTFIX) \
-    -lfvOptions$(WM_CODI_AD_LIB_POSTFIX) \
+    -lcompressibleTransportModels$(WM_AD_MODE) \
+    -lfluidThermophysicalModels$(WM_AD_MODE) \
+    -lspecie$(WM_AD_MODE) \
+    -lradiationModels$(WM_AD_MODE) \
+    -lturbulenceModels$(WM_AD_MODE) \
+    -lcompressibleTurbulenceModels$(WM_AD_MODE) \
+    -lfiniteVolume$(WM_AD_MODE) \
+    -lsampling$(WM_AD_MODE) \
+    -lmeshTools$(WM_AD_MODE) \
+    -lthermoTools$(WM_AD_MODE) \
+    -lfvOptions$(WM_AD_MODE) \
     -L$(PETSC_LIB) -lpetsc \
     $(shell mpicc -show | grep -o '\-L[^ ]*') \
     $(shell python3-config --ldflags) \

@@ -10,4 +10,4 @@ fi
 
 cythonize -3 pyDASolvers.pyx
 wmake -j
-cp -r pyDASolvers$WM_CODI_AD_LIB_POSTFIX.so ../../dafoam/libs/$WM_CODI_AD_LIB_POSTFIX/pyDASolvers.$(python3 -c 'import sysconfig; ext_suffix = sysconfig.get_config_var("EXT_SUFFIX"); print(ext_suffix.split(".")[1])').so
+cp -r pyDASolvers$WM_AD_MODE.so ../../dafoam/libs/$WM_AD_MODE/pyDASolvers.$(python3 -c 'import sysconfig; ext_suffix = sysconfig.get_config_var("EXT_SUFFIX"); print(ext_suffix.split(".")[1])').so

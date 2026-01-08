@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
     Description:
         Calculating force per surface area. This will be used to plot the 
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 #include "setRootCase.H"
 #include "createTime.H"
 
-    if (!args.optionFound("time"))
+    if (!args.found("time"))
     {
         Info << "Time not set, running all times." << endl;
     }
@@ -60,9 +60,9 @@ int main(int argc, char* argv[])
     const instantList timeDirs(timeSelector::select(timePaths->times(), args));
 
     List<wordRe> patchNames;
-    if (args.optionFound("patchNames"))
+    if (args.found("patchNames"))
     {
-        patchNames = wordReList(args.optionLookup("patchNames")());
+        patchNames = wordReList(args.lookup("patchNames")());
     }
     else
     {
@@ -71,9 +71,9 @@ int main(int argc, char* argv[])
     }
 
     scalar rho = 1.0;
-    if (args.optionFound("rho"))
+    if (args.found("rho"))
     {
-        rho = readScalar(args.optionLookup("rho")());
+        rho = readScalar(args.lookup("rho")());
     }
     else
     {

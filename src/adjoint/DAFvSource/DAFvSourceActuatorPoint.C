@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*\
 
     DAFoam  : Discrete Adjoint with OpenFOAM
-    Version : v4
+    Version : v5
 
 \*---------------------------------------------------------------------------*/
 
@@ -147,7 +147,7 @@ void DAFvSourceActuatorPoint::calcFvSource(volVectorField& fvSource)
             }
             reduce(thrustTotal, sumOp<scalar>());
 
-#ifdef CODI_NO_AD
+#if !defined(CODI_ADF) && !defined(CODI_ADR)
             if (mesh_.time().timeIndex() % printIntervalUnsteady_ == 0 || mesh_.time().timeIndex() == 0)
             {
                 Info << "Actuator point source: " << pointName << endl;
