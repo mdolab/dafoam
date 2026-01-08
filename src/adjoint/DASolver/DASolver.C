@@ -1715,7 +1715,11 @@ void DASolver::calcJacTVecProduct(
         // make sure the product is consistent among all processors
         if (!daInput().distributed())
         {
-            reduce(product[idxI], sumOp<double>());
+            // NOTE: We can't directly reduce double as it will cause seg fault (invalid pointer)
+            // for OpenFOAM-AD's MPI interfaces. So we need to use scalar here.
+            scalar tmpVal = product[idxI];
+            reduce(tmpVal, sumOp<scalar>());
+            product[idxI] = tmpVal.getValue();
         }
     }
 
