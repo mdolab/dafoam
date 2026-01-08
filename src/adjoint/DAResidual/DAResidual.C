@@ -244,13 +244,20 @@ void DAResidual::updateThermoVars()
     // accuracy of he_ may be impact by the inaccurate rho. So here we want to
     // rewrite he_ as he_ = Cp * T_ - T_ * R instead, such that we dont include rho
     // **************** NOTE ****************
+    // OpenFOAM 2506 uses relative temperature in the e and h calculations
+    // **************** NOTE ****************
+    dimensionedScalar TRef(
+        "TRef1",
+        dimensionSet(0, 0, 0, 1, 0, 0, 0),
+        298.15);
+
     if (he.name() == "e")
     {
-        he = Cp * T - T * R;
+        he = Cp * (T - TRef) - T * R;
     }
     else
     {
-        he = Cp * T;
+        he = Cp * (T - TRef);
     }
     he.correctBoundaryConditions();
 
