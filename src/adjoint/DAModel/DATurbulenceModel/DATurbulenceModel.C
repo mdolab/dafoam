@@ -267,13 +267,11 @@ tmp<volScalarField> DATurbulenceModel::nu() const
 
     if (turbModelType_ == "incompressible")
     {
-        volScalarField nu = mesh_.thisDb().lookupObject<transportModel>("transportProperties").nu();
-        return nu;
+        return mesh_.thisDb().lookupObject<transportModel>("transportProperties").nu();
     }
     else if (turbModelType_ == "compressible")
     {
-        volScalarField mu = mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").mu();
-        return mu / this->rho();
+        return mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").nu();
     }
     else
     {
@@ -349,8 +347,7 @@ tmp<Foam::volScalarField> DATurbulenceModel::mu() const
 
     if (turbModelType_ == "compressible")
     {
-        volScalarField mu = mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").mu();
-        return mu;
+        return mesh_.thisDb().lookupObject<fluidThermo>("thermophysicalProperties").mu();
     }
     else
     {
