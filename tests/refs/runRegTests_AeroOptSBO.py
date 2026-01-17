@@ -170,43 +170,43 @@ class Top(Multipoint):
         self.connect("cruise.aero_post.CL", "LoD.CL")
         self.add_objective("LoD.val", scaler=1.0)
 
-
 # openmdao setup
 prob = om.Problem()
 prob.model = Top()
 prob.setup(mode="rev")
 
 # surrogate optimization setup
-xlimits = np.array([[0, 0.1]] * 22)  # DV bounds
-xlimits[-1] = [3.0, 3.3]  # adjust DV bounds
-xlimits[-2] = [10, 10 + 1e-9]
-xlimits[0:4] = [0.0, 0.0 + 1e-9]
-xlimits[4:8] = [0.03, 0.04]
-xlimits[8:10] = [0.001, 0.002]
-xlimits[10:12] = [0.004, 0.005]
-xlimits[12:16] = [-0.016, 0.0]
-xlimits[16:20] = [0.0, 0.0 + 1e-9]
+xlimits = np.array([[0 , 0.1]] * 22)    # DV bounds
+xlimits[-1]    = [3.0 , 3.3]            # adjust DV bounds
+xlimits[-2]    = [10 , 10 + 1e-9]               
+xlimits[0:4]   = [0.0 , 0.0 + 1e-9]         
+xlimits[4:8]   = [0.03 , 0.04]
+xlimits[8:10]  = [0.001 , 0.002]
+xlimits[10:12] = [0.004 , 0.005]
+xlimits[12:16] = [-0.016 , 0.0]
+xlimits[16:20] = [0.0 , 0.0 + 1e-9]
 
 surrogateOptions = {
-    "optType": "constrained",  # type of optimization problem (constrained or unconstrained)
-    "criterion": "EI",  # criterion for next evaluation point determination -> EGO algorithm
-    "iters": 1,  # num iterations to optimize function
-    "numDOE": 2,  # number of sampling points
-    "seed": 41,  # seed value to reproduce results
-    "dvNames": ["shape", "patchV"],  # names of design variables
-    "dvSizes": [20, 2],  # number of points for each design variable
-    "dvBounds": xlimits,  # design variable bounds
-    "objFunc": "LoD.val",  # objective function
-    "maxObj": True,  # maximize lift over drag
-    "cons": ["cruise.aero_post.CL"],  # quantity to constrain
-    "conWeights": [1e8],  # constraint weight
-    "consEqs": ["x - 0.3"],  # constraint equation(s)
+    "optType"    : "constrained",               # type of optimization problem (constrained or unconstrained)     
+    "criterion"  : "EI",                        # criterion for next evaluation point determination -> EGO algorithm
+    "iters"      : 1,                           # num iterations to optimize function
+    "numDOE"     : 2,                           # number of sampling points
+    "seed"       : 41,                          # seed value to reproduce results
+    "dvNames"    : ["shape" , "patchV"],        # names of design variables
+    "dvSizes"    : [20 , 2],                    # number of points for each design variable
+    "dvBounds"   : xlimits,                     # design variable bounds            
+    "objFunc"    : "LoD.val",                   # objective function
+    "maxObj"     : True,                        # maximize lift over drag
+    "cons"       : ['cruise.aero_post.CL'],     # quantity to constrain
+    "conWeights" : [1e8],                       # constraint weight
+    "consEqs"    : ["x - 0.3"],                 # constraint equation(s)
 }
 
-surrogateOptimization(surrogateOptions, prob)
+surrogateOptimization(surrogateOptions , prob)
 
 if gcomm.rank == 0:
     funcDict = {}
     funcDict["CD"] = prob.get_val("cruise.aero_post.CD")
     funcDict["CL"] = prob.get_val("cruise.aero_post.CL")
     reg_write_dict(funcDict, 1e-5, 1e-10)
+
