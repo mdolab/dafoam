@@ -33,8 +33,7 @@ except ImportError:
 import openmdao.api as om
 from smt.applications import EGO
 from smt.design_space import DesignSpace
-from smt.surrogate_models import KRG
-from smt.sampling_methods import LHS
+from smt.surrogate_models import KRG, KPLS, KPLSK, GEKPLS, MGP, GPX
 
 
 class DAOPTION(object):
@@ -2403,7 +2402,6 @@ class surrogateOptimization(object):
     full list of options:
 
                     surrogateOptions = {
-                        "optType"    : what type of optimization to run ------------------> "constrained" , "unconstrained"
                         "criterion"  : criterion for next evaluation point determination -> "EI", "SBO", "LCB"
                         "iters"      : num iterations to optimize objective function -----> int
                         "numDOE"     : num DOE points to use -----------------------------> int
@@ -2425,6 +2423,8 @@ class surrogateOptimization(object):
                         "verbose"    : print extra information during run time -----------> bool
                         "tunneling"  : penalize points which have already been evaluated -> bool
                         "reInterp"   : reinterpolate variance for training points --------> bool
+                        "evaluator"  : object to modify how the obj func is evaluated ----> object
+                        "surrogate"  : which surrogate model to use ----------------------> "KRG" , "KPLS" , "KPLSK" , "GEKPLS" , "MGP" , "GPX"
                     }
 
     NOTES ON IMPLEMENTATION:
@@ -2433,15 +2433,14 @@ class surrogateOptimization(object):
     2.) "cons", "conWeight", and "consEqs" must have the constraint function information listed in the same order
     3.) all constraint equations in "consEqs" must be equations of variable x
     4.) provide either "xdoe" or "numDOE". "numDOE" uses a RNG to get the initial DOE points, xdoe is for specifying the initial xdoe points (xdoe may be coupled with ydoe)
+    5.) The required fields are: "dvNames", "dvBounds", "dvSizes", "objFunc", and DOE points ("numDOE" or "xdoe" however "ydoe" is optional but can only be paired with "ydoe")
+    6.) Supported constraint types are: equality (x = a), and inequality (a <= x, x <= a, a <= x <= b)
     """
 
     def __init__(self, options, om_prob, comm=None):
 
         # set defaults
         defaultOptions = {
-            ## This optimization method can support both constrained and unconstrained optimizations.
-            ## The default option set here is unconstrained optimization problem.
-            "optType": "unconstrained",
             ## The criterion used to terminate the optimization problem. The default option is to use
             ## the 'expected improvement' (EI) scheme. When the the EI is less than a specified threshold
             ## the optimization terminates. Other options are 'surrogate based optimization' (SBO),
@@ -2469,22 +2468,22 @@ class surrogateOptimization(object):
             ## Whether to maximize the objective function (default is to minimize)
             "maxObj": False,
             ## Assign constrained values if doing a constrained optimization.
-            "cons": [],
+            "cons": None,
             ## A quadratic penalty method is implemented for constrained optimization
             ## with a scalar value ('conWeights'). The quadratic penalty method is then
             ## conWeight * constraint(x)**2. All constraints must be a function of
             ## variable x.
-            "conWeights": [],
+            "conWeights": None,
             ## The constraint equations to use in the problem. As an example, to constrain
             ## lift, Cl = 0.5, the constraint would be formatted as:
             ##
             ##                 Cl = 0.5 -> Cl - 0.5 = 0 -> x - 0.5 = 0
             ##                 then -> "consEqs": ["x - 0.5"]
-            "consEqs": [],
-            ## Maximum number of optimization iterations.
-            "maxIter": 10,
+            "consEqs": None,
+            ## Maximum number of internal optimizations.
+            "maxIter": 20,
             ## Number of optimization start points.
-            "nStart": 5,
+            "nStart": 20,
             ## Number of parallel samples for q-EI criterion.
             "nParallel": 1,
             ## q-EI maximization strategy.
@@ -2499,20 +2498,29 @@ class surrogateOptimization(object):
             "tunneling": False,
             ## Whether to reinterpolate the variance for the training points.
             "reInterp": False,
+            ## Object used to run objective function for multiple points.
+            "evaluator": None,
+            ## Kriging-based surrogate model to use.
+            "surrogate": "KRG",
         }
         self.options = {**defaultOptions, **options}
         self.om_prob = om_prob
         self.comm = MPI.COMM_WORLD
 
         # set options
-        self.optType = self.options["optType"]
         self.dvNames = self.options["dvNames"]
-        self.consEqs = self.options["consEqs"]
-        self.cons = self.options["cons"]
-        self.conWeights = self.options["conWeights"]
         self.dvSizes = self.options["dvSizes"]
         self.numDVs = len(self.dvNames)
-        self.numCons = len(self.cons)
+
+        # gather inputs if constrained optiimization
+        if self.options["cons"] != None:
+            self.constrainedOpt = True
+            self.consEqs = self.options["consEqs"]
+            self.cons = self.options["cons"]
+            self.numCons = len(self.cons)
+            self.conWeights = self.options["conWeights"]
+        else:
+            self.constrainedOpt = False
 
         # run optimization
         self.run_optimization()
@@ -2570,6 +2578,7 @@ class surrogateOptimization(object):
                 self.DOEidx += 1
 
                 # print header
+                print("----------------------------------")
                 print("Running analysis on DOE point:", self.DOEidx)
                 print("----------------------------------")
 
@@ -2583,19 +2592,11 @@ class surrogateOptimization(object):
                 if not self.options["maxObj"]:
                     self.objFunc[i] = self.om_prob.get_val(self.options["objFunc"])
 
-                if self.optType == "constrained":
+                if self.constrainedOpt:
                     self.conViolation = np.zeros(self.numCons)
                     for k in range(self.numCons):
-                        self.conViolation[k] = self.evalConstraint(self.consEqs[k], self.cons[k])
-                        if self.options["maxObj"]:
-                            self.objFunc[i] += self.conWeights[k] * self.conViolation[k] ** 2.0
-                        if not self.options["maxObj"]:
-                            self.objFunc[i] -= self.conWeights[k] * self.conViolation[k] ** 2.0
-
-                elif self.optType == "unconstrained":
-                    pass
-                else:
-                    raise ValueError('"optType" is incorrect, supported optimizations are: constrained, unconstrained')
+                        self.conViolation[k] = self.evalConstraint(self.consEqs[k], self.om_prob.get_val(self.cons[k]))
+                        self.objFunc[i] += self.conWeights[k] * self.conViolation[k] ** 2.0
 
                 self.returnDesignPointInfo(x_i, self.DOEidx)
 
@@ -2605,77 +2606,153 @@ class surrogateOptimization(object):
         """
         Run the EGO optimization and return optimum point to user
         """
+        # initialize design space
         design_space = DesignSpace(self.options["dvBounds"])
 
-        if self.options["xdoe"] == None:  # use n_doe
-            ego = EGO(
-                n_iter=self.options["iters"],
-                criterion=self.options["criterion"],
-                surrogate=KRG(design_space=design_space, print_global=False),
-                seed=self.options["seed"],
-                n_max_optim=self.options["maxIter"],
-                n_start=self.options["nStart"],
-                n_parallel=self.options["nParallel"],
-                qEI=self.options["qEI"],
-                verbose=self.options["verbose"],
-                enable_tunneling=self.options["tunneling"],
-                is_ri=self.options["reInterp"],
-                n_doe=self.options["numDOE"],
-            )
-        elif self.options["numDOE"] == None and self.options["ydoe"] == None:  # use xdoe only
-            ego = EGO(
-                n_iter=self.options["iters"],
-                criterion=self.options["criterion"],
-                surrogate=KRG(design_space=design_space, print_global=False),
-                seed=self.options["seed"],
-                n_max_optim=self.options["maxIter"],
-                n_start=self.options["nStart"],
-                n_parallel=self.options["nParallel"],
-                qEI=self.options["qEI"],
-                verbose=self.options["verbose"],
-                enable_tunneling=self.options["tunneling"],
-                is_ri=self.options["reInterp"],
-                xdoe=self.options["xdoe"],
-            )
-        elif self.options["xdoe"] != None and self.options["ydoe"] != None:  # use xdoe and ydoe
-            ego = EGO(
-                n_iter=self.options["iters"],
-                criterion=self.options["criterion"],
-                surrogate=KRG(design_space=design_space, print_global=False),
-                seed=self.options["seed"],
-                n_max_optim=self.options["maxIter"],
-                n_start=self.options["nStart"],
-                n_parallel=self.options["nParallel"],
-                qEI=self.options["qEI"],
-                verbose=self.options["verbose"],
-                enable_tunneling=self.options["tunneling"],
-                is_ri=self.options["reInterp"],
-                xdoe=self.options["xdoe"],
-                ydoe=self.options["ydoe"],
-            )
+        # get which surrogate model to use
+        surrogateModels = {
+            "KRG": KRG,
+            "KPLS": KPLS,
+            "KPLSK": KPLSK,
+            "GEKPLS": GEKPLS,
+            "MGP": MGP,
+            "GPX": GPX,
+        }
+
+        smChoice = surrogateModels.get(self.options["surrogate"])
+        surrogateModel = smChoice(design_space=design_space, print_global=False)
+
+        # some options cannot coexist, such as "numDOE" and "xdoe". To simplify the implementation,
+        # we gather defaults and append with optional inputs to build the EGO parameters
+        ego_kwargs = {
+            "n_iter": self.options["iters"],
+            "criterion": self.options["criterion"],
+            "surrogate": surrogateModel,
+            "seed": self.options["seed"],
+            "n_max_optim": self.options["maxIter"],
+            "n_start": self.options["nStart"],
+            "n_parallel": self.options["nParallel"],
+            "qEI": self.options["qEI"],
+            "verbose": self.options["verbose"],
+            "enable_tunneling": self.options["tunneling"],
+            "is_ri": self.options["reInterp"],
+        }
+
+        # now add optional inputs to ego_kwargs
+        # add evaluator
+        if self.options["evaluator"] != None:
+            ego_kwargs["evaluator"] = self.options["evaluator"]
+
+        # if xdoe is provided:
+        if self.options["xdoe"] != None:
+            ego_kwargs["xdoe"] = self.options["xdoe"]
+            if self.options["ydoe"] != None:
+                ego_kwargs["ydoe"] = self.options["ydoe"]
+
+        # if numDOE is provided
+        elif self.options["numDOE"] != None:
+            ego_kwargs["n_doe"] = self.options["numDOE"]
         else:
             raise ValueError(
-                'Input parameter(s) for DOE points is incorrect! Either "numDOE" (int) or "xdoe" (numpy.ndarray)'
+                'Input parameter(s) for DOE points is incorrect! Either use "numDOE" (int) or "xdoe" (numpy.ndarray)'
             )
+
+        # Create EGO instance
+        ego = EGO(**ego_kwargs)
 
         # run EGO algorithm
         x_opt, _, _, _, _ = ego.optimize(fun=self.obj_val)
 
-        print("Optimization finished, running analysis on optimal point")
-        print("--------------------------------------------------------")
+        print("---------------------------------------------------------")
+        print("Optimization finished, running analysis on optimal point ")
+        print("---------------------------------------------------------")
 
         # run primmal on optimal point for post-processing
         x_opt_bcast = self.comm.bcast(x_opt, root=0)
         self.setDesignPoint(x_opt_bcast)
         self.om_prob.run_model()
+
+        # return opt design point info
+        if self.constrainedOpt:
+            self.conViolation = np.zeros(self.numCons)
+            for k in range(self.numCons):
+                self.conViolation[k] = self.evalConstraint(self.consEqs[k], self.om_prob.get_val(self.cons[k]))
+
         self.returnDesignPointInfo(x_opt, "opt")
+
+    def parseConstraint(self, conEq, conValue):
+        """
+        Parse constraint functions and return largest violation from array of constrained values
+        """
+
+        # determine the largest violation
+        # only min and max points of the value array need to be tested to find the largest violation
+        points = [min(conValue), max(conValue)]
+
+        violations = np.zeros(2)  # array to store solutions
+
+        for i in range(2):
+            violations[i] = self.evalConstraint(conEq, [points[i]])
+
+        # return point with largest violation
+        return max(violations.min(), violations.max(), key=abs)
 
     def evalConstraint(self, conEq, conValue):
         """
         Compute constraint function value
         """
-        value = self.om_prob.get_val(conValue)
-        return eval(conEq, {"__builtins__": {}}, {"x": value})
+
+        # OpenMDAO by default returns a numpy array. It is easier
+        # to work with a list in this function
+        if isinstance(conValue, np.ndarray):
+            conValue = conValue.tolist()
+
+        # evaluate constraint
+        # some constraints main contain an array of data points. Here,
+        # the penalty is based on the largest violation
+        if len(conValue) == 1:
+            conEvaluated = eval(conEq, {"__builtins__": {}}, {"x": conValue[0]})
+        else:
+            conEvaluated = self.parseConstraint(conEq, conValue)
+
+        if isinstance(conEvaluated, bool):
+            if conEvaluated:  # if true, constraint is satisfied so return zero penalty
+                return 0.0
+
+            elif not conEvaluated:  # if false, constraint is violated so return non-zero penalty
+
+                # parse constraint
+                parsedConEq = conEq.split()
+
+                # there are two types of inequality constraints handled:
+                # constraint of the form x <= b (equivalently, b <= x)
+                # or a <= x <= b. The former has length 3, the ladder
+                # has length 5
+                if len(parsedConEq) == 3:
+                    return eval(parsedConEq[0] + "-" + parsedConEq[-1], {"__builtins__": {}}, {"x": conValue[0]})
+
+                if len(parsedConEq) == 5:
+                    # this constraint is in the form a <= x <= b. This needs to be split into two
+                    # constraints: a <= x and x <= b.
+                    # Let a <= x be the LHScon, and x <= b be the RHScon. Only one can be violated at a time,
+                    # so the penalty is based on which (LHScon or RHScon) is violated.
+                    LHScon = eval(
+                        parsedConEq[0] + parsedConEq[1] + parsedConEq[2], {"__builtins__": {}}, {"x": conValue[0]}
+                    )
+                    RHScon = eval(
+                        parsedConEq[2] + parsedConEq[3] + parsedConEq[4], {"__builtins__": {}}, {"x": conValue[0]}
+                    )
+
+                    # find which is violated and return penalty
+                    if not LHScon:
+                        # LHScon is violated
+                        return eval(parsedConEq[0] + "-" + parsedConEq[2], {"__builtins__": {}}, {"x": conValue[0]})
+                    elif not RHScon:
+                        # RHScon is violated
+                        return eval(parsedConEq[2] + "-" + parsedConEq[-1], {"__builtins__": {}}, {"x": conValue[0]})
+
+        elif not isinstance(conEvaluated, bool):
+            return conEvaluated
 
     def setDesignPoint(self, x):
         """
@@ -2690,20 +2767,36 @@ class surrogateOptimization(object):
         """
         Return information about current point to user
         """
+        print("----------------------------------")
         print("Analysis results of DOE point:", DOEidx)
         print("----------------------------------")
+
+        # return objective function value
+        print("Objective function:")
+        print("-------------------")
+        print(self.options["objFunc"], "=", self.om_prob.get_val(self.options["objFunc"])[0])
+        print("\n")
+
+        # return design variables
+        print("Design variables:")
+        print("-----------------")
         start = 0
         for j in range(self.numDVs):
             print(self.dvNames[j], "=", x[start : start + self.dvSizes[j]])
             start += self.dvSizes[j]
+        print("\n")
 
-        print(self.options["objFunc"], "=", self.om_prob.get_val(self.options["objFunc"]))
-
-        if self.optType == "constrained":
-
+        # return constraint values/info
+        if self.constrainedOpt:
+            print("Constraint values:")
+            print("------------------")
             for k in range(self.numCons):
-                print("Constraint violation for", self.cons[k], ":", self.conViolation[k])
+                print(self.cons[k], "=", self.om_prob.get_val(self.cons[k]))
 
-        elif self.optType == "unconstrained":
-            pass
+            print("\n")
+            print("Maximum constraint violation:")
+            print("-----------------------------")
+            for k in range(self.numCons):
+                print(self.cons[k], ":", self.conViolation[k])
+
         print("\n")
