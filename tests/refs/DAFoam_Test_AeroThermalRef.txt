@@ -1,26 +1,26 @@
 Dictionary Key: HFH
-@value       -73.0560500833895645 1e-08 1e-10
+@value       -73.0560500832813773 1e-08 1e-10
 Dictionary Key: HF_INNER
-@value       -73.0559992139364880 1e-08 1e-10
+@value       -73.0559992140404830 1e-08 1e-10
 Dictionary Key: PL
-@value         4.1915488779140375 1e-08 1e-10
+@value         4.1915488779138670 1e-08 1e-10
 Dictionary Key: HFH
 Dictionary Key: shape-Adjoint
-@value        -8.5091188833888634 0.0001 1e-10
+@value        -8.5106819555330393 0.0001 1e-10
 Dictionary Key: shape-FD
-@value        -8.3742390840779990 0.0001 1e-10
+@value        -8.3742389278413611 0.0001 1e-10
 Dictionary Key: HF_INNER
 Dictionary Key: shape-Adjoint
-@value        -7.0788986712058337 0.0001 1e-10
+@value        -7.0797991321344504 0.0001 1e-10
 Dictionary Key: shape-FD
-@value        -8.3742345280988957 0.0001 1e-10
+@value        -8.3742346818471560 0.0001 1e-10
 Dictionary Key: PL
 Dictionary Key: shape-Adjoint
-@value         2.8389887876451256 0.0001 1e-10
+@value         2.8389768171770360 0.0001 1e-10
 Dictionary Key: shape-FD
-@value         2.7640894745104561 0.0001 1e-10
+@value         2.7640894744999969 0.0001 1e-10
 Dictionary Key: TVolSum
 Dictionary Key: shape-Adjoint
-@value        -0.0602583974254714 0.0001 1e-10
+@value        -0.0602583381460884 0.0001 1e-10
 Dictionary Key: shape-FD
-@value        -0.0602713365161094 0.0001 1e-10
+@value        -0.0602713365054086 0.0001 1e-10

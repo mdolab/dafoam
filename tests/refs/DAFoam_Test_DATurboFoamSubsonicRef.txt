@@ -1,14 +1,14 @@
 Dictionary Key: CMZ
-@value         0.1372607076501144 1e-10 1e-12
+@value         0.1371585693729360 1e-10 1e-12
 Dictionary Key: TPR
-@value         1.0265956470054416 1e-10 1e-12
+@value         1.0265489838673503 1e-10 1e-12
 Dictionary Key: CMZ
 Dictionary Key: shape-Adjoint
-@value         0.5767013543206826 1e-08 1e-12
+@value         0.5765325481753333 1e-08 1e-12
 Dictionary Key: shape-FD
-@value         0.5757919653348154 1e-08 1e-12
+@value         0.5845249929409420 1e-08 1e-12
 Dictionary Key: TPR
 Dictionary Key: shape-Adjoint
-@value        -0.0584204534949976 1e-08 1e-12
+@value        -0.0581219357556204 1e-08 1e-12
 Dictionary Key: shape-FD
-@value        -0.0585113424667725 1e-08 1e-12
+@value        -0.0545725078764008 1e-08 1e-12

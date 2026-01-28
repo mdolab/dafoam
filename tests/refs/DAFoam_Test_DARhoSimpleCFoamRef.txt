@@ -1,26 +1,26 @@
 Dictionary Key: CD
-@value         0.0306293518497122 1e-10 1e-12
+@value         0.0306281413952076 1e-10 1e-12
 Dictionary Key: CL
-@value         0.3936553162194105 1e-10 1e-12
+@value         0.3936432842490847 1e-10 1e-12
 Dictionary Key: CD
 Dictionary Key: patchV-Adjoint
-@value         0.0005315066940366 1e-08 1e-12
-@value         0.0117612565042383 1e-08 1e-12
+@value         0.0005313328682494 1e-08 1e-12
+@value         0.0117616369993871 1e-08 1e-12
 Dictionary Key: patchV-FD
-@value         0.0005315071109635 1e-08 1e-12
-@value         0.0117668365044601 1e-08 1e-12
+@value         0.0005313334729706 1e-08 1e-12
+@value         0.0117670665412266 1e-08 1e-12
 Dictionary Key: twist-Adjoint
-@value         0.0117760627308869 1e-08 1e-12
+@value         0.0117764373090499 1e-08 1e-12
 Dictionary Key: twist-FD
-@value         0.0117816485331730 1e-08 1e-12
+@value         0.0117818727917580 1e-08 1e-12
 Dictionary Key: CL
 Dictionary Key: patchV-Adjoint
-@value         0.0050908254279391 1e-08 1e-12
-@value         0.1315255470996293 1e-08 1e-12
+@value         0.0050933925872241 1e-08 1e-12
+@value         0.1314514890562313 1e-08 1e-12
 Dictionary Key: patchV-FD
-@value         0.0050908337570945 1e-08 1e-12
-@value         0.1314859971429598 1e-08 1e-12
+@value         0.0050934067182880 1e-08 1e-12
+@value         0.1314131225526012 1e-08 1e-12
 Dictionary Key: twist-Adjoint
-@value         0.1319607423089858 1e-08 1e-12
+@value         0.1318864643674984 1e-08 1e-12
 Dictionary Key: twist-FD
-@value         0.1319211688372945 1e-08 1e-12
+@value         0.1318480793769368 1e-08 1e-12
