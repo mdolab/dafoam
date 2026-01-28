@@ -3,5 +3,6 @@ Time& runTime = runTimePtr_();
 runTime.setTime(0.0, 0);
 fvMesh& mesh = meshPtr_();
 volScalarField& T = TPtr_();
-dimensionedScalar& k = kPtr_();
+volScalarField& kappa = kappaPtr_();
+this->correctKappa();
 volScalarField& fvSource = fvSourcePtr_();

@@ -35,7 +35,8 @@ protected:
     autoPtr<volScalarField> fvSourcePtr_;
 
     /// h pointer
-    autoPtr<dimensionedScalar> kPtr_;
+    autoPtr<volScalarField> kappaPtr_;
+    List<scalar> kappaCoeffs;
 
     /// DASource pointer
     autoPtr<DAFvSource> daFvSourcePtr_;
@@ -62,6 +63,9 @@ public:
 
     /// solve the primal equations
     virtual label solvePrimal();
+
+    /// update kappa
+    void correctKappa();
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

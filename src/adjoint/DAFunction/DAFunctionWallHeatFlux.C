@@ -92,9 +92,19 @@ DAFunctionWallHeatFlux::DAFunctionWallHeatFlux(
                 IOobject::NO_WRITE,
                 false));
         // for solid, we need to read k from transportProperties
-        if (k_ < 0)
+        if (solidProperties.found("kappa"))
         {
-            k_ = readScalar(solidProperties.lookup("k"));
+            kappaCoeffs_ = List<scalar>(1, solidProperties.getScalar("kappa"));
+        }
+        else if (solidProperties.found("kappaCoeffs"))
+        {
+            kappaCoeffs_ = solidProperties.lookup("kappaCoeffs");
+        }
+        else
+        {
+            FatalErrorInFunction
+                << "Neither 'kappa' nor 'kappaCoeffs' found in dictionary: "
+                << solidProperties.name() << exit(FatalError);
         }
 
         wallHeatFlux_.dimensions().reset(dimensionSet(1, -2, 1, 1, 0, 0, 0));
@@ -220,16 +230,17 @@ scalar DAFunctionWallHeatFlux::calcFunction()
         const objectRegistry& db = mesh_.thisDb();
         const volScalarField& T = db.lookupObject<volScalarField>("T");
         const volScalarField::Boundary& TBf = T.boundaryField();
+        const volScalarField kappa = db.lookupObject<volScalarField>("kappa");
+        volScalarField::Boundary kappaBf = kappa.boundaryField();
 
         forAll(wallHeatFluxBf, patchI)
         {
             if (!wallHeatFluxBf[patchI].coupled())
             {
-
                 // use OpenFOAM's snGrad()
                 if (distanceMode_ == "default")
                 {
-                    wallHeatFluxBf[patchI] = k_ * TBf[patchI].snGrad();
+                    wallHeatFluxBf[patchI] = kappaBf[patchI] * TBf[patchI].snGrad();
                 }
                 // use DAFOAM's custom formulation
                 else if (distanceMode_ == "daCustom")
@@ -243,7 +254,7 @@ scalar DAFunctionWallHeatFlux::calcFunction()
                         vector c2 = mesh_.C()[nearWallCellIndex];
                         scalar d = mag(c1 - c2);
                         scalar dTdz = (T2 - T1) / d;
-                        wallHeatFluxBf[patchI][faceI] = k_ * dTdz;
+                        wallHeatFluxBf[patchI][faceI] = kappaBf[patchI][faceI] * dTdz;
                     }
                 }
             }
