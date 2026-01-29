@@ -38,8 +38,8 @@ DASolver()
 funcs = {}
 DASolver.evalFunctions(funcs)
 
-if abs(39135.17439747127 - funcs["CD"]) / 39135.17439747127 > 1e-8:
-    print("DAInterFoam test failed!")
+if abs(39135.17384530594 - funcs["CD"]) / 39135.17384530594 > 1e-8:
+    print("DAHisaUnsteady test failed!")
     exit(1)
 else:
-    print("DAInterFoam test passed!")
+    print("DAHisaUnsteady test passed!")
