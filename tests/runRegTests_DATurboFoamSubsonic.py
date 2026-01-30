@@ -35,6 +35,7 @@ daOptions = {
     "solverName": "DATurboFoam",
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1e4,
+    "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalFuncStdTol": {"tol": 3e-12, "funcName": "TPR", "nSteps": 50},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [0.0, 0.0, 100.0]},
@@ -66,7 +67,7 @@ daOptions = {
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
     },
-    "decomposeParDict": {"method": "kahip", "preservePatches": ["per1", "per2"]},
+    "decomposeParDict": {"preservePatches": ["per1", "per2"]},
 }
 
 meshOptions = {
@@ -108,6 +109,9 @@ class Top(Multipoint):
         # add pointset
         self.geometry.nom_add_discipline_coords("aero", points)
 
+        # add the dv_geo object to the builder solver. This will be used to write deformed FFDs and forward AD
+        self.cruise.coupling.solver.add_dvgeo(self.geometry.DVGeo)
+
         # Select all points
         pts = self.geometry.DVGeo.getLocalIndex(0)
         indexList = pts[1, 1, 1].flatten()
@@ -126,6 +130,27 @@ class Top(Multipoint):
         self.add_objective("cruise.aero_post.TPR", scaler=1.0)
         self.add_constraint("cruise.aero_post.CMZ", equals=0.3)
 
+
+"""
+# the FD is not accurate but the AD is accurate...
+funcDict = {}
+derivDict = {}
+
+dvNames = ["shape"]
+dvIndices = [[0]]
+funcNames = [
+    "cruise.aero_post.functionals.TPR",
+    "cruise.aero_post.functionals.CMZ",
+]
+
+# run the adjoint and forward ref
+run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
+
+# write the test results
+if gcomm.rank == 0:
+    reg_write_dict(derivDict, 1e-8, 1e-12)
+
+"""
 
 prob = om.Problem()
 prob.model = Top()

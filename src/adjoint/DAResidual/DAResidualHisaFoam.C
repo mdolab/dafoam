@@ -286,11 +286,14 @@ void DAResidualHisaFoam::updateIntermediateVariables()
 
     rhoU_.ref() = rho_.internalField() * U_.internalField();
 
-    rhoE_.ref() = rho_.internalField() * (he_.internalField() + 0.5 * magSqr(U_.internalField()));
+    // NOTE: in OF 2506, the energy obj he is relative, so we need to add eZero back
+    const volScalarField& eZero = mesh_.thisDb().lookupObjectRef<volScalarField>("eZero");
+
+    rhoE_.ref() = rho_.internalField() * (he_.internalField() - eZero.internalField() + 0.5 * magSqr(U_.internalField()));
 
     rho_.correctBoundaryConditions();
     rhoU_.boundaryFieldRef() = rho_.boundaryField() * U_.boundaryField();
-    rhoE_.boundaryFieldRef() = rho_.boundaryField() * (he_.boundaryField() + 0.5 * magSqr(U_.boundaryField()));
+    rhoE_.boundaryFieldRef() = rho_.boundaryField() * (he_.boundaryField() - eZero.boundaryField() + 0.5 * magSqr(U_.boundaryField()));
 }
 
 void DAResidualHisaFoam::correctBoundaryConditions()

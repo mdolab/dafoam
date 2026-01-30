@@ -54,7 +54,7 @@ DASolver.evalFunctions(funcs)
 
 print(funcs)
 
-if abs(funcs["CMZ"] - 0.13735647617679875) / 0.13735647617679875 > 1e-8:
+if abs(funcs["CMZ"] - 0.1372575783243538) / 0.1372575783243538 > 1e-8:
     print("DARhoSimpleFoamMRF test failed!")
     exit(1)
 else:
@@ -67,7 +67,7 @@ resNorm = gcomm.allreduce(resNorm, op=MPI.SUM)
 
 print(resNorm)
 
-if abs(resNorm - 0.043398071042707244) / 0.043398071042707244 > 1e-8:
+if abs(resNorm - 0.0435526565064583) / 0.0435526565064583 > 1e-8:
     print("DARhoSimpleFoamMRF test failed!")
     exit(1)
 else:

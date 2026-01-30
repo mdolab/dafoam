@@ -103,7 +103,7 @@ DASolver::DASolver(
     // if inputInto has unsteadyField, we need to initial GlobalVar::inputFieldUnsteady here
     this->initInputFieldUnsteady();
 
-    Info << "DAOpton initialized " << endl;
+    Info << "DAOption created. DASolver initialized." << endl;
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * d* * * * //

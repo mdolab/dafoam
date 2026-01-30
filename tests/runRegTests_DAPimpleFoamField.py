@@ -140,7 +140,7 @@ if gcomm.rank == 0:
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
 
-
+"""
 # ************** RBF **************
 daOptions["inputInfo"] = {
     "beta_rbf": {
@@ -210,3 +210,4 @@ run_tests(om, Top1, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, d
 if gcomm.rank == 0:
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
+"""

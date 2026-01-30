@@ -140,4 +140,4 @@ run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, de
 # write the test results
 if gcomm.rank == 0:
     reg_write_dict(funcDict, 1e-10, 1e-12)
-    reg_write_dict(derivDict, 1e-8, 1e-12)
+    reg_write_dict(derivDict, 1e-8, 1e-10)

@@ -2239,10 +2239,17 @@ class PYDAFOAM(object):
                 pass
             else:
                 f.write("\n")
-                f.write("preservePatches        (")
+                f.write("constraints\n")
+                f.write("{\n")
+                f.write("    preservePatches\n")
+                f.write("    {\n")
+                f.write("        type        preservePatches;\n")
+                f.write("        patches     (")
                 for pPatch in decomDict["preservePatches"]:
                     f.write("%s " % pPatch)
                 f.write(");\n")
+                f.write("    }\n")
+                f.write("}\n")
             if decomDict["singleProcessorFaceSets"][0] != "None":
                 f.write("singleProcessorFaceSets  (")
                 for pPatch in decomDict["singleProcessorFaceSets"]:

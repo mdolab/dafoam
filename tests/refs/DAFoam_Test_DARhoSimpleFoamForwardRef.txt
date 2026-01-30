@@ -1,50 +1,50 @@
 Dictionary Key: cruise.aero_post.functionals.CMZ
 Dictionary Key: actuator_disk0-Adjoint
-@value         0.4971782450709088 1e-08 1e-12
+@value         0.4971782450709232 1e-08 1e-12
 Dictionary Key: actuator_disk0-ForwardAD
-@value         0.4969952074917532 1e-08 1e-12
+@value         0.4969952071308699 1e-08 1e-12
 Dictionary Key: actuator_disk1-Adjoint
-@value        -0.1649525481909799 1e-08 1e-12
+@value        -0.1649525481909697 1e-08 1e-12
 Dictionary Key: actuator_disk1-ForwardAD
-@value        -0.1648187787546882 1e-08 1e-12
+@value        -0.1648187784272084 1e-08 1e-12
 Dictionary Key: nutilda_in0-Adjoint
-@value     -1872.4543522571993890 1e-08 1e-12
+@value     -1872.4543522577166641 1e-08 1e-12
 Dictionary Key: nutilda_in0-ForwardAD
-@value     -1880.9987143909968381 1e-08 1e-12
+@value     -1880.9987033612510459 1e-08 1e-12
 Dictionary Key: patchPField20-Adjoint
 @value         0.0011104766143154 1e-08 1e-12
 Dictionary Key: patchPField20-ForwardAD
-@value         0.0011107975114246 1e-08 1e-12
+@value         0.0011107975124477 1e-08 1e-12
 Dictionary Key: patchV0-Adjoint
-@value        10.0425362099152480 1e-08 1e-12
+@value        10.0425362099156459 1e-08 1e-12
 Dictionary Key: patchV0-ForwardAD
-@value        10.0481121809517635 1e-08 1e-12
+@value        10.0481121814827326 1e-08 1e-12
 Dictionary Key: patchV1-Adjoint
 @value       -31.4149680995976013 1e-08 1e-12
 Dictionary Key: patchV1-ForwardAD
-@value       -31.4363133187071426 1e-08 1e-12
+@value       -31.4363133171320754 1e-08 1e-12
 Dictionary Key: cruise.aero_post.functionals.TP1
 Dictionary Key: actuator_disk0-Adjoint
 @value        -0.0016217676169723 1e-08 1e-12
 Dictionary Key: actuator_disk0-ForwardAD
-@value        -0.0016181227821925 1e-08 1e-12
+@value        -0.0016181228018713 1e-08 1e-12
 Dictionary Key: actuator_disk1-Adjoint
 @value        -0.0129376912558288 1e-08 1e-12
 Dictionary Key: actuator_disk1-ForwardAD
-@value        -0.0129356492026401 1e-08 1e-12
+@value        -0.0129356491953219 1e-08 1e-12
 Dictionary Key: nutilda_in0-Adjoint
-@value        -0.8968424427616221 1e-08 1e-12
+@value        -0.8968424427608438 1e-08 1e-12
 Dictionary Key: nutilda_in0-ForwardAD
-@value        -0.9137070086447185 1e-08 1e-12
+@value        -0.9137065801351764 1e-08 1e-12
 Dictionary Key: patchPField20-Adjoint
 @value         0.0000277461849277 1e-08 1e-12
 Dictionary Key: patchPField20-ForwardAD
-@value         0.0000277499765945 1e-08 1e-12
+@value         0.0000277499766174 1e-08 1e-12
 Dictionary Key: patchV0-Adjoint
-@value         0.1336018777956055 1e-08 1e-12
+@value         0.1336018777956064 1e-08 1e-12
 Dictionary Key: patchV0-ForwardAD
-@value         0.1337514809894154 1e-08 1e-12
+@value         0.1337514810203564 1e-08 1e-12
 Dictionary Key: patchV1-Adjoint
-@value        -0.0050394925746903 1e-08 1e-12
+@value        -0.0050394925746906 1e-08 1e-12
 Dictionary Key: patchV1-ForwardAD
-@value        -0.0050422998253298 1e-08 1e-12
+@value        -0.0050422997909372 1e-08 1e-12

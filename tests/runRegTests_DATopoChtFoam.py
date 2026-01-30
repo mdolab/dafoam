@@ -33,7 +33,7 @@ nPatchFaces = 49
 
 daOptions = {
     "solverName": "DATopoChtFoam",
-    "primalMinResTol": 1.0e-12,
+    "primalMinResTol": 1.0e-11,
     "primalMinResTolDiff": 1e4,
     "printDAOptions": False,
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
