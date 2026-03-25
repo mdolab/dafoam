@@ -4385,6 +4385,41 @@ void DASolver::forceMeshWaveFrozen()
     // else: leave meshWaveFrozen or any other method untouched
 }
 
+void DASolver::getOFFieldGlobal(
+    const word fieldName,
+    const word fieldType,
+    double* globalField)
+{
+    /*
+    Description:
+        get the global array for flow field, this can be used to get the betaFI design variables. 
+        globalField = [localField0, localField1, .... localFieldN]
+
+        For example, if fieldName = beta and fieldType = scalar, globalField is then the global field list
+        by combinging the local field. Then betaFieldGlobal = [localBeta0, localBeta1, .... localBetaN]
+        
+    */
+
+    if (fieldType == "scalar")
+    {
+        volScalarField& field =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
+
+        for (label globalCellI = 0; globalCellI < daIndexPtr_->nGlobalCells; globalCellI++)
+        {
+            if (daIndexPtr_->globalCellNumbering.isLocal(globalCellI))
+            {
+                label localCellI = daIndexPtr_->globalCellNumbering.toLocal(globalCellI);
+                assignValueCheckAD(globalField[globalCellI], field[localCellI]);
+            }
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << "fieldType not valid" << exit(FatalError);
+    }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
