@@ -307,6 +307,12 @@ public:
         return DASolverPtr_->getNLocalCells();
     }
 
+    /// return the number of global cells
+    label getNGlobalCells() const
+    {
+        return DASolverPtr_->getNGlobalCells();
+    }
+
     /// return the value of objective based on timeOp
     double getTimeOpFuncVal(const word functionName)
     {
@@ -565,6 +571,15 @@ public:
     void updateInputFieldUnsteady()
     {
         DASolverPtr_->updateInputFieldUnsteady();
+    }
+
+    /// get the global list for flow field, this can be used to get the betaFI design variables
+    void getOFFieldGlobal(
+        const word fieldName,
+        const word fieldType,
+        double* globalField)
+    {
+        DASolverPtr_->getOFFieldGlobal(fieldName, fieldType, globalField);
     }
 };
 
