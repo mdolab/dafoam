@@ -31,12 +31,15 @@ DAInputField::DAInputField(
         daModel,
         daIndex)
 {
-    fieldName_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).getWord("fieldName");
-    fieldType_ = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).getWord("fieldType");
+    // Cache the input sub-dictionary since we query several optional entries below.
+    const dictionary& inputDict = daOption_.getAllOptions().subDict("inputInfo").subDict(inputName);
 
-    if (daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).found("indices"))
+    fieldName_ = inputDict.getWord("fieldName");
+    fieldType_ = inputDict.getWord("fieldType");
+
+    if (inputDict.found("indices"))
     {
-        daOption_.getAllOptions().subDict("inputInfo").subDict(inputName).readEntry("indices", indices_);
+        inputDict.readEntry("indices", indices_);
     }
     else
     {
@@ -45,6 +48,49 @@ DAInputField::DAInputField(
         {
             indices_[i] = i;
         }
+    }
+
+    if (inputDict.found("cellSetName"))
+    {
+        cellSetName_ = inputDict.getWord("cellSetName");
+        // Read the local portion of a pre-generated cellSet. In parallel, users are
+        // expected to decompose the set together with the mesh.
+        cellSet selectedCellSet(mesh_, cellSetName_, IOobject::MUST_READ);
+        selectedCells_.setSize(selectedCellSet.size());
+
+        label idx = 0;
+        for (const label cellI : selectedCellSet)
+        {
+            selectedCells_[idx] = cellI;
+            idx++;
+        }
+        // Sort so the subset has a deterministic local ordering across runs.
+        sort(selectedCells_);
+    }
+    else
+    {
+        // Fall back to the original behavior: use every local cell.
+        selectedCells_.setSize(mesh_.nCells());
+        forAll(selectedCells_, idxI)
+        {
+            selectedCells_[idxI] = idxI;
+        }
+    }
+
+    localSelectedCells_ = selectedCells_.size();
+    // Build a compact global numbering for the selected subset instead of all cells.
+    globalSelectedCellNumbering_ = DAUtility::genGlobalIndex(localSelectedCells_);
+    globalSelectedCells_ = globalSelectedCellNumbering_.size();
+
+    if (globalSelectedCells_ == 0)
+    {
+        FatalErrorIn("DAInputField::DAInputField")
+            << "Input " << inputName_ << " has zero selected cells";
+        if (cellSetName_.size())
+        {
+            FatalError << " in cellSet " << cellSetName_;
+        }
+        FatalError << exit(FatalError);
     }
 }
 
@@ -61,20 +107,20 @@ void DAInputField::run(const scalarList& input)
         volScalarField& field = const_cast<volScalarField&>(mesh_.thisDb().lookupObject<volScalarField>(fieldName_));
         if (this->distributed())
         {
-            forAll(field, cellI)
+            forAll(selectedCells_, localIdx)
             {
-                field[cellI] = input[cellI];
+                label cellI = selectedCells_[localIdx];
+                field[cellI] = input[localIdx];
             }
         }
         else
         {
-            for (label globalCellI = 0; globalCellI < daIndex_.nGlobalCells; globalCellI++)
+            forAll(selectedCells_, localIdx)
             {
-                if (daIndex_.globalCellNumbering.isLocal(globalCellI))
-                {
-                    label localCellI = daIndex_.globalCellNumbering.toLocal(globalCellI);
-                    field[localCellI] = input[globalCellI];
-                }
+                label cellI = selectedCells_[localIdx];
+                // Map the local subset index to the compact global subset numbering.
+                label globalCellI = globalSelectedCellNumbering_.toGlobal(localIdx);
+                field[cellI] = input[globalCellI];
             }
         }
         field.correctBoundaryConditions();
@@ -84,31 +130,32 @@ void DAInputField::run(const scalarList& input)
         volVectorField& field = const_cast<volVectorField&>(mesh_.thisDb().lookupObject<volVectorField>(fieldName_));
         if (this->distributed())
         {
-            label counterI = 0;
-            forAll(field, cellI)
+            label cSize = indices_.size();
+            forAll(selectedCells_, localIdx)
             {
+                label cellI = selectedCells_[localIdx];
                 forAll(indices_, idxI)
                 {
                     label comp = indices_[idxI];
-                    field[cellI][comp] = input[counterI];
-                    counterI++;
+                    label inputIdx = localIdx * cSize + idxI;
+                    field[cellI][comp] = input[inputIdx];
                 }
             }
         }
         else
         {
             label cSize = indices_.size();
-            for (label globalCellI = 0; globalCellI < daIndex_.nGlobalCells; globalCellI++)
+            forAll(selectedCells_, localIdx)
             {
-                if (daIndex_.globalCellNumbering.isLocal(globalCellI))
+                label cellI = selectedCells_[localIdx];
+                // For non-distributed inputs, each selected cell owns a contiguous block
+                // of size cSize in the packed global subset array.
+                label globalCellI = globalSelectedCellNumbering_.toGlobal(localIdx);
+                forAll(indices_, idxI)
                 {
-                    label localCellI = daIndex_.globalCellNumbering.toLocal(globalCellI);
-                    forAll(indices_, idxI)
-                    {
-                        label comp = indices_[idxI];
-                        label inputIdx = globalCellI * cSize + idxI;
-                        field[localCellI][comp] = input[inputIdx];
-                    }
+                    label comp = indices_[idxI];
+                    label inputIdx = globalCellI * cSize + idxI;
+                    field[cellI][comp] = input[inputIdx];
                 }
             }
         }

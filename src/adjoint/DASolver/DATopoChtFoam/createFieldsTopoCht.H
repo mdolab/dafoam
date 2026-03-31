@@ -134,5 +134,5 @@ etaPtr_.reset(
             IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE),
         mesh,
-        dimensionedScalar("eta", dimensionSet(0, 0, 0, 0, 0, 0, 0), 0.0),
+        dimensionedScalar("eta", dimensionSet(0, 0, 0, 0, 0, 0, 0), 1.0),
         zeroGradientFvPatchField<scalar>::typeName));
