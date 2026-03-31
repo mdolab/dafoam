@@ -106,7 +106,7 @@ void DAInputField::run(const scalarList& input)
                     forAll(indices_, idxI)
                     {
                         label comp = indices_[idxI];
-                        label inputIdx = globalCellI * cSize + comp;
+                        label inputIdx = globalCellI * cSize + idxI;
                         field[localCellI][comp] = input[inputIdx];
                     }
                 }
