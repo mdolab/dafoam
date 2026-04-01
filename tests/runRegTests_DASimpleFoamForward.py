@@ -142,6 +142,8 @@ class Top(Multipoint):
         beta0 = np.zeros(nCells)
         # read the beta field from the 0 folder (serial) or processor*/0 (parallel) into beta0
         self.cruise.coupling.solver.DASolver.solver.getOFFieldGlobal("betaFINuTilda", "scalar", beta0)
+        # need to sum all processors' beta0 into the global beta
+        gcomm.Allreduce(MPI.IN_PLACE, beta0, op=MPI.SUM)
         self.dvs.add_output("shape", val=np.zeros(1))
         self.dvs.add_output("beta", val=beta0)
         self.dvs.add_output("fv_source", val=np.zeros(nCells * 3))
