@@ -303,6 +303,10 @@ void DASolver::calcAllFunctions(label print)
             Info << functionName
                  << ": " << functionVal
                  << " " << timeOpType << ": " << timeOpVal;
+            if (primalFuncStdTol_ > 0 && functionName == primalFuncStdName_)
+            {
+                Info << " std: " << funcStd_;
+            }
 #ifdef CODI_ADF
             Info << " ADF-Deriv: " << timeOpVal.getGradient();
 #endif
