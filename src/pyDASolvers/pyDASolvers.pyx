@@ -66,12 +66,14 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void updateOFFields(double *)
         void getOFFields(double *)
         void getOFField(char *, char *, double *)
+        void getOFFieldGlobal(char *, char *, double *)
         void getOFMeshPoints(double *)
         void updateOFMesh(double *)
         int getGlobalXvIndex(int, int)
         int getNLocalAdjointStates()
         int getNLocalAdjointBoundaryStates()
         int getNLocalCells()
+        int getNGlobalCells()
         int getNLocalPoints()
         int checkMesh()
         double getdFScaling(char *, int)
@@ -285,6 +287,12 @@ cdef class pyDASolvers:
         cdef double *field_data = <double*>field.data
         self._thisptr.getOFField(fieldName.encode(), fieldType.encode(), field_data)
     
+    def getOFFieldGlobal(self, fieldName, fieldType, np.ndarray[double, ndim=1, mode="c"] field):
+        if fieldType == "scalar":
+            assert len(field) == self.getNGlobalCells(), "invalid array size!"
+        cdef double *field_data = <double*>field.data
+        self._thisptr.getOFFieldGlobal(fieldName.encode(), fieldType.encode(), field_data)
+    
     def updateOFMesh(self, np.ndarray[double, ndim=1, mode="c"] vol_coords):
         assert len(vol_coords) == self.getNLocalPoints() * 3, "invalid array size!"
         cdef double *vol_coords_data = <double*>vol_coords.data
@@ -301,6 +309,9 @@ cdef class pyDASolvers:
     
     def getNLocalCells(self):
         return self._thisptr.getNLocalCells()
+    
+    def getNGlobalCells(self):
+        return self._thisptr.getNGlobalCells()
     
     def getNLocalPoints(self):
         return self._thisptr.getNLocalPoints()

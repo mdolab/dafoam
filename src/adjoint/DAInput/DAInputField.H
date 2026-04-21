@@ -15,6 +15,7 @@
 #include "addToRunTimeSelectionTable.H"
 #include "mixedFvPatchFields.H"
 #include "DAGlobalVar.H"
+#include "cellSet.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -38,6 +39,21 @@ protected:
 
     /// if it is vector fields, we can also provide components/indices
     labelList indices_;
+
+    /// optional cellSet name used to restrict the input support
+    word cellSetName_;
+
+    /// locally owned cells that this input updates
+    labelList selectedCells_;
+
+    /// local cell count in the selected set
+    label localSelectedCells_ = 0;
+
+    /// global cell count in the selected set
+    label globalSelectedCells_ = 0;
+
+    /// indexing system to convert between local and global selected-cell indices
+    globalIndex globalSelectedCellNumbering_;
 
 public:
     TypeName("field");
@@ -65,11 +81,11 @@ public:
         {
             if (this->distributed())
             {
-                return daIndex_.nLocalCells;
+                return localSelectedCells_;
             }
             else
             {
-                return daIndex_.nGlobalCells;
+                return globalSelectedCells_;
             }
         }
         else if (fieldType_ == "vector")
@@ -77,11 +93,11 @@ public:
             label cSize = indices_.size();
             if (this->distributed())
             {
-                return daIndex_.nLocalCells * cSize;
+                return localSelectedCells_ * cSize;
             }
             else
             {
-                return daIndex_.nGlobalCells * cSize;
+                return globalSelectedCells_ * cSize;
             }
         }
         else

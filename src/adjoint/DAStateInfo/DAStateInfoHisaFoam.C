@@ -80,7 +80,7 @@ DAStateInfoHisaFoam::DAStateInfoHisaFoam(
         {
             {"U", "p", "T", "nut"}, // lv0
             {"U", "p", "T", "nut"}, // lv1
-            {"U", "p", "T", "nut"}, // lv2
+            {"U", "p", "T"}, // lv2
         });
 
     stateResConInfo_.set(
@@ -88,7 +88,7 @@ DAStateInfoHisaFoam::DAStateInfoHisaFoam(
         {
             {"U", "p", "T", "nut"}, // lv0
             {"U", "p", "T", "nut"}, // lv1
-            {"U", "p", "T", "nut"}, // lv2
+            {"U", "p", "T"}, // lv2
         });
 
     stateResConInfo_.set(
@@ -96,7 +96,7 @@ DAStateInfoHisaFoam::DAStateInfoHisaFoam(
         {
             {"U", "p", "T", "nut"}, // lv0
             {"U", "p", "T", "nut"}, // lv1
-            {"U", "p", "T", "nut"}, // lv2
+            {"U", "p", "T"}, // lv2
         });
 
     // need to correct connectivity for physical models for each residual

@@ -512,7 +512,7 @@ scalar DAFunctionVariance::calcFunction()
                             geoWeightTotal += geoWeight;
                         }
 
-                        scalar varDif = (var[cellI] - refValue_[timeIndex - 1][cellI]);
+                        scalar varDif = (var[cellI] - refValue_[timeIndex - 1][idxI]);
                         functionValue += geoWeight * scale_ * varDif * varDif;
                     }
                 }

@@ -230,15 +230,15 @@ void DASolver::calcFuncStd()
     {
         mean += functionTimeSteps_[funcIdx][i];
     }
-    mean /= nActualSteps;
+    mean = mean / (nActualSteps + 1e-16);
 
     funcStd_ = 0.0;
     for (label i = listIndex; i >= startIdx; i--)
     {
         funcStd_ += (functionTimeSteps_[funcIdx][i] - mean) * (functionTimeSteps_[funcIdx][i] - mean);
     }
-    funcStd_ /= nActualSteps;
-    funcStd_ = sqrt(funcStd_) / mag(mean);
+    funcStd_ = funcStd_ / (nActualSteps + 1e-16);
+    funcStd_ = sqrt(funcStd_) / mag(mean + 1e-16);
     //Info << "funcTS " << functionTimeSteps_[funcIdx] << endl;
     //Info << "mean " << mean << endl;
     //Info << "nActualSteps " << nActualSteps << endl;
@@ -294,6 +294,10 @@ void DASolver::calcAllFunctions(label print)
             Info << functionName
                  << ": " << functionVal
                  << " " << timeOpType << ": " << timeOpVal;
+            if (primalFuncStdTol_ > 0 && functionName == primalFuncStdName_)
+            {
+                Info << " std: " << funcStd_;
+            }
 #ifdef CODI_ADF
             Info << " ADF-Deriv: " << timeOpVal.getGradient();
 #endif
@@ -4372,6 +4376,41 @@ void DASolver::forceMeshWaveFrozen()
         }
     }
     // else: leave meshWaveFrozen or any other method untouched
+}
+
+void DASolver::getOFFieldGlobal(
+    const word fieldName,
+    const word fieldType,
+    double* globalField)
+{
+    /*
+    Description:
+        get the global array for flow field, this can be used to get the betaFI design variables. 
+        globalField = [localField0, localField1, .... localFieldN]
+
+        For example, if fieldName = beta and fieldType = scalar, globalField is then the global field list
+        by combinging the local field. Then betaFieldGlobal = [localBeta0, localBeta1, .... localBetaN]
+        
+    */
+
+    if (fieldType == "scalar")
+    {
+        volScalarField& field =
+            const_cast<volScalarField&>(meshPtr_->thisDb().lookupObject<volScalarField>(fieldName));
+
+        for (label globalCellI = 0; globalCellI < daIndexPtr_->nGlobalCells; globalCellI++)
+        {
+            if (daIndexPtr_->globalCellNumbering.isLocal(globalCellI))
+            {
+                label localCellI = daIndexPtr_->globalCellNumbering.toLocal(globalCellI);
+                assignValueCheckAD(globalField[globalCellI], field[localCellI]);
+            }
+        }
+    }
+    else
+    {
+        FatalErrorIn("") << "fieldType not valid" << exit(FatalError);
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

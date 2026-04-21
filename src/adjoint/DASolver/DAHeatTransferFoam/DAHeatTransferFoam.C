@@ -22,7 +22,7 @@ DAHeatTransferFoam::DAHeatTransferFoam(
     : DASolver(argsAll, pyOptions),
       TPtr_(nullptr),
       fvSourcePtr_(nullptr),
-      kPtr_(nullptr),
+      kappaPtr_(nullptr),
       daFvSourcePtr_(nullptr)
 {
 }
@@ -88,13 +88,16 @@ label DAHeatTransferFoam::solvePrimal()
         }
 
         fvScalarMatrix TEqn(
-            fvm::laplacian(k, T)
+            fvm::laplacian(kappa, T)
             + fvSource);
 
         // get the solver performance info such as initial
         // and final residuals
         SolverPerformance<scalar> solverT = TEqn.solve();
         DAUtility::primalResidualControl(solverT, printToScreen_, "T", daGlobalVarPtr_->primalMaxRes);
+
+        // update k
+        this->correctKappa();
 
         this->calcAllFunctions(printToScreen_);
 
@@ -111,6 +114,32 @@ label DAHeatTransferFoam::solvePrimal()
          << endl;
 
     return 0;
+}
+
+void DAHeatTransferFoam::correctKappa()
+{
+    volScalarField& kappa = kappaPtr_();
+    volScalarField& T = TPtr_();
+    forAll(kappa, cellI)
+    {
+        kappa[cellI] = 0;
+        forAll(kappaCoeffs, order)
+        {
+            kappa[cellI] += kappaCoeffs[order] * pow(T[cellI], order);
+        }
+    }
+    // update boundary
+    forAll(kappa.boundaryField(), patchI)
+    {
+        forAll(kappa.boundaryField()[patchI], faceI)
+        {
+            kappa.boundaryFieldRef()[patchI][faceI] = 0;
+            forAll(kappaCoeffs, order)
+            {
+                kappa.boundaryFieldRef()[patchI][faceI] += kappaCoeffs[order] * pow(T.boundaryField()[patchI][faceI], order);
+            }
+        }
+    }
 }
 
 } // End namespace Foam

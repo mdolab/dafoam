@@ -1,33 +1,33 @@
 Dictionary Key: cruise.aero_post.functionals.CD
 Dictionary Key: eta0-Adjoint
-@value       -11.4008004311785207 1e-08 1e-12
+@value      -195.7711430652591389 1e-08 1e-12
 Dictionary Key: eta0-ForwardAD
-@value       -11.4007995725668660 1e-08 1e-12
-Dictionary Key: eta150-Adjoint
-@value      -242.6535917140221272 1e-08 1e-12
-Dictionary Key: eta150-ForwardAD
-@value      -244.5331349877940852 1e-08 1e-12
-Dictionary Key: eta300-Adjoint
-@value      -267.3452447890181247 1e-08 1e-12
-Dictionary Key: eta300-ForwardAD
-@value      -267.0422829735033474 1e-08 1e-12
+@value      -195.2368130235665262 1e-08 1e-12
+Dictionary Key: eta15-Adjoint
+@value      -159.8915830374066331 1e-08 1e-12
+Dictionary Key: eta15-ForwardAD
+@value      -159.8915830373998404 1e-08 1e-12
+Dictionary Key: eta30-Adjoint
+@value      -185.1157362676344746 1e-08 1e-12
+Dictionary Key: eta30-ForwardAD
+@value      -185.2153672950114469 1e-08 1e-12
 Dictionary Key: patchUField20-Adjoint
 @value         0.0319148702493231 1e-08 1e-12
 Dictionary Key: patchUField20-ForwardAD
 @value         0.0319148702349781 1e-08 1e-12
 Dictionary Key: cruise.aero_post.functionals.TMean
 Dictionary Key: eta0-Adjoint
-@value        -0.0405231842453261 1e-08 1e-12
+@value         0.0522195140752615 1e-08 1e-12
 Dictionary Key: eta0-ForwardAD
-@value        -0.0409526381665872 1e-08 1e-12
-Dictionary Key: eta150-Adjoint
-@value         0.0490803848555415 1e-08 1e-12
-Dictionary Key: eta150-ForwardAD
-@value         0.0492391236352938 1e-08 1e-12
-Dictionary Key: eta300-Adjoint
-@value         0.0713991238602786 1e-08 1e-12
-Dictionary Key: eta300-ForwardAD
-@value         0.0715864425605042 1e-08 1e-12
+@value         0.0523791424317938 1e-08 1e-12
+Dictionary Key: eta15-Adjoint
+@value         0.0805788271485504 1e-08 1e-12
+Dictionary Key: eta15-ForwardAD
+@value         0.0814087837033376 1e-08 1e-12
+Dictionary Key: eta30-Adjoint
+@value         0.0857916992250958 1e-08 1e-12
+Dictionary Key: eta30-ForwardAD
+@value         0.0863919995650039 1e-08 1e-12
 Dictionary Key: patchUField20-Adjoint
 @value        -0.0000115017923724 1e-08 1e-12
 Dictionary Key: patchUField20-ForwardAD
