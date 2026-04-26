@@ -11,7 +11,7 @@ solvers and external modules for design optimization
 
 """
 
-__version__ = "4.0.3"
+__version__ = "4.0.4"
 
 import subprocess
 import os
