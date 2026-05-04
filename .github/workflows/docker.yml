@@ -27,7 +27,7 @@ jobs:
         echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u dafoam --password-stdin
         docker pull dafoam/opt-packages:${{ env.IMAGE_TAG }}
         docker run -i -d -u dafoamuser --name build_latest dafoam/opt-packages:${{ env.IMAGE_TAG }} /bin/bash
-        docker exec -e COMPILE_DAFOAM_ADF=1 -i build_latest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd /home/dafoamuser/dafoam/repos && rm -rf dafoam && git clone https://github.com/mdolab/dafoam && cd dafoam && ./Allmake"
+        docker exec -e COMPILE_DAFOAM_ADF=1 -i build_latest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd /home/dafoamuser/dafoam/repos && rm -rf dafoam && git clone https://github.com/mdolab/dafoam && cd dafoam && git checkout ${{ github.ref_name }} && ./Allmake"
         docker export build_latest > build_latest.tar
         docker rm -f $(docker ps -a -q)
         docker rmi -f dafoam/opt-packages:${{ env.IMAGE_TAG }}
