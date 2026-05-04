@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - v5
+      - v5_dev
 
 env:
   DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
@@ -17,7 +17,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Set image tag
       run: |
-        if [ "${{ github.ref_name }}" = "v5" ]; then
+        if [ "${{ github.ref_name }}" = "v5_dev" ]; then
           echo "IMAGE_TAG=v5" >> $GITHUB_ENV
         else
           echo "IMAGE_TAG=latest" >> $GITHUB_ENV
