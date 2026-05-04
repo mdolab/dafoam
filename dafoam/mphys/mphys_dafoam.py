@@ -1957,7 +1957,9 @@ class DAFoamVSPVolume(ExplicitComponent):
             if self._vol_ref is None:
                 self._vol_ref = volume
                 if self.comm.rank == 0:
-                    print("DAFoamVSPVolume: reference volume for %s = %g" % (self.options["output_name"], self._vol_ref))
+                    print(
+                        "DAFoamVSPVolume: reference volume for %s = %g" % (self.options["output_name"], self._vol_ref)
+                    )
             outputs[self.options["output_name"]] = volume / self._vol_ref
         else:
             outputs[self.options["output_name"]] = volume
