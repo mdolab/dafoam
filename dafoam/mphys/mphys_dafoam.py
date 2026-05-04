@@ -1956,12 +1956,15 @@ class DAFoamVSPVolume(ExplicitComponent):
             # capture reference volume on the first call (initial design point)
             if self._vol_ref is None:
                 self._vol_ref = volume
+                if self.comm.rank == 0:
+                    print("DAFoamVSPVolume: reference volume for %s = %g" % (self.options["output_name"], self._vol_ref))
             outputs[self.options["output_name"]] = volume / self._vol_ref
         else:
             outputs[self.options["output_name"]] = volume
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         import openvsp as vsp
+        import time
 
         if mode == "fwd":
             om.issue_warning(
@@ -1971,6 +1974,8 @@ class DAFoamVSPVolume(ExplicitComponent):
                 category=om.OpenMDAOWarning,
             )
             return
+
+        t_start = time.time()
 
         output_name = self.options["output_name"]
         # nothing to do if this output has no seed
@@ -2031,3 +2036,9 @@ class DAFoamVSPVolume(ExplicitComponent):
         for parm_id, _ in parms:
             vsp.SetParmVal(parm_id, orig_state[parm_id])
         vsp.Update()
+
+        if self.comm.rank == 0:
+            print(
+                "DAFoamVSPVolume: compute_jacvec_product for %s took %.2f s (%d active vars)"
+                % (output_name, time.time() - t_start, len(active))
+            )
