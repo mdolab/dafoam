@@ -1670,3 +1670,364 @@ class DAFoamSolverUnsteady(ExplicitComponent):
         DASolver.solver.setTime(endTime, endTimeIndex)
         DASolver.solverAD.setTime(endTime, endTimeIndex)
         DASolver.readStateVars(endTime, deltaT)
+
+
+class DAFoamLinearConstraint(ExplicitComponent):
+    """
+    Helper component that computes per-pair linear combinations:
+        {output_name}_i = varA[i] * coeffA[i] + varB[i] * coeffB[i]
+
+    One output {output_name}_i is created per pair, with shape size[i].
+    All inputs are promoted by name, so they auto-connect when the parent
+    group uses promotes=["*"].
+
+    Parameters
+    ----------
+    varA : list of str
+        Names of the first group of input variables. All names across varA and
+        varB must be unique.
+    coeffA : float or list of float
+        Coefficients for varA. A single scalar is broadcast to all variables in varA.
+    varB : list of str
+        Names of the second group of input variables. Must have the same length as varA.
+    coeffB : float or list of float
+        Coefficients for varB. A single scalar is broadcast to all variables in varB.
+    size : int or list of int
+        Size of each input/output pair. varA[i], varB[i], and {output_name}_i all share size[i].
+        A single scalar is broadcast to all pairs.
+    output_name : str
+        Base name for the outputs. Outputs are named {output_name}_0, {output_name}_1, etc.
+        Use distinct output_name values when adding multiple instances to avoid name conflicts.
+
+    Usage
+    -----
+    # two instances with distinct output names
+    prob.model.add_subsystem(
+        "con1",
+        DAFoamLinearConstraint(
+            varA=["CD", "CL"], coeffA=1.0,
+            varB=["CM", "CN"], coeffB=-1.0,
+            size=1, output_name="con1",
+        ),
+        promotes=["*"],
+    )
+    # outputs: con1.con1_0, con1.con1_1
+
+    prob.model.add_subsystem(
+        "con2",
+        DAFoamLinearConstraint(
+            varA=["CD2", "CL2"], coeffA=[1.0, 2.0],
+            varB=["CM2", "CN2"], coeffB=[-1.0, 0.5],
+            size=[1, 1], output_name="con2",
+        ),
+        promotes=["*"],
+    )
+    # outputs: con2.con2_0, con2.con2_1
+    """
+
+    def initialize(self):
+        self.options.declare("varA", recordable=False)
+        self.options.declare("coeffA", recordable=False)
+        self.options.declare("varB", recordable=False)
+        self.options.declare("coeffB", recordable=False)
+        self.options.declare("size", recordable=False)
+        self.options.declare("output_name", recordable=False)
+
+    def setup(self):
+        varA, coeffA, varB, coeffB, size = self._expand_options()
+        output_name = self.options["output_name"]
+
+        # add one input per variable in varA and varB
+        for name, sz in zip(varA, size):
+            self.add_input(name, shape=sz)
+
+        for name, sz in zip(varB, size):
+            self.add_input(name, shape=sz)
+
+        # one scalar (or vector) output per pair, named {output_name}_0, _1, ...
+        for i, sz in enumerate(size):
+            self.add_output("%s_%d" % (output_name, i), shape=sz)
+
+    def _expand_options(self):
+        varA = self.options["varA"]
+        varB = self.options["varB"]
+        coeffA = self.options["coeffA"]
+        coeffB = self.options["coeffB"]
+        size = self.options["size"]
+
+        # broadcast scalar coefficients / sizes to match the number of pairs
+        if np.isscalar(coeffA):
+            coeffA = [coeffA] * len(varA)
+        if np.isscalar(coeffB):
+            coeffB = [coeffB] * len(varB)
+        if np.isscalar(size):
+            size = [size] * len(varA)
+
+        # all five lists must align one-to-one
+        if not (len(varA) == len(coeffA) == len(varB) == len(coeffB) == len(size)):
+            raise ValueError(
+                "varA, coeffA, varB, coeffB, and size must all have the same length, "
+                "got %d, %d, %d, %d, %d" % (len(varA), len(coeffA), len(varB), len(coeffB), len(size))
+            )
+
+        # OpenMDAO input names must be globally unique; catch accidental overlaps early
+        seen = set()
+        for name in list(varA) + list(varB):
+            if name in seen:
+                raise ValueError("Duplicate variable name '%s' found in varA/varB. All names must be unique." % name)
+            seen.add(name)
+
+        return varA, coeffA, varB, coeffB, size
+
+    def compute(self, inputs, outputs):
+        varA, coeffA, varB, coeffB, _ = self._expand_options()
+        output_name = self.options["output_name"]
+
+        # evaluate the linear combination for each pair
+        for i, (nameA, cA, nameB, cB) in enumerate(zip(varA, coeffA, varB, coeffB)):
+            outputs["%s_%d" % (output_name, i)] = inputs[nameA] * cA + inputs[nameB] * cB
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+        varA, coeffA, varB, coeffB, _ = self._expand_options()
+        output_name = self.options["output_name"]
+
+        if mode == "fwd":
+            om.issue_warning(
+                " mode = %s, but the forward mode functions are not implemented for DAFoam!" % mode,
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
+
+        # reverse mode: d_inputs += (dOutput/dInput)^T * d_outputs
+        # since output_i = cA*varA + cB*varB, the partial w.r.t. each input is just its coefficient
+        for i, (nameA, cA, nameB, cB) in enumerate(zip(varA, coeffA, varB, coeffB)):
+            out_name = "%s_%d" % (output_name, i)
+            if out_name in d_outputs:
+                if nameA in d_inputs:
+                    d_inputs[nameA] += cA * d_outputs[out_name]
+                if nameB in d_inputs:
+                    d_inputs[nameB] += cB * d_outputs[out_name]
+
+
+class DAFoamVSPVolume(ExplicitComponent):
+    """
+    Compute the volume of a VSP geometry using the OpenVSP
+    Python API mass-properties (slicing) tool.
+
+    Parameters (OpenMDAO options)
+    -----------------------------
+    vsp_file : str
+        Path to the .vsp3 script, e.g. "wing.vsp3".
+    vsp_vars : list of str
+        VSP parameter paths in "comp:group:var" format,
+        e.g. ["NACA:UpperCoeff_0:Au_0", "NACA:LowerCoeff_0:Al_0"].
+        Each entry is used as both the OpenMDAO input name and the VSP
+        parameter to update.
+    slice_dir : str
+        Slice direction: 'x', 'y', or 'z'. Default 'z'.
+    n_slices : int
+        Number of slices used by the mass-properties integrator. Default 10.
+    output_name : str
+        Name of the volume output variable.
+    step : float
+        Finite-difference step size. Default 1e-4.
+    relativeStep : bool
+        If False (default), step is an absolute perturbation.
+        If True, the actual perturbation is step * |val| (falls back to step when val == 0).
+    scaled : bool
+        If True (default), output is volume / volume_ref, where volume_ref is
+        the volume computed on the first call (the initial design point).
+        If False, output is the raw volume.
+
+    Inputs
+    ------
+    One scalar input per entry in vsp_vars, named by the exact vsp_vars string.
+
+    Outputs
+    -------
+    {output_name} : float
+        Volume (scaled by initial volume if scaled=True).
+
+    Usage
+    -----
+    prob.model.add_subsystem(
+        "vsp_vol",
+        DAFoamVSPVolume(
+            vsp_file="wing.vsp3",
+            vsp_vars=["NACA:UpperCoeff_0:Au_0", "NACA:LowerCoeff_0:Al_0"],
+            slice_dir="x",
+            n_slices=10,
+            output_name="volume_val",
+            step=1e-4,
+            relativeStep=False,
+        ),
+        promotes=["*"],
+    )
+    """
+
+    def initialize(self):
+        self.options.declare("vsp_file", recordable=False)
+        self.options.declare("vsp_vars", recordable=False)
+        self.options.declare("slice_dir", default="z", recordable=False)
+        self.options.declare("n_slices", default=10, recordable=False)
+        self.options.declare("output_name", recordable=False)
+        self.options.declare("step", default=1e-4, recordable=False)
+        self.options.declare("relativeStep", default=False, recordable=False)
+        self.options.declare("scaled", default=True, recordable=False)
+
+    def setup(self):
+        # reset reference and baseline volumes each time the problem is set up
+        self._vol_ref = None
+        self._vol_baseline = None  # volume at the last compute point; reused as FD baseline in compute_jacvec_product
+        # parm IDs are stable for the lifetime of the VSP model; resolved once and cached to avoid
+        # repeated FindGeomsWithName + FindParm calls on every compute / compute_jacvec_product
+        self._parms_cache = None
+        # one scalar input per VSP parameter; the full "comp:group:var" string is the OpenMDAO variable name
+        for var_str in self.options["vsp_vars"]:
+            self.add_input(var_str, distributed=False, val=0.0)
+        self.add_output(self.options["output_name"], distributed=False, val=0.0)
+
+    def _resolve_parms(self, vsp, vsp_vars):
+        """Return cached list of (parm_id, var_str); resolves against the live VSP model on first call only."""
+        if self._parms_cache is not None:
+            return self._parms_cache
+        result = []
+        for var_str in vsp_vars:
+            # each entry must be "comp:group:var" — split and look up the VSP parameter ID
+            parts = var_str.split(":")
+            if len(parts) != 3:
+                raise ValueError("vsp_vars entries must be 'comp:group:var', got '%s'" % var_str)
+            comp_name, group_name, parm_name = parts
+            geom_ids = vsp.FindGeomsWithName(comp_name)
+            if len(geom_ids) == 0:
+                raise RuntimeError("VSP component '%s' not found" % comp_name)
+            parm_id = vsp.FindParm(geom_ids[0], parm_name, group_name)
+            if parm_id == "":
+                raise RuntimeError(
+                    "Parameter '%s' in group '%s' not found on component '%s'" % (parm_name, group_name, comp_name)
+                )
+            result.append((parm_id, var_str))
+        self._parms_cache = result
+        return result
+
+    def _run_massprop(self, vsp):
+        """Run MassProp analysis on the current VSP model and return raw volume."""
+        slice_dir = self.options["slice_dir"]
+        n_slices = self.options["n_slices"]
+        _dir_map = {"x": 0, "y": 1, "z": 2}
+        if slice_dir.lower() not in _dir_map:
+            raise ValueError("slice_dir must be 'x', 'y', or 'z', got '%s'" % slice_dir)
+        analysis_name = "MassProp"
+        vsp.SetAnalysisInputDefaults(analysis_name)
+        vsp.SetIntAnalysisInput(analysis_name, "NumSlices", [n_slices])
+        vsp.SetIntAnalysisInput(analysis_name, "MassSliceDir", [_dir_map[slice_dir.lower()]])
+        rid = vsp.ExecAnalysis(analysis_name)
+        # MassProp creates a temporary mesh geom; delete it so it doesn't accumulate across calls
+        res_ids = vsp.GetStringResults(rid, "Mesh_GeomID")
+        vsp.DeleteGeom(res_ids[0])
+        return vsp.GetDoubleResults(rid, "Total_Volume")[0]
+
+    def compute(self, inputs, outputs):
+        import openvsp as vsp
+
+        parms = self._resolve_parms(vsp, self.options["vsp_vars"])
+
+        # save the current VSP parameter values (owned by pyGeo DVGeo) before we change anything
+        orig_vals = {parm_id: vsp.GetParmVal(parm_id) for parm_id, _ in parms}
+
+        # set VSP parameters to the current OpenMDAO input values and evaluate
+        for parm_id, var_str in parms:
+            vsp.SetParmVal(parm_id, float(inputs[var_str]))
+        vsp.Update()
+
+        volume = self._run_massprop(vsp)
+        # cache the unscaled volume so compute_jacvec_product can use it as the FD baseline
+        # without rerunning the unperturbed case
+        self._vol_baseline = volume
+
+        # revert VSP to its original state so pyGeo's model is not corrupted
+        for parm_id, _ in parms:
+            vsp.SetParmVal(parm_id, orig_vals[parm_id])
+        vsp.Update()
+
+        if self.options["scaled"]:
+            # capture reference volume on the first call (initial design point)
+            if self._vol_ref is None:
+                self._vol_ref = volume
+            outputs[self.options["output_name"]] = volume / self._vol_ref
+        else:
+            outputs[self.options["output_name"]] = volume
+
+    def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
+        import openvsp as vsp
+
+        if mode == "fwd":
+            om.issue_warning(
+                "mode = fwd not implemented for DAFoamVSPVolume",
+                prefix="",
+                stacklevel=2,
+                category=om.OpenMDAOWarning,
+            )
+            return
+
+        output_name = self.options["output_name"]
+        # nothing to do if this output has no seed
+        if output_name not in d_outputs:
+            return
+
+        d_vol_out = d_outputs[output_name]
+        step = self.options["step"]
+        relativeStep = self.options["relativeStep"]
+        # baseline volume from the preceding compute call at the same input point
+        vol0 = self._vol_baseline
+
+        parms = self._resolve_parms(vsp, self.options["vsp_vars"])
+
+        # snapshot pyGeo's current VSP state before we touch any parameters
+        orig_state = {parm_id: vsp.GetParmVal(parm_id) for parm_id, _ in parms}
+
+        # move VSP to the current input values so our FD baseline matches vol0
+        for parm_id, var_str in parms:
+            vsp.SetParmVal(parm_id, float(inputs[var_str]))
+        vsp.Update()
+
+        # pre-filter to only the parameters that have a non-zero adjoint seed,
+        # so we don't waste MassProp calls on inactive design variables
+        active = [(pid, vs) for pid, vs in parms if vs in d_inputs]
+
+        for parm_id, var_str in active:
+            val = float(inputs[var_str])
+
+            # compute the forward-difference step size
+            if relativeStep:
+                h = step * abs(val) if abs(val) > 0.0 else step  # fall back to abs step if val == 0
+            else:
+                h = step
+
+            # perturb this parameter and re-tessellate (one Update per param)
+            vsp.SetParmVal(parm_id, val + h)
+            vsp.Update()
+            vol_pert = self._run_massprop(vsp)
+
+            # revert this parameter but defer vsp.Update() — the next iteration's SetParmVal+Update
+            # will re-tessellate with the reverted value already in place, saving one Update per step
+            vsp.SetParmVal(parm_id, val)
+
+            # forward-difference gradient of the raw volume
+            dvol_dvar = (vol_pert - vol0) / h
+            # if output is scaled, divide by the reference volume (chain rule)
+            if self.options["scaled"]:
+                dvol_dvar /= self._vol_ref
+
+            # reverse-mode accumulation: d_input += (dOutput/dInput)^T * d_output
+            d_inputs[var_str] += dvol_dvar * d_vol_out
+
+        # apply the pending revert for the last active parameter (deferred from the loop above)
+        vsp.Update()
+
+        # restore the exact VSP state that existed before this call so pyGeo is unaffected
+        for parm_id, _ in parms:
+            vsp.SetParmVal(parm_id, orig_state[parm_id])
+        vsp.Update()

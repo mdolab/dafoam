@@ -1,0 +1,44 @@
+Dictionary Key: CD
+@value        -0.0151683550491031 1e-08 1e-10
+Dictionary Key: CL
+@value         0.5014790598095945 1e-08 1e-10
+Dictionary Key: thickness_0
+@value         0.3459800000000000 1e-08 1e-10
+Dictionary Key: volume
+@value         1.0000000000000000 1e-08 1e-10
+Dictionary Key: CD
+Dictionary Key: LowerCoeff_2-Adjoint
+@value        -0.0225101838728921 1e-05 1e-08
+Dictionary Key: LowerCoeff_2-FD
+@value        -0.0225639027343636 1e-05 1e-08
+Dictionary Key: UpperCoeff_0-Adjoint
+@value        -0.0241961092043510 1e-05 1e-08
+Dictionary Key: UpperCoeff_0-FD
+@value        -0.0201323827323012 1e-05 1e-08
+Dictionary Key: CL
+Dictionary Key: LowerCoeff_2-Adjoint
+@value         0.2230576181579237 1e-05 1e-08
+Dictionary Key: LowerCoeff_2-FD
+@value         0.2232696015458941 1e-05 1e-08
+Dictionary Key: UpperCoeff_0-Adjoint
+@value         0.2694511565605427 1e-05 1e-08
+Dictionary Key: UpperCoeff_0-FD
+@value         0.2527318837726114 1e-05 1e-08
+Dictionary Key: thickness_0
+Dictionary Key: LowerCoeff_2-Adjoint
+@value        -0.0000000000000000 1e-05 1e-08
+Dictionary Key: LowerCoeff_2-FD
+@value         0.0000000000000000 1e-05 1e-08
+Dictionary Key: UpperCoeff_0-Adjoint
+@value         1.0000000000000000 1e-05 1e-08
+Dictionary Key: UpperCoeff_0-FD
+@value         1.0000000000000000 1e-05 1e-08
+Dictionary Key: volume
+Dictionary Key: LowerCoeff_2-Adjoint
+@value        -0.6065210600008060 1e-05 1e-08
+Dictionary Key: LowerCoeff_2-FD
+@value        -0.6119481257243820 1e-05 1e-08
+Dictionary Key: UpperCoeff_0-Adjoint
+@value         0.4082658347758282 1e-05 1e-08
+Dictionary Key: UpperCoeff_0-FD
+@value         0.4501474288594522 1e-05 1e-08

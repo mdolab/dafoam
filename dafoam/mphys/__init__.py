@@ -1,1 +1,1 @@
-from .mphys_dafoam import DAFoamBuilder, OptFuncs
+from .mphys_dafoam import DAFoamBuilder, OptFuncs, DAFoamLinearConstraint, DAFoamVSPVolume
