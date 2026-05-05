@@ -90,17 +90,28 @@ class Top(Group):
         # self.add_constraint("CL", equals=0.3)
 
 
-funcDict = {}
-derivDict = {}
+prob = om.Problem()
+prob.model = Top()
 
-dvNames = ["TIn"]
-dvIndices = [[0]]
-funcNames = ["cruise.solver.obj"]
+prob.setup(mode="rev")
+om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-# run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
+prob.run_model()
+results = prob.check_totals(
+    of=["cruise.solver.obj"],
+    wrt=["TIn"],
+    compact_print=True,
+    step=1e-2,
+    form="central",
+    step_calc="abs",
+)
 
-# write the test results
 if gcomm.rank == 0:
+    funcDict = {}
+    funcDict["obj"] = prob.get_val("cruise.solver.obj")
+    derivDict = {}
+    derivDict["obj"] = {}
+    derivDict["obj"]["TIn-Adjoint"] = results[("cruise.solver.obj", "TIn")]["J_fwd"][0]
+    derivDict["obj"]["TIn-FD"] = results[("cruise.solver.obj", "TIn")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)

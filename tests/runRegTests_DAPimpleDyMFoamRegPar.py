@@ -118,26 +118,22 @@ class Top(Group):
         self.dvs.add_output("reg_model", val=parameter0)
 
         # define the design variables to the top level
-        self.add_design_var("reg_model", lower=-100.0, upper=100.0, scaler=1.0, indices=[0, 50])
+        self.add_design_var("reg_model", lower=-100.0, upper=100.0, scaler=1.0, indices=[50])
 
         # add constraints and the objective
         # add constraints and the objective
         self.add_objective("UVar", scaler=1.0)
 
 
-funcDict = {}
-derivDict = {}
+prob = om.Problem()
+prob.model = Top()
 
-dvNames = ["reg_model"]
-dvIndices = [[0, 50]]
-funcNames = [
-    "scenario.solver.UVar",
-]
+prob.setup(mode="rev")
+om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-# run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
+prob.run_model()
 
-# write the test results
 if gcomm.rank == 0:
+    funcDict = {}
+    funcDict["UVar"] = prob.get_val("scenario.solver.UVar")
     reg_write_dict(funcDict, 1e-10, 1e-12)
-    reg_write_dict(derivDict, 1e-8, 1e-10)

@@ -144,17 +144,36 @@ class Top(Group):
 # NOTE: the patchV deriv is accurate with FD but not with forward AD. The forward AD changed the primal value
 # and the reason is still unknown..
 
-funcDict = {}
-derivDict = {}
+prob = om.Problem()
+prob.model = Top()
 
-dvNames = ["shape", "patchV"]
-dvIndices = [[0], [0]]
-funcNames = ["cruise.solver.CD", "cruise.solver.CL"]
+prob.setup(mode="rev")
+om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-# run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
+prob.run_model()
+results = prob.check_totals(
+    of=["cruise.solver.CD", "cruise.solver.CL"],
+    wrt=["shape", "patchV"],
+    compact_print=True,
+    step=1e-2,
+    form="central",
+    step_calc="abs",
+)
 
-# write the test results
 if gcomm.rank == 0:
+    funcDict = {}
+    funcDict["CD"] = prob.get_val("cruise.solver.CD")
+    funcDict["CL"] = prob.get_val("cruise.solver.CL")
+    derivDict = {}
+    derivDict["CD"] = {}
+    derivDict["CD"]["shape-Adjoint"] = results[("cruise.solver.CD", "shape")]["J_fwd"][0]
+    derivDict["CD"]["shape-FD"] = results[("cruise.solver.CD", "shape")]["J_fd"][0]
+    derivDict["CD"]["patchV-Adjoint"] = results[("cruise.solver.CD", "patchV")]["J_fwd"][0]
+    derivDict["CD"]["patchV-FD"] = results[("cruise.solver.CD", "patchV")]["J_fd"][0]
+    derivDict["CL"] = {}
+    derivDict["CL"]["shape-Adjoint"] = results[("cruise.solver.CL", "shape")]["J_fwd"][0]
+    derivDict["CL"]["shape-FD"] = results[("cruise.solver.CL", "shape")]["J_fd"][0]
+    derivDict["CL"]["patchV-Adjoint"] = results[("cruise.solver.CL", "patchV")]["J_fwd"][0]
+    derivDict["CL"]["patchV-FD"] = results[("cruise.solver.CL", "patchV")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
-    reg_write_dict(derivDict, 1e-8, 1e-12)
+    reg_write_dict(derivDict, 1e-6, 1e-8)

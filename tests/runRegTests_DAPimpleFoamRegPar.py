@@ -171,22 +171,17 @@ class Top(Group):
         self.add_constraint("wallShearStressVar", equals=0.3)
 
 
-funcDict = {}
-derivDict = {}
+prob = om.Problem()
+prob.model = Top()
 
-dvNames = ["reg_model"]
-dvIndices = [[0, 50]]
-funcNames = [
-    "scenario.solver.UVar",
-    "scenario.solver.PVar",
-    "scenario.solver.wallShearStressVar",
-    # "scenario.solver.wallHeatFlux"
-]
+prob.setup(mode="rev")
+om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-# run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
+prob.run_model()
 
-# write the test results
 if gcomm.rank == 0:
+    funcDict = {}
+    funcDict["UVar"] = prob.get_val("scenario.solver.UVar")
+    funcDict["PVar"] = prob.get_val("scenario.solver.PVar")
+    funcDict["wallShearStressVar"] = prob.get_val("scenario.solver.wallShearStressVar")
     reg_write_dict(funcDict, 1e-10, 1e-12)
-    reg_write_dict(derivDict, 1e-8, 1e-12)

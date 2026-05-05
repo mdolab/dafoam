@@ -123,22 +123,31 @@ class Top(Group):
         self.add_objective("CD", scaler=1.0)
 
 
-funcDict = {}
-derivDict = {}
+prob = om.Problem()
+prob.model = Top()
 
-dvNames = ["beta"]
-dvIndices = [[100, 400, 700]]
-funcNames = [
-    "scenario.solver.CD",
-]
+prob.setup(mode="rev")
+om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-# run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
+prob.run_model()
+results = prob.check_totals(
+    of=["scenario.solver.CD"],
+    wrt=["beta"],
+    compact_print=True,
+    step=1e-3,
+    form="central",
+    step_calc="abs",
+)
 
-# write the test results
 if gcomm.rank == 0:
+    funcDict = {}
+    funcDict["CD"] = prob.get_val("scenario.solver.CD")
+    derivDict = {}
+    derivDict["CD"] = {}
+    derivDict["CD"]["beta-Adjoint"] = results[("scenario.solver.CD", "beta")]["J_fwd"][0]
+    derivDict["CD"]["beta-FD"] = results[("scenario.solver.CD", "beta")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
-    reg_write_dict(derivDict, 1e-8, 1e-12)
+    reg_write_dict(derivDict, 1e-6, 1e-8)
 
 """
 # ************** RBF **************

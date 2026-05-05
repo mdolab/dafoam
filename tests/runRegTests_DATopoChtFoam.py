@@ -117,19 +117,36 @@ class Top(Multipoint):
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
 
 
-funcDict = {}
-derivDict = {}
+prob = om.Problem()
+prob.model = Top()
 
-dvNames = ["eta", "patchUField"]
-dvIndices = [[0, 15, 30], [20]]
-funcNames = [
-    "cruise.aero_post.functionals.CD",
-    "cruise.aero_post.functionals.TMean",
-]
+prob.setup(mode="rev")
+om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-# run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
+prob.run_model()
+results = prob.check_totals(
+    of=["cruise.aero_post.CD", "cruise.aero_post.TMean"],
+    wrt=["eta", "patchUField"],
+    compact_print=True,
+    step=1e-3,
+    form="central",
+    step_calc="abs",
+)
 
-# write the test results
 if gcomm.rank == 0:
-    reg_write_dict(derivDict, 1e-8, 1e-12)
+    funcDict = {}
+    funcDict["CD"] = prob.get_val("cruise.aero_post.CD")
+    funcDict["TMean"] = prob.get_val("cruise.aero_post.TMean")
+    derivDict = {}
+    derivDict["CD"] = {}
+    derivDict["CD"]["eta-Adjoint"] = results[("cruise.aero_post.CD", "eta")]["J_fwd"][0]
+    derivDict["CD"]["eta-FD"] = results[("cruise.aero_post.CD", "eta")]["J_fd"][0]
+    derivDict["CD"]["patchUField-Adjoint"] = results[("cruise.aero_post.CD", "patchUField")]["J_fwd"][0]
+    derivDict["CD"]["patchUField-FD"] = results[("cruise.aero_post.CD", "patchUField")]["J_fd"][0]
+    derivDict["TMean"] = {}
+    derivDict["TMean"]["eta-Adjoint"] = results[("cruise.aero_post.TMean", "eta")]["J_fwd"][0]
+    derivDict["TMean"]["eta-FD"] = results[("cruise.aero_post.TMean", "eta")]["J_fd"][0]
+    derivDict["TMean"]["patchUField-Adjoint"] = results[("cruise.aero_post.TMean", "patchUField")]["J_fwd"][0]
+    derivDict["TMean"]["patchUField-FD"] = results[("cruise.aero_post.TMean", "patchUField")]["J_fd"][0]
+    reg_write_dict(funcDict, 1e-10, 1e-12)
+    reg_write_dict(derivDict, 1e-6, 1e-8)

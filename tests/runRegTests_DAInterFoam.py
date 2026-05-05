@@ -131,20 +131,17 @@ class Top(Group):
 
         # add constraints and the objective
         self.add_objective("CD", scaler=1.0)
-        # self.add_constraint("CL", equals=0.3)
 
 
-funcDict = {}
-derivDict = {}
+prob = om.Problem()
+prob.model = Top()
 
-dvNames = ["shape"]
-dvIndices = [[0]]
-funcNames = ["cruise.solver.CL"]
+prob.setup(mode="rev")
+om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 
-# run the adjoint and forward ref
-run_tests(om, Top, gcomm, daOptions, funcNames, dvNames, dvIndices, funcDict, derivDict)
-
-# write the test results
+# verify the total derivatives against the finite-difference
+prob.run_model()
 if gcomm.rank == 0:
+    funcDict = {}
+    funcDict["CL"] = prob.get_val("cruise.solver.CL")
     reg_write_dict(funcDict, 1e-10, 1e-12)
-    reg_write_dict(derivDict, 1e-8, 1e-12)

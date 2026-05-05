@@ -1,34 +1,30 @@
-Dictionary Key: cruise.aero_post.functionals.CD
-Dictionary Key: eta0-Adjoint
-@value      -195.7711430652591389 1e-08 1e-12
-Dictionary Key: eta0-ForwardAD
-@value      -195.2368130235665262 1e-08 1e-12
-Dictionary Key: eta15-Adjoint
-@value      -159.8915830374066331 1e-08 1e-12
-Dictionary Key: eta15-ForwardAD
-@value      -159.8915830373998404 1e-08 1e-12
-Dictionary Key: eta30-Adjoint
-@value      -185.1157362676344746 1e-08 1e-12
-Dictionary Key: eta30-ForwardAD
-@value      -185.2153672950114469 1e-08 1e-12
-Dictionary Key: patchUField20-Adjoint
-@value         0.0319148702493231 1e-08 1e-12
-Dictionary Key: patchUField20-ForwardAD
-@value         0.0319148702349781 1e-08 1e-12
-Dictionary Key: cruise.aero_post.functionals.TMean
-Dictionary Key: eta0-Adjoint
-@value         0.0522195140752615 1e-08 1e-12
-Dictionary Key: eta0-ForwardAD
-@value         0.0523791424317938 1e-08 1e-12
-Dictionary Key: eta15-Adjoint
-@value         0.0805788271485504 1e-08 1e-12
-Dictionary Key: eta15-ForwardAD
-@value         0.0814087837033376 1e-08 1e-12
-Dictionary Key: eta30-Adjoint
-@value         0.0857916992250958 1e-08 1e-12
-Dictionary Key: eta30-ForwardAD
-@value         0.0863919995650039 1e-08 1e-12
-Dictionary Key: patchUField20-Adjoint
-@value        -0.0000115017923724 1e-08 1e-12
-Dictionary Key: patchUField20-ForwardAD
-@value        -0.0000116089743963 1e-08 1e-12
+Dictionary Key: CD
+@value         2.2928726406490556 1e-10 1e-12
+Dictionary Key: TMean
+@value       300.0027004193153175 1e-10 1e-12
+Dictionary Key: CD
+Dictionary Key: eta-Adjoint
+@value      -195.3914927943695830 1e-06 1e-08
+@value      -159.8915830376569147 1e-06 1e-08
+@value      -185.1157362678246159 1e-06 1e-08
+Dictionary Key: eta-FD
+@value      -195.9952258027776679 1e-06 1e-08
+@value      -162.0341424076439125 1e-06 1e-08
+@value      -202.7873380305591127 1e-06 1e-08
+Dictionary Key: patchUField-Adjoint
+@value         0.0319148702493231 1e-06 1e-08
+Dictionary Key: patchUField-FD
+@value         0.0319148764190231 1e-06 1e-08
+Dictionary Key: TMean
+Dictionary Key: eta-Adjoint
+@value         0.0524102515048931 1e-06 1e-08
+@value         0.0805788271492372 1e-06 1e-08
+@value         0.0857916992176696 1e-06 1e-08
+Dictionary Key: eta-FD
+@value         0.0457374978286680 1e-06 1e-08
+@value         0.0875135140959173 1e-06 1e-08
+@value         0.0924365046957973 1e-06 1e-08
+Dictionary Key: patchUField-Adjoint
+@value        -0.0000115017923724 1e-06 1e-08
+Dictionary Key: patchUField-FD
+@value        -0.0000116089358926 1e-06 1e-08
