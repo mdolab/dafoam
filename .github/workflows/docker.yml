@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - v5_dev
 
 env:
   DOCKER_ENV_FILE: '/home/dafoamuser/dafoam/loadDAFoam.sh'
@@ -15,21 +14,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v3
-    - name: Set image tag
-      run: |
-        if [ "${{ github.ref_name }}" = "v5_dev" ]; then
-          echo "IMAGE_TAG=v5" >> $GITHUB_ENV
-        else
-          echo "IMAGE_TAG=latest" >> $GITHUB_ENV
-        fi
     - name: Build and push
       run: |
         echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u dafoam --password-stdin
-        docker pull dafoam/opt-packages:${{ env.IMAGE_TAG }}
-        docker run -i -d -u dafoamuser --name build_latest dafoam/opt-packages:${{ env.IMAGE_TAG }} /bin/bash
-        docker exec -e COMPILE_DAFOAM_ADF=1 -i build_latest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd /home/dafoamuser/dafoam/repos && rm -rf dafoam && git clone https://github.com/mdolab/dafoam && cd dafoam && git checkout ${{ github.ref_name }} && ./Allmake"
+        docker pull dafoam/opt-packages:latest
+        docker run -i -d -u dafoamuser --name build_latest dafoam/opt-packages:latest /bin/bash
+        docker exec -e COMPILE_DAFOAM_ADF=1 -i build_latest /bin/bash -c ". ${{env.DOCKER_ENV_FILE}} && cd /home/dafoamuser/dafoam/repos && rm -rf dafoam && git clone https://github.com/mdolab/dafoam && cd dafoam && ./Allmake"
         docker export build_latest > build_latest.tar
         docker rm -f $(docker ps -a -q)
-        docker rmi -f dafoam/opt-packages:${{ env.IMAGE_TAG }}
-        docker import build_latest.tar dafoam/opt-packages:${{ env.IMAGE_TAG }}
-        docker push dafoam/opt-packages:${{ env.IMAGE_TAG }}
+        docker rmi -f dafoam/opt-packages:latest
+        docker import build_latest.tar dafoam/opt-packages:latest
+        docker push dafoam/opt-packages:latest
