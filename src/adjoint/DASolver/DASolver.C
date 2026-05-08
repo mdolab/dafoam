@@ -98,7 +98,7 @@ DASolver::DASolver(
     printIntervalUnsteady_ = daOptionPtr_->getOption<label>("printIntervalUnsteady");
     primalFuncStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "tol");
     primalFuncStdName_ = daOptionPtr_->getSubDictOption<word>("primalFuncStdTol", "funcName");
-    primalFuncStdSteps_ = daOptionPtr_->getSubDictOption<label>("primalFuncStdTol", "nSteps");
+    primalFuncStdFrac_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "nStepsFrac");
 
     // if inputInto has unsteadyField, we need to initial GlobalVar::inputFieldUnsteady here
     this->initInputFieldUnsteady();
@@ -222,7 +222,8 @@ void DASolver::calcFuncStd()
     label timeIndex = runTimePtr_->timeIndex();
     label listIndex = timeIndex - 1;
     label funcIdx = this->getFunctionListIndex(primalFuncStdName_);
-    label startIdx = max(0, listIndex - primalFuncStdSteps_ + 1);
+    label window = max(1, round(primalFuncStdFrac_ * scalar(listIndex + 1)));
+    label startIdx = max(0, listIndex - window + 1);
 
     scalar mean = 0.0;
     label nActualSteps = listIndex - startIdx + 1;

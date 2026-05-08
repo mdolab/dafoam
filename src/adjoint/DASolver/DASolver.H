@@ -153,8 +153,8 @@ protected:
     /// the function name for the std tolerance
     word primalFuncStdName_ = "CD";
 
-    /// the number of last steps to compute std
-    label primalFuncStdSteps_ = 100;
+    /// the fraction of elapsed iterations to use as the std window
+    scalar primalFuncStdFrac_ = 0.2;
 
     /// the std of a function, default to be -1
     scalar funcStd_ = 1e16;
