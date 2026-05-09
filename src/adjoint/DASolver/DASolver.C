@@ -222,7 +222,7 @@ void DASolver::calcFuncStd()
     label timeIndex = runTimePtr_->timeIndex();
     label listIndex = timeIndex - 1;
     label funcIdx = this->getFunctionListIndex(primalFuncStdName_);
-    label window = max(1, round(primalFuncStdFrac_ * scalar(listIndex + 1)));
+    label window = max(2, round(primalFuncStdFrac_ * scalar(listIndex + 1)));
     label startIdx = max(0, listIndex - window + 1);
 
     scalar mean = 0.0;
