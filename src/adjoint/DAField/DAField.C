@@ -806,6 +806,68 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
 
             continue;
         }
+        else if (bcKey == "charFarFieldBC")
+        {
+            // set characteristic far field boundary conditions for DAHisaFoam,
+            // we assume the input would be a list of 5 scalars: [Ux, Uy, Uz, p, T]
+            scalarList bcVals;
+            bcDict.readEntry<scalarList>("charFarFieldBC", bcVals);
+            scalar Ux0 = bcVals[0];
+            scalar Uy0 = bcVals[1];
+            scalar Uz0 = bcVals[2];
+            scalar p0 = bcVals[3];
+            scalar T0 = bcVals[4];
+
+            volVectorField& U = db.lookupObjectRef<volVectorField>("U");
+            volScalarField& p = db.lookupObjectRef<volScalarField>("p");
+            volScalarField& T = db.lookupObjectRef<volScalarField>("T");
+
+            // assign the BC for U, p, and T. NOTE: we need to set BC for all these three variables
+            // because their BC values are inter-coupled in the characteristic far field BC implementation
+            forAll(mesh_.boundaryMesh(), patchI)
+            {
+                if (U.boundaryFieldRef()[patchI].type() == "characteristicFarfieldVelocity")
+                {
+                    // set U
+                    forAll(U.boundaryFieldRef()[patchI], faceI)
+                    {
+                        U.boundaryFieldRef()[patchI][faceI] = vector(Ux0, Uy0, Uz0);
+                    }
+                    // set characteristicRef
+                    characteristicBase& base = refCast<characteristicBase>(U.boundaryFieldRef()[patchI]);
+                    base.URef() = vector(Ux0, Uy0, Uz0);
+                    base.pRef() = p0;
+                    base.TRef() = T0;
+                }
+                if (p.boundaryFieldRef()[patchI].type() == "characteristicFarfieldPressure")
+                {
+                    // set p
+                    forAll(p.boundaryFieldRef()[patchI], faceI)
+                    {
+                        p.boundaryFieldRef()[patchI][faceI] = p0;
+                    }
+                    // set characteristicRef
+                    characteristicBase& base = refCast<characteristicBase>(p.boundaryFieldRef()[patchI]);
+                    base.URef() = vector(Ux0, Uy0, Uz0);
+                    base.pRef() = p0;
+                    base.TRef() = T0;
+                }
+                if (T.boundaryFieldRef()[patchI].type() == "characteristicFarfieldTemperature")
+                {
+                    // set T
+                    forAll(T.boundaryFieldRef()[patchI], faceI)
+                    {
+                        T.boundaryFieldRef()[patchI][faceI] = T0;
+                    }
+                    // set characteristicRef
+                    characteristicBase& base = refCast<characteristicBase>(T.boundaryFieldRef()[patchI]);
+                    base.URef() = vector(Ux0, Uy0, Uz0);
+                    base.pRef() = p0;
+                    base.TRef() = T0;
+                }
+            }
+            continue;
+        }
 
         dictionary bcSubDict = bcDict.subDict(bcKey);
 
@@ -889,23 +951,10 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                             refCast<characteristicBase>(state.boundaryFieldRef()[patchI]);
                         stateBase.pRef() = value[0];
                     }
-                    else if (state.boundaryFieldRef()[patchI].type() == "characteristicFarfieldTemperature")
-                    {
-                        // set value
-                        forAll(state.boundaryFieldRef()[patchI], faceI)
-                        {
-                            state.boundaryFieldRef()[patchI][faceI] = value[0];
-                        }
-                        // set TRef
-                        characteristicBase& stateBase =
-                            refCast<characteristicBase>(state.boundaryFieldRef()[patchI]);
-                        stateBase.TRef() = value[0];
-                    }
                     else
                     {
                         FatalErrorIn("") << "only support fixedValues, inletOutlet, "
-                                         << "outletInlet, fixedGradient, "
-                                         << "characteristicFarfieldPressure, and characteristicFarfieldTemperature!"
+                                         << "outletInlet, fixedGradient"
                                          << abort(FatalError);
                     }
                 }
@@ -957,18 +1006,6 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                             refCast<mixedFvPatchField<vector>>(state.boundaryFieldRef()[patchI]);
                         inletOutletPatch.refValue() = valVec;
                     }
-                    else if (state.boundaryFieldRef()[patchI].type() == "characteristicFarfieldVelocity")
-                    {
-                        // set value
-                        forAll(state.boundaryFieldRef()[patchI], faceI)
-                        {
-                            state.boundaryFieldRef()[patchI][faceI] = valVec;
-                        }
-                        // set URef
-                        characteristicBase& stateBase =
-                            refCast<characteristicBase>(state.boundaryFieldRef()[patchI]);
-                        stateBase.URef() = valVec;
-                    }
                     else if (state.boundaryFieldRef()[patchI].type() == "fixedGradient")
                     {
                         fixedGradientFvPatchField<vector>& patchBC =
@@ -984,8 +1021,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     else
                     {
                         FatalErrorIn("") << "only support fixedValues, inletOutlet, "
-                                         << "fixedGradient, tractionDisplacement, "
-                                         << "characteristicFarfieldVelocity!"
+                                         << "fixedGradient, tractionDisplacement"
                                          << abort(FatalError);
                     }
                 }

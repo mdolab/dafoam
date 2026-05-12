@@ -69,13 +69,16 @@ void DAInputPatchVelocity::run(const scalarList& input)
     label flowAxisIndex = axisIndices[flowAxis];
     label normalAxisIndex = axisIndices[normalAxis];
 
-    volVectorField& U = const_cast<volVectorField&>(mesh_.thisDb().lookupObject<volVectorField>("U"));
+    volVectorField& U = mesh_.thisDb().lookupObjectRef<volVectorField>("U");
+    volScalarField& p = mesh_.thisDb().lookupObjectRef<volScalarField>("p");
+    volScalarField& T = mesh_.thisDb().lookupObjectRef<volScalarField>("T");
 
     scalar aoaRad = input[1] * constant::mathematical::pi / 180.0;
     scalar UxNew = UMag * cos(aoaRad);
     scalar UyNew = UMag * sin(aoaRad);
 
     // now we assign UxNew and UyNew to the U patches
+    label hasCharFarFieldBC = 0;
     forAll(patchNames, idxI)
     {
         word patchName = patchNames[idxI];
@@ -104,21 +107,42 @@ void DAInputPatchVelocity::run(const scalarList& input)
             else if (U.boundaryFieldRef()[patchI].type() == "characteristicFarfieldVelocity")
             {
                 // set URef value
-                characteristicBase& stateBase =
+                characteristicBase& baseU =
                     refCast<characteristicBase>(U.boundaryFieldRef()[patchI]);
 
-                stateBase.URef()[flowAxisIndex] = UxNew;
-                stateBase.URef()[normalAxisIndex] = UyNew;
+                baseU.URef()[flowAxisIndex] = UxNew;
+                baseU.URef()[normalAxisIndex] = UyNew;
+
+                // IMPORTANT: for char far field BC, we also need to update BC for p and T
+                // because U, p, and T BCs are inter-coupled in the char far field BC implementation.
+                characteristicBase& baseP =
+                    refCast<characteristicBase>(p.boundaryFieldRef()[patchI]);
+                baseP.URef()[flowAxisIndex] = UxNew;
+                baseP.URef()[normalAxisIndex] = UyNew;
+
+                characteristicBase& baseT =
+                    refCast<characteristicBase>(T.boundaryFieldRef()[patchI]);
+                baseT.URef()[flowAxisIndex] = UxNew;
+                baseT.URef()[normalAxisIndex] = UyNew;
+
+                hasCharFarFieldBC = 1;
             }
             else
             {
                 FatalErrorIn("DAInputPatchVelocity::run")
-                    << "patch type not valid! only support fixedValue or inletOutlet"
+                    << "patch type not valid! only support fixedValue, inletOutlet, or characteristicFarfieldVelocity"
                     << exit(FatalError);
             }
         }
     }
     U.correctBoundaryConditions();
+
+    reduce(hasCharFarFieldBC, sumOp<label>());
+    if (hasCharFarFieldBC > 0)
+    {
+        p.correctBoundaryConditions();
+        T.correctBoundaryConditions();
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

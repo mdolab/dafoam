@@ -3476,6 +3476,13 @@ void DASolver::setPrimalBoundaryConditions(const label printInfo)
             Info << "Setting up primal boundary conditions based on pyOptions: " << endl;
         }
         daFieldPtr_->setPrimalBoundaryConditions(printInfo);
+
+        // Update the BC and intermediate variables for DAHisaFoam.
+        // We need to update rho, rhoU, and rhoU right after we updating primitive vars.
+        if (daOptionPtr_->getAllOptions().getWord("solverName") == "DAHisaFoam")
+        {
+            this->updateStateBoundaryConditions();
+        }
     }
 }
 
@@ -3497,6 +3504,13 @@ void DASolver::setPrimalInitialConditions(const label printInfo)
             Info << "Setting up primal initial conditions based on pyOptions: " << endl;
         }
         daFieldPtr_->setPrimalInitialConditions(printInfo);
+
+        // Update the BC and intermediate variables for DAHisaFoam.
+        // We need to update rho, rhoU, and rhoU right after we updating primitive vars.
+        if (daOptionPtr_->getAllOptions().getWord("solverName") == "DAHisaFoam")
+        {
+            this->updateStateBoundaryConditions();
+        }
     }
 }
 

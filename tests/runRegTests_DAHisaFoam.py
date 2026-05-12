@@ -37,9 +37,7 @@ daOptions = {
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalInitCondition": {"U": [U0, 0.0, 0.0], "p": p0, "T": T0},
     "primalBC": {
-        "U0": {"variable": "U", "patches": ["inlet", "outlet"], "value": [U0, 0.0, 0.0]},
-        "p0": {"variable": "p", "patches": ["inlet", "outlet"], "value": [p0]},
-        "T0": {"variable": "T", "patches": ["inlet", "outlet"], "value": [T0]},
+        "charFarFieldBC": [U0, 0.0, 0.0, p0, T0],
         "useWallFunction": False,
     },
     "function": {
@@ -56,6 +54,13 @@ daOptions = {
     "normalizeStates": {"U": U0, "p": 101325, "T": 300.0, "nuTilda": 1e-3},
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
+        "patchV": {
+            "type": "patchVelocity",
+            "patches": ["inlet"],
+            "flowAxis": "x",
+            "normalAxis": "y",
+            "components": ["solver", "function"],
+        },
     },
 }
 
@@ -109,11 +114,14 @@ class Top(Multipoint):
 
         # add the design variables to the dvs component's output
         self.dvs.add_output("shape", val=np.zeros(1))
+        self.dvs.add_output("patchV", val=np.array([U0, 0.0]))
         # manually connect the dvs output to the geometry and cruise
         self.connect("shape", "geometry.shape")
+        self.connect("patchV", "cruise.patchV")
 
         # define the design variables to the top level
         self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
+        self.add_design_var("patchV", lower=[U0, 0.0], upper=[U0, 10.0], scaler=1.0)
 
         # add constraints and the objective
         self.add_objective("cruise.aero_post.CD", scaler=1.0)
@@ -132,7 +140,7 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 prob.run_model()
 results = prob.check_totals(
     of=["cruise.aero_post.CD"],
-    wrt=["shape"],
+    wrt=["shape", "patchV"],
     compact_print=True,
     step=1e-2,
     form="central",
@@ -146,41 +154,7 @@ if gcomm.rank == 0:
     derivDict["CD_JST"] = {}
     derivDict["CD_JST"]["shape-Adjoint"] = results[("cruise.aero_post.CD", "shape")]["J_fwd"][0]
     derivDict["CD_JST"]["shape-FD"] = results[("cruise.aero_post.CD", "shape")]["J_fd"][0]
-
-
-# ******* test AUSMPlusUp *******
-if gcomm.rank == 0:
-    os.system("rm -rf 0/* processor* *.bin")
-    os.system("cp -r 0.hisa/* 0/")
-    os.system("cp -r system.hisa/* system/")
-    os.system("cp -r constant/turbulenceProperties.sa constant/turbulenceProperties")
-    replace_text_in_file("system/fvSchemes", "meshWave;", "meshWaveFrozen;")
-    replace_text_in_file("system/fvSchemes", "fluxScheme           JST;", "fluxScheme           AUSMPlusUp;")
-
-
-daOptions["adjEqnOption"]["hisaForceJSTFlux"] = 0
-
-prob = om.Problem()
-prob.model = Top()
-
-prob.setup(mode="rev")
-om.n2(prob, show_browser=False, outfile="mphys_aero.html")
-
-# verify the total derivatives against the finite-difference
-prob.run_model()
-results = prob.check_totals(
-    of=["cruise.aero_post.CD"],
-    wrt=["shape"],
-    compact_print=True,
-    step=1e-2,
-    form="central",
-    step_calc="abs",
-)
-
-if gcomm.rank == 0:
-    funcDict["CD_AUSM"] = prob.get_val("cruise.aero_post.CD")
-    derivDict["CD_AUSM"] = {}
-    derivDict["CD_AUSM"]["shape-Adjoint"] = results[("cruise.aero_post.CD", "shape")]["J_fwd"][0]
-    derivDict["CD_AUSM"]["shape-FD"] = results[("cruise.aero_post.CD", "shape")]["J_fd"][0]
+    derivDict["CD_JST"]["patchV-Adjoint"] = results[("cruise.aero_post.CD", "patchV")]["J_fwd"][0]
+    derivDict["CD_JST"]["patchV-FD"] = results[("cruise.aero_post.CD", "patchV")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)
