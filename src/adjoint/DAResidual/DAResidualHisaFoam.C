@@ -294,6 +294,9 @@ void DAResidualHisaFoam::updateIntermediateVariables()
     rho_.correctBoundaryConditions();
     rhoU_.boundaryFieldRef() = rho_.boundaryField() * U_.boundaryField();
     rhoE_.boundaryFieldRef() = rho_.boundaryField() * (he_.boundaryField() - eZero.boundaryField() + 0.5 * magSqr(U_.boundaryField()));
+
+    // Update the fluxes because some characteristics based BCs use the fluxes to update the far field BCs
+    fluxScheme_.calcFlux(phi_, phiUp_, phiEp_, Up_);
 }
 
 void DAResidualHisaFoam::correctBoundaryConditions()
