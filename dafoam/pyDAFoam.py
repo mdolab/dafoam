@@ -82,9 +82,12 @@ class DAOPTION(object):
         ## The convergence function std oscillation tolerance for the primal solver.
         ## tol: the tolerance of the function oscillation standard deviation, -1 means it is deactivated
         ## funcName: which function to use to calculate the std.
+        ## funcNames: optional list of functions to monitor. If set, all function stds must satisfy
+        ##          their tolerances before convergence. This is useful for force-flat checks on CD and CL.
+        ## tols: optional list of tolerances matching funcNames. A single value is applied to all funcNames.
         ## nStepsFrac: the fraction of elapsed iterations to use as the std window, here
         ##          0.2 means we always use the last 20% of elapsed iterations to compute the std
-        self.primalFuncStdTol = {"tol": -1.0, "funcName": "CD", "nStepsFrac": 0.2}
+        self.primalFuncStdTol = {"tol": -1.0, "funcName": "CD", "funcNames": [], "tols": [], "nStepsFrac": 0.2}
 
         ## The boundary condition for primal solution. The keys should include "variable", "patch",
         ## and "value". For turbulence variable, one can also set "useWallFunction" [bool].

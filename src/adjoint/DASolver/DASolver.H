@@ -138,6 +138,15 @@ protected:
     /// write associated fields such as relative velocity
     void writeAssociatedFields();
 
+    /// return whether function std convergence is active
+    label usePrimalFuncStd() const;
+
+    /// return whether all monitored function stds satisfy their tolerances
+    label primalFuncStdConverged() const;
+
+    /// print monitored function std convergence information
+    void printPrimalFuncStdConverged() const;
+
     /// matrix-free dRdWT matrix used in GMRES solution
     Mat dRdWTMF_;
 
@@ -153,11 +162,20 @@ protected:
     /// the function name for the std tolerance
     word primalFuncStdName_ = "CD";
 
+    /// the function names for the std tolerance
+    wordList primalFuncStdNames_;
+
+    /// the function std tolerances
+    scalarList primalFuncStdTols_;
+
     /// the fraction of elapsed iterations to use as the std window
     scalar primalFuncStdFrac_ = 0.2;
 
     /// the std of a function, default to be -1
     scalar funcStd_ = 1e16;
+
+    /// the stds of functions monitored by primalFuncStdTol
+    scalarList funcStds_;
 
     /// whether to print primal information to the screen
     label printToScreen_ = 0;
