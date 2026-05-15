@@ -70,8 +70,6 @@ void DAInputPatchVelocity::run(const scalarList& input)
     label normalAxisIndex = axisIndices[normalAxis];
 
     volVectorField& U = mesh_.thisDb().lookupObjectRef<volVectorField>("U");
-    volScalarField& p = mesh_.thisDb().lookupObjectRef<volScalarField>("p");
-    volScalarField& T = mesh_.thisDb().lookupObjectRef<volScalarField>("T");
 
     scalar aoaRad = input[1] * constant::mathematical::pi / 180.0;
     scalar UxNew = UMag * cos(aoaRad);
@@ -106,6 +104,9 @@ void DAInputPatchVelocity::run(const scalarList& input)
             }
             else if (U.boundaryFieldRef()[patchI].type() == "characteristicFarfieldVelocity")
             {
+
+                volScalarField& p = mesh_.thisDb().lookupObjectRef<volScalarField>("p");
+                volScalarField& T = mesh_.thisDb().lookupObjectRef<volScalarField>("T");
                 // set URef value
                 characteristicBase& baseU =
                     refCast<characteristicBase>(U.boundaryFieldRef()[patchI]);
@@ -140,6 +141,8 @@ void DAInputPatchVelocity::run(const scalarList& input)
     reduce(hasCharFarFieldBC, sumOp<label>());
     if (hasCharFarFieldBC > 0)
     {
+        volScalarField& p = mesh_.thisDb().lookupObjectRef<volScalarField>("p");
+        volScalarField& T = mesh_.thisDb().lookupObjectRef<volScalarField>("T");
         p.correctBoundaryConditions();
         T.correctBoundaryConditions();
     }
