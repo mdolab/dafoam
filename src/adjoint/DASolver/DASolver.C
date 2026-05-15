@@ -96,9 +96,63 @@ DASolver::DASolver(
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
     printInterval_ = daOptionPtr_->getOption<label>("printInterval");
     printIntervalUnsteady_ = daOptionPtr_->getOption<label>("printIntervalUnsteady");
-    primalFuncStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "tol");
-    primalFuncStdName_ = daOptionPtr_->getSubDictOption<word>("primalFuncStdTol", "funcName");
-    primalFuncStdFrac_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "nStepsFrac");
+    const dictionary& primalFuncStdTolDict = allOptions.subDict("primalFuncStdTol");
+    primalFuncStdTolDict.readIfPresent("tol", primalFuncStdTol_);
+    primalFuncStdTolDict.readIfPresent("funcName", primalFuncStdName_);
+    primalFuncStdTolDict.readIfPresent("nStepsFrac", primalFuncStdFrac_);
+    primalFuncStdTolDict.readIfPresent("funcNames", primalFuncStdNames_);
+    primalFuncStdTolDict.readIfPresent("tols", primalFuncStdTols_);
+
+    if (primalFuncStdNames_.empty() && primalFuncStdTol_ > 0)
+    {
+        primalFuncStdNames_.setSize(1);
+        primalFuncStdNames_[0] = primalFuncStdName_;
+    }
+
+    if (!primalFuncStdNames_.empty())
+    {
+        if (primalFuncStdTols_.empty() && primalFuncStdTol_ > 0)
+        {
+            primalFuncStdTols_.setSize(primalFuncStdNames_.size());
+            forAll(primalFuncStdTols_, idxI)
+            {
+                primalFuncStdTols_[idxI] = primalFuncStdTol_;
+            }
+        }
+        else if (primalFuncStdTols_.size() == 1 && primalFuncStdNames_.size() > 1)
+        {
+            scalar tol = primalFuncStdTols_[0];
+            primalFuncStdTols_.setSize(primalFuncStdNames_.size());
+            forAll(primalFuncStdTols_, idxI)
+            {
+                primalFuncStdTols_[idxI] = tol;
+            }
+        }
+
+        if (primalFuncStdTols_.size() != primalFuncStdNames_.size())
+        {
+            FatalErrorIn("DASolver") << "primalFuncStdTol funcNames and tols must have the same size. "
+                                     << "Got " << primalFuncStdNames_.size() << " funcNames and "
+                                     << primalFuncStdTols_.size() << " tols." << abort(FatalError);
+        }
+
+        forAll(primalFuncStdTols_, idxI)
+        {
+            if (primalFuncStdTols_[idxI] <= 0)
+            {
+                FatalErrorIn("DASolver") << "primalFuncStdTol tolerance for function "
+                                         << primalFuncStdNames_[idxI]
+                                         << " must be positive when funcNames is set."
+                                         << abort(FatalError);
+            }
+        }
+    }
+
+    funcStds_.setSize(primalFuncStdNames_.size());
+    forAll(funcStds_, idxI)
+    {
+        funcStds_[idxI] = 1e16;
+    }
 
     // if inputInto has unsteadyField, we need to initial GlobalVar::inputFieldUnsteady here
     this->initInputFieldUnsteady();
@@ -165,14 +219,14 @@ label DASolver::loop(Time& runTime)
         funcObj.execute();
     }
 
-    // if we want to use the function std as the convergence criteria, we need to compute the std
-    if (primalFuncStdTol_ > 0)
+    // if we want to use function std as the convergence criteria, compute the stds
+    if (this->usePrimalFuncStd())
     {
         this->calcFuncStd();
     }
 
-    // check exit condition, we need to satisfy both the residual and function std condition
-    if ((daGlobalVarPtr_->primalMaxRes < primalMinResTol_ || funcStd_ < primalFuncStdTol_) && runTime.timeIndex() > primalMinIters_)
+    // check exit condition
+    if ((daGlobalVarPtr_->primalMaxRes < primalMinResTol_ || this->primalFuncStdConverged()) && runTime.timeIndex() > primalMinIters_)
     {
         Info << "Time = " << t << endl;
 
@@ -181,10 +235,9 @@ label DASolver::loop(Time& runTime)
             Info << "Minimal residual " << daGlobalVarPtr_->primalMaxRes << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
                  << endl;
         }
-        else if (funcStd_ < primalFuncStdTol_)
+        else if (this->primalFuncStdConverged())
         {
-            Info << "Function " << primalFuncStdName_ << " std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl
-                 << endl;
+            this->printPrimalFuncStdConverged();
         }
 
         this->calcAllFunctions(1);
@@ -213,6 +266,42 @@ label DASolver::loop(Time& runTime)
     }
 }
 
+label DASolver::usePrimalFuncStd() const
+{
+    return primalFuncStdNames_.size() > 0;
+}
+
+label DASolver::primalFuncStdConverged() const
+{
+    if (!this->usePrimalFuncStd())
+    {
+        return 0;
+    }
+
+    forAll(funcStds_, idxI)
+    {
+        if (funcStds_[idxI] >= primalFuncStdTols_[idxI])
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+void DASolver::printPrimalFuncStdConverged() const
+{
+    Info << "Function std convergence satisfied:" << endl;
+    forAll(primalFuncStdNames_, idxI)
+    {
+        Info << "    " << primalFuncStdNames_[idxI]
+             << " std " << funcStds_[idxI]
+             << " < tolerance " << primalFuncStdTols_[idxI]
+             << endl;
+    }
+    Info << endl;
+}
+
 void DASolver::calcFuncStd()
 {
     /*
@@ -221,29 +310,43 @@ void DASolver::calcFuncStd()
     */
     label timeIndex = runTimePtr_->timeIndex();
     label listIndex = timeIndex - 1;
-    label funcIdx = this->getFunctionListIndex(primalFuncStdName_);
+    if (listIndex < 0)
+    {
+        forAll(funcStds_, idxI)
+        {
+            funcStds_[idxI] = 1e16;
+        }
+        return;
+    }
+
     label window = max(2, round(primalFuncStdFrac_ * scalar(listIndex + 1)));
     label startIdx = max(0, listIndex - window + 1);
 
-    scalar mean = 0.0;
     label nActualSteps = listIndex - startIdx + 1;
-    for (label i = listIndex; i >= startIdx; i--)
+    forAll(primalFuncStdNames_, idxI)
     {
-        mean += functionTimeSteps_[funcIdx][i];
-    }
-    mean = mean / (nActualSteps + 1e-16);
+        label funcIdx = this->getFunctionListIndex(primalFuncStdNames_[idxI]);
 
-    funcStd_ = 0.0;
-    for (label i = listIndex; i >= startIdx; i--)
-    {
-        funcStd_ += (functionTimeSteps_[funcIdx][i] - mean) * (functionTimeSteps_[funcIdx][i] - mean);
+        scalar mean = 0.0;
+        for (label i = listIndex; i >= startIdx; i--)
+        {
+            mean += functionTimeSteps_[funcIdx][i];
+        }
+        mean = mean / (nActualSteps + 1e-16);
+
+        funcStds_[idxI] = 0.0;
+        for (label i = listIndex; i >= startIdx; i--)
+        {
+            funcStds_[idxI] += (functionTimeSteps_[funcIdx][i] - mean) * (functionTimeSteps_[funcIdx][i] - mean);
+        }
+        funcStds_[idxI] = funcStds_[idxI] / (nActualSteps + 1e-16);
+        funcStds_[idxI] = sqrt(funcStds_[idxI]) / mag(mean + 1e-16);
     }
-    funcStd_ = funcStd_ / (nActualSteps + 1e-16);
-    funcStd_ = sqrt(funcStd_) / mag(mean + 1e-16);
-    //Info << "funcTS " << functionTimeSteps_[funcIdx] << endl;
-    //Info << "mean " << mean << endl;
-    //Info << "nActualSteps " << nActualSteps << endl;
-    //Info << "funcStd " << funcStd_ << endl;
+
+    if (funcStds_.size() > 0)
+    {
+        funcStd_ = funcStds_[0];
+    }
 }
 
 void DASolver::calcAllFunctions(label print)
@@ -295,9 +398,13 @@ void DASolver::calcAllFunctions(label print)
             Info << functionName
                  << ": " << functionVal
                  << " " << timeOpType << ": " << timeOpVal;
-            if (primalFuncStdTol_ > 0 && functionName == primalFuncStdName_)
+            forAll(primalFuncStdNames_, stdI)
             {
-                Info << " std: " << funcStd_;
+                if (functionName == primalFuncStdNames_[stdI])
+                {
+                    Info << " std: " << funcStds_[stdI];
+                    break;
+                }
             }
 #ifdef CODI_ADF
             Info << " ADF-Deriv: " << timeOpVal.getGradient();
@@ -2640,8 +2747,7 @@ label DASolver::checkPrimalFailure()
     */
 
     // if the funcStd mode is used for convergence, we always return 0 without checking primalMinResTolDiff
-    scalar stdTol = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "tol");
-    if (stdTol > 0)
+    if (this->usePrimalFuncStd())
     {
         return 0;
     }
