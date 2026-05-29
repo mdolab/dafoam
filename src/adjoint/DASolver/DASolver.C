@@ -169,6 +169,8 @@ label DASolver::loop(Time& runTime)
     if (primalFuncStdTol_ > 0)
     {
         this->calcFuncStd();
+        // also compute the function slope over the same window (diagnostic only)
+        this->calcFuncSlope();
     }
 
     // check exit condition, we need to satisfy both the residual and function std condition
@@ -246,6 +248,51 @@ void DASolver::calcFuncStd()
     //Info << "funcStd " << funcStd_ << endl;
 }
 
+void DASolver::calcFuncSlope()
+{
+    /*
+    Description:
+        Calculate the normalized least-squares slope of the convergence function
+        (e.g. CD) over the same trailing window used by calcFuncStd. The slope is
+        normalized by the window mean so it is dimensionless: a relative change of
+        the function per solver iteration. The sign is preserved (negative means the
+        function is still trending down toward a steady value; near zero means the
+        trend has flattened). This is a diagnostic quantity only; it is not used as a
+        convergence/termination criterion.
+    */
+    label timeIndex = runTimePtr_->timeIndex();
+    label listIndex = timeIndex - 1;
+    label funcIdx = this->getFunctionListIndex(primalFuncStdName_);
+    label window = max(2, round(primalFuncStdFrac_ * scalar(listIndex + 1)));
+    label startIdx = max(0, listIndex - window + 1);
+    label nActualSteps = listIndex - startIdx + 1;
+
+    // local x is the offset within the window [0, nActualSteps-1]; y is the function value
+    scalar xMean = 0.0;
+    scalar yMean = 0.0;
+    for (label i = startIdx; i <= listIndex; i++)
+    {
+        xMean += scalar(i - startIdx);
+        yMean += functionTimeSteps_[funcIdx][i];
+    }
+    xMean = xMean / (nActualSteps + 1e-16);
+    yMean = yMean / (nActualSteps + 1e-16);
+
+    // least-squares slope = sum((x-xMean)(y-yMean)) / sum((x-xMean)^2)
+    scalar sxy = 0.0;
+    scalar sxx = 0.0;
+    for (label i = startIdx; i <= listIndex; i++)
+    {
+        scalar dx = scalar(i - startIdx) - xMean;
+        sxy += dx * (functionTimeSteps_[funcIdx][i] - yMean);
+        sxx += dx * dx;
+    }
+
+    scalar slope = sxy / (sxx + 1e-16);
+    // normalize by the window mean to match the dimensionless convention of funcStd_
+    funcSlope_ = slope / mag(yMean + 1e-16);
+}
+
 void DASolver::calcAllFunctions(label print)
 {
     /*
@@ -298,6 +345,7 @@ void DASolver::calcAllFunctions(label print)
             if (primalFuncStdTol_ > 0 && functionName == primalFuncStdName_)
             {
                 Info << " std: " << funcStd_;
+                Info << " slope: " << funcSlope_;
             }
 #ifdef CODI_ADF
             Info << " ADF-Deriv: " << timeOpVal.getGradient();

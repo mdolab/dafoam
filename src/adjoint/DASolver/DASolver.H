@@ -159,6 +159,11 @@ protected:
     /// the std of a function, default to be -1
     scalar funcStd_ = 1e16;
 
+    /// the normalized least-squares slope of a function over the same trailing
+    /// window used for funcStd_ (relative change per iteration; signed). Diagnostic
+    /// only for now; not used as a convergence/termination criterion.
+    scalar funcSlope_ = 0.0;
+
     /// whether to print primal information to the screen
     label printToScreen_ = 0;
 
@@ -432,6 +437,10 @@ public:
 
     /// calculate the function std
     void calcFuncStd();
+
+    /// calculate the normalized least-squares slope of the function over the
+    /// same trailing window used by calcFuncStd
+    void calcFuncSlope();
 
     /// assign the inputFieldUnsteady values to the OF field vars
     void updateInputFieldUnsteady();
