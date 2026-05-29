@@ -96,7 +96,15 @@ DASolver::DASolver(
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
     printInterval_ = daOptionPtr_->getOption<label>("printInterval");
     printIntervalUnsteady_ = daOptionPtr_->getOption<label>("printIntervalUnsteady");
-    primalFuncStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "tol");
+    primalFuncStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "stdTol");
+    primalFuncSlopeTol_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "slopeTol");
+    // if users set primalFuncStdTol->stdTol but do not set primalFuncStdTol->slopeTol, we auto set it
+    if (primalFuncStdTol_ > 0 && primalFuncSlopeTol_ < 0)
+    {
+        Info << "primalFuncStdTol->stdTol is set but primalFuncStdTol->slopeTol is not!! " << endl;
+        primalFuncSlopeTol_ = primalFuncStdTol_;
+        Info << "Auto-setting primalFuncStdTol->slopeTol to " << primalFuncSlopeTol_ << endl;
+    }
     primalFuncStdName_ = daOptionPtr_->getSubDictOption<word>("primalFuncStdTol", "funcName");
     primalFuncStdFrac_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "nStepsFrac");
 
@@ -174,7 +182,7 @@ label DASolver::loop(Time& runTime)
     }
 
     // check exit condition, we need to satisfy both the residual and function std condition
-    if ((daGlobalVarPtr_->primalMaxRes < primalMinResTol_ || funcStd_ < primalFuncStdTol_) && runTime.timeIndex() > primalMinIters_)
+    if ((daGlobalVarPtr_->primalMaxRes < primalMinResTol_ || (funcStd_ < primalFuncStdTol_ && fabs(funcSlope_) < primalFuncSlopeTol_)) && runTime.timeIndex() > primalMinIters_)
     {
         Info << "Time = " << t << endl;
 
@@ -183,9 +191,10 @@ label DASolver::loop(Time& runTime)
             Info << "Minimal residual " << daGlobalVarPtr_->primalMaxRes << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
                  << endl;
         }
-        else if (funcStd_ < primalFuncStdTol_)
+        else if (funcStd_ < primalFuncStdTol_ && fabs(funcSlope_) < primalFuncSlopeTol_)
         {
-            Info << "Function " << primalFuncStdName_ << " std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl
+            Info << "Function " << primalFuncStdName_ << " std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl;
+            Info << "and its abs(slope) " << fabs(funcSlope_) << " satisfied the prescribed tolerance " << primalFuncSlopeTol_ << endl
                  << endl;
         }
 
@@ -2688,7 +2697,7 @@ label DASolver::checkPrimalFailure()
     */
 
     // if the funcStd mode is used for convergence, we always return 0 without checking primalMinResTolDiff
-    scalar stdTol = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "tol");
+    scalar stdTol = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "stdTol");
     if (stdTol > 0)
     {
         return 0;
