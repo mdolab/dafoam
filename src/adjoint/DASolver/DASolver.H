@@ -150,19 +150,22 @@ protected:
     /// the function std tolerance
     scalar primalFuncStdTol_ = -1.0;
 
+    /// the function slope tolerance
+    scalar primalFuncSlopeTol_ = -1.0;
+
     /// the function name for the std tolerance
     word primalFuncStdName_ = "CD";
 
     /// the fraction of elapsed iterations to use as the std window
     scalar primalFuncStdFrac_ = 0.2;
 
-    /// the std of a function, default to be -1
+    /// the std of a function
     scalar funcStd_ = 1e16;
 
     /// the normalized least-squares slope of a function over the same trailing
     /// window used for funcStd_ (relative change per iteration; signed). Diagnostic
     /// only for now; not used as a convergence/termination criterion.
-    scalar funcSlope_ = 0.0;
+    scalar funcSlope_ = 1e16;
 
     /// whether to print primal information to the screen
     label printToScreen_ = 0;
