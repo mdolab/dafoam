@@ -1104,7 +1104,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
         // Write the updated field once after all patch values are applied.
         if (value.size() == 1 && db.foundObject<volScalarField>(variable))
         {
-            const volScalarField& state= db.lookupObject<volScalarField>(variable);
+            const volScalarField& state = db.lookupObject<volScalarField>(variable);
             state.write();
         }
         else if (value.size() == 3 && db.foundObject<volVectorField>(variable))
