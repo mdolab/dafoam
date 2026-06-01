@@ -130,6 +130,7 @@ void DAInputPatchField::run(const scalarList& input)
             }
         }
         var.correctBoundaryConditions();
+        var.write();
     }
     if (fieldType_ == "vector")
     {
@@ -194,6 +195,7 @@ void DAInputPatchField::run(const scalarList& input)
             }
         }
         var.correctBoundaryConditions();
+        var.write();
     }
 }
 
