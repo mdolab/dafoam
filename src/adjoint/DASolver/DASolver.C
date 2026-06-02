@@ -105,8 +105,11 @@ DASolver::DASolver(
         primalFuncSlopeTol_ = primalFuncStdTol_;
         Info << "Auto-setting primalFuncStdTol->slopeTol to " << primalFuncSlopeTol_ << endl;
     }
-    primalFuncStdName_ = daOptionPtr_->getSubDictOption<word>("primalFuncStdTol", "funcName");
+    const dictionary& primalFuncStdTolDict = daOptionPtr_->getAllOptions().subDict("primalFuncStdTol");
+    primalFuncStdTolDict.readEntry<wordList>("funcNames", primalFuncStdNames_);
     primalFuncStdFrac_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "nStepsFrac");
+    funcStdList_.setSize(primalFuncStdNames_.size(), 1e16);
+    funcSlopeList_.setSize(primalFuncStdNames_.size(), 1e16);
 
     // if inputInto has unsteadyField, we need to initial GlobalVar::inputFieldUnsteady here
     this->initInputFieldUnsteady();
@@ -193,8 +196,8 @@ label DASolver::loop(Time& runTime)
         }
         else if (funcStd_ < primalFuncStdTol_ && fabs(funcSlope_) < primalFuncSlopeTol_)
         {
-            Info << "Function " << primalFuncStdName_ << " std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl;
-            Info << "and its abs(slope) " << fabs(funcSlope_) << " satisfied the prescribed tolerance " << primalFuncSlopeTol_ << endl
+            Info << "Functions max std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl;
+            Info << "and their max abs(slope) " << fabs(funcSlope_) << " satisfied the prescribed tolerance " << primalFuncSlopeTol_ << endl
                  << endl;
         }
 
@@ -232,29 +235,32 @@ void DASolver::calcFuncStd()
     */
     label timeIndex = runTimePtr_->timeIndex();
     label listIndex = timeIndex - 1;
-    label funcIdx = this->getFunctionListIndex(primalFuncStdName_);
     label window = max(2, round(primalFuncStdFrac_ * scalar(listIndex + 1)));
     label startIdx = max(0, listIndex - window + 1);
-
-    scalar mean = 0.0;
     label nActualSteps = listIndex - startIdx + 1;
-    for (label i = listIndex; i >= startIdx; i--)
-    {
-        mean += functionTimeSteps_[funcIdx][i];
-    }
-    mean = mean / (nActualSteps + 1e-16);
 
-    funcStd_ = 0.0;
-    for (label i = listIndex; i >= startIdx; i--)
+    funcStd_ = -1.0;
+    forAll(primalFuncStdNames_, idxI)
     {
-        funcStd_ += (functionTimeSteps_[funcIdx][i] - mean) * (functionTimeSteps_[funcIdx][i] - mean);
+        label funcIdx = this->getFunctionListIndex(primalFuncStdNames_[idxI]);
+        scalar mean = 0.0;
+        for (label i = listIndex; i >= startIdx; i--)
+        {
+            mean += functionTimeSteps_[funcIdx][i];
+        }
+        mean = mean / (nActualSteps + 1e-16);
+
+        scalar funcStd = 0.0;
+        for (label i = listIndex; i >= startIdx; i--)
+        {
+            funcStd += (functionTimeSteps_[funcIdx][i] - mean) * (functionTimeSteps_[funcIdx][i] - mean);
+        }
+        funcStd = funcStd / (nActualSteps + 1e-16);
+        funcStd = sqrt(funcStd) / mag(mean + 1e-16);
+
+        funcStdList_[idxI] = funcStd;
+        funcStd_ = max(funcStd_, funcStd);
     }
-    funcStd_ = funcStd_ / (nActualSteps + 1e-16);
-    funcStd_ = sqrt(funcStd_) / mag(mean + 1e-16);
-    //Info << "funcTS " << functionTimeSteps_[funcIdx] << endl;
-    //Info << "mean " << mean << endl;
-    //Info << "nActualSteps " << nActualSteps << endl;
-    //Info << "funcStd " << funcStd_ << endl;
 }
 
 void DASolver::calcFuncSlope()
@@ -271,35 +277,41 @@ void DASolver::calcFuncSlope()
     */
     label timeIndex = runTimePtr_->timeIndex();
     label listIndex = timeIndex - 1;
-    label funcIdx = this->getFunctionListIndex(primalFuncStdName_);
     label window = max(2, round(primalFuncStdFrac_ * scalar(listIndex + 1)));
     label startIdx = max(0, listIndex - window + 1);
     label nActualSteps = listIndex - startIdx + 1;
 
-    // local x is the offset within the window [0, nActualSteps-1]; y is the function value
-    scalar xMean = 0.0;
-    scalar yMean = 0.0;
-    for (label i = startIdx; i <= listIndex; i++)
+    funcSlope_ = -1.0;
+    forAll(primalFuncStdNames_, idxI)
     {
-        xMean += scalar(i - startIdx);
-        yMean += functionTimeSteps_[funcIdx][i];
-    }
-    xMean = xMean / (nActualSteps + 1e-16);
-    yMean = yMean / (nActualSteps + 1e-16);
+        label funcIdx = this->getFunctionListIndex(primalFuncStdNames_[idxI]);
 
-    // least-squares slope = sum((x-xMean)(y-yMean)) / sum((x-xMean)^2)
-    scalar sxy = 0.0;
-    scalar sxx = 0.0;
-    for (label i = startIdx; i <= listIndex; i++)
-    {
-        scalar dx = scalar(i - startIdx) - xMean;
-        sxy += dx * (functionTimeSteps_[funcIdx][i] - yMean);
-        sxx += dx * dx;
-    }
+        // local x is the offset within the window [0, nActualSteps-1]; y is the function value
+        scalar xMean = 0.0;
+        scalar yMean = 0.0;
+        for (label i = startIdx; i <= listIndex; i++)
+        {
+            xMean += scalar(i - startIdx);
+            yMean += functionTimeSteps_[funcIdx][i];
+        }
+        xMean = xMean / (nActualSteps + 1e-16);
+        yMean = yMean / (nActualSteps + 1e-16);
 
-    scalar slope = sxy / (sxx + 1e-16);
-    // normalize by the window mean to match the dimensionless convention of funcStd_
-    funcSlope_ = slope / mag(yMean + 1e-16);
+        // least-squares slope = sum((x-xMean)(y-yMean)) / sum((x-xMean)^2)
+        scalar sxy = 0.0;
+        scalar sxx = 0.0;
+        for (label i = startIdx; i <= listIndex; i++)
+        {
+            scalar dx = scalar(i - startIdx) - xMean;
+            sxy += dx * (functionTimeSteps_[funcIdx][i] - yMean);
+            sxx += dx * dx;
+        }
+
+        scalar slope = sxy / (sxx + 1e-16);
+        // normalize by the window mean to match the dimensionless convention of funcStd_
+        funcSlopeList_[idxI] = slope / mag(yMean + 1e-16);
+        funcSlope_ = max(funcSlope_, mag(funcSlopeList_[idxI]));
+    }
 }
 
 void DASolver::calcAllFunctions(label print)
@@ -351,10 +363,17 @@ void DASolver::calcAllFunctions(label print)
             Info << functionName
                  << ": " << functionVal
                  << " " << timeOpType << ": " << timeOpVal;
-            if (primalFuncStdTol_ > 0 && functionName == primalFuncStdName_)
+            if (primalFuncStdTol_ > 0)
             {
-                Info << " std: " << funcStd_;
-                Info << " slope: " << funcSlope_;
+                forAll(primalFuncStdNames_, idxJ)
+                {
+                    if (functionName == primalFuncStdNames_[idxJ])
+                    {
+                        Info << " std: " << funcStdList_[idxJ];
+                        Info << " slope: " << funcSlopeList_[idxJ];
+                        break;
+                    }
+                }
             }
 #ifdef CODI_ADF
             Info << " ADF-Deriv: " << timeOpVal.getGradient();

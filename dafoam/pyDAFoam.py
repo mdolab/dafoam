@@ -83,10 +83,12 @@ class DAOPTION(object):
         ## stdTol: the tolerance of the function oscillation standard deviation, -1 means it is deactivated
         ## slopeTol: the tolerance of the function slope , -1 means it is deactivated
         ## The case is converged only if both stdTol and slopeTol is lower than the prescribed values
-        ## funcName: which function to use to calculate the std.
+        ## funcName: which function to use to calculate the std (backward compatible single-function input).
+        ## funcNames: which functions to use to calculate the std; the largest std and abs(slope)
+        ##          among these functions will be used for convergence checking.
         ## nStepsFrac: the fraction of elapsed iterations to use as the std window, here
         ##          0.2 means we always use the last 20% of elapsed iterations to compute the std
-        self.primalFuncStdTol = {"stdTol": -1.0, "slopeTol": -1.0, "funcName": "CD", "nStepsFrac": 0.2}
+        self.primalFuncStdTol = {"stdTol": -1.0, "slopeTol": -1.0, "funcNames": ["CD"], "nStepsFrac": 0.2}
 
         ## The boundary condition for primal solution. The keys should include "variable", "patch",
         ## and "value". For turbulence variable, one can also set "useWallFunction" [bool].

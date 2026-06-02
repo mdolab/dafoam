@@ -193,11 +193,14 @@ label DAHisaFoam::solvePrimal()
         if (primalFuncStdTol_ > 0)
         {
             this->calcFuncStd();
+            // also compute the function slope over the same window (diagnostic only)
+            this->calcFuncSlope();
         }
-        if (funcStd_ < primalFuncStdTol_ && runTime.timeIndex() > primalMinIters_)
+        if ((funcStd_ < primalFuncStdTol_ && fabs(funcSlope_) < primalFuncSlopeTol_) && runTime.timeIndex() > primalMinIters_)
         {
 
-            Info << "Function " << primalFuncStdName_ << " std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl
+            Info << "Functions max std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl;
+            Info << "and their max abs(slope) " << fabs(funcSlope_) << " satisfied the prescribed tolerance " << primalFuncSlopeTol_ << endl
                  << endl;
             notFinished = false;
         }
