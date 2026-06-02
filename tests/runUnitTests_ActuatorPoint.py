@@ -42,6 +42,7 @@ daOptions = {
         "PCMatPrecomputeInterval": 5,
         "PCMatUpdateInterval": 1,
         "readZeroFields": True,
+        "transport:nu": 1.5e-5,
     },
     "fvSource": {
         "point1": {

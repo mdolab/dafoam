@@ -137,6 +137,8 @@ void DAInputPatchVelocity::run(const scalarList& input)
         }
     }
     U.correctBoundaryConditions();
+    // write the field
+    U.write();
 
     reduce(hasCharFarFieldBC, sumOp<label>());
     if (hasCharFarFieldBC > 0)
@@ -145,6 +147,9 @@ void DAInputPatchVelocity::run(const scalarList& input)
         volScalarField& T = mesh_.thisDb().lookupObjectRef<volScalarField>("T");
         p.correctBoundaryConditions();
         T.correctBoundaryConditions();
+        // write the field
+        p.write();
+        T.write();
     }
 }
 

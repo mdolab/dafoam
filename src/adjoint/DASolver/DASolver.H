@@ -153,19 +153,23 @@ protected:
     /// the function slope tolerance
     scalar primalFuncSlopeTol_ = -1.0;
 
-    /// the function name for the std tolerance
-    word primalFuncStdName_ = "CD";
+    /// the function names for the std tolerance
+    wordList primalFuncStdNames_;
 
     /// the fraction of elapsed iterations to use as the std window
     scalar primalFuncStdFrac_ = 0.2;
 
-    /// the std of a function
+    /// the largest std among primalFuncStdNames_
     scalar funcStd_ = 1e16;
 
-    /// the normalized least-squares slope of a function over the same trailing
-    /// window used for funcStd_ (relative change per iteration; signed). Diagnostic
-    /// only for now; not used as a convergence/termination criterion.
+    /// the largest abs(normalized least-squares slope) among primalFuncStdNames_
     scalar funcSlope_ = 1e16;
+
+    /// the std for each function in primalFuncStdNames_
+    scalarList funcStdList_;
+
+    /// the normalized least-squares slope for each function in primalFuncStdNames_
+    scalarList funcSlopeList_;
 
     /// whether to print primal information to the screen
     label printToScreen_ = 0;
@@ -438,11 +442,11 @@ public:
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);
 
-    /// calculate the function std
+    /// calculate the function std for all monitored functions and assign the max to funcStd_
     void calcFuncStd();
 
-    /// calculate the normalized least-squares slope of the function over the
-    /// same trailing window used by calcFuncStd
+    /// calculate the normalized least-squares slope for all monitored functions
+    /// and assign the max abs value to funcSlope_
     void calcFuncSlope();
 
     /// assign the inputFieldUnsteady values to the OF field vars

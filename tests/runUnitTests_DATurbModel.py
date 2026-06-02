@@ -89,6 +89,7 @@ daOptions = {
     "printDAOptions": False,
     "primalBC": {
         "useWallFunction": False,
+        "thermo:mu": 1.8e-5,
     },
 }
 
@@ -115,6 +116,7 @@ daOptions = {
     "printDAOptions": False,
     "primalBC": {
         "useWallFunction": False,
+        "transport:nu": 1.5e-5,
     },
 }
 

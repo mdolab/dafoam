@@ -7,6 +7,9 @@
 
 #include "DAField.H"
 #include "characteristicBase.H"
+#include "OFstream.H"
+#include "Pstream.H"
+#include "fluidThermo.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -666,6 +669,7 @@ void DAField::setPrimalInitialConditions(const label printInfo)
             {
                 field[cellI] = initValue;
             }
+            field.write();
         }
         else if (db.foundObject<volVectorField>(fieldName))
         {
@@ -682,6 +686,7 @@ void DAField::setPrimalInitialConditions(const label printInfo)
                 field[cellI][1] = initValue[1];
                 field[cellI][2] = initValue[2];
             }
+            field.write();
         }
         else
         {
@@ -743,9 +748,29 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
         {
             // change the rotation speed in MRF
             scalar omegaNew = bcDict.getScalar("MRF");
-            const IOMRFZoneListDF& MRF = db.lookupObject<IOMRFZoneListDF>("MRFProperties");
+            IOMRFZoneListDF& MRF = db.lookupObjectRef<IOMRFZoneListDF>("MRFProperties");
             scalar& omega = const_cast<scalar&>(MRF.getOmegaRef());
             omega = omegaNew;
+
+            // Rewrite MRFProperties as a dictionary so the header stays valid.
+            IOdictionary MRFProperties(
+                IOobject(
+                    "MRFProperties",
+                    mesh_.time().constant(),
+                    mesh_,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE,
+                    false));
+            dictionary& mrfSubDict = MRFProperties.subDict("MRF");
+            mrfSubDict.set("omega", omegaNew);
+            if (Pstream::master())
+            {
+                OFstream rootMRFProperties(
+                    mesh_.time().globalPath() / "constant" / "MRFProperties");
+                MRFProperties.regIOobject::writeHeader(rootMRFProperties);
+                MRFProperties.dictionary::write(rootMRFProperties, false);
+                MRFProperties.regIOobject::writeEndDivider(rootMRFProperties);
+            }
 
             if (printInfo)
             {
@@ -773,6 +798,28 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
             }
             nuField.correctBoundaryConditions();
 
+            // Rewrite transportProperties as a dictionary so the header stays valid.
+            IOdictionary transportProperties(
+                IOobject(
+                    "transportProperties",
+                    mesh_.time().constant(),
+                    mesh_,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE,
+                    false));
+            transportProperties.set("nu", nu);
+            if (Pstream::master())
+            {
+                OFstream rootTransportProperties(
+                    mesh_.time().globalPath() / "constant" / "transportProperties");
+                transportProperties.regIOobject::writeHeader(rootTransportProperties);
+                transportProperties.dictionary::write(rootTransportProperties, false);
+                transportProperties.regIOobject::writeEndDivider(rootTransportProperties);
+            }
+
+            transportModel& laminarTransport = db.lookupObjectRef<transportModel>("transportProperties");
+            laminarTransport.read();
+
             if (printInfo)
             {
                 Info << "Setting transportProperties nu to " << nu << endl;
@@ -782,7 +829,7 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
         }
         else if (bcKey == "thermo:mu")
         {
-            // change the nu field
+            // change the mu field
             scalar mu = bcDict.getScalar("thermo:mu");
             volScalarField& muField = const_cast<volScalarField&>(
                 db.lookupObject<volScalarField>("thermo:mu"));
@@ -798,6 +845,31 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                 }
             }
             muField.correctBoundaryConditions();
+
+            // Rewrite thermophysicalProperties as a dictionary so the header stays valid.
+            IOdictionary thermoProperties(
+                IOobject(
+                    "thermophysicalProperties",
+                    mesh_.time().constant(),
+                    mesh_,
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE,
+                    false));
+            dictionary& mixtureSubDict = thermoProperties.subDict("mixture");
+            dictionary& transportSubDict = mixtureSubDict.subDict("transport");
+            transportSubDict.set("mu", mu);
+            if (Pstream::master())
+            {
+                OFstream rootThermoProperties(
+                    mesh_.time().globalPath() / "constant" / "thermophysicalProperties");
+                thermoProperties.regIOobject::writeHeader(rootThermoProperties);
+                thermoProperties.dictionary::write(rootThermoProperties, false);
+                thermoProperties.regIOobject::writeEndDivider(rootThermoProperties);
+            }
+            // we need to re-read the thermophyiscal properties! This will ensure we updated ther
+            // internal parameters, so when thermo.correct() is called, the values are updated.
+            fluidThermo& thermo = db.lookupObjectRef<fluidThermo>("thermophysicalProperties");
+            thermo.read();
 
             if (printInfo)
             {
@@ -866,6 +938,10 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     base.TRef() = T0;
                 }
             }
+            // write the flow fields to reflect the changes
+            U.write();
+            p.write();
+            T.write();
             continue;
         }
 
@@ -1032,6 +1108,18 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                                  << "or 3 (vector) elements" << abort(FatalError);
             }
         }
+
+        // Write the updated field once after all patch values are applied.
+        if (value.size() == 1 && db.foundObject<volScalarField>(variable))
+        {
+            const volScalarField& state = db.lookupObject<volScalarField>(variable);
+            state.write();
+        }
+        else if (value.size() == 3 && db.foundObject<volVectorField>(variable))
+        {
+            const volVectorField& state = db.lookupObject<volVectorField>(variable);
+            state.write();
+        }
     }
 
     // we also set wall boundary conditions for turbulence variables
@@ -1144,6 +1232,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     }
                 }
             }
+            // write the field
+            nut.write();
         }
 
         // ------ k ----------
@@ -1209,6 +1299,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     }
                 }
             }
+            // write the field
+            k.write();
         }
 
         // ------ omega ----------
@@ -1250,6 +1342,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     }
                 }
             }
+            // write the field
+            omega.write();
         }
 
         // ------ epsilon ----------
@@ -1315,6 +1409,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     }
                 }
             }
+            // write the field
+            epsilon.write();
         }
 
         // ------ alphat ----------
@@ -1404,6 +1500,8 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                     }
                 }
             }
+            // write the field
+            alphat.write();
         }
     }
 }

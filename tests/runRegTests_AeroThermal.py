@@ -42,6 +42,7 @@ daOptionsAero = {
         "UHot": {"variable": "U", "patches": ["hot_air_in"], "value": [U0, 0.0, 0.0]},
         "UCold": {"variable": "U", "patches": ["cold_air_in"], "value": [-U0, 0.0, 0.0]},
         "useWallFunction": False,
+        "transport:nu": 1.5e-5,
     },
     "function": {
         "PL1": {
