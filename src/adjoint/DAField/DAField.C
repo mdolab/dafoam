@@ -1406,32 +1406,13 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
         }
 
         // ------ alphat ----------
+        // TODO: need to figure out a way to pass the Prt parameter
+        // to the wall function. The default is 0.85 and is hard coded
         if (db.foundObject<volScalarField>("alphat"))
         {
 
             volScalarField& alphat(const_cast<volScalarField&>(
                 db.lookupObject<volScalarField>("alphat")));
-            scalar Prt = 0.85;
-
-            if (useWallFunction)
-            {
-                if (mesh_.thisDb().foundObject<incompressible::turbulenceModel>(incompressible::turbulenceModel::propertiesName))
-                {
-                    IOdictionary transportProperties(
-                        IOobject(
-                            "transportProperties",
-                            mesh_.time().constant(),
-                            mesh_,
-                            IOobject::MUST_READ,
-                            IOobject::NO_WRITE,
-                            false));
-                    Prt = readScalar(transportProperties.lookup("Prt"));
-                }
-                else if (mesh_.thisDb().foundObject<compressible::turbulenceModel>(compressible::turbulenceModel::propertiesName))
-                {
-                    Prt = coeffDict.getScalar("Prt");
-                }
-            }
 
             forAll(alphat.boundaryField(), patchI)
             {
@@ -1450,35 +1431,26 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                         if (mesh_.thisDb().foundObject<incompressible::turbulenceModel>(incompressible::turbulenceModel::propertiesName))
                         {
                             // incompressible case
-                            dictionary alphatWallFunctionDict;
-                            alphatWallFunctionDict.add("type", "incompressible::alphatWallFunction");
-                            alphatWallFunctionDict.add("Prt", Prt);
-                            // fixedValue-based wall functions require an explicit placeholder value.
-                            alphatWallFunctionDict.add("value", scalarField(mesh_.boundary()[patchI].size(), 0.0));
                             alphat.boundaryFieldRef().set(
                                 patchI,
-                                fvPatchField<scalar>::New(mesh_.boundary()[patchI], alphat, alphatWallFunctionDict));
+                                fvPatchField<scalar>::New("incompressible::alphatWallFunction", mesh_.boundary()[patchI], alphat));
 
                             if (printInfo)
                             {
-                                Info << "BCType=incompressible::alphatWallFunction. Prt=" << Prt << endl;
+                                Info << "BCType=incompressible::alphatWallFunction. Default Prt=0.85" << endl;
                             }
                         }
                         else if (mesh_.thisDb().foundObject<compressible::turbulenceModel>(compressible::turbulenceModel::propertiesName))
                         {
                             // compressible case
-                            dictionary alphatWallFunctionDict;
-                            alphatWallFunctionDict.add("type", "compressible::alphatWallFunction");
-                            alphatWallFunctionDict.add("Prt", Prt);
-                            // fixedValue-based wall functions require an explicit placeholder value.
-                            alphatWallFunctionDict.add("value", scalarField(mesh_.boundary()[patchI].size(), 0.0));
+                            // incompressible case
                             alphat.boundaryFieldRef().set(
                                 patchI,
-                                fvPatchField<scalar>::New(mesh_.boundary()[patchI], alphat, alphatWallFunctionDict));
+                                fvPatchField<scalar>::New("compressible::alphatWallFunction", mesh_.boundary()[patchI], alphat));
 
                             if (printInfo)
                             {
-                                Info << "BCType=compressible::alphatWallFunction. Prt=" << Prt << endl;
+                                Info << "BCType=compressible::alphatWallFunction. Default Prt=0.85" << endl;
                             }
                         }
                         else
