@@ -49,6 +49,7 @@ daOptionsAero = {
         "UHot": {"variable": "U", "patches": ["hot_air_in"], "value": [U0, 0.0, 0.0]},
         "UCold": {"variable": "U", "patches": ["cold_air_in"], "value": [-U0, 0.0, 0.0]},
         "useWallFunction": False,
+        "transport:nu": 1.5e-5,
     },
     "function": {
         "HFX": {
@@ -260,6 +261,7 @@ daOptions = {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "T0": {"variable": "T", "patches": ["inlet"], "value": [310.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [101325.0]},
+        "thermo:mu": 1.8e-5,
         "useWallFunction": True,
     },
     "function": {

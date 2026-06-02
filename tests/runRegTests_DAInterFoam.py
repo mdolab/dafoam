@@ -31,6 +31,7 @@ daOptions = {
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
         "useWallFunction": True,
+        "transport:nu": 1.5e-5,
     },
     "debug": False,
     "useConstrainHbyA": False,

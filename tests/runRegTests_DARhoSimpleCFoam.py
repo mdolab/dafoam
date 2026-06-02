@@ -44,6 +44,7 @@ daOptions = {
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inout"], "value": [nuTilda0]},
         "useWallFunction": True,
+        "thermo:mu": 1.8e-5,
     },
     "function": {
         "CD": {

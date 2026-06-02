@@ -39,6 +39,7 @@ daOptions = {
     "primalBC": {
         "charFarFieldBC": [U0, 0.0, 0.0, p0, T0],
         "useWallFunction": False,
+        "thermo:mu": 1.8e-5,
     },
     "function": {
         "CD": {

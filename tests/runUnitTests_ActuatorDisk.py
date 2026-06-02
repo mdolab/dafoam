@@ -40,6 +40,7 @@ daOptions = {
         "p0": {"variable": "p", "patches": ["outlet"], "value": [p0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [nuTilda0]},
         "useWallFunction": True,
+        "transport:nu": 1.5e-5,
     },
     "fvSource": {
         "disk1": {

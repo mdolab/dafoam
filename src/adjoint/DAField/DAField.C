@@ -9,6 +9,7 @@
 #include "characteristicBase.H"
 #include "OFstream.H"
 #include "Pstream.H"
+#include "fluidThermo.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -816,6 +817,9 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                 transportProperties.regIOobject::writeEndDivider(rootTransportProperties);
             }
 
+            transportModel& laminarTransport = db.lookupObjectRef<transportModel>("transportProperties");
+            laminarTransport.read();
+
             if (printInfo)
             {
                 Info << "Setting transportProperties nu to " << nu << endl;
@@ -862,6 +866,10 @@ void DAField::setPrimalBoundaryConditions(const label printInfo)
                 thermoProperties.dictionary::write(rootThermoProperties, false);
                 thermoProperties.regIOobject::writeEndDivider(rootThermoProperties);
             }
+            // we need to re-read the thermophyiscal properties! This will ensure we updated ther
+            // internal parameters, so when thermo.correct() is called, the values are updated.
+            fluidThermo& thermo = db.lookupObjectRef<fluidThermo>("thermophysicalProperties");
+            thermo.read();
 
             if (printInfo)
             {

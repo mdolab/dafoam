@@ -36,13 +36,14 @@ daOptions = {
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1e4,
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
-    "primalFuncStdTol": {"stdTol": 3e-12, "slopeTol": 3e-12, "funcName": "TPR", "nStepsFrac": 0.108},
+    "primalFuncStdTol": {"stdTol": 3e-12, "slopeTol": 3e-12, "funcNames": ["TPR"], "nStepsFrac": 0.108},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [0.0, 0.0, 100.0]},
         "T0": {"variable": "T", "patches": ["inlet"], "value": [300.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [101325.0]},
         "nuTilda0": {"variable": "nuTilda", "patches": ["inlet"], "value": [1e-4]},
         "useWallFunction": True,
+        "thermo:mu": 1.8e-5,
     },
     "function": {
         "TPR": {

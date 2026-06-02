@@ -40,6 +40,7 @@ daOptions = {
     "useConstrainHbyA": False,
     "primalBC": {
         "useWallFunction": True,
+        "thermo:mu": 1.8e-5,
     },
     "function": {
         "TTR": {

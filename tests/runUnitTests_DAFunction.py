@@ -324,6 +324,7 @@ daOptions = {
         "T0": {"variable": "T", "patches": ["inlet"], "value": [310.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [101325.0]},
         "useWallFunction": True,
+        "thermo:mu": 1.8e-5,
     },
     "function": {
         "HFX": {

@@ -40,6 +40,7 @@ daOptions = {
     "useAD": {"mode": "reverse", "seedIndex": 0, "dvName": "shape"},
     "primalBC": {
         "useWallFunction": False,
+        "transport:nu": 1.5e-5,
     },
     "dynamicMesh": {
         "active": True,
