@@ -556,6 +556,14 @@ public:
     /// calculate and return the function value
     double calcFunction(const word functionName);
 
+    /// compute the time operator window for a function at the current list end
+    void getTimeOpRange(
+        const word functionName,
+        const word timeOpType,
+        const label listEnd,
+        label& startIdx,
+        label& endIdx) const;
+
     /// return the index of a give functionName in daFunctionPtrList_
     label getFunctionListIndex(const word functionName)
     {
