@@ -54,7 +54,7 @@ daOptions = {
             "direction": [1.0, 0.0, 0.0],
             "scale": 1.0,
             "timeOp": "average",
-            "timeOpStartIndex": 4,
+            "nStepsFrac": 0.6,
         },
         "CL": {
             "type": "force",

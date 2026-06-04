@@ -350,15 +350,12 @@ void DASolver::calcAllFunctions(label print)
 
         if (print)
         {
-            const dictionary& functionDict = daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
-            label timeOpStartIndex = functionDict.lookupOrDefault<label>("timeOpStartIndex", 0);
             scalar timeOpVal = 0.0;
-            // if timeOpStartIndex > listIndex, timeOpVal is zero
-            if (timeOpStartIndex <= listIndex)
-            {
-                timeOpVal = daTimeOpPtrList_[idxI].compute(
-                    functionTimeSteps_[idxI], timeOpStartIndex, listIndex);
-            }
+            label startIdx = 0;
+            label endIdx = listIndex;
+            this->getTimeOpRange(functionName, timeOpType, listIndex, startIdx, endIdx);
+            timeOpVal = daTimeOpPtrList_[idxI].compute(
+                functionTimeSteps_[idxI], startIdx, endIdx);
 
             Info << functionName
                  << ": " << functionVal
@@ -404,6 +401,26 @@ double DASolver::calcFunction(const word functionName)
 #endif
 }
 
+void DASolver::getTimeOpRange(
+    const word functionName,
+    const word timeOpType,
+    const label listEnd,
+    label& startIdx,
+    label& endIdx) const
+{
+    endIdx = listEnd;
+    startIdx = 0;
+
+    // For average time operators, use the trailing nStepsFrac window.
+    if (timeOpType == "average")
+    {
+        const dictionary& functionDict = daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
+        scalar nStepsFrac = functionDict.lookupOrDefault<scalar>("nStepsFrac", 0.2);
+        label window = max(2, round(nStepsFrac * scalar(listEnd + 1)));
+        startIdx = max(0, listEnd - window + 1);
+    }
+}
+
 double DASolver::getTimeOpFuncVal(const word functionName)
 {
     // return the function value based on timeOp
@@ -416,19 +433,12 @@ double DASolver::getTimeOpFuncVal(const word functionName)
 
         if (functionName1 == functionName)
         {
-            const dictionary& functionDict = daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
-            label timeOpStartIndex = functionDict.lookupOrDefault<label>("timeOpStartIndex", 0);
-            // if timeOpStartIndex should not be larger than listFinalIndex
-            if (timeOpStartIndex <= listFinalIndex)
-            {
-                funcVal = daTimeOpPtrList_[idxI].compute(
-                    functionTimeSteps_[idxI], timeOpStartIndex, listFinalIndex);
-            }
-            else
-            {
-                FatalErrorIn("") << "timeOpStartIndex can not be larger than listFinalIndex!"
-                                 << abort(FatalError);
-            }
+            word timeOpType = daFunction.getFunctionTimeOp();
+            label startIdx = 0;
+            label endIdx = listFinalIndex;
+            this->getTimeOpRange(functionName, timeOpType, listFinalIndex, startIdx, endIdx);
+            funcVal = daTimeOpPtrList_[idxI].compute(
+                functionTimeSteps_[idxI], startIdx, endIdx);
         }
     }
 #if defined(CODI_ADF)
@@ -453,13 +463,15 @@ scalar DASolver::getdFScaling(
         word functionName1 = daFunction.getFunctionName();
         if (functionName1 == functionName)
         {
-            const dictionary& functionDict = daOptionPtr_->getAllOptions().subDict("function").subDict(functionName);
-            label timeOpStartIndex = functionDict.lookupOrDefault<label>("timeOpStartIndex", 0);
-            // if timeIdx is outside of [timeOpStartIndex, listFinalIndex], dFScaling is zero
-            if (timeIdx >= timeOpStartIndex && timeIdx <= listFinalIndex)
+            word timeOpType = daFunction.getFunctionTimeOp();
+            label startIdx = 0;
+            label endIdx = listFinalIndex;
+            this->getTimeOpRange(functionName, timeOpType, listFinalIndex, startIdx, endIdx);
+            // if timeIdx is outside of [startIdx, endIdx], dFScaling is zero
+            if (timeIdx >= startIdx && timeIdx <= endIdx)
             {
                 scaling = daTimeOpPtrList_[idxI].dFScaling(
-                    functionTimeSteps_[idxI], timeOpStartIndex, listFinalIndex, timeIdx);
+                    functionTimeSteps_[idxI], startIdx, endIdx, timeIdx);
             }
             return scaling;
         }
