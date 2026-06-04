@@ -80,6 +80,7 @@ daOptions = {
             "indices": [0, 1, 2],
             "timeDependentRefData": True,
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
         "PVar": {
             "type": "variance",
@@ -91,6 +92,7 @@ daOptions = {
             "varType": "scalar",
             "timeDependentRefData": True,
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
         "UProbe": {
             "type": "variance",
@@ -103,6 +105,7 @@ daOptions = {
             "indices": [0, 1],
             "timeDependentRefData": True,
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
         "wallShearStressVar": {
             "type": "variance",
@@ -115,6 +118,7 @@ daOptions = {
             "indices": [0, 1],
             "timeDependentRefData": True,
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
         # "wallHeatFlux": {
         #     "type": "variance",

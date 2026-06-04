@@ -85,6 +85,7 @@ daOptions = {
             "indices": [0, 1],
             "timeDependentRefData": True,
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
     },
     "adjStateOrdering": "cell",

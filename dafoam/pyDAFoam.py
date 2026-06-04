@@ -126,7 +126,9 @@ class DAOPTION(object):
         ## the reserved type names), how to select the discrete mesh faces to compute the function
         ## (e.g., we select them from the name of a patch patchToFace), the name of the patch (wing)
         ## for patchToFace, the scaling factor "scale". For forces, we need to project the force vector to a
-        ## specific direction. The following example defines that CD is the force that is parallel to flow
+        ## specific direction. For transient functions with "timeOp": "average", users can optionally set
+        ## "nStepsFrac" to average over the last fraction of available samples; the default is 0.2.
+        ## The following example defines that CD is the force that is parallel to flow
         ## (parallelToFlow). Alternative, we can also use fixedDirection and provide a direction key for
         ## force, i.e., "directionMode": "fixedDirection", "direction": [1.0, 0.0, 0.0]. Since we select
         ## parallelToFlow, we need to prescribe the name of angle of patchVelocityInputName to determine
