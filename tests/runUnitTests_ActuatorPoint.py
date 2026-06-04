@@ -78,6 +78,7 @@ daOptions = {
             "direction": [1.0, 0.0, 0.0],
             "scale": 1.0,
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
         "CL": {
             "type": "force",
@@ -87,6 +88,7 @@ daOptions = {
             "direction": [0.0, 1.0, 0.0],
             "scale": 1.0,
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
     },
     "adjStateOrdering": "cell",

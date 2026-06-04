@@ -215,6 +215,7 @@ daOptions = {
             "scale": 1.0,
             "resWeight": {"URes": 0.1, "pRes": 0.01, "phiRes": 10.0, "TRes": 0.01, "nuTildaRes": 100.0},
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
         "ResNorm1": {
             "type": "residualNorm",
@@ -223,6 +224,7 @@ daOptions = {
             "scale": 1.0,
             "resWeight": {"URes": 1.0, "pRes": 1.0, "phiRes": 10.0, "TRes": 1.0, "nuTildaRes": 1.0},
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
         # max pressure on the wall across all time instances
         "PWallMax": {

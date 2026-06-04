@@ -46,6 +46,7 @@ daOptions = {
             "divByTotalVol": 0,
             "scale": 1.0,
             "timeOp": "average",
+            "nStepsFrac": 1.0,
         },
     },
     "adjStateOrdering": "cell",
