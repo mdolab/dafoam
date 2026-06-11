@@ -690,8 +690,7 @@ void DAField::setPrimalInitialConditions(const label printInfo)
         }
         else
         {
-            FatalErrorIn("setPrimalInitialConditions") << "initial field " << fieldName << " not found!"
-                                                       << abort(FatalError);
+            Info << "The requested variable " << fieldName << " is not found! Skipping its initial field setting" << endl;
         }
     }
 }
