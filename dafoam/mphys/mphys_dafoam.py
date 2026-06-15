@@ -1825,6 +1825,10 @@ class DAFoamVSPVolume(ExplicitComponent):
         e.g. ["NACA:UpperCoeff_0:Au_0", "NACA:LowerCoeff_0:Al_0"].
         Each entry is used as both the OpenMDAO input name and the VSP
         parameter to update.
+    vsp_comp_names : list of str or None
+        Names of the VSP components whose combined volume is computed. All
+        geometries matching these names are included. If None or empty, all
+        components are included. Default None.
     slice_dir : str
         Slice direction: 'x', 'y', or 'z'. Default 'z'.
     n_slices : int
@@ -1856,7 +1860,8 @@ class DAFoamVSPVolume(ExplicitComponent):
         "vsp_vol",
         DAFoamVSPVolume(
             vsp_file="wing.vsp3",
-            vsp_vars=["NACA:UpperCoeff_0:Au_0", "NACA:LowerCoeff_0:Al_0"],
+            vsp_vars=["Wing:UpperCoeff_0:Au_0", "Wing:LowerCoeff_0:Al_0"],
+            vsp_comp_names=["Wing", "Tail"],
             slice_dir="x",
             n_slices=10,
             output_name="volume_val",
@@ -1870,6 +1875,7 @@ class DAFoamVSPVolume(ExplicitComponent):
     def initialize(self):
         self.options.declare("vsp_file", recordable=False)
         self.options.declare("vsp_vars", recordable=False)
+        self.options.declare("vsp_comp_names", default=None, types=(list, type(None)), recordable=False)
         self.options.declare("slice_dir", default="z", recordable=False)
         self.options.declare("n_slices", default=10, recordable=False)
         self.options.declare("output_name", recordable=False)
@@ -1916,6 +1922,7 @@ class DAFoamVSPVolume(ExplicitComponent):
         """Run MassProp analysis on the current VSP model and return raw volume."""
         slice_dir = self.options["slice_dir"]
         n_slices = self.options["n_slices"]
+        vsp_comp_names = self.options["vsp_comp_names"]
         _dir_map = {"x": 0, "y": 1, "z": 2}
         if slice_dir.lower() not in _dir_map:
             raise ValueError("slice_dir must be 'x', 'y', or 'z', got '%s'" % slice_dir)
@@ -1923,11 +1930,33 @@ class DAFoamVSPVolume(ExplicitComponent):
         vsp.SetAnalysisInputDefaults(analysis_name)
         vsp.SetIntAnalysisInput(analysis_name, "NumSlices", [n_slices])
         vsp.SetIntAnalysisInput(analysis_name, "MassSliceDir", [_dir_map[slice_dir.lower()]])
-        rid = vsp.ExecAnalysis(analysis_name)
-        # MassProp creates a temporary mesh geom; delete it so it doesn't accumulate across calls
-        res_ids = vsp.GetStringResults(rid, "Mesh_GeomID")
-        vsp.DeleteGeom(res_ids[0])
-        return vsp.GetDoubleResults(rid, "Total_Volume")[0]
+
+        shown_geom_ids = None
+        if vsp_comp_names:
+            # MassProp can operate on the special shown set. Preserve pyGeo's display state while
+            # temporarily making only the requested component geometries visible.
+            shown_geom_ids = list(vsp.GetGeomSet(vsp.SET_SHOWN))
+            vsp.HideAll()
+            # Convert each provided component name to the geometry IDs required by SetSetFlag.
+            for component_name in vsp_comp_names:
+                for geom_id in vsp.FindGeomsWithName(component_name):
+                    vsp.SetSetFlag(geom_id, vsp.SET_SHOWN, True)
+            vsp.SetIntAnalysisInput(analysis_name, "Set", [vsp.SET_SHOWN])
+
+        try:
+            rid = vsp.ExecAnalysis(analysis_name)
+            volume = vsp.GetDoubleResults(rid, "Total_Volume")[0]
+            # MassProp creates a temporary mesh geom; delete it so it doesn't accumulate across calls.
+            res_ids = vsp.GetStringResults(rid, "Mesh_GeomID")
+            vsp.DeleteGeom(res_ids[0])
+        finally:
+            if shown_geom_ids is not None:
+                # Restore the exact set of geometries that was visible before this calculation.
+                vsp.HideAll()
+                for geom_id in shown_geom_ids:
+                    vsp.SetSetFlag(geom_id, vsp.SET_SHOWN, True)
+
+        return volume
 
     def compute(self, inputs, outputs):
         import openvsp as vsp
