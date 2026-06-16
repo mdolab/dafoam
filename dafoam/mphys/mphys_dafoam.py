@@ -1935,8 +1935,10 @@ class DAFoamVSPVolume(ExplicitComponent):
         if vsp_comp_names:
             # MassProp can operate on the special shown set. Preserve pyGeo's display state while
             # temporarily making only the requested component geometries visible.
-            shown_geom_ids = list(vsp.GetGeomSet(vsp.SET_SHOWN))
-            vsp.HideAll()
+            shown_geom_ids = list(vsp.GetGeomSetAtIndex(vsp.SET_SHOWN))
+            # OpenVSP 3.42.x has no HideAll(); clear the shown flag on every geom instead.
+            for geom_id in vsp.FindGeoms():
+                vsp.SetSetFlag(geom_id, vsp.SET_SHOWN, False)
             # Convert each provided component name to the geometry IDs required by SetSetFlag.
             for component_name in vsp_comp_names:
                 for geom_id in vsp.FindGeomsWithName(component_name):
@@ -1952,7 +1954,8 @@ class DAFoamVSPVolume(ExplicitComponent):
         finally:
             if shown_geom_ids is not None:
                 # Restore the exact set of geometries that was visible before this calculation.
-                vsp.HideAll()
+                for geom_id in vsp.FindGeoms():
+                    vsp.SetSetFlag(geom_id, vsp.SET_SHOWN, False)
                 for geom_id in shown_geom_ids:
                     vsp.SetSetFlag(geom_id, vsp.SET_SHOWN, True)
 
