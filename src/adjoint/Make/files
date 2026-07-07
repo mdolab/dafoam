@@ -43,6 +43,7 @@ DAFunction/DAFunctionMeshQualityKS.C
 DAFunction/DAFunctionVonMisesStressKS.C
 DAFunction/DAFunctionResidualNorm.C
 DAFunction/DAFunctionFieldMax.C
+DAFunction/DAFunctionViscousDissipation.C
 
 DAFvSource/DAFvSource.C
 DAFvSource/DAFvSourceActuatorDisk.C
