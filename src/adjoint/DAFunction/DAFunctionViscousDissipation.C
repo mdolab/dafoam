@@ -4,35 +4,26 @@ namespace Foam
 {
 
 defineTypeNameAndDebug(DAFunctionViscousDissipation, 0);
-addToRunTimeSelectionTable
-(
+addToRunTimeSelectionTable(
     DAFunction,
     DAFunctionViscousDissipation,
-    dictionary
-);
+    dictionary);
 
-
-DAFunctionViscousDissipation::DAFunctionViscousDissipation
-(
+DAFunctionViscousDissipation::DAFunctionViscousDissipation(
     const fvMesh& mesh,
     const DAOption& daOption,
     const DAModel& daModel,
     const DAIndex& daIndex,
-    const word functionName
-)
-:
-    DAFunction
-    (
+    const word functionName)
+    : DAFunction(
         mesh,
         daOption,
         daModel,
         daIndex,
-        functionName
-    ),
-    daTurb_(daModel.getDATurbulenceModel())
+        functionName),
+      daTurb_(daModel.getDATurbulenceModel())
 {
 }
-
 
 scalar DAFunctionViscousDissipation::calcFunction()
 {
@@ -40,7 +31,7 @@ scalar DAFunctionViscousDissipation::calcFunction()
     Description:
         Calculate the total power dissipation (Reference: https://doi.org/10.1002/nme.1468)
 
-            J = ∫ [ 2*muEff*D:D + alphaPorosity*(U·U) ] dV
+            J = \int [ 2*muEff*D:D + alphaPorosity*(U·U) ] dV
 
         where
 
@@ -77,10 +68,8 @@ scalar DAFunctionViscousDissipation::calcFunction()
     // Symmetric strain-rate tensor
     //-------------------------------------------------------------
 
-    volSymmTensorField D
-    (
-        symm(tGradU())
-    );
+    volSymmTensorField D(
+        symm(tGradU()));
 
     //-------------------------------------------------------------
     // Effective viscosity
@@ -98,17 +87,17 @@ scalar DAFunctionViscousDissipation::calcFunction()
 
         scalar viscousTerm =
             2.0
-          * tNuEff()[cellI]
-          * (D[cellI] && D[cellI]);
+            * tNuEff()[cellI]
+            * (D[cellI] && D[cellI]);
 
         scalar brinkmanTerm =
             alpha[cellI]
-          * magSqr(U[cellI]);
+            * magSqr(U[cellI]);
 
         functionValue +=
             scale_
-          * (viscousTerm + brinkmanTerm)
-          * mesh_.V()[cellI];
+            * (viscousTerm + brinkmanTerm)
+            * mesh_.V()[cellI];
     }
 
     //-------------------------------------------------------------
@@ -123,4 +112,3 @@ scalar DAFunctionViscousDissipation::calcFunction()
 }
 
 }
-

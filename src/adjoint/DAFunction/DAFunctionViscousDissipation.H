@@ -24,37 +24,30 @@ namespace Foam
 {
 
 class DAFunctionViscousDissipation
-:
-    public DAFunction
+    : public DAFunction
 {
 
 protected:
-
     /// Turbulence model
     const DATurbulenceModel& daTurb_;
 
 public:
-
     TypeName("DAViscousDissipation");
 
-    DAFunctionViscousDissipation
-    (
+    DAFunctionViscousDissipation(
         const fvMesh& mesh,
         const DAOption& daOption,
         const DAModel& daModel,
         const DAIndex& daIndex,
-        const word functionName
-    );
+        const word functionName);
 
     virtual ~DAFunctionViscousDissipation()
     {
     }
 
     virtual scalar calcFunction();
-
 };
 
 }
 
 #endif
-
