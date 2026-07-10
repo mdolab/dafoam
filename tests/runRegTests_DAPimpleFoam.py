@@ -38,6 +38,12 @@ daOptions = {
         "useWallFunction": False,
         "transport:nu": 1.5e-5,
     },
+    "primalFuncStdTol": {
+        "stdTol": 1.0,
+        "slopeTol": 1.0,
+        "funcNames": ["CD", "CL"],
+        "nStepsFrac": 0.6,
+    },
     "unsteadyAdjoint": {
         "mode": "timeAccurate",
         "PCMatPrecomputeInterval": 5,
