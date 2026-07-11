@@ -15,7 +15,7 @@
 #include <petscksp.h>
 #include "Python.h"
 #include "fvCFD.H"
-#include "dynamicFvMesh.H"
+#include "fvMesh.H"
 #include "runTimeSelectionTables.H"
 #include "addToRunTimeSelectionTable.H"
 #include "OFstream.H"
@@ -75,8 +75,8 @@ protected:
     /// runTime pointer
     autoPtr<Time> runTimePtr_;
 
-    /// Mesh pointer created through the dynamicFvMesh runtime selector
-    autoPtr<dynamicFvMesh> meshPtr_;
+    /// fvMesh pointer
+    autoPtr<fvMesh> meshPtr_;
 
     /// DAOption pointer
     autoPtr<DAOption> daOptionPtr_;
