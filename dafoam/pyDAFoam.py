@@ -1152,8 +1152,7 @@ class PYDAFOAM(object):
         self.options = OrderedDict()
         for key in self.defaultOptions:
             if len(self.defaultOptions[key]) != 2:
-                raise Error("key %s has wrong format! \
-                    Example: {'iters' : [int, 1]}" % key)
+                raise Error("key %s has wrong format! Example: {'iters' : [int, 1]}" % key)
             self.options[key] = self.defaultOptions[key]
         # now set options to self.options
         for key in options:
