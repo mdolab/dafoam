@@ -324,6 +324,12 @@ class DAOPTION(object):
         ## },
         self.fvSource = {}
 
+        ## Whether to ONLY prepare the primal solution. If true, we will only set the initial and boudnary fields,
+        ## deform the mesh based on the setup in runScript.py, we will also save the mesh and updated BC and IC
+        ## to the disk without calling the primal. Later, one can run the native OpenFOAM solver based on the
+        ## prepared case
+        self.prepareCaseOnly = False
+
         ## The adjoint equation solution method. Options are: Krylov or fixedPoint
         self.adjEqnSolMethod = "Krylov"
 
@@ -1146,11 +1152,8 @@ class PYDAFOAM(object):
         self.options = OrderedDict()
         for key in self.defaultOptions:
             if len(self.defaultOptions[key]) != 2:
-                raise Error(
-                    "key %s has wrong format! \
-                    Example: {'iters' : [int, 1]}"
-                    % key
-                )
+                raise Error("key %s has wrong format! \
+                    Example: {'iters' : [int, 1]}" % key)
             self.options[key] = self.defaultOptions[key]
         # now set options to self.options
         for key in options:

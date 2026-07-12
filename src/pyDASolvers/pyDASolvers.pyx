@@ -99,6 +99,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void readStateVars(double, int)
         void readMeshPoints(double)
         void writeMeshPoints(double *, double)
+        void writeCurrentMeshPointsToConstant()
         void calcPCMatWithFvMatrix(PetscMat, int)
         double getEndTime()
         double getDeltaT()
@@ -389,6 +390,9 @@ cdef class pyDASolvers:
         cdef double *points_data = <double*>points.data
 
         self._thisptr.writeMeshPoints(points_data, timeVal)
+    
+    def writeCurrentMeshPointsToConstant(self):
+        self._thisptr.writeCurrentMeshPointsToConstant()
     
     def calcPCMatWithFvMatrix(self, Mat PCMat, turbOnly=0):
         self._thisptr.calcPCMatWithFvMatrix(PCMat.mat, turbOnly)

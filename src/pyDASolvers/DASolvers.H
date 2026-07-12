@@ -418,6 +418,12 @@ public:
         DASolverPtr_->writeMeshPoints(points, timeVal);
     }
 
+    /// write the current fvMesh to the disk
+    void writeCurrentMeshPointsToConstant()
+    {
+        DASolverPtr_->writeCurrentMeshPointsToConstant();
+    }
+
     /// calculate the PC mat using fvMatrix
     void calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly)
     {
