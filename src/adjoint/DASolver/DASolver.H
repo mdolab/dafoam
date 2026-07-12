@@ -190,7 +190,7 @@ protected:
     List<scalarList> functionTimeSteps_;
 
     /// the final time index from the primal solve. for steady state cases it can converge before endTime
-    label primalFinalTimeIndex_;
+    label primalFinalTimeIndex_ = 0;
 
     /// initial values for validateStates
     HashTable<scalar> initStateVals_;
@@ -729,6 +729,23 @@ public:
 
     /// write the mesh points to the disk for the given timeVal
     void writeMeshPoints(const double* points, const scalar timeVal);
+
+    /// write the current fvMesh to the disk's constant/polyMesh dir
+    void writeCurrentMeshPointsToConstant()
+    {
+        pointIOField writePoints(
+            IOobject(
+                "points",
+                runTimePtr_->constant(),
+                "polyMesh",
+                runTimePtr_(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false),
+            meshPtr_->points());
+
+        writePoints.write();
+    }
 
     /// calculate the PC mat using fvMatrix
     void calcPCMatWithFvMatrix(Mat PCMat, const label turbOnly = 0);

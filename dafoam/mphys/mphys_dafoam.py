@@ -330,6 +330,13 @@ class DAFoamSolver(ImplicitComponent):
                 raise AnalysisError("Mesh quality error!")
                 return
 
+            # if prepareCaseOnly is true, we just write the mesh/BC/IC to the disk and do not call solvePrimal
+            # The BC/IC have been updated and saved to the disk before solve_nonlinear, so here we just upddate
+            # the mesh
+            if DASolver.getOption("prepareCaseOnly"):
+                DASolver.solver.writeCurrentMeshPointsToConstant()
+                return
+
             # call the primal
             DASolver()
 
