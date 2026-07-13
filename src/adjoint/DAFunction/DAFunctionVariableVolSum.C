@@ -61,7 +61,7 @@ scalar DAFunctionVariableVolSum::calcFunction()
 
     const objectRegistry& db = mesh_.thisDb();
 
-    scalar totalVol = 1.0;
+    scalar totalVol = 0.0;
 
     if (divByTotalVol_)
     {
@@ -71,6 +71,10 @@ scalar DAFunctionVariableVolSum::calcFunction()
         }
         reduce(totalVol, sumOp<scalar>());
     }
+    else
+    {
+        totalVol = 1.0;
+    }
 
     if (varType_ == "scalar")
     {
@@ -79,6 +83,7 @@ scalar DAFunctionVariableVolSum::calcFunction()
         forAll(cellSources_, idxI)
         {
             const label& cellI = cellSources_[idxI];
+            scalar value = var[cellI];
             scalar volume = 1.0;
             if (multiplyVol_)
             {
@@ -86,15 +91,16 @@ scalar DAFunctionVariableVolSum::calcFunction()
             }
             if (invertField_)
             {
-                var[cellI] = invertVal_ - var[cellI];
+
+                value = invertVal_ - value;
             }
             if (isSquare_)
             {
-                functionValue += scale_ * volume * var[cellI] * var[cellI];
+                functionValue += scale_ * volume * value * value;
             }
             else
             {
-                functionValue += scale_ * volume * var[cellI];
+                functionValue += scale_ * volume * value;
             }
         }
     }
@@ -106,6 +112,7 @@ scalar DAFunctionVariableVolSum::calcFunction()
         forAll(cellSources_, idxI)
         {
             const label& cellI = cellSources_[idxI];
+            scalar value = var[cellI][index_];
             scalar volume = 1.0;
             if (multiplyVol_)
             {
@@ -113,15 +120,15 @@ scalar DAFunctionVariableVolSum::calcFunction()
             }
             if (invertField_)
             {
-                val[cellI][index_] = invertVal_ - var[cellI][index_]
+                value = invertVal_ - value;
             }
             if (isSquare_)
             {
-                functionValue += scale_ * volume * var[cellI][index_] * var[cellI][index_];
+                functionValue += scale_ * volume * value * value;
             }
             else
             {
-                functionValue += scale_ * volume * var[cellI][index_];
+                functionValue += scale_ * volume * value;
             }
         }
     }
@@ -135,7 +142,13 @@ scalar DAFunctionVariableVolSum::calcFunction()
     // need to reduce the sum of force across all processors
     reduce(functionValue, sumOp<scalar>());
 
+    Info << "Raw functionValue = " << functionValue << endl;
+    Info << "Total Volume      = " << totalVol << endl;
+    Info << "Ratio             = " << functionValue/totalVol << endl;
+    Info << "volume            = " << totalVol << endl;
+
     functionValue /= totalVol;
+
 
     // check if we need to calculate refDiff.
     this->calcRefVar(functionValue);
