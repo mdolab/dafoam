@@ -41,6 +41,10 @@ DAFunctionVariableVolSum::DAFunctionVariableVolSum(
     multiplyVol_ = functionDict_.lookupOrDefault<label>("multiplyVol", 1);
 
     divByTotalVol_ = functionDict_.lookupOrDefault<label>("divByTotalVol", 0);
+
+    invertField_ = functionDict_.lookupOrDefault<label>("invertField", 0);
+
+    invertVal_ = functionDict_.lookupOrDefault<label>("invertVal", 1); // Binary inversion from 0 to 1, vice versa
 }
 
 /// calculate the value of objective function
@@ -80,7 +84,11 @@ scalar DAFunctionVariableVolSum::calcFunction()
             {
                 volume = mesh_.V()[cellI];
             }
-            if (isSquare_)
+            if (invertField_)
+            {
+                functionValue += scale_ * volume * (invertVal_ - var[cellI]);
+            }
+            else if (isSquare_)
             {
                 functionValue += scale_ * volume * var[cellI] * var[cellI];
             }
@@ -92,6 +100,7 @@ scalar DAFunctionVariableVolSum::calcFunction()
     }
     else if (varType_ == "vector")
     {
+       
         const volVectorField& var = db.lookupObject<volVectorField>(varName_);
         // calculate mass
         forAll(cellSources_, idxI)
@@ -102,7 +111,11 @@ scalar DAFunctionVariableVolSum::calcFunction()
             {
                 volume = mesh_.V()[cellI];
             }
-            if (isSquare_)
+            if (invertField_)
+            {
+                functionValue += scale_ * volume * (invertVal_ - var[cellI][index_]);
+            }
+            else if (isSquare_)
             {
                 functionValue += scale_ * volume * var[cellI][index_] * var[cellI][index_];
             }
