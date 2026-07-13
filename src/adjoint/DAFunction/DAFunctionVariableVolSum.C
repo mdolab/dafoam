@@ -86,9 +86,9 @@ scalar DAFunctionVariableVolSum::calcFunction()
             }
             if (invertField_)
             {
-                functionValue += scale_ * volume * (invertVal_ - var[cellI]);
+                var[cellI] = invertVal_ - var[cellI];
             }
-            else if (isSquare_)
+            if (isSquare_)
             {
                 functionValue += scale_ * volume * var[cellI] * var[cellI];
             }
@@ -113,9 +113,9 @@ scalar DAFunctionVariableVolSum::calcFunction()
             }
             if (invertField_)
             {
-                functionValue += scale_ * volume * (invertVal_ - var[cellI][index_]);
+                val[cellI][index_] = invertVal_ - var[cellI][index_]
             }
-            else if (isSquare_)
+            if (isSquare_)
             {
                 functionValue += scale_ * volume * var[cellI][index_] * var[cellI][index_];
             }
