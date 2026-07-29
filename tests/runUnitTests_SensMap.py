@@ -170,7 +170,9 @@ results = prob.compute_totals(
     get_remote=True,
 )
 # extract the sensitivity
-totalsXs = results[("cruise.aero_post.CD", f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}")][0]
+totalsXs = results[
+    ("cruise.aero_post.CD", f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}")
+][0]
 totalsAlpha = results[("cruise.aero_post.CD", "dvs.alpha")][0]
 
 # plot the sens map for the surface coordinates

@@ -1016,7 +1016,9 @@ class DAFoamFaceCoords(ExplicitComponent):
         elif self.discipline == "thermal":
             self.surfCoordName = MPhysVariables.Thermal.Mesh.COORDINATES
         else:
-            raise AnalysisError("DAFoamFaceCoords only supports 'aero' or 'thermal' discipline, got '%s'" % self.discipline)
+            raise AnalysisError(
+                "DAFoamFaceCoords only supports 'aero' or 'thermal' discipline, got '%s'" % self.discipline
+            )
 
         DASolver = self.DASolver
 

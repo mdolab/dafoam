@@ -201,6 +201,7 @@ class Top(Multipoint):
             f"geometry_thermal.{MPhysVariables.Thermal.Geometry.COORDINATES_OUTPUT}",
             f"scenario.{MPhysVariables.Thermal.COORDINATES}",
         )
+
     def configure(self):
 
         super().configure()
