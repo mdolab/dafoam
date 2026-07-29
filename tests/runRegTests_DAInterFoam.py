@@ -131,9 +131,7 @@ class Top(Group):
 
         # add the design variables to the dvs component's output
         self.dvs.add_output("shape", val=np.zeros(1))
-        self.dvs.add_output(
-            "x_aero0_geometry_input", val=points, distributed=True
-        )
+        self.dvs.add_output("x_aero0_geometry_input", val=points, distributed=True)
 
         # define the design variables to the top level
         self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)
