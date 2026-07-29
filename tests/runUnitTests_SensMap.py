@@ -111,12 +111,12 @@ class Top(Multipoint):
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
         self.connect(
-            f"mesh.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
-            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+            "mesh.x_aero0",
+            "geometry.x_aero0_geometry_input",
         )
         self.connect(
-            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
-            f"cruise.{MPhysVariables.Aerodynamics.Surface.COORDINATES}",
+            "geometry.x_aero0_geometry_output",
+            "cruise.x_aero",
         )
 
     def configure(self):
@@ -166,12 +166,12 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 prob.run_model()
 results = prob.compute_totals(
     of=["cruise.aero_post.CD"],
-    wrt=[f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}", "dvs.alpha"],
+    wrt=["geometry.x_aero0_geometry_output", "dvs.alpha"],
     get_remote=True,
 )
 # extract the sensitivity
 totalsXs = results[
-    ("cruise.aero_post.CD", f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}")
+    ("cruise.aero_post.CD", "geometry.x_aero0_geometry_output")
 ][0]
 totalsAlpha = results[("cruise.aero_post.CD", "dvs.alpha")][0]
 

@@ -125,12 +125,12 @@ class Top(Multipoint):
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
         self.connect(
-            f"mesh.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
-            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+            "mesh.x_aero0",
+            "geometry.x_aero0_geometry_input",
         )
         self.connect(
-            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
-            f"cruise.{MPhysVariables.Aerodynamics.Surface.COORDINATES}",
+            "geometry.x_aero0_geometry_output",
+            "cruise.x_aero",
         )
 
         self.add_subsystem("LoD", om.ExecComp("val=CL/CD"))

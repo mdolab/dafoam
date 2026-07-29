@@ -82,14 +82,14 @@ daOptionsAero = {
     },
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
-        MPhysVariables.Aerodynamics.Surface.TEMPERATURE: {
+        "T_aero": {
             "type": "thermalCouplingInput",
             "patches": ["hot_air_inner", "cold_air_outer"],
             "components": ["solver", "function"],
         },
     },
     "outputInfo": {
-        MPhysVariables.Aerodynamics.Surface.HEAT_FLOW: {
+        "q_aero": {
             "type": "thermalCouplingOutput",
             "patches": ["hot_air_inner", "cold_air_outer"],
             "components": ["thermalCoupling"],
@@ -135,7 +135,7 @@ daOptionsThermal = {
     },
     "inputInfo": {
         "thermal_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
-        MPhysVariables.Thermal.HeatFlow.AERODYNAMIC: {
+        "q_aero_thermal": {
             "type": "thermalCouplingInput",
             "patches": ["channel_outer", "channel_inner"],
             # NOTE. this should include "function" as well. However, the total is worse
@@ -144,7 +144,7 @@ daOptionsThermal = {
         },
     },
     "outputInfo": {
-        MPhysVariables.Thermal.TEMPERATURE: {
+        "T_thermal": {
             "type": "thermalCouplingOutput",
             "patches": ["channel_outer", "channel_inner"],
             "components": ["thermalCoupling"],
@@ -201,21 +201,21 @@ class Top(Multipoint):
         )
 
         self.connect(
-            f"mesh_aero.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
-            f"geometry_aero.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+            "mesh_aero.x_aero0",
+            "geometry_aero.x_aero0_geometry_input",
         )
         self.connect(
-            f"geometry_aero.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
-            f"scenario.{MPhysVariables.Aerodynamics.Surface.COORDINATES}",
+            "geometry_aero.x_aero0_geometry_output",
+            "scenario.x_aero",
         )
 
         self.connect(
-            f"mesh_thermal.{MPhysVariables.Thermal.Mesh.COORDINATES}",
-            f"geometry_thermal.{MPhysVariables.Thermal.Geometry.COORDINATES_INPUT}",
+            "mesh_thermal.x_thermal0_mesh",
+            "geometry_thermal.x_thermal0_geometry_input",
         )
         self.connect(
-            f"geometry_thermal.{MPhysVariables.Thermal.Geometry.COORDINATES_OUTPUT}",
-            f"scenario.{MPhysVariables.Thermal.COORDINATES}",
+            "geometry_thermal.x_thermal0_geometry_output",
+            "scenario.x_thermal0",
         )
         self.add_subsystem("PL", om.ExecComp("val=PL1-PL2"))
 

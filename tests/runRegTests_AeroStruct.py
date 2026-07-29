@@ -153,7 +153,7 @@ class Top(Multipoint):
             mesh_file="wingboxProp.bdf",
             element_callback=element_callback,
             problem_setup=problem_setup,
-            coupling_loads=[MPhysVariables.Structures.Loads.AERODYNAMIC],
+            coupling_loads=["f_aero_struct"],
         )
         struct_builder.initialize(self.comm)
 
@@ -188,12 +188,12 @@ class Top(Multipoint):
         )
 
         self.connect(
-            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
-            f"cruise.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
+            "geometry.x_aero0_geometry_output",
+            "cruise.x_aero0",
         )
         self.connect(
-            f"geometry.{MPhysVariables.Structures.Geometry.COORDINATES_OUTPUT}",
-            f"cruise.{MPhysVariables.Structures.COORDINATES}",
+            "geometry.x_struct0_geometry_output",
+            "cruise.x_struct0",
         )
 
         # add the structural thickness DVs
@@ -202,12 +202,12 @@ class Top(Multipoint):
         self.connect("dv_struct", "cruise.dv_struct")
 
         self.connect(
-            f"mesh_aero.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
-            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+            "mesh_aero.x_aero0",
+            "geometry.x_aero0_geometry_input",
         )
         self.connect(
-            f"mesh_struct.{MPhysVariables.Structures.Mesh.COORDINATES}",
-            f"geometry.{MPhysVariables.Structures.Geometry.COORDINATES_INPUT}",
+            "mesh_struct.x_struct0_mesh",
+            "geometry.x_struct0_geometry_input",
         )
 
     def configure(self):

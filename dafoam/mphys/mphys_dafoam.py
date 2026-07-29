@@ -4,7 +4,6 @@ import openmdao.api as om
 from dafoam import PYDAFOAM
 from idwarp import USMesh
 from mphys.core import Builder
-from mphys import MPhysVariables
 import petsc4py
 from petsc4py import PETSc
 import numpy as np
@@ -18,9 +17,9 @@ def _get_mphys_dafoam_var_name(discipline, mode):
     """Return the DAFoam MPhys variable name for a discipline/mode pair."""
     if mode == "surfCoord":
         if discipline == "aero":
-            return MPhysVariables.Aerodynamics.Surface.COORDINATES
+            return "x_aero"
         if discipline == "thermal":
-            return MPhysVariables.Thermal.COORDINATES
+            return "x_thermal0"
         return "x_%s" % discipline
 
     if mode == "volCoord":
@@ -189,7 +188,7 @@ class DAFoamGroup(Group):
 
         if self.struct_coupling:
             # Use the official mphys aerodynamic loads output name.
-            self.loadsName = MPhysVariables.Aerodynamics.Surface.LOADS
+            self.loadsName = "f_aero"
             self.add_subsystem(
                 "force",
                 DAFoamForces(solver=self.DASolver),
@@ -663,9 +662,9 @@ class DAFoamMesh(ExplicitComponent):
         coord_size = self.x_a0.size
         # Use the official mphys mesh-coordinate output name for this discipline.
         if self.discipline == "aero":
-            self.x_a0_name = MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL
+            self.x_a0_name = "x_aero0"
         elif self.discipline == "thermal":
-            self.x_a0_name = MPhysVariables.Thermal.Mesh.COORDINATES
+            self.x_a0_name = "x_thermal0_mesh"
         else:
             self.x_a0_name = "x_%s0_mesh" % self.discipline
         self.add_output(
@@ -1012,9 +1011,9 @@ class DAFoamFaceCoords(ExplicitComponent):
         self.discipline = self.DASolver.getOption("discipline")
         self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")
         if self.discipline == "aero":
-            self.surfCoordName = MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL
+            self.surfCoordName = "x_aero0"
         elif self.discipline == "thermal":
-            self.surfCoordName = MPhysVariables.Thermal.Mesh.COORDINATES
+            self.surfCoordName = "x_thermal0_mesh"
         else:
             raise AnalysisError(
                 "DAFoamFaceCoords only supports 'aero' or 'thermal' discipline, got '%s'" % self.discipline
@@ -1069,7 +1068,7 @@ class DAFoamForces(ExplicitComponent):
 
         self.discipline = self.DASolver.getOption("discipline")
         # Use the official mphys aerodynamic loads output name inside the force component.
-        self.loadsName = MPhysVariables.Aerodynamics.Surface.LOADS
+        self.loadsName = "f_aero"
 
         self.stateName = _get_mphys_dafoam_var_name(self.discipline, "state")
         self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")

@@ -27,7 +27,6 @@ from petsc4py import PETSc
 petsc4py.init(sys.argv)
 
 import openmdao.api as om
-from mphys import MPhysVariables
 
 
 class DAOPTION(object):
@@ -1404,7 +1403,7 @@ class PYDAFOAM(object):
         # get xSDot
         if discipline != "aero":
             raise Error("Unsupported discipline %s for DVGeo point-set lookup" % discipline)
-        ptSetName = MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT
+        ptSetName = "x_aero0_geometry_output"
         xSDot = DVGeo.totalSensitivityProd(xDvDot, ptSetName=ptSetName).reshape(xSDot0.shape)
         # get xVDot
         xVDot = self.mesh.warpDerivFwd(xSDot)

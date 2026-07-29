@@ -100,8 +100,8 @@ class Top(Group):
         )
 
         self.connect(
-            MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT,
-            MPhysVariables.Aerodynamics.Surface.COORDINATES,
+            "x_aero0_geometry_output",
+            "x_aero",
         )
 
     def configure(self):
@@ -124,7 +124,7 @@ class Top(Group):
         # add the design variables to the dvs component's output
         self.dvs.add_output("shape", val=np.zeros(1))
         self.dvs.add_output(
-            MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT, val=points, distributed=True
+            "x_aero0_geometry_input", val=points, distributed=True
         )
 
         # define the design variables to the top level
