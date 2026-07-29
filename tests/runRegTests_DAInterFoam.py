@@ -9,10 +9,11 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
+from mphys import MPhysVariables
 from openmdao.api import Group
-from mphys.multipoint import Multipoint
+from mphys.core import Multipoint
 from dafoam.mphys.mphys_dafoam import DAFoamBuilderUnsteady
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
 
@@ -105,7 +106,10 @@ class Top(Group):
             promotes=["*"],
         )
 
-        self.connect("x_aero0", "x_aero")
+        self.connect(
+            MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT,
+            MPhysVariables.Aerodynamics.Surface.COORDINATES,
+        )
 
     def configure(self):
 
@@ -113,13 +117,13 @@ class Top(Group):
         points = self.cruise.get_surface_mesh()
 
         # add pointset
-        self.geometry.nom_add_discipline_coords("aero", points)
+        self.geometry.nom_add_discipline_coords(MPhysVariables.Aerodynamics.Surface.Geometry, points)
 
         # add the dv_geo object to the builder solver. This will be used to write deformed FFDs
-        self.cruise.solver.add_dvgeo(self.geometry.DVGeo)
+        self.cruise.solver.add_dvgeo(self.geometry.nom_getDVGeo())
 
         # geometry setup
-        pts = self.geometry.DVGeo.getLocalIndex(0)
+        pts = self.geometry.nom_getDVGeo().getLocalIndex(0)
         dir_y = np.array([0.0, 1.0, 0.0])
         shapes = []
         shapes.append({pts[4, 1, 0]: dir_y, pts[4, 1, 1]: dir_y, pts[5, 1, 0]: dir_y, pts[5, 1, 1]: dir_y})
@@ -127,7 +131,7 @@ class Top(Group):
 
         # add the design variables to the dvs component's output
         self.dvs.add_output("shape", val=np.zeros(1))
-        self.dvs.add_output("x_aero_in", val=points, distributed=True)
+        self.dvs.add_output(MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT, val=points, distributed=True)
 
         # define the design variables to the top level
         self.add_design_var("shape", lower=-10.0, upper=10.0, scaler=1.0)

@@ -9,10 +9,11 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
+from mphys import MPhysVariables
 from openmdao.api import Group
-from mphys.multipoint import Multipoint
+from mphys.core import Multipoint
 from dafoam.mphys.mphys_dafoam import DAFoamBuilderUnsteady
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
 
@@ -115,7 +116,10 @@ class Top(Group):
             promotes=["*"],
         )
 
-        self.connect("x_aero0", "x_aero")
+        self.connect(
+            MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT,
+            MPhysVariables.Aerodynamics.Surface.COORDINATES,
+        )
 
     def configure(self):
 
@@ -123,13 +127,13 @@ class Top(Group):
         points = self.cruise.get_surface_mesh()
 
         # add pointset
-        self.geometry.nom_add_discipline_coords("aero", points)
+        self.geometry.nom_add_discipline_coords(MPhysVariables.Aerodynamics.Surface.Geometry, points)
 
         # add the dv_geo object to the builder solver. This will be used to write deformed FFDs
-        self.cruise.solver.add_dvgeo(self.geometry.DVGeo)
+        self.cruise.solver.add_dvgeo(self.geometry.nom_getDVGeo())
 
         # geometry setup
-        pts = self.geometry.DVGeo.getLocalIndex(0)
+        pts = self.geometry.nom_getDVGeo().getLocalIndex(0)
         indexList = pts[1, 0, 1].flatten()
         PS = geo_utils.PointSelect("list", indexList)
         self.geometry.nom_addLocalDV(dvName="shape", pointSelect=PS)
@@ -137,7 +141,7 @@ class Top(Group):
         # add the design variables to the dvs component's output
         self.dvs.add_output("patchV", val=np.array([10.0, 0.0]))
         self.dvs.add_output("shape", val=np.zeros(1))
-        self.dvs.add_output("x_aero_in", val=points, distributed=True)
+        self.dvs.add_output(MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT, val=points, distributed=True)
 
         # define the design variables to the top level
         self.add_design_var("patchV", indices=[0], lower=-50.0, upper=50.0, scaler=1.0)
@@ -173,14 +177,14 @@ if gcomm.rank == 0:
     funcDict["CL"] = prob.get_val("cruise.solver.CL")
     derivDict = {}
     derivDict["CD"] = {}
-    derivDict["CD"]["shape-Adjoint"] = results[("cruise.solver.CD", "shape")]["J_fwd"][0]
+    derivDict["CD"]["shape-Adjoint"] = results[("cruise.solver.CD", "shape")]["J_rev"][0]
     derivDict["CD"]["shape-FD"] = results[("cruise.solver.CD", "shape")]["J_fd"][0]
-    derivDict["CD"]["patchV-Adjoint"] = results[("cruise.solver.CD", "patchV")]["J_fwd"][0]
+    derivDict["CD"]["patchV-Adjoint"] = results[("cruise.solver.CD", "patchV")]["J_rev"][0]
     derivDict["CD"]["patchV-FD"] = results[("cruise.solver.CD", "patchV")]["J_fd"][0]
     derivDict["CL"] = {}
-    derivDict["CL"]["shape-Adjoint"] = results[("cruise.solver.CL", "shape")]["J_fwd"][0]
+    derivDict["CL"]["shape-Adjoint"] = results[("cruise.solver.CL", "shape")]["J_rev"][0]
     derivDict["CL"]["shape-FD"] = results[("cruise.solver.CL", "shape")]["J_fd"][0]
-    derivDict["CL"]["patchV-Adjoint"] = results[("cruise.solver.CL", "patchV")]["J_fwd"][0]
+    derivDict["CL"]["patchV-Adjoint"] = results[("cruise.solver.CL", "patchV")]["J_rev"][0]
     derivDict["CL"]["patchV-FD"] = results[("cruise.solver.CL", "patchV")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-6, 1e-8)

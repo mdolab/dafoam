@@ -9,9 +9,10 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
-from mphys.multipoint import Multipoint
+from mphys import MPhysVariables
+from mphys.core import Multipoint
 from dafoam.mphys import DAFoamBuilder, OptFuncs
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
 
@@ -142,8 +143,14 @@ class Top(Multipoint):
 
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
-        self.connect("mesh.x_aero0", "geometry.x_aero_in")
-        self.connect("geometry.x_aero0", "cruise.x_aero")
+        self.connect(
+            f"mesh.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+        )
+        self.connect(
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
+            f"cruise.{MPhysVariables.Aerodynamics.Surface.COORDINATES}",
+        )
 
     def configure(self):
 
@@ -151,10 +158,10 @@ class Top(Multipoint):
         points = self.mesh.mphys_get_surface_mesh()
 
         # add pointset
-        self.geometry.nom_add_discipline_coords("aero", points)
+        self.geometry.nom_add_discipline_coords(MPhysVariables.Aerodynamics.Surface.Geometry, points)
 
         # add the dv_geo object to the builder solver. This will be used to write deformed FFDs and forward AD
-        self.cruise.coupling.solver.add_dvgeo(self.geometry.DVGeo)
+        self.cruise.coupling.solver.add_dvgeo(self.geometry.nom_getDVGeo())
 
         # geometry setup
 

@@ -9,9 +9,10 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
-from mphys.multipoint import Multipoint
+from mphys import MPhysVariables
+from mphys.core import Multipoint
 from dafoam.mphys import DAFoamBuilder, OptFuncs
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
 
@@ -121,8 +122,14 @@ class Top(Multipoint):
 
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
-        self.connect("mesh.x_aero0", "geometry.x_aero_in")
-        self.connect("geometry.x_aero0", "cruise.x_aero")
+        self.connect(
+            f"mesh.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+        )
+        self.connect(
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
+            f"cruise.{MPhysVariables.Aerodynamics.Surface.COORDINATES}",
+        )
 
         self.add_subsystem("LoD", om.ExecComp("val=CL/CD"))
 
@@ -132,14 +139,14 @@ class Top(Multipoint):
         points = self.mesh.mphys_get_surface_mesh()
 
         # add pointset
-        self.geometry.nom_add_discipline_coords("aero", points)
+        self.geometry.nom_add_discipline_coords(MPhysVariables.Aerodynamics.Surface.Geometry, points)
 
         # create constraint DV setup
         tri_points = self.mesh.mphys_get_triangulated_surface()
         self.geometry.nom_setConstraintSurface(tri_points)
 
         # add the dv_geo object to the builder solver. This will be used to write deformed FFDs
-        self.cruise.coupling.solver.add_dvgeo(self.geometry.DVGeo)
+        self.cruise.coupling.solver.add_dvgeo(self.geometry.nom_getDVGeo())
 
         # add the dv_con object to the builder solver. This will be used to write deformed constraints
         self.cruise.coupling.solver.add_dvcon(self.geometry.DVCon)
@@ -147,7 +154,7 @@ class Top(Multipoint):
         # geometry setup
 
         # Select all points
-        pts = self.geometry.DVGeo.getLocalIndex(0)
+        pts = self.geometry.nom_getDVGeo().getLocalIndex(0)
         indexList = pts[:, :, :].flatten()
         PS = geo_utils.PointSelect("list", indexList)
         nShapes = self.geometry.nom_addLocalDV(dvName="shape", pointSelect=PS)
@@ -201,18 +208,8 @@ prob = om.Problem()
 prob.model = Top()
 
 prob.driver = om.pyOptSparseDriver()
-prob.driver.options["optimizer"] = "IPOPT"
-prob.driver.opt_settings = {
-    "tol": 1.0e-5,
-    "constr_viol_tol": 1.0e-5,
-    "max_iter": 2,
-    "print_level": 5,
-    "mu_strategy": "adaptive",
-    "limited_memory_max_history": 10,
-    "nlp_scaling_method": "none",
-    "alpha_for_y": "full",
-    "recalc_y": "yes",
-}
+prob.driver.options["optimizer"] = "Uno"
+prob.driver.opt_settings = {"preset": "filtersqp", "max_iterations": 2, "logger_stream": "opt_Uno.txt"}
 prob.driver.options["debug_print"] = ["nl_cons", "objs", "desvars"]
 
 prob.setup(mode="rev")

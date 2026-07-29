@@ -9,9 +9,10 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
-from mphys.multipoint import Multipoint
+from mphys import MPhysVariables
+from mphys.core import Multipoint
 from dafoam.mphys import DAFoamBuilder
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
 import pyofm
@@ -109,8 +110,14 @@ class Top(Multipoint):
 
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
-        self.connect("mesh.x_aero0", "geometry.x_aero_in")
-        self.connect("geometry.x_aero0", "cruise.x_aero")
+        self.connect(
+            f"mesh.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+        )
+        self.connect(
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
+            f"cruise.{MPhysVariables.Aerodynamics.Surface.COORDINATES}",
+        )
 
     def configure(self):
 
@@ -118,7 +125,7 @@ class Top(Multipoint):
         points = self.mesh.mphys_get_surface_mesh()
 
         # add pointset
-        self.geometry.nom_add_discipline_coords("aero", points)
+        self.geometry.nom_add_discipline_coords(MPhysVariables.Aerodynamics.Surface.Geometry, points)
 
         # add the shape dv
         nShapes = self.geometry.nom_addLocalDV(dvName="shape")
@@ -159,11 +166,11 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 prob.run_model()
 results = prob.compute_totals(
     of=["cruise.aero_post.CD"],
-    wrt=["geometry.x_aero0", "dvs.alpha"],
+    wrt=[f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}", "dvs.alpha"],
     get_remote=True,
 )
 # extract the sensitivity
-totalsXs = results[("cruise.aero_post.CD", "geometry.x_aero0")][0]
+totalsXs = results[("cruise.aero_post.CD", f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}")][0]
 totalsAlpha = results[("cruise.aero_post.CD", "dvs.alpha")][0]
 
 # plot the sens map for the surface coordinates

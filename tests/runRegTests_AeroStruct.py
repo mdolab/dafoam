@@ -9,11 +9,12 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
-from mphys.multipoint import Multipoint
+from mphys import MPhysVariables
+from mphys.core import Multipoint
 from dafoam.mphys import DAFoamBuilder, OptFuncs
 from tacs.mphys import TacsBuilder
 from funtofem.mphys import MeldBuilder
-from mphys.scenario_aerostructural import ScenarioAeroStructural
+from mphys.scenarios import ScenarioAeroStructural
 from pygeo.mphys import OM_DVGEOCOMP
 from tacs import elements, constitutive, functions
 
@@ -148,13 +149,12 @@ class Top(Multipoint):
             g = np.array([0.0, -9.81, 0.0])
             problem.addInertialLoad(g)
 
-        tacs_options = {
-            "element_callback": element_callback,
-            "problem_setup": problem_setup,
-            "mesh_file": "wingboxProp.bdf",
-        }
-
-        struct_builder = TacsBuilder(tacs_options)
+        struct_builder = TacsBuilder(
+            mesh_file="wingboxProp.bdf",
+            element_callback=element_callback,
+            problem_setup=problem_setup,
+            coupling_loads=[MPhysVariables.Structures.Loads.AERODYNAMIC],
+        )
         struct_builder.initialize(self.comm)
 
         self.add_subsystem("mesh_struct", struct_builder.get_mesh_coordinate_subsystem())
@@ -187,18 +187,28 @@ class Top(Multipoint):
             linear_solver,
         )
 
-        for discipline in ["aero"]:
-            self.connect("geometry.x_%s0" % discipline, "cruise.x_%s0" % discipline)
-        for discipline in ["struct"]:
-            self.connect("geometry.x_%s0" % discipline, "cruise.x_%s0" % discipline)
+        self.connect(
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
+            f"cruise.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
+        )
+        self.connect(
+            f"geometry.{MPhysVariables.Structures.Geometry.COORDINATES_OUTPUT}",
+            f"cruise.{MPhysVariables.Structures.COORDINATES}",
+        )
 
         # add the structural thickness DVs
         ndv_struct = struct_builder.get_ndv()
         dvs.add_output("dv_struct", np.array(ndv_struct * [0.01]))
         self.connect("dv_struct", "cruise.dv_struct")
 
-        self.connect("mesh_aero.x_aero0", "geometry.x_aero_in")
-        self.connect("mesh_struct.x_struct0", "geometry.x_struct_in")
+        self.connect(
+            f"mesh_aero.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+        )
+        self.connect(
+            f"mesh_struct.{MPhysVariables.Structures.Mesh.COORDINATES}",
+            f"geometry.{MPhysVariables.Structures.Geometry.COORDINATES_INPUT}",
+        )
 
     def configure(self):
         super().configure()
@@ -213,18 +223,20 @@ class Top(Multipoint):
         # geometry setup
         self.geometry.nom_addChild("./FFD/wingFFD.xyz")
         # Create reference axis
-        nRefAxPts = self.geometry.nom_addRefAxis(name="wingAxis", xFraction=0.25, alignIndex="k", childIdx=0)
+        nRefAxPts = self.geometry.nom_addRefAxis(name="wingAxis", xFraction=0.25, alignIndex="k", childName="child0")
 
         # Set up global design variables
         def twist(val, geo):
             for i in range(1, nRefAxPts):
                 geo.rot_z["wingAxis"].coef[i] = -val[i - 1]
 
-        self.geometry.nom_addGlobalDV(dvName="twist", value=np.array([0] * (nRefAxPts - 1)), func=twist, childIdx=0)
+        self.geometry.nom_addGlobalDV(
+            dvName="twist", value=np.array([0] * (nRefAxPts - 1)), func=twist, childName="child0"
+        )
 
         # add pointset
-        self.geometry.nom_add_discipline_coords("aero", points)
-        self.geometry.nom_add_discipline_coords("struct")
+        self.geometry.nom_add_discipline_coords(MPhysVariables.Aerodynamics.Surface.Geometry, points)
+        self.geometry.nom_add_discipline_coords(MPhysVariables.Structures.Geometry)
 
         # add dvs to ivc and connect
         self.dvs.add_output("twist", val=np.array([aoa0] * (nRefAxPts - 1)))
@@ -263,13 +275,13 @@ if gcomm.rank == 0:
     funcDict["VM"] = prob.get_val("cruise.ks_vmfailure")
     derivDict = {}
     derivDict["CD"] = {}
-    derivDict["CD"]["shape-Adjoint"] = results[("cruise.aero_post.functionals.CD", "dvs.twist")]["J_fwd"][0]
-    derivDict["CD"]["shape-FD"] = results[("cruise.aero_post.functionals.CD", "dvs.twist")]["J_fd"][0]
+    derivDict["CD"]["shape-Adjoint"] = results[("cruise.aero_post.CD", "twist")]["J_rev"][0]
+    derivDict["CD"]["shape-FD"] = results[("cruise.aero_post.CD", "twist")]["J_fd"][0]
     # derivDict["CL"] = {}
-    # derivDict["CL"]["shape-Adjoint"] = results[("cruise.aero_post.functionals.CL", "dvs.twist")]["J_fwd"][0]
-    # derivDict["CL"]["shape-FD"] = results[("cruise.aero_post.functionals.CL", "dvs.twist")]["J_fd"][0]
+    # derivDict["CL"]["shape-Adjoint"] = results[("cruise.aero_post.CL", "twist")]["J_rev"][0]
+    # derivDict["CL"]["shape-FD"] = results[("cruise.aero_post.CL", "twist")]["J_fd"][0]
     derivDict["VM"] = {}
-    derivDict["VM"]["shape-Adjoint"] = results[("cruise.struct_post.eval_funcs.ks_vmfailure", "dvs.twist")]["J_fwd"][0]
-    derivDict["VM"]["shape-FD"] = results[("cruise.struct_post.eval_funcs.ks_vmfailure", "dvs.twist")]["J_fd"][0]
+    derivDict["VM"]["shape-Adjoint"] = results[("cruise.ks_vmfailure", "twist")]["J_rev"][0]
+    derivDict["VM"]["shape-FD"] = results[("cruise.ks_vmfailure", "twist")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-8, 1e-10)
     reg_write_dict(derivDict, 1e-4, 1e-10)

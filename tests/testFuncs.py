@@ -45,7 +45,7 @@ def run_tests(om, Top, comm, daOptions, funcNames, dvNames, dvIndices, funcDict,
             if comm.rank == 0:
                 for funcName in funcNames:
                     derivDict[funcName]["%s%i-Adjoint" % (dvName, index)] = [
-                        totals[(funcName, "dvs.%s" % dvName)][0][tempI]
+                        totals[(funcName, "%s" % dvName)][0][tempI]
                     ]
                     derivDict[funcName]["%s%i-ForwardAD" % (dvName, index)] = prob.get_val(funcName)[0]
 

@@ -9,9 +9,10 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
-from mphys.multipoint import Multipoint
+from mphys import MPhysVariables
+from mphys.core import Multipoint
 from dafoam.mphys import DAFoamBuilder, DAFoamLinearConstraint, DAFoamVSPVolume
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 
 gcomm = MPI.COMM_WORLD
@@ -95,8 +96,14 @@ class Top(Multipoint):
 
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
-        self.connect("mesh.x_aero0", "geometry.x_aero_in")
-        self.connect("geometry.x_aero0", "cruise.x_aero")
+        self.connect(
+            f"mesh.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+        )
+        self.connect(
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
+            f"cruise.{MPhysVariables.Aerodynamics.Surface.COORDINATES}",
+        )
 
         # thickness constraint
         varA = []
@@ -144,7 +151,7 @@ class Top(Multipoint):
         points = self.mesh.mphys_get_surface_mesh()
 
         # add pointset to the geometry component
-        self.geometry.nom_add_discipline_coords("aero", points)
+        self.geometry.nom_add_discipline_coords(MPhysVariables.Aerodynamics.Surface.Geometry, points)
 
         # set the triangular points to the geometry component for geometric constraints
         tri_points = self.mesh.mphys_get_triangulated_surface()
@@ -218,27 +225,27 @@ if gcomm.rank == 0:
     funcDict["thickness_0"] = prob.get_val("thickness_val_0")
     derivDict = {}
     derivDict["CD"] = {}
-    derivDict["CD"]["UpperCoeff_0-Adjoint"] = results[("cruise.aero_post.CD", "UpperCoeff_0")]["J_fwd"][0]
+    derivDict["CD"]["UpperCoeff_0-Adjoint"] = results[("cruise.aero_post.CD", "UpperCoeff_0")]["J_rev"][0]
     derivDict["CD"]["UpperCoeff_0-FD"] = results[("cruise.aero_post.CD", "UpperCoeff_0")]["J_fd"][0]
-    derivDict["CD"]["LowerCoeff_2-Adjoint"] = results[("cruise.aero_post.CD", "LowerCoeff_2")]["J_fwd"][0]
+    derivDict["CD"]["LowerCoeff_2-Adjoint"] = results[("cruise.aero_post.CD", "LowerCoeff_2")]["J_rev"][0]
     derivDict["CD"]["LowerCoeff_2-FD"] = results[("cruise.aero_post.CD", "LowerCoeff_2")]["J_fd"][0]
 
     derivDict["CL"] = {}
-    derivDict["CL"]["UpperCoeff_0-Adjoint"] = results[("cruise.aero_post.CL", "UpperCoeff_0")]["J_fwd"][0]
+    derivDict["CL"]["UpperCoeff_0-Adjoint"] = results[("cruise.aero_post.CL", "UpperCoeff_0")]["J_rev"][0]
     derivDict["CL"]["UpperCoeff_0-FD"] = results[("cruise.aero_post.CL", "UpperCoeff_0")]["J_fd"][0]
-    derivDict["CL"]["LowerCoeff_2-Adjoint"] = results[("cruise.aero_post.CL", "LowerCoeff_2")]["J_fwd"][0]
+    derivDict["CL"]["LowerCoeff_2-Adjoint"] = results[("cruise.aero_post.CL", "LowerCoeff_2")]["J_rev"][0]
     derivDict["CL"]["LowerCoeff_2-FD"] = results[("cruise.aero_post.CL", "LowerCoeff_2")]["J_fd"][0]
 
     derivDict["volume"] = {}
-    derivDict["volume"]["UpperCoeff_0-Adjoint"] = results[("volume.volume_val", "UpperCoeff_0")]["J_fwd"][0]
+    derivDict["volume"]["UpperCoeff_0-Adjoint"] = results[("volume.volume_val", "UpperCoeff_0")]["J_rev"][0]
     derivDict["volume"]["UpperCoeff_0-FD"] = results[("volume.volume_val", "UpperCoeff_0")]["J_fd"][0]
-    derivDict["volume"]["LowerCoeff_2-Adjoint"] = results[("volume.volume_val", "LowerCoeff_2")]["J_fwd"][0]
+    derivDict["volume"]["LowerCoeff_2-Adjoint"] = results[("volume.volume_val", "LowerCoeff_2")]["J_rev"][0]
     derivDict["volume"]["LowerCoeff_2-FD"] = results[("volume.volume_val", "LowerCoeff_2")]["J_fd"][0]
 
     derivDict["thickness_0"] = {}
-    derivDict["thickness_0"]["UpperCoeff_0-Adjoint"] = results[("thickness_val_0", "UpperCoeff_0")]["J_fwd"][0]
+    derivDict["thickness_0"]["UpperCoeff_0-Adjoint"] = results[("thickness_val_0", "UpperCoeff_0")]["J_rev"][0]
     derivDict["thickness_0"]["UpperCoeff_0-FD"] = results[("thickness_val_0", "UpperCoeff_0")]["J_fd"][0]
-    derivDict["thickness_0"]["LowerCoeff_2-Adjoint"] = results[("thickness_val_0", "LowerCoeff_2")]["J_fwd"][0]
+    derivDict["thickness_0"]["LowerCoeff_2-Adjoint"] = results[("thickness_val_0", "LowerCoeff_2")]["J_rev"][0]
     derivDict["thickness_0"]["LowerCoeff_2-FD"] = results[("thickness_val_0", "LowerCoeff_2")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-8, 1e-10)
     reg_write_dict(derivDict, 1e-6, 1e-08)

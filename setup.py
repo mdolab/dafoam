@@ -36,10 +36,10 @@ setup(
         "dafoam/scripts/dafoam_stltransform.py",
     ],
     install_requires=[
-        "numpy>=1.16.4",
-        "mpi4py>=3.0.0",
-        "petsc4py>=3.11.0",
-        "cython>=0.29.21",
+        "numpy>=2.0.0",
+        "mpi4py>=4.0.0",
+        "petsc4py>=3.20.0",
+        "cython>=3.0.0",
     ],
     classifiers=["Operating System :: Linux", "Programming Language :: Cython, C++"],
 )

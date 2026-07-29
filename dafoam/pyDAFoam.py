@@ -11,7 +11,7 @@ solvers and external modules for design optimization
 
 """
 
-__version__ = "5.0.0"
+__version__ = "5.0.1"
 
 import subprocess
 import os
@@ -25,15 +25,9 @@ import petsc4py
 from petsc4py import PETSc
 
 petsc4py.init(sys.argv)
-try:
-    import tensorflow as tf
-except ImportError:
-    pass
 
 import openmdao.api as om
-from smt.applications import EGO
-from smt.design_space import DesignSpace
-from smt.surrogate_models import KRG, KPLS, KPLSK, GEKPLS, MGP, GPX
+from mphys import MPhysVariables
 
 
 class DAOPTION(object):
@@ -1408,7 +1402,10 @@ class PYDAFOAM(object):
         xSDot0 = self.mapVector(xSDot0, self.allSurfacesGroup, self.designSurfacesGroup)
 
         # get xSDot
-        xSDot = DVGeo.totalSensitivityProd(xDvDot, ptSetName="x_%s0" % discipline).reshape(xSDot0.shape)
+        if discipline != "aero":
+            raise Error("Unsupported discipline %s for DVGeo point-set lookup" % discipline)
+        ptSetName = MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT
+        xSDot = DVGeo.totalSensitivityProd(xDvDot, ptSetName=ptSetName).reshape(xSDot0.shape)
         # get xVDot
         xVDot = self.mesh.warpDerivFwd(xSDot)
 
@@ -2344,18 +2341,35 @@ class TensorFlowHelper:
 
     nInputs = {}
 
+    tf = None
+
+    @staticmethod
+    def _get_tf():
+        """
+        Import tensorflow only when the tensorflow option is active.
+        """
+        if TensorFlowHelper.tf is None:
+            try:
+                import tensorflow as tf
+            except ImportError as err:
+                raise ImportError("TensorFlow is required when the 'tensorflow' option is active.") from err
+            TensorFlowHelper.tf = tf
+
+        return TensorFlowHelper.tf
+
     @staticmethod
     def initialize():
         """
         Initialize parameters and load models
         """
         Info("Initializing the TensorFlowHelper")
+        tf = TensorFlowHelper._get_tf()
         for key in list(TensorFlowHelper.options.keys()):
             if key != "active":
                 modelName = key
                 TensorFlowHelper.predictBatchSize[modelName] = TensorFlowHelper.options[modelName]["predictBatchSize"]
                 TensorFlowHelper.nInputs[modelName] = TensorFlowHelper.options[modelName]["nInputs"]
-                TensorFlowHelper.model[modelName] = tf.keras.models.load_model(modelName)
+                TensorFlowHelper.model[modelName] = tf.keras.models.load_model(modelName, safe_mode=False)
 
     @staticmethod
     def setModelName(modelName):
@@ -2386,6 +2400,7 @@ class TensorFlowHelper:
         Calculate the gradients of the outputs wrt the inputs
         """
 
+        tf = TensorFlowHelper._get_tf()
         modelName = TensorFlowHelper.modelName
         nInputs = TensorFlowHelper.nInputs[modelName]
 
@@ -2451,6 +2466,8 @@ class surrogateOptimization(object):
     5.) The required fields are: "dvNames", "dvBounds", "dvSizes", "objFunc", and DOE points ("numDOE" or "xdoe" however "ydoe" is optional but can only be paired with "ydoe")
     6.) Supported constraint types are: equality (x = a), and inequality (a <= x, x <= a, a <= x <= b)
     """
+
+    _smt_modules = None
 
     def __init__(self, options, om_prob, comm=None):
 
@@ -2540,6 +2557,32 @@ class surrogateOptimization(object):
         # run optimization
         self.run_optimization()
 
+    @staticmethod
+    def _get_smt_modules():
+        """
+        Import SMT only when surrogate optimization is used.
+        """
+        if surrogateOptimization._smt_modules is None:
+            try:
+                from smt.applications import EGO
+                from smt.design_space import DesignSpace
+                from smt.surrogate_models import KRG, KPLS, KPLSK, GEKPLS, MGP, GPX
+            except ImportError as err:
+                raise ImportError("SMT is required when surrogateOptimization is used.") from err
+
+            surrogateOptimization._smt_modules = {
+                "EGO": EGO,
+                "DesignSpace": DesignSpace,
+                "KRG": KRG,
+                "KPLS": KPLS,
+                "KPLSK": KPLSK,
+                "GEKPLS": GEKPLS,
+                "MGP": MGP,
+                "GPX": GPX,
+            }
+
+        return surrogateOptimization._smt_modules
+
     def run_optimization(self):
         """
         Coordinate the optimization between rank 0 (master) and all ranks (workers) for parallel runs
@@ -2621,17 +2664,19 @@ class surrogateOptimization(object):
         """
         Run the EGO optimization and return optimum point to user
         """
+        smt_modules = surrogateOptimization._get_smt_modules()
+
         # initialize design space
-        design_space = DesignSpace(self.options["dvBounds"])
+        design_space = smt_modules["DesignSpace"](self.options["dvBounds"])
 
         # get which surrogate model to use
         surrogateModels = {
-            "KRG": KRG,
-            "KPLS": KPLS,
-            "KPLSK": KPLSK,
-            "GEKPLS": GEKPLS,
-            "MGP": MGP,
-            "GPX": GPX,
+            "KRG": smt_modules["KRG"],
+            "KPLS": smt_modules["KPLS"],
+            "KPLSK": smt_modules["KPLSK"],
+            "GEKPLS": smt_modules["GEKPLS"],
+            "MGP": smt_modules["MGP"],
+            "GPX": smt_modules["GPX"],
         }
 
         smChoice = surrogateModels.get(self.options["surrogate"])
@@ -2673,7 +2718,7 @@ class surrogateOptimization(object):
             )
 
         # Create EGO instance
-        ego = EGO(**ego_kwargs)
+        ego = smt_modules["EGO"](**ego_kwargs)
 
         # run EGO algorithm
         x_opt, _, _, _, _ = ego.optimize(fun=self.obj_val)

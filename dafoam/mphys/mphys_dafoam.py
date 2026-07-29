@@ -3,7 +3,8 @@ from openmdao.api import Group, ImplicitComponent, ExplicitComponent, AnalysisEr
 import openmdao.api as om
 from dafoam import PYDAFOAM
 from idwarp import USMesh
-from mphys.builder import Builder
+from mphys.core import Builder
+from mphys import MPhysVariables
 import petsc4py
 from petsc4py import PETSc
 import numpy as np
@@ -11,6 +12,24 @@ from mpi4py import MPI
 from mphys.utils.directory_utils import cd
 
 petsc4py.init(sys.argv)
+
+
+def _get_mphys_dafoam_var_name(discipline, mode):
+    """Return the DAFoam MPhys variable name for a discipline/mode pair."""
+    if mode == "surfCoord":
+        if discipline == "aero":
+            return MPhysVariables.Aerodynamics.Surface.COORDINATES
+        if discipline == "thermal":
+            return MPhysVariables.Thermal.COORDINATES
+        return "x_%s" % discipline
+
+    if mode == "volCoord":
+        return "%s_vol_coords" % discipline
+
+    if mode == "state":
+        return "%s_states" % discipline
+
+    raise ValueError("Unsupported mphys variable mode '%s'" % mode)
 
 
 class DAFoamBuilder(Builder):
@@ -142,6 +161,10 @@ class DAFoamGroup(Group):
         self.thermal_coupling = self.options["thermal_coupling"]
         self.run_directory = self.options["run_directory"]
         self.discipline = self.DASolver.getOption("discipline")
+        # Use the official mphys surface-coordinate input name for this discipline.
+        self.surfCoordName = _get_mphys_dafoam_var_name(self.discipline, "surfCoord")
+        self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")
+        self.stateName = _get_mphys_dafoam_var_name(self.discipline, "state")
 
         if self.use_warper:
 
@@ -151,8 +174,9 @@ class DAFoamGroup(Group):
                 DAFoamWarper(
                     solver=self.DASolver,
                 ),
-                promotes_inputs=["x_%s" % self.discipline],
-                promotes_outputs=["%s_vol_coords" % self.discipline],
+                # Promote the official mphys surface-coordinate input name.
+                promotes_inputs=[self.surfCoordName],
+                promotes_outputs=[self.volCoordName],
             )
 
         # add the solver implicit component
@@ -160,15 +184,18 @@ class DAFoamGroup(Group):
             "solver",
             DAFoamSolver(solver=self.DASolver, run_directory=self.run_directory),
             promotes_inputs=["*"],
-            promotes_outputs=["%s_states" % self.discipline],
+            promotes_outputs=[self.stateName],
         )
 
         if self.struct_coupling:
+            # Use the official mphys aerodynamic loads output name.
+            self.loadsName = MPhysVariables.Aerodynamics.Surface.LOADS
             self.add_subsystem(
                 "force",
                 DAFoamForces(solver=self.DASolver),
-                promotes_inputs=["%s_vol_coords" % self.discipline, "%s_states" % self.discipline],
-                promotes_outputs=["f_aero"],
+                promotes_inputs=[self.volCoordName, self.stateName],
+                # Promote the official mphys loads output name.
+                promotes_outputs=[self.loadsName],
             )
 
         if self.thermal_coupling:
@@ -195,14 +222,18 @@ class DAFoamPrecouplingGroup(Group):
         self.warp_in_solver = self.options["warp_in_solver"]
         self.thermal_coupling = self.options["thermal_coupling"]
         self.discipline = self.DASolver.getOption("discipline")
+        # Use the official mphys surface-coordinate input name for this discipline.
+        self.surfCoordName = _get_mphys_dafoam_var_name(self.discipline, "surfCoord")
+        self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")
 
         # Return the warper only if it is not in the solver
         if not self.warp_in_solver:
             self.add_subsystem(
                 "warper",
                 DAFoamWarper(solver=self.DASolver),
-                promotes_inputs=["x_%s" % self.discipline],
-                promotes_outputs=["%s_vol_coords" % self.discipline],
+                # Promote the official mphys surface-coordinate input name.
+                promotes_inputs=[self.surfCoordName],
+                promotes_outputs=[self.volCoordName],
             )
 
         if self.thermal_coupling:
@@ -257,9 +288,9 @@ class DAFoamSolver(ImplicitComponent):
         self.DVCon = None
 
         # setup some names
-        self.stateName = "%s_states" % self.discipline
+        self.stateName = _get_mphys_dafoam_var_name(self.discipline, "state")
         self.residualName = "%s_residuals" % self.discipline
-        self.volCoordName = "%s_vol_coords" % self.discipline
+        self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")
 
         # initialize the dRdWT matrix-free matrix in DASolver
         DASolver.solverAD.initializedRdWTMatrixFree()
@@ -306,7 +337,7 @@ class DAFoamSolver(ImplicitComponent):
     #     # in the inputs are set to all ones. So passing this all-ones states
     #     # into the OF layer may diverge the primal solver. Here we can always
     #     # use the states from the OF layer to compute the residuals.
-    #     # DASolver.setStates(outputs["%s_states" % self.discipline])
+    #     # DASolver.setStates(outputs[self.stateName])
     #     # get flow residuals from DASolver
     #     residuals[self.stateName] = DASolver.getResiduals()
 
@@ -630,8 +661,15 @@ class DAFoamMesh(ExplicitComponent):
 
         # add output
         coord_size = self.x_a0.size
+        # Use the official mphys mesh-coordinate output name for this discipline.
+        if self.discipline == "aero":
+            self.x_a0_name = MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL
+        elif self.discipline == "thermal":
+            self.x_a0_name = MPhysVariables.Thermal.Mesh.COORDINATES
+        else:
+            self.x_a0_name = "x_%s0_mesh" % self.discipline
         self.add_output(
-            "x_%s0" % self.discipline,
+            self.x_a0_name,
             distributed=True,
             shape=coord_size,
             desc="initial aerodynamic surface node coordinates",
@@ -664,9 +702,11 @@ class DAFoamMesh(ExplicitComponent):
     def compute(self, inputs, outputs):
         # just assign the surface mesh coordinates
         if "x_%s0_points" % self.discipline in inputs:
-            outputs["x_%s0" % self.discipline] = inputs["x_%s0_points" % self.discipline]
+            # Write deformed surface coordinates to the official mphys mesh output name.
+            outputs[self.x_a0_name] = inputs["x_%s0_points" % self.discipline]
         else:
-            outputs["x_%s0" % self.discipline] = self.x_a0
+            # Write baseline surface coordinates to the official mphys mesh output name.
+            outputs[self.x_a0_name] = self.x_a0
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         # we do not support forward mode AD
@@ -681,7 +721,8 @@ class DAFoamMesh(ExplicitComponent):
 
         # just assign the matrix-vector product
         if "x_%s0_points" % self.discipline in d_inputs:
-            d_inputs["x_%s0_points" % self.discipline] += d_outputs["x_%s0" % self.discipline]
+            # Propagate derivatives through the official mphys mesh output name.
+            d_inputs["x_%s0_points" % self.discipline] += d_outputs[self.x_a0_name]
 
 
 class DAFoamFunctions(ExplicitComponent):
@@ -703,8 +744,8 @@ class DAFoamFunctions(ExplicitComponent):
         self.discipline = self.DASolver.getOption("discipline")
 
         # setup some names
-        self.stateName = "%s_states" % self.discipline
-        self.volCoordName = "%s_vol_coords" % self.discipline
+        self.stateName = _get_mphys_dafoam_var_name(self.discipline, "state")
+        self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")
 
         # setup input and output for the function
         # we need to add states for all cases
@@ -815,25 +856,28 @@ class DAFoamWarper(ExplicitComponent):
         DASolver = self.DASolver
 
         self.discipline = self.DASolver.getOption("discipline")
+        # Use the official mphys surface-coordinate input name for this discipline.
+        self.surfCoordName = _get_mphys_dafoam_var_name(self.discipline, "surfCoord")
+        self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")
 
         # state inputs and outputs
         local_volume_coord_size = DASolver.mesh.getSolverGrid().size
 
-        self.add_input("x_%s" % self.discipline, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
-        self.add_output(
-            "%s_vol_coords" % self.discipline, distributed=True, shape=local_volume_coord_size, tags=["mphys_coupling"]
-        )
+        # Add the official mphys surface-coordinate input for the warper.
+        self.add_input(self.surfCoordName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_output(self.volCoordName, distributed=True, shape=local_volume_coord_size, tags=["mphys_coupling"])
 
     def compute(self, inputs, outputs):
         # given the new surface mesh coordinates, compute the new volume mesh coordinates
         # the mesh warping will be called in getSolverGrid()
         DASolver = self.DASolver
 
-        x_a = inputs["x_%s" % self.discipline].reshape((-1, 3))
+        # Read the official mphys surface-coordinate input for warping.
+        x_a = inputs[self.surfCoordName].reshape((-1, 3))
         DASolver.setSurfaceCoordinates(x_a, DASolver.designSurfacesGroup)
         DASolver.mesh.warpMesh()
         solverGrid = DASolver.mesh.getSolverGrid()
-        outputs["%s_vol_coords" % self.discipline] = solverGrid
+        outputs[self.volCoordName] = solverGrid
 
     # compute the mesh warping products in IDWarp
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
@@ -850,13 +894,15 @@ class DAFoamWarper(ExplicitComponent):
 
         # compute dXv/dXs such that we can propagate the partials (e.g., dF/dXv) to Xs
         # then the partial will be further propagated to XFFD in pyGeo
-        if "%s_vol_coords" % self.discipline in d_outputs:
-            if "x_%s" % self.discipline in d_inputs:
-                dxV = d_outputs["%s_vol_coords" % self.discipline]
+        if self.volCoordName in d_outputs:
+            # Accumulate derivatives into the official mphys surface-coordinate input.
+            if self.surfCoordName in d_inputs:
+                dxV = d_outputs[self.volCoordName]
                 self.DASolver.mesh.warpDeriv(dxV)
                 dxS = self.DASolver.mesh.getdXs()
                 dxS = self.DASolver.mapVector(dxS, self.DASolver.allWallsGroup, self.DASolver.designSurfacesGroup)
-                d_inputs["x_%s" % self.discipline] += dxS.flatten()
+                # Write derivatives through the official mphys surface-coordinate input.
+                d_inputs[self.surfCoordName] += dxS.flatten()
 
 
 class DAFoamThermal(ExplicitComponent):
@@ -875,8 +921,8 @@ class DAFoamThermal(ExplicitComponent):
 
         self.discipline = self.DASolver.getOption("discipline")
 
-        self.stateName = "%s_states" % self.discipline
-        self.volCoordName = "%s_vol_coords" % self.discipline
+        self.stateName = _get_mphys_dafoam_var_name(self.discipline, "state")
+        self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")
 
         self.add_input(self.volCoordName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input(self.stateName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
@@ -964,8 +1010,13 @@ class DAFoamFaceCoords(ExplicitComponent):
 
         self.DASolver = self.options["solver"]
         self.discipline = self.DASolver.getOption("discipline")
-        self.volCoordName = "%s_vol_coords" % self.discipline
-        self.surfCoordName = "x_%s_surface0" % self.discipline
+        self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")
+        if self.discipline == "aero":
+            self.surfCoordName = MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL
+        elif self.discipline == "thermal":
+            self.surfCoordName = MPhysVariables.Thermal.Mesh.COORDINATES
+        else:
+            raise AnalysisError("DAFoamFaceCoords only supports 'aero' or 'thermal' discipline, got '%s'" % self.discipline)
 
         DASolver = self.DASolver
 
@@ -1015,9 +1066,11 @@ class DAFoamForces(ExplicitComponent):
         self.DASolver = self.options["solver"]
 
         self.discipline = self.DASolver.getOption("discipline")
+        # Use the official mphys aerodynamic loads output name inside the force component.
+        self.loadsName = MPhysVariables.Aerodynamics.Surface.LOADS
 
-        self.stateName = "%s_states" % self.discipline
-        self.volCoordName = "%s_vol_coords" % self.discipline
+        self.stateName = _get_mphys_dafoam_var_name(self.discipline, "state")
+        self.volCoordName = _get_mphys_dafoam_var_name(self.discipline, "volCoord")
 
         self.add_input(self.volCoordName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_input(self.stateName, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
@@ -1030,7 +1083,8 @@ class DAFoamForces(ExplicitComponent):
                 self.outputName = outputName
                 self.outputType = outputDict[outputName]["type"]
                 outputSize = self.DASolver.solver.getOutputSize(self.outputName, self.outputType)
-                self.add_output("f_aero", distributed=True, shape=outputSize, tags=["mphys_coupling"])
+                # Add the official mphys aerodynamic loads output.
+                self.add_output(self.loadsName, distributed=True, shape=outputSize, tags=["mphys_coupling"])
                 break
 
     def compute(self, inputs, outputs):
@@ -1038,11 +1092,13 @@ class DAFoamForces(ExplicitComponent):
         self.DASolver.setStates(inputs[self.stateName])
         self.DASolver.setVolCoords(inputs[self.volCoordName])
 
-        forces = np.zeros_like(outputs["f_aero"])
+        # Allocate the official mphys aerodynamic loads output buffer.
+        forces = np.zeros_like(outputs[self.loadsName])
 
         self.DASolver.solver.calcOutput(self.outputName, self.outputType, forces)
 
-        outputs["f_aero"] = forces
+        # Write the integrated aerodynamic loads to the official mphys output.
+        outputs[self.loadsName] = forces
 
         # print out the total forces. They shoud be consistent with the primal's print out
         forcesV = forces.reshape((-1, 3))
@@ -1072,8 +1128,9 @@ class DAFoamForces(ExplicitComponent):
             )
             return
 
-        if "f_aero" in d_outputs:
-            seeds = d_outputs["f_aero"]
+        # Read adjoint seeds from the official mphys aerodynamic loads output.
+        if self.loadsName in d_outputs:
+            seeds = d_outputs[self.loadsName]
 
             if self.stateName in d_inputs:
                 jacInput = inputs[self.stateName]

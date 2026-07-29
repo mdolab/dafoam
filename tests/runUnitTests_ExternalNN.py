@@ -9,9 +9,9 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
-from mphys.multipoint import Multipoint
+from mphys.core import Multipoint
 from dafoam.mphys import DAFoamBuilder, OptFuncs
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
 
@@ -35,7 +35,7 @@ daOptions = {
     "primalMinResTol": 1.0e-8,
     "tensorflow": {
         "active": True,
-        "dummy_nn_model": {
+        "dummy_nn_model.keras": {
             "predictBatchSize": 1000,
             "nInputs": 2,
         },
@@ -49,7 +49,7 @@ daOptions = {
     },
     "regressionModel": {
         "active": True,
-        "dummy_nn_model": {
+        "dummy_nn_model.keras": {
             "modelType": "externalTensorFlow",
             "inputNames": ["VoS", "PoD"],
             "outputName": "betaFINuTilda",

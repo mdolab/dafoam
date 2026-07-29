@@ -9,9 +9,10 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
-from mphys.multipoint import Multipoint
+from mphys import MPhysVariables
+from mphys.core import Multipoint
 from dafoam.mphys import DAFoamBuilder, OptFuncs
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
 
@@ -80,18 +81,24 @@ class Top(Multipoint):
 
         self.mphys_add_scenario("cruise", ScenarioAerodynamic(aero_builder=dafoam_builder))
 
-        self.connect("mesh.x_aero0", "geometry.x_aero_in")
-        self.connect("geometry.x_aero0", "cruise.x_aero")
+        self.connect(
+            f"mesh.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+        )
+        self.connect(
+            f"geometry.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
+            f"cruise.{MPhysVariables.Aerodynamics.Surface.COORDINATES}",
+        )
 
     def configure(self):
         # create geometric DV setup
         points = self.mesh.mphys_get_surface_mesh()
 
         # add pointset
-        self.geometry.nom_add_discipline_coords("aero", points)
+        self.geometry.nom_add_discipline_coords(MPhysVariables.Aerodynamics.Surface.Geometry, points)
 
         # Select all points
-        pts = self.geometry.DVGeo.getLocalIndex(0)
+        pts = self.geometry.nom_getDVGeo().getLocalIndex(0)
         dir_y = np.array([0.0, 1.0, 0.0])
         shapes = []
         shapes.append({pts[10, 0, 0]: dir_y, pts[10, 0, 1]: dir_y})
@@ -126,12 +133,16 @@ totals = prob.check_totals(
     step_calc="abs",
 )
 
+val_fd = totals[("cruise.aero_post.HFX", "shape")]["J_fd"]
+val_rev = totals[("cruise.aero_post.HFX", "shape")]["J_rev"]
+rel_error = abs((val_fd - val_rev) / val_fd)
+
 if MPI.COMM_WORLD.rank == 0:
     # restore the kappa
     os.system("sed -i 's/kappaCoeffs (200 20);/kappa  200;/g' constant/solidProperties")
     # restore the boundary
     # os.system("mv 0/T.old 0/T")
-if abs(totals[("cruise.aero_post.HFX", "shape")]["rel error"][0]) < 1e-5:
+if rel_error < 1e-5:
     print("DAHeatTransferFoam test passed!")
 else:
     print("DAHeatTransferFoam test failed!")

@@ -9,9 +9,9 @@ import numpy as np
 from testFuncs import *
 
 import openmdao.api as om
-from mphys.multipoint import Multipoint
+from mphys.core import Multipoint
 from dafoam.mphys import DAFoamBuilder
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 
 gcomm = MPI.COMM_WORLD
 
@@ -139,14 +139,14 @@ if gcomm.rank == 0:
     funcDict["TMean"] = prob.get_val("cruise.aero_post.TMean")
     derivDict = {}
     derivDict["CD"] = {}
-    derivDict["CD"]["eta-Adjoint"] = results[("cruise.aero_post.CD", "eta")]["J_fwd"][0]
+    derivDict["CD"]["eta-Adjoint"] = results[("cruise.aero_post.CD", "eta")]["J_rev"][0]
     derivDict["CD"]["eta-FD"] = results[("cruise.aero_post.CD", "eta")]["J_fd"][0]
-    derivDict["CD"]["patchUField-Adjoint"] = results[("cruise.aero_post.CD", "patchUField")]["J_fwd"][0]
+    derivDict["CD"]["patchUField-Adjoint"] = results[("cruise.aero_post.CD", "patchUField")]["J_rev"][0]
     derivDict["CD"]["patchUField-FD"] = results[("cruise.aero_post.CD", "patchUField")]["J_fd"][0]
     derivDict["TMean"] = {}
-    derivDict["TMean"]["eta-Adjoint"] = results[("cruise.aero_post.TMean", "eta")]["J_fwd"][0]
+    derivDict["TMean"]["eta-Adjoint"] = results[("cruise.aero_post.TMean", "eta")]["J_rev"][0]
     derivDict["TMean"]["eta-FD"] = results[("cruise.aero_post.TMean", "eta")]["J_fd"][0]
-    derivDict["TMean"]["patchUField-Adjoint"] = results[("cruise.aero_post.TMean", "patchUField")]["J_fwd"][0]
+    derivDict["TMean"]["patchUField-Adjoint"] = results[("cruise.aero_post.TMean", "patchUField")]["J_rev"][0]
     derivDict["TMean"]["patchUField-FD"] = results[("cruise.aero_post.TMean", "patchUField")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-6, 1e-8)

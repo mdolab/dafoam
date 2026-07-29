@@ -10,9 +10,9 @@ from testFuncs import *
 
 import openmdao.api as om
 from openmdao.api import Group
-from mphys.multipoint import Multipoint
+from mphys.core import Multipoint
 from dafoam.mphys.mphys_dafoam import DAFoamBuilderUnsteady
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 from pygeo import geo_utils
 
@@ -112,7 +112,7 @@ if gcomm.rank == 0:
     funcDict["obj"] = prob.get_val("cruise.solver.obj")
     derivDict = {}
     derivDict["obj"] = {}
-    derivDict["obj"]["TIn-Adjoint"] = results[("cruise.solver.obj", "TIn")]["J_fwd"][0]
+    derivDict["obj"]["TIn-Adjoint"] = results[("cruise.solver.obj", "TIn")]["J_rev"][0]
     derivDict["obj"]["TIn-FD"] = results[("cruise.solver.obj", "TIn")]["J_fd"][0]
     reg_write_dict(funcDict, 1e-10, 1e-12)
     reg_write_dict(derivDict, 1e-8, 1e-12)

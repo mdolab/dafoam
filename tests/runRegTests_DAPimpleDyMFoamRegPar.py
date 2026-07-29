@@ -10,9 +10,9 @@ from testFuncs import *
 
 import openmdao.api as om
 from openmdao.api import Group
-from mphys.multipoint import Multipoint
+from mphys.core import Multipoint
 from dafoam.mphys.mphys_dafoam import DAFoamBuilderUnsteady
-from mphys.scenario_aerodynamic import ScenarioAerodynamic
+from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 
 gcomm = MPI.COMM_WORLD

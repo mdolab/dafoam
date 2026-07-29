@@ -10,11 +10,12 @@ import numpy as np
 from mpi4py import MPI
 from dafoam import PYDAFOAM
 from testFuncs import *
-from mphys.multipoint import Multipoint
+from mphys import MPhysVariables
+from mphys.core import Multipoint
 from dafoam.mphys import DAFoamBuilder
 from funtofem.mphys import MeldThermalBuilder
 from pygeo import geo_utils
-from mphys.scenario_aerothermal import ScenarioAeroThermal
+from mphys.scenarios import ScenarioAeroThermal
 from pygeo.mphys import OM_DVGEOCOMP
 
 # NOTE: we will test DASimpleFoam and DAHeatTransferFoam for incompressible, compressible, and solid solvers using the daCustom wallDistanceMethod
@@ -77,14 +78,14 @@ daOptionsAero = {
     },
     "inputInfo": {
         "aero_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
-        "T_convect": {
+        MPhysVariables.Aerodynamics.Surface.TEMPERATURE: {
             "type": "thermalCouplingInput",
             "patches": ["hot_air_inner", "cold_air_outer"],
             "components": ["solver"],
         },
     },
     "outputInfo": {
-        "q_convect": {
+        MPhysVariables.Aerodynamics.Surface.HEAT_FLOW: {
             "type": "thermalCouplingOutput",
             "patches": ["hot_air_inner", "cold_air_outer"],
             "components": ["thermalCoupling"],
@@ -121,14 +122,14 @@ daOptionsThermal = {
     },
     "inputInfo": {
         "thermal_vol_coords": {"type": "volCoord", "components": ["solver", "function"]},
-        "q_conduct": {
+        MPhysVariables.Thermal.HeatFlow.AERODYNAMIC: {
             "type": "thermalCouplingInput",
             "patches": ["channel_outer", "channel_inner"],
             "components": ["solver"],
         },
     },
     "outputInfo": {
-        "T_conduct": {
+        MPhysVariables.Thermal.TEMPERATURE: {
             "type": "thermalCouplingOutput",
             "patches": ["channel_outer", "channel_inner"],
             "components": ["thermalCoupling"],
@@ -183,13 +184,23 @@ class Top(Multipoint):
             om.LinearBlockGS(maxiter=20, iprint=2, use_aitken=True, rtol=1e-8, atol=1e-14),
         )
 
-        # need to manually connect the x_aero0 between the mesh and geometry components
-        self.connect("mesh_aero.x_aero0", "geometry_aero.x_aero_in")
-        self.connect("geometry_aero.x_aero0", "scenario.x_aero")
+        self.connect(
+            f"mesh_aero.{MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL}",
+            f"geometry_aero.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_INPUT}",
+        )
+        self.connect(
+            f"geometry_aero.{MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT}",
+            f"scenario.{MPhysVariables.Aerodynamics.Surface.COORDINATES}",
+        )
 
-        self.connect("mesh_thermal.x_thermal0", "geometry_thermal.x_thermal_in")
-        self.connect("geometry_thermal.x_thermal0", "scenario.x_thermal")
-
+        self.connect(
+            f"mesh_thermal.{MPhysVariables.Thermal.Mesh.COORDINATES}",
+            f"geometry_thermal.{MPhysVariables.Thermal.Geometry.COORDINATES_INPUT}",
+        )
+        self.connect(
+            f"geometry_thermal.{MPhysVariables.Thermal.Geometry.COORDINATES_OUTPUT}",
+            f"scenario.{MPhysVariables.Thermal.COORDINATES}",
+        )
     def configure(self):
 
         super().configure()
@@ -199,11 +210,11 @@ class Top(Multipoint):
         points_thermal = self.mesh_thermal.mphys_get_surface_mesh()
 
         # add pointset to the geometry component
-        self.geometry_aero.nom_add_discipline_coords("aero", points_aero)
-        self.geometry_thermal.nom_add_discipline_coords("thermal", points_thermal)
+        self.geometry_aero.nom_add_discipline_coords(MPhysVariables.Aerodynamics.Surface.Geometry, points_aero)
+        self.geometry_thermal.nom_add_discipline_coords(MPhysVariables.Thermal.Geometry, points_thermal)
 
         # geometry setup
-        pts = self.geometry_aero.DVGeo.getLocalIndex(0)
+        pts = self.geometry_aero.nom_getDVGeo().getLocalIndex(0)
         dir_y = np.array([0.0, 1.0, 0.0])
         shapes = []
         shapes.append({pts[9, 0, 0]: dir_y, pts[9, 0, 1]: dir_y})
