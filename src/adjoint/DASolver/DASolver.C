@@ -49,7 +49,8 @@ DASolver::DASolver(
       daResidualPtr_(nullptr),
       daRegressionPtr_(nullptr),
       daGlobalVarPtr_(nullptr),
-      points0Ptr_(nullptr)
+      points0Ptr_(nullptr),
+      forcePerSPtr_(nullptr)
 #ifdef CODI_ADR
       ,
       globalADTape_(codi::RealReverse::getTape())
@@ -113,6 +114,21 @@ DASolver::DASolver(
 
     // if inputInto has unsteadyField, we need to initial GlobalVar::inputFieldUnsteady here
     this->initInputFieldUnsteady();
+
+    if (daOptionPtr_->getAllOptions().subDict("writeSurfForces").getLabel("active"))
+    {
+        forcePerSPtr_.reset(
+            new volVectorField(
+                IOobject(
+                    "forcePerS",
+                    runTimePtr_->timeName(),
+                    meshPtr_(),
+                    IOobject::NO_READ,
+                    IOobject::AUTO_WRITE),
+                meshPtr_(),
+                dimensionedVector("forcePerS", dimensionSet(0, 0, 0, 0, 0, 0, 0), vector::zero),
+                "fixedValue"));
+    }
 
     Info << "DAOption created. DASolver initialized." << endl;
 }
@@ -336,6 +352,9 @@ void DASolver::calcAllFunctions(label print)
             return;
         }
     }
+
+    // if writeSurfForces.active, calculate forcesPerSPtr_ for wing spanwise lift plot
+    this->calcSurfForcePerS();
 
     label timeIndex = runTimePtr_->timeIndex();
     label listIndex = timeIndex - 1;
@@ -4513,6 +4532,52 @@ void DASolver::getOFFieldGlobal(
     else
     {
         FatalErrorIn("") << "fieldType not valid" << exit(FatalError);
+    }
+}
+
+void DASolver::calcSurfForcePerS()
+{
+    if (!daOptionPtr_->getAllOptions().subDict("writeSurfForces").getLabel("active"))
+    {
+        return;
+    }
+
+    DATurbulenceModel& daTurb = const_cast<DATurbulenceModel&>(daModelPtr_->getDATurbulenceModel());
+    wordList patchNames;
+    daOptionPtr_->getAllOptions().subDict("writeSurfForces").readEntry<wordList>("patchNames", patchNames);
+
+    const surfaceVectorField::Boundary& Sfb = meshPtr_->Sf().boundaryField();
+    const surfaceScalarField::Boundary& magSfb = meshPtr_->magSf().boundaryField();
+    const volScalarField& p = meshPtr_->thisDb().lookupObject<volScalarField>("p");
+
+    tmp<volSymmTensorField> tdevRhoReff = daTurb.devRhoReff();
+    const volSymmTensorField::Boundary& devRhoReffb = tdevRhoReff().boundaryField();
+
+    vector forces(vector::zero);
+
+    forAll(patchNames, cI)
+    {
+        // get the patch id label
+        label patchI = meshPtr_->boundaryMesh().findPatchID(patchNames[cI]);
+        if (patchI < 0)
+        {
+            FatalErrorIn("") << "ERROR: Patch name " << patchNames[cI] << " not found in constant/polyMesh/boundary! Exit!" << exit(FatalError);
+            return;
+        }
+        // create a shorter handle for the boundary patch
+        const fvPatch& patch = meshPtr_->boundary()[patchI];
+        // normal force
+        vectorField fN(Sfb[patchI] * p.boundaryField()[patchI]);
+        // tangential force
+        vectorField fT(Sfb[patchI] & devRhoReffb[patchI]);
+        // sum them up
+        forAll(patch, faceI)
+        {
+            // compute forces
+            forces = fN[faceI] + fT[faceI];
+            // calculate forcePerS
+            forcePerSPtr_->boundaryFieldRef()[patchI][faceI] = forces / magSfb[patchI][faceI];
+        }
     }
 }
 

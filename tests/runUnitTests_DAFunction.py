@@ -34,6 +34,7 @@ daOptions = {
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1e4,
     "printDAOptions": False,
+    "writeSurfForces": {"active": True, "patchNames": ["walls"]},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["outlet"], "value": [0.0]},
@@ -321,6 +322,7 @@ daOptions = {
     "primalMinResTol": 1.0e-12,
     "primalMinResTolDiff": 1e4,
     "printDAOptions": False,
+    "writeSurfForces": {"active": True, "patchNames": ["walls"]},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inlet"], "value": [U0, 0.0, 0.0]},
         "T0": {"variable": "T", "patches": ["inlet"], "value": [310.0]},

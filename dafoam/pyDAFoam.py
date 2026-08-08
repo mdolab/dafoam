@@ -433,6 +433,9 @@ class DAOPTION(object):
         ## will degrade the adjoint accuracy, so it is set to false by default.
         self.useDdtCorr = False
 
+        ## whether to save surface forces. This is primarly use to plot the spanwise lift plot for wings
+        self.writeSurfForces = {"active": False, "patchNames": []}
+
         ## parameters for regression models
         ## we support defining multiple regression models. Each regression model can have only one output
         ## but it can have multiple input features. Refer to src/adjoint/DARegression/DARegression.C for

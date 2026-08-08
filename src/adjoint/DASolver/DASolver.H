@@ -117,6 +117,9 @@ protected:
     /// the initial points for dynamicMesh without volCoord inputs
     autoPtr<pointField> points0Ptr_;
 
+    /// surface force per area pionter used for plotting wing spanwise lift
+    autoPtr<volVectorField> forcePerSPtr_;
+
     /// the stateInfo_ list from DAStateInfo object
     HashTable<wordList> stateInfo_;
 
@@ -513,6 +516,9 @@ public:
     {
         DAUtility::writeVectorBinary(vecIn, prefix);
     }
+
+    /// calculate the forcePerS for wing spanwise lift
+    void calcSurfForcePerS();
 
     /// return the number of local adjoint states
     label getNLocalAdjointStates() const
