@@ -117,6 +117,7 @@ DASolver::DASolver(
 
     if (daOptionPtr_->getAllOptions().subDict("writeSurfForces").getLabel("active"))
     {
+        Info << "Creating forcePerS... " << endl;
         forcePerSPtr_.reset(
             new volVectorField(
                 IOobject(

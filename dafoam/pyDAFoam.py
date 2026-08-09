@@ -434,7 +434,7 @@ class DAOPTION(object):
         self.useDdtCorr = False
 
         ## whether to save surface forces. This is primarly use to plot the spanwise lift plot for wings
-        self.writeSurfForces = {"active": False, "patchNames": []}
+        self.writeSurfForces = {"active": False, "patchNames": ["None"]}
 
         ## parameters for regression models
         ## we support defining multiple regression models. Each regression model can have only one output
