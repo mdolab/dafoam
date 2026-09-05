@@ -1,16 +1,16 @@
 Dictionary Key: CD
-@value         0.0334577365745350 1e-08 1e-10
+@value         0.0333700430731250 1e-08 1e-10
 Dictionary Key: CL
-@value         0.2439576745216876 1e-08 1e-10
+@value         0.2419791373887774 1e-08 1e-10
 Dictionary Key: VM
-@value         0.4059018440941971 1e-08 1e-10
+@value         0.5040300871190322 1e-08 1e-10
 Dictionary Key: CD
 Dictionary Key: shape-Adjoint
-@value         0.0005528433841310 0.0001 1e-10
+@value         0.0005474184104519 0.0001 1e-10
 Dictionary Key: shape-FD
-@value         0.0005528432841082 0.0001 1e-10
+@value         0.0005474192652670 0.0001 1e-10
 Dictionary Key: VM
 Dictionary Key: shape-Adjoint
-@value         0.0142494156700525 0.0001 1e-10
+@value         0.0192210824212265 0.0001 1e-10
 Dictionary Key: shape-FD
-@value         0.0142494221024663 0.0001 1e-10
+@value         0.0192211008389620 0.0001 1e-10
