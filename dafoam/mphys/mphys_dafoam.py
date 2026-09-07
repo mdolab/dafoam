@@ -1196,7 +1196,10 @@ class OptFuncs(object):
         Find the design variables that meet the prescribed constraints. This can be used to get a
         feasible design to start the optimization. For example, finding the angle of attack and
         tail rotation angle that give the target lift and pitching moment. The sizes of cons and
-        designvars have to be the same.
+        designvars have to be the same. The component list has one entry per constraint/design
+        variable pair. A design-variable component entry can be an integer, an integer string
+        (e.g. "1"), or a Python-style range string (e.g. "1:3" means 1 and 2 indices). A range applies
+        the same Newton perturbation and update to every component in that range.
         NOTE: we use the Newton method to find the feasible design.
         """
 
@@ -1222,6 +1225,31 @@ class OptFuncs(object):
         # if the max Newton step is None, set it to a very large value
         if maxNewtonStep is None:
             maxNewtonStep = size * [1e16]
+        if (
+            len(constraintsComp) != size
+            or len(designVarsComp) != size
+            or len(epsFD) != size
+            or len(maxNewtonStep) != size
+        ):
+            raise RuntimeError("Component and Newton-option lists need to have the same size as constraints! ")
+
+        # Convert design-variable range strings to their component indices using Python's
+        # exclusive end convention, so "1:3" represents components 1 and 2.
+        for i, component in enumerate(designVarsComp):
+            if isinstance(component, str):
+                try:
+                    if ":" in component:
+                        start, stop = component.split(":")
+                        component = list(range(int(start), int(stop)))
+                        if not component:
+                            raise ValueError
+                    else:
+                        component = int(component)
+                except ValueError:
+                    raise RuntimeError(
+                        "designVarsComp entries must be integer strings or non-empty 'start:stop' ranges! "
+                    )
+                designVarsComp[i] = component
 
         # main Newton loop
         for n in range(maxIter):
@@ -1233,12 +1261,13 @@ class OptFuncs(object):
             self.om_prob.run_model()
 
             # get the reference design vars and constraints values
-            dv0 = np.zeros(size)
+            dv0Components = []
             for i in range(size):
                 dvName = designVars[i]
                 comp = designVarsComp[i]
                 val = self.om_prob.get_val(dvName)
-                dv0[i] = val[comp]
+                # Preserve each selected value so a grouped perturbation can be reset exactly.
+                dv0Components.append(np.array(val[comp], copy=True))
             con0 = np.zeros(size)
             for i in range(size):
                 conName = constraints[i]
@@ -1254,7 +1283,8 @@ class OptFuncs(object):
 
             if self.comm.rank == 0:
                 print("FindFeasibleDesign Iter: ", n, flush=True)
-                print("DesignVars: ", dv0, flush=True)
+                # Print one representative value per design variable, even for large ranges.
+                print("DesignVars: ", [np.atleast_1d(val)[0] for val in dv0Components], flush=True)
                 print("Constraints: ", con0, flush=True)
                 print("Residual Norm: ", norm, flush=True)
 
@@ -1269,12 +1299,13 @@ class OptFuncs(object):
                 dvName = designVars[i]
                 comp = designVarsComp[i]
                 # perturb  +step
-                dvP = dv0[i] + epsFD[i]
+                # Add the same step to every component selected by a range.
+                dvP = dv0Components[i] + epsFD[i]
                 self.om_prob.set_val(dvName, dvP, indices=comp)
                 # run the primal
                 self.om_prob.run_model()
                 # reset the perturbation
-                self.om_prob.set_val(dvName, dv0[i], indices=comp)
+                self.om_prob.set_val(dvName, dv0Components[i], indices=comp)
 
                 # get the perturb constraints and compute the Jacobian
                 for j in range(size):
@@ -1298,11 +1329,11 @@ class OptFuncs(object):
                         deltaDV[i] = -abs(maxNewtonStep[i])
 
             # update the dv
-            dv1 = dv0 + deltaDV
             for i in range(size):
                 dvName = designVars[i]
                 comp = designVarsComp[i]
-                self.om_prob.set_val(dvName, dv1[i], indices=comp)
+                # Apply each scalar Newton update to every component in its selected range.
+                self.om_prob.set_val(dvName, dv0Components[i] + deltaDV[i], indices=comp)
 
 
 class DAFoamBuilderUnsteady(Group):
