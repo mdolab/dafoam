@@ -1203,7 +1203,9 @@ class OptFuncs(object):
         start:stride:-1 string (e.g. "1:3:-1" means indices 1, 4, 7, ... to the end). A range
         applies the same Newton perturbation and update to every component it selects.
         designVarsBound can be a list of [lower, upper] pairs, one pair for each design variable.
-        NOTE: we use the Newton method to find the feasible design.
+        NOTE: we use the Newton method with 50% backtracking to reduce the residual norm.
+        Try at most five halvings, then accept the fifth reduced step even if the residual
+        increases and continue the Newton iterations.
         """
 
         if self.comm.rank == 0:
@@ -1276,8 +1278,9 @@ class OptFuncs(object):
             # Newton Jacobian
             jacMat = np.zeros((size, size))
 
-            # run the primal for the reference dvs
-            self.om_prob.run_model()
+            # Later iterations reuse the primal evaluated at the accepted line-search step.
+            if n == 0:
+                self.om_prob.run_model()
 
             # get the reference design vars and constraints values
             dv0Components = []
@@ -1353,20 +1356,32 @@ class OptFuncs(object):
                     else:
                         deltaDV[i] = -abs(maxNewtonStep[i])
 
-            # update the dv
-            for i in range(size):
-                dvName = designVars[i]
-                comp = designVarsComp[i]
-                # Apply each scalar Newton update to every component in its selected range.
-                if designVarsBound is None:
-                    self.om_prob.set_val(dvName, dv0Components[i] + deltaDV[i], indices=comp)
-                else:
-                    # Enforce the prescribed absolute bounds for every selected component.
-                    self.om_prob.set_val(
-                        dvName,
-                        np.clip(dv0Components[i] + deltaDV[i], designVarsBound[i][0], designVarsBound[i][1]),
-                        indices=comp,
-                    )
+            # Backtrack from the reference design, halving the entire Newton step on rejection.
+            step = 1.0
+            maxLS = 5  # Maximum number of halvings after the full-step trial.
+            for backtrack in range(maxLS + 1):
+                for i in range(size):
+                    dvName = designVars[i]
+                    comp = designVarsComp[i]
+                    dvTrial = dv0Components[i] + step * deltaDV[i]
+                    # Keep absolute bounds and grouped-component updates for every trial.
+                    if designVarsBound is not None:
+                        dvTrial = np.clip(dvTrial, designVarsBound[i][0], designVarsBound[i][1])
+                    self.om_prob.set_val(dvName, dvTrial, indices=comp)
+
+                self.om_prob.run_model()
+                conTrial = np.zeros(size)
+                for i in range(size):
+                    conTrial[i] = self.om_prob.get_val(constraints[i])[constraintsComp[i]]
+                trialNorm = np.linalg.norm((conTrial - targets) / targets)
+
+                if self.comm.rank == 0:
+                    print("Line Search Step: ", step, "Residual Norm: ", trialNorm, flush=True)
+
+                # Accept an improving step, or the final halving even without improvement.
+                if (np.isfinite(trialNorm) and trialNorm < norm) or backtrack == maxLS:
+                    break
+                step *= 0.5
 
 
 class DAFoamBuilderUnsteady(Group):
