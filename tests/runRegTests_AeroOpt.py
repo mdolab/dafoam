@@ -41,6 +41,7 @@ daOptions = {
     "primalMinResTolDiff": 1e4,
     "writeDeformedFFDs": True,
     "writeDeformedConstraints": True,
+    "writeVTK": {"active": True, "fields": ["U", "p"], "patches": ["wing"]},
     "primalBC": {
         "U0": {"variable": "U", "patches": ["inout"], "value": [U0, 0.0, 0.0]},
         "p0": {"variable": "p", "patches": ["inout"], "value": [p0]},

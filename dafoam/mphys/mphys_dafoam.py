@@ -397,6 +397,12 @@ class DAFoamSolver(ImplicitComponent):
             # We do not print the residual for AD, though
             DASolver.solverAD.calcPrimalResidualStatistics("calc")
 
+            # Export before another scenario deletes the working solution; names remain stable across runs.
+            if DASolver.getOption("writeVTK")["active"]:
+                # MPhys nests the solver below <scenario>.coupling; use only the scenario name.
+                scenario_name = self.pathname.split(".coupling.", 1)[0].rsplit(".", 1)[-1]
+                DASolver.writeVTK(scenario_name)
+
     def linearize(self, inputs, outputs, residuals):
         # NOTE: we do not do any computation in this function, just print some information
 

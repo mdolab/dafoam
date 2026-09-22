@@ -6,6 +6,8 @@
 \*---------------------------------------------------------------------------*/
 
 #include "DASolver.H"
+#include "functionObject.H"
+#include "wordReList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 // initialize the static variable, which will be used in forward mode AD
@@ -3168,6 +3170,38 @@ void DASolver::readMeshPoints(const scalar timeVal)
             IOobject::NO_WRITE));
 
     meshPtr_->movePoints(readPoints);
+}
+
+void DASolver::writeVTK(const char* outputDir)
+{
+    // Use OpenFOAM's native writer with the existing mesh and MPI communicator.
+    // PYDAFOAM calls this on the primal (non-AD) solver, so no AD writer library is needed.
+    dictionary dict;
+    dict.add("type", word("vtkWrite"));
+    dict.add("libs", wordList(1, "libutilityFunctionObjects.so"));
+    const dictionary& options = daOptionPtr_->getAllOptions().subDict("writeVTK");
+    // Use explicit field names when provided; otherwise quote the all-fields regex correctly.
+    if (options.found("fields"))
+    {
+        dict.add("fields", options.get<wordList>("fields"));
+    }
+    else
+    {
+        dict.add("fields", wordReList(1, wordRe(".*", wordRe::REGEX)));
+    }
+    // Omitting patches lets the native writer select all physical boundary patches.
+    if (options.found("patches"))
+    {
+        dict.add("patches", options.get<wordList>("patches"));
+    }
+    dict.add("directory", fileName(outputDir));
+    dict.add("internal", true);
+    dict.add("boundary", true);
+    dict.add("single", true);
+    dict.add("interpolate", true);
+
+    autoPtr<functionObject> writer = functionObject::New("DAFoamVTK", runTimePtr_(), dict);
+    writer->write();
 }
 
 void DASolver::writeMeshPoints(const double* points, const scalar timeVal)

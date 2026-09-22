@@ -733,6 +733,9 @@ public:
     /// read the mesh points from the disk and run movePoints to deform the mesh
     void readMeshPoints(const scalar timeVal);
 
+    /// collectively export the current mesh and volume/boundary fields to the given VTK directory
+    void writeVTK(const char* outputDir);
+
     /// write the mesh points to the disk for the given timeVal
     void writeMeshPoints(const double* points, const scalar timeVal);
 
