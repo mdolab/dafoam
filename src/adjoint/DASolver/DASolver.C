@@ -3198,6 +3198,8 @@ void DASolver::writeVTK(const char* outputDir)
     dict.add("internal", true);
     dict.add("boundary", true);
     dict.add("single", true);
+    // Keep patch identity available for downstream component-specific plots.
+    dict.add("writeIds", true);
     dict.add("interpolate", true);
 
     autoPtr<functionObject> writer = functionObject::New("DAFoamVTK", runTimePtr_(), dict);
