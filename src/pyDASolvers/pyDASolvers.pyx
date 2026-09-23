@@ -98,6 +98,7 @@ cdef extern from "DASolvers.H" namespace "Foam":
         void initTensorFlowFuncs(pyComputeInterface, void *, pyJacVecProdInterface, void *, pySetCharInterface, void *)
         void readStateVars(double, int)
         void readMeshPoints(double)
+        void writeVTK(const char *)
         void writeMeshPoints(double *, double)
         void writeCurrentMeshPointsToConstant()
         void calcPCMatWithFvMatrix(PetscMat, int)
@@ -384,6 +385,9 @@ cdef class pyDASolvers:
     
     def readMeshPoints(self, timeVal):
         self._thisptr.readMeshPoints(timeVal)
+
+    def writeVTK(self, outputDir):
+        self._thisptr.writeVTK(outputDir.encode())
 
     def writeMeshPoints(self, np.ndarray[double, ndim=1, mode="c"] points, timeVal):
         assert len(points) == self.getNLocalPoints() * 3, "invalid array size!"

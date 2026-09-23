@@ -412,6 +412,12 @@ public:
         DASolverPtr_->readMeshPoints(timeVal);
     }
 
+    /// export current primal fields with OpenFOAM's parallel VTK writer
+    void writeVTK(const char* outputDir)
+    {
+        DASolverPtr_->writeVTK(outputDir);
+    }
+
     /// write the mesh points to the disk for the given timeVal
     void writeMeshPoints(const double* points, const scalar timeVal)
     {

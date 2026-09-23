@@ -630,6 +630,11 @@ class DAOPTION(object):
         ## the poor quality mesh during line search)
         self.writeMinorIterations = False
 
+        ## Write VTK after each successful MPhys primal solve when active is True.
+        ## Each scenario overwrites only VTK/<scenario_name>. Omitted fields/patches select all.
+        ## Example: {"active": True, "fields": ["U", "p"], "patches": ["wing"]}
+        self.writeVTK = {"active": False}
+
         ## number of minimal primal iterations. The primal has to run this many iterations, even the primal residual
         ## has reduced below the tolerance. The default is 1: the primal has to run for at least one iteration
         self.primalMinIters = 1
@@ -1477,6 +1482,44 @@ class PYDAFOAM(object):
         self.comm.Barrier()
 
         return
+
+    def writeVTK(self, name="solution"):
+        """
+        Collectively write current mesh/fields to VTK/<name>, replacing that output only.
+        The writeVTK option controls activation and optional fields/patches name lists.
+
+        Parameters
+        ----------
+        name : str
+            Output directory name, e.g., "scenario0". All ranks must use the same name.
+
+        Returns
+        -------
+        str
+            Absolute output directory containing the volume/boundary VTK files and VTM index,
+            or None when writeVTK["active"] is False.
+        """
+        # An inactive writer must leave existing outputs untouched.
+        if not self.getOption("writeVTK")["active"]:
+            return None
+        # Keep cleanup confined to one named output, never the case or another scenario.
+        if not name or name in (".", "..") or os.path.basename(name) != name:
+            raise ValueError("VTK name must be a single non-empty directory name")
+        outputDir = os.path.abspath(os.path.join("VTK", name))
+        error = None
+        if self.comm.rank == 0:
+            try:
+                if os.path.exists(outputDir):
+                    shutil.rmtree(outputDir)
+            except OSError as err:
+                error = str(err)
+        # Synchronize cleanup and propagate failures before entering the collective writer.
+        error = self.comm.bcast(error, root=0)
+        if error is not None:
+            raise RuntimeError(error)
+        self.solver.writeVTK(outputDir)
+        self.comm.Barrier()
+        return outputDir
 
     def deletePrevPrimalSolTime(self):
         """
