@@ -3195,12 +3195,12 @@ void DASolver::writeVTK(const char* outputDir)
         dict.add("patches", options.get<wordList>("patches"));
     }
     dict.add("directory", fileName(outputDir));
-    dict.add("internal", true);
+    dict.add("internal", false);
     dict.add("boundary", true);
     dict.add("single", true);
     // Keep patch identity available for downstream component-specific plots.
     dict.add("writeIds", true);
-    dict.add("interpolate", true);
+    dict.add("interpolate", false);
 
     autoPtr<functionObject> writer = functionObject::New("DAFoamVTK", runTimePtr_(), dict);
     writer->write();
