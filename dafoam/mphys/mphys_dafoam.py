@@ -1198,6 +1198,7 @@ class OptFuncs(object):
         tol=1e-4,
         maxNewtonStep=None,
         designVarsBound=None,
+        FDScheme="forward",
     ):
         """
         Find the design variables that meet the prescribed constraints. This can be used to get a
@@ -1209,6 +1210,7 @@ class OptFuncs(object):
         start:stride:-1 string (e.g. "1:3:-1" means indices 1, 4, 7, ... to the end). A range
         applies the same Newton perturbation and update to every component it selects.
         designVarsBound can be a list of [lower, upper] pairs, one pair for each design variable.
+        FDScheme selects forward or central finite differences for the Newton Jacobian.
         NOTE: we use the Newton method with 50% backtracking to reduce the residual norm.
         Try at most five halvings, then accept the fifth reduced step even if the residual
         increases and continue the Newton iterations.
@@ -1222,6 +1224,12 @@ class OptFuncs(object):
 
         if len(constraints) != len(designVars):
             raise RuntimeError("Sizes of the constraints and designVars lists need to be the same! ")
+
+        # The relative residual norm below divides by every target.
+        if np.any(np.asarray(targets) == 0):
+            raise ValueError("findFeasibleDesign requires non-zero targets; please provide non-zero targets.")
+        if FDScheme not in ("forward", "central"):
+            raise ValueError("FDScheme must be 'forward' or 'central'.")
 
         size = len(constraints)
 
@@ -1336,20 +1344,36 @@ class OptFuncs(object):
                 # Add the same step to every component selected by a range.
                 dvP = dv0Components[i] + epsFD[i]
                 self.om_prob.set_val(dvName, dvP, indices=comp)
+                if self.comm.rank == 0:
+                    # Show the representative value used for this finite-difference solve.
+                    print("Perturbed DesignVar: ", dvName, np.atleast_1d(dvP)[0], flush=True)
                 # run the primal
                 self.om_prob.run_model()
-                # reset the perturbation
+                # Save the positive-perturbation constraints before another model run.
+                conP = np.zeros(size)
+                for j in range(size):
+                    conP[j] = self.om_prob.get_val(constraints[j])[constraintsComp[j]]
+
+                if FDScheme == "central":
+                    # Evaluate the matching negative perturbation for central differences.
+                    dvM = dv0Components[i] - epsFD[i]
+                    self.om_prob.set_val(dvName, dvM, indices=comp)
+                    if self.comm.rank == 0:
+                        # Show the representative value used for this finite-difference solve.
+                        print("Perturbed DesignVar: ", dvName, np.atleast_1d(dvM)[0], flush=True)
+                    self.om_prob.run_model()
+                    conM = np.zeros(size)
+                    for j in range(size):
+                        conM[j] = self.om_prob.get_val(constraints[j])[constraintsComp[j]]
+
+                # Restore the reference design before perturbing the next variable.
                 self.om_prob.set_val(dvName, dv0Components[i], indices=comp)
 
-                # get the perturb constraints and compute the Jacobian
-                for j in range(size):
-                    conName = constraints[j]
-                    comp = constraintsComp[j]
-                    val = self.om_prob.get_val(conName)
-                    conP = val[comp]
-
-                    deriv = (conP - con0[j]) / epsFD[i]
-                    jacMat[j][i] = deriv
+                # Compute each Jacobian column with the requested finite difference.
+                if FDScheme == "central":
+                    jacMat[:, i] = (conP - conM) / (2 * epsFD[i])
+                else:
+                    jacMat[:, i] = (conP - con0) / epsFD[i]
 
             # calculate the deltaDV using the Newton method
             deltaDV = -np.linalg.inv(jacMat).dot(res)
@@ -1366,6 +1390,7 @@ class OptFuncs(object):
             step = 1.0
             maxLS = 5  # Maximum number of halvings after the full-step trial.
             for backtrack in range(maxLS + 1):
+                dvTrialValues = []
                 for i in range(size):
                     dvName = designVars[i]
                     comp = designVarsComp[i]
@@ -1374,18 +1399,44 @@ class OptFuncs(object):
                     if designVarsBound is not None:
                         dvTrial = np.clip(dvTrial, designVarsBound[i][0], designVarsBound[i][1])
                     self.om_prob.set_val(dvName, dvTrial, indices=comp)
+                    # Report the value actually assigned, after any bound is applied.
+                    dvTrialValues.append(np.atleast_1d(dvTrial)[0])
 
-                self.om_prob.run_model()
+                # Show the proposed step and the reference residual before evaluating it.
+                if self.comm.rank == 0:
+                    print("Line Search Before Run Model: Step: ", step, "Residual Norm: ", norm, flush=True)
+                    print("DesignVars: ", dvTrialValues, flush=True)
+
+                try:
+                    self.om_prob.run_model()
+                except AnalysisError as err:
+                    # A failed trial cannot supply a residual; try a smaller design update.
+                    if self.comm.rank == 0:
+                        print("Line Search After Run Model: Step: ", step, "Residual Norm: unavailable", flush=True)
+                        print("DesignVars: ", dvTrialValues, flush=True)
+                        print("Line Search Step: Rejected (AnalysisError: %s)" % err, flush=True)
+                    if backtrack == maxLS:
+                        # Leave the design at the last valid reference point on failure.
+                        for i in range(size):
+                            self.om_prob.set_val(designVars[i], dv0Components[i], indices=designVarsComp[i])
+                        raise RuntimeError(
+                            "findFeasibleDesign line search exhausted without an acceptable trial step."
+                        ) from err
+                    step *= 0.5
+                    continue
                 conTrial = np.zeros(size)
                 for i in range(size):
                     conTrial[i] = self.om_prob.get_val(constraints[i])[constraintsComp[i]]
                 trialNorm = np.linalg.norm((conTrial - targets) / targets)
 
-                if self.comm.rank == 0:
-                    print("Line Search Step: ", step, "Residual Norm: ", trialNorm, flush=True)
-
                 # Accept an improving step, or the final halving even without improvement.
-                if (np.isfinite(trialNorm) and trialNorm < norm) or backtrack == maxLS:
+                accepted = (np.isfinite(trialNorm) and trialNorm < norm) or backtrack == maxLS
+                if self.comm.rank == 0:
+                    print("Line Search After Run Model: Step: ", step, "Residual Norm: ", trialNorm, flush=True)
+                    print("DesignVars: ", dvTrialValues, flush=True)
+                    print("Line Search Step: ", "Accepted" if accepted else "Rejected", flush=True)
+
+                if accepted:
                     break
                 step *= 0.5
 
