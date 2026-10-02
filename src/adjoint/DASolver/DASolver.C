@@ -3180,14 +3180,18 @@ void DASolver::writeVTK(const char* outputDir)
     dict.add("type", word("vtkWrite"));
     dict.add("libs", wordList(1, "libutilityFunctionObjects.so"));
     const dictionary& options = daOptionPtr_->getAllOptions().subDict("writeVTK");
+    // Slice writer settings; the same field selection is applied to slices
+    dictionary sliceDict;
     // Use explicit field names when provided; otherwise quote the all-fields regex correctly.
     if (options.found("fields"))
     {
         dict.add("fields", options.get<wordList>("fields"));
+        sliceDict.add("fields", options.get<wordList>("fields"));
     }
     else
     {
         dict.add("fields", wordReList(1, wordRe(".*", wordRe::REGEX)));
+        sliceDict.add("fields", wordReList(1, wordRe(".*", wordRe::REGEX)));
     }
     // Omitting patches lets the native writer select all physical boundary patches.
     if (options.found("patches"))
@@ -3195,7 +3199,8 @@ void DASolver::writeVTK(const char* outputDir)
         dict.add("patches", options.get<wordList>("patches"));
     }
     dict.add("directory", fileName(outputDir));
-    dict.add("internal", false);
+    // Internal (volume) field output is optional and off by default
+    dict.add("internal", bool(options.lookupOrDefault<label>("internal", 0)));
     dict.add("boundary", true);
     dict.add("single", true);
     // Keep patch identity available for downstream component-specific plots.
@@ -3204,6 +3209,49 @@ void DASolver::writeVTK(const char* outputDir)
 
     autoPtr<functionObject> writer = functionObject::New("DAFoamVTK", runTimePtr_(), dict);
     writer->write();
+
+    // Optional slices, e.g., slices = {x (0.1 0.5); z (0.0);} gives planes x=0.1, x=0.5, z=0
+    if (options.found("slices"))
+    {
+        const dictionary& slices = options.subDict("slices");
+        // Build one plane surface per requested normal/location pair
+        dictionary surfaces;
+        const wordList axes({"x", "y", "z"});
+        forAll(axes, dirI)
+        {
+            if (!slices.found(axes[dirI]))
+            {
+                continue;
+            }
+            const scalarList locs = slices.get<scalarList>(axes[dirI]);
+            forAll(locs, locI)
+            {
+                vector pt(Zero);
+                pt[dirI] = locs[locI];
+                vector normal(Zero);
+                normal[dirI] = 1.0;
+                dictionary surfDict;
+                // Use "plane" with triangulate false so each cut cell gives one polygon face
+                surfDict.add("type", word("plane"));
+                surfDict.add("point", pt);
+                surfDict.add("normal", normal);
+                surfDict.add("triangulate", false);
+                surfDict.add("interpolate", false);
+                surfaces.add(word(axes[dirI] + "_" + Foam::name(locs[locI])), surfDict);
+            }
+        }
+        sliceDict.add("type", word("surfaces"));
+        sliceDict.add("libs", wordList(1, "libsampling.so"));
+        sliceDict.add("surfaceFormat", word("vtk"));
+        sliceDict.add("interpolationScheme", word("cell"));
+        sliceDict.add("surfaces", surfaces);
+
+        // The surfaces function object writes to <case>/postProcessing/<scenario_name>/<time>,
+        // where scenario_name is the last component of outputDir (VTK/<scenario_name>)
+        const word sliceName = fileName(outputDir).name();
+        autoPtr<functionObject> sliceWriter = functionObject::New(sliceName, runTimePtr_(), sliceDict);
+        sliceWriter->write();
+    }
 }
 
 void DASolver::writeMeshPoints(const double* points, const scalar timeVal)

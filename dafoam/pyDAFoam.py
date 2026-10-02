@@ -630,9 +630,27 @@ class DAOPTION(object):
         ## the poor quality mesh during line search)
         self.writeMinorIterations = False
 
-        ## Write VTK after each successful MPhys primal solve when active is True.
-        ## Each scenario overwrites only VTK/<scenario_name>. Omitted fields/patches select all.
-        ## Example: {"active": True, "fields": ["U", "p"], "patches": ["wing"]}
+        ## Write the flow solution in VTK format after each successful MPhys primal solve.
+        ## Full example:
+        ## "writeVTK": {
+        ##     "active": True,
+        ##     "fields": ["U", "p"],
+        ##     "patches": ["wing", "body"],
+        ##     "internal": False,
+        ##     "slices": {"x": [0.1, 0.5], "z": [0.0]},
+        ## }
+        ## Options:
+        ## active: whether to write VTK. Default is False, i.e., nothing is written.
+        ## fields: names of the fields to write. If omitted, all available fields are written.
+        ## patches: names of the boundary patches to write. If omitted, all physical patches are written.
+        ##          Patch outputs are written to VTK/<scenario_name>, which is overwritten by each new
+        ##          primal solve of that scenario.
+        ## internal: whether to also write the internal (volume) field to VTK/<scenario_name>.
+        ##           Default is False because the volume output can be large.
+        ## slices: cutting planes to write, given as {normal: [locations]}, where normal is "x", "y",
+        ##         or "z". The above example writes three planes: x=0.1, x=0.5, and z=0.0. Each plane is
+        ##         written as one .vtp file to postProcessing/<scenario_name>/<time>. If omitted,
+        ##         no slices are written.
         self.writeVTK = {"active": False}
 
         ## number of minimal primal iterations. The primal has to run this many iterations, even the primal residual
@@ -1506,11 +1524,16 @@ class PYDAFOAM(object):
         if not name or name in (".", "..") or os.path.basename(name) != name:
             raise ValueError("VTK name must be a single non-empty directory name")
         outputDir = os.path.abspath(os.path.join("VTK", name))
+        # Slices are written by OpenFOAM to postProcessing/<name>/<time>; the time name can change
+        # between calls, so remove the whole folder to keep only the latest slices.
+        sliceDir = os.path.abspath(os.path.join("postProcessing", name))
         error = None
         if self.comm.rank == 0:
             try:
                 if os.path.exists(outputDir):
                     shutil.rmtree(outputDir)
+                if os.path.exists(sliceDir):
+                    shutil.rmtree(sliceDir)
             except OSError as err:
                 error = str(err)
         # Synchronize cleanup and propagate failures before entering the collective writer.
