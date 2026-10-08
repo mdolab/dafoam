@@ -1196,6 +1196,7 @@ class OptFuncs(object):
         epsFD=None,
         maxIter=10,
         tol=1e-4,
+        normalizeTol=True,
         maxNewtonStep=None,
         designVarsBound=None,
         FDScheme="forward",
@@ -1211,6 +1212,9 @@ class OptFuncs(object):
         applies the same Newton perturbation and update to every component it selects.
         designVarsBound can be a list of [lower, upper] pairs, one pair for each design variable.
         FDScheme selects forward or central finite differences for the Newton Jacobian.
+        normalizeTol=True uses the relative residual norm ||(con - targets) / targets|| and
+        requires non-zero targets. normalizeTol=False uses the absolute residual norm
+        ||con - targets||, which is useful for zero or near-zero targets, e.g., CM.
         NOTE: we use the Newton method with 50% backtracking to reduce the residual norm.
         Try at most five halvings, then accept the fifth reduced step even if the residual
         increases and continue the Newton iterations.
@@ -1221,17 +1225,25 @@ class OptFuncs(object):
             print("Constraints: ", constraints)
             print("Design Vars: ", designVars)
             print("Target: ", targets)
+            print("Normalize Tol: ", normalizeTol)
 
         if len(constraints) != len(designVars):
             raise RuntimeError("Sizes of the constraints and designVars lists need to be the same! ")
 
         # The relative residual norm below divides by every target.
-        if np.any(np.asarray(targets) == 0):
-            raise ValueError("findFeasibleDesign requires non-zero targets; please provide non-zero targets.")
+        if normalizeTol and np.any(np.asarray(targets) == 0):
+            raise ValueError(
+                "findFeasibleDesign requires non-zero targets when normalizeTol=True; "
+                "please provide non-zero targets or set normalizeTol=False."
+            )
         if FDScheme not in ("forward", "central"):
             raise ValueError("FDScheme must be 'forward' or 'central'.")
 
         size = len(constraints)
+
+        # Scale for the residual norm: targets for a relative norm, ones for an absolute norm.
+        # The same scale is used for convergence and line search so they stay consistent.
+        resScale = np.asarray(targets, dtype=float) if normalizeTol else np.ones(size)
 
         # if the component is empty, set it to 0
         if constraintsComp is None:
@@ -1321,7 +1333,7 @@ class OptFuncs(object):
             res = con0 - targets
 
             # compute the residual norm
-            norm = np.linalg.norm(res / targets)
+            norm = np.linalg.norm(res / resScale)
 
             if self.comm.rank == 0:
                 print("FindFeasibleDesign Iter: ", n, flush=True)
@@ -1427,7 +1439,7 @@ class OptFuncs(object):
                 conTrial = np.zeros(size)
                 for i in range(size):
                     conTrial[i] = self.om_prob.get_val(constraints[i])[constraintsComp[i]]
-                trialNorm = np.linalg.norm((conTrial - targets) / targets)
+                trialNorm = np.linalg.norm((conTrial - targets) / resScale)
 
                 # Accept an improving step, or the final halving even without improvement.
                 accepted = (np.isfinite(trialNorm) and trialNorm < norm) or backtrack == maxLS
