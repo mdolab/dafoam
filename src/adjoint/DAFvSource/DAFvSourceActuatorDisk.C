@@ -125,6 +125,43 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             scalar scale = diskSubDict.getScalar("scale");
             scalar POD = diskSubDict.getScalar("POD");
 
+            // adjustThrust is optional here (default 0) for backward compatibility
+            label adjustThrust = diskSubDict.lookupOrDefault<label>("adjustThrust", 0);
+            // if adjustThrust = False, we just use the "scale" read from daOption
+            // if we want to adjust thrust, we calculate scale, instead of reading from daOption
+            // to calculate the scale, we just compute the fAxial with scale = 1, then we find
+            // the correct scale = targetThrust / thrust_with_scale_1
+            if (adjustThrust)
+            {
+                scalar tmpThrustSumAll = 0.0;
+                forAll(fvSourceCellIndices_[diskName], idxJ)
+                {
+                    // cell index
+                    label cellI = fvSourceCellIndices_[diskName][idxJ];
+
+                    // cell center to disk center vector
+                    vector cellC2AVec = mesh_.C()[cellI] - diskCenter;
+                    // tmp tensor for calculating the axial/radial components of cellC2AVec
+                    tensor cellC2AVecE(tensor::zero);
+                    cellC2AVecE.xx() = cellC2AVec.x();
+                    cellC2AVecE.yy() = cellC2AVec.y();
+                    cellC2AVecE.zz() = cellC2AVec.z();
+                    // the radial component of cellC2AVec vector
+                    vector cellC2AVecR = cellC2AVec - (cellC2AVecE & diskDirNorm);
+
+                    // same Hoekstra's formulation as below, but with scale = 1
+                    scalar rPrime = mag(cellC2AVecR) / outerRadius;
+                    scalar rPrimeHub = innerRadius / outerRadius;
+                    scalar rStar = (rPrime - rPrimeHub) / (1.0 - rPrimeHub);
+                    scalar fAxial = rStar * sqrt(1.0 - rStar);
+
+                    tmpThrustSumAll += fAxial * mesh_.V()[cellI];
+                }
+                reduce(tmpThrustSumAll, sumOp<scalar>());
+                scalar targetThrust = diskSubDict.getScalar("targetThrust");
+                scale = targetThrust / tmpThrustSumAll;
+            }
+
             // loop over all cell indices for this disk and computer the source term
             scalar thrustSourceSum = 0.0;
             scalar torqueSourceSum = 0.0;
@@ -199,6 +236,10 @@ void DAFvSourceActuatorDisk::calcFvSource(volVectorField& fvSource)
             {
                 Info << "ThrustCoeff Source Term for " << diskName << ": " << thrustSourceSum << endl;
                 Info << "TorqueCoeff Source Term for " << diskName << ": " << torqueSourceSum << endl;
+                if (adjustThrust)
+                {
+                    Info << "Dynamically adjusted scale for " << diskName << ": " << scale << endl;
+                }
             }
 #endif
         }
