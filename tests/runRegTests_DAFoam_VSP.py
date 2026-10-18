@@ -11,7 +11,7 @@ from testFuncs import *
 import openmdao.api as om
 from mphys import MPhysVariables
 from mphys.core import Multipoint
-from dafoam.mphys import DAFoamBuilder, DAFoamLinearConstraint, DAFoamVSPVolume
+from dafoam.mphys import DAFoamBuilder, DAFoamLinearConstraint, DAFoamVSPGeoMetrics
 from mphys.scenarios import ScenarioAerodynamic
 from pygeo.mphys import OM_DVGEOCOMP
 
@@ -134,12 +134,40 @@ class Top(Multipoint):
                 vsp_vars.append(f"NACA:LowerCoeff_{i}:Al_{j}")
         self.add_subsystem(
             "volume",
-            DAFoamVSPVolume(
+            DAFoamVSPGeoMetrics(
                 vsp_file="airfoil.vsp3",
                 vsp_vars=vsp_vars,
                 slice_dir="x",
                 n_slices=10,
                 output_name="volume_val",
+                step=1e-3,
+                relativeStep=False,
+            ),
+        )
+
+        # add area constraint
+        self.add_subsystem(
+            "area",
+            DAFoamVSPGeoMetrics(
+                vsp_file="airfoil.vsp3",
+                vsp_vars=vsp_vars,
+                mode="area",
+                vsp_comp_names=["NACA"],
+                output_name="area_val",
+                step=1e-3,
+                relativeStep=False,
+            ),
+        )
+
+        # add MAC constraint
+        self.add_subsystem(
+            "mac",
+            DAFoamVSPGeoMetrics(
+                vsp_file="airfoil.vsp3",
+                vsp_vars=vsp_vars,
+                mode="mac",
+                vsp_comp_names=["NACA"],
+                output_name="mac_val",
                 step=1e-3,
                 relativeStep=False,
             ),
@@ -171,11 +199,19 @@ class Top(Multipoint):
             self.connect(f"UpperCoeff_{j}", f"geometry.NACA:UpperCoeff_1:Au_{j}")
             self.connect(f"UpperCoeff_{j}", f"volume.NACA:UpperCoeff_0:Au_{j}")
             self.connect(f"UpperCoeff_{j}", f"volume.NACA:UpperCoeff_1:Au_{j}")
+            self.connect(f"UpperCoeff_{j}", f"area.NACA:UpperCoeff_0:Au_{j}")
+            self.connect(f"UpperCoeff_{j}", f"area.NACA:UpperCoeff_1:Au_{j}")
+            self.connect(f"UpperCoeff_{j}", f"mac.NACA:UpperCoeff_0:Au_{j}")
+            self.connect(f"UpperCoeff_{j}", f"mac.NACA:UpperCoeff_1:Au_{j}")
             self.dvs.add_output(f"LowerCoeff_{j}", val=-CST[j])
             self.connect(f"LowerCoeff_{j}", f"geometry.NACA:LowerCoeff_0:Al_{j}")
             self.connect(f"LowerCoeff_{j}", f"geometry.NACA:LowerCoeff_1:Al_{j}")
             self.connect(f"LowerCoeff_{j}", f"volume.NACA:LowerCoeff_0:Al_{j}")
             self.connect(f"LowerCoeff_{j}", f"volume.NACA:LowerCoeff_1:Al_{j}")
+            self.connect(f"LowerCoeff_{j}", f"area.NACA:LowerCoeff_0:Al_{j}")
+            self.connect(f"LowerCoeff_{j}", f"area.NACA:LowerCoeff_1:Al_{j}")
+            self.connect(f"LowerCoeff_{j}", f"mac.NACA:LowerCoeff_0:Al_{j}")
+            self.connect(f"LowerCoeff_{j}", f"mac.NACA:LowerCoeff_1:Al_{j}")
 
         # define the design variables to the top level
         for j in range(7):
@@ -188,6 +224,12 @@ class Top(Multipoint):
 
         # volume constraint
         self.add_constraint("volume.volume_val", lower=1.0, scaler=1.0)
+
+        # area constraint
+        self.add_constraint("area.area_val", lower=1.0, scaler=1.0)
+
+        # MAC constraint
+        self.add_constraint("mac.mac_val", lower=1.0, scaler=1.0)
 
         # 50% thickness
         for j in range(1, 7):
@@ -209,7 +251,14 @@ om.n2(prob, show_browser=False, outfile="mphys_aero.html")
 # verify the total derivatives against the finite-difference
 prob.run_model()
 results = prob.check_totals(
-    of=["cruise.aero_post.CD", "cruise.aero_post.CL", "volume.volume_val", "thickness_val_0"],
+    of=[
+        "cruise.aero_post.CD",
+        "cruise.aero_post.CL",
+        "volume.volume_val",
+        "area.area_val",
+        "mac.mac_val",
+        "thickness_val_0",
+    ],
     wrt=["UpperCoeff_0", "LowerCoeff_2"],
     compact_print=True,
     step=1e-3,
@@ -222,6 +271,8 @@ if gcomm.rank == 0:
     funcDict["CD"] = prob.get_val("cruise.aero_post.CD")
     funcDict["CL"] = prob.get_val("cruise.aero_post.CL")
     funcDict["volume"] = prob.get_val("volume.volume_val")
+    funcDict["area"] = prob.get_val("area.area_val")
+    funcDict["mac"] = prob.get_val("mac.mac_val")
     funcDict["thickness_0"] = prob.get_val("thickness_val_0")
     derivDict = {}
     derivDict["CD"] = {}
@@ -241,6 +292,18 @@ if gcomm.rank == 0:
     derivDict["volume"]["UpperCoeff_0-FD"] = results[("volume.volume_val", "UpperCoeff_0")]["J_fd"][0]
     derivDict["volume"]["LowerCoeff_2-Adjoint"] = results[("volume.volume_val", "LowerCoeff_2")]["J_rev"][0]
     derivDict["volume"]["LowerCoeff_2-FD"] = results[("volume.volume_val", "LowerCoeff_2")]["J_fd"][0]
+
+    derivDict["area"] = {}
+    derivDict["area"]["UpperCoeff_0-Adjoint"] = results[("area.area_val", "UpperCoeff_0")]["J_rev"][0]
+    derivDict["area"]["UpperCoeff_0-FD"] = results[("area.area_val", "UpperCoeff_0")]["J_fd"][0]
+    derivDict["area"]["LowerCoeff_2-Adjoint"] = results[("area.area_val", "LowerCoeff_2")]["J_rev"][0]
+    derivDict["area"]["LowerCoeff_2-FD"] = results[("area.area_val", "LowerCoeff_2")]["J_fd"][0]
+
+    derivDict["mac"] = {}
+    derivDict["mac"]["UpperCoeff_0-Adjoint"] = results[("mac.mac_val", "UpperCoeff_0")]["J_rev"][0]
+    derivDict["mac"]["UpperCoeff_0-FD"] = results[("mac.mac_val", "UpperCoeff_0")]["J_fd"][0]
+    derivDict["mac"]["LowerCoeff_2-Adjoint"] = results[("mac.mac_val", "LowerCoeff_2")]["J_rev"][0]
+    derivDict["mac"]["LowerCoeff_2-FD"] = results[("mac.mac_val", "LowerCoeff_2")]["J_fd"][0]
 
     derivDict["thickness_0"] = {}
     derivDict["thickness_0"]["UpperCoeff_0-Adjoint"] = results[("thickness_val_0", "UpperCoeff_0")]["J_rev"][0]
