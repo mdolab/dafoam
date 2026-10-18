@@ -2024,10 +2024,11 @@ class DAFoamLinearConstraint(ExplicitComponent):
                     d_inputs[nameB] += cB * d_outputs[out_name]
 
 
-class DAFoamVSPVolume(ExplicitComponent):
+class DAFoamVSPGeoMetrics(ExplicitComponent):
     """
-    Compute the volume of a VSP geometry using the OpenVSP
-    Python API mass-properties (slicing) tool.
+    Compute a geometric metric (volume, area, or MAC) of a VSP geometry using the
+    OpenVSP Python API. Volume and area are summed over all components listed in
+    vsp_comp_names.
 
     Parameters (OpenMDAO options)
     -----------------------------
@@ -2038,25 +2039,33 @@ class DAFoamVSPVolume(ExplicitComponent):
         e.g. ["NACA:UpperCoeff_0:Au_0", "NACA:LowerCoeff_0:Al_0"].
         Each entry is used as both the OpenMDAO input name and the VSP
         parameter to update.
+    mode : str
+        Which metric to compute. Default "volume".
+        "volume": combined volume from the mass-properties (slicing) tool.
+        "area": sum of the wing planform area (the WingGeom "TotalArea" parameter)
+        of the selected components; components without TotalArea are skipped.
+        "mac": mean aerodynamic chord (the WingGeom "MAC" parameter). Exactly one
+        wing component must be selected.
     vsp_comp_names : list of str or None
-        Names of the VSP components whose combined volume is computed. All
-        geometries matching these names are included. If None or empty, all
-        components are included. Default None.
+        Names of the VSP components whose metrics are summed. All geometries
+        matching these names are included. If None or empty, all components
+        are included. Default None.
     slice_dir : str
-        Slice direction: 'x', 'y', or 'z'. Default 'z'.
+        Slice direction: 'x', 'y', or 'z'. Default 'z'. Used only in volume mode.
     n_slices : int
         Number of slices used by the mass-properties integrator. Default 10.
+        Used only in volume mode.
     output_name : str
-        Name of the volume output variable.
+        Name of the output variable.
     step : float
         Finite-difference step size. Default 1e-4.
     relativeStep : bool
         If False (default), step is an absolute perturbation.
         If True, the actual perturbation is step * |val| (falls back to step when val == 0).
     scaled : bool
-        If True (default), output is volume / volume_ref, where volume_ref is
-        the volume computed on the first call (the initial design point).
-        If False, output is the raw volume.
+        If True (default), output is metric / metric_ref, where metric_ref is
+        the metric computed on the first call (the initial design point).
+        If False, output is the raw metric.
 
     Inputs
     ------
@@ -2065,19 +2074,18 @@ class DAFoamVSPVolume(ExplicitComponent):
     Outputs
     -------
     {output_name} : float
-        Volume (scaled by initial volume if scaled=True).
+        Metric (scaled by initial metric if scaled=True).
 
     Usage
     -----
     prob.model.add_subsystem(
-        "vsp_vol",
-        DAFoamVSPVolume(
+        "vsp_area",
+        DAFoamVSPGeoMetrics(
             vsp_file="wing.vsp3",
-            vsp_vars=["Wing:UpperCoeff_0:Au_0", "Wing:LowerCoeff_0:Al_0"],
+            vsp_vars=["Wing:XSec_1:Span", "Wing:XSec_1:Root_Chord"],
+            mode="area",
             vsp_comp_names=["Wing", "Tail"],
-            slice_dir="x",
-            n_slices=10,
-            output_name="volume_val",
+            output_name="area_val",
             step=1e-4,
             relativeStep=False,
         ),
@@ -2088,6 +2096,7 @@ class DAFoamVSPVolume(ExplicitComponent):
     def initialize(self):
         self.options.declare("vsp_file", recordable=False)
         self.options.declare("vsp_vars", recordable=False)
+        self.options.declare("mode", default="volume", values=["volume", "area", "mac"], recordable=False)
         self.options.declare("vsp_comp_names", default=None, types=(list, type(None)), recordable=False)
         self.options.declare("slice_dir", default="z", recordable=False)
         self.options.declare("n_slices", default=10, recordable=False)
@@ -2097,9 +2106,11 @@ class DAFoamVSPVolume(ExplicitComponent):
         self.options.declare("scaled", default=True, recordable=False)
 
     def setup(self):
-        # reset reference and baseline volumes each time the problem is set up
-        self._vol_ref = None
-        self._vol_baseline = None  # volume at the last compute point; reused as FD baseline in compute_jacvec_product
+        # reset reference and baseline metrics each time the problem is set up
+        self._metric_ref = None
+        self._metric_baseline = (
+            None  # metric at the last compute point; reused as FD baseline in compute_jacvec_product
+        )
         # parm IDs are stable for the lifetime of the VSP model; resolved once and cached to avoid
         # repeated FindGeomsWithName + FindParm calls on every compute / compute_jacvec_product
         self._parms_cache = None
@@ -2130,6 +2141,45 @@ class DAFoamVSPVolume(ExplicitComponent):
             result.append((parm_id, var_str))
         self._parms_cache = result
         return result
+
+    def _compute_metric(self, vsp):
+        """Compute the raw metric selected by the mode option on the current VSP model."""
+        mode = self.options["mode"]
+        if mode == "volume":
+            return self._run_massprop(vsp)
+        elif mode == "area":
+            return sum(self._get_wing_parm_vals(vsp, "TotalArea"))
+        elif mode == "mac":
+            macs = self._get_wing_parm_vals(vsp, "MAC")
+            if len(macs) != 1:
+                raise RuntimeError(
+                    "DAFoamVSPGeoMetrics: mac mode needs exactly one wing component, found %d" % len(macs)
+                )
+            return macs[0]
+
+    def _get_wing_parm_vals(self, vsp, parm_name):
+        """Return the values of a WingGeom parameter (e.g. TotalArea, MAC) over the selected components."""
+        vsp_comp_names = self.options["vsp_comp_names"]
+        if vsp_comp_names:
+            geom_ids = []
+            for component_name in vsp_comp_names:
+                matched = vsp.FindGeomsWithName(component_name)
+                if len(matched) == 0:
+                    raise RuntimeError("VSP component '%s' not found" % component_name)
+                geom_ids.extend(matched)
+        else:
+            geom_ids = vsp.FindGeoms()
+
+        vals = []
+        for geom_id in geom_ids:
+            # WingGeom parameters only exist on wings; skip other geom types (e.g. fuselages)
+            parm_id = vsp.FindParm(geom_id, parm_name, "WingGeom")
+            if parm_id == "":
+                continue
+            vals.append(vsp.GetParmVal(parm_id))
+        if len(vals) == 0:
+            raise RuntimeError("DAFoamVSPGeoMetrics: no component with a %s parameter found" % parm_name)
+        return vals
 
     def _run_massprop(self, vsp):
         """Run MassProp analysis on the current VSP model and return raw volume."""
@@ -2187,10 +2237,10 @@ class DAFoamVSPVolume(ExplicitComponent):
             vsp.SetParmVal(parm_id, float(inputs[var_str]))
         vsp.Update()
 
-        volume = self._run_massprop(vsp)
-        # cache the unscaled volume so compute_jacvec_product can use it as the FD baseline
+        metric = self._compute_metric(vsp)
+        # cache the unscaled metric so compute_jacvec_product can use it as the FD baseline
         # without rerunning the unperturbed case
-        self._vol_baseline = volume
+        self._metric_baseline = metric
 
         # revert VSP to its original state so pyGeo's model is not corrupted
         for parm_id, _ in parms:
@@ -2198,16 +2248,17 @@ class DAFoamVSPVolume(ExplicitComponent):
         vsp.Update()
 
         if self.options["scaled"]:
-            # capture reference volume on the first call (initial design point)
-            if self._vol_ref is None:
-                self._vol_ref = volume
+            # capture reference metric on the first call (initial design point)
+            if self._metric_ref is None:
+                self._metric_ref = metric
                 if self.comm.rank == 0:
                     print(
-                        "DAFoamVSPVolume: reference volume for %s = %g" % (self.options["output_name"], self._vol_ref)
+                        "DAFoamVSPGeoMetrics: reference %s for %s = %g"
+                        % (self.options["mode"], self.options["output_name"], self._metric_ref)
                     )
-            outputs[self.options["output_name"]] = volume / self._vol_ref
+            outputs[self.options["output_name"]] = metric / self._metric_ref
         else:
-            outputs[self.options["output_name"]] = volume
+            outputs[self.options["output_name"]] = metric
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         import openvsp as vsp
@@ -2215,7 +2266,7 @@ class DAFoamVSPVolume(ExplicitComponent):
 
         if mode == "fwd":
             om.issue_warning(
-                "mode = fwd not implemented for DAFoamVSPVolume",
+                "mode = fwd not implemented for DAFoamVSPGeoMetrics",
                 prefix="",
                 stacklevel=2,
                 category=om.OpenMDAOWarning,
@@ -2229,24 +2280,24 @@ class DAFoamVSPVolume(ExplicitComponent):
         if output_name not in d_outputs:
             return
 
-        d_vol_out = d_outputs[output_name]
+        d_metric_out = d_outputs[output_name]
         step = self.options["step"]
         relativeStep = self.options["relativeStep"]
-        # baseline volume from the preceding compute call at the same input point
-        vol0 = self._vol_baseline
+        # baseline metric from the preceding compute call at the same input point
+        metric0 = self._metric_baseline
 
         parms = self._resolve_parms(vsp, self.options["vsp_vars"])
 
         # snapshot pyGeo's current VSP state before we touch any parameters
         orig_state = {parm_id: vsp.GetParmVal(parm_id) for parm_id, _ in parms}
 
-        # move VSP to the current input values so our FD baseline matches vol0
+        # move VSP to the current input values so our FD baseline matches metric0
         for parm_id, var_str in parms:
             vsp.SetParmVal(parm_id, float(inputs[var_str]))
         vsp.Update()
 
         # pre-filter to only the parameters that have a non-zero adjoint seed,
-        # so we don't waste MassProp calls on inactive design variables
+        # so we don't waste metric evaluations on inactive design variables
         active = [(pid, vs) for pid, vs in parms if vs in d_inputs]
 
         for parm_id, var_str in active:
@@ -2261,20 +2312,20 @@ class DAFoamVSPVolume(ExplicitComponent):
             # perturb this parameter and re-tessellate (one Update per param)
             vsp.SetParmVal(parm_id, val + h)
             vsp.Update()
-            vol_pert = self._run_massprop(vsp)
+            metric_pert = self._compute_metric(vsp)
 
             # revert this parameter but defer vsp.Update() — the next iteration's SetParmVal+Update
             # will re-tessellate with the reverted value already in place, saving one Update per step
             vsp.SetParmVal(parm_id, val)
 
-            # forward-difference gradient of the raw volume
-            dvol_dvar = (vol_pert - vol0) / h
-            # if output is scaled, divide by the reference volume (chain rule)
+            # forward-difference gradient of the raw metric
+            dmetric_dvar = (metric_pert - metric0) / h
+            # if output is scaled, divide by the reference metric (chain rule)
             if self.options["scaled"]:
-                dvol_dvar /= self._vol_ref
+                dmetric_dvar /= self._metric_ref
 
             # reverse-mode accumulation: d_input += (dOutput/dInput)^T * d_output
-            d_inputs[var_str] += dvol_dvar * d_vol_out
+            d_inputs[var_str] += dmetric_dvar * d_metric_out
 
         # apply the pending revert for the last active parameter (deferred from the loop above)
         vsp.Update()
@@ -2286,6 +2337,6 @@ class DAFoamVSPVolume(ExplicitComponent):
 
         if self.comm.rank == 0:
             print(
-                "DAFoamVSPVolume: compute_jacvec_product for %s took %.2f s (%d active vars)"
+                "DAFoamVSPGeoMetrics: compute_jacvec_product for %s took %.2f s (%d active vars)"
                 % (output_name, time.time() - t_start, len(active))
             )
