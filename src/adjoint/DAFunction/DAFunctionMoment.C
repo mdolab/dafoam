@@ -23,11 +23,11 @@ DAFunctionMoment::DAFunctionMoment(
     const DAIndex& daIndex,
     const word functionName)
     : DAFunction(
-          mesh,
-          daOption,
-          daModel,
-          daIndex,
-          functionName),
+        mesh,
+        daOption,
+        daModel,
+        daIndex,
+        functionName),
       daTurb_(daModel.getDATurbulenceModel())
 {
 

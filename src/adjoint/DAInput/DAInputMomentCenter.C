@@ -24,12 +24,12 @@ DAInputMomentCenter::DAInputMomentCenter(
     const DAModel& daModel,
     const DAIndex& daIndex)
     : DAInput(
-          inputName,
-          inputType,
-          mesh,
-          daOption,
-          daModel,
-          daIndex)
+        inputName,
+        inputType,
+        mesh,
+        daOption,
+        daModel,
+        daIndex)
 {
 }
 
