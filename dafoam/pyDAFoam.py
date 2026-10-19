@@ -228,6 +228,8 @@ class DAOPTION(object):
         ##            "addToAdjoint": True,
         ##        },
         ##    },
+        ## For moment, if a momentCenter input exists in inputInfo, the moment center is dynamically
+        ## updated from that input for all moment functions.
         self.function = {}
 
         ## General input information. Different type of inputs require different keys
@@ -242,6 +244,10 @@ class DAOPTION(object):
         ##             "patches": ["farField"],
         ##             "flowAxis": "x",
         ##             "normalAxis": "y",
+        ##             "addToSolver": True,
+        ##         },
+        ##         "mc" = {
+        ##             "type": "momentCenter",
         ##             "addToSolver": True,
         ##         },
         ##         "ux0" = {

@@ -75,6 +75,9 @@ public:
 
     /// the unsteady field inputs with the key being the fieldName
     HashTable<List<scalar>> inputFieldUnsteady;
+
+    /// the moment center [x, y, z] set by DAInputMomentCenter and used by DAFunctionMoment
+    scalarList momentCenter = {0.0, 0.0, 0.0};
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

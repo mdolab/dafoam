@@ -52,6 +52,18 @@ DAFunctionMoment::DAFunctionMoment(
     momentCenter_[0] = center[0];
     momentCenter_[1] = center[1];
     momentCenter_[2] = center[2];
+
+    // if a momentCenter input exists in inputInfo, momentCenter_ will be dynamically
+    // updated from DAGlobalVar::momentCenter, which is set by DAInputMomentCenter
+    const dictionary& inputInfo = daOption_.getAllOptions().subDict("inputInfo");
+    forAll(inputInfo.toc(), idxI)
+    {
+        word inputName = inputInfo.toc()[idxI];
+        if (inputInfo.subDict(inputName).getWord("type") == "momentCenter")
+        {
+            hasMomentCenterInput_ = 1;
+        }
+    }
 }
 
 /// calculate the value of objective function
@@ -68,6 +80,17 @@ scalar DAFunctionMoment::calcFunction()
     
         functionValue: the sum of objective, reduced across all processsors and scaled by "scale"
     */
+
+    // dynamically update the moment center from DAGlobalVar::momentCenter
+    // NOTE: DAGlobalVar::momentCenter is set by DAInputMomentCenter
+    if (hasMomentCenterInput_)
+    {
+        DAGlobalVar& globalVar =
+            const_cast<DAGlobalVar&>(mesh_.thisDb().lookupObject<DAGlobalVar>("DAGlobalVar"));
+        momentCenter_[0] = globalVar.momentCenter[0];
+        momentCenter_[1] = globalVar.momentCenter[1];
+        momentCenter_[2] = globalVar.momentCenter[2];
+    }
 
     // initialize objFunValue
     scalar functionValue = 0.0;

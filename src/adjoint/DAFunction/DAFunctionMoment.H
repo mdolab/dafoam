@@ -13,6 +13,7 @@
 
 #include "DAFunction.H"
 #include "addToRunTimeSelectionTable.H"
+#include "DAGlobalVar.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -33,6 +34,9 @@ protected:
 
     /// the center of rotation for moment
     vector momentCenter_;
+
+    /// whether a momentCenter input exists in inputInfo, if 0, momentCenter_ is fixed to "center"
+    label hasMomentCenterInput_ = 0;
 
     /// DATurbulenceModel object
     const DATurbulenceModel& daTurb_;

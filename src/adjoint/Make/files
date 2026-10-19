@@ -62,6 +62,7 @@ DAInput/DAInputFieldUnsteady.C
 DAInput/DAInputThermalCoupling.C
 DAInput/DAInputRegressionPar.C
 DAInput/DAInputFvSourcePar.C
+DAInput/DAInputMomentCenter.C
 
 DAOutput/DAOutput.C
 DAOutput/DAOutputResidual.C

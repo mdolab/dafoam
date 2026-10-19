@@ -2,3 +2,5 @@ Dictionary Key: CD
 @value         0.0216743870046548 1e-05 1e-10
 Dictionary Key: CL
 @value         0.2999049986112859 1e-05 1e-10
+Dictionary Key: CMZ
+@value        -0.0564767353179347 1e-05 1e-10

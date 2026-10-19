@@ -66,6 +66,14 @@ daOptions = {
             "patchVelocityInputName": "patchV",
             "scale": 1.0 / (0.5 * U0 * U0 * A0),
         },
+        "CMZ": {
+            "type": "moment",
+            "source": "patchToFace",
+            "patches": ["wing"],
+            "axis": [0.0, 0.0, 1.0],
+            "center": [0.25, 0.0, 0.05],
+            "scale": 1.0 / (0.5 * U0 * U0 * A0 * LRef),
+        },
         "skewness": {
             "type": "meshQualityKS",
             "source": "allCells",
@@ -92,6 +100,7 @@ daOptions = {
             "normalAxis": "y",
             "components": ["solver", "function"],
         },
+        "mc": {"type": "momentCenter", "components": ["solver", "function"]},
     },
 }
 
@@ -177,19 +186,24 @@ class Top(Multipoint):
         # add the design variables to the dvs component's output
         self.dvs.add_output("shape", val=np.zeros(nShapes))
         self.dvs.add_output("patchV", val=np.array([10.0, 3.0]))
+        # moment center [x, y, z] for CMZ, this overwrites the "center" key in CMZ
+        self.dvs.add_output("mc", val=np.array([0.3, 0.0, 0.05]))
         # manually connect the dvs output to the geometry and cruise
         self.connect("shape", "geometry.shape")
         self.connect("patchV", "cruise.patchV")
+        self.connect("mc", "cruise.mc")
 
         # define the design variables to the top level
         self.add_design_var("shape", lower=-1.0, upper=1.0, scaler=0.01)
         self.add_design_var("patchV", lower=-50.0, upper=50.0, scaler=1.0, indices=[1])
+        self.add_design_var("mc", lower=0.2, upper=0.4, scaler=1.0, indices=[0])
 
         # add constraints and the objective
         self.connect("cruise.aero_post.CD", "LoD.CD")
         self.connect("cruise.aero_post.CL", "LoD.CL")
         self.add_objective("LoD.val", scaler=-1.0)
         self.add_constraint("cruise.aero_post.CL", equals=0.3)
+        self.add_constraint("cruise.aero_post.CMZ", lower=-1.0, upper=1.0)
         self.add_constraint("cruise.aero_post.skewness", upper=4.0)
         self.add_constraint("cruise.aero_post.nonOrtho", upper=70.0)
         self.add_constraint("geometry.thickcon", lower=0.5, upper=3.0, scaler=1.0)
@@ -220,4 +234,5 @@ if gcomm.rank == 0:
     funcDict = {}
     funcDict["CD"] = prob.get_val("cruise.aero_post.CD")
     funcDict["CL"] = prob.get_val("cruise.aero_post.CL")
+    funcDict["CMZ"] = prob.get_val("cruise.aero_post.CMZ")
     reg_write_dict(funcDict, 1e-5, 1e-10)
