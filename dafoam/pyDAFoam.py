@@ -72,16 +72,21 @@ class DAOPTION(object):
         ## of magnitude (default) higher than this tolerance, the primal solution will return fail=True
         self.primalMinResTol = 1.0e-8
 
-        ## The convergence function std oscillation tolerance for the primal solver.
-        ## stdTol: the tolerance of the function oscillation standard deviation, -1 means it is deactivated
-        ## slopeTol: the tolerance of the function slope , -1 means it is deactivated
-        ## The case is converged only if both stdTol and slopeTol is lower than the prescribed values
-        ## funcName: which function to use to calculate the std (backward compatible single-function input).
-        ## funcNames: which functions to use to calculate the std; the largest std and abs(slope)
-        ##          among these functions will be used for convergence checking.
-        ## nStepsFrac: the fraction of elapsed iterations to use as the std window, here
-        ##          0.2 means we always use the last 20% of elapsed iterations to compute the std
-        self.primalFuncStdTol = {"stdTol": -1.0, "slopeTol": -1.0, "funcNames": ["CD"], "nStepsFrac": 0.2}
+        ## The convergence function std and slope tolerances for the primal solver, defined per function.
+        ## The keys are the function names (defined in "function") and each value is a dict with:
+        ## stdTol: the tolerance of the function oscillation standard deviation
+        ## slopeTol: the tolerance of the function least-squares slope. Default: the same as stdTol
+        ## nStepsFrac: the fraction of elapsed iterations to use as the std/slope window. Default: 0.2, i.e.,
+        ##          we always use the last 20% of elapsed iterations to compute the std and slope
+        ## normalize: True: divide the std and slope by the window mean (relative values); False: use the
+        ##          absolute std and slope, e.g., for CM whose mean can be close to zero. Default: True
+        ## The case is converged only if all functions satisfy their own stdTol and slopeTol.
+        ## An empty dict (default) deactivates this convergence check. Example
+        ## "primalFuncStdTol": {
+        ##     "CD": {"stdTol": 1e-4, "slopeTol": 1e-5, "nStepsFrac": 0.2, "normalize": True},
+        ##     "CM": {"stdTol": 1e-5, "normalize": False},
+        ## }
+        self.primalFuncStdTol = {}
 
         ## The boundary condition for primal solution. The keys should include "variable", "patch",
         ## and "value". For turbulence variable, one can also set "useWallFunction" [bool].

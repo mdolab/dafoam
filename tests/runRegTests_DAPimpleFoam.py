@@ -40,10 +40,8 @@ daOptions = {
         "transport:nu": 1.5e-5,
     },
     "primalFuncStdTol": {
-        "stdTol": 1.0,
-        "slopeTol": 1.0,
-        "funcNames": ["CD", "CL"],
-        "nStepsFrac": 0.6,
+        "CD": {"stdTol": 1.0, "slopeTol": 1.0, "nStepsFrac": 0.6},
+        "CL": {"stdTol": 1.0, "slopeTol": 1.0, "nStepsFrac": 0.6},
     },
     "unsteadyAdjoint": {
         "mode": "timeAccurate",

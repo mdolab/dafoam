@@ -150,23 +150,20 @@ protected:
     /// primal residual tolerance
     scalar primalMinResTol_ = 0.0;
 
-    /// the function std tolerance
-    scalar primalFuncStdTol_ = -1.0;
-
-    /// the function slope tolerance
-    scalar primalFuncSlopeTol_ = -1.0;
-
     /// the function names for the std tolerance
     wordList primalFuncStdNames_;
 
-    /// the fraction of elapsed iterations to use as the std window
-    scalar primalFuncStdFrac_ = 0.2;
+    /// the std tolerance for each function in primalFuncStdNames_
+    scalarList funcStdTolList_;
 
-    /// the largest std among primalFuncStdNames_
-    scalar funcStd_ = 1e16;
+    /// the slope tolerance for each function in primalFuncStdNames_
+    scalarList funcSlopeTolList_;
 
-    /// the largest abs(normalized least-squares slope) among primalFuncStdNames_
-    scalar funcSlope_ = 1e16;
+    /// the fraction of elapsed iterations to use as the std window for each function in primalFuncStdNames_
+    scalarList funcStdFracList_;
+
+    /// whether to normalize the std and slope by the window mean for each function in primalFuncStdNames_
+    labelList funcStdNormalizeList_;
 
     /// the std for each function in primalFuncStdNames_
     scalarList funcStdList_;
@@ -445,12 +442,14 @@ public:
     /// return whether to loop the primal solution, similar to runTime::loop() except we don't do file IO
     label loop(Time& runTime);
 
-    /// calculate the function std for all monitored functions and assign the max to funcStd_
+    /// calculate the function std for all monitored functions and assign them to funcStdList_
     void calcFuncStd();
 
-    /// calculate the normalized least-squares slope for all monitored functions
-    /// and assign the max abs value to funcSlope_
+    /// calculate the least-squares slope for all monitored functions and assign them to funcSlopeList_
     void calcFuncSlope();
+
+    /// return 1 if all monitored functions satisfy their own std and slope tolerances
+    label isFuncStdConverged();
 
     /// assign the inputFieldUnsteady values to the OF field vars
     void updateInputFieldUnsteady();

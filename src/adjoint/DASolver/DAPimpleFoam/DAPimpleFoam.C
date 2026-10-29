@@ -151,7 +151,7 @@ label DAPimpleFoam::solvePrimal()
     for (label iter = 1; iter <= nInstances; iter++)
     {
         // calculate the function std and slope but do not use them for convergence criteria
-        if (primalFuncStdTol_ > 0)
+        if (primalFuncStdNames_.size() > 0)
         {
             this->calcFuncStd();
             this->calcFuncSlope();
