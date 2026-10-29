@@ -190,17 +190,16 @@ label DAHisaFoam::solvePrimal()
         this->printElapsedTime(runTime, printToScreen_);
 
         // if we want to use the function std as the convergence criteria, we need to compute the std
-        if (primalFuncStdTol_ > 0)
+        if (primalFuncStdNames_.size() > 0)
         {
             this->calcFuncStd();
             // also compute the function slope over the same window (diagnostic only)
             this->calcFuncSlope();
         }
-        if ((funcStd_ < primalFuncStdTol_ && fabs(funcSlope_) < primalFuncSlopeTol_) && runTime.timeIndex() > primalMinIters_)
+        if (this->isFuncStdConverged() && runTime.timeIndex() > primalMinIters_)
         {
 
-            Info << "Functions max std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl;
-            Info << "and their max abs(slope) " << fabs(funcSlope_) << " satisfied the prescribed tolerance " << primalFuncSlopeTol_ << endl
+            Info << "All functions satisfied their prescribed std and slope tolerances" << endl
                  << endl;
             notFinished = false;
         }

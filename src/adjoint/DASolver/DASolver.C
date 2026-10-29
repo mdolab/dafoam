@@ -99,18 +99,21 @@ DASolver::DASolver(
     primalMinIters_ = daOptionPtr_->getOption<label>("primalMinIters");
     printInterval_ = daOptionPtr_->getOption<label>("printInterval");
     printIntervalUnsteady_ = daOptionPtr_->getOption<label>("printIntervalUnsteady");
-    primalFuncStdTol_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "stdTol");
-    primalFuncSlopeTol_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "slopeTol");
-    // if users set primalFuncStdTol->stdTol but do not set primalFuncStdTol->slopeTol, we auto set it
-    if (primalFuncStdTol_ > 0 && primalFuncSlopeTol_ < 0)
-    {
-        Info << "primalFuncStdTol->stdTol is set but primalFuncStdTol->slopeTol is not!! " << endl;
-        primalFuncSlopeTol_ = primalFuncStdTol_;
-        Info << "Auto-setting primalFuncStdTol->slopeTol to " << primalFuncSlopeTol_ << endl;
-    }
     const dictionary& primalFuncStdTolDict = daOptionPtr_->getAllOptions().subDict("primalFuncStdTol");
-    primalFuncStdTolDict.readEntry<wordList>("funcNames", primalFuncStdNames_);
-    primalFuncStdFrac_ = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "nStepsFrac");
+    primalFuncStdNames_ = primalFuncStdTolDict.toc();
+    funcStdTolList_.setSize(primalFuncStdNames_.size());
+    funcSlopeTolList_.setSize(primalFuncStdNames_.size());
+    funcStdFracList_.setSize(primalFuncStdNames_.size());
+    funcStdNormalizeList_.setSize(primalFuncStdNames_.size());
+    forAll(primalFuncStdNames_, idxI)
+    {
+        const dictionary& funcDict = primalFuncStdTolDict.subDict(primalFuncStdNames_[idxI]);
+        funcStdTolList_[idxI] = funcDict.getScalar("stdTol");
+        // if users set stdTol but do not set slopeTol, we auto set it to stdTol
+        funcSlopeTolList_[idxI] = funcDict.lookupOrDefault<scalar>("slopeTol", funcStdTolList_[idxI]);
+        funcStdFracList_[idxI] = funcDict.lookupOrDefault<scalar>("nStepsFrac", 0.2);
+        funcStdNormalizeList_[idxI] = funcDict.lookupOrDefault<label>("normalize", 1);
+    }
     funcStdList_.setSize(primalFuncStdNames_.size(), 1e16);
     funcSlopeList_.setSize(primalFuncStdNames_.size(), 1e16);
 
@@ -196,7 +199,7 @@ label DASolver::loop(Time& runTime)
     }
 
     // if we want to use the function std as the convergence criteria, we need to compute the std
-    if (primalFuncStdTol_ > 0)
+    if (primalFuncStdNames_.size() > 0)
     {
         this->calcFuncStd();
         // also compute the function slope over the same window (diagnostic only)
@@ -204,7 +207,7 @@ label DASolver::loop(Time& runTime)
     }
 
     // check exit condition, we need to satisfy both the residual and function std condition
-    if ((daGlobalVarPtr_->primalMaxRes < primalMinResTol_ || (funcStd_ < primalFuncStdTol_ && fabs(funcSlope_) < primalFuncSlopeTol_)) && runTime.timeIndex() > primalMinIters_)
+    if ((daGlobalVarPtr_->primalMaxRes < primalMinResTol_ || this->isFuncStdConverged()) && runTime.timeIndex() > primalMinIters_)
     {
         Info << "Time = " << t << endl;
 
@@ -213,10 +216,9 @@ label DASolver::loop(Time& runTime)
             Info << "Minimal residual " << daGlobalVarPtr_->primalMaxRes << " satisfied the prescribed tolerance " << primalMinResTol_ << endl
                  << endl;
         }
-        else if (funcStd_ < primalFuncStdTol_ && fabs(funcSlope_) < primalFuncSlopeTol_)
+        else if (this->isFuncStdConverged())
         {
-            Info << "Functions max std " << funcStd_ << " satisfied the prescribed tolerance " << primalFuncStdTol_ << endl;
-            Info << "and their max abs(slope) " << fabs(funcSlope_) << " satisfied the prescribed tolerance " << primalFuncSlopeTol_ << endl
+            Info << "All functions satisfied their prescribed std and slope tolerances" << endl
                  << endl;
         }
 
@@ -254,13 +256,13 @@ void DASolver::calcFuncStd()
     */
     label timeIndex = runTimePtr_->timeIndex();
     label listIndex = timeIndex - 1;
-    label window = max(2, round(primalFuncStdFrac_ * scalar(listIndex + 1)));
-    label startIdx = max(0, listIndex - window + 1);
-    label nActualSteps = listIndex - startIdx + 1;
 
-    funcStd_ = -1.0;
     forAll(primalFuncStdNames_, idxI)
     {
+        label window = max(2, round(funcStdFracList_[idxI] * scalar(listIndex + 1)));
+        label startIdx = max(0, listIndex - window + 1);
+        label nActualSteps = listIndex - startIdx + 1;
+
         label funcIdx = this->getFunctionListIndex(primalFuncStdNames_[idxI]);
         scalar mean = 0.0;
         for (label i = listIndex; i >= startIdx; i--)
@@ -275,10 +277,13 @@ void DASolver::calcFuncStd()
             funcStd += (functionTimeSteps_[funcIdx][i] - mean) * (functionTimeSteps_[funcIdx][i] - mean);
         }
         funcStd = funcStd / (nActualSteps + 1e-16);
-        funcStd = sqrt(funcStd) / mag(mean + 1e-16);
+        funcStd = sqrt(funcStd);
+        if (funcStdNormalizeList_[idxI])
+        {
+            funcStd = funcStd / mag(mean + 1e-16);
+        }
 
         funcStdList_[idxI] = funcStd;
-        funcStd_ = max(funcStd_, funcStd);
     }
 }
 
@@ -296,13 +301,13 @@ void DASolver::calcFuncSlope()
     */
     label timeIndex = runTimePtr_->timeIndex();
     label listIndex = timeIndex - 1;
-    label window = max(2, round(primalFuncStdFrac_ * scalar(listIndex + 1)));
-    label startIdx = max(0, listIndex - window + 1);
-    label nActualSteps = listIndex - startIdx + 1;
 
-    funcSlope_ = -1.0;
     forAll(primalFuncStdNames_, idxI)
     {
+        label window = max(2, round(funcStdFracList_[idxI] * scalar(listIndex + 1)));
+        label startIdx = max(0, listIndex - window + 1);
+        label nActualSteps = listIndex - startIdx + 1;
+
         label funcIdx = this->getFunctionListIndex(primalFuncStdNames_[idxI]);
 
         // local x is the offset within the window [0, nActualSteps-1]; y is the function value
@@ -327,10 +332,34 @@ void DASolver::calcFuncSlope()
         }
 
         scalar slope = sxy / (sxx + 1e-16);
-        // normalize by the window mean to match the dimensionless convention of funcStd_
-        funcSlopeList_[idxI] = slope / mag(yMean + 1e-16);
-        funcSlope_ = max(funcSlope_, mag(funcSlopeList_[idxI]));
+        if (funcStdNormalizeList_[idxI])
+        {
+            // normalize by the window mean to match the dimensionless convention of funcStd
+            slope = slope / mag(yMean + 1e-16);
+        }
+        funcSlopeList_[idxI] = slope;
     }
+}
+
+label DASolver::isFuncStdConverged()
+{
+    /*
+    Description:
+        Return 1 if all functions in primalFuncStdNames_ satisfy their own std and
+        slope tolerances, otherwise return 0
+    */
+    if (primalFuncStdNames_.size() == 0)
+    {
+        return 0;
+    }
+    forAll(primalFuncStdNames_, idxI)
+    {
+        if (funcStdList_[idxI] >= funcStdTolList_[idxI] || mag(funcSlopeList_[idxI]) >= funcSlopeTolList_[idxI])
+        {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 void DASolver::calcAllFunctions(label print)
@@ -382,7 +411,7 @@ void DASolver::calcAllFunctions(label print)
             Info << functionName
                  << ": " << functionVal
                  << " " << timeOpType << ": " << timeOpVal;
-            if (primalFuncStdTol_ > 0)
+            if (primalFuncStdNames_.size() > 0)
             {
                 forAll(primalFuncStdNames_, idxJ)
                 {
@@ -2750,8 +2779,7 @@ label DASolver::checkPrimalFailure()
     */
 
     // if the funcStd mode is used for convergence, we always return 0 without checking primalMinResTolDiff
-    scalar stdTol = daOptionPtr_->getSubDictOption<scalar>("primalFuncStdTol", "stdTol");
-    if (stdTol > 0)
+    if (primalFuncStdNames_.size() > 0)
     {
         return 0;
     }
