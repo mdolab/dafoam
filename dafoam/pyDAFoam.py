@@ -879,8 +879,8 @@ class PYDAFOAM(object):
         NOTE: we should add all possible checks here!
         """
 
-        if not self.getOption("useAD")["mode"] in ["reverse", "forward"]:
-            raise Error("useAD->mode only supports reverse, or forward!")
+        if not self.getOption("useAD")["mode"] in ["reverse", "forward", "none"]:
+            raise Error("useAD->mode only supports reverse, forward, or none!")
 
         if self.getOption("adjEqnSolMethod") == "fixedPoint":
             # for the fixed-point adjoint, we should not normalize the states and residuals
@@ -1473,6 +1473,14 @@ class PYDAFOAM(object):
             from .libs.ADR.pyDASolvers import pyDASolvers as pyDASolversAD
 
             self.solverAD = pyDASolversAD(solverArg.encode(), self.options)
+
+        else:
+            # primal only: dummy solverAD whose methods do nothing
+            class _NoAD:
+                def __getattr__(self, name):
+                    return lambda *args, **kwargs: None
+
+            self.solverAD = _NoAD()
 
         self.solver.initSolver()
         self.solverAD.initSolver()
