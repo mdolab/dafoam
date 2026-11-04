@@ -174,9 +174,6 @@ DAIndex::DAIndex(
     globalCoupledBFaceNumbering = DAUtility::genGlobalIndex(nLocalCoupledBFaces);
     nGlobalCoupledBFaces = globalCoupledBFaceNumbering.size();
 
-    // calculate some local lists for indexing
-    this->calcLocalIdxLists(adjStateName4LocalAdjIdx, cellIFaceI4LocalAdjIdx);
-
     wordList writeJacobians;
     daOption_.getAllOptions().readEntry<wordList>("writeJacobians", writeJacobians);
     if (writeJacobians.found("adjointIndexing"))
@@ -437,81 +434,6 @@ void DAIndex::calcAdjStateID(HashTable<label>& adjStateID)
         adjStateID.set(stateName, id);
         id++;
     }
-    return;
-}
-
-void DAIndex::calcLocalIdxLists(
-    wordList& stateName4LocalAdjIdx,
-    scalarList& cellIFaceI4LocalIdx)
-{
-    /*
-    Description:
-        Calculate indexing lists:
-        cellIFaceI4LocalAdjIdx
-        adjStateName4LocalAdjIdx
-
-    Output:
-        cellIFaceI4LocalAdjIdx: stores the cell/face index for a local adjoint index
-        For vector fields, the decima of cellIFaceI4LocalIdx denotes the vector component
-        e.g., 10.1 means cellI=10, y compoent of U
-    
-        adjStateName4LocalAdjIdx: stores the state name for a local adjoint index
-    */
-
-    cellIFaceI4LocalIdx.setSize(nLocalAdjointStates);
-    stateName4LocalAdjIdx.setSize(nLocalAdjointStates);
-
-    forAll(stateInfo_["volVectorStates"], idx)
-    {
-        word stateName = stateInfo_["volVectorStates"][idx];
-        forAll(mesh_.cells(), cellI)
-        {
-            for (label i = 0; i < 3; i++)
-            {
-                label localIdx = this->getLocalAdjointStateIndex(stateName, cellI, i);
-                cellIFaceI4LocalIdx[localIdx] = cellI + i / 10.0;
-
-                stateName4LocalAdjIdx[localIdx] = stateName;
-            }
-        }
-    }
-
-    forAll(stateInfo_["volScalarStates"], idx)
-    {
-        word stateName = stateInfo_["volScalarStates"][idx];
-        forAll(mesh_.cells(), cellI)
-        {
-            label localIdx = this->getLocalAdjointStateIndex(stateName, cellI);
-            cellIFaceI4LocalIdx[localIdx] = cellI;
-
-            stateName4LocalAdjIdx[localIdx] = stateName;
-        }
-    }
-
-    forAll(stateInfo_["modelStates"], idx)
-    {
-        word stateName = stateInfo_["modelStates"][idx];
-        forAll(mesh_.cells(), cellI)
-        {
-            label localIdx = this->getLocalAdjointStateIndex(stateName, cellI);
-            cellIFaceI4LocalIdx[localIdx] = cellI;
-
-            stateName4LocalAdjIdx[localIdx] = stateName;
-        }
-    }
-
-    forAll(stateInfo_["surfaceScalarStates"], idx)
-    {
-        word stateName = stateInfo_["surfaceScalarStates"][idx];
-        forAll(mesh_.faces(), faceI)
-        {
-            label localIdx = this->getLocalAdjointStateIndex(stateName, faceI);
-            cellIFaceI4LocalIdx[localIdx] = faceI;
-
-            stateName4LocalAdjIdx[localIdx] = stateName;
-        }
-    }
-
     return;
 }
 

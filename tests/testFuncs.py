@@ -4,6 +4,7 @@
 # when it takes in two such formatted strings and decides if they are
 # sufficiently close to be considered equal.
 
+import gc
 import numpy
 import os
 import sys
@@ -37,6 +38,10 @@ def run_tests(om, Top, comm, daOptions, funcNames, dvNames, dvIndices, funcDict,
         for index in dvIndices[i]:
             daOptions["useAD"]["dvName"] = dvName
             daOptions["useAD"]["seedIndex"] = index
+            # free the previous problem's solver on all ranks at the same point
+            del prob
+            gc.collect()
+            comm.Barrier()
             prob = om.Problem()
             prob.model = Top()
             prob.setup(mode="rev")

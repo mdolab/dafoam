@@ -185,12 +185,6 @@ public:
     /// for a given face index, return whether this face is a coupled boundary face
     labelList isCoupledFace;
 
-    /// given a local adjoint state index, return its state name
-    wordList adjStateName4LocalAdjIdx;
-
-    /// given a local adjoint state index, return its cell/face index
-    scalarList cellIFaceI4LocalAdjIdx;
-
     /// owner cell of a given face
     labelList faceOwner;
 
@@ -207,11 +201,6 @@ public:
 
     /// set adjoint state unique ID: adjStateID
     void calcAdjStateID(HashTable<label>& adjStateID);
-
-    /// compute local lists such as adjStateName4LocalAdjIdx and  cellIFaceI4LocalAdjIdx;
-    void calcLocalIdxLists(
-        wordList& adjStateName4LocalAdjIdx,
-        scalarList& cellIFaceI4LocalAdjIdx);
 
     /// get local adjoint index for a given state name, cell/face indxI and its component (optional, only for vector states)
     label getLocalAdjointStateIndex(

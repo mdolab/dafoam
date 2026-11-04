@@ -762,13 +762,15 @@ class PYDAFOAM(object):
         self.adjointFail = 0
 
         # initialize mesh information and read grids
-        self._readMeshInfo()
+        # NOTE: faces is only needed to build the reduced patch connectivity below, so we keep it
+        # local and let it be freed after __init__ to save memory
+        faces = self._readMeshInfo()
 
         # check if the combination of options is valid.
         self._checkOptions()
 
         # get the reduced point connectivities for the base patches in the mesh
-        self._computeBasicFamilyInfo()
+        self._computeBasicFamilyInfo(faces)
 
         # Add a couple of special families.
         self.allSurfacesGroup = "allSurfaces"
@@ -1026,6 +1028,11 @@ class PYDAFOAM(object):
         conn, faceSizes = self.getSurfaceConnectivity(self.allWallsGroup)
         pts = self.getSurfaceCoordinates(self.allWallsGroup)
         self.mesh.setSurfaceDefinition(pts, conn, faceSizes)
+
+        # IDWarp's Python copy of the OpenFOAM mesh is only needed when no surface is supplied.
+        # The warping data now lives in Fortran, so free it to save memory. Keep the file names for writeGrid.
+        for key in ("x0", "faces", "boundaries", "owner", "neighbour"):
+            self.mesh.OFData.pop(key, None)
 
     def getSurfaceConnectivity(self, groupName=None):
         """
@@ -1641,10 +1648,9 @@ class PYDAFOAM(object):
 
         dirName = os.getcwd()
 
-        self.fileNames, self.xv0, self.faces, self.boundaries, self.owners, self.neighbours = self._readOFGrid(dirName)
-        self.xv = copy.copy(self.xv0)
+        self.fileNames, self.xv, faces, self.boundaries = self._readOFGrid(dirName)
 
-        return
+        return faces
 
     def setSurfaceCoordinates(self, coordinates, groupName=None):
         """
@@ -1755,11 +1761,15 @@ class PYDAFOAM(object):
         self.solverAD.setPrimalInitialConditions(printInfoAD)
         self.solverAD.getInitStateVals(printInfoAD)
 
-    def _computeBasicFamilyInfo(self):
+    def _computeBasicFamilyInfo(self, faces):
         """
         Loop over the boundary data and compute necessary family
         information for the basic patches
 
+        Parameters
+        ----------
+        faces : list
+            Point indices for all faces, read by _readOFGrid
         """
         # get the list of basic families
         self.basicFamilies = sorted(self.boundaries.keys())
@@ -1786,7 +1796,7 @@ class PYDAFOAM(object):
             if nFace > 0:
                 for iFace in bc["faces"]:
                     # get the node information for the current face
-                    face = self.faces[iFace]
+                    face = faces[iFace]
                     indices.extend(face)
 
             # Get the unique point entries for this boundary
@@ -1807,7 +1817,7 @@ class PYDAFOAM(object):
             facesRed = []
             for iFace in bc["faces"]:
                 # get the node information for the current face
-                face = self.faces[iFace]
+                face = faces[iFace]
                 nNodes = len(face)
                 # Generate the reduced connectivity.
                 faceReduced = []
@@ -1824,6 +1834,8 @@ class PYDAFOAM(object):
             # put the reduced faces and index list in the boundary dict
             bc["facesRed"] = facesRed
             bc["indicesRed"] = list(indices)
+            # the global face indices are replaced by facesRed and no longer needed
+            del bc["faces"]
 
             # now check for walls
             if bc["type"] == "wall" or bc["type"] == "slip" or bc["type"] == "cyclic":
@@ -1838,7 +1850,7 @@ class PYDAFOAM(object):
         """
 
         # Setup External Warping
-        nCoords = len(self.xv0.flatten())
+        nCoords = self.xv.size
 
         nCoords = self.comm.allgather(nCoords)
         offset = 0
@@ -1968,10 +1980,7 @@ class PYDAFOAM(object):
         # Read the boundary info
         boundaries = ofm.readBoundaryInfo(faces)
 
-        # Read the cell info for the mesh
-        owners, neighbours = ofm.readCellInfo()
-
-        return fileNames, x0, faces, boundaries, owners, neighbours
+        return fileNames, x0, faces, boundaries
 
     def setOption(self, name, value):
         """

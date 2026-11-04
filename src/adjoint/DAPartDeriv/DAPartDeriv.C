@@ -470,6 +470,13 @@ void DAPartDeriv::calcPartDerivMat(
     {
         daIndex_.printMatChars(jacMat);
     }
+
+    // clean up the work vectors to avoid memory leak
+    VecDestroy(&coloredColumn);
+    VecDestroy(&wVecNew);
+    VecDestroy(&resVec);
+    VecDestroy(&resVecRef);
+    VecDestroy(&normStatePerturbVec);
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
