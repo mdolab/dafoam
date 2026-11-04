@@ -33,6 +33,10 @@ DAJacCon::DAJacCon(
     autoPtr<DAStateInfo> daStateInfo(DAStateInfo::New(solverName, mesh, daOption, daModel));
     stateInfo_ = daStateInfo->getStateInfo();
 
+    // isPIVBCState_ is created only if pressureInletVelocity is found, so set it to null here
+    // such that clear() can always call VecDestroy on it
+    isPIVBCState_ = nullptr;
+
     // check if there is special boundary conditions that need special treatment in jacCon_
     this->checkSpecialBCs();
 
@@ -2976,6 +2980,8 @@ void DAJacCon::clear()
     VecDestroy(&dRdWTPreallocOff_);
     VecDestroy(&dRdWPreallocOn_);
     VecDestroy(&dRdWPreallocOff_);
+    // VecDestroy does nothing if isPIVBCState_ is null (no pressureInletVelocity BC)
+    VecDestroy(&isPIVBCState_);
 
     this->clearDAJacConMembers();
 }
