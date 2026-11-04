@@ -1648,8 +1648,7 @@ class PYDAFOAM(object):
 
         dirName = os.getcwd()
 
-        self.fileNames, self.xv0, faces, self.boundaries = self._readOFGrid(dirName)
-        self.xv = copy.copy(self.xv0)
+        self.fileNames, self.xv, faces, self.boundaries = self._readOFGrid(dirName)
 
         return faces
 
@@ -1851,7 +1850,7 @@ class PYDAFOAM(object):
         """
 
         # Setup External Warping
-        nCoords = len(self.xv0.flatten())
+        nCoords = self.xv.size
 
         nCoords = self.comm.allgather(nCoords)
         offset = 0
