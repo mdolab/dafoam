@@ -41,6 +41,10 @@ DAFunctionVariableVolSum::DAFunctionVariableVolSum(
     multiplyVol_ = functionDict_.lookupOrDefault<label>("multiplyVol", 1);
 
     divByTotalVol_ = functionDict_.lookupOrDefault<label>("divByTotalVol", 0);
+
+    invertField_ = functionDict_.lookupOrDefault<label>("invertField", 0);
+
+    invertVal_ = functionDict_.lookupOrDefault<label>("invertVal", 1); // Binary inversion from 0 to 1, vice versa
 }
 
 /// calculate the value of objective function
@@ -57,7 +61,7 @@ scalar DAFunctionVariableVolSum::calcFunction()
 
     const objectRegistry& db = mesh_.thisDb();
 
-    scalar totalVol = 1.0;
+    scalar totalVol = 0.0;
 
     if (divByTotalVol_)
     {
@@ -67,6 +71,10 @@ scalar DAFunctionVariableVolSum::calcFunction()
         }
         reduce(totalVol, sumOp<scalar>());
     }
+    else
+    {
+        totalVol = 1.0;
+    }
 
     if (varType_ == "scalar")
     {
@@ -75,40 +83,52 @@ scalar DAFunctionVariableVolSum::calcFunction()
         forAll(cellSources_, idxI)
         {
             const label& cellI = cellSources_[idxI];
+            scalar value = var[cellI];
             scalar volume = 1.0;
             if (multiplyVol_)
             {
                 volume = mesh_.V()[cellI];
             }
+            if (invertField_)
+            {
+
+                value = invertVal_ - value;
+            }
             if (isSquare_)
             {
-                functionValue += scale_ * volume * var[cellI] * var[cellI];
+                functionValue += scale_ * volume * value * value;
             }
             else
             {
-                functionValue += scale_ * volume * var[cellI];
+                functionValue += scale_ * volume * value;
             }
         }
     }
     else if (varType_ == "vector")
     {
+       
         const volVectorField& var = db.lookupObject<volVectorField>(varName_);
         // calculate mass
         forAll(cellSources_, idxI)
         {
             const label& cellI = cellSources_[idxI];
+            scalar value = var[cellI][index_];
             scalar volume = 1.0;
             if (multiplyVol_)
             {
                 volume = mesh_.V()[cellI];
             }
+            if (invertField_)
+            {
+                value = invertVal_ - value;
+            }
             if (isSquare_)
             {
-                functionValue += scale_ * volume * var[cellI][index_] * var[cellI][index_];
+                functionValue += scale_ * volume * value * value;
             }
             else
             {
-                functionValue += scale_ * volume * var[cellI][index_];
+                functionValue += scale_ * volume * value;
             }
         }
     }
@@ -122,7 +142,13 @@ scalar DAFunctionVariableVolSum::calcFunction()
     // need to reduce the sum of force across all processors
     reduce(functionValue, sumOp<scalar>());
 
+    Info << "Raw functionValue = " << functionValue << endl;
+    Info << "Total Volume      = " << totalVol << endl;
+    Info << "Ratio             = " << functionValue/totalVol << endl;
+    Info << "volume            = " << totalVol << endl;
+
     functionValue /= totalVol;
+
 
     // check if we need to calculate refDiff.
     this->calcRefVar(functionValue);

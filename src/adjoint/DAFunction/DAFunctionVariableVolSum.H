@@ -46,6 +46,12 @@ protected:
     /// whether to multiply the variable by the volume
     label multiplyVol_;
 
+    /// whether to invert the binary scalar field
+    label invertField_;
+
+    /// scalar value to invert the field by
+    scalar invertVal_;
+
 public:
     TypeName("variableVolSum");
     // Constructors
