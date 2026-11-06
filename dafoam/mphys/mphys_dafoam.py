@@ -1215,6 +1215,9 @@ class OptFuncs(object):
         normalizeTol=True uses the relative residual norm ||(con - targets) / targets|| and
         requires non-zero targets. normalizeTol=False uses the absolute residual norm
         ||con - targets||, which is useful for zero or near-zero targets, e.g., CM.
+        tol can be a scalar applied to every constraint or a list with one tolerance per
+        constraint, e.g., tol=[0.05, 0.01] when the constraints have different units. For a
+        list, each residual is weighted by min(tol) / tol[i] and the norm is compared to min(tol).
         NOTE: we use the Newton method with 50% backtracking to reduce the residual norm.
         Try at most five halvings, then accept the fifth reduced step even if the residual
         increases and continue the Newton iterations.
@@ -1241,9 +1244,19 @@ class OptFuncs(object):
 
         size = len(constraints)
 
+        # One tolerance per constraint: a scalar applies to all, a list sets them separately.
+        tolVec = np.full(size, tol, dtype=float) if np.isscalar(tol) else np.asarray(tol, dtype=float)
+        if tolVec.shape != (size,):
+            raise RuntimeError("tol needs to be a scalar or a list with one entry for each constraint! ")
+        if np.any(tolVec <= 0):
+            raise ValueError("findFeasibleDesign requires positive tol values.")
+        # Converge against the smallest tolerance; looser constraints are weighted down by
+        # tolVec / tolRef. A scalar tol gives unit weights, i.e., the original behavior.
+        tolRef = tolVec.min()
+
         # Scale for the residual norm: targets for a relative norm, ones for an absolute norm.
         # The same scale is used for convergence and line search so they stay consistent.
-        resScale = np.asarray(targets, dtype=float) if normalizeTol else np.ones(size)
+        resScale = (np.asarray(targets, dtype=float) if normalizeTol else np.ones(size)) * tolVec / tolRef
 
         # if the component is empty, set it to 0
         if constraintsComp is None:
@@ -1343,7 +1356,7 @@ class OptFuncs(object):
                 print("Residual Norm: ", norm, flush=True)
 
             # break the loop if residual is already smaller than the tolerance
-            if norm < tol:
+            if norm < tolRef:
                 if self.comm.rank == 0:
                     print("FindFeasibleDesign Converged! ", flush=True)
                 break
